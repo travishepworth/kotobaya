@@ -481,3 +481,6 @@
 2026-11-12T18:54:38Z T301b DISPATCH writer(sonnet)
 2026-11-12T18:54:38Z T304a DISPATCH writer(sonnet)
 2026-11-12T18:54:38Z - T305a queued (Gradle cap)
+2026-11-12T18:59:51Z T301b HANDOFF DONE (okhttp, play-services-code-scanner deps justified); CHECK_GREEN android; MERGE
+2026-11-12T18:59:51Z DECIDE ADR-012 provisional: hand-written OkHttp client on Android (generated client Kotlin version mismatch)
+2026-11-12T18:59:51Z T305a DISPATCH writer-senior(opus)

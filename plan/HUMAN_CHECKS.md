@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- ADR-012: Android calls the API through a hand-written client (generated Kotlin client needs a newer Kotlin than the app).
 - jpdb re-import (T207c): notes you deleted after an import are NOT recreated on re-run; they are skipped and counted.
 - C-8: a word status set offline during a clock-skew window is re-minted at its estimated time and can beat another device's earlier status for the same word.
 - C-8: after a clock-skew Re-mint, offline-mined words keep their deck membership and statuses (re-minted); other edits of rows the server already had that depend on window rows are discarded, and the device MUST show the discard list before you confirm.
@@ -29,6 +30,9 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] F-4: run the extended restore drill on k3d (`deploy/backup/restore-drill.sh`): confirm the data-loss preflight refuses without `--accept-data-loss` and leaves api/CronJobs untouched.
 - [ ] **P1 — Cluster:** `helm install` on the real cluster (command filled in by orchestrator); open the web app; search the dictionary.
 - [ ] **Backups:** confirm the first nightly backup landed off-cluster; run the restore drill once.
+
+## Android
+- [ ] Pair a phone: QR pairing uses Google Play services (ML Kit code scanner); on a phone without Play services use manual code entry.
 
 ## Takoboto (spike + production)
 - [ ] **S01/T305:** install the default APK (`com.ichi2.anki` flavor). In Takoboto, add 5 words. Confirm they appear as notes with the right fields.
