@@ -255,3 +255,7 @@
 2026-11-12T14:24:04Z - PHASE P1 all merged; make test running
 2026-11-12T14:25:52Z - CHECK_GREEN make test (all modules) P1
 2026-11-12T14:25:52Z GATE-P1 GATE_CLOSE deferred to HUMAN_CHECKS (single-session)
+2026-11-12T14:26:18Z - SPLIT P2: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4 added (planner)
+2026-11-12T14:26:18Z - DECIDE T212 also owns settings/presets endpoints (unowned otherwise)
+2026-11-12T14:26:18Z - DECIDE bulk card ops synchronous per frozen contract (≤5000 cards), not a job; backlog text superseded
+2026-11-12T14:26:18Z - DECIDE add T214 web jpdb import screen (GATE-P2 needs import from web)

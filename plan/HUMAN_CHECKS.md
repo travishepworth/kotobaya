@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- P2: bulk card operations (tag/move/suspend/reschedule) run synchronously, up to 5000 cards per call, as the frozen API contract says. The backlog said "one job with progress". Fine for a personal collection; a C-ticket could add a job variant later.
 <!-- orchestrator appends: ADR id, one line, how to reverse. Confirm or reverse each. -->
 
 ## Deploy
