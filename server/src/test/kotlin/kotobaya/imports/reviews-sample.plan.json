@@ -1,0 +1,330 @@
+{
+ "plan": {
+  "version": 1,
+  "options": {
+   "import_reviews": true,
+   "import_word_status": true
+  },
+  "vocab_groups": [
+   {
+    "entry_seq": 1206730,
+    "fate": "carded",
+    "card_kind": "meaning",
+    "rows": [
+     {
+      "vid": 1199000,
+      "spelling": "学校",
+      "reading": "がっこう",
+      "review_count": 4,
+      "method": "spelling+reading"
+     },
+     {
+      "vid": 1199000,
+      "spelling": "がっこう",
+      "reading": "がっこう",
+      "review_count": 2,
+      "method": "kana-reading"
+     }
+    ],
+    "reviews": [
+     {
+      "id": "019c2754-e100-79f3-a384-c832778468d7",
+      "reviewed_at": 1770186400000,
+      "rating": 3,
+      "button": "okay",
+      "grade": "okay",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c370b-1880-7298-b4b4-307403f10bec",
+      "reviewed_at": 1770450000000,
+      "rating": 4,
+      "button": "easy",
+      "grade": "easy",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c57d3-6e00-74b9-985f-5f016edc5410",
+      "reviewed_at": 1771000000000,
+      "rating": 3,
+      "button": "okay",
+      "grade": "okay",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019cb13b-9d00-7846-9801-09f8b90589d7",
+      "reviewed_at": 1772500000000,
+      "rating": 3,
+      "button": null,
+      "grade": "pass",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     }
+    ]
+   },
+   {
+    "entry_seq": 1467640,
+    "fate": "carded",
+    "card_kind": "meaning",
+    "rows": [
+     {
+      "vid": 1500010,
+      "spelling": "猫",
+      "reading": "ねこ",
+      "review_count": 5,
+      "method": "spelling+reading"
+     }
+    ],
+    "reviews": [
+     {
+      "id": "019c282d-8dc0-7792-baaf-7f17ee66d651",
+      "reviewed_at": 1770200600000,
+      "rating": 1,
+      "button": "something",
+      "grade": "something",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c2d53-e9c0-7b54-b7bf-3116f48cc04e",
+      "reviewed_at": 1770287000000,
+      "rating": 3,
+      "button": "okay",
+      "grade": "okay",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c3410-2800-7a57-8fc0-64fd5b5a4c50",
+      "reviewed_at": 1770400000000,
+      "rating": 1,
+      "button": "nothing",
+      "grade": "nothing",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c51dd-8d00-7cd3-9fdb-efcf6f2517c8",
+      "reviewed_at": 1770900000000,
+      "rating": 2,
+      "button": "hard",
+      "grade": "hard",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     }
+    ]
+   },
+   {
+    "entry_seq": 1215260,
+    "fate": "carded",
+    "card_kind": "meaning",
+    "rows": [
+     {
+      "vid": 1500011,
+      "spelling": "間に合う",
+      "reading": "まにあう",
+      "review_count": 3,
+      "method": "spelling+reading"
+     }
+    ],
+    "reviews": [
+     {
+      "id": "019c75a0-d300-75e7-afa0-9bba578aa210",
+      "reviewed_at": 1771500000000,
+      "rating": 3,
+      "button": "okay",
+      "grade": "okay",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "01a13b86-0000-78a6-b1c1-2e097fe0385f",
+      "reviewed_at": 1792000000000,
+      "rating": 1,
+      "button": "nothing",
+      "grade": "nothing",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     }
+    ]
+   },
+   {
+    "entry_seq": 1381820,
+    "fate": "status_only",
+    "card_kind": "meaning",
+    "rows": [
+     {
+      "vid": 1200300,
+      "spelling": "静か",
+      "reading": "しずか",
+      "review_count": 1,
+      "method": "spelling+reading"
+     }
+    ],
+    "reviews": []
+   },
+   {
+    "entry_seq": 1595650,
+    "fate": "carded",
+    "card_kind": "meaning",
+    "rows": [
+     {
+      "vid": 1200301,
+      "spelling": "寿司",
+      "reading": "すし",
+      "review_count": 1,
+      "method": "spelling+reading"
+     }
+    ],
+    "reviews": []
+   }
+  ],
+  "kanji_notes": [
+   {
+    "character": "猫",
+    "fields": {
+     "literal": "猫"
+    }
+   },
+   {
+    "character": "学",
+    "fields": {
+     "literal": "学"
+    }
+   }
+  ],
+  "kanji_groups": [
+   {
+    "character": "猫",
+    "card_kind": "keyword",
+    "known_only": false,
+    "suspended_on_create": false,
+    "row_count": 1,
+    "reviews": [
+     {
+      "id": "019c2eb2-dd80-7fc0-a91e-9464c46baeac",
+      "reviewed_at": 1770310000000,
+      "rating": 3,
+      "button": "okay",
+      "grade": "okay",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     },
+     {
+      "id": "019c3ffb-ea00-7824-aeb5-ebfb9127c1f0",
+      "reviewed_at": 1770600000000,
+      "rating": 4,
+      "button": "easy",
+      "grade": "easy",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     }
+    ]
+   },
+   {
+    "character": "学",
+    "card_kind": "writing",
+    "known_only": false,
+    "suspended_on_create": true,
+    "row_count": 1,
+    "reviews": [
+     {
+      "id": "019c2e1a-4700-7760-a498-dc70887724a7",
+      "reviewed_at": 1770300000000,
+      "rating": 2,
+      "button": "hard",
+      "grade": "hard",
+      "utc_offset_min": null,
+      "duration_ms": null,
+      "review_type": "scheduled",
+      "import_source": "jpdb"
+     }
+    ]
+   }
+  ],
+  "unmapped": [
+   {
+    "jpdb_vid": 2147656918,
+    "spelling": "山田太郎",
+    "reading": "やまだたろう",
+    "review_count": 3
+   }
+  ],
+  "kanji_unmapped": [],
+  "counts": {
+   "vocabulary_total": 7,
+   "vocabulary_carded": 5,
+   "vocabulary_status_only": 1,
+   "vocabulary_en_jp_ignored": 0,
+   "kanji_total": 2,
+   "kanji_carded": 2,
+   "reviews_total": 24,
+   "reviews_rating": 13,
+   "reviews_skipped_rows": 3,
+   "reviews_unknown_grade": 0,
+   "status_events_unknown": 7,
+   "status_events_known": 1,
+   "reviews_duplicate_dropped": 0
+  }
+ },
+ "expected_result_empty_db": {
+  "vocabulary_total": 7,
+  "vocabulary_carded": 5,
+  "vocabulary_status_only": 1,
+  "vocabulary_en_jp_ignored": 0,
+  "notes_created": 4,
+  "notes_existing": 0,
+  "cards_created": 4,
+  "kanji_total": 2,
+  "kanji_carded": 2,
+  "kanji_notes_created": 2,
+  "kanji_notes_existing": 0,
+  "kanji_cards_created": 2,
+  "kanji_cards_suspended": 1,
+  "kanji_unmapped": [],
+  "reviews_total": 24,
+  "reviews_imported": 13,
+  "reviews_already_imported": 0,
+  "reviews_skipped": 3,
+  "reviews_unknown_grade": 0,
+  "reviews_duplicate_dropped": 0,
+  "status_events_unknown": 7,
+  "status_events_known": 1,
+  "word_statuses_set": 1,
+  "unmapped": [
+   {
+    "jpdb_vid": 2147656918,
+    "spelling": "山田太郎",
+    "reading": "やまだたろう",
+    "review_count": 3
+   }
+  ]
+ }
+}
