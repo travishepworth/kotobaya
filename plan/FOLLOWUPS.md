@@ -17,3 +17,4 @@
 - T003 architect followups (two-level merge convergence, loser deleted_at, rejected-op rollback, etc.) moved into plan/tickets/T005.md § Must also resolve.
 - Makefile `check MODULE=contracts` must run contracts/db/check.sh + contracts/sync/check.sh (+ api check from T004).
 - T005 → T004: validate push bodies with `PushRequestLenient`; per-op errors in `PushResult`. Snapshot blob formats undefined (list/media deck snapshots) — needs an owner ticket.
+- T004: undefined — snapshot archive formats (also flagged by T005), `confusable.suggested` trigger, pairing-code storage (in-memory). Web reviews attributed to the server device, not per browser.

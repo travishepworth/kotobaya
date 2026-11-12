@@ -65,3 +65,6 @@
 2026-11-12T10:51:04Z T005 REVIEW_CHANGES architect: 2 major (backup-restore log epoch/durable_seq; future-clock bound), 4 minor
 2026-11-12T10:51:36Z T005 REVIEW_APPROVE reviewer (3 minor; #2 weights_version fold is a real divergence → fix)
 2026-11-12T10:51:36Z T005 DISPATCH attempt 2 (same architect): 2 major + 2 must-fix minors + 5 cheap
+2026-11-12T10:52:03Z T004 HANDOFF DONE 114 operations; sync bodies use a stand-in until T005 merges
+2026-11-12T10:52:03Z T004 CHECK_GREEN contracts/api/check.sh
+2026-11-12T10:52:03Z T004 REVIEW dispatched reviewer(opus); architect pass deferred (max 2 reviewers; T005 att.2 running)
