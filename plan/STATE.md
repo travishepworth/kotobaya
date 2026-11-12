@@ -20,6 +20,7 @@ Updated: 2026-11-12T09:57:21Z
 - Project agent types not registered; dispatch = general-purpose + model override + inlined role (human OK'd).
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
+- Review rounds (human, 2026-11-12): max ONE fix round per high-risk ticket. Re-review = verify listed findings only; new issues block only if blocker (data loss/divergence), else → FOLLOWUPS; then merge.
 
 ## Pending human questions
 - none blocking. See plan/HUMAN_CHECKS.md.

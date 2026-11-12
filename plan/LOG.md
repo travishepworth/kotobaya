@@ -46,3 +46,4 @@
 2026-11-12T09:56:34Z T003 REVIEW_CHANGES reviewer: 4 major (entry_seq LWW vs live uq; merge register rule; list deck uq; grammar span cascade), 4 minor
 2026-11-12T09:57:21Z T003 REVIEW_CHANGES architect 2nd pass: 5 major (merge rules, entry_seq, spans cascade+uq, deck uq), 1 minor
 2026-11-12T09:57:21Z T003 DISPATCH attempt 2 (same architect) with merged findings (5 major, 5 minor)
+2026-11-12T09:57:38Z - DECIDE review policy (human): one fix round max; re-review verifies listed findings only; non-blockers → FOLLOWUPS
