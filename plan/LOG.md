@@ -140,3 +140,6 @@
 2026-11-12T12:26:33Z T108a HANDOFF DONE
 2026-11-12T12:26:33Z T108a CHECK_GREEN core+web after rebase
 2026-11-12T12:26:33Z T108a MERGE (T108b waits for C-2: Search.kt compiler semantics)
+2026-11-12T12:29:52Z T107a HANDOFF DONE 1.21M args bit-equal; jvm+js digests
+2026-11-12T12:29:52Z T107a CHECK_GREEN core (jvmTest+jsTest) + web after rebase
+2026-11-12T12:29:52Z T107a REVIEW reviewer(opus) dispatched

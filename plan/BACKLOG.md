@@ -191,7 +191,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Matches every golden vector within tolerance on jvm and js targets.
 
 ### T107a — FSRS: PortableMath, nodejs() target, :core:jsTest in make check core
-- model: opus · risk: high · deps: T006, T008 · status: RUNNING
+- model: opus · risk: high · deps: T006, T008 · status: IN_REVIEW
 - see plan/tickets/T107a.md (split from T107)
 
 ### T107b — FSRS: Scheduler + golden vectors + jvm/js bit-identity digest
