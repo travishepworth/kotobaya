@@ -33,11 +33,14 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 /**
- * T105a: password + optional TOTP login, session tokens, logout, `getPrincipal`, and the request
- * [authenticator]. Wire it with `AppDeps(authenticator = auth.authenticator, handlers = auth.handlers + ...)`.
+ * Everything auth: login/logout/session (T105a); devices, pairing, personal tokens, scope enforcement and the
+ * `/ankiconnect` body-key gate (T105b). Wire it with `AppDeps(authenticator = auth.authenticator, handlers = auth.handlers + ...)`.
  *
- * [clientAddress] keys the login rate limit; the default is [ClientAddressResolver] over the TCP peer and
- * `X-Forwarded-For`, trusting the header only from `AUTH_TRUSTED_PROXIES`.
+ * [clientAddress] keys the login and pairing rate limits; the default is [ClientAddressResolver] over the TCP peer
+ * and `X-Forwarded-For`, trusting the header only from `AUTH_TRUSTED_PROXIES`.
+ * [events] publishes `device.paired` / `device.revoked` and ends revoked tokens' `/events` streams
+ * (`AuthEvents.of(eventBus, eventHub)`). [ankiConnect] runs the AnkiConnect actions behind the auth gate; until a
+ * ticket supplies it, only `version` works.
  */
 class Auth(
     private val db: Database,
@@ -45,10 +48,15 @@ class Auth(
     private val clock: () -> Instant = Instant::now,
     val validator: TokenValidator = TokenValidator(db, clock),
     private val limiter: LoginRateLimiter = LoginRateLimiter(),
-    scopeCheck: ScopeCheck = ScopeCheck.None,
+    scopeCheck: ScopeCheck = ScopePolicy,
     private val clientAddress: (ApplicationCall) -> String = ClientAddressResolver(config.trustedProxies).let { r ->
         { call -> r.resolve(call.request.local.remoteAddress, call.request.headers.getAll("X-Forwarded-For").orEmpty()) }
     },
+    private val events: AuthEvents = AuthEvents.None,
+    ankiConnect: AnkiConnectActions? = null,
+    pairingCodes: PairingCodes = PairingCodes(),
+    /** openapi `pairDevice`: more than 10 failures from one client address in 15 minutes is `429`. */
+    pairLimiter: LoginRateLimiter = LoginRateLimiter(perAddress = 10, global = 200),
 ) {
     private val log = LoggerFactory.getLogger("kotobaya.auth")
     private val totp = config.totpKey?.let { Totp(it, startedAt = clock()) }
@@ -56,13 +64,19 @@ class Auth(
     /** Bound concurrent Argon2 verifications to 256 MiB in total (2 at the default 64 MiB) so a login flood cannot exhaust the heap. */
     private val hashing = Semaphore((PasswordHasher.MAX_MEMORY_KiB / config.passwordHash.params.memoryKiB).coerceIn(1, 2))
 
-    val authenticator = TokenAuthenticator(validator, scopeCheck)
+    private val usage = UsageRecorder(db, clock)
+
+    val authenticator = TokenAuthenticator(validator, scopeCheck) { usage.record(it) }
+
+    private val devices = Devices(db, validator, events, pairingCodes, pairLimiter, clock, clientAddress, config.publicUrl)
+    private val tokens = ApiTokens(db, validator, events, clock)
 
     val handlers: Map<String, OperationHandler> = mapOf(
         "login" to { login(this) },
         "logout" to { logout(this) },
         "getPrincipal" to { getPrincipal(this) },
-    )
+        "ankiConnect" to AnkiConnectGate(validator, ankiConnect).handler,
+    ) + devices.handlers + tokens.handlers
 
     private suspend fun login(call: ApplicationCall) {
         val req = parseLogin(call)
@@ -135,6 +149,7 @@ class Auth(
             throw validationFailed("", "invalid_value", "Only session tokens log out; revoke device and personal tokens by id.")
         }
         validator.revoke(auth.principal.tokenId)
+        events.tokensRevoked(listOf(auth.principal.tokenId))
         log.info("logout", kv("event", "auth.logout"), kv("token.id", auth.principal.tokenId.toString()), kv("request_id", call.requestId))
         call.response.header(HttpHeaders.SetCookie, "$SESSION_COOKIE=; Path=/api; Max-Age=0")
         call.respond(HttpStatusCode.NoContent)
@@ -178,11 +193,6 @@ class Auth(
         }
         return LoginRequest(pw.asText(), code?.asText())
     }
-
-    private fun validationFailed(pointer: String, code: String, detail: String) = ApiException(
-        HttpStatusCode.UnprocessableEntity, "validation_failed", "Validation failed", detail,
-        mapOf("errors" to listOf(mapOf("pointer" to pointer, "code" to code, "detail" to detail))),
-    )
 
     companion object {
         val SESSION_LIFETIME: Duration = Duration.ofDays(30)

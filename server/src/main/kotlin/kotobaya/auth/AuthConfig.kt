@@ -15,6 +15,11 @@ class AuthConfig(
     val passwordHash: PasswordHasher.Parsed,
     val totpKey: ByteArray?,
     val trustedProxies: List<Cidr> = emptyList(),
+    /**
+     * `PUBLIC_URL` (optional): the public origin, e.g. `https://kotobaya.example.net`, put into the pairing QR code
+     * (`pairing_uri`). Absent: derived from the request's scheme and `Host` header.
+     */
+    val publicUrl: String? = null,
 ) {
     val totpEnabled: Boolean get() = totpKey != null
 
@@ -22,6 +27,7 @@ class AuthConfig(
         const val PASSWORD_HASH_ENV = "AUTH_PASSWORD_HASH"
         const val TOTP_SECRET_ENV = "AUTH_TOTP_SECRET"
         const val TRUSTED_PROXIES_ENV = "AUTH_TRUSTED_PROXIES"
+        const val PUBLIC_URL_ENV = "PUBLIC_URL"
 
         fun fromEnv(env: Map<String, String> = System.getenv()): AuthConfig {
             val raw = env[PASSWORD_HASH_ENV]?.takeIf { it.isNotBlank() }
@@ -45,7 +51,13 @@ class AuthConfig(
             } catch (e: IllegalArgumentException) {
                 throw ConfigException("$TRUSTED_PROXIES_ENV: ${e.message}")
             }
-            return AuthConfig(hash, totp, proxies)
+            val publicUrl = env[PUBLIC_URL_ENV]?.takeIf { it.isNotBlank() }?.trim()?.trimEnd('/')?.also {
+                val uri = runCatching { java.net.URI(it) }.getOrNull()
+                if (uri == null || uri.scheme !in setOf("http", "https") || uri.host.isNullOrEmpty()) {
+                    throw ConfigException("$PUBLIC_URL_ENV must be an http(s) URL such as https://kotobaya.example.net")
+                }
+            }
+            return AuthConfig(hash, totp, proxies, publicUrl)
         }
     }
 }

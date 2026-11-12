@@ -15,8 +15,8 @@ import kotobaya.server.TokenInfo
 const val SESSION_COOKIE = "kotobaya_session"
 const val CSRF_HEADER = "X-Kotobaya-Csrf"
 
-/** OpenAPI security scheme names (`components.securitySchemes`). */
-enum class CredentialSource(val scheme: String) { BEARER("bearerAuth"), COOKIE("sessionCookie") }
+/** OpenAPI security scheme names (`components.securitySchemes`); [BODY_KEY] is the `x-auth: body-key` token in the JSON body. */
+enum class CredentialSource(val scheme: String) { BEARER("bearerAuth"), COOKIE("sessionCookie"), BODY_KEY("body-key") }
 
 data class Authenticated(val principal: Principal, val source: CredentialSource)
 
@@ -26,10 +26,7 @@ val AuthenticatedKey = AttributeKey<Authenticated>("kotobaya.authenticated")
 val ApplicationCall.authenticated: Authenticated?
     get() = attributes.getOrNull(AuthenticatedKey)
 
-/**
- * Scope check run after the credential is known to be valid and allowed for the operation's scheme.
- * T105b supplies the real one; until then every valid credential passes (sessions hold all scopes anyway).
- */
+/** Scope check run after the credential is known to be valid. The real one is [ScopePolicy]. */
 fun interface ScopeCheck {
     /** Throw [ApiException] (`Problems.insufficientScope`) to refuse. */
     fun check(auth: Authenticated, requirement: ScopeRequirement)
@@ -42,24 +39,41 @@ fun interface ScopeCheck {
 /**
  * The T104 [Authenticator]: Authorization header (wins when present) or the session cookie, validated by
  * [TokenValidator]; 401 `unauthenticated` when missing or invalid; CSRF header check for cookie-authenticated
- * writes (openapi §2); then [scopeCheck].
+ * writes (openapi §2); then [scopeCheck]; then [onAuthenticated] (usage bookkeeping).
+ *
+ * `x-auth: body-key` operations (`/ankiconnect`) are never refused here: a refused header/cookie credential is
+ * recorded for [AnkiConnectGate], which answers in the AnkiConnect envelope and otherwise authenticates the body
+ * `key`. No other operation ever looks at a body key.
  */
 class TokenAuthenticator(
     private val validator: TokenValidator,
-    private val scopeCheck: ScopeCheck = ScopeCheck.None,
+    private val scopeCheck: ScopeCheck = ScopePolicy,
+    private val onAuthenticated: suspend (Principal) -> Unit = {},
 ) : Authenticator {
     override suspend fun authenticate(call: ApplicationCall, requirement: ScopeRequirement): TokenInfo? {
         if (requirement.public) return null
+        if (!requirement.bodyKey) return authenticateCredential(call, requirement)
+        call.attributes.put(BodyKeyRequirementKey, requirement)
+        return try {
+            authenticateCredential(call, requirement)
+        } catch (e: ApiException) {
+            call.attributes.remove(AuthenticatedKey)
+            call.attributes.put(HeaderFailureKey, e)
+            null
+        }
+    }
+
+    private suspend fun authenticateCredential(call: ApplicationCall, requirement: ScopeRequirement): TokenInfo? {
         val presented = credentialOf(call)
         if (presented == null) {
-            // `x-auth: body-key` operations: the `{}` alternative means the token may come in the body (T105b).
-            if (requirement.alternatives.any { it.isEmpty() }) return null
+            // `x-auth: body-key`: the token may come in the body; [AnkiConnectGate] checks it.
+            if (requirement.bodyKey) return null
             throw Problems.unauthenticated("No credential.")
         }
         val (token, source) = presented
         val principal = validator.validate(token) ?: throw Problems.unauthenticated("The token is unknown, expired or revoked.")
-        // Which scheme an operation accepts (bearer-only `/devices/self`, ...) is left to [scopeCheck] (T105b):
-        // `logout` declares only the cookie yet must answer a bearer device token with 422, so a blanket
+        // Which scheme an operation accepts (bearer-only `/devices/self`, ...) is left to [scopeCheck] and the
+        // handler: `logout` declares only the cookie yet must answer a bearer device token with 422, so a blanket
         // scheme filter here would contradict the contract.
         val auth = Authenticated(principal, source)
         call.attributes.put(AuthenticatedKey, auth)
@@ -69,6 +83,7 @@ class TokenAuthenticator(
             throw ApiException(HttpStatusCode.Forbidden, "csrf_required", "CSRF header required", "Send $CSRF_HEADER: 1.")
         }
         scopeCheck.check(auth, requirement)
+        onAuthenticated(principal)
         return TokenInfo(principal.tokenId.toString(), principal.name)
     }
 
