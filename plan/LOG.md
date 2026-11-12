@@ -173,3 +173,5 @@
 2026-11-12T12:41:40Z T107b HANDOFF DONE 26 scheduler tests jvm+js
 2026-11-12T12:41:40Z T107b CHECK_GREEN core+web after rebase
 2026-11-12T12:41:40Z T107b REVIEW reviewer(opus) dispatched
+2026-11-12T12:42:38Z C-3 REVIEW_CHANGES 1 major (diff base must be the published full of from_release + content digest), 4 minor
+2026-11-12T12:42:38Z C-3 DISPATCH attempt 2 (same opus agent)
