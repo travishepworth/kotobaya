@@ -73,3 +73,6 @@
 2026-11-12T11:08:35Z T005 HANDOFF DONE attempt 2 (opus)
 2026-11-12T11:08:35Z T005 CHECK_GREEN 15 scenarios
 2026-11-12T11:08:35Z T005 REVIEW architect verification dispatched (incl. clock-skew discard trade-off)
+2026-11-12T11:10:45Z T005 REVIEW_CHANGES architect verification: 5/6 fixed; clock-reject discard-only = major (re-mint converges)
+2026-11-12T11:10:45Z T005 DISPATCH attempt 3 (opus): re-mint + device guard + card-age check
+2026-11-12T11:10:45Z T004 DISPATCH attempt 2 (opus) on branch rebased onto t/T005-sync
