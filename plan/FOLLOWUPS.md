@@ -15,3 +15,5 @@
 - T003 (doc): a duplicate's filled fields are copied to the survivor even if the duplicate was deleted before push. Mention in SUMMARY.md.
 - T003 → core/android apply: append-only for review_log/change is enforced by Postgres triggers only; device apply code needs a test.
 - T003 architect followups (two-level merge convergence, loser deleted_at, rejected-op rollback, etc.) moved into plan/tickets/T005.md § Must also resolve.
+- Makefile `check MODULE=contracts` must run contracts/db/check.sh + contracts/sync/check.sh (+ api check from T004).
+- T005 → T004: validate push bodies with `PushRequestLenient`; per-op errors in `PushResult`. Snapshot blob formats undefined (list/media deck snapshots) — needs an owner ticket.

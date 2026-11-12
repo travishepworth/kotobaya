@@ -64,7 +64,7 @@ Originally, before any ticket ran, the human would:
 - accept: Every spec endpoint present; every operation declares a scope.
 
 ### T005 — Contract: sync operations and conflict rules
-- model: fable · risk: high · deps: T003 · status: RUNNING
+- model: fable · risk: high · deps: T003 · status: IN_REVIEW
 - paths: `contracts/sync/`
 - spec: Sync and offline, Data model
 - do: JSON Schema per op type (`review.logged`, `note.created`, `note.updated`, `note.deleted`, `card.suspended`, `card.buried`, `card.rescheduled`, `word.status_set`, `deck.*`, `deck_item.*`, `settings.updated`, `confusable.*`, `grammar_point.*`, `parse_override.*`, `media.*` metadata). HLC format and comparison. Conflict rule per op. Replay semantics (what triggers FSRS re-replay). Idempotency rules. Push/pull batch formats. `SYNC.md` with sequence diagrams and worked examples for: two devices reviewing the same card offline; edit vs delete; same word added on two devices.

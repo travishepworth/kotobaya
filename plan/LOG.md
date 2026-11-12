@@ -59,3 +59,6 @@
 2026-11-12T10:37:17Z T004 RESUME after 5h rate limit (agent interrupted, work saved)
 2026-11-12T10:37:17Z T005 RESUME after 5h rate limit (agent interrupted, work saved)
 2026-11-12T10:40:09Z - DECIDE ADR-004 (human): fable-tier tickets run on Opus; escalation tops at Opus
+2026-11-12T10:45:58Z T005 HANDOFF DONE 45 ops, 14 scenarios
+2026-11-12T10:45:58Z T005 CHECK_GREEN contracts/sync/check.sh
+2026-11-12T10:45:58Z T005 REVIEW dispatched reviewer(opus) + architect(opus, ADR-004)
