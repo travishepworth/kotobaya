@@ -1,17 +1,19 @@
 # STATE
 Mode: single-session
-Phase: P0 (Bootstrap, contracts, spikes)   Gate: GATE-CONTRACTS automated review running (§8a)
-Updated: 2026-11-12T12:13:12Z
+Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
+Updated: 2026-11-12T12:18:34Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| C-2 | architect (gp/opus) | 1 | t/C-2-freeze-fixes | 2026-11-12T12:18:34Z |
+| T107a | writer-senior (gp/opus) | 1 | t/T107a-portable-math | 2026-11-12T12:18:34Z |
+| T108a | writer (gp/sonnet) | 1 | t/T108a-search-parser | 2026-11-12T12:18:34Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| GATE-CONTRACTS | freeze review A (db/sync/api cross-check) + B (contracts vs P1–P3 needs), opus | 2026-11-12T12:13:12Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

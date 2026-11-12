@@ -128,3 +128,7 @@
 2026-11-12T12:16:12Z - SPLIT T105→a/b, T107→a/b, T108→a/b, T109→a/b (planner; >600 lines each)
 2026-11-12T12:16:12Z - DECIDE ADR-007 provisional: server persistence = jOOQ; T111 may also edit deploy/k3d/ and docker-compose.yml
 2026-11-12T12:17:39Z GATE-CONTRACTS REVIEW_CHANGES freeze B: 3 major (backup handshake keys, jpdb kanji import, kanji render data), 7 minor; waiting for A
+2026-11-12T12:18:34Z GATE-CONTRACTS REVIEW_CHANGES freeze A: 2 major (duplicate keys in push; SCHEMA 5.3 stale purge/discard), 4 minor
+2026-11-12T12:18:34Z C-2 DISPATCH architect(opus): freeze round 1 fixes (5 major, 8 minor)
+2026-11-12T12:18:34Z T107a DISPATCH writer-senior(opus) (deps T006,T008 only)
+2026-11-12T12:18:34Z T108a DISPATCH writer(sonnet) (deps T006 only)

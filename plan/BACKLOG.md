@@ -126,6 +126,10 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - paths: `contracts/db/`, `contracts/sync/`
 - see plan/tickets/C-1.md
 
+### C-2 — Contract freeze fixes (freeze review A + B)
+- model: opus · risk: high · deps: C-1 · status: RUNNING
+- see plan/tickets/C-2.md
+
 ### GATE-CONTRACTS — Freeze contracts (human)
 Single-session: auto-closed after the automated cross-contract review (ORCHESTRATOR.md §8a); the human
 reviews `contracts/SUMMARY.md` later from `plan/HUMAN_CHECKS.md`. Gated: human reviews `contracts/`
@@ -187,7 +191,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Matches every golden vector within tolerance on jvm and js targets.
 
 ### T107a — FSRS: PortableMath, nodejs() target, :core:jsTest in make check core
-- model: opus · risk: high · deps: T006, T008 · status: TODO
+- model: opus · risk: high · deps: T006, T008 · status: RUNNING
 - see plan/tickets/T107a.md (split from T107)
 
 ### T107b — FSRS: Scheduler + golden vectors + jvm/js bit-identity digest
@@ -201,7 +205,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Every spec example parses; property tests: random ASTs → print → parse round-trips.
 
 ### T108a — Search: parser, format, complete
-- model: sonnet · risk: med · deps: T006 · status: TODO
+- model: sonnet · risk: med · deps: T006 · status: RUNNING
 - see plan/tickets/T108a.md (split from T108)
 
 ### T108b — Search: SQL compiler
