@@ -361,3 +361,4 @@
 2026-11-12T17:03:26Z T212b HANDOFF CONTRACT_CHANGE_REQUEST (settings keys missing; unknown-key rule follows openapi)
 2026-11-12T17:03:26Z T212b BLOCK BLOCKED_CONTRACT → C-7
 2026-11-12T17:03:26Z C-7 DISPATCH architect(opus) additive SCHEMA §6 keys
+2026-11-12T17:06:01Z C-6 REVIEW_CHANGES 1 major: op maximum_interval_days uncapped (2e9) → derived due_at past 9999/timestamptz range → push 500 forever; 3 minors (list_key/jpdb_id maxLength, NO_NUL → T202d, importer NUL-strip on ids). Awaiting architect
