@@ -28,3 +28,13 @@ app.kubernetes.io/component: {{ .component }}
 - name: S3_SECRET_KEY
   valueFrom: { secretKeyRef: { name: {{ .Values.secrets.appSecretName }}, key: S3_SECRET_KEY } }
 {{- end -}}
+{{- define "kotobaya.migrateContainer" -}}
+name: migrate
+image: {{ include "kotobaya.image" (dict "root" . "img" .Values.api.image) }}
+imagePullPolicy: {{ .Values.imagePullPolicy }}
+securityContext: {{- toYaml .Values.containerSecurityContext | nindent 2 }}
+command: {{- toYaml .Values.migrate.command | nindent 2 }}
+env:
+  - name: DATABASE_URL
+    valueFrom: { secretKeyRef: { name: {{ .Values.secrets.appSecretName }}, key: DATABASE_URL } }
+{{- end -}}

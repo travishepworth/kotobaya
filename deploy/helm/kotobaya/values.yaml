@@ -5,7 +5,8 @@ imagePullPolicy: IfNotPresent
 
 # Secrets are created out-of-band (kubectl / sealed secrets / external-secrets) and referenced by name.
 secrets:
-  # keys: DATABASE_URL, S3_ACCESS_KEY, S3_SECRET_KEY
+  # keys: DATABASE_URL (JDBC form), S3_ACCESS_KEY, S3_SECRET_KEY, AUTH_PASSWORD_HASH (required),
+  #       AUTH_TOTP_SECRET (optional). Never put these in values.
   appSecretName: kotobaya-app
   # keys: POSTGRES_PASSWORD (only read when postgres.enabled)
   postgresSecretName: kotobaya-postgres
@@ -19,23 +20,38 @@ containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities: { drop: [ALL] }
 
+# Single replica everywhere (personal deployment), so no PodDisruptionBudgets are rendered.
 api:
   image: { repository: api, tag: "0.1.0" }
   replicas: 1
   port: 8080
+  # Extra plain env vars (e.g. a "backups disabled" switch if T112 defines one).
   env: {}
-  resources: {}
+  # AUTH_TRUSTED_PROXIES: CIDR(s) of the ingress/pod network whose X-Forwarded-For is trusted by the
+  # login rate limiter. Empty = variable not set. k3s default pod CIDR is 10.42.0.0/16.
+  trustedProxies: ""
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits: { memory: 1Gi }
 worker:
   image: { repository: worker, tag: "0.1.0" }
   replicas: 1
   healthPort: 8081
+  command: [python, -m, kotobaya_worker.runner]
+  # DICT_SOURCES_JSON: pinned dictionary sources + checksums (format: docstring of
+  # worker/src/kotobaya_worker/jobs/dict_refresh.py). Rendered into a ConfigMap; empty = not set.
+  dictSourcesJson: ""
   env: {}
-  resources: {}
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
 web:
   image: { repository: web, tag: "0.1.0" }
   replicas: 1
   port: 3000
-  resources: {}
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
 
 postgres:
   enabled: true   # false: put your own DATABASE_URL in the app secret
@@ -44,21 +60,35 @@ postgres:
   user: kotobaya
   storage: 5Gi
   storageClassName: ""
-  resources: {}
+  # initdb locale: the schema (contracts/db/SCHEMA.md 1) needs a UTF-8 ctype. Applies only when the
+  # data directory is first created.
+  initdbArgs: "--locale=C.UTF-8"
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  # EXTERNAL POSTGRES (postgres.enabled=false): create the database with a UTF-8 ctype, e.g.
+  #   CREATE DATABASE kotobaya TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';
+  # (LC_CTYPE=C breaks the V1 migration), and put the JDBC URL in the app secret's DATABASE_URL.
 objectStore:
   enabled: true   # false: set endpoint/region below to an existing S3-compatible store
   image: chrislusf/seaweedfs:3.80   # ADR-003
   bucket: kotobaya
   storage: 10Gi
   storageClassName: ""
-  resources: {}
   endpoint: ""
   region: us-east-1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
 
 migrate:
   enabled: true
-  # placeholder: replace with the Flyway command once the server ticket lands
-  command: ["true"]
+  # initContainer (default): `server migrate` runs as an api init container, retried until the DB is
+  #   reachable. Works on first install with the bundled Postgres (a pre-install hook cannot, the
+  #   StatefulSet does not exist yet) and on every upgrade.
+  # hook: Helm Job `pre-install,pre-upgrade`; use with an external, already reachable Postgres.
+  mode: initContainer
+  command: [/opt/server/bin/server, migrate]
 
 ingress:
   enabled: true
@@ -67,6 +97,14 @@ ingress:
   tls:
     enabled: false
     secretName: kotobaya-tls
+    # cert-manager ClusterIssuer (Let's Encrypt DNS-01 per DECISIONS); empty = secret managed elsewhere.
+    clusterIssuer: ""
+  # /api/v1/events is SSE. nginx classes get no-buffering + long read timeout annotations on a
+  # dedicated Ingress; Traefik streams text/event-stream unbuffered already (its entrypoint
+  # respondingTimeouts default to none). With Traefik keep the Service externalTrafficPolicy: Local
+  # (k3s: HelmChartConfig for traefik) so the real client IP reaches the login rate limiter.
+  sse:
+    readTimeoutSeconds: 3600
 
 networkPolicy:
   enabled: true

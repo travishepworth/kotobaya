@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Create a local k3d cluster, build + import dev images, install the chart, verify /healthz.
 # Usage: deploy/k3d/up.sh [up|down]     env: CLUSTER (default kotobaya), HOST_PORT (default 8088)
+# Then load a dictionary fixture with deploy/k3d/load-dict-fixture.sh.
 # Dev-only credentials below; never reuse them anywhere real.
 set -euo pipefail
 
@@ -24,7 +25,7 @@ kubectl config use-context "k3d-${CLUSTER}" >/dev/null
 
 # Images: prefer `make images` if the Makefile defines it, else build T001's Dockerfiles.
 if grep -q '^images:' "$ROOT/Makefile" 2>/dev/null; then
-  make -C "$ROOT" images REGISTRY="$REG" TAG="$TAG"
+  make -C "$ROOT" images REGISTRY="$REG" VERSION="$TAG" ARCH="$(uname -m | sed -e s/x86_64/amd64/ -e s/aarch64/arm64/)"
 else
   docker build -t "$REG/api:$TAG" -f "$ROOT/server/Dockerfile" "$ROOT"
   docker build -t "$REG/worker:$TAG" "$ROOT/worker"
@@ -32,8 +33,22 @@ else
 fi
 k3d image import -c "$CLUSTER" "$REG/api:$TAG" "$REG/worker:$TAG" "$REG/web:$TAG"
 
+# Traefik: keep the client source IP (login rate limiter). k3s applies this HelmChartConfig.
+kubectl apply -f - <<'YAML'
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata: { name: traefik, namespace: kube-system }
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        externalTrafficPolicy: Local
+YAML
+
 kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
 PGPW=kotobaya-dev
+# argon2id hash of the dev password 'kotobaya-dev' (login with it; dev only)
+DEV_HASH='$argon2id$v=19$m=65536,t=3,p=4$nNS46snGBC5n+khwDOhU0g$tG/lNL8mFiwvFLE4jaHw5cx/UczVd1svajy7d5oXg/c'
 S3K=kotobaya
 S3S=kotobaya-dev-secret
 kubectl -n "$NS" create secret generic kotobaya-postgres --from-literal=POSTGRES_PASSWORD="$PGPW" \
@@ -41,6 +56,7 @@ kubectl -n "$NS" create secret generic kotobaya-postgres --from-literal=POSTGRES
 kubectl -n "$NS" create secret generic kotobaya-app \
   --from-literal=DATABASE_URL="jdbc:postgresql://${REL}-postgres:5432/kotobaya?user=kotobaya&password=${PGPW}" \
   --from-literal=S3_ACCESS_KEY="$S3K" --from-literal=S3_SECRET_KEY="$S3S" \
+  --from-literal=AUTH_PASSWORD_HASH="${DEV_AUTH_PASSWORD_HASH:-$DEV_HASH}" \
   --dry-run=client -o yaml | kubectl apply -f -
 S3JSON="{\"identities\":[{\"name\":\"kotobaya\",\"credentials\":[{\"accessKey\":\"$S3K\",\"secretKey\":\"$S3S\"}],\"actions\":[\"Admin\",\"Read\",\"Write\",\"List\",\"Tagging\"]}]}"
 kubectl -n "$NS" create secret generic kotobaya-objectstore \
@@ -50,12 +66,15 @@ kubectl -n "$NS" create secret generic kotobaya-objectstore \
 helm upgrade --install "$REL" "$ROOT/deploy/helm/kotobaya" -n "$NS" --wait --timeout 8m \
   --set imageRegistry="$REG",imagePullPolicy=Never \
   --set api.image.tag="$TAG",worker.image.tag="$TAG",web.image.tag="$TAG" \
-  --set domain=kotobaya.local --set ingress.className=traefik
+  --set domain=kotobaya.local --set ingress.className=traefik \
+  --set api.trustedProxies=10.42.0.0/16 \
+  --set-string worker.dictSourcesJson='{}'
 
 echo "Waiting for /healthz via ingress (Host: $HOST) on localhost:${HOST_PORT} ..."
 for _ in $(seq 1 60); do
   if curl -fsS -H "Host: $HOST" "http://localhost:${HOST_PORT}/healthz"; then
     echo
+    curl -fsS -H "Host: $HOST" "http://localhost:${HOST_PORT}/api/v1/health" && echo
     echo "OK: cluster '$CLUSTER' is up; add '127.0.0.1 $HOST' to /etc/hosts to browse http://$HOST:${HOST_PORT}/"
     exit 0
   fi

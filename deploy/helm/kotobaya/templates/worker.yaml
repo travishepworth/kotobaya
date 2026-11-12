@@ -20,9 +20,15 @@ spec:
           image: {{ include "kotobaya.image" (dict "root" . "img" .Values.worker.image) }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          command: {{- toYaml .Values.worker.command | nindent 12 }}
           ports: [{ name: health, containerPort: {{ .Values.worker.healthPort }} }]
           env:
+            - { name: HOME, value: /tmp }   # dictionary download cache lives under ~/.cache (read-only rootfs)
             {{- include "kotobaya.appEnv" . | nindent 12 }}
+            {{- if .Values.worker.dictSourcesJson }}
+            - name: DICT_SOURCES_JSON
+              valueFrom: { configMapKeyRef: { name: {{ .Release.Name }}-worker, key: DICT_SOURCES_JSON } }
+            {{- end }}
             {{- range $k, $v := .Values.worker.env }}
             - { name: {{ $k }}, value: {{ $v | quote }} }
             {{- end }}
@@ -34,3 +40,13 @@ spec:
           resources: {{- toYaml .Values.worker.resources | nindent 12 }}
           volumeMounts: [{ name: tmp, mountPath: /tmp }]
       volumes: [{ name: tmp, emptyDir: {} }]
+{{- if .Values.worker.dictSourcesJson }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-worker
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+data:
+  DICT_SOURCES_JSON: {{ .Values.worker.dictSourcesJson | quote }}
+{{- end }}

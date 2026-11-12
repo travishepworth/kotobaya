@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: kotobaya
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kotobaya-dev}
       POSTGRES_DB: kotobaya
+      # UTF-8 ctype is required by the schema (contracts/db/SCHEMA.md 1); only applies to a fresh volume.
+      POSTGRES_INITDB_ARGS: --locale=C.UTF-8
     ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
@@ -29,6 +31,11 @@ services:
     build: { context: ., dockerfile: server/Dockerfile }
     environment:
       PORT: "8080"
+      DATABASE_URL: jdbc:postgresql://postgres:5432/kotobaya?user=kotobaya&password=${POSTGRES_PASSWORD:-kotobaya-dev}
+      MIGRATE_ON_START: "true"
+      # dev-only hash of the password "kotobaya-dev"; generate a real hash with kotobaya.auth.HashPasswordKt and override via env
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-$$argon2id$$v=19$$m=65536,t=3,p=4$$nNS46snGBC5n+khwDOhU0g$$tG/lNL8mFiwvFLE4jaHw5cx/UczVd1svajy7d5oXg/c}
+      AUTH_TOTP_SECRET: ${AUTH_TOTP_SECRET:-}
       S3_ENDPOINT: http://objectstore:8333
       S3_BUCKET: ${S3_BUCKET:-kotobaya}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-kotobaya}
@@ -47,10 +54,13 @@ services:
     build: { context: worker }
     ports: ["8081:8081"]
     environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/kotobaya?user=kotobaya&password=${POSTGRES_PASSWORD:-kotobaya-dev}
       S3_ENDPOINT: http://objectstore:8333
       S3_BUCKET: ${S3_BUCKET:-kotobaya}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-kotobaya}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-kotobaya-dev-secret}
+      # pinned dictionary sources + checksums; format: docstring of worker/src/kotobaya_worker/jobs/dict_refresh.py
+      DICT_SOURCES_JSON: ${DICT_SOURCES_JSON:-{}}
     depends_on:
       postgres: { condition: service_healthy }
       objectstore: { condition: service_healthy }
