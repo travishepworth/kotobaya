@@ -80,3 +80,4 @@
 - T111: compose initdb locale only applies to a fresh pgdata volume; DICT_SOURCES_JSON placeholder `{}` in up.sh; no "backups disabled" server setting yet (T112 may use api.env). Set PUBLIC_URL in deploy (T105b pairing URI).
 - T105b → next C-ticket: pairDevice returns 422 /kind when re-pairing a `script` device id with another kind (add to openapi edge cases); bulkScheduleCards scope review vs review+write (CCR candidate).
 - T105b → T609: parse X-Forwarded-Proto/Host from the right like XFF.
+- T112 → T202: server must read BACKUPS_DISABLED=true and report durable_seq = high_water_seq (else 0 → devices never purge acked rows).

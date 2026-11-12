@@ -233,3 +233,7 @@
 2026-11-12T13:38:55Z T105b REVIEW_APPROVE verification (Main.kt + chart edits sanctioned by orchestrator for attempt 2)
 2026-11-12T13:38:55Z T105b MERGE
 2026-11-12T13:56:32Z - HANDOVER pre-restart; T112 running; next: make test → close P1 → P2 tickets
+2026-11-12T13:58:14Z T112 HANDOFF DONE drill PASS
+2026-11-12T13:58:14Z T112 CHECK_GREEN deploy after rebase
+2026-11-12T13:58:14Z T112 REVIEW reviewer(opus) dispatched
+2026-11-12T13:58:14Z T111b SPLIT SeaweedFS preallocation (filled / in drill), BACKUPS_DISABLED env, backup image
