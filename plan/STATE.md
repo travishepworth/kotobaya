@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:30:37Z
+Updated: 2026-11-12T17:31:48Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,6 +13,7 @@ Updated: 2026-11-12T17:30:37Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T206 | writer (sonnet) | 1 | t/T206-review-api | 2026-11-12T17:31:48Z |
 | W-2 | writer (sonnet) | 1 | t/W-2-wiring | 2026-11-12T17:30:37Z |
 | C-8 | architect (opus) | 1 | t/C-8-sync-gaps | 2026-11-12T17:24:29Z |
 
@@ -22,7 +23,6 @@ Updated: 2026-11-12T17:30:37Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T205 (queue builder) | check → reviewer (opus) + architect 2nd pass | 2026-11-12T17:29:49Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -40,11 +40,12 @@ Updated: 2026-11-12T17:30:37Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 19/29 · attempts 34 · escalations 0
+P2: merged 20/29 · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T205 core queue builder (rules 1–5, round-robin, deckless/add_kanji, determinism property tests) + word auto status — reviewer APPROVE, 1 attempt
 - T202d core NO_NUL codec check (iterative, jvm=js, per-op on push) — reviewer APPROVE; architect pass skipped (small, no conformance issue per reviewer)
 - T212b settings + FSRS presets server (SCHEMA 6.1 validity test, unknown keys stored) — 2 attempts
 - T202c §8.1 merge (reserveHlc), card cache via core ReplayEngine, restore/durable_seq, startup replay, 3-device convergence fuzz — reviewer + architect APPROVE, 1 attempt. SyncModule now safe to wire (W-2)

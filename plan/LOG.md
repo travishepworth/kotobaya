@@ -398,3 +398,6 @@
 2026-11-12T17:30:37Z T205 CHECK_GREEN core after rebase; REVIEW dispatched reviewer(opus)
 2026-11-12T17:30:37Z - W-2 added (wiring sync/notes/decks/settings into Main.kt; collected from FOLLOWUPS)
 2026-11-12T17:30:37Z W-2 DISPATCH writer(sonnet)
+2026-11-12T17:31:48Z T205 REVIEW_APPROVE (3 minors: loader drops non-live memberships + StudyDay DST → T206; add_kanji attribution → C-8)
+2026-11-12T17:31:48Z T205 MERGE
+2026-11-12T17:31:48Z T206 DISPATCH writer(sonnet)
