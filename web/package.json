@@ -27,6 +27,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@kotobaya/core": "link:../core/build/npm/core"
+    "@kotobaya/core": "link:../core/build/npm/core",
+    "qrcode-generator": "^2.0.4"
   }
 }
