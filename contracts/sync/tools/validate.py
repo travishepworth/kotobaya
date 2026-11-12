@@ -19,7 +19,9 @@
    device ops and must emit exactly the logged ones (SYNC.md 8.1). Every rejected
    op whose code the model decides gets that code.
 7. The backup-restore story (SYNC.md 12.5) loses data under the attempt-1 rules
-   and converges without loss under log_epoch / durable_seq.
+   and converges without loss under log_epoch / durable_seq. A restore below a
+   device's pull_seq (SYNC.md 12.5.1) livelocks under the pre-C-10 log reset and
+   converges when the reset sets pull_seq = 0.
 """
 from __future__ import annotations
 
@@ -35,7 +37,7 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 sys.path.insert(0, str(Path(__file__).parent))
-from model import (CHECKED_CODES, DAY_MS, FLOOR_MS, SERVER, VERDICT_OPS, Device, MissingRow,  # noqa: E402
+from model import (CHECKED_CODES, DAY_MS, FLOOR_MS, SERVER, VERDICT_OPS, Device, Livelock, MissingRow,  # noqa: E402
                    Replica, Server, remint_select, remint_times, wall)
 
 VOCAB = "00000000-0000-7000-8000-000000000101"
@@ -660,6 +662,72 @@ for d in (a, b):
         fail(f"restore story: device {d.id[-2:]} has unfinished work")
 if srv.r.t["card"][next(iter(srv.r.t["card"]))]["suspended"] is not True:
     fail("restore story: B's edit after the restore is missing")
+
+
+# ------------------------------------------------------------------ restore below pull_seq (SYNC.md 12.5.1, C-10)
+def restore_below_pull_seq_story(reset_keeps_pull_seq: bool):
+    """A pulled to seq 10 (3..10 server-minted REST edits); the server is restored to seq 2; A's one
+    pending review gets seq 3 < the old pull_seq. Returns (srv, a, review_id); raises Livelock."""
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op))
+    a = Device("01931f3e-0000-7000-8000-0000000000a1", reset_keeps_pull_seq=reset_keeps_pull_seq)
+    t = [0x0193a1b2c000]
+
+    def tick():
+        t[0] += 1000
+        srv.pt = a.pt = t[0]
+
+    tick()
+    note, card = a.new_id(1), a.new_id(2)
+    a.make("note.created", {"id": note, "note_type_id": VOCAB, "entry_seq": 1358280})
+    a.make("card.created", {"id": card, "note_id": note, "kind": "meaning"})
+    a.sync(srv)
+    snap = srv.backup()  # covers seq 1..2
+    a.sync(srv)  # learns durable_seq 2: purges both rows
+    if a.outbox or a.pull_seq != 2:
+        fail("restore below pull_seq: setup expects A's rows purged at pull_seq 2")
+    for k in range(8):  # REST edits minted by the server: seq 3..10
+        tick()
+        srv._emit("note.updated", {"id": note, "set": {"tags": [f"rest{k}"]}}, None)
+    tick()
+    a.sync(srv)
+    if a.pull_seq != 10 or srv.seq != 10:
+        fail(f"restore below pull_seq: setup expects A at pull_seq 10 (got {a.pull_seq}, server {srv.seq})")
+    tick()
+    srv.restore(snap)  # back to seq 2, new epoch
+    tick()
+    rid = a.new_id(3)
+    a.make("review.logged", {"id": rid, "card_id": card, "reviewed_at": a.pt, "utc_offset_min": 540,
+                             "review_type": "scheduled", "rating": 3, "button": "good"})
+    a.sync(srv)  # push: seq 3 in epoch E2 -> log reset -> re-push (duplicate, seq 3) -> rebuild
+    return srv, a, rid
+
+
+try:
+    restore_below_pull_seq_story(reset_keeps_pull_seq=True)
+    fail("restore below pull_seq: the pre-C-10 log reset should livelock (the story no longer shows the bug)")
+except Livelock:
+    pass
+try:
+    srv, a, rid = restore_below_pull_seq_story(reset_keeps_pull_seq=False)
+except Livelock as e:
+    fail(f"restore below pull_seq: {e}")
+else:
+    if a.rebuild_pending:
+        fail("restore below pull_seq: rebuild_pending must be cleared after one sync cycle")
+    if [o["seq"] for o in srv.log if o["op_type"] == "review.logged" and o["payload"]["id"] == rid] != [3]:
+        fail("restore below pull_seq: the review must be in the log exactly once, at seq 3")
+    if a.pull_seq != srv.seq or srv.seq != 3:
+        fail(f"restore below pull_seq: A must have pulled the new log to its end (pull_seq {a.pull_seq}, server {srv.seq})")
+    if [r["state"] for r in a.outbox] != ["acked"] or a.outbox[0]["acked_seq"] != 3:
+        fail("restore below pull_seq: the review row must be acked at seq 3 and kept (3 > durable_seq 2)")
+    sp = srv.r.projection()
+    sp["parse_override"] = {}
+    if a.r.projection() != sp:
+        fail("restore below pull_seq: A does not converge with the server")
+    if rid not in srv.r.t["review_log"]:
+        fail("restore below pull_seq: A's review is missing on the server")
+    a.make("card.suspended", {"id": next(iter(a.r.t["card"]))})  # reviewing / minting possible again
+    a.sync(srv)
 
 
 # ------------------------------------------------------------------ re-mint story (SYNC.md 10.4, 12.6)

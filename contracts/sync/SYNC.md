@@ -683,10 +683,24 @@ handshake — `app.server_state` keys and the `restore_pending` hook — is 6.3)
 
 **Log reset.** In one local transaction: every `pending_op` row in state `acked` becomes
 `pending` (`acked_seq = NULL`, `attempts = 0`); store the new `log_epoch` and `durable_seq`; set
-`rebuild_pending = "1"`. Then the sync cycle continues as usual: it pushes every pending row
-(the server answers `duplicate` for ops the backup contained and `accepted` with a new `seq` for
-ops it lost) and runs the rebuild (10.3), which wipes everything the device had pulled from the
-lost log and pulls the new one from 0. The procedure is restartable at any point.
+**`pull_seq = "0"`** (C-10); set `rebuild_pending = "1"`. Then the sync cycle continues as usual:
+it pushes every pending row (the server answers `duplicate` for ops the backup contained and
+`accepted` with a new `seq` for ops it lost) and runs the rebuild (10.3), which wipes everything
+the device had pulled from the lost log and pulls the new one from 0. The procedure is restartable
+at any point.
+
+- **Why `pull_seq` goes to 0 here (C-10).** The old `pull_seq` counts positions in the lost log;
+  keeping it would make every later response fail the `high_water_seq < pull_seq` test again.
+  Example (12.5.1): the device pulled up to `seq` 10, of which 3–10 were ops the server minted for
+  REST callers; the server is restored to `seq` 2; the re-pushed op gets `seq` 3, `3 < 10` starts
+  another log reset, the row goes back to `pending`, is re-pushed (`duplicate`, `seq` 3), and so
+  on forever: `rebuild_pending` is never cleared and reviewing stays blocked. Setting it to 0 is
+  safe: nothing reads `pull_seq` while `rebuild_pending` is set except the rebuild, whose step 1
+  sets it to 0 anyway; the device does not pull outside the rebuild (sync cycle above) and the purge
+  rule of 5.4 (`acked_seq <= pull_seq`) deletes nothing (there is no `acked` row with
+  `acked_seq <= 0`). After the reset, a response triggers another reset only if its `log_epoch`
+  differs from the newly stored one (or, once the rebuild has pulled, if the log goes backwards
+  again).
 
 - Ops re-pushed by one device can be rejected with `unknown_reference` if they depend on a lost
   op of another device that has not re-pushed yet (a review of a card another phone created).
@@ -1227,7 +1241,8 @@ the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
    set; it makes the rebuild download the device's own ops instead of re-applying them in step 3.
    If the server is unreachable, stop and try again in the next cycle.
 1. In one transaction: delete every row of every table in `Learning.sq` and `Media.sq`
-   (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"`. Keep
+   (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"` (after a
+   log reset it is 0 already, 6.2; after Discard or Re-mint it is not). Keep
    `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`,
    `hlc_acked`, `log_epoch`, `durable_seq`, `core_scheduler_version`). Keeping
    `core_scheduler_version` is correct because every cache rebuilt in step 2 is computed by the
@@ -1701,7 +1716,7 @@ sequenceDiagram
 | Re-match races (arrival-order dependence) | 8.4 | `rematch-arrival-order-a`, `-b` |
 | Rejected ops, clock bounds | 5.3, 3.4, 10 | `rejected-ops` |
 | Card merged twice, undos on both losers | 8.2, 9.1, 7.9 | `merge-two-level-cards` |
-| Server restored from a backup | 6.2 | 12.5 (protocol simulation in `tools/validate.py`) |
+| Server restored from a backup | 6.2 | 12.5, 12.5.1 (protocol simulations in `tools/validate.py`) |
 | A week of reviews with a reset clock, re-minted | 10.4 | `clock-behind-remint`; 12.6 (protocol simulation in `tools/validate.py`) |
 | Retried push | 5.2 | `examples/batches/push-response.retry.json` |
 
@@ -1728,10 +1743,10 @@ sequenceDiagram
     Note over S: disk lost, restored to seq 2, new epoch E2, clock raised to now + 24 h
     B->>S: push tag note, suspend card
     S-->>B: accepted seq 3, 4 (epoch E2)
-    Note over B: epoch changed, log reset, rows pending again, re-push (duplicate), rebuild from 0
+    Note over B: epoch changed, log reset (pull_seq = 0), rows pending again, re-push (duplicate), rebuild from 0
     A->>S: pull since=7
     S-->>A: epoch E2, high_water 4
-    Note over A: epoch changed, page discarded, log reset
+    Note over A: epoch changed, page discarded, log reset (pull_seq = 0)
     A->>S: re-push 5 reviews
     S-->>A: accepted seq 5..9
     A->>S: pull since=0 (rebuild)
@@ -1747,6 +1762,26 @@ sequenceDiagram
 | A's next pull | `since=7`, empty page; A never sees seq 3, 4 | new epoch: A re-pushes its reviews (seq 5..9), rebuilds |
 | End state | A's reviews exist only on A (until A is rebuilt: then nowhere) | server, A and B identical, all 5 reviews present |
 | Server clock | restored `last` (behind ops already minted) | raised past every HLC the lost log could hold |
+
+#### 12.5.1 Restored below the device's `pull_seq` (C-10)
+
+Checked by `tools/validate.py` (`restore_below_pull_seq_story`), once with the rules of 6.2 (the
+device converges) and once with the pre-C-10 log reset that kept `pull_seq` (the device never
+leaves the log reset; the model detects the livelock).
+
+| Step | Server | Phone A (`pull_seq`, outbox) |
+|---|---|---|
+| A pushes note, card; pulls | seq 1, 2; verified backup, `durable_seq` 2 | 2; rows purged (`acked_seq <= 2`) |
+| 8 REST edits of the note (server-minted, `device_id` = server) | seq 3..10 | pulls: 10 |
+| Disk lost; restore | back to seq 2, new epoch E2 | 10 |
+| A reviews the card (offline) | | 10; review `pending` |
+| A pushes the review | `accepted`, seq 3, `high_water_seq` 3, epoch E2 | epoch changed: log reset, review `pending` again, **`pull_seq` 0** |
+| A re-pushes (rebuild step 0) | `duplicate`, seq 3, `high_water_seq` 3 | `3 < 0` is false: no reset; review `acked` (3) |
+| Rebuild steps 1–3 | | pulls seq 1..3: 3; `rebuild_pending` cleared |
+
+End state: server and A identical (the 8 REST edits are lost, 6.2 step 4); the review is in the
+log once; A can review again. With the old rule the second row reads `3 < 10`: another reset, the
+review back to `pending`, re-pushed as `duplicate`, and so on without end.
 
 ### 12.6 A week of reviews with a reset clock
 

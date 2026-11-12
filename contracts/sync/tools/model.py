@@ -819,14 +819,25 @@ class Server:
 
 
 # ====================================================================== device
+class Livelock(RuntimeError):
+    """A sync cycle that keeps starting log resets without end (SYNC.md 12.5.1, the pre-C-10 rule)."""
+
+
 class Device:
     """A device replica with its outbox and sync procedure (SYNC.md 4, 5.4, 6, 10.3).
 
     legacy=True reproduces attempt-1 behaviour (purge acked rows once pulled; no log identity),
-    to show the restore failure that log_epoch / durable_seq fix."""
+    to show the restore failure that log_epoch / durable_seq fix.
+    reset_keeps_pull_seq=True reproduces the pre-C-10 log reset (pull_seq kept), which livelocks
+    when a restore goes below the device's pull_seq (SYNC.md 12.5.1); the model raises Livelock."""
 
-    def __init__(self, device_id: str, legacy: bool = False, guard: bool = True):
+    MAX_RESETS_PER_CYCLE = 20  # far above any legitimate count (one per restore during a cycle)
+
+    def __init__(self, device_id: str, legacy: bool = False, guard: bool = True,
+                 reset_keeps_pull_seq: bool = False):
         self.id, self.legacy, self.guard = device_id, legacy, guard  # guard=False: a client without 3.4 G1/G2
+        self.reset_keeps_pull_seq = reset_keeps_pull_seq
+        self.resets_this_cycle = 0
         self.r = Replica(device=True)
         self.outbox: list[dict] = []  # pending_op rows: op, state, acked_seq, last_error
         self.pull_seq = 0
@@ -870,12 +881,17 @@ class Device:
         return resp["log_epoch"] != self.log_epoch or resp["high_water_seq"] < self.pull_seq
 
     def _start_log_reset(self, resp: dict):
-        """One transaction: every acked row back to pending, new epoch, rebuild_pending."""
+        """One transaction: every acked row back to pending, new epoch, pull_seq = 0 (C-10), rebuild_pending."""
+        self.resets_this_cycle += 1
+        if self.resets_this_cycle > self.MAX_RESETS_PER_CYCLE:
+            raise Livelock(f"device {self.id[-2:]}: {self.resets_this_cycle} log resets in one sync cycle")
         for row in self.outbox:
             if row["state"] == "acked":
                 row.update(state="pending", acked_seq=None)
         self.log_epoch = resp["log_epoch"]
         self.durable_seq = resp["durable_seq"]
+        if not self.reset_keeps_pull_seq:
+            self.pull_seq = 0  # positions in the lost log mean nothing in the new one (SYNC.md 6.2, C-10)
         self.rebuild_pending = True
 
     def _note_meta(self, resp: dict):
@@ -981,6 +997,7 @@ class Device:
 
     def sync(self, server: Server):
         """Sync cycle (SYNC.md 6): push, then pull; a pending rebuild runs first."""
+        self.resets_this_cycle = 0
         self.push(server)
         if not self.rebuild_pending:
             self.pull(server)  # may itself start a log reset

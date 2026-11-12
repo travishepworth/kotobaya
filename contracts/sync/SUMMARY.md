@@ -337,3 +337,21 @@
     written `e:` keys.
   - (3) The re-mint scenarios live in their own directory to keep the server's file-count tests
     green.
+
+## C-10 changes (log reset sets `pull_seq = 0`; non-breaking)
+
+- **Problem (found reviewing T303a):** the 6.2 log reset kept the old `pull_seq`, so after a
+  restore below it every later response failed `high_water_seq < pull_seq` again, including the
+  re-push of rebuild step 0. Example: a device pulled to seq 10 (3–10 were server-minted REST
+  edits), the server was restored to seq 2, the re-pushed op got seq 3: endless resets,
+  `rebuild_pending` never cleared, reviewing blocked forever. `tools/model.py` had the same bug.
+- **Decided:** the log reset also sets `pull_seq = "0"` (SYNC.md 6.2), in the same transaction.
+  Safe because the device neither pulls nor purges while `rebuild_pending` is set, and rebuild step 1
+  sets 0 anyway.
+- **Checked:** new worked example SYNC.md 12.5.1; `validate.py` `restore_below_pull_seq_story` runs it
+  with the new rule (converges) and with the old one (the model raises `Livelock`).
+- **Alternatives rejected:** skipping the `high_water_seq < pull_seq` test while `rebuild_pending` is set
+  (one more special case for every client; resetting the cursor removes the stale value instead of
+  working around it); comparing only `log_epoch` (loses the backwards-log safety net).
+- **Worth a second look:** (1) a log reset now also hides any "n changes to download" count until
+  the rebuild's pull, which is cosmetic.
