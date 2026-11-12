@@ -119,7 +119,7 @@ class PortableMathTest {
         assertEquals(hex(expected.toRawBits()), hex(actual.toRawBits()), "expected $expected, got $actual")
     }
 
-    private companion object {
+    internal companion object {
         // Computed once on the JVM: PortableMathCorpus.powDigest(StrictMath::pow) etc.
         const val STRICT_POW_DIGEST: Long = -0x0a4a24d41e0c9c56L // 0xf5b5db2be1f363aa
         const val STRICT_EXP_DIGEST: Long = -0x31cd37f0587f1faeL // 0xce32c80fa780e052
