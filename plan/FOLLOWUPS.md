@@ -118,3 +118,9 @@
 - T202b -> wiring (W-2, after T202c): Main.kt must add `SyncModule(db, SyncConfig(events = { d, hw, _ -> jobs.bus.syncChangedInTx(d, hw) }))` and register its handlers; sync endpoints are not live until then.
 - T202b -> next C-ticket: payload U+0000 or int > int4 range → invalid_value (Postgres can't store); contract silent.
 - T202b: Kotobaya-Seq absent on idempotent retry (T004 follow-up resolved as 'document'); no jOOQ codegen (to_jsonb/jsonb_populate_record).
+- T202b review -> T207b: OPS.md media.created requires a server-emitted deck.created (caused_by_op_id) right after; OpApplier.mediaCreated returns no FollowUp (mediaDeleted does). Add FollowUp or emit in T207b.
+- T202b review -> next C-ticket: add schema `maximum` (int4) for new_cards_per_day/reviews_per_day/steps and a no-U+0000 rule so clients check before minting.
+- T202b review -> T201b/T204/T206/T210a: Kotobaya-Seq header absent on idempotent retry — handlers must not assume it.
+- T202b review: ADR-007 deviation — sync uses to_jsonb/jsonb_populate_record, no jOOQ codegen. Record in DECISIONS when next touching ADR-007.
+- T202b review: AppendOnlyGuard misses CTE `with … delete` (DB trigger still blocks); match anywhere.
+- T202b review: `!!` in main code (PushService.kt:99, OpApplier) → requireNotNull/checkNotNull.
