@@ -180,7 +180,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T105b.md (split from T105)
 
 ### T106 — Dictionary search API
-- model: sonnet · risk: med · deps: T101, T104 · status: RUNNING
+- model: sonnet · risk: med · deps: T101, T104 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/dict/`, tests alongside
 - do: `/dict/search` (kanji, kana, romaji via wanakana-equivalent conversion, deinflected input), `/dict/entries/{seq}`, `/kanji/{literal}`; ranking by match type then frequency.
 - accept: The 50 fixture queries return the expected top result.

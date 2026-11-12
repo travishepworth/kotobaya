@@ -65,3 +65,5 @@
 - T104 → T111: compose `api` needs DATABASE_URL, MIGRATE_ON_START, and Postgres POSTGRES_INITDB_ARGS=--locale=C.UTF-8 (T111 owns compose locale/healthcheck changes — extend to these env vars).
 - T104: jOOQ used as plain-SQL DSL (no codegen yet; ADR-007 says generated — add codegen when T202 needs it). Extra error codes `not_implemented` (501) and `method_not_allowed` (405) not in the API error table → next C-ticket. JVM zone forced to UTC.
 - T104 → T203: replace PLACEHOLDER_SCHEDULER_VERSION="unset" with core ReplayEngine.schedulerVersion and wire SchedulerReplay (called in the SYNC 10.5 tx). T202 fills server_state `hlc_last`.
+- WIRING (after T105a, T106, T109a merge): register dictHandlers(db) (+ auth/jobs handlers) in AppDeps in server Main.kt — T106 handlers exist but are unreachable until wired. One small ticket W-1 owning Main.kt only.
+- T106: romaji→hiragana converter is local to server dict/ — move to core if the device (T302) needs parity. /dict/entries/{seq}/examples stays 501 until example sentences are populated (T102 data + media). note_id overlay untested.
