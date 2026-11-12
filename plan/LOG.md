@@ -438,3 +438,6 @@
 2026-11-12T18:03:24Z T214 HANDOFF DONE; CHECK_GREEN web; MERGE (nav link + i18n key outside paths accepted)
 2026-11-12T18:06:19Z C-9 HANDOFF DONE; CHECK_GREEN contracts after rebase; reviewer dispatched
 2026-11-12T18:06:19Z - T207c extended: jobs/ internal-kind filtering + worker step 2 / reviews_id_collisions (from C-9)
+2026-11-12T18:09:08Z C-9 REVIEW_APPROVE (8 minors: 6 → T207c, 2 doc → FOLLOWUPS); MERGE
+2026-11-12T18:09:08Z T207c DISPATCH writer(sonnet)
+2026-11-12T18:09:08Z C-8 HANDOFF DONE attempt 3; CHECK_GREEN contracts+core+server; architect verification dispatched

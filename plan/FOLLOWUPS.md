@@ -156,3 +156,4 @@
 - T210b: no deck column (Card/NoteSummary API has no deck); no tag listing endpoint; preview passes no dict entry. 'All matching' needs non-empty query (contract minLength 1).
 - W-3: nav active marking is exact-match; /cards/<id> etc. don't highlight parent — switch to prefix match.
 - T214: generated TS client names the model `Blob`, shadowing DOM Blob (putBlob body cast `as never`) — rename in openapi/generator config. No mapping review queue route yet (Phase 4?).
+- C-9 review -> next C-ticket: say that after a retry, counters reflect rows already written as notes_existing/reviews_already_imported (under-reports this job's own writes); say in cancelJob/importJpdbHistory that re-running after cancel completes the import and reports totals.
