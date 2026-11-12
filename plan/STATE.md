@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
-Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T12:12:46Z
+Phase: P0 (Bootstrap, contracts, spikes)   Gate: GATE-CONTRACTS automated review running (§8a)
+Updated: 2026-11-12T12:13:12Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -11,6 +11,7 @@ Updated: 2026-11-12T12:12:46Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| GATE-CONTRACTS | freeze review A (db/sync/api cross-check) + B (contracts vs P1–P3 needs), opus | 2026-11-12T12:13:12Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
