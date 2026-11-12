@@ -414,3 +414,4 @@
 2026-11-12T17:48:17Z DECIDE re-mint: e:<seq> item ops + word.status of window notes → E (re-minted as n:<note>); discard list MUST be shown
 2026-11-12T17:48:17Z DECIDE add_kanji kanji count against own home deck (may exceed), not drawing deck; vocab+kanji atomic; BEFORE = kanji first
 2026-11-12T17:48:17Z C-8 DISPATCH attempt 2 (same agent)
+2026-11-12T17:48:41Z T209 HANDOFF DONE; CHECK_GREEN web after rebase; MERGE (Editor.svelte import + stand-in CardView removal accepted)
