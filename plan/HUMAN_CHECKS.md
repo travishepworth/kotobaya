@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- ADR-011: turning on an optional card kind does not add cards to existing notes; add per note (T210a createCard).
 - C-6 (breaking contract change, no user data yet): sync schemas forbid U+0000, cap int4 fields at 2147483647, cap instant_ms at year 9999 — values Postgres cannot store. Reviewer + architect approval required.
 - ADR-010: sync JSON nesting limits op 500 / document 512 (T202a, C-5).
 - C-4 (jpdb import): an imported `known` never overwrites a word status you already set by hand, and cards that already exist keep their suspended state on re-import. Kanji `writing` cards and known-only kanji are created suspended.

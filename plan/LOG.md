@@ -348,3 +348,8 @@
 2026-11-12T16:50:43Z T202c DISPATCH architect(opus)
 2026-11-12T16:50:43Z T201b DISPATCH writer(sonnet)
 2026-11-12T16:50:43Z - T204, T212b ready; queued for Gradle slot (C-6, T202c, T201b running)
+2026-11-12T16:59:32Z T201b HANDOFF DONE
+2026-11-12T16:59:32Z T201b CHECK_GREEN server after rebase
+2026-11-12T16:59:32Z T201b MERGE
+2026-11-12T16:59:32Z DECIDE ADR-011 provisional: no card backfill on optional-kind toggle
+2026-11-12T16:59:32Z T204 DISPATCH writer(sonnet)

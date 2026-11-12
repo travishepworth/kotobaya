@@ -126,3 +126,5 @@
 - T202b review: `!!` in main code (PushService.kt:99, OpApplier) → requireNotNull/checkNotNull.
 - T202b verify: SyncJson.kt:67 iso() uses default-locale String.format → use Locale.ROOT (non-Latin digits under e.g. ar-EG).
 - T202b verify: OpApplier.kt:523 media deck.created silently skipped if a user deck already has the media id (deliberate UUID reuse only).
+- T201b -> wiring (W-2): Main.kt `handlers += NotesModule(db, sync.opApply).handlers` (same OpApply as SyncModule).
+- T201b -> T210a: per-note card additions for optional kinds go through createCard (ADR-011).

@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T16:50:43Z
+Updated: 2026-11-12T16:59:32Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,12 +13,12 @@ Updated: 2026-11-12T16:50:43Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T204 | writer (sonnet) | 1 | t/T204-decks | 2026-11-12T16:59:32Z |
 | T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
-| T201b | writer (sonnet) | 1 | t/T201b-notes-api | 2026-11-12T16:50:43Z |
 | C-6 | architect (opus) | 1 | t/C-6-storable-values | 2026-11-12T16:42:58Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- T204 decks (server, sonnet) · T212b settings server (sonnet)
+- T212b settings server (sonnet)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -40,11 +40,12 @@ Updated: 2026-11-12T16:50:43Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 11/25 · attempts 22 · escalations 0
+P2: merged 12/25 · attempts 23 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T201b notes + note-types API (10 ops via OpApply, CardGenerator cards, U+3000 tags → 422) — not wired in Main.kt
 - T202b server sync: push/pull, OpApply (45 op types), hlc_last, reserveHlc merge seam, pg-safe instants — 2 attempts; reviewer + architect APPROVE. NOT wired in Main.kt until T202c (gate)
 - T203 replay engine (order/replay/fold/decide, IncrementalReplay), 1000-case property test, jvm=js digest — reviewer + architect APPROVE, 1 attempt
 - T202a sync core: HLC, remint, canonical JSON (jvm=js), op codec, PortableRegex (ECMA), push-body parser (per-op DuplicateKey/TooDeep), depth op 500/doc 512 — 4 attempts; reviewer + architect APPROVE
