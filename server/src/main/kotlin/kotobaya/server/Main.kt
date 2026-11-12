@@ -55,6 +55,7 @@ fun main(args: Array<String>) {
     val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config))
     app.jobs.start(scope)
     app.imports.start(scope)
+    kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
 }

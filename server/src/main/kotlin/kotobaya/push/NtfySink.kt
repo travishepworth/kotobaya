@@ -59,6 +59,10 @@ fun interface PushTopics {
     }
 }
 
+/** Startup hook: starts the sink only when `NTFY_BASE_URL` is set; returns its job, or null when forwarding is off. */
+fun startNtfySink(scope: CoroutineScope, hub: EventHub, topics: PushTopics, env: Map<String, String> = System.getenv()): Job? =
+    NtfyConfig.fromEnv(env)?.let { NtfySink(it, hub, topics).start(scope) }
+
 /**
  * Forwards events to ntfy as the OpenAPI `/events` section says: the `Event` JSON is the message body, posted to the
  * `push_topic` of every non-revoked device, for `job.updated` with a terminal status (`succeeded`/`failed`; a

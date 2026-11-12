@@ -172,6 +172,23 @@ class NtfySinkTest {
     }
 
     @Test
+    fun startupStartsTheSinkOnlyWhenTheBaseUrlIsSet() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val off = EventHub()
+            assertNull(startNtfySink(scope, off, { emptyList() }, emptyMap()))
+            Thread.sleep(100)
+            assertEquals(0, off.subscriberCount)
+            val on = EventHub()
+            assertTrue(startNtfySink(scope, on, { emptyList() }, mapOf("NTFY_BASE_URL" to "https://n.example.invalid")) != null)
+            waitFor { on.subscriberCount == 1 }
+            assertEquals(1, on.subscriberCount)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun theDeviceTableQuerySkipsRevokedDevicesAndEmptyTopics() {
         val db = TestPg.migratedDb()
         fun device(topic: String?, revoked: Boolean) = db.txBlocking {
