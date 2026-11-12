@@ -50,3 +50,4 @@
 - T101: KRAD tested only on a synthetic zip (no KRAD fixture); EDRDG URLs unverified offline; `ref.kanji.radical` = KANJIDIC2 classical radical number as text (contract silent). First real run → HUMAN_CHECKS.
 - T108a: SearchExamples.kt is a snapshot of search-examples.tsv (commonTest can't read files) — regenerate when the tsv changes (C-2 may add examples). JS tests for search run once T107a wires :core:jsTest.
 - T108a: CoreJsImpl.renderCard/previewIntervals throw NotImplementedError until T213/T107b.
+- T102: Tatoeba→entry linking is substring-based (over-links). Re-link with the parser once the parse ticket lands (Phase 4 parser). No default frequency lists or Tatoeba URL: sources are config (ExtraSources) — pick lists in DECISIONS (HUMAN_CHECKS).

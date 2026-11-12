@@ -147,13 +147,13 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Fixture subset loads exactly; idempotent re-run.
 
 ### T102 — Dictionary pipeline: pitch, frequency, Tatoeba
-- model: sonnet · risk: low · deps: T101 · status: RUNNING
+- model: sonnet · risk: low · deps: T101 · status: MERGED
 - paths: `worker/kotobaya_worker/dict/extra/`, `worker/tests/dict/extra/`
 - do: Kanjium pitch; frequency lists in Yomitan format (list configurable in DECISIONS); Tatoeba JP-EN pairs linked to entries.
 - accept: Coverage report (entries with pitch / with freq rank / with examples) printed and asserted above floors set in the test.
 
 ### T103 — Dictionary release packaging for devices
-- model: sonnet · risk: med · deps: T102 · status: TODO
+- model: sonnet · risk: med · deps: T102 · status: RUNNING
 - paths: `worker/kotobaya_worker/dict/package/`, `worker/tests/dict/package/`
 - do: Build the compact SQLite (SQLDelight schema) for a scope (referenced + top N, or full); zstd-compress; content-addressed upload to object storage; manifest with version and diff from previous release.
 - accept: Package for top-60k < budget in DECISIONS; diff between two fixture releases applies correctly.

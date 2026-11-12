@@ -1,12 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
-Updated: 2026-11-12T12:29:52Z
+Updated: 2026-11-12T12:30:14Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T102 | writer (gp/sonnet) | 1 | t/T102-dict-extras | 2026-11-12T12:24:47Z |
+| T103 | writer (gp/sonnet) | 1 | t/T103-dict-package | 2026-11-12T12:30:14Z |
 | C-2 | architect (gp/opus) | 1 | t/C-2-freeze-fixes | 2026-11-12T12:18:34Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
@@ -33,6 +33,7 @@ Updated: 2026-11-12T12:29:52Z
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T102 pitch/frequency/Tatoeba loaders — idempotent, coverage floors, CC0 test data
 - T108a search parser/format/complete — examples, round trip, 3000 random trees
 - T101 dictionary pipeline (JMdict/KANJIDIC2/KRADFILE → ref.*) — 13 tests incl. Postgres 17
 - T006 core interfaces — 2 attempts; reviewer + architect APPROVE; PortableMath (fdlibm), search round-trip, queue rules
