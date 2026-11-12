@@ -39,3 +39,5 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 
 ## Blocked tickets and open questions
 <!-- orchestrator appends: ticket, question, options, what's skipped because of it -->
+- ADR-003: SeaweedFS replaces MinIO as the bundled S3 store (MinIO images no longer pullable). Confirm or point at your own S3.
+- T001: `make dev-up` api/web healthchecks were not verified (disk was full at the time). Run `make dev-up` and confirm all services are healthy.

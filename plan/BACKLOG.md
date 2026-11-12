@@ -33,19 +33,24 @@ Originally, before any ticket ran, the human would:
 ## Phase 0 — Bootstrap, contracts, spikes
 
 ### T001 — Monorepo scaffold
-- model: sonnet · risk: med · deps: GATE-0 · status: RUNNING
+- model: sonnet · risk: med · deps: GATE-0 · status: MERGED
 - paths: `/` (root files), `core/`, `server/`, `android/`, `web/`, `worker/`, `deploy/`, `assets/`, `Makefile`, `docker-compose.yml`, `.editorconfig`, `.gitignore`
 - spec: Architecture, Infrastructure › Build and release
 - do: Gradle (Kotlin DSL, version catalog) with modules `core` (KMP: jvm, android, js), `server` (Ktor), `android` (app). `worker/` Python 3.12 with uv + pyproject, ruff, mypy, pytest. `web/` SvelteKit static adapter, TypeScript strict, vitest, eslint. `core`'s js target (IR, ES modules, `generateTypeScriptDefinitions()`) is built as the local package `@kotobaya/core` and consumed by `web/` as a workspace/file dependency; `make check MODULE=web` builds it first. `assets/card/` holds the shared card stylesheet and fonts list, consumed by `web/` and copied into Android assets by Gradle. `docker-compose.yml` for postgres, minio, api, worker, web. Makefile targets: `check MODULE=x`, `test`, `fmt`, `dev-up`, `dev-down`. One smoke test per module. No lint gates.
 - accept: `make test` green from a clean clone; `make dev-up` starts all services with health checks passing; a web smoke test imports a trivial `@JsExport` function from `@kotobaya/core`.
 
+### T001b — Compose: SeaweedFS instead of MinIO (ADR-003)
+- model: haiku · risk: low · deps: T001 · status: RUNNING (batched with T002)
+- paths: `docker-compose.yml`
+- accept: `make dev-up` all healthy.
+
 ### T002 — Image build and release script
-- model: haiku · risk: low · deps: T001 · status: TODO
+- model: haiku · risk: low · deps: T001 · status: RUNNING
 - paths: `deploy/build/`, `Makefile` (`images`, `push`, `apk` targets only)
 - do: `make images` builds api, worker, web for the cluster arch in DECISIONS (buildx); `make push` pushes to the registry; `make apk` builds a release APK. One optional workflow file that runs `make images push` on tag — no per-PR CI.
 - accept: `make images push` publishes 3 images.
 ### T003 — Contract: database schema
-- model: fable · risk: high · deps: T001 · status: TODO
+- model: fable · risk: high · deps: T001 · status: RUNNING
 - paths: `contracts/db/`
 - spec: Data model, Sync and offline, Scheduling
 - do: Postgres DDL as Flyway `V1__init.sql` covering every table in the spec, with constraints, indexes (incl. pg_trgm for search), and comments. Separate reference-data schema (`ref.*`) from learning data (`app.*`). Matching SQLDelight `.sq` files for the on-device subset. A `SCHEMA.md` explaining each table, which side(s) hold it, and which sync op mutates it.
@@ -75,20 +80,20 @@ Originally, before any ticket ran, the human would:
 ### T007 — (dropped in lean mode)
 - status: MERGED · Phase "Done when" checks are done by the human at each gate.
 ### T008 — Golden fixtures
-- model: sonnet · risk: med · deps: T001 · status: TODO
+- model: sonnet · risk: med · deps: T001 · status: RUNNING
 - paths: `fixtures/`
 - do: FSRS reference vectors (review sequences → expected stability/difficulty/interval) generated from the reference implementation pinned in DECISIONS; a 2k-entry JMdict subset + matching KANJIDIC2 subset; 20 sample sentences with expected segmentation; small SRT, EPUB, and Mokuro samples (public-domain or self-written text only); an anonymised jpdb-export shape derived from the private sample (structure only, no personal data).
 - accept: Each fixture has a README stating origin and licence; FSRS vectors include ≥ 200 sequences incl. lapses and long gaps.
 
 ### T009 — Helm chart skeleton and dev cluster
-- model: sonnet · risk: med · deps: T001 · status: TODO
+- model: sonnet · risk: med · deps: T001 · status: RUNNING
 - paths: `deploy/helm/`, `deploy/k3d/`
 - spec: Infrastructure
 - do: Chart with values for each workload (enabled flags for postgres/minio so existing services can be used), ingress, secrets references, migrate hook placeholder, NetworkPolicies, non-root securityContexts. `deploy/k3d/up.sh` creates a local cluster and installs the chart.
 - accept: `helm lint` and `helm template` clean; `k3d/up.sh` brings up a cluster where `/healthz` answers.
 
 ### S01 — Spike: Takoboto → AnkiDroid stand-in
-- model: opus · risk: med · deps: T001 · status: TODO · parallel-ok
+- model: opus · risk: med · deps: T001 · status: RUNNING · parallel-ok
 - paths: `spikes/ankidroid-standin/`
 - spec: Clients › Takoboto integration
 - do: Minimal Android app that declares AnkiDroid's ContentProvider authority and permission, implements decks / models / model fields / notes insert / duplicate query against an in-memory store, and logs every call with arguments to a screen and logcat. Build variant with `applicationId com.ichi2.anki`.

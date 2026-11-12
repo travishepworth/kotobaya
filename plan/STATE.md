@@ -1,12 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T09:22:03Z
+Updated: 2026-11-12T09:33:27Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T001 | writer (general-purpose/sonnet) | 1 | t/T001-scaffold | 2026-11-12T09:22:03Z |
+| T001b+T002 | writer-light (gp/haiku) | 1 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
+| T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
+| T008 | writer (gp/sonnet) | 1 | t/T008-fixtures | 2026-11-12T09:33:27Z |
+| T009 | writer (gp/sonnet) | 1 | t/T009-helm | 2026-11-12T09:33:27Z |
+| S01 | writer-senior (gp/opus) | 1 | t/S01-ankidroid-standin | 2026-11-12T09:33:27Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -17,12 +21,15 @@ Updated: 2026-11-12T09:22:03Z
 |---|---|---|
 
 ## Notes
-- Project agent types (.claude/agents) not registered in this session; dispatching general-purpose with model override + inlined role.
+- Project agent types not registered; dispatch = general-purpose + model override + inlined role (human OK'd).
+- MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once.
+- Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 
 ## Pending human questions
-- none blocking. Unanswered DECISIONS use defaults; open items are in plan/HUMAN_CHECKS.md.
+- none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 0/10 (T007 dropped) · attempts 0 · escalations 0
+Merged 1/11 (T007 dropped, T001b added) · attempts 1 · escalations 0
 
 ## Recently merged (last 10)
+- T001 monorepo scaffold — make test green; compose minio unpullable → ADR-003/T001b
