@@ -13,7 +13,7 @@ endif
 	@$(MAKE) --no-print-directory check-$(MODULE)
 
 check-core:
-	$(GRADLE) :core:jvmTest
+	$(GRADLE) :core:jvmTest :core:jsTest
 
 check-server:
 	$(GRADLE) :server:test

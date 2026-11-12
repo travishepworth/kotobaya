@@ -10,7 +10,17 @@ kotlin {
     jvm()
     androidTarget()
     js(IR) {
-        browser()
+        // browser() keeps the library build the web consumes; its Karma test task is off because
+        // `:core:jsTest` runs on node (no headless browser needed).
+        browser {
+            testTask { enabled = false }
+        }
+        nodejs {
+            testTask {
+                // the PortableMath bit-identity corpus (> 1e6 arguments) is slow on js Longs
+                useMocha { timeout = "300s" }
+            }
+        }
         binaries.library()
         generateTypeScriptDefinitions()
         useEsModules()
