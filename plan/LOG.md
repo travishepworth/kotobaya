@@ -509,3 +509,7 @@
 2026-11-12T19:23:22Z T312 DISPATCH writer-light(haiku)
 2026-11-12T19:24:42Z T303a HANDOFF DONE attempt 2 (clock_blocked hysteresis, resetLog pull_seq=0, mintAll at); CHECK_GREEN core; architect verification dispatched
 2026-11-12T19:25:41Z C-10 HANDOFF DONE (6.2 reset sets pull_seq=0; model livelock guard; 12.5.1); review folded into T303a architect verification
+2026-11-12T19:27:01Z C-10 REVIEW_APPROVE (architect, during T303a verification); MERGE
+2026-11-12T19:27:01Z T303a REVIEW_APPROVE verification attempt 2; CHECK_GREEN core after rebase on C-10; MERGE
+2026-11-12T19:27:01Z - T303d gets Re-mint Refused-rollback acceptance; T303b gets reset/auto-retry seam notes
+2026-11-12T19:27:01Z T303b DISPATCH writer-senior(opus)
