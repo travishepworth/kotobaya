@@ -23,3 +23,5 @@ rules:
   # /health, /auth/login and /devices/pair are deliberately public.
   no-server-example.com: off
   info-license-strict: off
+  # False positives in contracts/sync (properties required inside if/then branches).
+  no-required-schema-properties-undefined: off

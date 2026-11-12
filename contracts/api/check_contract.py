@@ -6,7 +6,9 @@ usage: check_contract.py <bundled openapi.json> <SUMMARY.md> <contracts/db/SCHEM
 Checks (T004 acceptance):
   1. Every operation has an operationId, a tag, and an explicit `security` declaration; every
      non-public operation names exactly one scope per alternative, from the five known scopes
-     (an empty scope list is allowed only for getPrincipal: "any valid credential").
+     (an empty scope list is allowed only for getPrincipal: "any valid credential"). An empty
+     alternative `{}` is allowed only together with `x-auth: body-key` and a known
+     `x-body-key-scope` (POST /ankiconnect: token in the JSON body).
   2. Every non-GET operation declares `x-emits-ops` (possibly empty): the sync ops the server
      emits on the caller's behalf (CLAUDE.md rule 8). GET operations must not declare it.
   3. Every JSON request body and every JSON response has at least one example.
@@ -15,8 +17,12 @@ Checks (T004 acceptance):
   5. Every op name in `x-emits-ops` is an op of contracts/db/SCHEMA.md section 4, and every
      learning-data table of SCHEMA.md 4.1 (plus media, parse_override) is mapped to at least
      one existing operation in the SUMMARY.md cross-check table.
+  6. The sync bodies are exactly contracts/sync/batch.schema.json#/$defs/PushRequest,
+     PushResponse and PullResponse (no API-owned wrapper), and every example that declares
+     `x-example-source` equals that file of contracts/sync/examples byte-for-byte as JSON.
 """
 import json
+import os
 import re
 import sys
 
@@ -72,6 +78,10 @@ for path, item in spec["paths"].items():
             if not op["security"]:
                 err("%s: public but not in the PUBLIC allow-list" % where)
             for alt in op["security"]:
+                if alt == {}:
+                    if op.get("x-auth") != "body-key" or op.get("x-body-key-scope") not in SCOPES:
+                        err("%s: empty security alternative without x-auth: body-key and x-body-key-scope" % where)
+                    continue
                 if len(alt) != 1:
                     err("%s: each security alternative must name exactly one scheme" % where)
                 for scheme, scopes in alt.items():
@@ -132,6 +142,56 @@ for table in TABLES:
     named = [n for n in re.findall(r"`([a-z][A-Za-z]+)`", rows[0]) if n in op_ids]
     if not named:
         err("SUMMARY.md cross-check row for %s names no existing operation" % table)
+
+# 6. sync bodies and examples copied from contracts/sync
+contracts_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[3])))
+api_dir = os.path.join(contracts_dir, "api")
+
+
+def schema_title(schema):
+    if "$ref" in schema:
+        schema = spec["components"]["schemas"][schema["$ref"].rsplit("/", 1)[1]]
+    return schema.get("title")
+
+
+def json_body(op, status=None):
+    holder = op["requestBody"] if status is None else op["responses"][status]
+    return holder["content"]["application/json"]
+
+
+try:
+    push = spec["paths"]["/sync/push"]["post"]
+    pull = spec["paths"]["/sync/pull"]["get"]
+    for label, media, title in (
+        ("push request", json_body(push), "PushRequest"),
+        ("push response", json_body(push, "200"), "PushResponse"),
+        ("pull response", json_body(pull, "200"), "PullResponse"),
+    ):
+        if schema_title(media["schema"]) != title:
+            err("sync %s body must be batch.schema.json#/$defs/%s, got %r" % (label, title, media["schema"]))
+except KeyError as e:
+    err("sync operations missing: %s" % e)
+
+
+def walk(node):
+    if isinstance(node, dict):
+        if "x-example-source" in node:
+            src = os.path.normpath(os.path.join(api_dir, node["x-example-source"]))
+            try:
+                expected = json.load(open(src, encoding="utf-8"))
+            except OSError:
+                err("x-example-source %s does not exist" % node["x-example-source"])
+            else:
+                if node.get("value") != expected:
+                    err("example differs from its x-example-source %s" % node["x-example-source"])
+        for v in node.values():
+            walk(v)
+    elif isinstance(node, list):
+        for v in node:
+            walk(v)
+
+
+walk(spec["paths"])
 
 if errors:
     print("\n".join(errors))

@@ -8,7 +8,7 @@ info:
     identifier: LicenseRef-Kotobaya-Personal
   description: |
     Versioned REST/JSON interface at `/api/v1`. The web app uses nothing else; the Android app uses
-    `sync`, `blobs`, `dict/release`, `devices/pair` and whatever conveniences it likes.
+    `sync`, `blobs`, `dict/release`, `devices/pair`, `devices/self` and whatever conveniences it likes.
 
     Implementers: this file is the contract. If something you need is missing or wrong, do not work
     around it; return `CONTRACT_CHANGE_REQUEST`. Additive changes stay in v1; breaking changes go
@@ -61,14 +61,23 @@ info:
     |---|---|
     | `read` | Every `GET` of learning, media and reference data; `POST /parse`; `GET /events`; `GET /sync/pull`; exports. |
     | `write` | Create, change, delete notes, cards, decks, grammar, note types, presets, settings, word status, parse overrides, media metadata; upload blobs; `POST /sync/push` (non-review ops). |
-    | `review` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`; `review.*` ops inside `POST /sync/push`. |
+    | `review` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`, `POST /cards/bulk/schedule`; `review.*` ops inside `POST /sync/push` (per op; without it the op is rejected with `insufficient_scope`). |
     | `import` | Start and cancel import, parse, dictionary and optimizer jobs; upload blobs. |
-    | `admin` | Devices, pairing, tokens. |
+    | `admin` | Devices, pairing, tokens (a device's own row: `/devices/self` with `read`/`write`). |
 
     Each operation lists the scope it needs in its `security` requirement: the array after the
     scheme name. When two alternatives are listed for one scheme the caller needs either. A request
     with no or an invalid credential gets `401 unauthenticated`; a valid credential lacking the
     scope gets `403 insufficient_scope`. Operations with `security: []` are public.
+
+    There are exactly two places where who may call is not just "scheme + scope", and both are
+    declared in the operation, not only in prose:
+    - `GET/PATCH /devices/self` (`read` / `write`, bearer only): the token must be bound to a
+      device, else `403 device_required`. A device never needs `admin` to manage its own row;
+      `/devices/{device_id}` is admin only.
+    - `POST /ankiconnect` (`x-auth: body-key`): the token may instead be sent in the JSON body
+      property `key`; the empty `{}` alternative in its `security` only signals that no header is
+      needed. The scope for `key` is `x-body-key-scope`.
 
     **CSRF.** A request authenticated by the session cookie whose method is not `GET` or `HEAD`
     MUST carry the header `X-Kotobaya-Csrf: 1`; otherwise `403 csrf_required`. The cookie is set
@@ -105,7 +114,9 @@ info:
     **Idempotent creation.** Create bodies accept an optional client-generated `id` (UUIDv7).
     Re-sending a create with an `id` that already exists returns the existing resource with
     status `200` instead of `201` and emits nothing, whatever the rest of the body says. Clients
-    that may retry MUST send `id`. When `id` is omitted the server generates one.
+    that may retry MUST send `id`. When `id` is omitted the server generates one. `POST /review/answer`
+    requires `id` (a duplicate review would corrupt scheduling); `POST /media/import` takes the same
+    optional idempotency id as `media_id`.
 
     **Tombstones and merges.** Deleted learning rows are tombstones (`deleted_at` set). `GET` by
     id of a deleted row returns `410 gone` unless `include_deleted=true`; lists omit deleted rows
@@ -121,6 +132,20 @@ info:
     `cursor` together with the same other parameters; changing any other parameter while passing
     a cursor is `422 validation_failed` (`pointer` `/cursor`). `limit` defaults to 50, maximum 500.
     Order is stable and documented per operation; rows created while paging may or may not appear.
+
+    **Cursor semantics (keyset, no snapshot).** A cursor encodes the sort-key values and the `id`
+    of the last row returned; the next page is the rows strictly after that tuple in the current
+    order, evaluated against the data at the time of that request. The order is not snapshotted.
+    Consequently, while a client pages through a list sorted by a mutable key (`due_at`,
+    `updated_at`, `lapses`, ...):
+    - a row whose key changes so that it moves from after the cursor to before it is **skipped**;
+    - a row whose key changes so that it moves from before the cursor to after it is **returned
+      again** (with its new values);
+    - a row deleted while paging disappears; one created may or may not appear.
+    Rows that do not change are returned exactly once. Clients MUST de-duplicate by `id` (last
+    occurrence wins). A client that needs an exact set (bulk actions, exports) uses an `id`-sorted
+    list where offered, `POST /cards/bulk` with `query`, or `GET /export`. Lists sorted by an
+    immutable key (`id`, `created_at`) have no skips or repeats.
     An empty result is `{"items": [], "next_cursor": null}` with status `200`.
 
     ## 5. Errors
@@ -130,14 +155,14 @@ info:
 
     | Status | `code` | When |
     |---|---|---|
-    | 400 | `invalid_request` | Body is not valid JSON, wrong content type framing, malformed header. |
+    | 400 | `invalid_request` | Body is not valid JSON, wrong content type framing, malformed header; `POST /sync/push` body not valid against `PushRequestLenient`. |
     | 401 | `unauthenticated` | No credential, or it is unknown, expired or revoked. |
     | 401 | `invalid_credentials` | Wrong password or TOTP code (`POST /auth/login`). |
     | 401 | `totp_required` | TOTP is enabled and `totp_code` was not sent. |
     | 401 | `invalid_pairing_code` | Pairing code unknown, expired or already used. |
     | 403 | `insufficient_scope` | Credential lacks the scope; `required_scope` names it. |
     | 403 | `csrf_required` | Cookie-authenticated write without `X-Kotobaya-Csrf`. |
-    | 403 | `device_required` | `POST /sync/push` with a token that has no `device_id`. |
+    | 403 | `device_required` | `POST /sync/push` or `/devices/self` with a credential that has no `device_id`. |
     | 404 | `not_found` | No such resource (also: id of another resource kind). |
     | 409 | `already_exists` | Natural-key collision; `existing_id` names the holder. |
     | 409 | `builtin_immutable` | Deleting a built-in note type or the Default preset, or removing a built-in field. |
@@ -145,8 +170,6 @@ info:
     | 409 | `deck_read_only` | Changing items or deleting a `media`/`list` deck through deck endpoints. |
     | 409 | `not_applicable` | The resource kind does not support the operation (e.g. items of a smart deck). |
     | 409 | `card_not_reviewable` | Card is suspended. |
-    | 409 | `device_mismatch` | Pushed batch names a device other than the token's. |
-    | 409 | `cursor_ahead` | `since` is greater than the server's `head_seq` (server restored from backup). |
     | 409 | `job_not_cancellable` | Job already finished. |
     | 410 | `gone` | Tombstoned row requested without `include_deleted=true`. |
     | 413 | `payload_too_large` | Body over the limit in `GET /meta`. |
@@ -365,9 +388,17 @@ paths:
         ever shown. Emits the event `device.paired`.
 
         Edge cases:
-        - `device_id` already exists (re-pairing after a reinstall kept the id, or after
-          revocation): the row is reused, `name`, `kind`, `push_topic` are overwritten,
-          `revoked_at` is cleared, `paired_at` is set to now. Ops the device pushed earlier stay.
+        - **Device id reuse** (contracts/sync/SYNC.md 3.3). A device id is the node id of that
+          replica's HLC, so it may be reused only by the same install with its local database
+          intact (its `hlc_last` never went backwards). Clients MUST mint a new UUIDv7
+          `device_id` on first launch, after a reinstall, after clearing app data and after
+          restoring the local database from a backup, and MUST send their existing id only when
+          re-pairing an intact install (typically after the device was revoked, or its token
+          was lost). The server cannot detect a violation and trusts the client.
+        - `device_id` already exists and the request re-pairs that intact install: the row is
+          reused, `name`, `kind`, `push_topic` are overwritten, `revoked_at` is cleared,
+          `paired_at` is set to now. Ops the device pushed earlier stay; its unpushed outbox can
+          now be pushed.
         - `device_id` is the server device id: `422 validation_failed`.
         - Code unknown, expired or used: `401 invalid_pairing_code`. More than 10 failures from
           one client address in 15 minutes: `429 rate_limited`.
@@ -396,6 +427,58 @@ paths:
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '429': {$ref: '#/components/responses/RateLimited'}
         default: {$ref: '#/components/responses/Problem'}
+  /devices/self:
+    get:
+      operationId: getOwnDevice
+      tags: [devices]
+      summary: The device the calling token is bound to.
+      description: |
+        For tokens bound to a device (`device` tokens, and `personal` tokens created with
+        `with_device`). Any other credential (session cookie, personal token without a device)
+        gets `403 device_required`. Needs only `read`, so a phone can read its own row without the
+        `admin` scope. A revoked device's tokens are invalid, so this never returns a revoked row.
+        `self` is a literal path segment and takes precedence over `/devices/{device_id}`.
+      security:
+        - bearerAuth: [read]
+      responses:
+        '200':
+          description: The caller's device.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Device'}
+              examples: {default: {$ref: '#/components/examples/Device'}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      operationId: updateOwnDevice
+      tags: [devices]
+      summary: Rename the caller's device or change its push topic.
+      description: |
+        Same body and effect as `PATCH /devices/{device_id}`, applied to the device the calling
+        token is bound to; this is how the phone registers its UnifiedPush endpoint. Needs only
+        `write`. Credentials not bound to a device get `403 device_required`. Direct write to the
+        system table `device` (not learning data, no op).
+      x-emits-ops: []
+      security:
+        - bearerAuth: [write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DevicePatch'}
+            examples:
+              push: {value: {push_topic: 'https://ntfy.example.net/up-kotobaya-a1b2c3'}}
+              rename: {value: {name: Pixel 9 Pro}}
+      responses:
+        '200':
+          description: The updated device.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Device'}
+              examples: {default: {$ref: '#/components/examples/Device'}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
   /devices/{device_id}:
     parameters:
       - {$ref: '#/components/parameters/DeviceId'}
@@ -403,7 +486,7 @@ paths:
       operationId: getDevice
       tags: [devices]
       summary: One device.
-      description: A `device` token may read its own device without the `admin` scope.
+      description: Admin only. A device reads its own row through `GET /devices/self`.
       security:
         - bearerAuth: [admin]
         - sessionCookie: [admin]
@@ -421,9 +504,8 @@ paths:
       tags: [devices]
       summary: Rename a device or change its push topic.
       description: |
-        Direct write to the system table `device` (not learning data, no op). A `device` token may
-        patch its own device without the `admin` scope (this is how the phone registers its
-        UnifiedPush endpoint). The server device and revoked devices cannot be patched:
+        Direct write to the system table `device` (not learning data, no op). Admin only; a device
+        changes its own row through `PATCH /devices/self`. The server device and revoked devices cannot be patched:
         `409 not_applicable`.
       x-emits-ops: []
       security:
@@ -455,8 +537,8 @@ paths:
       description: |
         Sets `device.revoked_at` and `api_token.revoked_at` for every token with this `device_id`
         in one transaction. The row is kept (ops reference it). Ops already accepted stay; ops
-        the device has not pushed yet are lost unless it is paired again with the same
-        `device_id`. Idempotent: revoking a revoked device returns `204`. The server device
+        the device has not pushed yet are lost unless the same intact install is paired again
+        with the same `device_id` (`POST /devices/pair`). Idempotent: revoking a revoked device returns `204`. The server device
         cannot be revoked: `409 not_applicable`. Emits the event `device.revoked`.
       x-emits-ops: []
       security:
@@ -1473,7 +1555,7 @@ paths:
     post:
       operationId: bulkCards
       tags: [cards]
-      summary: Apply one action to many cards (suspend, tag, move, reschedule, ...).
+      summary: Apply one action to many cards (suspend, tag, move, delete, ...).
       description: |
         Select cards with exactly one of `card_ids` (1 to 5000 ids) or `query` (card search
         string). Unknown, deleted and merged-away ids in `card_ids` are skipped and counted in
@@ -1491,20 +1573,18 @@ paths:
         | `set_preset` | `preset_id` (live preset) | `card.preset_set` |
         | `add_tags`, `remove_tags` | `tags` (non-empty) | one `note.updated` (register `tags`) per **distinct note** of the matched cards |
         | `move` | `to_deck_id` (live `user` deck), optional `from_deck_id` (live `user` deck) | per distinct note: `deck.item_put` into `to_deck_id` (key `e:<seq>` or `n:<note id>`, appended in card-id order at max position + 1024 each) and, with `from_deck_id`, `deck.item_removed` there if the item exists |
-        | `reschedule` | `due_at` | `review.logged` with `review_type = manual`, `manual_action = set_due`, `manual_due_at = due_at` |
-        | `reset` | - | `review.logged` with `review_type = manual`, `manual_action = reset` |
         | `delete` | - | `card.deleted` |
 
         Cards already in the target state still get an op (it bumps the clock) except: `delete`
         on a deleted card, and tag actions that would not change a note's tag set - those are
         counted in `skipped`. Params not listed for the action type are `422`.
-        `reset` of a card in state `new` is skipped; `reschedule` is `422` for the whole call if
-        any matched card is `new` (a new card has no memory state to keep).
         A `to_deck_id`/`from_deck_id` that is not a live `user` deck is `409 deck_read_only`.
         With `dry_run: true` nothing is emitted and the counts say what would happen.
-        Repeating a call is safe: register actions converge; a repeated `reschedule`/`reset`
-        adds another manual log row with the same effect.
-      x-emits-ops: [card.suspended, card.unsuspended, card.buried, card.unburied, card.flag_set, card.preset_set, card.deleted, note.updated, deck.item_put, deck.item_removed, review.logged]
+        Repeating a call is safe: register actions converge.
+
+        Reschedule and reset write review history (`review.logged`) and therefore need the
+        `review` scope; they are the separate operation `POST /cards/bulk/schedule`.
+      x-emits-ops: [card.suspended, card.unsuspended, card.buried, card.unburied, card.flag_set, card.preset_set, card.deleted, note.updated, deck.item_put, deck.item_removed]
       security:
         - bearerAuth: [write]
         - sessionCookie: [write]
@@ -1517,7 +1597,6 @@ paths:
               suspend_leeches: {summary: Suspend all leeches, value: {query: 'tag:leech', action: {type: suspend}}}
               tag: {summary: Tag two cards' notes, value: {card_ids: [01931f40-1a2b-7c3d-8e4f-000000000c01, 01931f40-1a2b-7c3d-8e4f-000000000c02], action: {type: add_tags, tags: [review-later]}}}
               move: {summary: Move to another deck, value: {query: 'deck:"Inbox"', action: {type: move, to_deck_id: 01931f40-2000-7000-8000-000000000d01, from_deck_id: 01931f40-2000-7000-8000-000000000d02}}}
-              reschedule: {summary: Reschedule (dry run), value: {query: 'is:due kind:reading', action: {type: reschedule, due_at: '2026-11-20T19:00:00.000Z'}, dry_run: true}}
       responses:
         '200':
           description: What was (or with `dry_run` would be) done.
@@ -1527,6 +1606,51 @@ paths:
               schema: {$ref: '#/components/schemas/CardBulkResult'}
               examples: {default: {$ref: '#/components/examples/CardBulkResult'}}
         '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /cards/bulk/schedule:
+    post:
+      operationId: bulkScheduleCards
+      tags: [cards]
+      summary: Reschedule or reset many cards (manual review-log rows).
+      description: |
+        Same selector, limits, ordering, transaction and `dry_run` rules as `POST /cards/bulk`.
+        Needs the `review` scope, like every other way of writing `review_log` (`POST /sync/push`
+        needs `review` for `review.*` ops; `POST /review/answer`).
+
+        | `action.type` | Required params | Server emits, per matched card |
+        |---|---|---|
+        | `reschedule` | `due_at` | `review.logged` with `review_type = manual`, `manual_action = set_due`, `manual_due_at = due_at` |
+        | `reset` | - | `review.logged` with `review_type = manual`, `manual_action = reset` |
+
+        - `reset` of a card in state `new` is skipped (counted in `skipped`).
+        - `reschedule` is `422` for the whole call if any matched card is `new` (a new card has no
+          memory state to keep); nothing is applied.
+        - Suspended cards are processed (the manual row changes the schedule cache; the card
+          stays suspended).
+        - Repeating a call adds another manual row per card with the same effect on the
+          schedule (manual rows are not deduplicated). Each manual row can be undone with
+          `POST /review/undo` by its id (`GET /cards/{card_id}/reviews`).
+      x-emits-ops: [review.logged]
+      security:
+        - bearerAuth: [review]
+        - sessionCookie: [review]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CardBulkScheduleRequest'}
+            examples:
+              reschedule: {summary: Reschedule (dry run), value: {query: 'is:due kind:reading', action: {type: reschedule, due_at: '2026-11-20T19:00:00.000Z'}, dry_run: true}}
+              reset: {summary: Reset two cards, value: {card_ids: [01931f40-1a2b-7c3d-8e4f-000000000c01, 01931f40-1a2b-7c3d-8e4f-000000000c02], action: {type: reset}}}
+      responses:
+        '200':
+          description: What was (or with `dry_run` would be) done.
+          headers: {Kotobaya-Seq: {$ref: '#/components/headers/Seq'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CardBulkResult'}
+              examples: {default: {$ref: '#/components/examples/CardBulkResult'}}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         default: {$ref: '#/components/responses/Problem'}
   /cards/{card_id}:
@@ -1562,7 +1686,7 @@ paths:
         `card.suspended` (true) or `card.unsuspended` (false); `buried_until` → `card.buried`
         (an instant) or `card.unburied` (`null`); `flags` → `card.flag_set`; `preset_id` →
         `card.preset_set` (must be a live preset). An empty body is `422`. A merge loser's id
-        acts on the survivor. Schedule properties cannot be patched (use `POST /cards/bulk`
+        acts on the survivor. Schedule properties cannot be patched (use `POST /cards/bulk/schedule`
         `reschedule`/`reset` or review the card).
       x-emits-ops: [card.suspended, card.unsuspended, card.buried, card.unburied, card.flag_set, card.preset_set]
       security:
@@ -1711,8 +1835,12 @@ paths:
         - `utc_offset_min` SHOULD be sent by browsers (`-new Date().getTimezoneOffset()`); when
           absent it is stored as NULL.
         - `duration_ms` above 600000 is clamped to 600000.
-        - `id` is the `review_log.id`. Re-sending an existing `id` returns the stored review and
-          the card's current state with `200` and emits nothing - whatever the rest of the body.
+        - `id` is **required**: the client-generated UUIDv7 `review_log.id`, minted once when the
+          answer is given and reused unchanged on every retry. Re-sending an existing `id` returns
+          the stored review and the card's current state with `200` and emits nothing - whatever
+          the rest of the body. This is what makes a retry after a lost response or a `5xx` safe
+          (no second `review.logged`, no double FSRS update). An `id` that exists as a review of a
+          different card is still answered with the stored review (the body is ignored).
         - Card suspended and `mode = schedule`: `409 card_not_reviewable`. Buried cards may be
           answered. Deleted card or note: `410 gone`. A merge loser's id is answered against the
           survivor (`review.card_id` in the response is the survivor's id).
@@ -1737,10 +1865,10 @@ paths:
                   utc_offset_min: 540
               something:
                 summary: '"Something" in five-button mode'
-                value: {card_id: 01931f40-1a2b-7c3d-8e4f-000000000c01, rating: 1, button: something, duration_ms: 9100, utc_offset_min: 540}
+                value: {id: 01931f41-0000-7000-8000-000000000f02, card_id: 01931f40-1a2b-7c3d-8e4f-000000000c01, rating: 1, button: something, duration_ms: 9100, utc_offset_min: 540}
               drill:
                 summary: Drill answer (schedule untouched)
-                value: {card_id: 01931f40-1a2b-7c3d-8e4f-000000000c01, rating: 3, mode: drill}
+                value: {id: 01931f41-0000-7000-8000-000000000f03, card_id: 01931f40-1a2b-7c3d-8e4f-000000000c01, rating: 3, mode: drill}
       responses:
         '200':
           description: The logged review and the card after it.
@@ -1760,26 +1888,25 @@ paths:
       tags: [review]
       summary: Undo a review.
       description: |
-        Server emits `review.undone` for the target review and recomputes the card.
+        Server emits `review.undone` for the review named by `review_id` and recomputes the card.
 
-        - With `review_id`: that review, whichever device logged it.
-        - Without (or with no body): the most recent review (highest `hlc`) that is not undone,
-          has `review_type` other than `manual`, was logged through this REST API
-          (`device_id` = server device) and has `reviewed_at` within the last 24 hours. If there
-          is none: `404 not_found`. Reviews logged by phones are never picked implicitly.
+        - `review_id` is **required** (any review, whichever device logged it, `manual` rows
+          included). There is no implicit "undo my last review": that would not be idempotent
+          (a retry after a lost response would undo the review before it). The web app keeps the
+          `id` it sent to `POST /review/answer` and passes it here.
         - Target already undone: `200` with the current state, no op (an undo cannot be undone).
-        - `manual` rows (bulk reschedule/reset) can be undone only by explicit `review_id`.
+          Hence retries are safe.
+        - Unknown `review_id`: `404 not_found`.
       x-emits-ops: [review.undone]
       security:
         - bearerAuth: [review]
         - sessionCookie: [review]
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema: {$ref: '#/components/schemas/ReviewUndoRequest'}
             examples:
-              last: {summary: Undo my last web review, value: {}}
               explicit: {summary: Undo a specific review, value: {review_id: 01931f41-0000-7000-8000-000000000f01}}
       responses:
         '200':
@@ -2234,6 +2361,15 @@ paths:
           published. `title`/`kind`/`deck` must then be absent.
         - Dedupe key `media-import:<media_id>`: a second import into the same media while one is
           queued or running is `409 already_exists` (`existing_id` = the job id).
+        - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per
+          user action and reused on every retry; it becomes the job's `id`, and for new media
+          also the new `media_id` (and so the deck id). If a job with this id already exists
+          (any status), or - for new media - a `media` row with this id exists (live or deleted),
+          the server enqueues nothing and answers `200` with that job (or, if the job row is
+          gone, the most recent `media-import` job for that media; `404` if none), whatever the
+          rest of the body says. Without `import_id` a retry after a lost `202` imports twice
+          (a second media and deck); clients that may retry MUST send it. An `import_id` used by
+          a job of another kind is `409 already_exists` (`existing_id` = that job).
       x-emits-ops: []
       security:
         - bearerAuth: [import]
@@ -2254,9 +2390,15 @@ paths:
                     - {blob_hash: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08, filename: ep01.srt, title: 第1話}
                     - {blob_hash: 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae, filename: ep02.srt, title: 第2話}
                   deck: {priority: 5, new_cards_per_day: 10}
-              url: {summary: A web article, value: {title: NHK記事, kind: web, source: url, url: 'https://www3.nhk.or.jp/news/easy/example.html'}}
+              url: {summary: A web article, value: {import_id: 01931f43-0000-7000-8000-000000000e02, title: NHK記事, kind: web, source: url, url: 'https://www3.nhk.or.jp/news/easy/example.html'}}
               append: {summary: Add an episode to existing media, value: {media_id: 01931f40-3000-7000-8000-000000000e01, source: file, files: [{blob_hash: fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9, filename: ep03.srt}]}}
       responses:
+        '200':
+          description: Retry with a known `import_id` - the existing job; nothing was enqueued.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Job'}
+              examples: {default: {$ref: '#/components/examples/JobMediaImport'}}
         '202':
           description: Import job queued.
           content:
@@ -3635,52 +3777,54 @@ paths:
     post:
       operationId: syncPush
       tags: [sync]
-      summary: Push a batch of locally created operations.
+      summary: Push a batch of locally minted operations.
       description: |
-        **Envelope.** The body is `{"batch": <batch>}` where `<batch>` is a document valid
-        against `contracts/sync/batch.schema.json` (the ordered batch of ops; that file and
-        `contracts/sync/SYNC.md` own the op format, per-op payload schemas, conflict rules and
-        the per-op rejection vocabulary). This operation defines only the HTTP framing.
+        **Bodies.** The request body is exactly `contracts/sync/batch.schema.json#/$defs/PushRequest`
+        and the `200` body is exactly `#/$defs/PushResponse`; this operation adds no wrapper and
+        no fields of its own. `contracts/sync/SYNC.md` sections 5.1-5.4 own the semantics (per-op
+        procedure, result statuses `accepted` / `duplicate` / `rejected`, rejection codes,
+        `high_water_seq`, `server_time` as `instant_ms`, `log_epoch`, `durable_seq`); this
+        operation defines only the HTTP framing, auth and status codes. Where this text and
+        SYNC.md disagree, SYNC.md wins.
 
-        **Who may push.** The token must be bound to a device (`device_id` not null: a `device`
-        token, or a `personal` token created with `with_device`), else `403 device_required`.
-        Every op in the batch must carry that device as its origin, else `409 device_mismatch`
-        for the whole request (nothing applied). The token needs `write`; ops of type
-        `review.*` additionally need `review` and are rejected individually
-        (`insufficient_scope`) without it.
+        **What the server validates as a whole.** The server validates the body against
+        `#/$defs/PushRequestLenient` **only** (a JSON object with `ops`: 1-500 objects, each with
+        a UUID `op_id`). If that fails the whole request is `400 invalid_request` and nothing is
+        applied (`errors[]` points at the offending part). The schema `PushRequest` is what a
+        correct client sends; the server never rejects a whole request because an op fails it.
 
-        **Processing.** Ops are applied in array order (clients send ascending HLC; the server
-        does not re-sort). For each op the server either:
-        - `applied` - accepted and logged in `change` with a new `seq` (this includes ops that
-          lose a last-writer-wins comparison: they are still part of the log);
-        - `duplicate` - `op_id` is already in `change`; nothing happens; `seq` is the original
-          one. This is what makes retries safe;
-        - `rejected` - permanently refused (invalid against its schema, unknown op type or
-          version, server-only op from a client, missing referenced row, missing scope).
-          `error.code` and `error.detail` say why. A rejected op does not stop later ops (which
-          may then be rejected themselves if they depended on it). The client MUST NOT retry a
-          rejected op; it marks its `pending_op` row `rejected` (SCHEMA.md 5.3).
+        **Everything else is per op** (SYNC.md 5.2, 5.3), in array order, and reported as a
+        `rejected` result while the remaining ops are still processed: unknown op type or
+        version (`unsupported_op`), an op invalid against `op.schema.json` (`schema_invalid`),
+        an op whose `device_id` is not the caller's device (`device_mismatch`), server-only ops
+        (`server_only`), missing references (`unknown_reference`), a wrong device clock
+        (`clock_ahead`, `clock_behind`; SYNC.md 3.4 and 10.4), `invalid_value`,
+        `invalid_target`, `immutable`. This API adds one code to SYNC.md's open set:
+        `insufficient_scope` - an op of type `review.*` pushed by a token without the `review`
+        scope. Clients treat unknown codes as permanent rejections (SYNC.md 5.3).
 
-        The response lists one result per op, in request order. The HTTP status is `200`
-        whenever the envelope was processed, even if every op was rejected. Ops the server
-        emits as a consequence (`note.merged`, `card.merged`, ...) are not in the response; the
-        client receives them through `GET /sync/pull`.
+        **Request-level errors** (nothing applied, rows stay `pending`, SYNC.md 5.4):
+        - `401 unauthenticated`; `403 insufficient_scope` (no `write`); `403 device_required`
+          (the token is not bound to a device: only `device` tokens and `personal` tokens created
+          with `with_device` may push; session cookies have no device).
+        - `400 invalid_request`: not JSON, or `PushRequestLenient` fails (empty `ops`, more than
+          500 ops, an op without a valid `op_id`, ...).
+        - `413 payload_too_large`: body over `limits.max_push_bytes` (`GET /meta`, default 8 MiB).
+        - `415`, `429`, `5xx` as everywhere.
+        There is no whole-request `409` and no whole-request `422` on this operation.
 
-        **Atomicity and retry.** Each op commits together with its `change` row; the server may
-        group ops of one request into fewer transactions but the response always reflects what
-        was committed. On a network error, `5xx` or `503` the client re-sends the same batch
-        unchanged (already committed ops come back as `duplicate`).
+        **Status.** `200` whenever the body passed `PushRequestLenient`, even if every op was
+        rejected. `results` has exactly one entry per pushed op, in request order. Ops the server
+        emits as consequences (`note.merged`, `card.merged`, ...) are not in `results`; they
+        arrive through `GET /sync/pull`.
 
-        **Limits.** At most `limits.max_push_ops` ops and `limits.max_push_bytes` bytes per
-        request (`GET /meta`; defaults 1000 and 8 MiB), else `413`. An empty batch is valid and
-        returns an empty `results` (useful to learn `head_seq` and the server clock).
-
-        **Clock.** `server_time` lets the client detect a wrong device clock; the client feeds
-        `server_hlc` into its HLC (receive rule) so later local ops sort after everything the
-        server has seen.
+        **Retry.** On no response, `5xx` or `429` the client re-sends the same ops (SYNC.md 5.4);
+        ops already committed come back as `duplicate` with their original `seq`. Before using a
+        response the client compares `log_epoch` and `high_water_seq` with its stored state
+        (SYNC.md 6.2, log reset) and checks `server_time` against its own clock (SYNC.md 3.4).
 
         Side effects: updates `device.last_push_at` and `last_seen_at`; emits the event
-        `sync.changed` when at least one op was applied.
+        `sync.changed` when at least one op was accepted.
       x-emits-ops: []
       security:
         - bearerAuth: [write]
@@ -3689,48 +3833,376 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/SyncPushRequest'}
+            schema: {$ref: '../sync/batch.schema.json#/$defs/PushRequest'}
             examples:
-              empty:
-                summary: Empty batch (see contracts/sync/examples for real batches)
-                description: The value of `batch` shown here is illustrative only; its shape is defined by contracts/sync/batch.schema.json.
-                value: {batch: {ops: []}}
+              default:
+                summary: A new note, its cards, an edit, a suspend and a review (contracts/sync/examples/batches/push-request.json)
+                x-example-source: '../sync/examples/batches/push-request.json'
+                value:
+                  {
+                    "ops": [
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+                        "op_type": "note.created",
+                        "op_version": 1,
+                        "entity_type": "note",
+                        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0001-7000-8000-000000000002",
+                          "note_type_id": "00000000-0000-7000-8000-000000000101",
+                          "entry_seq": 1358280,
+                          "fields": {
+                            "sentence": "パンを食べる",
+                            "meaning": ""
+                          },
+                          "origin": "takoboto"
+                        }
+                      },
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+                        "op_type": "card.created",
+                        "op_version": 1,
+                        "entity_type": "card",
+                        "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c015-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0002-7000-8000-000000000002",
+                          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+                          "kind": "meaning"
+                        }
+                      },
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+                        "op_type": "card.created",
+                        "op_version": 1,
+                        "entity_type": "card",
+                        "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0002-7000-8000-000000000003",
+                          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+                          "kind": "reading"
+                        }
+                      },
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-00000000000b",
+                        "op_type": "note.updated",
+                        "op_version": 1,
+                        "entity_type": "note",
+                        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0001-7000-8000-000000000002",
+                          "set": {
+                            "tags": [
+                              "anime"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-00000000000c",
+                        "op_type": "card.suspended",
+                        "op_version": 1,
+                        "entity_type": "card",
+                        "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c01f-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0002-7000-8000-000000000002"
+                        }
+                      },
+                      {
+                        "op_id": "0193a1b2-00ff-7005-8000-00000000000d",
+                        "op_type": "review.logged",
+                        "op_version": 1,
+                        "entity_type": "review_log",
+                        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+                        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                        "hlc": "0193a1b2c020-0000-01931f3e-0000-7000-8000-0000000000b2",
+                        "payload": {
+                          "id": "0193a1b2-0003-7000-8000-000000000001",
+                          "card_id": "0193a1b2-0002-7000-8000-000000000002",
+                          "reviewed_at": 1733584666656,
+                          "utc_offset_min": 540,
+                          "review_type": "learning",
+                          "rating": 3,
+                          "button": "good",
+                          "duration_ms": 4200
+                        }
+                      }
+                    ]
+                  }
       responses:
         '200':
-          description: Per-op results, in request order.
+          description: One result per pushed op, in request order (`#/$defs/PushResponse`).
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/SyncPushResponse'}
-              examples: {default: {$ref: '#/components/examples/SyncPushResponse'}}
+              schema: {$ref: '../sync/batch.schema.json#/$defs/PushResponse'}
+              examples:
+                accepted:
+                  summary: Every op accepted
+                  x-example-source: '../sync/examples/batches/push-response.json'
+                  value:
+                    {
+                      "results": [
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+                          "status": "accepted",
+                          "seq": 4
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+                          "status": "accepted",
+                          "seq": 6
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+                          "status": "accepted",
+                          "seq": 8
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000b",
+                          "status": "accepted",
+                          "seq": 11
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000c",
+                          "status": "accepted",
+                          "seq": 12
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000d",
+                          "status": "accepted",
+                          "seq": 13
+                        }
+                      ],
+                      "high_water_seq": 13,
+                      "server_time": 1733584666729,
+                      "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+                      "durable_seq": 2
+                    }
+                retry:
+                  summary: The same batch pushed again after a lost response
+                  x-example-source: '../sync/examples/batches/push-response.retry.json'
+                  value:
+                    {
+                      "results": [
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+                          "status": "duplicate",
+                          "seq": 4
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+                          "status": "duplicate",
+                          "seq": 6
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+                          "status": "duplicate",
+                          "seq": 8
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000b",
+                          "status": "duplicate",
+                          "seq": 11
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000c",
+                          "status": "duplicate",
+                          "seq": 12
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000d",
+                          "status": "duplicate",
+                          "seq": 13
+                        }
+                      ],
+                      "high_water_seq": 14,
+                      "server_time": 1733584666824,
+                      "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+                      "durable_seq": 2
+                    }
+                rejected:
+                  summary: Every rejection code of SYNC.md 5.3, including clock_ahead and clock_behind
+                  x-example-source: '../sync/examples/batches/push-response.rejected.json'
+                  value:
+                    {
+                      "results": [
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000001",
+                          "status": "rejected",
+                          "error": {
+                            "code": "server_only",
+                            "message": "media and list decks are created only by the server"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000002",
+                          "status": "rejected",
+                          "error": {
+                            "code": "server_only",
+                            "message": "note.merged is a server-emitted op"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000003",
+                          "status": "rejected",
+                          "error": {
+                            "code": "unknown_reference",
+                            "message": "card 9 was never created on the server"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000004",
+                          "status": "rejected",
+                          "error": {
+                            "code": "unknown_reference",
+                            "message": "review 8 does not exist on the server"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000005",
+                          "status": "rejected",
+                          "error": {
+                            "code": "unknown_reference",
+                            "message": "deck 9 does not exist"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000006",
+                          "status": "rejected",
+                          "error": {
+                            "code": "immutable",
+                            "message": "the Default preset cannot be deleted"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000007",
+                          "status": "rejected",
+                          "error": {
+                            "code": "schema_invalid",
+                            "message": "entry_seq must be >= 1"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000008",
+                          "status": "rejected",
+                          "error": {
+                            "code": "schema_invalid",
+                            "message": "device_id differs from the device part of hlc"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-000000000009",
+                          "status": "rejected",
+                          "error": {
+                            "code": "invalid_value",
+                            "message": "entry_seq on a kanji note"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-00000000000a",
+                          "status": "rejected",
+                          "error": {
+                            "code": "clock_ahead",
+                            "message": "reviewed_at is more than 24 h after server time"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-00000000000b",
+                          "status": "rejected",
+                          "error": {
+                            "code": "clock_ahead",
+                            "message": "hlc wall time is more than 24 h after server time"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-00000000000c",
+                          "status": "rejected",
+                          "error": {
+                            "code": "clock_behind",
+                            "message": "reviewed_at is before 2020-01-01"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7e00-8000-00000000000d",
+                          "status": "rejected",
+                          "error": {
+                            "code": "clock_behind",
+                            "message": "reviewed_at is more than 24 h before the card was created"
+                          }
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-700e-8000-000000000004",
+                          "status": "accepted",
+                          "seq": 4
+                        }
+                      ],
+                      "high_water_seq": 4,
+                      "server_time": 1733584666729,
+                      "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+                      "durable_seq": 0
+                    }
+                insufficient_scope:
+                  summary: A review op pushed by a token without the review scope
+                  value:
+                    results:
+                    - op_id: 0193a1b2-00ff-7005-8000-00000000000c
+                      status: accepted
+                      seq: 12
+                    - op_id: 0193a1b2-00ff-7005-8000-00000000000d
+                      status: rejected
+                      error:
+                        code: insufficient_scope
+                        message: review.logged needs the review scope
+                    high_water_seq: 12
+                    server_time: 1733584666729
+                    log_epoch: 0193a1b2-00ee-7000-8000-000000000001
+                    durable_seq: 2
+        '400': {$ref: '#/components/responses/InvalidRequest'}
         '403': {$ref: '#/components/responses/Forbidden'}
-        '409': {$ref: '#/components/responses/Conflict'}
         '413': {$ref: '#/components/responses/PayloadTooLarge'}
-        '422': {$ref: '#/components/responses/ValidationFailed'}
         default: {$ref: '#/components/responses/Problem'}
   /sync/pull:
     get:
       operationId: syncPull
       tags: [sync]
-      summary: Pull operations newer than a sequence number.
+      summary: Pull logged operations after a sequence number.
       description: |
-        Returns the ops of `change` rows with `seq > since`, ascending by `seq`, at most `limit`
-        of them, as `{"batch": <batch>, "seqs": [...], ...}` where `<batch>` is valid against
-        `contracts/sync/batch.schema.json` and `seqs[i]` is the `change.seq` of the i-th op in
-        the batch. Includes ops from every origin: other devices, REST calls, server jobs,
-        server-emitted consequences (merges) and - unless `exclude_own=true` - the caller's own
-        ops (applying one's own op again is a no-op).
+        **Body.** The `200` body is exactly `contracts/sync/batch.schema.json#/$defs/PullResponse`
+        (no wrapper, no extra fields). `contracts/sync/SYNC.md` section 6 owns the semantics; this
+        operation defines only the query parameters, auth and status codes.
 
-        - `next_since` is the value to pass as `since` next time: the `seq` of the last change
-          the server examined (also counting changes skipped by `exclude_own`), or `since`
-          itself when there was nothing newer.
-        - `has_more` is true when more changes exist beyond `next_since`; the client pulls again
-          at once until it is false.
-        - Because the op-apply path serialises commits, no change with `seq <= next_since` can
-          appear later; a client never needs to re-pull an older range.
-        - The log is never pruned in v1: `since=0` replays everything (new device bootstrap).
-        - `since` greater than the server's `head_seq`: `409 cursor_ahead` (the server was
-          restored from an older backup). Recovery is defined in `contracts/sync/SYNC.md`.
-        - Payloads are returned as stored; large content is never inline (ops such as
+        **Lenient parsing.** The server produces `PullResponse`. A client SHOULD validate the body
+        against `#/$defs/PullResponseLenient` (open `op_type` / `op_version`, unknown top-level
+        properties ignored) and each op against `op.schema.json` only when it supports that type and
+        version; at the first op it does not support it applies the ops before it and stops in
+        state *upgrade required* (SYNC.md 6.1). Validating the whole page against `PullResponse`
+        would make an old client reject a page it could partly apply.
+
+        **Semantics** (SYNC.md 6.1, restated, not extended):
+        - `ops` are the `change` rows with `seq > since`, ascending by `seq`, at most `limit`, from
+          **every** origin, including ops the caller pushed itself and ops that had no effect.
+          There is no option to skip one's own ops.
+        - `next_since` = the `seq` of the last op returned, or `since` when `ops` is empty.
+          `has_more` = rows exist after `next_since`; the client pulls again at once.
+        - Every op carries its `seq` and `caused_by_op_id`. `seq` may have gaps.
+        - The log is never pruned in v1: `since=0` returns the whole history (new device, rebuild).
+        - Every response carries `high_water_seq`, `server_time` (`instant_ms`), `log_epoch` and
+          `durable_seq`. Before applying a page the client compares `log_epoch` and
+          `high_water_seq` with its stored state and starts a log reset on a mismatch (SYNC.md 6.2).
+        - `since` greater than `high_water_seq` (the server was restored from an older backup) is
+          **not** an error: the answer is `200` with `ops: []`, `next_since = since`,
+          `has_more: false`, and the new `log_epoch` / smaller `high_water_seq` tell the client to
+          reset (SYNC.md 6.2).
+        - Payloads are returned as logged; large content is never inline (ops such as
           `deck.content_published` carry blob hashes to fetch with `GET /blobs/{hash}`).
 
         Side effects when the token is bound to a device: sets `device.last_pull_seq = since`
@@ -3742,27 +4214,162 @@ paths:
       parameters:
         - name: since
           in: query
-          description: Return changes with `seq` greater than this. `0` = from the beginning.
+          description: Return log entries with `seq` greater than this. `0` = from the beginning.
           schema: {type: integer, format: int64, minimum: 0, default: 0}
-          example: 48211
+          example: 13
         - name: limit
           in: query
-          description: Maximum number of ops to return.
-          schema: {type: integer, minimum: 1, maximum: 2000, default: 500}
+          description: Maximum number of ops to return (`PullResponse.ops` has `maxItems` 1000). The server may return fewer; only `has_more` says whether more exist.
+          schema: {type: integer, minimum: 1, maximum: 1000, default: 500}
           example: 500
-        - name: exclude_own
-          in: query
-          description: Skip ops whose origin device is the calling token's device. Ignored for tokens without a device.
-          schema: {type: boolean, default: false}
-          example: true
       responses:
         '200':
-          description: A batch of ops and the next cursor.
+          description: A page of the log (`#/$defs/PullResponse`).
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/SyncPullResponse'}
-              examples: {default: {$ref: '#/components/examples/SyncPullResponse'}}
-        '409': {$ref: '#/components/responses/Conflict'}
+              schema: {$ref: '../sync/batch.schema.json#/$defs/PullResponse'}
+              examples:
+                page:
+                  summary: Ops from two devices and the server (merges caused by the push)
+                  x-example-source: '../sync/examples/batches/pull-response.json'
+                  value:
+                    {
+                      "ops": [
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+                          "op_type": "note.created",
+                          "op_version": 1,
+                          "entity_type": "note",
+                          "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+                          "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                          "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+                          "payload": {
+                            "id": "0193a1b2-0001-7000-8000-000000000002",
+                            "note_type_id": "00000000-0000-7000-8000-000000000101",
+                            "entry_seq": 1358280,
+                            "fields": {
+                              "sentence": "パンを食べる",
+                              "meaning": ""
+                            },
+                            "origin": "takoboto"
+                          },
+                          "seq": 4,
+                          "caused_by_op_id": null
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000005",
+                          "op_type": "note.merged",
+                          "op_version": 1,
+                          "entity_type": "note",
+                          "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+                          "device_id": "00000000-0000-7000-8000-000000000001",
+                          "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+                          "payload": {
+                            "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+                            "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+                          },
+                          "seq": 5,
+                          "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000004"
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+                          "op_type": "card.created",
+                          "op_version": 1,
+                          "entity_type": "card",
+                          "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+                          "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                          "hlc": "0193a1b2c015-0000-01931f3e-0000-7000-8000-0000000000b2",
+                          "payload": {
+                            "id": "0193a1b2-0002-7000-8000-000000000002",
+                            "note_id": "0193a1b2-0001-7000-8000-000000000002",
+                            "kind": "meaning"
+                          },
+                          "seq": 6,
+                          "caused_by_op_id": null
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000007",
+                          "op_type": "card.merged",
+                          "op_version": 1,
+                          "entity_type": "card",
+                          "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+                          "device_id": "00000000-0000-7000-8000-000000000001",
+                          "hlc": "0193a1b2c065-0000-00000000-0000-7000-8000-000000000001",
+                          "payload": {
+                            "loser_id": "0193a1b2-0002-7000-8000-000000000002",
+                            "survivor_id": "0193a1b2-0002-7000-8000-000000000001"
+                          },
+                          "seq": 7,
+                          "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000006"
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+                          "op_type": "card.created",
+                          "op_version": 1,
+                          "entity_type": "card",
+                          "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+                          "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+                          "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+                          "payload": {
+                            "id": "0193a1b2-0002-7000-8000-000000000003",
+                            "note_id": "0193a1b2-0001-7000-8000-000000000002",
+                            "kind": "reading"
+                          },
+                          "seq": 8,
+                          "caused_by_op_id": null
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-000000000009",
+                          "op_type": "card.created",
+                          "op_version": 1,
+                          "entity_type": "card",
+                          "entity_id": "0193a1b2-0002-7000-8000-000000000004",
+                          "device_id": "00000000-0000-7000-8000-000000000001",
+                          "hlc": "0193a1b2c066-0000-00000000-0000-7000-8000-000000000001",
+                          "payload": {
+                            "id": "0193a1b2-0002-7000-8000-000000000004",
+                            "note_id": "0193a1b2-0001-7000-8000-000000000001",
+                            "kind": "reading"
+                          },
+                          "seq": 9,
+                          "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000008"
+                        },
+                        {
+                          "op_id": "0193a1b2-00ff-7005-8000-00000000000a",
+                          "op_type": "card.merged",
+                          "op_version": 1,
+                          "entity_type": "card",
+                          "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+                          "device_id": "00000000-0000-7000-8000-000000000001",
+                          "hlc": "0193a1b2c066-0001-00000000-0000-7000-8000-000000000001",
+                          "payload": {
+                            "loser_id": "0193a1b2-0002-7000-8000-000000000003",
+                            "survivor_id": "0193a1b2-0002-7000-8000-000000000004"
+                          },
+                          "seq": 10,
+                          "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000008"
+                        }
+                      ],
+                      "next_since": 10,
+                      "has_more": true,
+                      "high_water_seq": 14,
+                      "server_time": 1733584666734,
+                      "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+                      "durable_seq": 2
+                    }
+                caught_up:
+                  summary: Nothing newer than since
+                  x-example-source: '../sync/examples/batches/pull-response.empty.json'
+                  value:
+                    {
+                      "ops": [],
+                      "next_since": 14,
+                      "has_more": false,
+                      "high_water_seq": 14,
+                      "server_time": 1733584666744,
+                      "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+                      "durable_seq": 2
+                    }
         default: {$ref: '#/components/responses/Problem'}
 
   # ---------------------------------------------------------------- export
@@ -3854,7 +4461,7 @@ paths:
 
         - `id` counts up from 1 per connection. There is **no replay**: `Last-Event-ID` is
           ignored. After (re)connecting, a client refetches what it shows; the first event on
-          every connection is `hello` and carries `head_seq` for that purpose.
+          every connection is `hello` and carries `high_water_seq` for that purpose.
         - `data` is always a single-line JSON object with the schema `Event`
           (`{"type", "at", "data"}`); `event:` repeats `type`.
         - A comment line `: ping` is sent every 25 seconds so proxies keep the connection.
@@ -3865,7 +4472,7 @@ paths:
         | `type` | `data` schema | Sent when |
         |---|---|---|
         | `hello` | `EventHello` | Once, first, on every connection. |
-        | `sync.changed` | `EventSyncChanged` | One or more ops were logged (any origin). Coalesced to at most one per second; carries the new `head_seq`. Clients with a replica pull; others refetch. |
+        | `sync.changed` | `EventSyncChanged` | One or more ops were logged (any origin). Coalesced to at most one per second; carries the new `high_water_seq`. Clients with a replica pull; others refetch. |
         | `note.created` | `EventNoteCreated` | A `note.created` op was applied (once per note). |
         | `job.updated` | `Job` | A job was created, changed status, or its progress changed (at most one per job per second while running; the terminal state is always sent). |
         | `device.paired` | `EventDevice` | `POST /devices/pair` succeeded. |
@@ -3902,13 +4509,13 @@ paths:
               example: |
                 id: 1
                 event: hello
-                data: {"type":"hello","at":"2026-11-12T09:30:00.000Z","data":{"head_seq":48213,"server_time":"2026-11-12T09:30:00.000Z"}}
+                data: {"type":"hello","at":"2026-11-12T09:30:00.000Z","data":{"high_water_seq":48213,"log_epoch":"0193a1b2-00ee-7000-8000-000000000001","server_time":"2026-11-12T09:30:00.000Z"}}
 
                 : ping
 
                 id: 2
                 event: sync.changed
-                data: {"type":"sync.changed","at":"2026-11-12T09:30:07.120Z","data":{"head_seq":48215}}
+                data: {"type":"sync.changed","at":"2026-11-12T09:30:07.120Z","data":{"high_water_seq":48215}}
 
         default: {$ref: '#/components/responses/Problem'}
 
@@ -3926,8 +4533,14 @@ paths:
         (unknown action, bad params, auth) are reported in `error`, not as HTTP errors; only a
         body that is not JSON gets `400`.
 
-        **Auth.** Either the usual credentials, or - because Yomitan can only send an API key in
-        the body - a personal access token in `key`. Without a valid credential the response is
+        **Auth** (`x-auth: body-key`). Either the usual credentials, or - because Yomitan can only
+        send an API key in the body - a personal access token in `key`. The empty alternative
+        `{}` in `security` exists only so that generic clients and gateways let a request without
+        an `Authorization` header or cookie through; it does **not** make the operation public:
+        the server authenticates such a request by `key` (same validity and revocation rules as a
+        bearer token, `token_hash` lookup) and requires the scope named in `x-body-key-scope`.
+        If both a header/cookie and `key` are present, the header/cookie wins (`key` is ignored).
+        Only the `version` action needs no credential. Without a valid credential the response is
         `{"result": null, "error": "valid api key must be provided"}`. Needs the `write` scope
         (also for the read-only actions, to keep one rule). Cookie-authenticated calls need the
         CSRF header as usual. The server answers `OPTIONS` preflights for this path only with
@@ -3964,7 +4577,10 @@ paths:
         (a second note for the same entry is never created; with `allowDuplicate` the existing
         note's `anki_id` is returned instead).
       x-emits-ops: [note.created, card.created, deck.item_put]
+      x-auth: body-key
+      x-body-key-scope: write
       security:
+        - {}
         - bearerAuth: [write]
         - sessionCookie: [write]
       requestBody:
@@ -4256,6 +4872,25 @@ components:
                 code: internal
                 detail: Unexpected error. The request id identifies it in the server log.
                 request_id: 01931f43-aaaa-7000-8000-00000000r001
+    InvalidRequest:
+      description: The body is not valid JSON, or (for `POST /sync/push`) does not match `PushRequestLenient`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalid_request:
+              value:
+                type: urn:kotobaya:problem:invalid_request
+                title: Invalid request
+                status: 400
+                code: invalid_request
+                detail: The body does not match PushRequestLenient.
+                errors:
+                - pointer: /ops
+                  code: out_of_range
+                  detail: ops must contain 1 to 500 items.
+                request_id: 01931f43-aaaa-7000-8000-00000000r030
     Unauthenticated:
       description: Missing, unknown, expired or revoked credential; or wrong login or pairing data.
       content:
@@ -4374,15 +5009,6 @@ components:
                 code: builtin_immutable
                 detail: The Default preset cannot be deleted.
                 request_id: 01931f43-aaaa-7000-8000-00000000r011
-            cursor_ahead:
-              value:
-                type: urn:kotobaya:problem:cursor_ahead
-                title: Cursor ahead of server
-                status: 409
-                code: cursor_ahead
-                detail: since=50000 but the server head is 48213.
-                head_seq: 48213
-                request_id: 01931f43-aaaa-7000-8000-00000000r012
             card_not_reviewable:
               value:
                 type: urn:kotobaya:problem:card_not_reviewable
@@ -4710,7 +5336,7 @@ components:
           - 01931f43-aaaa-7000-8000-00000000r001
         errors:
           type: array
-          description: Present for `validation_failed`, `invalid_query` and `bulk_too_large` - one element per problem.
+          description: Present for `validation_failed`, `invalid_query`, `bulk_too_large` and (optionally) `invalid_request` - one element per problem.
           items:
             $ref: '#/components/schemas/FieldError'
         required_scope:
@@ -4721,12 +5347,6 @@ components:
           description: Present for `already_exists` - id of the row (or job) holding the key.
           examples:
           - 01931f40-1a2b-7c3d-8e4f-000000000a01
-        head_seq:
-          type: integer
-          format: int64
-          description: Present for `cursor_ahead` - the server's current head.
-          examples:
-          - 48213
     FieldError:
       type: object
       description: One validation problem.
@@ -4787,7 +5407,8 @@ components:
       - server_version
       - core_version
       - server_device_id
-      - head_seq
+      - high_water_seq
+      - log_epoch
       - server_time
       - dict_release
       - limits
@@ -4810,13 +5431,16 @@ components:
         server_device_id:
           $ref: '#/components/schemas/Uuid'
           description: Origin device of server-built ops; always `00000000-0000-7000-8000-000000000001`.
-        head_seq:
+        high_water_seq:
           type: integer
           format: int64
           minimum: 0
-          description: Highest `change.seq` committed (0 = empty log).
+          description: Highest `change.seq` committed (0 = empty log); same meaning as `PushResponse.high_water_seq`.
           examples:
           - 48213
+        log_epoch:
+          $ref: '#/components/schemas/Uuid'
+          description: Identity of the server's log (contracts/sync/SYNC.md 6.2); `high_water_seq` belongs to this epoch.
         server_time:
           $ref: '#/components/schemas/Timestamp'
           description: Server clock.
@@ -4853,9 +5477,10 @@ components:
           properties:
             max_push_ops:
               type: integer
-              description: Maximum ops per `POST /sync/push`.
+              const: 500
+              description: Maximum ops per `POST /sync/push`; fixed by `PushRequest.ops.maxItems`.
               examples:
-              - 1000
+              - 500
             max_push_bytes:
               type: integer
               description: Maximum body size of `POST /sync/push`.
@@ -4863,9 +5488,10 @@ components:
               - 8388608
             max_pull_ops:
               type: integer
-              description: Maximum `limit` of `GET /sync/pull`.
+              const: 1000
+              description: Maximum `limit` of `GET /sync/pull`; fixed by `PullResponse.ops.maxItems`.
               examples:
-              - 2000
+              - 1000
             max_blob_bytes:
               type: integer
               format: int64
@@ -5078,8 +5704,9 @@ components:
           - K7Q2M9XD
         device_id:
           $ref: '#/components/schemas/Uuid'
-          description: UUIDv7 generated by the device at first launch and kept for the life of the install (it is
-            the node id of the device's HLC).
+          description: UUIDv7 that is the node id of the device's HLC. Generated at first launch and on every
+            loss or restore of the local database (reinstall, cleared data, restored backup); reused only by the same
+            intact install when re-pairing (contracts/sync/SYNC.md 3.3).
         name:
           type: string
           minLength: 1
@@ -5110,7 +5737,7 @@ components:
       - scopes
       - device
       - server_device_id
-      - head_seq
+      - high_water_seq
       properties:
         token:
           type: string
@@ -5131,7 +5758,7 @@ components:
         server_device_id:
           $ref: '#/components/schemas/Uuid'
           description: The server device id.
-        head_seq:
+        high_water_seq:
           type: integer
           format: int64
           minimum: 0
@@ -6872,8 +7499,6 @@ components:
           - add_tags
           - remove_tags
           - move
-          - reschedule
-          - reset
           - delete
           description: What to do.
         until:
@@ -6901,9 +7526,48 @@ components:
         from_deck_id:
           $ref: '#/components/schemas/Uuid'
           description: '`move` - user deck to remove the items from.'
-        due_at:
-          $ref: '#/components/schemas/Timestamp'
-          description: '`reschedule` - the new due instant.'
+    CardBulkScheduleRequest:
+      type: object
+      description: Selector plus a schedule action. Exactly one of `card_ids` and `query` (as `CardBulkRequest`).
+      additionalProperties: false
+      required:
+      - action
+      properties:
+        card_ids:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: Explicit card ids.
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Card search string.
+          examples:
+          - is:due kind:reading
+        action:
+          type: object
+          description: '`reschedule` needs `due_at`; `reset` takes no params.'
+          additionalProperties: false
+          required:
+          - type
+          properties:
+            type:
+              type: string
+              enum:
+              - reschedule
+              - reset
+              description: What to do.
+            due_at:
+              $ref: '#/components/schemas/Timestamp'
+              description: '`reschedule` - the new due instant.'
+        dry_run:
+          type: boolean
+          default: false
+          description: Report counts without changing anything.
     CardBulkRequest:
       type: object
       description: Selector plus action. Exactly one of `card_ids` and `query`.
@@ -7205,12 +7869,14 @@ components:
       description: An answer to a card.
       additionalProperties: false
       required:
+      - id
       - card_id
       - rating
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
-          description: Optional client-generated UUIDv7 for the review (idempotent retry).
+          description: Client-generated UUIDv7 of the review (`review_log.id`); minted once per answer and reused on retry,
+            which makes the call idempotent.
         card_id:
           $ref: '#/components/schemas/Uuid'
           description: The card answered.
@@ -7261,10 +7927,12 @@ components:
       type: object
       description: Which review to undo.
       additionalProperties: false
+      required:
+      - review_id
       properties:
         review_id:
           $ref: '#/components/schemas/Uuid'
-          description: The review. Absent - the most recent review made through the REST API in the last 24 hours.
+          description: The review to undo (`review_log.id`).
     DrillSessionRequest:
       type: object
       description: What to drill.
@@ -8184,11 +8852,15 @@ components:
     MediaImportRequest:
       type: object
       description: What to import (see `POST /media/import`). Also the payload of `media-import` jobs, with `media_id`
-        always set.
+        always set and `import_id` omitted (it is the job's `id`).
       additionalProperties: false
       required:
       - source
       properties:
+        import_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Optional idempotency key (UUIDv7) - becomes the job id and, for new media, the media id. A
+            retry with the same value returns the existing job (`200`) and enqueues nothing.
         media_id:
           $ref: '#/components/schemas/Uuid'
           description: Existing media to append to. Absent - create a new media.
@@ -10151,138 +10823,6 @@ components:
           items:
             $ref: '#/components/schemas/BlobHash'
           description: Hashes it does not have.
-    SyncPushRequest:
-      type: object
-      description: HTTP envelope of a push.
-      additionalProperties: false
-      required:
-      - batch
-      properties:
-        batch:
-          $ref: ../sync/batch.schema.json
-    SyncOpResult:
-      type: object
-      description: Outcome of one pushed op.
-      required:
-      - op_id
-      - status
-      - seq
-      - error
-      properties:
-        op_id:
-          $ref: '#/components/schemas/Uuid'
-          description: The op.
-        status:
-          type: string
-          enum:
-          - applied
-          - duplicate
-          - rejected
-          description: See `POST /sync/push`.
-        seq:
-          type:
-          - integer
-          - 'null'
-          format: int64
-          minimum: 1
-          description: '`change.seq` of the op (`applied`: new; `duplicate`: original); null when rejected.'
-          examples:
-          - 48214
-        error:
-          description: Why the op was rejected; null otherwise.
-          oneOf:
-          - type: object
-            required:
-            - code
-            - detail
-            properties:
-              code:
-                type: string
-                pattern: ^[a-z][a-z0-9_]*$
-                description: Rejection code. This envelope defines `insufficient_scope`; all others are defined by
-                  contracts/sync (SYNC.md).
-                examples:
-                - unknown_reference
-              detail:
-                type: string
-                description: Human-readable explanation; shown to the user as `pending_op.last_error`.
-                examples:
-                - card 01931f40-1a2b-7c3d-8e4f-000000000c09 does not exist
-          - type: 'null'
-    SyncPushResponse:
-      type: object
-      description: Result of a push.
-      required:
-      - results
-      - head_seq
-      - server_time
-      - server_hlc
-      properties:
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/SyncOpResult'
-          description: One element per pushed op, in request order.
-        head_seq:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Server head after the push.
-          examples:
-          - 48215
-        server_time:
-          $ref: '#/components/schemas/Timestamp'
-          description: Server wall clock.
-        server_hlc:
-          $ref: '#/components/schemas/Hlc'
-          description: The server's current HLC, for the client's HLC receive rule.
-    SyncPullResponse:
-      type: object
-      description: HTTP envelope of a pull.
-      required:
-      - batch
-      - seqs
-      - next_since
-      - head_seq
-      - has_more
-      - server_time
-      - server_hlc
-      properties:
-        batch:
-          $ref: ../sync/batch.schema.json
-        seqs:
-          type: array
-          items:
-            type: integer
-            format: int64
-            minimum: 1
-          description: '`seqs[i]` is the `change.seq` of the i-th op of `batch`; strictly ascending.'
-          examples:
-          - - 48212
-            - 48213
-        next_since:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Pass as `since` next time.
-          examples:
-          - 48213
-        head_seq:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Server head when the response was built.
-          examples:
-          - 48213
-        has_more:
-          type: boolean
-          description: true when changes beyond `next_since` exist.
-        server_time:
-          $ref: '#/components/schemas/Timestamp'
-          description: Server wall clock.
-        server_hlc:
-          $ref: '#/components/schemas/Hlc'
-          description: The server's current HLC.
     ExportDump:
       type: object
       description: Full data dump.
@@ -10290,7 +10830,7 @@ components:
       - format_version
       - exported_at
       - server_version
-      - head_seq
+      - high_water_seq
       - dict_release_version
       - tables
       properties:
@@ -10307,7 +10847,7 @@ components:
           description: Server build version.
           examples:
           - 0.1.0
-        head_seq:
+        high_water_seq:
           type: integer
           format: int64
           minimum: 0
@@ -10350,14 +10890,18 @@ components:
       type: object
       description: Payload of `hello`.
       required:
-      - head_seq
+      - high_water_seq
+      - log_epoch
       - server_time
       properties:
-        head_seq:
+        high_water_seq:
           type: integer
           format: int64
           minimum: 0
-          description: Current sync head.
+          description: Current sync head (as `PullResponse.high_water_seq`).
+        log_epoch:
+          $ref: '#/components/schemas/Uuid'
+          description: Current log identity (contracts/sync/SYNC.md 6.2).
         server_time:
           $ref: '#/components/schemas/Timestamp'
           description: Server wall clock.
@@ -10365,9 +10909,9 @@ components:
       type: object
       description: Payload of `sync.changed`.
       required:
-      - head_seq
+      - high_water_seq
       properties:
-        head_seq:
+        high_water_seq:
           type: integer
           format: int64
           minimum: 1
@@ -10462,15 +11006,16 @@ components:
         server_version: 0.1.0
         core_version: 0.1.0
         server_device_id: 00000000-0000-7000-8000-000000000001
-        head_seq: 48213
+        high_water_seq: 48213
+        log_epoch: 0193a1b2-00ee-7000-8000-000000000001
         server_time: '2026-11-12T09:30:00.000Z'
         dict_release:
           id: 3
           version: 2026.11.0
         limits:
-          max_push_ops: 1000
+          max_push_ops: 500
           max_push_bytes: 8388608
-          max_pull_ops: 2000
+          max_pull_ops: 1000
           max_blob_bytes: 2147483648
           max_json_bytes: 4194304
           max_page_size: 500
@@ -10556,7 +11101,7 @@ components:
           push_topic: https://ntfy.example.net/up-kotobaya-a1b2c3
           revoked_at: null
         server_device_id: 00000000-0000-7000-8000-000000000001
-        head_seq: 48213
+        high_water_seq: 48213
     Token:
       value:
         id: 01931f3f-0000-7000-8000-0000000000b1
@@ -12773,44 +13318,13 @@ components:
         - 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
         missing:
         - 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
-    SyncPushResponse:
-      value:
-        results:
-        - op_id: 01931f45-0000-7000-8000-000000000001
-          status: applied
-          seq: 48214
-          error: null
-        - op_id: 01931f45-0000-7000-8000-000000000002
-          status: duplicate
-          seq: 48102
-          error: null
-        - op_id: 01931f45-0000-7000-8000-000000000003
-          status: rejected
-          seq: null
-          error:
-            code: unknown_reference
-            detail: card 01931f40-1a2b-7c3d-8e4f-000000000c09 does not exist
-        head_seq: 48214
-        server_time: '2026-11-12T09:30:00.000Z'
-        server_hlc: 0193a1b2c3d4-0001-00000000-0000-7000-8000-000000000001
-    SyncPullResponse:
-      description: Caught up. The value of `batch` is illustrative; its shape is defined by contracts/sync/batch.schema.json.
-      value:
-        batch:
-          ops: []
-        seqs: []
-        next_since: 48213
-        head_seq: 48213
-        has_more: false
-        server_time: '2026-11-12T09:30:00.000Z'
-        server_hlc: 0193a1b2c3d4-0001-00000000-0000-7000-8000-000000000001
     ExportDump:
       description: 'Abridged: a real dump lists every table.'
       value:
         format_version: 1
         exported_at: '2026-11-12T09:30:00.000Z'
         server_version: 0.1.0
-        head_seq: 48213
+        high_water_seq: 48213
         dict_release_version: 2026.11.0
         tables:
           settings:

@@ -1,6 +1,6 @@
 # API contract — summary for the human
 
-Files: `openapi.yaml` (the contract, OpenAPI 3.1, 114 operations), `redocly.yaml` (lint rules),
+Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml` (lint rules),
 `check_contract.py` + `check.sh` (verification, see the end).
 
 ## What was decided
@@ -21,17 +21,38 @@ Files: `openapi.yaml` (the contract, OpenAPI 3.1, 114 operations), `redocly.yaml
 - **Password and TOTP secret come from the server's environment** (Kubernetes Secret), as the
   database contract assumed. There are no change-password or TOTP-enrolment endpoints.
 - **Client-generated ids make creates idempotent**: re-sending a create with the same `id`
-  returns the existing row and does nothing.
+  returns the existing row and does nothing. For the two calls where a duplicate silently
+  corrupts data the id is mandatory or dedicated: `POST /review/answer` **requires** `id` (a
+  retried answer would otherwise log a second review and move FSRS twice), and
+  `POST /media/import` takes `import_id` (job id and new media id; a retry returns the job).
+- **Undo names its target.** `POST /review/undo` requires `review_id`; there is no implicit
+  "undo my last review", which was not retry-safe (a retry would undo the review before it).
 - **Duplicates are never created on purpose over REST.** Creating a note for a word that already
   has one returns an error naming the existing note (or the existing note itself, on request).
   The server-side merge remains for duplicates created offline.
 - **Merged notes and cards answer with their survivor**; deleted rows answer `410` unless asked for.
 - **Errors** are RFC 9457 problem documents with a stable `code`; the full table is at the top of
   the spec. **Lists** use opaque cursors (`limit` ≤ 500).
-- **Sync endpoints define only the HTTP wrapper.** Push sends `{"batch": …}` and gets one result
-  per op (`applied`, `duplicate`, `rejected`); pull returns `{"batch": …, "seqs": […],
-  "next_since", "has_more"}`. The batch itself is whatever `contracts/sync/batch.schema.json`
-  defines.
+- **Sync bodies belong to the sync contract.** Push request/response and pull response are
+  exactly `contracts/sync/batch.schema.json#/$defs/PushRequest`, `PushResponse`, `PullResponse`,
+  with no API-owned fields. The API adds only framing: the server validates a push body against
+  `PushRequestLenient` and answers `400` only when that fails; everything else (including a
+  foreign `device_id`, clock rejections, and a `review.*` op without the `review` scope, code
+  `insufficient_scope`) is a per-op rejection. Pull follows SYNC.md §6 exactly: own ops
+  included, `next_since` = seq of the last op returned, `limit` ≤ 1000, and a `since` beyond
+  the head is an empty `200` page whose `log_epoch` / `high_water_seq` trigger the client's log
+  reset (no `cursor_ahead` error). REST elsewhere keeps RFC 3339 strings; only the sync bodies
+  use integer `instant_ms`. "Head" is called `high_water_seq` everywhere (meta, events).
+- **Writing review history needs `review`** on every path: answer/undo, `review.*` ops in push,
+  and bulk reschedule/reset, which moved to their own operation `POST /cards/bulk/schedule`.
+- **Auth exceptions are declared, not prose.** A device manages its own row through
+  `GET/PATCH /devices/self` (`read`/`write`, bearer only, `403 device_required` otherwise);
+  `/devices/{id}` is admin only. `POST /ankiconnect` has `security: [{}, …]` plus
+  `x-auth: body-key` and `x-body-key-scope: write`; the check script allows `{}` nowhere else.
+- **Device ids are never reused after local data loss** (SYNC.md §3.3): a reinstall or cleared
+  data mints a new id; only an intact install re-pairs with its old id.
+- **Cursors are keyset without snapshot**; the skip/repeat behaviour for mutable sort keys is
+  specified, and clients de-duplicate by `id`.
 - **Imports are jobs.** Files are uploaded as content-addressed blobs first, then referenced by
   hash from a JSON import request. The media row and its deck are created by the job.
 - **Events** are a server-sent-events stream without replay; the first event carries the sync
@@ -75,17 +96,13 @@ import; TTS; hot kanji; a "today" stats summary and FSRS calibration; job cancel
 
 1. **Reviews made in the web app are attributed to the server, not to a browser.** A consequence
    of "REST-built ops originate from the server device". You cannot later split stats by "phone
-   vs. web" except as "phone vs. everything else", and "undo my last review" on the web means the
-   last review made through the API by anyone (it never touches phone reviews). If per-browser
+   vs. web" except as "phone vs. everything else". If per-browser
    attribution matters, the change is: login registers a web device and the server keeps a
    separate clock per such device.
-2. **The split with the sync contract is assumed, not yet seen.** T005 was written in parallel.
-   This spec assumes `batch.schema.json` describes just the ordered batch of ops, and that the
-   push result list, cursor fields and limits belong here. If T005 also defined a response
-   envelope, or a batch that cannot be embedded under a `batch` property, the two need
-   reconciling before any client or server work starts. The two sync examples here carry a
-   placeholder batch (`{"ops": []}`) that will fail the lint once the real schema lands if its
-   shape differs; `check.sh` currently substitutes a permissive stand-in when the file is absent.
+2. **`insufficient_scope` as a per-op push rejection.** SYNC.md's code set is open, so this is
+   legal, but a rejection is permanent: a script token with `write` but not `review` that pushes
+   a review loses it to Discard/Retry. The alternative (a whole-request `403`) would block the
+   outbox, which T005 forbids. Device tokens always hold `review`, so phones never meet it.
 3. **Scope boundaries for a paired phone.** Phones get `read`, `write`, `review` and not
    `import` or `admin`: the phone cannot start imports, optimizer runs or dictionary refreshes,
    and cannot manage devices or tokens. That matches the spec's "management stays in the web
@@ -106,8 +123,12 @@ import; TTS; hot kanji; a "today" stats summary and FSRS calibration; job cancel
 - **Backup status** for the settings screen: backups run outside the API, which has no knowledge
   of them.
 - **LLM assist** endpoints (off by default in the spec).
-- `GET /devices/{id}` and `PATCH /devices/{id}` let a device token act on its own device without
-  `admin`. That exception is in the description only; the machine-readable scope says `admin`.
+- **Bulk reschedule/reset is not retry-safe**: a repeated call logs a second manual row per card
+  (same schedule effect, extra history). Accepted; each row can be undone by id.
+- **Job retention** is not specified; `import_id` idempotency relies on the job row (or, for new
+  media, the media row) still existing when the retry arrives.
+- **Pull `limit` maximum (1000) and push `maxItems` (500)** are fixed by `batch.schema.json`;
+  `GET /meta` reports them as constants.
 
 ## Checklist: spec resource → operationId
 
@@ -121,7 +142,7 @@ import; TTS; hot kanji; a "today" stats summary and FSRS calibration; job cancel
 | `PATCH /notes/{id}` | `updateNote` |
 | `DELETE /notes/{id}` | `deleteNote` |
 | `GET /cards?query=` | `listCards` |
-| `POST /cards/bulk` | `bulkCards` |
+| `POST /cards/bulk` | `bulkCards` (reschedule/reset: `bulkScheduleCards`) |
 | `GET /review/queue` | `getReviewQueue` |
 | `POST /review/answer` | `answerReview` |
 | `POST /review/undo` | `undoReview` |
@@ -162,7 +183,7 @@ Named by the ticket (auth, devices, tokens, settings):
 | Area | operationIds |
 |---|---|
 | Auth | `login`, `logout`, `getPrincipal` |
-| Devices | `listDevices`, `getDevice`, `updateDevice`, `revokeDevice`, `createPairing`, `pairDevice` |
+| Devices | `listDevices`, `getDevice`, `updateDevice`, `revokeDevice`, `createPairing`, `pairDevice`, `getOwnDevice`, `updateOwnDevice` |
 | Tokens | `listTokens`, `createToken`, `getToken`, `revokeToken` |
 | Settings | `listSettings`, `updateSettings` |
 
@@ -174,7 +195,7 @@ Everything else (additions):
 | Presets | `listPresets`, `createPreset`, `getPreset`, `updatePreset`, `deletePreset`, `optimizePreset` |
 | Note types | `listNoteTypes`, `createNoteType`, `getNoteType`, `updateNoteType`, `deleteNoteType` |
 | Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary` |
-| Notes and cards | `getNote`, `createCard`, `getCard`, `updateCard`, `deleteCard`, `listCardReviews` |
+| Notes and cards | `getNote`, `bulkScheduleCards`, `createCard`, `getCard`, `updateCard`, `deleteCard`, `listCardReviews` |
 | Decks | `listDeckLists`, `getDeck`, `deleteDeck`, `addDeckItems`, `putDeckItem`, `removeDeckItem` |
 | Media | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `reparseMedia`, `importJpdbHistory`, `listSentences`, `getSentence` |
 | Words | `getWordStatus`, `clearWordStatus`, `listHotKanji`, `listConfusables`, `setConfusable` |
@@ -195,7 +216,7 @@ operation starts; "(consequence)" = emitted by the op-apply path. Every op also 
 | `note_type` | `note_type.created/updated/deleted` | `listNoteTypes`, `getNoteType`, `createNoteType`, `updateNoteType`, `deleteNoteType` |
 | `note` | `note.created/updated/deleted`; `note.merged` (consequence) | `listNotes`, `getNote`, `createNote`, `updateNote`, `deleteNote`, `bulkCards`, `ankiConnect`, `importJpdbHistory` |
 | `card` | `card.created/suspended/unsuspended/buried/unburied/flag_set/preset_set/deleted`; `card.merged` (consequence) | `listCards`, `getCard`, `createCard`, `updateCard`, `deleteCard`, `bulkCards`, `createNote`, `getReviewQueue`, `listLeeches` |
-| `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkCards`, `listCardReviews`, `importJpdbHistory`, `getStatsHeatmap`, `getStatsRetention`, `getStatsCalibration` |
+| `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkScheduleCards`, `listCardReviews`, `importJpdbHistory`, `getStatsHeatmap`, `getStatsRetention`, `getStatsCalibration` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `getWordStatus`, `setWordStatus`, `clearWordStatus`, `getStatsKnownWords`, `importJpdbHistory` |
 | `deck` | `deck.created/updated/deleted`; `deck.content_published` (job) | `listDecks`, `getDeck`, `createDeck`, `updateDeck`, `deleteDeck`, `importMedia`, `importJpdbDeck`, `deleteMedia` |
 | `deck_item` | `deck.item_put`, `deck.item_removed`; snapshot via `deck.content_published` (job) | `listDeckItems`, `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote`, `bulkCards`, `getDeckCoverage` |
@@ -216,5 +237,8 @@ contracts/api/check.sh
 Lints the spec with Redocly (pinned version, via `npx`), which also validates every example
 against its schema; then runs `check_contract.py`: every operation declares a scope, every
 mutating operation declares `x-emits-ops` with op names known to SCHEMA.md, every request and
-response body and every parameter has an example, and the tables above cover every operationId
-and every learning-data table. Needs node and python3; network on first run.
+response body and every parameter has an example, the tables above cover every operationId
+and every learning-data table, the three sync bodies are exactly the `batch.schema.json` `$defs`,
+and every example marked `x-example-source` equals its file under `contracts/sync/examples/`.
+`check.sh` fails if `contracts/sync/batch.schema.json` is missing (the permissive stand-in of
+attempt 1 is gone). Needs node and python3; network on first run.

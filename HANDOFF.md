@@ -1,23 +1,23 @@
-# HANDOFF T004
+# HANDOFF T004 (attempt 2)
 
 STATUS: DONE
 BRANCH: t/T004-openapi
-CHECK: `contracts/api/check.sh` → green (`make check MODULE=contracts` is still the Makefile stub; wiring is a later ticket)
+CHECK: `contracts/api/check.sh` → green against the real `../sync/batch.schema.json` (stand-in removed; missing file now fails)
 
 ## Changed (≤ 6 lines)
-- `contracts/api/openapi.yaml`: OpenAPI 3.1 for `/api/v1`, 114 operations, scopes, problem+json errors, cursor pagination, SSE, examples everywhere.
-- `contracts/api/SUMMARY.md`: decisions, rejected alternatives, 3 second-look choices, spec→operationId checklist, table↔op↔API cross-check, known gaps.
-- `contracts/api/check.sh`, `check_contract.py`, `redocly.yaml`: lint plus contract rules.
+- Sync: bodies are exactly `batch.schema.json#/$defs/PushRequest|PushResponse|PullResponse`; 400 only on `PushRequestLenient`; all else per op (adds `insufficient_scope`); no `exclude_own`, limit ≤ 1000, past-head `since` → empty 200; `high_water_seq`/`log_epoch` used everywhere.
+- Review: `answerReview.id` and `undoReview.review_id` are required; reschedule/reset moved to `POST /cards/bulk/schedule` (scope `review`).
+- Auth: `GET/PATCH /devices/self`; ankiConnect `security: [{}, …]` + `x-auth: body-key`.
+- Minors fixed: device-id reuse (SYNC §3.3), keyset cursor skip/repeat semantics, `importMedia.import_id`.
+- check_contract.py: sync bodies must be the `$defs`; sync examples must equal `contracts/sync/examples` files.
 
 ## Acceptance → tests
-- Every spec endpoint present → `check_contract.py` (SUMMARY checklist covers every operationId).
-- Every operation declares a scope; spec validates → Redocly lint (examples validated against schemas) + `check_contract.py`.
-- Every learning-data table has an API operation → `check_contract.py` cross-check table.
+- Spec endpoints, scopes, tables → `check_contract.py`; validity and examples → Redocly lint.
 
 ## New dependencies
-- `@redocly/cli@2.77.0` via `npx` in check.sh only — spec lint, as the ticket suggests.
+- none
 
 ## For the reviewer (≤ 3 lines)
-- Sync split is assumed, T005 unseen: push/pull bodies wrap `../sync/batch.schema.json` under `batch`; check.sh used a permissive stand-in because the file is absent. Re-run after T005 merges; the two placeholder batch examples may then fail lint.
-- REST-built ops originate from the server device (web reviews are not attributed per browser).
-- Undefined here: snapshot archive formats, `confusable.suggested` trigger, pairing-code storage (in-memory).
+- Per-op `insufficient_scope` is permanent; the alternative (whole-request 403) blocks the outbox.
+- `import_id` idempotency relies on job/media rows surviving; job retention is unspecified.
+- T005's §10.4 re-mint change is device-side; no API impact.

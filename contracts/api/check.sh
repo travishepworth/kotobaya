@@ -10,8 +10,8 @@
 #      the sync ops it emits, every body has an example, and SUMMARY.md's checklists cover every
 #      operation and every learning-data table.                 (needs python3)
 #
-# The push/pull bodies reference ../sync/batch.schema.json (owned by T005). If that file is not
-# present yet, the check runs against a copy with a permissive stand-in and says so.
+# The push/pull bodies are contracts/sync/batch.schema.json#/$defs/* (owned by T005) and several
+# examples are copies of contracts/sync/examples/batches/*.json; both must be present.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,14 +23,11 @@ REDOCLY="@redocly/cli@2.77.0"
 
 mkdir -p "$work/contracts/api" "$work/contracts/sync"
 cp "$here/openapi.yaml" "$here/redocly.yaml" "$work/contracts/api/"
-if [ -d "$root/contracts/sync" ]; then
-  cp -R "$root/contracts/sync/." "$work/contracts/sync/"
+if [ ! -f "$root/contracts/sync/batch.schema.json" ]; then
+  echo "contracts/sync/batch.schema.json not found: the API contract references it." >&2
+  exit 1
 fi
-if [ ! -f "$work/contracts/sync/batch.schema.json" ]; then
-  echo "NOTE: contracts/sync/batch.schema.json not found; using a permissive stand-in ({})."
-  printf '{"$schema":"https://json-schema.org/draft/2020-12/schema","description":"stand-in"}\n' \
-    > "$work/contracts/sync/batch.schema.json"
-fi
+cp -R "$root/contracts/sync/." "$work/contracts/sync/"
 
 cd "$work/contracts/api"
 
