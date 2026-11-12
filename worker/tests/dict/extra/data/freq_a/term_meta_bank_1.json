@@ -1,0 +1,5 @@
+[["猫","freq",{"reading":"ねこ","frequency":1200}],
+ ["本","freq",{"reading":"ほん","frequency":50}],
+ ["学校","freq",{"value":300,"displayValue":"300"}],
+ ["日本語","freq",400],
+ ["猫","pitch",{"reading":"ねこ","pitches":[{"position":1}]}]]

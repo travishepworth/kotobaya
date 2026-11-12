@@ -1,0 +1,5 @@
+[["猫","freq",{"reading":"ねこ","frequency":5}],
+ ["飲む","freq",700],
+ ["電車","freq",2000],
+ ["天気","freq",1500],
+ ["本","freq",{"reading":"ほん","frequency":10}]]
