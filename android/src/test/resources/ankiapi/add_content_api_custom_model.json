@@ -1,0 +1,106 @@
+{
+  "description": "AddContentApi addNewCustomModel: a client creates its own note type (as Takoboto may), sets its template, makes it current, and adds a note with an empty last field.",
+  "source": "seeded: spike README URI table + AddContentApi call sequence (not a real Takoboto log)",
+  "calls": [
+    {
+      "comment": "addNewCustomModel: insert the model",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/models",
+      "values": {
+        "name": "Takoboto",
+        "field_names": "Japanese\u001fReading\u001fMeaning\u001fSentence",
+        "num_cards": 1,
+        "css": ".card { font-size: 24px; }",
+        "deck_id": 1,
+        "sort_field_index": 0,
+        "type": 0
+      },
+      "save": "model",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/models/1000" }
+    },
+    {
+      "comment": "addNewCustomModel: set the template",
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/models/${model}/templates/0",
+      "values": {
+        "name": "Recognition",
+        "question_format": "{{Japanese}}",
+        "answer_format": "{{FrontSide}}<hr id=answer>{{Reading}}<br>{{Meaning}}"
+      },
+      "expect": { "count": 1 }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/${model}/templates",
+      "projection": ["model_id", "ord", "name", "question_format"],
+      "expect": { "rows": [["${model}", 0, "Recognition", "{{Japanese}}"]] }
+    },
+    {
+      "comment": "template that does not exist",
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/models/${model}/templates/5",
+      "values": { "name": "x" },
+      "expect": { "count": 0 }
+    },
+    {
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/models/current",
+      "values": { "_id": "${model}" },
+      "expect": { "count": 1 }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/current",
+      "projection": ["_id", "name", "css"],
+      "expect": { "rows": [["${model}", "Takoboto", ".card { font-size: 24px; }"]] }
+    },
+    {
+      "comment": "getFieldList",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/${model}",
+      "projection": ["field_names", "num_cards"],
+      "expect": { "rows": [["Japanese\u001fReading\u001fMeaning\u001fSentence", 1]] }
+    },
+    {
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "values": { "mid": "${model}", "flds": "<b>食べる</b>\u001fたべる\u001fto eat\u001f", "tags": "takoboto" },
+      "save": "note",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1001" }
+    },
+    {
+      "comment": "csum is over the sort field with HTML stripped",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id", "sfld", "csum"],
+      "selection": "mid=${model} and csum in (567984260)",
+      "expect": { "rows": [["${note}", "<b>食べる</b>", 567984260]] }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${note}/cards/0",
+      "projection": ["card_name", "deck_id", "question"],
+      "expect": { "rows": [["Recognition", 1, "<b>食べる</b>"]] }
+    },
+    {
+      "comment": "move the card to another deck",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "values": { "deck_name": "Mining" },
+      "save": "mining",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/decks/1002" }
+    },
+    {
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${note}/cards/0",
+      "values": { "deck_id": "${mining}" },
+      "expect": { "count": 1 }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${note}/cards",
+      "projection": ["deck_id"],
+      "expect": { "rows": [["${mining}"]] }
+    }
+  ]
+}

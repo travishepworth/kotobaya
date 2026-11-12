@@ -1,0 +1,217 @@
+{
+  "description": "AddContentApi (provider spec 2) on the seeded Basic note type: list decks, add and select a deck, list models and fields, duplicate check miss/hit (csum and sfld), addNote, notes_v2 insert, addNotes (bulkInsert).",
+  "source": "seeded: spike README URI table + AddContentApi call sequence (not a real Takoboto log)",
+  "calls": [
+    {
+      "comment": "getDeckList",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "projection": ["deck_id", "deck_name"],
+      "expect": { "columns": ["deck_id", "deck_name"], "rows": [[1, "Default"]] }
+    },
+    {
+      "comment": "addNewDeck",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "values": { "deck_name": "Takoboto" },
+      "save": "deck",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/decks/1000" }
+    },
+    {
+      "comment": "addNewDeck again with the same name returns the existing deck",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "values": { "deck_name": "Takoboto" },
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/decks/${deck}" }
+    },
+    {
+      "comment": "getDeckList after adding",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "projection": ["deck_id", "deck_name"],
+      "expect": { "rows": [[1, "Default"], ["${deck}", "Takoboto"]] }
+    },
+    {
+      "comment": "getDeckName",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/decks/${deck}",
+      "projection": ["deck_name"],
+      "expect": { "rows": [["Takoboto"]] }
+    },
+    {
+      "comment": "select deck",
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/selected_deck",
+      "values": { "deck_id": "${deck}" },
+      "expect": { "count": 1 }
+    },
+    {
+      "comment": "getSelectedDeckName",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/selected_deck",
+      "projection": ["deck_id", "deck_name"],
+      "expect": { "rows": [["${deck}", "Takoboto"]] }
+    },
+    {
+      "comment": "getModelList(minNumFields): null projection gives the default columns",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models",
+      "expect": {
+        "columns": ["_id", "name", "field_names", "num_cards", "css", "deck_id", "sort_field_index", "type", "latex_header", "latex_footer"],
+        "rows": [[1, "Basic", "Front\u001fBack", 1, "", 1, 0, 0, "", ""]]
+      }
+    },
+    {
+      "comment": "getFieldList(mid)",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/1",
+      "projection": ["field_names"],
+      "expect": { "rows": [["Front\u001fBack"]] }
+    },
+    {
+      "comment": "models/#/fields (spike extension)",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/1/fields",
+      "expect": { "columns": ["_id", "name", "ord"], "rows": [[0, "Front", 0], [1, "Back", 1]] }
+    },
+    {
+      "comment": "getCurrentModelId",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/current",
+      "projection": ["_id"],
+      "expect": { "rows": [[1]] }
+    },
+    {
+      "comment": "findDuplicateNotes(mid, 食べる): miss",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id", "mid", "flds", "tags"],
+      "selection": "mid=1 and csum in (567984260)",
+      "expect": { "columns": ["_id", "mid", "flds", "tags"], "rows": [] }
+    },
+    {
+      "comment": "addNote(mid, deckId, fields, tags)",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes?deckId=${deck}",
+      "values": { "mid": 1, "flds": "食べる\u001fto eat", "tags": "takoboto jlpt-n5" },
+      "save": "taberu",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1001" }
+    },
+    {
+      "comment": "findDuplicateNotes(mid, 食べる): hit",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id", "mid", "flds", "tags"],
+      "selection": "mid=1 and csum in (567984260)",
+      "expect": { "rows": [["${taberu}", 1, "食べる\u001fto eat", "takoboto jlpt-n5"]] }
+    },
+    {
+      "comment": "findDuplicateNotes via csum of a different model: miss",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id"],
+      "selection": "mid=999 and csum in (567984260)",
+      "expect": { "rows": [] }
+    },
+    {
+      "comment": "spec-1 style duplicate check by sort field: hit",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["_id", "sfld", "csum"],
+      "selection": "mid=1 and sfld=?",
+      "args": ["食べる"],
+      "expect": { "rows": [["${taberu}", "食べる", 567984260]] }
+    },
+    {
+      "comment": "spec-1 style duplicate check by sort field: miss",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["_id"],
+      "selection": "mid=1 and sfld='見る'",
+      "expect": { "rows": [] }
+    },
+    {
+      "comment": "the added note's card landed in the requested deck",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}/cards",
+      "projection": ["note_id", "ord", "deck_id", "question"],
+      "expect": { "rows": [["${taberu}", 0, "${deck}", "食べる"]] }
+    },
+    {
+      "comment": "insert through notes_v2 returns a note URI; no deckId -> the model's deck",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "values": { "mid": 1, "flds": "飲む\u001fto drink", "tags": "" },
+      "save": "nomu",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1002" }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${nomu}/cards",
+      "projection": ["deck_id"],
+      "expect": { "rows": [[1]] }
+    },
+    {
+      "comment": "addNotes: bulkInsert",
+      "method": "bulkInsert",
+      "uri": "content://com.ichi2.anki.flashcards/notes?deckId=${deck}",
+      "valuesList": [
+        { "mid": 1, "flds": "見る\u001fto see", "tags": "takoboto" },
+        { "mid": 1, "flds": "行く\u001fto go", "tags": "takoboto" }
+      ],
+      "expect": { "count": 2 }
+    },
+    {
+      "comment": "batch duplicate check over several keys",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["sfld"],
+      "selection": "mid=1 and csum in (3364594046, 1670133866, 2712420579)",
+      "expect": { "rows": [["飲む"], ["見る"], ["行く"]] }
+    },
+    {
+      "comment": "all notes",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["_id"],
+      "expect": { "rowCount": 4 }
+    },
+    {
+      "comment": "empty trailing field survives the 0x1f split",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "values": { "mid": 1, "flds": "空\u001f" },
+      "save": "empty",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1005" }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${empty}",
+      "projection": ["flds", "tags"],
+      "expect": { "rows": [["空\u001f", ""]] }
+    },
+    {
+      "comment": "update note tags, then delete it",
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${empty}",
+      "values": { "tags": "a b" },
+      "expect": { "count": 1 }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${empty}",
+      "projection": ["tags"],
+      "expect": { "rows": [["a b"]] }
+    },
+    {
+      "method": "delete",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${empty}",
+      "expect": { "count": 1 }
+    },
+    {
+      "method": "getType",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "expect": { "type": "vnd.android.cursor.dir/vnd.com.ichi2.anki.note" }
+    }
+  ]
+}

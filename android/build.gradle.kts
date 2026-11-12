@@ -35,6 +35,22 @@ android {
         versionCode = 1
         versionName = "0.0.0"
     }
+    // T305a: AnkiDroid stand-in flavors. Code namespace stays kotobaya.android in both; only one app
+    // per device can own the provider authority and permission (see ankiapi/provider/AnkiContract.kt).
+    flavorDimensions += "appId"
+    productFlavors {
+        // Default: Takoboto (AddContentApi) finds AnkiDroid by this package name. Sideload only.
+        create("ankidroid") {
+            dimension = "appId"
+            isDefault = true
+            applicationId = "com.ichi2.anki"
+        }
+        // Fallback: own package name; Takoboto finds it via the provider authority only.
+        create("own") {
+            dimension = "appId"
+            applicationId = "kotobaya.android"
+        }
+    }
     buildFeatures { compose = true }
     testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
@@ -67,6 +83,88 @@ val copyCardAssets = tasks.register<CopyCardAssets>("copyCardAssets") {
 androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(copyCardAssets) { it.outputDir }
+    }
+}
+
+// --- T305a: flavor verification, aggregate test task, APK names --------------------------------
+
+// Fails unless a variant's merged manifest has the expected package and declares AnkiDroid's
+// provider authority and permission (the two things Takoboto's AddContentApi looks for).
+abstract class VerifyAnkiApiManifest : DefaultTask() {
+    @get:InputFile
+    abstract val mergedManifest: RegularFileProperty
+
+    @get:Input
+    abstract val expectedApplicationId: Property<String>
+
+    @TaskAction
+    fun verify() {
+        val ns = "http://schemas.android.com/apk/res/android"
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+            .apply { isNamespaceAware = true }
+            .newDocumentBuilder()
+            .parse(mergedManifest.get().asFile)
+        fun elements(tag: String): List<org.w3c.dom.Element> =
+            doc.getElementsByTagName(tag).let { l -> (0 until l.length).map { l.item(it) as org.w3c.dom.Element } }
+        val pkg = doc.documentElement.getAttribute("package")
+        val permission = "com.ichi2.anki.permission.READ_WRITE_DATABASE"
+        val provider = elements("provider")
+            .firstOrNull { it.getAttributeNS(ns, "authorities") == "com.ichi2.anki.flashcards" }
+        val problems = buildList {
+            if (pkg != expectedApplicationId.get()) add("package is '$pkg', expected '${expectedApplicationId.get()}'")
+            if (elements("permission").none { it.getAttributeNS(ns, "name") == permission }) {
+                add("permission $permission not declared")
+            }
+            if (provider == null) {
+                add("provider com.ichi2.anki.flashcards not declared")
+            } else {
+                if (provider.getAttributeNS(ns, "exported") != "true") add("provider not exported")
+                if (provider.getAttributeNS(ns, "readPermission") != permission) add("provider readPermission wrong")
+                if (provider.getAttributeNS(ns, "writePermission") != permission) add("provider writePermission wrong")
+            }
+        }
+        if (problems.isNotEmpty()) {
+            throw GradleException("${mergedManifest.get().asFile}: " + problems.joinToString("; "))
+        }
+        logger.lifecycle("AnkiApi manifest OK: $pkg")
+    }
+}
+
+val expectedAppIds = mapOf("ankidroid" to "com.ichi2.anki", "own" to "kotobaya.android")
+androidComponents {
+    onVariants { variant ->
+        val expected = expectedAppIds[variant.flavorName] ?: return@onVariants
+        val taskName = "verify${variant.name.replaceFirstChar { it.uppercase() }}AnkiApiManifest"
+        tasks.register<VerifyAnkiApiManifest>(taskName) {
+            mergedManifest.set(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.MERGED_MANIFEST))
+            expectedApplicationId.set(expected)
+        }
+    }
+}
+
+// `make check MODULE=android` runs `:android:testDebugUnitTest`, which flavors would remove. Keep the
+// name as one aggregate: unit tests of the default flavor, plus both debug flavors built and verified.
+tasks.register("testDebugUnitTest") {
+    group = "verification"
+    description = "Unit tests (ankidroid flavor); builds and verifies the manifests of both debug flavors."
+    dependsOn(
+        "testAnkidroidDebugUnitTest",
+        "assembleAnkidroidDebug",
+        "assembleOwnDebug",
+        "compileOwnDebugUnitTestKotlin",
+        "verifyAnkidroidDebugAnkiApiManifest",
+        "verifyOwnDebugAnkiApiManifest",
+    )
+}
+
+// The default flavor's APK is named plainly; the fallback carries its flavor name.
+@Suppress("DEPRECATION")
+android.applicationVariants.all {
+    val variant = this
+    outputs.all {
+        val suffix = if (variant.flavorName == "ankidroid") "" else "-${variant.flavorName}"
+        (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+            "kotobaya$suffix-${variant.buildType.name}.apk"
     }
 }
 

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kotobaya</string>
+    <string name="ankiapi_permission_label">Read and write to the AnkiDroid database</string>
+    <string name="ankiapi_permission_description">Lets an app (for example Takoboto) add notes and read decks and note types through the AnkiDroid-compatible API.</string>
     <string name="nav_home">Home</string>
     <string name="nav_review">Review</string>
     <string name="nav_search">Search</string>

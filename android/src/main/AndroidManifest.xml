@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- T305a: AnkiDroid's API permission. Free to declare only while AnkiDroid (and the other
+         flavor) is not installed; install fails with DUPLICATE_PERMISSION otherwise. -->
+    <permission
+        android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE"
+        android:description="@string/ankiapi_permission_description"
+        android:label="@string/ankiapi_permission_label"
+        android:protectionLevel="dangerous" />
     <application
         android:name=".app.KotobayaApp"
         android:label="@string/app_name"
@@ -27,5 +34,18 @@
                 <action android:name="kotobaya.android.notify.DUE_ALARM" />
             </intent-filter>
         </receiver>
+        <!-- T305a: AnkiDroid's FlashCardsContract provider (Takoboto stand-in). -->
+        <provider
+            android:name=".ankiapi.provider.AnkiProvider"
+            android:authorities="com.ichi2.anki.flashcards"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:readPermission="com.ichi2.anki.permission.READ_WRITE_DATABASE"
+            android:writePermission="com.ichi2.anki.permission.READ_WRITE_DATABASE">
+            <!-- AddContentApi reads this to pick the provider spec (2 = notes_v2 / csum duplicate checks). -->
+            <meta-data
+                android:name="com.ichi2.anki.provider.spec"
+                android:value="2" />
+        </provider>
     </application>
 </manifest>

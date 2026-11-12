@@ -1,0 +1,140 @@
+{
+  "description": "Unknown URIs, columns, selections and call() are logged with !! and answered empty; client mistakes map to IllegalArgumentException like AnkiDroid; bulkInsert skips bad rows and counts the rest.",
+  "source": "seeded: spike README URI table (not a real Takoboto log)",
+  "calls": [
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/schedule",
+      "projection": ["_id", "due"],
+      "logsUnknown": true,
+      "expect": { "columns": ["_id", "due"], "rows": [] }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/media",
+      "logsUnknown": true,
+      "expect": { "columns": ["_id"], "rows": [] }
+    },
+    {
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/media",
+      "values": { "file_uri": "content://x/y.mp3" },
+      "logsUnknown": true,
+      "expect": { "uri": null }
+    },
+    {
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/decks/1",
+      "values": { "deck_name": "x" },
+      "logsUnknown": true,
+      "expect": { "count": 0 }
+    },
+    {
+      "method": "delete",
+      "uri": "content://com.ichi2.anki.flashcards/decks/1",
+      "logsUnknown": true,
+      "expect": { "count": 0 }
+    },
+    {
+      "method": "call",
+      "uri": "content://com.ichi2.anki.flashcards",
+      "callMethod": "getVersion",
+      "arg": null,
+      "logsUnknown": true,
+      "expect": { "bundle": null }
+    },
+    {
+      "method": "getType",
+      "uri": "content://com.ichi2.anki.flashcards/whatever",
+      "logsUnknown": true,
+      "expect": { "type": null }
+    },
+    {
+      "comment": "a projected column the provider does not know is answered with null",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "projection": ["deck_name", "deck_colour"],
+      "logsUnknown": true,
+      "expect": { "rows": [["Default", null]] }
+    },
+    {
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "values": { "mid": 1, "flds": "見る\u001fto see" },
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1000" }
+    },
+    {
+      "comment": "a selection we cannot parse answers no rows (never a false duplicate)",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id"],
+      "selection": "flags = 0",
+      "logsUnknown": true,
+      "expect": { "rows": [] }
+    },
+    {
+      "comment": "missing note / model ids answer no rows",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/424242",
+      "projection": ["_id"],
+      "expect": { "rows": [] }
+    },
+    {
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/424242/fields",
+      "expect": { "rows": [] }
+    },
+    {
+      "comment": "unknown model id",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "values": { "mid": 999, "flds": "a\u001fb" },
+      "expect": { "throws": "IllegalArgumentException" }
+    },
+    {
+      "comment": "field count does not match the model",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "values": { "mid": 1, "flds": "only one field" },
+      "expect": { "throws": "IllegalArgumentException" }
+    },
+    {
+      "comment": "mid missing",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "values": { "flds": "a\u001fb" },
+      "expect": { "throws": "IllegalArgumentException" }
+    },
+    {
+      "comment": "unknown deck",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes?deckId=777",
+      "values": { "mid": 1, "flds": "a\u001fb" },
+      "expect": { "throws": "IllegalArgumentException" }
+    },
+    {
+      "comment": "deck name missing",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "values": { "deck_desc": "x" },
+      "expect": { "throws": "IllegalArgumentException" }
+    },
+    {
+      "comment": "bulkInsert skips the bad row and counts the good one",
+      "method": "bulkInsert",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "valuesList": [
+        { "mid": 1, "flds": "bad" },
+        { "mid": 1, "flds": "良い\u001fgood" }
+      ],
+      "expect": { "count": 1 }
+    },
+    {
+      "comment": "nothing above left a stray note behind",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["sfld"],
+      "expect": { "rows": [["見る"], ["良い"]] }
+    }
+  ]
+}
