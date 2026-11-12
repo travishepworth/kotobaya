@@ -27,6 +27,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 <!-- orchestrator appends: ADR id, one line, how to reverse. Confirm or reverse each. -->
 
 ## Deploy
+- [ ] F-4: run the extended restore drill on k3d (`deploy/backup/restore-drill.sh`): confirm the data-loss preflight refuses without `--accept-data-loss` and leaves api/CronJobs untouched.
 - [ ] **P1 — Cluster:** `helm install` on the real cluster (command filled in by orchestrator); open the web app; search the dictionary.
 - [ ] **Backups:** confirm the first nightly backup landed off-cluster; run the restore drill once.
 
