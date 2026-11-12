@@ -10,7 +10,7 @@ chart="$here/../helm/kotobaya"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 eq() { [ "$2" = "$3" ] || fail "$1: got '$2', want '$3'"; }
 
-for f in lib.sh backup.sh verify.sh restore.sh restore-k8s.sh restore-drill.sh; do bash -n "$here/$f"; done
+for f in lib.sh backup.sh verify.sh restore.sh watchdog.sh restore-k8s.sh restore-drill.sh; do bash -n "$here/$f"; done
 if command -v shellcheck >/dev/null; then shellcheck -S warning -x -e SC1091 "$here"/*.sh; fi
 
 # shellcheck source=lib.sh
@@ -62,8 +62,13 @@ helm template t kotobaya >"$tmp/off.yaml"
 ! grep -q 'kind: CronJob' "$tmp/off.yaml" || fail "backup.enabled=false must render no CronJob"
 helm lint kotobaya --set backup.enabled=true >/dev/null
 helm template t kotobaya --set backup.enabled=true --set backup.notify.url=http://ntfy.example.invalid/x >"$tmp/on.yaml"
-eq cronjobs "$(grep -c '^kind: CronJob' "$tmp/on.yaml")" 3
-for s in backup.sh verify.sh restore.sh; do grep -q "/opt/backup/$s" "$tmp/on.yaml" || fail "no job runs $s"; done
+eq cronjobs "$(grep -c "^kind: CronJob" "$tmp/on.yaml")" 4
+for s in backup.sh verify.sh restore.sh watchdog.sh; do grep -q "/opt/backup/$s" "$tmp/on.yaml" || fail "no job runs $s"; done
+grep -q 'name: t-backup-watchdog' "$tmp/on.yaml" || fail "watchdog CronJob missing"
+grep -q 'kind: Role$' "$tmp/on.yaml" && grep -q 'verbs: \[get\]' "$tmp/on.yaml" || fail "watchdog RBAC (get cronjobs) missing"
+awk '/^kind: CronJob/{c=1} c&&/name: t-backup-watchdog/{w=1} w&&/suspend: true/{bad=1} /^---/{c=0;w=0} END{exit bad}' "$tmp/on.yaml" || fail "watchdog CronJob must never be suspended"
+# restore-k8s.sh may suspend only the backup and backup-verify CronJobs, never the watchdog
+grep -q 'CRONS="\$REL-backup \$REL-backup-verify"' "$here/restore-k8s.sh" || fail "restore-k8s.sh CRONS must be exactly backup + backup-verify"
 grep -q '/sbin/tini' "$tmp/on.yaml" || fail "jobs must run under tini"
 grep -q 'name: STALE_SECONDS' "$tmp/on.yaml" || fail "staleness limit not rendered"
 grep -q 'volumePreallocate=false' "$tmp/off.yaml" || fail "SeaweedFS must not preallocate volumes"

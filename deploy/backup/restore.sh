@@ -16,8 +16,36 @@ set -euo pipefail
 trap 'finish restore' EXIT
 
 : "${WORK_DIR:=/work}"
-restic_need; db_env; rclone_env; wait_net
+db_env
+LIKE_BASE="${LIVE_DB//_/\\_}"
+LIKE_OLD="${LIKE_BASE}\\_pre\\_restore\\_%"
+dbs_pre_restore() { psqlq -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE '$LIKE_OLD' ORDER BY 1"; }
+
+# RESTORE_MODE=cleanup (run by restore-k8s.sh after the server finalized): drop the pre-restore copies.
+if [ "${RESTORE_MODE:-}" = cleanup ]; then
+  wait_net
+  for d in $(dbs_pre_restore); do psqlq -d postgres -c "DROP DATABASE \"$d\" WITH (FORCE)"; log "dropped $d"; done
+  trap - EXIT; exit 0
+fi
+
+restic_need; rclone_env; wait_net
 rm -rf "${WORK_DIR:?}"/* 2>/dev/null || true
+
+# Crash recovery: a previous run that died between the two renames leaves no live database.
+if [ "$(psqlq -d postgres -c "SELECT count(*) FROM pg_database WHERE datname = '$LIVE_DB'")" = 0 ]; then
+  olds=$(dbs_pre_restore)
+  case $(printf '%s' "$olds" | grep -c .) in
+    1) log "live database $LIVE_DB is missing; a previous restore died between its renames. Putting $olds back."
+       psqlq -d postgres -c "ALTER DATABASE \"$olds\" RENAME TO \"$LIVE_DB\"";;
+    0) log "live database $LIVE_DB is missing and there is no ${LIVE_DB}_pre_restore_* copy: restoring into a new one";;
+    *) FAIL_DETAIL="live database missing and several ${LIVE_DB}_pre_restore_* copies exist ($(echo $olds)). Rename the right one back to $LIVE_DB by hand (ALTER DATABASE ... RENAME TO), then re-run. "
+       log "$FAIL_DETAIL"; exit 4;;
+  esac
+fi
+# Leftover temporary copies of earlier attempts are worthless: drop them.
+for d in $(psqlq -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE '${LIKE_BASE}\\_restoring\\_%'"); do
+  psqlq -d postgres -c "DROP DATABASE \"$d\" WITH (FORCE)"
+done
 
 NEWEST=$(restic snapshots --tag verified --latest 1 --json | jq -r 'sort_by(.time) | last | .id // empty')
 [ -n "$NEWEST" ] || { FAIL_DETAIL="no verified snapshot to restore. "; log "$FAIL_DETAIL"; exit 1; }
@@ -44,7 +72,7 @@ BLOBS=$(dirname "$DUMP")/blobs
 pg_restore --list "$DUMP" >/dev/null
 
 # Load into a temporary database first: a failed or mismatched restore leaves the live DB untouched.
-create_scratch
+create_scratch "${LIVE_DB}_restoring"
 pg_restore --no-owner --exit-on-error -d "$SCRATCH_DB" "$DUMP"
 
 log "2/3 restoring blobs"
@@ -58,11 +86,18 @@ ON CONFLICT (key) DO UPDATE SET value = '1', updated_at = now();
 SQL
 # the restored data must equal the backup (the epoch is still the old one until the server finalizes)
 compare_counts "$COUNTS" "$SCRATCH_DB"
-# Swap: the renames fail while anything is connected (api/worker must be stopped). If the second
-# rename fails the live name is missing; re-running the script starts again from step 1.
+# Swap: the renames fail while anything is connected (api/worker must be stopped).
+# From here the EXIT trap must NOT drop the restored copy (a death between the renames would
+# otherwise destroy both): SCRATCH_DB is cleared first. If the job dies between the renames the live
+# name is missing, and the next run puts the pre-restore copy back (start of this script).
+# The pre-restore database is KEPT; restore-k8s.sh drops it (RESTORE_MODE=cleanup) once the server
+# has finalized. Manual cleanup: DROP DATABASE "<db>_pre_restore_<timestamp>".
+RESTORED=$SCRATCH_DB; SCRATCH_DB=""
 OLD="${LIVE_DB}_pre_restore_$(date -u +%Y%m%d%H%M%S)"
-psqlq -d postgres -c "ALTER DATABASE \"$LIVE_DB\" RENAME TO \"$OLD\""
-psqlq -d postgres -c "ALTER DATABASE \"$SCRATCH_DB\" RENAME TO \"$LIVE_DB\""
-SCRATCH_DB=""
-psqlq -d postgres -c "DROP DATABASE \"$OLD\"" || log "WARNING: could not drop the previous database $OLD; drop it by hand"
-log "restore OK: snapshot $SNAP loaded, restore_pending set; start the server to finalize"
+if [ "$(psqlq -d postgres -c "SELECT count(*) FROM pg_database WHERE datname = '$LIVE_DB'")" != 0 ]; then
+  psqlq -d postgres -c "ALTER DATABASE \"$LIVE_DB\" RENAME TO \"$OLD\"" \
+    || { psqlq -d postgres -c "DROP DATABASE \"$RESTORED\" WITH (FORCE)"; exit 1; }   # live still in place
+fi
+[ -z "${KILL_BETWEEN_RENAMES:-}" ] || { log "KILL_BETWEEN_RENAMES set (drill): dying between the renames"; kill -9 $$; }
+psqlq -d postgres -c "ALTER DATABASE \"$RESTORED\" RENAME TO \"$LIVE_DB\""
+log "restore OK: snapshot $SNAP loaded, restore_pending set; previous database kept as $OLD until the server has finalized"

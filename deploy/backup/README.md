@@ -61,6 +61,14 @@ Job also fails, so the failure is visible in `kubectl get jobs` either way.
 - The snapshot is verified before it is tagged: `restic check --read-data-subset=10%` and the
   dump read back from the repository and compared by sha256.
 
+- Watchdog: a daily `<release>-backup-watchdog` CronJob that restores never suspend. It alerts and
+  fails when the newest verified snapshot is older than `backup.staleHours` (or none exists), when
+  the backup or backup-verify CronJob is suspended by hand, or when a restore left them suspended for
+  more than 3 h (annotation `kotobaya/suspended-by-restore` holds the suspend time). It uses a
+  ServiceAccount allowed to `get` only those two CronJobs. So a failed restore that is followed by a
+  hand-scaled api still produces an alert within a day.
+- restic times are parsed to epoch seconds (any UTC offset), never compared as strings.
+
 ## Resource limits
 
 `backup.workSize` (10Gi emptyDir) must hold the dump plus every blob (the mirror is staged on disk);
@@ -81,6 +89,12 @@ database untouched). 3. Scales api and worker back; the api finalizes at startup
 `durable_seq = max(change.seq)`, raised HLC) before it reports ready; then the CronJobs are resumed.
 If the Job fails the workloads stay down and the CronJobs suspended; fix the cause and re-run (the
 script remembers the original replica counts and which CronJobs it suspended).
+Crash safety: the swap is two renames (live -> `<db>_pre_restore_<ts>`, restored copy -> live). The
+pre-restore database is kept until the server has finalized, then dropped by a cleanup Job
+(`RESTORE_MODE=cleanup`); to do it by hand: `DROP DATABASE "<db>_pre_restore_<ts>"`. If the job dies
+between the renames, the live database is missing: re-run `restore-k8s.sh`; `restore.sh` finds the
+single `<db>_pre_restore_*`, renames it back and restores again (with several candidates it stops and
+tells you to rename the right one back by hand).
 External Postgres: the database user must own the database and have `CREATEDB` (the swap renames it).
 Restoring an older snapshot loses ops devices already purged, so it needs
 `RESTORE_SNAPSHOT=<id> RESTORE_CONFIRM_OLDER=yes` and prints a warning.

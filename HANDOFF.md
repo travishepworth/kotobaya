@@ -1,22 +1,18 @@
-# HANDOFF T112 (attempt 2)
+# HANDOFF T112 (attempt 3)
 
 STATUS: DONE
 BRANCH: t/T112-backups (rebased on main)
 CHECK: `make check MODULE=deploy` → green. Restore drill on k3d `kotobaya-t112`: `DRILL PASS` (cluster and images deleted).
 
-## Changed (review fixes)
-- Major 1: `restore-k8s.sh` suspends backup/backup-verify CronJobs, waits for their pods, scales down (fails if pods remain), resumes after `rollout status`; `backup.sh` exits 3 with an alert if `restore_pending` is in the live DB or the dump.
-- Major 2: `durable_seq.sql` runs in one transaction under `pg_advisory_xact_lock(7033001)`, requires no `restore_pending` and live epoch == E.
-- Major 3: jobs run under `tini -g` plus a TERM trap (alert on deadline/delete); `check_fresh` (newest verified snapshot older than `backup.staleHours`=52): `verify.sh` fails, `backup.sh` alerts and continues (so it can repair). Memory 2Gi, `workSize`/`tmpSize` limits documented.
-- Minors: restore into temp DB, compare, set restore_pending, rename swap (live untouched on failure); `restic check --read-data-subset=10%` plus dump sha256 read-back before tagging verified; README (external PG must own DB); drill asserts refusal under `restore_pending`, CronJobs resumed, envFrom Secret.
-- `objectstore.yaml`: `-master.volumePreallocate=false -volume.max=40` (permanent).
-
-## Acceptance → tests
-- Drill (`restore-drill.sh`): all attempt-1 asserts plus restore_pending guards (backup fails + alert; durable_seq.sql skips). `deploy/backup/check.sh`: staleness, SQL shape, tini/STALE_SECONDS/preallocate render.
+## Changed
+- Major: daily `<rel>-backup-watchdog` CronJob (`watchdog.sh`, own ServiceAccount + Role `get` on the two CronJobs; kubectl added to the image). Alerts and fails on: no/stale verified snapshot, backup or backup-verify suspended by hand, or suspended by a restore for more than 3 h (annotation `kotobaya/suspended-by-restore` now holds the epoch time). `restore-k8s.sh` suspends only backup + backup-verify, never the watchdog. Render assertions in `check.sh`.
+- Crash safety: `restore.sh` clears `SCRATCH_DB` before the renames (restored copy named `<db>_restoring_*`), keeps the pre-restore DB; `restore-k8s.sh` drops it by a cleanup Job (`RESTORE_MODE=cleanup`) only after the api rolled out (server finalized). On start, a missing live DB with exactly one `<db>_pre_restore_*` is renamed back automatically; several candidates stop with instructions (exit 4). README documents manual cleanup.
+- Minor: `check_fresh` parses restic times to epoch seconds (no string comparison).
+- Drill additions: watchdog passes when healthy; job killed between the renames (`KILL_BETWEEN_RENAMES=1` drill hook, SIGKILL) leaves live DB missing, both copies kept, CronJobs suspended, watchdog (STUCK_SECONDS=0) fails and alerts; re-run recovers, data == backup, new epoch, CronJobs resumed, no leftover DBs.
 
 ## New dependencies
-- tini in the backup image.
+- kubectl (alpine package) in the backup image, for the watchdog.
 
 ## For the reviewer
-- Still needed elsewhere: `deploy/helm/check.sh` calls `../backup/check.sh` (edited); build the `backup` image in release.yml; api.yaml `BACKUPS_DISABLED=true` when backups off (server must read it, T202).
-- Not drilled: OOMKill/eviction path (covered only by the unit-tested staleness check) and the race itself (guards asserted, not interleaved).
+- Unchanged open items: `deploy/helm/check.sh` calls `../backup/check.sh`; build the `backup` image in release.yml; api `BACKUPS_DISABLED` wiring (T202).
+- Watchdog alerts on the first day until the first nightly backup exists (no verified snapshot yet). OOMKill path still only covered by staleness logic, not drilled.

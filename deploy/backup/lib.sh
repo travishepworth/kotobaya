@@ -66,7 +66,7 @@ psqlq() { psql -X -q -v ON_ERROR_STOP=1 -At "$@"; }
 
 # Scratch database. V1 needs a UTF-8 ctype (a C ctype aborts the migration), so create it C.UTF-8.
 create_scratch() {
-  SCRATCH_DB="kotobaya_scratch_$(date -u +%Y%m%d%H%M%S)_$$"
+  SCRATCH_DB="${1:-kotobaya_scratch}_$(date -u +%Y%m%d%H%M%S)_$$"
   psqlq -d postgres -c "CREATE DATABASE \"$SCRATCH_DB\" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8'" >/dev/null
   log "scratch database $SCRATCH_DB created"
 }
@@ -125,10 +125,15 @@ trap 'exit 143' TERM INT
 # deadline) or never runs is noticed by the next job that does run.
 # No verified snapshot at all is not "stale" here (fresh repository); verify.sh rejects that itself.
 check_fresh() {
-  local newest age
-  newest=$(restic snapshots --tag verified --json | jq -r 'map(.time) | max // empty')
-  [ -n "$newest" ] || return 0
-  age=$(( $(date -u +%s) - $(date -u -d "$newest" +%s) ))
+  local newest age t e
+  # Each timestamp is parsed (any UTC offset) to epoch seconds; never compare the strings.
+  newest=0
+  while read -r t; do
+    [ -n "$t" ] || continue
+    e=$(date -u -d "$t" +%s); [ "$e" -gt "$newest" ] && newest=$e
+  done < <(restic snapshots --tag verified --json | jq -r '.[].time')
+  [ "$newest" -gt 0 ] || return 0
+  age=$(( $(date -u +%s) - newest ))
   if [ "$age" -gt "${STALE_SECONDS:-187200}" ]; then
     FAIL_DETAIL="newest verified backup is $((age / 3600)) h old (limit $(( ${STALE_SECONDS:-187200} / 3600 )) h): backups are not completing. "
     log "$FAIL_DETAIL"; return 1

@@ -34,7 +34,7 @@ wait_no_pods() { # selector, what
 CRONS="$REL-backup $REL-backup-verify"
 for c in $CRONS; do
   if [ "$(k get cronjob "$c" -o jsonpath='{.spec.suspend}')" != true ]; then
-    k annotate cronjob "$c" kotobaya/suspended-by-restore=true --overwrite >/dev/null
+    k annotate cronjob "$c" kotobaya/suspended-by-restore="$(date -u +%s)" --overwrite >/dev/null
     k patch cronjob "$c" -p '{"spec":{"suspend":true}}' >/dev/null
   fi
 done
@@ -56,22 +56,26 @@ echo "scaling api ($API_REPLICAS) and worker ($WORKER_REPLICAS) to 0"
 k scale deploy "$REL-api" "$REL-worker" --replicas=0
 wait_no_pods "app.kubernetes.io/component in (api,worker)" "api/worker"
 
-JOB="$REL-restore-$(date -u +%Y%m%d%H%M%S)"
-k create job "$JOB" --from="cronjob/$REL-backup-restore" --dry-run=client -o json |
-  jq --arg s "${RESTORE_SNAPSHOT:-}" --arg c "${RESTORE_CONFIRM_OLDER:-}" \
-    '.spec.template.spec.containers[0].env += [{"name":"RESTORE_SNAPSHOT","value":$s},{"name":"RESTORE_CONFIRM_OLDER","value":$c}]' |
-  k apply -f - >/dev/null
-echo "restore job $JOB started"
-
-deadline=$((SECONDS + TIMEOUT)); rc=1
-while [ $SECONDS -lt $deadline ]; do
-  ok=$(k get job "$JOB" -o jsonpath='{.status.succeeded}' 2>/dev/null || true)
-  bad=$(k get job "$JOB" -o jsonpath='{.status.failed}' 2>/dev/null || true)
-  if [ "${ok:-0}" -ge 1 ] 2>/dev/null; then rc=0; break; fi
-  if [ "${bad:-0}" -ge 1 ] 2>/dev/null; then break; fi
-  sleep 3
-done
-k logs "job/$JOB" || true
+run_restore_job() { # $1 = mode ("" = restore, "cleanup"); returns 0 when the Job succeeded
+  local job ok bad deadline=$((SECONDS + TIMEOUT))
+  job="$REL-restore-${1:-run}-$(date -u +%Y%m%d%H%M%S)"
+  k create job "$job" --from="cronjob/$REL-backup-restore" --dry-run=client -o json |
+    jq --arg s "${RESTORE_SNAPSHOT:-}" --arg c "${RESTORE_CONFIRM_OLDER:-}" --arg m "${1:-}" --arg kill "${KILL_BETWEEN_RENAMES:-}" \
+      '.spec.template.spec.containers[0].env += [{"name":"RESTORE_SNAPSHOT","value":$s},{"name":"RESTORE_CONFIRM_OLDER","value":$c},{"name":"RESTORE_MODE","value":$m},{"name":"KILL_BETWEEN_RENAMES","value":$kill}]' |
+    k apply -f - >/dev/null
+  echo "job $job started"
+  JOB=$job
+  while [ $SECONDS -lt $deadline ]; do
+    ok=$(k get job "$job" -o jsonpath='{.status.succeeded}' 2>/dev/null || true)
+    bad=$(k get job "$job" -o jsonpath='{.status.failed}' 2>/dev/null || true)
+    if [ "${ok:-0}" -ge 1 ] 2>/dev/null; then k logs "job/$job" || true; return 0; fi
+    if [ "${bad:-0}" -ge 1 ] 2>/dev/null; then break; fi
+    sleep 3
+  done
+  k logs "job/$job" || true
+  return 1
+}
+rc=0; run_restore_job "" || rc=1
 if [ $rc -ne 0 ]; then
   echo "RESTORE FAILED; api and worker left scaled to 0 and the backup CronJobs suspended. Job: $JOB" >&2
   echo "(the restore loads a temporary database first, so the live one is untouched unless the final rename ran)" >&2
@@ -83,9 +87,12 @@ k scale deploy "$REL-api" --replicas="$API_REPLICAS"
 k scale deploy "$REL-worker" --replicas="$WORKER_REPLICAS"
 k rollout status deploy "$REL-api" --timeout=600s   # readiness = /readyz: restore finalized, scheduler checked
 k annotate deploy "$REL-api" "$REL-worker" kotobaya/replicas-before-restore- >/dev/null
-# Only now (restore finalized by the server) may backups run again.
+# The server has finalized: only now drop the pre-restore database (kept until here so a crash
+# between the two renames, or a restore that must be undone, can be recovered).
+run_restore_job cleanup || echo "WARNING: could not drop <db>_pre_restore_* databases; drop them by hand (README)" >&2
+# Only now (restore finalized by the server) may backups run again. The watchdog CronJob is never suspended.
 for c in $CRONS; do
-  if [ "$(k get cronjob "$c" -o jsonpath='{.metadata.annotations.kotobaya/suspended-by-restore}')" = true ]; then
+  if [ -n "$(k get cronjob "$c" -o jsonpath='{.metadata.annotations.kotobaya/suspended-by-restore}')" ]; then
     k patch cronjob "$c" -p '{"spec":{"suspend":false}}' >/dev/null
     k annotate cronjob "$c" kotobaya/suspended-by-restore- >/dev/null
   fi

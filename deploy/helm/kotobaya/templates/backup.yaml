@@ -22,6 +22,9 @@ jobTemplate:
       spec:
         restartPolicy: Never
         terminationGracePeriodSeconds: 60
+        {{- if .serviceAccount }}
+        serviceAccountName: {{ .serviceAccount }}
+        {{- end }}
         securityContext:
           {{- toYaml $root.Values.podSecurityContext | nindent 10 }}
           runAsUser: 65534
@@ -37,6 +40,7 @@ jobTemplate:
               - secretRef: { name: {{ $v.secretName }} }
             env:
               {{- include "kotobaya.appEnv" $root | nindent 14 }}
+              - { name: BACKUP_CRONJOBS, value: "{{ $root.Release.Name }}-backup {{ $root.Release.Name }}-backup-verify" }
               - { name: KEEP_LAST, value: {{ $v.keepLast | quote }} }
               - { name: STALE_SECONDS, value: {{ mul $v.staleHours 3600 | quote }} }
               {{- with $v.notify.url }}
@@ -81,4 +85,40 @@ metadata:
   labels: {{- include "kotobaya.labels" . | nindent 4 }}
 spec:
   {{- include "kotobaya.backupJob" (dict "root" . "component" "backup-restore" "schedule" "0 0 1 1 *" "suspend" true "script" "/opt/backup/restore.sh") | nindent 2 }}
+---
+# Watchdog: never suspended by restore-k8s.sh. Alerts when backups are stale or the backup
+# CronJobs are suspended (by hand, or left suspended by a failed restore).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backup-watchdog
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  {{- include "kotobaya.backupJob" (dict "root" . "component" "backup-watchdog" "schedule" .Values.backup.watchdogSchedule "serviceAccount" (printf "%s-backup-watchdog" .Release.Name) "script" "/opt/backup/watchdog.sh") | nindent 2 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-backup-watchdog
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-backup-watchdog
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [batch]
+    resources: [cronjobs]
+    resourceNames: [{{ .Release.Name }}-backup, {{ .Release.Name }}-backup-verify]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-backup-watchdog
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ .Release.Name }}-backup-watchdog }
+subjects:
+  - { kind: ServiceAccount, name: {{ .Release.Name }}-backup-watchdog }
 {{- end }}

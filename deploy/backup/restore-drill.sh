@@ -200,5 +200,33 @@ assert_eq "log_epoch still the finalized one" "$(state log_epoch)" "$E1"
 assert_eq "durable_seq still S" "$(state durable_seq)" "$S_A"
 run_job backup-verify
 
+step "watchdog passes on a healthy install"
+run_job backup-watchdog
+echo "ASSERT OK   watchdog exited 0"
+
+step "crash between the two renames: restore job killed, then recovery on re-run"
+set +e; KILL_BETWEEN_RENAMES=1 NS=$NS REL=$REL "$HERE/restore-k8s.sh" >/tmp/drill-kill.log 2>&1; KRC=$?; set -e
+tail -n 5 /tmp/drill-kill.log
+assert_ne "restore-k8s.sh failed when the job was killed" "$KRC" "0"
+DB=postgres
+assert_eq "live database is missing" "$(sql <<<"SELECT count(*) FROM pg_database WHERE datname='kotobaya'")" "0"
+assert_eq "pre-restore copy kept" "$(sql <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'kotobaya\_pre\_restore\_%'")" "1"
+assert_eq "restored copy kept (not dropped by the EXIT trap)" "$(sql <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'kotobaya\_restoring\_%'")" "1"
+unset DB
+assert_eq "backup CronJobs still suspended" "$(k get cronjob "$REL-backup" "$REL-backup-verify" -o jsonpath='{.items[*].spec.suspend}')" "true true"
+assert_eq "watchdog CronJob never suspended" "$(k get cronjob "$REL-backup-watchdog" -o jsonpath='{.spec.suspend}')" "false"
+if run_job backup-watchdog '[{"name":"STUCK_SECONDS","value":"0"}]'; then
+  echo "ASSERT FAIL watchdog did not alert about CronJobs left suspended by a restore" >&2; exit 1
+fi
+echo "ASSERT OK   watchdog failed on backups left suspended"
+case $(k exec ntfy-sink -- cat /tmp/sink.log) in *"backup-watchdog FAILED"*) echo "ASSERT OK   watchdog alert reached the sink";;
+  *) echo "ASSERT FAIL no watchdog alert in the sink" >&2; exit 1;; esac
+NS=$NS REL=$REL "$HERE/restore-k8s.sh"
+assert_ne "log_epoch changed again after the recovered restore" "$(state log_epoch)" "$E1"
+assert_eq "data matches the backup after recovery" "$(counts)" "$COUNTS_A"
+assert_eq "durable_seq = S after recovery" "$(state durable_seq)" "$S_A"
+assert_eq "backup CronJobs resumed after recovery" "$(k get cronjob "$REL-backup" "$REL-backup-verify" -o jsonpath='{.items[*].spec.suspend}')" "false false"
+assert_eq "no leftover databases after recovery" "$(DB=postgres sql <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'kotobaya\_%'")" "0"
+
 echo
 echo "DRILL PASS: epoch $E0 -> $E1, durable_seq=$S_A, data == backup ($COUNTS_A)"

@@ -127,6 +127,7 @@ backup:
   secretName: kotobaya-backup
   schedule: "17 3 * * *"        # nightly (frequency is a HUMAN_CHECKS item)
   verifySchedule: "47 4 * * 0"  # weekly, Sunday
+  watchdogSchedule: "37 9 * * *"  # daily; never suspended by restores; alerts on stale/suspended backups
   keepLast: 14                  # verified snapshots kept; the newest verified one is always kept
   # Failure notification target, an ntfy topic URL (e.g. https://ntfy.example.invalid/kotobaya-alerts).
   # Treat a real topic URL as secret: put NOTIFY_URL in the backup Secret instead and leave this empty.
