@@ -497,3 +497,7 @@
 2026-11-12T19:15:31Z T305a REVIEW_CHANGES 1 major: provider silently falls back to in-memory store (cold start before startKoin) → Takoboto words reported saved then lost; 7 minors
 2026-11-12T19:15:31Z T305a DISPATCH attempt 2 (same agent)
 2026-11-12T19:15:41Z T303a REVIEW_CHANGES 1 major: >24h clock block lacks §3.4 hysteresis (resumes minting at skew ≤24h instead of <5min) → future HLCs win LWW over later edits; 5 minors. Awaiting architect
+2026-11-12T19:18:06Z T303a REVIEW_CHANGES architect: log-reset livelock (contract: reset keeps pull_seq → repeated LogChanged, rebuild never ends) + no mint_at seam for T303d Re-mint; plus §3.4 hysteresis (both)
+2026-11-12T19:18:06Z DECIDE log reset sets pull_seq=0 (C-10)
+2026-11-12T19:18:06Z T303a DISPATCH attempt 2 (same agent)
+2026-11-12T19:18:06Z C-10 DISPATCH architect(opus)
