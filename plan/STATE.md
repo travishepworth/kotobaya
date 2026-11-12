@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:29:42Z
+Updated: 2026-11-12T19:31:49Z (usage-limit handover)
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -9,6 +9,11 @@ Updated: 2026-11-12T19:29:42Z
 - Next after running ones: T213a (after T201a), T202b (after T202a), T207a (after C-4), T203 (after T202a). High-risk (T202*, T203, T205, T207*) → reviewer (opus) + architect 2nd pass for sync/replay.
 - Web tickets: tell writers SvelteKit 3 = relative imports (no $lib), client via web/src/lib/api/generated.ts (see FOLLOWUPS T208).
 - Conventions: named agent types now registered; architect-role tickets run with model=opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy. Review loop only on real majors with failure scenarios.
+
+## USAGE-LIMIT STOP 2026-11-12T19:31:49Z: in flight, may be cut off mid-work:
+- T303b (writer-senior, branch t/T303b-sync-client-apply) — device apply/rebuild. If no HANDOFF.md on branch → TODO, redispatch (worktree may hold partial work).
+- T307+T309 (writer, branch t/T307+T309-widget-ntfy) — DONE except NtfySink wiring in server Main.kt (requested). If branch has the Main.kt commit + green server/android checks → merge (low risk); else redispatch just the wiring.
+Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused-rollback acceptance), T305b, then T304b/c, T305c, T306, T310, T311, T313.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
