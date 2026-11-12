@@ -297,6 +297,91 @@ class DecksApiTest : SyncFixture() {
     }
 
     @Test
+    fun outOfRangeLimitsAndItemCountsAreOutOfRange422() = deckApp {
+        val token = writer()
+        val deck = userDeck(token)
+        for (limit in listOf("0", "501")) {
+            val r = client.call(HttpMethod.Get, "/decks/$deck/items?limit=$limit", bearer = token)
+            assertProblem(r, 422, "validation_failed")
+            val err = r.json()["errors"][0]
+            assertEquals("/limit", err["pointer"].asText())
+            assertEquals("out_of_range", err["code"].asText())
+        }
+        assertEquals(200, client.call(HttpMethod.Get, "/decks/$deck/items?limit=500", bearer = token).status.value)
+        val none = client.call(HttpMethod.Post, "/decks/$deck/items", bearer = token, body = mapOf("items" to emptyList<Any>()))
+        assertProblem(none, 422, "validation_failed")
+        assertEquals("out_of_range", none.json()["errors"][0]["code"].asText())
+        val many = client.call(HttpMethod.Post, "/decks/$deck/items", bearer = token, body = mapOf("items" to (1..1001).map { mapOf("entry_seq" to it) }))
+        assertProblem(many, 422, "validation_failed")
+        assertEquals("out_of_range", many.json()["errors"][0]["code"].asText())
+        assertEquals("/items", many.json()["errors"][0]["pointer"].asText())
+    }
+
+    @Test
+    fun addAndRemoveItemsOnSmartMediaAndListDecksAreRefused() = deckApp {
+        val token = writer()
+        dictEntry(1)
+        val smart = createDeck(token, mapOf("type" to "smart", "name" to "S", "query" to "tag:a")).json()["id"].asText()
+        val media = "01931f40-3000-7000-8000-000000000002"
+        emit(OpType.MEDIA_CREATED, """{"id":"$media","kind":"anime","title":"Frieren","source":"paste"}""")
+        val list = createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n3")).json()["id"].asText()
+        val mark = head()
+        val one = mapOf("items" to listOf(mapOf("entry_seq" to 1)))
+        assertProblem(client.call(HttpMethod.Post, "/decks/$smart/items", bearer = token, body = one), 409, "not_applicable")
+        assertProblem(client.call(HttpMethod.Delete, "/decks/$smart/items/e:1", bearer = token), 409, "not_applicable")
+        for (d in listOf(media, list)) {
+            assertProblem(client.call(HttpMethod.Post, "/decks/$d/items", bearer = token, body = one), 409, "deck_read_only")
+            assertProblem(client.call(HttpMethod.Delete, "/decks/$d/items/e:1", bearer = token), 409, "deck_read_only")
+        }
+        assertEquals(mark, head(), "nothing emitted by refused calls")
+    }
+
+    @Test
+    fun concurrentDeckUpdatesFromTwoDevicesConvergeWhateverTheArrivalOrder() = deckApp {
+        val token = writer()
+        val t = 0x0193a1b2c200L
+        fun update(deck: String, device: String, at: Long, set: String) = op(OpType.DECK_UPDATED, device, at, """{"id":"$deck","set":$set}""")
+        fun state(deck: String) = db.txBlocking { dsl ->
+            dsl.fetch("select priority, new_cards_per_day, reviews_per_day from app.deck where id = ?::uuid", deck).single().let { listOf(it.get(0), it.get(1), it.get(2)) }
+        }
+        val first = userDeck(token, "One")
+        val second = userDeck(token, "Two")
+        // A's priority write is newer, B's limits write is newer for new_cards_per_day only; registers are per property.
+        val a = { d: String -> update(d, A, t + 50, """{"priority":7,"new_cards_per_day":5}""") }
+        val b = { d: String -> update(d, B, t + 10, """{"priority":3,"new_cards_per_day":9,"reviews_per_day":40}""") }
+        pushAsOwner(a(first)); pushAsOwner(b(first))
+        pushAsOwner(b(second)); pushAsOwner(a(second))
+        val expected = listOf(7, 5, 40)
+        assertEquals(expected, state(first), "newer writes win per property, the older one fills the rest")
+        assertEquals(expected, state(second), "same result in the other arrival order")
+    }
+
+    @Test
+    fun aSmartDeckQueryCanReferToAnotherSmartDeckWithDeck() = deckApp {
+        val token = writer()
+        val mine = note(token, listOf("mine"))
+        note(token, listOf("other"))
+        createDeck(token, mapOf("type" to "smart", "name" to "Base", "query" to "tag:mine"))
+        val outer = createDeck(token, mapOf("type" to "smart", "name" to "Outer", "query" to "deck:Base")).json()["id"].asText()
+        val ids = db.txBlocking { SmartDecks.cardIds(it, outer, 1_000_000L, StudyDay(0, 86_400_000L)) }
+        val expected = db.txBlocking { dsl -> dsl.fetch("select id::text from app.card where note_id = ?::uuid", mine).map { it.get(0, String::class.java) } }
+        assertEquals(1, expected.size)
+        assertEquals(expected, ids)
+    }
+
+    @Test
+    fun createWithAnExistingIdKeepsTheStoredDeckEvenWhenTheTypeDiffers() = deckApp {
+        val token = writer()
+        val id = "01931f40-2000-7000-8000-000000000d03"
+        assertEquals(201, createDeck(token, mapOf("id" to id, "type" to "user", "name" to "Inbox")).status.value)
+        val mark = head()
+        val retry = createDeck(token, mapOf("id" to id, "type" to "smart", "name" to "Other", "query" to "tag:a"))
+        assertEquals(200, retry.status.value)
+        assertEquals("user", retry.json()["type"].asText())
+        assertEquals(mark, head())
+    }
+
+    @Test
     fun readAndWriteScopesAreEnforced() = deckApp {
         val reader = mint(TokenKind.PERSONAL, listOf("read")).second
         assertProblem(createDeck(reader, mapOf("type" to "user", "name" to "x")), 403, "insufficient_scope")

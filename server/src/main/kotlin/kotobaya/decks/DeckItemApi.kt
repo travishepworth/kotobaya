@@ -69,8 +69,9 @@ internal class DeckItemApi(private val db: Database, private val opApply: OpAppl
         if (node == null || !node.isArray) e.add("/items", if (node == null) "required" else "invalid_type", "items must be an array.")
         else if (node.isEmpty || node.size() > 1000) e.add("/items", "out_of_range", "Between 1 and 1000 items.")
         e.throwIfAny()
+        if (node == null) error("validated")
         class Element(val entrySeq: Long?, val noteId: String?, val position: Long?)
-        val elements = node!!.mapIndexed { i, it ->
+        val elements = node.mapIndexed { i, it ->
             if (it !is ObjectNode) { e.add("/items/$i", "invalid_type", "Must be an object."); return@mapIndexed null }
             e.unknownKeys(it, setOf("entry_seq", "note_id", "position"))
             val hasE = it.has("entry_seq")

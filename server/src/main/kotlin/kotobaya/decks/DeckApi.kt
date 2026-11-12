@@ -58,6 +58,11 @@ internal class DeckApi(private val db: Database, private val opApply: OpApply) {
         call.respondJson(row)
     }
 
+    /**
+     * `createDeck`. Idempotent on `id`: a deck with that id (live or deleted) is returned with `200` and nothing is
+     * emitted, even when the retry names a different `type` or other properties. openapi defines no conflict code for
+     * that case, so it is deliberately not a 409; the stored deck wins.
+     */
     suspend fun create(call: ApplicationCall) {
         val body = call.jsonBody()
         val e = Errors()
