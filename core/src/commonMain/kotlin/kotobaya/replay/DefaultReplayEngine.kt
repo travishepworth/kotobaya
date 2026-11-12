@@ -2,6 +2,7 @@ package kotobaya.replay
 
 import kotobaya.contracts.HlcString
 import kotobaya.contracts.InstantMs
+import kotobaya.contracts.Reserved
 import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.fsrs.RatedReview
@@ -95,6 +96,8 @@ public object DefaultReplayEngine : ReplayEngine {
         params: SchedulerParams,
     ): ReplayDecision = when {
         !inReplaySet(review) -> ReplayDecision.NONE
+        // 1b: a refused cache (SYNC.md 9.4) is never folded into, before any lookup.
+        cache.lastReviewId == Reserved.REPLAY_REFUSED_ID -> ReplayDecision.FULL_REPLAY
         cache.weightsVersion != params.weightsVersion -> ReplayDecision.FULL_REPLAY
         cache.lastReviewId == null -> ReplayDecision.FOLD
         lastFolded == null -> ReplayDecision.FULL_REPLAY

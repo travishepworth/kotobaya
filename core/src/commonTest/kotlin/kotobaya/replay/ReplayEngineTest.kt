@@ -1,5 +1,6 @@
 package kotobaya.replay
 
+import kotobaya.contracts.Reserved
 import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ManualAction
@@ -255,6 +256,79 @@ class ReplayEngineTest {
         assertEquals(e.replay(listOf(r1, r2), p), inc.cache)
         inc.setParams(P1)
         assertEquals(e.replay(listOf(r1, r2), P1), inc.cache)
+    }
+
+    // ---- refused cache (SYNC.md 9.4, C-8) -------------------------------------------------------
+
+    private fun refused(params: kotobaya.contracts.fsrs.SchedulerParams = p) =
+        CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)
+
+    @Test
+    fun decideStep1bRefusedCacheAlwaysFullReplays() {
+        val r1 = rated(id(1), T0, Rating.GOOD, ReviewType.LEARNING)
+        val later = rated(id(2), T0 + DAY, Rating.GOOD)
+        // even with the current weights_version and a row that sorts after everything
+        assertEquals(ReplayDecision.FULL_REPLAY, e.decide(refused(), null, later, p))
+        assertEquals(ReplayDecision.FULL_REPLAY, e.decide(refused(), r1.key, later, p))
+        // before any lookup: not even a row whose id equals the marker is NONE or FOLD
+        val markerRow = later.copy(id = Reserved.REPLAY_REFUSED_ID)
+        assertEquals(ReplayDecision.FULL_REPLAY, e.decide(refused(), markerRow.key, markerRow, p))
+        // step 1 still comes first
+        assertEquals(ReplayDecision.NONE, e.decide(refused(), null, later.copy(reviewType = ReviewType.DRILL), p))
+        assertEquals(ReplayDecision.NONE, e.decide(refused(), null, later.copy(undoneHlc = hlc(T0 + DAY)), p))
+    }
+
+    @Test
+    fun incrementalReplayHoldsRefusedCacheAndNeverThrows() {
+        val inc = IncrementalReplay(e, p)
+        val r1 = rated(id(1), T0, Rating.GOOD, ReviewType.LEARNING)
+        val bad = rated(id(2), T0 + DAY, Rating.GOOD).copy(rating = null)
+        val r3 = rated(id(3), T0 + 2 * DAY, Rating.GOOD)
+        assertEquals(0, inc.insert(r1))
+        assertNull(inc.refusal)
+        assertEquals(1, inc.insert(bad)) // does not throw
+        assertEquals(refused(), inc.cache)
+        assertTrue(inc.refusal != null)
+        assertFailsWith<IllegalArgumentException> { e.replay(inc.replaySet, p) } // same verdict as a full replay
+        // rows after the refused one: still refused, list stays consistent
+        assertEquals(2, inc.insert(r3))
+        assertEquals(listOf(r1, bad, r3), inc.replaySet)
+        assertEquals(refused(), inc.cache)
+        // a row before the refused one: still refused
+        val r0 = rated(id(4), T0 - DAY, Rating.AGAIN, ReviewType.LEARNING)
+        assertEquals(0, inc.insert(r0))
+        assertEquals(refused(), inc.cache)
+        // new params: the refused cache carries the new weights_version
+        inc.setParams(P1)
+        assertEquals(refused(P1), inc.cache)
+        // undo of an unrelated row keeps it refused; undo of the offending row heals it
+        assertTrue(inc.undo(r3.id))
+        assertEquals(refused(P1), inc.cache)
+        assertTrue(inc.undo(bad.id))
+        assertNull(inc.refusal)
+        assertEquals(e.replay(listOf(r0, r1), P1), inc.cache)
+        assertEquals(listOf(r0, r1), inc.replaySet)
+        // healed checkpoints still fold correctly
+        val r5 = rated(id(5), T0 + 3 * DAY, Rating.GOOD)
+        assertEquals(2, inc.insert(r5))
+        assertEquals(e.replay(listOf(r0, r1, r5), P1), inc.cache)
+    }
+
+    @Test
+    fun incrementalReplayRefusesMalformedManualRowsLikeReplay() {
+        val r1 = rated(id(1), T0, Rating.GOOD, ReviewType.LEARNING)
+        for (bad in listOf(
+            manual(id(2), T0 + DAY, ManualAction.RESET).copy(manualAction = null),
+            manual(id(2), T0 + DAY, ManualAction.SET_DUE, dueAt = null),
+        )) {
+            val inc = IncrementalReplay(e, p)
+            inc.insert(r1)
+            inc.insert(bad)
+            assertEquals(refused(), inc.cache)
+            assertFailsWith<IllegalArgumentException> { e.replay(listOf(r1, bad), p) }
+            assertTrue(inc.undo(bad.id))
+            assertEquals(e.replay(listOf(r1), p), inc.cache)
+        }
     }
 
     private fun ratedOf(r: kotobaya.contracts.replay.ReplayReview) =

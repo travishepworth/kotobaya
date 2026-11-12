@@ -1,5 +1,6 @@
 package kotobaya.replay
 
+import kotobaya.contracts.Reserved
 import kotobaya.contracts.Uuid
 import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.SchedulerParams
@@ -16,6 +17,13 @@ import kotobaya.contracts.replay.ReplayReview
  * Guarantee: after any sequence of [insert], [undo] and [setParams], [cache] equals
  * `engine.replay(rows, params)` of every row passed to [insert] (minus undone ones) with the current
  * params — bit-identical, because every step goes through [ReplayEngine.fold].
+ *
+ * **Refusal (SYNC.md 9.4, C-8).** If that replay would throw (a row violates the `review_log` CHECKs),
+ * no method throws: the row stays in [replaySet], [cache] is the refused cache
+ * `CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)` and [refusal] holds
+ * the exception for the caller to log at ERROR. The state stays consistent ([replaySet] and the
+ * checkpoints always cover the same rows), so undoing the offending row or new params recompute
+ * normally and the card is current again.
  *
  * Not thread-safe; deterministic. Memory: one [CardSchedule] per row in the set.
  *
@@ -34,12 +42,26 @@ public class IncrementalReplay(
     private val after = ArrayList<CardSchedule>()
     private val ids = HashSet<Uuid>()
 
+    /** Index of the first row whose fold was refused; checkpoints from it on are not valid. -1 = none. */
+    private var refusedAt = -1
+
+    /**
+     * The exception of the refused replay (SYNC.md 9.4), or null when [cache] is a normal cache. The
+     * caller logs it with the card id at ERROR and writes [cache] (the refused cache) as usual.
+     */
+    public var refusal: IllegalArgumentException? = null
+        private set
+
     /** Rows of the replay set in SYNC.md 9.1 order. */
     public val replaySet: List<ReplayReview> get() = rows.toList()
 
     /** The card cache: equal to `engine.replay(replaySet, params)`. */
     public val cache: CardCache
-        get() = CardCache(after.lastOrNull() ?: CardSchedule.NEW, rows.lastOrNull()?.id, params.weightsVersion)
+        get() = if (refusal != null) {
+            CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)
+        } else {
+            CardCache(after.lastOrNull() ?: CardSchedule.NEW, rows.lastOrNull()?.id, params.weightsVersion)
+        }
 
     /**
      * Adds a `review_log` row. Returns the index it was placed at, or -1 if nothing changed: the row is
@@ -91,14 +113,28 @@ public class IncrementalReplay(
         return lo
     }
 
+    /**
+     * Recomputes the checkpoints from [pos] (or from the first refused row, if earlier: checkpoints
+     * after it were never computed). A refused fold stops the walk and records [refusal]; the rest of
+     * the checkpoints keep placeholders until a later recompute reaches them.
+     */
     private fun recomputeFrom(pos: Int) {
-        var c = if (pos == 0) {
+        val start = if (refusedAt in 0 until pos) refusedAt else pos
+        refusedAt = -1
+        refusal = null
+        var c = if (start == 0) {
             CardCache(CardSchedule.NEW, null, params.weightsVersion)
         } else {
-            CardCache(after[pos - 1], rows[pos - 1].id, params.weightsVersion)
+            CardCache(after[start - 1], rows[start - 1].id, params.weightsVersion)
         }
-        for (i in pos until rows.size) {
-            c = engine.fold(c, rows[i], params)
+        for (i in start until rows.size) {
+            c = try {
+                engine.fold(c, rows[i], params)
+            } catch (e: IllegalArgumentException) {
+                refusedAt = i
+                refusal = e
+                return
+            }
             after[i] = c.schedule
         }
     }

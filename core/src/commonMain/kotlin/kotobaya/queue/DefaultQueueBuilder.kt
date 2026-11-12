@@ -23,7 +23,9 @@ import kotobaya.contracts.queue.ReviewQueue
  * Preconditions (the caller's job, not checked here): candidates are live (card and note not
  * deleted, card not a merge loser) and `noteId`/memberships are already resolved through
  * `merged_into_id` (`n:<loser id>` deck items count for the survivor, SYNC.md 8.5); [QueueInput.day]
- * is the study day containing `now` in the user's time zone. Cards appearing twice in
+ * is the study day containing `now` in the user's time zone; no candidate holds a refused cache
+ * (`last_review_id = Reserved.REPLAY_REFUSED_ID`, SYNC.md 9.4): [QueueCandidate] carries no
+ * `lastReviewId`, so the loader is the only place that can skip it. Cards appearing twice in
  * `candidates` are queued at most once.
  *
  * Choices the contract leaves open: a null `dueAt` on a LEARNING/RELEARNING/REVIEW card sorts as
@@ -59,7 +61,6 @@ public object DefaultQueueBuilder : QueueBuilder {
         val deckId: Uuid?,
         val priority: Int,
         val addKanji: AddKanjiMode,
-        var remaining: Int,
         val items: List<NewItem>,
     ) {
         var cursor = 0
@@ -196,6 +197,22 @@ public object DefaultQueueBuilder : QueueBuilder {
                     Home.None -> {}
                 }
             }
+            // Per-deck new remaining, charged to each card's home new-source (rule 4 per-deck limit,
+            // C-8). May go below zero through add_kanji; read clamped. Decks without a limit are absent.
+            val deckRemaining = HashMap<Uuid, Int>()
+            for (d in decksById.values) {
+                if (!d.enabled) continue
+                d.newPerDay?.let { deckRemaining[d.id] = it - (introducedPerDeck[d.id] ?: 0) }
+            }
+
+            fun remainingOf(s: Source): Int =
+                s.deckId?.let { id -> deckRemaining[id]?.let { maxOf(0, it) } } ?: Int.MAX_VALUE
+
+            fun charge(deckId: Uuid?) {
+                if (deckId == null) return
+                deckRemaining[deckId]?.let { deckRemaining[deckId] = it - 1 }
+            }
+
             val sources = mutableListOf<Source>()
             for (d in decksById.values.filter { it.enabled }) {
                 val items = mutableListOf<Pair<DeckKey, NewItem>>()
@@ -209,13 +226,12 @@ public object DefaultQueueBuilder : QueueBuilder {
                     items += DeckKey(e.position, e.itemKey, 1, 0, "", e.entrySeq) to NewItem.Entry(e)
                 }
                 items.sortWith { a, b -> a.first.compareTo(b.first) }
-                val limit = d.newPerDay?.let { maxOf(0, it - (introducedPerDeck[d.id] ?: 0)) } ?: Int.MAX_VALUE
-                sources += Source(d.id, d.priority, d.addKanji, limit, items.map { it.second })
+                sources += Source(d.id, d.priority, d.addKanji, items.map { it.second })
             }
             val decklessItems = deckless
                 .sortedWith(compareBy({ it.noteCreatedAt }, { it.kindOrder }, { it.cardId }))
                 .map { NewItem.Card(it) }
-            sources += Source(null, input.decklessPriority, input.decklessAddKanji, Int.MAX_VALUE, decklessItems)
+            sources += Source(null, input.decklessPriority, input.decklessAddKanji, decklessItems)
 
             // Kanji cards that add_kanji may pull: NEW, eligible, with some home new-source.
             val kanjiByLiteral: Map<String, List<QueueCandidate>> = pool
@@ -226,25 +242,38 @@ public object DefaultQueueBuilder : QueueBuilder {
 
             val materialized = HashSet<Long>()
 
-            fun takeNew(s: Source, c: QueueCandidate) {
+            /** Takes a NEW card, charged to the budget and to its own home new-source (C-8 attribution). */
+            fun takeNew(c: QueueCandidate) {
+                val home = (pool[c] as? Home.Deck)?.deck?.id
                 take(c)
                 budget--
-                s.remaining--
-                out += QueueItem(c.cardId, QueueItemKind.NEW, s.deckId)
+                charge(home)
+                out += QueueItem(c.cardId, QueueItemKind.NEW, home)
             }
 
-            fun drawKanji(s: Source, word: QueueCandidate) {
+            /** K of [word]'s add_kanji group: expression order, then kindOrder; one card per note if burying. */
+            fun kanjiGroup(word: QueueCandidate): List<QueueCandidate> {
+                val group = mutableListOf<QueueCandidate>()
+                val ids = HashSet<Uuid>()
+                val notes = HashSet<Uuid>()
                 for (k in word.expressionKanji) {
                     for (kc in kanjiByLiteral[k].orEmpty()) {
-                        if (budget <= 0 || s.remaining <= 0) return
-                        if (available(kc)) takeNew(s, kc)
+                        if (!available(kc) || kc.cardId in ids) continue
+                        if (limits.burySiblings && (kc.noteId in notes || kc.noteId == word.noteId)) continue
+                        group += kc
+                        ids += kc.cardId
+                        notes += kc.noteId
                     }
                 }
+                return group
             }
 
-            /** One turn of [s]; false if the source is exhausted. */
+            /**
+             * One turn of [s]; false if the source is exhausted (no items left, or at its limit). A
+             * group that does not fit the budget is skipped whole and still uses up the turn.
+             */
             fun turn(s: Source): Boolean {
-                if (s.remaining <= 0) return false
+                if (remainingOf(s) <= 0) return false
                 while (s.cursor < s.items.size) {
                     val item = s.items[s.cursor++]
                     when (item) {
@@ -254,29 +283,24 @@ public object DefaultQueueBuilder : QueueBuilder {
                             materialized += e.entrySeq
                             materialize += e
                             budget--
-                            s.remaining--
+                            charge(s.deckId)
                             return true
                         }
                         is NewItem.Card -> {
                             val c = item.c
                             if (!available(c)) continue
-                            val withKanji = c.noteBaseType == NoteBaseType.VOCAB && c.expressionKanji.isNotEmpty()
-                            when {
-                                withKanji && s.addKanji == AddKanjiMode.BEFORE -> {
-                                    drawKanji(s, c)
-                                    if (!available(c)) {
-                                        // defensive: a drawn kanji card shared the word's note
-                                    } else if (budget > 0 && s.remaining > 0) {
-                                        takeNew(s, c)
-                                    } else {
-                                        s.cursor-- // not drawn; the source is at its limit or the budget is gone
-                                    }
-                                }
-                                withKanji && s.addKanji == AddKanjiMode.ALONGSIDE -> {
-                                    takeNew(s, c)
-                                    drawKanji(s, c)
-                                }
-                                else -> takeNew(s, c)
+                            val withKanji = c.noteBaseType == NoteBaseType.VOCAB &&
+                                c.expressionKanji.isNotEmpty() && s.addKanji != AddKanjiMode.OFF
+                            val group = if (withKanji) kanjiGroup(c) else emptyList()
+                            // Atomic: V fits the source (checked above) and the whole group fits the
+                            // budget, or none of it is drawn and V is skipped for this build.
+                            if (1 + group.size > budget) return true
+                            if (s.addKanji == AddKanjiMode.BEFORE) {
+                                group.forEach { takeNew(it) }
+                                takeNew(c)
+                            } else {
+                                takeNew(c)
+                                group.forEach { takeNew(it) }
                             }
                             return true
                         }
