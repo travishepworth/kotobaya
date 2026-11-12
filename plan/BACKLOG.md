@@ -33,7 +33,7 @@ Originally, before any ticket ran, the human would:
 ## Phase 0 — Bootstrap, contracts, spikes
 
 ### T001 — Monorepo scaffold
-- model: sonnet · risk: med · deps: GATE-0 · status: TODO
+- model: sonnet · risk: med · deps: GATE-0 · status: RUNNING
 - paths: `/` (root files), `core/`, `server/`, `android/`, `web/`, `worker/`, `deploy/`, `assets/`, `Makefile`, `docker-compose.yml`, `.editorconfig`, `.gitignore`
 - spec: Architecture, Infrastructure › Build and release
 - do: Gradle (Kotlin DSL, version catalog) with modules `core` (KMP: jvm, android, js), `server` (Ktor), `android` (app). `worker/` Python 3.12 with uv + pyproject, ruff, mypy, pytest. `web/` SvelteKit static adapter, TypeScript strict, vitest, eslint. `core`'s js target (IR, ES modules, `generateTypeScriptDefinitions()`) is built as the local package `@kotobaya/core` and consumed by `web/` as a workspace/file dependency; `make check MODULE=web` builds it first. `assets/card/` holds the shared card stylesheet and fonts list, consumed by `web/` and copied into Android assets by Gradle. `docker-compose.yml` for postgres, minio, api, worker, web. Makefile targets: `check MODULE=x`, `test`, `fmt`, `dev-up`, `dev-down`. One smoke test per module. No lint gates.
