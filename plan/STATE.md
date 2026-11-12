@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T16:03:28Z
+Updated: 2026-11-12T16:09:23Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,7 +13,6 @@ Updated: 2026-11-12T16:03:28Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T202a | re-review (opus), att 4 check green | 4 of 5 | t/T202a-sync-core-r | 2026-11-12T16:08:28Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -35,11 +34,12 @@ Updated: 2026-11-12T16:03:28Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 8/24 · attempts 16 · escalations 0
+P2: merged 9/24 · attempts 16 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T202a sync core: HLC, remint, canonical JSON (jvm=js), op codec, PortableRegex (ECMA), push-body parser (per-op DuplicateKey/TooDeep), depth op 500/doc 512 — 4 attempts; reviewer + architect APPROVE
 - C-5 SYNC 2.1: ECMA-262 pattern semantics (validate.py translator), depth op 500 / doc 512, 7 invalid/raw-push examples — reviewer APPROVE
 - T213b web core wrapper web/src/lib/core/index.ts (renderCard/parseQuery/completeQuery/previewIntervals) + vitest vs T213a goldens
 - T207a jpdb history import plan (worker): buckets property-tested, stable review ids, ADR-009 — reviewer APPROVE
