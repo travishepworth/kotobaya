@@ -33,7 +33,7 @@ check-android:
 	fi
 
 check-deploy:
-	@echo "deploy: no checks yet (stub; Helm chart arrives in T009)"
+	bash deploy/helm/check.sh
 
 check-contracts:
 	@echo "contracts: no checks yet (stub; contracts arrive in T003-T006)"
