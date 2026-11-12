@@ -59,9 +59,11 @@ public data class QueueDeck(
     /** `deck.reviews_per_day`; null = only the global limit. */
     public val reviewsPerDay: Int?,
     /**
-     * Effective `add_kanji` ordering: `deck.settings.add_kanji` if the key is present (an explicit
-     * value, including `off`, always wins); otherwise resolved from `scheduler.kanji_before_vocab`
-     * as [AddKanjiMode.OFF] documents. Resolved by the platform before [QueueBuilder.build].
+     * Effective `add_kanji` ordering: `deck.settings.add_kanji` if **present**, i.e. exactly the JSON
+     * string `"off"`, `"before"` or `"alongside"` (an explicit value, including `off`, always wins).
+     * Anything else (missing, null, other strings such as `"Before"`, non-strings) is absent and is
+     * resolved from `scheduler.kanji_before_vocab` as [AddKanjiMode.OFF] documents. The platform
+     * loader resolves it before [QueueBuilder.build] (SCHEMA.md 6.2).
      */
     public val addKanji: AddKanjiMode,
 )
@@ -180,13 +182,15 @@ public data class QueueInput(
     /**
      * Priority of the **deckless source** (ADR-006): setting `scheduler.mined_priority`
      * (int4, default 0 = the same tier as ordinary decks of priority 0, interleaved with them;
-     * lower is drawn earlier). SCHEMA.md 6.2.
+     * lower is drawn earlier). SCHEMA.md 6.2. The platform loader applies the int test of SCHEMA.md
+     * 6.1 (`1.0` → 1; a fraction, out of range or non-number → 0).
      */
     public val decklessPriority: Int = 0,
     /**
      * `add_kanji` ordering of the **deckless source** (rule 4), which has no deck settings: BEFORE
      * if setting `scheduler.kanji_before_vocab` is `true`, else OFF (SCHEMA.md 6.2; C-7). The
-     * platform resolves it; a missing, null or non-boolean setting means OFF. ALONGSIDE is allowed
+     * platform loader resolves it; a missing, null or invalid setting (anything but JSON
+     * `true`/`false`, SCHEMA.md 6.1) means OFF. ALONGSIDE is allowed
      * and behaves as for a deck.
      */
     public val decklessAddKanji: AddKanjiMode = AddKanjiMode.OFF,
@@ -265,8 +269,10 @@ public data class ReviewQueue(
  *    new-source is that deck. **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the
  *    deckless source [QueueInput.decklessAddKanji]): BEFORE — before a vocab card,
  *    draw the eligible NEW cards of kanji notes whose `kanjiLiteral` is in its `expressionKanji`
- *    (expression order, then `kindOrder`) that are not yet taken; ALONGSIDE — the same cards right
- *    after the word's card. They count against the drawing deck and the budget; if the budget ends
+ *    (expression order, then `kindOrder`) that are not yet taken **and have a home new-source** (any
+ *    source, not necessarily the drawing one; per ADR-006 a kanji card whose decks are all disabled
+ *    is never introduced, not even this way); ALONGSIDE — the same cards right
+ *    after the word's card. They count against the drawing source and the budget; if the budget ends
  *    in the middle, the cards already drawn stay.
  * 5. **Order**: learning items first; then reviews `R` and new `N` interleaved: if either is empty
  *    the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and position

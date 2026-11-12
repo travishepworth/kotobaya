@@ -442,7 +442,7 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.leech_threshold` | int | `8` | Lapses at which a card is a leech. |
 | `scheduler.bury_siblings` | bool | `true` | |
 | `scheduler.kanji_before_vocab` | bool | `false` | Queue order only (C-7): default for the `add_kanji` ordering where no deck sets one. See 6.2. |
-| `scheduler.mined_priority` | int, −2147483648…2147483647 | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
+| `scheduler.mined_priority` | int (int4, see 6.1) | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
 | `audio.prefetch_days` | int | `7` | Audio prefetch horizon. |
 
 ### 6.1 Storage and validation
@@ -451,24 +451,50 @@ one exception to `foreign_keys = ON` above.
   any JSON value (`settings.set` payload unchanged). Unknown keys are kept and returned untouched by
   `listSettings`; they are never rejected (forward compatibility: an older server must keep a newer
   client's key).
-- **Only well-known keys are type-checked, and only by `updateSettings`** (`PATCH /settings`): a
-  value of the wrong type or outside the stated range is `422` with problem `pointer`
-  `/values/<key>` (e.g. `/values/scheduler.mined_priority`), and nothing in the request is written.
-  JSON `null` is always accepted (reset to default). `bool` = JSON `true`/`false` only (not `0`/`1`,
-  not `"true"`). `int` = a JSON number with no fractional part (`3`, not `3.5`, not `"3"`).
+- **One validity test per type**, used identically by `updateSettings` and by every platform
+  loader (Android, web, server). The core never reads `settings`; it receives typed values.
+  - `int`: valid iff the value is a JSON number whose value is an integer inside the key's
+    range. The range is int4 (−2147483648…2147483647) unless the table gives a narrower one
+    (`day_rollover_hour` 0–23, `grading_buttons` 4 or 5). The number's value is the IEEE-754
+    binary64 nearest to the JSON text, as `JSON.parse` and Kotlin `String.toDouble()` produce it.
+    Every int4 is exact in binary64, so all platforms agree. Under this test `1.0` and `1e2` are
+    valid and mean 1 and 100, and `-0` is 0. `3.5`, `1e400`, `2147483648`, `"3"`, `true` and
+    `[1]` are invalid. Loaders must not use a strict-integer parse such as kotlinx
+    `intOrNull`, because that rejects `1.0`.
+  - `bool`: valid iff the value is JSON `true` or `false`. `0`, `1`, `"true"` and `"false"` are
+    invalid.
+  - `string (IANA)`: valid iff the value is a JSON string.
+- **Only well-known keys are type-checked, and only by `updateSettings`** (`PATCH /settings`): an
+  invalid value is `422` with problem `pointer` `/values/<key>` (e.g.
+  `/values/scheduler.mined_priority`), and nothing in the request is written. JSON `null` is
+  always accepted (it resets the key to its default). Valid values are stored as sent; the server
+  does not normalise them, so `1.0` stays `1.0`.
 - `POST /sync/push` does **not** type-check `settings.set` values (OPS.md `settings.set`), so a
-  replica can still hold a wrongly typed or out-of-range value for a well-known key. Every reader
-  (core, server, web) treats such a value, a missing row, and JSON `null` alike: **use the
-  default**. It never fails or clamps.
+  replica can still hold an invalid value for a well-known key. Every platform loader (Android,
+  web, server) treats an invalid value, a missing row, and JSON `null` alike: **use the key's
+  default**. It never fails, clamps or rounds.
 - Example: `PATCH /settings {"values": {"scheduler.mined_priority": 5, "ui.theme": "dark"}}` →
   two `settings.set` ops (keys ascending); `ui.theme` is stored unchecked.
   `{"values": {"scheduler.kanji_before_vocab": "yes"}}` → `422`, pointer
   `/values/scheduler.kanji_before_vocab`, no op emitted.
+- Worked example (loaders), with `scheduler.mined_priority` stored as:
+
+  | Stored value | Valid? | Loader passes `decklessPriority` |
+  |---|---|---|
+  | `-1` | yes | `-1` |
+  | `1.0` | yes | `1` |
+  | `1e2` | yes | `100` |
+  | `-0` | yes | `0` |
+  | `1.5` | no | `0` (default) |
+  | `2147483648` | no (above int4) | `0` |
+  | `"1"` | no | `0` |
+  | `null` / no row | — | `0` |
 
 ### 6.2 The two queue keys (C-7)
 
-Both are read by the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205); the
-platform loads them from `settings` and passes them in. Neither changes card creation, a card's
+Both are used by the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205). Each
+platform loader (Android, web, server) reads them from `settings` by the 6.1 rules and passes typed
+values in. Neither changes card creation, a card's
 schedule, or replay (OPS.md `settings.set`: "Replay: None").
 
 **`scheduler.mined_priority`** is the priority of the virtual deckless new-card source of
@@ -485,22 +511,44 @@ that name is not used.) Meaning, on the same scale as `deck.priority` (QueueBuil
   its limit for the day.
 - No per-source limit: only the global `scheduler.new_per_day` / `scheduler.new_per_session` bound it.
 - Range: the int4 range of `deck.priority` (op schema `deck.created`), −2147483648…2147483647
-  inclusive; outside it → `422` from `updateSettings`.
+  inclusive. Outside it, `updateSettings` returns `422` and loaders use the default (6.1).
 
 **`scheduler.kanji_before_vocab`** (bool) sets the `add_kanji` **ordering** where nothing more
 specific does. Effective ordering mode of a new-card source (the `AddKanjiMode` QueueBuilder rule 4
 uses):
-- an enabled deck whose `settings` has an `add_kanji` key → that key's value (`off` | `before` |
-  `alongside`); the deck's explicit choice always wins, including an explicit `off`;
-- a deck without the key, and the deckless source → `before` if `scheduler.kanji_before_vocab` is
-  `true`, else `off`.
+- an enabled deck whose `settings.add_kanji` is **present** → that value; the deck's explicit
+  choice always wins, including an explicit `off`;
+- a deck whose `add_kanji` is absent, and the deckless source → `before` if
+  `scheduler.kanji_before_vocab` is valid `true` (6.1), else `off`.
+
+**Present** means the value is exactly one of the JSON strings `"off"`, `"before"` or
+`"alongside"` (lowercase, no surrounding space). `deck.created` and `deck.updated` do not
+type-check deck settings, so other values can arrive by sync. A missing key, JSON `null`, any
+other string (`"Before"`, `"yes"`, `""`) and any non-string (`1`, `true`) all count as **absent**.
+The same test decides whether adding a vocab card creates kanji cards, so an invalid value
+creates none.
+
+Worked example, with `scheduler.kanji_before_vocab` = `true`:
+
+| Deck `settings.add_kanji` | Effective mode |
+|---|---|
+| `"off"` | `OFF` (explicit wins) |
+| `"alongside"` | `ALONGSIDE` |
+| key missing | `BEFORE` (fallback) |
+| `"Before"` | `BEFORE` (invalid → absent → fallback) |
+| `1` | `BEFORE` (invalid → absent → fallback) |
+| deckless source | `BEFORE` |
+
+With `scheduler.kanji_before_vocab` = `false`, the absent or invalid cases and the deckless
+source are `OFF`.
 
 The platform resolves these modes before calling the core: decks go into `QueueDeck.addKanji`, and
 the deckless source goes into `QueueInput.decklessAddKanji` (default `OFF`).
 `before` means (rule 4): right before drawing a vocab card, the source draws the eligible, not yet
-taken NEW cards of kanji notes whose literal appears in the word's expression, and they count
-against that source and the budget. The key only orders cards that already exist; whether adding a
-vocab card *creates* kanji cards stays governed by the deck's explicit `add_kanji` alone (absent =
+taken NEW cards of kanji notes whose literal appears in the word's expression and that have a
+home new-source (ADR-006: a kanji card whose decks are all disabled is never introduced, not even
+this way). They count against that source and the budget. The key only orders cards that already exist; whether adding a
+vocab card *creates* kanji cards stays governed by the deck's present `add_kanji` alone (absent =
 none created). With the default `false` every source behaves exactly as before C-7.
 
 ## 7. Cross-check: table ↔ op ↔ API

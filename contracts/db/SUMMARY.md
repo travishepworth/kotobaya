@@ -145,6 +145,14 @@
 - §6 now says plainly: any key is stored; only well-known keys are type-checked, and only by
   `PATCH /settings` (422 at `/values/<key>`). Values that arrive by sync are not checked, so a
   bad value is read as the default.
+- **One validity test, used everywhere** (the API check and the Android, web and server loaders),
+  so every device builds the same queue. A setting of type int is valid if it is a JSON number
+  whose value is a whole number in range: `1.0` and `1e2` are fine and mean 1 and 100. Anything
+  else falls back to the default. A bool must be exactly `true` or `false`. A deck's `add_kanji`
+  counts only if it is exactly `"off"`, `"before"` or `"alongside"`; anything else, such as
+  `"Before"`, is treated as not set, so kanji-before-vocab applies.
+- Kanji cards pulled in front of a word still need an enabled deck, or no deck at all, to be shown
+  (ADR-006).
 - The core contract follows the same rules (`QueueBuilder.kt`). The priority key is now called
   `scheduler.mined_priority` there too; it was `deckless_new_priority`. The new
   `QueueInput.decklessAddKanji` (default `OFF`, so existing callers still compile) holds the kanji
