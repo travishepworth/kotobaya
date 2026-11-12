@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T14:20:10Z (pre-restart handover)
+Updated: 2026-11-12T14:21:23Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:20:10Z, before a planned session restart)
@@ -15,6 +15,8 @@ Updated: 2026-11-12T14:20:10Z (pre-restart handover)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T111b | writer (sonnet) | 1 | t/T111b-deploy-fixes | 2026-11-12T14:21:23Z |
+| P2-plan | planner (sonnet) | 1 | main (plan/tickets only) | 2026-11-12T14:21:23Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -25,7 +27,8 @@ Updated: 2026-11-12T14:20:10Z (pre-restart handover)
 |---|---|---|
 
 ## Notes
-- Project agent types not registered; dispatch = general-purpose + model override + inlined role (human OK'd).
+- Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
+- Stale worktrees (T009/T111/T112, all merged) still present: removal denied by permission classifier → in HUMAN_CHECKS.
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 - Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.

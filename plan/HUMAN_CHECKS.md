@@ -58,3 +58,4 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - T105b: set `api.publicUrl` (PUBLIC_URL) in the real install, e.g. https://kotobaya.<your-domain>; without it, device pairing returns 500 unless trusted-proxy forwarded headers are set.
 - T112 backups: choose the restic repository target (DECISIONS has none; the drill used an in-cluster bucket), backup frequency, and set backup.enabled=true with the repo Secret. Run deploy/backup/restore-drill.sh once against the real install.
 - Disk: ~14.6 GB of anonymous dangling Docker volumes (origin unknown, may include other projects). `docker volume prune` if safe.
+- Housekeeping: stale merged worktrees (.claude/worktrees/agent-ae408d50204f320d0, agent-af77a050ea16184ff, agent-af5ce7b42729bb029) and branches t/T009-helm, t/T111-helm-workloads, t/T112-backups — removal was denied by the auto-mode classifier. Run `git worktree remove -f -f <path>` and `git branch -D <branch>` when convenient.

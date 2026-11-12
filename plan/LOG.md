@@ -245,3 +245,6 @@
 2026-11-12T14:20:10Z T112 MERGE
 2026-11-12T14:20:10Z T111b extended with T112 follow-ups (sonnet)
 2026-11-12T14:20:10Z - HANDOVER updated: next T111b → make test → close P1 → P2 tickets
+2026-11-12T14:21:23Z - RESUME session restart; stale worktree cleanup denied by permission classifier (left in place)
+2026-11-12T14:21:23Z T111b DISPATCH writer(sonnet) attempt 1
+2026-11-12T14:21:23Z - DISPATCH planner(sonnet): Phase 2 ticket files
