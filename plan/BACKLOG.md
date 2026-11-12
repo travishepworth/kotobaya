@@ -161,10 +161,18 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Conformance test green.
 
 ### T105 — Auth, devices, tokens, audit
-- model: opus · risk: high · deps: T104 · status: TODO
+- model: opus · risk: high · deps: T104 · status: SPLIT
 - paths: `server/src/main/kotlin/kotobaya/auth/`, `server/src/test/kotlin/kotobaya/auth/`
 - do: Single-user password (argon2id) + optional TOTP; session cookie (HttpOnly, SameSite=Strict); device pairing via short-lived QR code → device token; PATs with scopes and expiry, stored hashed; scope enforcement middleware driven by the OpenAPI scopes; audit log table writes.
 - accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
+
+### T105a — Auth: password, TOTP, session, login rate limit
+- model: opus · risk: high · deps: T104 · status: TODO
+- see plan/tickets/T105a.md (split from T105)
+
+### T105b — Auth: devices, pairing, PATs, scope middleware
+- model: opus · risk: high · deps: T105a · status: TODO
+- see plan/tickets/T105b.md (split from T105)
 
 ### T106 — Dictionary search API
 - model: sonnet · risk: med · deps: T101, T104 · status: TODO
@@ -173,22 +181,46 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: The 50 fixture queries return the expected top result.
 
 ### T107 — FSRS implementation
-- model: opus · risk: high · deps: T006, T008 · status: TODO
+- model: opus · risk: high · deps: T006, T008 · status: SPLIT
 - paths: `core/src/commonMain/kotlin/kotobaya/fsrs/`, `core/src/commonTest/kotlin/kotobaya/fsrs/`
 - do: Implement `Scheduler` per contract: FSRS version pinned in DECISIONS, fuzz (seeded), learning/relearning steps, desired retention, easy days, load balancing hook.
 - accept: Matches every golden vector within tolerance on jvm and js targets.
 
+### T107a — FSRS: PortableMath, nodejs() target, :core:jsTest in make check core
+- model: opus · risk: high · deps: T006, T008 · status: TODO
+- see plan/tickets/T107a.md (split from T107)
+
+### T107b — FSRS: Scheduler + golden vectors + jvm/js bit-identity digest
+- model: opus · risk: high · deps: T107a · status: TODO
+- see plan/tickets/T107b.md (split from T107)
+
 ### T108 — Search query language
-- model: sonnet · risk: med · deps: T006 · status: TODO
+- model: sonnet · risk: med · deps: T006 · status: SPLIT
 - paths: `core/src/commonMain/kotlin/kotobaya/search/`, tests
 - do: Parser per EBNF → AST; SQL compiler for Postgres and SQLite dialects.
 - accept: Every spec example parses; property tests: random ASTs → print → parse round-trips.
 
+### T108a — Search: parser, format, complete
+- model: sonnet · risk: med · deps: T006 · status: TODO
+- see plan/tickets/T108a.md (split from T108)
+
+### T108b — Search: SQL compiler
+- model: sonnet · risk: med · deps: T108a · status: TODO
+- see plan/tickets/T108b.md (split from T108)
+
 ### T109 — Job queue and events
-- model: sonnet · risk: med · deps: T104 · status: TODO
+- model: sonnet · risk: med · deps: T104 · status: SPLIT
 - paths: `server/src/main/kotlin/kotobaya/jobs/`, `worker/kotobaya_worker/runner/`, tests
 - do: `app.job` table with `SKIP LOCKED` claiming, retries with backoff, progress, cancellation; worker runner loop; `/jobs` endpoints; `/events` SSE fan-out via Postgres LISTEN/NOTIFY.
 - accept: 1000 jobs across 3 workers complete exactly once; SSE delivers progress events.
+
+### T109a — Jobs API, retention, SSE
+- model: sonnet · risk: med · deps: T104 · status: TODO
+- see plan/tickets/T109a.md (split from T109)
+
+### T109b — Worker runner + 1000-jobs test
+- model: sonnet · risk: med · deps: T109a · status: TODO
+- see plan/tickets/T109b.md (split from T109)
 
 ### T110 — Generated API clients
 - model: haiku · risk: low · deps: T004 · status: TODO
@@ -197,7 +229,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Clients compile; `make check MODULE=contracts` green.
 
 ### T111 — Helm: real workloads
-- model: sonnet · risk: med · deps: T009, T104, T109 · status: TODO
+- model: sonnet · risk: med · deps: T009, T104, T109a, T109b · status: TODO
 - paths: `deploy/helm/`
 - do: api, worker, web, optional postgres (CNPG or StatefulSet) and minio; migrate pre-upgrade hook; ingress with TLS from DECISIONS; resource requests; PodDisruptionBudgets off (single replica).
 - accept: `deploy/k3d/up.sh` → working API with dictionary search through ingress.

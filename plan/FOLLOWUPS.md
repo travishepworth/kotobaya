@@ -44,3 +44,6 @@
 - T006 → T104/server push: an op with a duplicate JSON key makes CanonicalJson.decode reject the whole body (400 for the entire outbox). Decide: per-op `schema_invalid` via a lenient per-op parse. Raise in the freeze review.
 - T006/ADR-006: round-robin within a priority tier — confirm the deck.priority default and that it matches SPEC "priority order" (HUMAN_CHECKS).
 - T006 → T107: jvm/js digest must include fdlibm special-case and subnormal arguments (unsigned-compare branches of e_pow), not only FSRS ranges; build PortableMath constants with Double.fromBits from fdlibm hex words.
+- Planner: Helm migrate hook is pre-upgrade only, so a first `helm install` never migrates. T111 must cover install too (pre-install,pre-upgrade).
+- Planner: health routes differ (compose/chart probe /healthz, backlog /healthz /readyz /metrics, openapi /health). T104 serves all; T111 aligns probes (readiness = /readyz incl. the SYNC 10.5 startup replay).
+- Planner: worker package path is worker/src/kotobaya_worker/ (backlog said worker/kotobaya_worker/); tickets corrected.

@@ -125,3 +125,5 @@
 2026-11-12T12:12:46Z T006 CHECK_GREEN after rebase (all 4 contract checks + core)
 2026-11-12T12:12:46Z T006 MERGE
 2026-11-12T12:13:12Z GATE-CONTRACTS GATE_OPEN automated freeze review (split A: cross-check, B: P1–P3 coverage)
+2026-11-12T12:16:12Z - SPLIT T105→a/b, T107→a/b, T108→a/b, T109→a/b (planner; >600 lines each)
+2026-11-12T12:16:12Z - DECIDE ADR-007 provisional: server persistence = jOOQ; T111 may also edit deploy/k3d/ and docker-compose.yml
