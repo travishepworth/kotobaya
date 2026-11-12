@@ -454,3 +454,6 @@
 2026-11-12T18:19:26Z F-4 DISPATCH writer(sonnet)
 2026-11-12T18:23:33Z F-4 HANDOFF DONE; CHECK_GREEN deploy; MERGE (k3d drill → HUMAN_CHECKS)
 2026-11-12T18:27:31Z F-2 HANDOFF DONE; CHECK_GREEN core after rebase; reviewer dispatched
+2026-11-12T18:29:43Z F-2 REVIEW_APPROVE (3 minors; ALONGSIDE-after-answer contract gap → P3 C-ticket, provisional default logged)
+2026-11-12T18:29:43Z F-2 MERGE
+2026-11-12T18:29:43Z DECIDE (provisional, P3) add_kanji K of a word introduced today stay drawable today

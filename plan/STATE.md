@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T18:27:31Z
+Updated: 2026-11-12T18:29:43Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -21,7 +21,6 @@ Updated: 2026-11-12T18:27:31Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| F-2 (core green) | reviewer (opus) | 2026-11-12T18:27:31Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -39,11 +38,12 @@ Updated: 2026-11-12T18:27:31Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 33/36 · attempts 53 · escalations 0
+P2: merged 34/36 · attempts 53 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-2 core: decide step 1b, IncrementalReplay refusal (never throws, heals on undo/params), queue rule 4 (home-deck charging, atomic groups) — reviewer APPROVE
 - F-4 backup L tag + restore data-loss preflight (refuses without --accept-data-loss) — k3d drill not run
 - C-8 sync gaps: refused cache (9.4), durable_seq while backups off, re-mint E/D rules (mining kept, double removal), add_kanji attribution — 4 attempts; reviewer + architect APPROVE
 - T207c jpdb import end to end (worker apply_plan/fetch_blob, server ImportsModule live, internal jobs hidden, heartbeat/requeue cap, no resurrection) — live run in HUMAN_CHECKS
