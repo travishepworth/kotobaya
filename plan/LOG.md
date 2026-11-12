@@ -248,3 +248,7 @@
 2026-11-12T14:21:23Z - RESUME session restart; stale worktree cleanup denied by permission classifier (left in place)
 2026-11-12T14:21:23Z T111b DISPATCH writer(sonnet) attempt 1
 2026-11-12T14:21:23Z - DISPATCH planner(sonnet): Phase 2 ticket files
+2026-11-12T14:22:23Z T111b DISPATCH restart (prior worktree auto-removed before any edits; same plan)
+2026-11-12T14:23:44Z T111b HANDOFF DONE
+2026-11-12T14:23:44Z T111b CHECK_GREEN deploy
+2026-11-12T14:23:44Z T111b MERGE

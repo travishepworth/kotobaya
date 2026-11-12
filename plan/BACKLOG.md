@@ -258,7 +258,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T103b.md
 
 ### T111b — Deploy fixes from T112 (SeaweedFS preallocation, BACKUPS_DISABLED, backup image)
-- model: sonnet · risk: low · deps: T111, T112 · status: TODO
+- model: sonnet · risk: low · deps: T111, T112 · status: MERGED
 - see plan/tickets/T111b.md
 
 ### W-1 — Wire server modules and worker jobs

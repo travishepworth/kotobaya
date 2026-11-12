@@ -1,11 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T14:21:23Z
+Updated: 2026-11-12T14:23:50Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:20:10Z, before a planned session restart)
-- Phase 1: 17/18 merged. Remaining: **T111b** (sonnet, low; plan/tickets/T111b.md: BACKUPS_DISABLED env, backup image build, T112 review follow-ups in deploy/backup/). Dispatch it first; no review needed (low), just `make check MODULE=deploy`.
+- Phase 1: 18/18 merged (T111b merged 2026-11-12T14:23:50Z). Was: **T111b** (sonnet, low; plan/tickets/T111b.md: BACKUPS_DISABLED env, backup image build, T112 review follow-ups in deploy/backup/). Dispatch it first; no review needed (low), just `make check MODULE=deploy`.
 - Then: `make test` (all modules; needs Docker) → if green: GATE-P1 deferred (single-session) → write P1 human checks (use the app per SPEC P1 "Done when") into plan/HUMAN_CHECKS.md → start Phase 2. If red: ci-triage (haiku) on the log, fix tickets.
 - Phase 2 needs ticket files first: dispatch a sonnet planner like the P1 one (plan/tickets/T201.md … T213.md from BACKLOG Phase 2 rows + plan/FOLLOWUPS.md + ADRs 002–009 + contracts; split anything > ~600 lines). Then dispatch: T201 + T202 (opus, architect role, high risk; reviewer + architect 2nd pass) + T213 first.
 - Before T208 (web shell): k3d dev HTTPS (Secure cookie) — FOLLOWUPS. Before T207: ADR-009 + JPDB_API_KEY live check (S02, needs .env.local) + small C-ticket on JobResultJpdbHistory. T202 must read BACKUPS_DISABLED and fill server_state hlc_last (FOLLOWUPS).
@@ -15,7 +15,6 @@ Updated: 2026-11-12T14:21:23Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T111b | writer (sonnet) | 1 | t/T111b-deploy-fixes | 2026-11-12T14:21:23Z |
 | P2-plan | planner (sonnet) | 1 | main (plan/tickets only) | 2026-11-12T14:21:23Z |
 
 ## Ready for review / In review
@@ -42,6 +41,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T111b deploy fixes: BACKUPS_DISABLED env, backup image, restore follow-ups (stamped pre-restore DB, DRILL-gated kill hook)
 - T112 backups + restore drill — 3 attempts; reviewer APPROVE (watchdog, restore/backup exclusion, durable_seq under lock, crash-safe rename)
 - T105b devices, pairing, PATs, scope enforcement — 2 attempts, reviewer APPROVE; revocation ends live streams (real wiring test)
 - T111 Helm real workloads — k3d e2e: health, 401, login verified; dev needs HTTPS for Secure cookie
