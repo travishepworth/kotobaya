@@ -29,7 +29,7 @@ from pydantic_core import to_jsonable_python
 
 class DictRelease(BaseModel):
     """
-    The current dictionary release (`ref.dict_release`).
+    The current dictionary release (`ref.dict_release`). The artifact formats (zstd SQLite package, `kotobaya-dict-diff` diff), what `blob_hash` covers and how a device installs or updates are defined in `contracts/db/DICT_PACKAGE.md`.
     """ # noqa: E501
     artifacts: List[DictReleaseArtifactsInner] = Field(description="Downloadable device builds of this release.")
     built_at: datetime = Field(description="Build time.")

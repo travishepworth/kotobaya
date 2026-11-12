@@ -1,6 +1,6 @@
 # DictRelease
 
-The current dictionary release (`ref.dict_release`).
+The current dictionary release (`ref.dict_release`). The artifact formats (zstd SQLite package, `kotobaya-dict-diff` diff), what `blob_hash` covers and how a device installs or updates are defined in `contracts/db/DICT_PACKAGE.md`.
 
 ## Properties
 

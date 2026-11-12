@@ -24,6 +24,10 @@ export interface DictReleaseArtifactsInner {
      */
     blobHash: string;
     /**
+     * For `full` - the package's `PRAGMA user_version`; for `diff` - the `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6).
+     */
+    formatVersion: number;
+    /**
      * For `diff` - the release id it upgrades from; null for `full`.
      */
     fromRelease: number | null;
@@ -36,9 +40,13 @@ export interface DictReleaseArtifactsInner {
      */
     scope: DictReleaseArtifactsInnerScopeEnum;
     /**
-     * Size of the blob.
+     * Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`).
      */
     sizeBytes: number;
+    /**
+     * Size after zstd decompression, for the device's free-space check.
+     */
+    uncompressedSizeBytes: number;
 }
 
 
@@ -66,10 +74,12 @@ export type DictReleaseArtifactsInnerScopeEnum = typeof DictReleaseArtifactsInne
  */
 export function instanceOfDictReleaseArtifactsInner(value: object): value is DictReleaseArtifactsInner {
     if ((!('blobHash' in (value as Record<string, any>)) && !('blob_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['blobHash'] === undefined && (value as Record<string, any>)['blob_hash'] === undefined)) return false;
+    if ((!('formatVersion' in (value as Record<string, any>)) && !('format_version' in (value as Record<string, any>))) || ((value as Record<string, any>)['formatVersion'] === undefined && (value as Record<string, any>)['format_version'] === undefined)) return false;
     if ((!('fromRelease' in (value as Record<string, any>)) && !('from_release' in (value as Record<string, any>))) || ((value as Record<string, any>)['fromRelease'] === undefined && (value as Record<string, any>)['from_release'] === undefined)) return false;
     if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
     if ((!('sizeBytes' in (value as Record<string, any>)) && !('size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['sizeBytes'] === undefined && (value as Record<string, any>)['size_bytes'] === undefined)) return false;
+    if ((!('uncompressedSizeBytes' in (value as Record<string, any>)) && !('uncompressed_size_bytes' in (value as Record<string, any>))) || ((value as Record<string, any>)['uncompressedSizeBytes'] === undefined && (value as Record<string, any>)['uncompressed_size_bytes'] === undefined)) return false;
     return true;
 }
 
@@ -84,10 +94,12 @@ export function DictReleaseArtifactsInnerFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'blobHash': json['blob_hash'],
+        'formatVersion': json['format_version'],
         'fromRelease': json['from_release'],
         'kind': json['kind'],
         'scope': json['scope'],
         'sizeBytes': json['size_bytes'],
+        'uncompressedSizeBytes': json['uncompressed_size_bytes'],
     };
 }
 
@@ -103,10 +115,12 @@ export function DictReleaseArtifactsInnerToJSONTyped(value?: DictReleaseArtifact
     return {
         
         'blob_hash': value['blobHash'],
+        'format_version': value['formatVersion'],
         'from_release': value['fromRelease'],
         'kind': value['kind'],
         'scope': value['scope'],
         'size_bytes': value['sizeBytes'],
+        'uncompressed_size_bytes': value['uncompressedSizeBytes'],
     };
 }
 

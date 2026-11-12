@@ -38,10 +38,12 @@ class TestDictRelease(unittest.TestCase):
                 artifacts = [
                     kotobaya_client.models.dict_release_artifacts_inner.DictReleaseArtifactsInner(
                         blob_hash = 'bf325375e030fccba00917317c574773100bf03b5fc61486286e564b23e9566b', 
+                        format_version = 1, 
                         from_release = 56, 
                         kind = 'full', 
                         scope = 'top60k', 
-                        size_bytes = 0, )
+                        size_bytes = 0, 
+                        uncompressed_size_bytes = 0, )
                     ],
                 built_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 freq_lists = [
@@ -61,10 +63,12 @@ class TestDictRelease(unittest.TestCase):
                 artifacts = [
                     kotobaya_client.models.dict_release_artifacts_inner.DictReleaseArtifactsInner(
                         blob_hash = 'bf325375e030fccba00917317c574773100bf03b5fc61486286e564b23e9566b', 
+                        format_version = 1, 
                         from_release = 56, 
                         kind = 'full', 
                         scope = 'top60k', 
-                        size_bytes = 0, )
+                        size_bytes = 0, 
+                        uncompressed_size_bytes = 0, )
                     ],
                 built_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 freq_lists = [

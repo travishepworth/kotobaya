@@ -7,10 +7,12 @@
 Name | Type
 ------------ | -------------
 `blobHash` | string
+`formatVersion` | number
 `fromRelease` | number
 `kind` | string
 `scope` | string
 `sizeBytes` | number
+`uncompressedSizeBytes` | number
 
 ## Example
 
@@ -20,10 +22,12 @@ import type { DictReleaseArtifactsInner } from '@kotobaya/api-client'
 // TODO: Update the object below with actual values
 const example = {
   "blobHash": null,
+  "formatVersion": null,
   "fromRelease": null,
   "kind": null,
   "scope": null,
   "sizeBytes": null,
+  "uncompressedSizeBytes": null,
 } satisfies DictReleaseArtifactsInner
 
 console.log(example)

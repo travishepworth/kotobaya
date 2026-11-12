@@ -29,11 +29,13 @@ class DictReleaseArtifactsInner(BaseModel):
     DictReleaseArtifactsInner
     """ # noqa: E501
     blob_hash: Annotated[str, Field(strict=True)] = Field(description="Lowercase hex SHA-256 of a blob's bytes.")
+    format_version: Annotated[int, Field(strict=True, ge=1)] = Field(description="For `full` - the package's `PRAGMA user_version`; for `diff` - the `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6).")
     from_release: Optional[StrictInt] = Field(description="For `diff` - the release id it upgrades from; null for `full`.")
     kind: StrictStr = Field(description="Full build or diff from an older release.")
     scope: StrictStr = Field(description="Which entries the build holds.")
-    size_bytes: Annotated[int, Field(strict=True, ge=0)] = Field(description="Size of the blob.")
-    __properties: ClassVar[List[str]] = ["blob_hash", "from_release", "kind", "scope", "size_bytes"]
+    size_bytes: Annotated[int, Field(strict=True, ge=0)] = Field(description="Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`).")
+    uncompressed_size_bytes: Annotated[int, Field(strict=True, ge=0)] = Field(description="Size after zstd decompression, for the device's free-space check.")
+    __properties: ClassVar[List[str]] = ["blob_hash", "format_version", "from_release", "kind", "scope", "size_bytes", "uncompressed_size_bytes"]
 
     @field_validator('blob_hash', mode="before")
     def blob_hash_validate_regular_expression(cls, value):
@@ -113,10 +115,12 @@ class DictReleaseArtifactsInner(BaseModel):
 
         _obj = cls.model_validate({
             "blob_hash": obj.get("blob_hash"),
+            "format_version": obj.get("format_version"),
             "from_release": obj.get("from_release"),
             "kind": obj.get("kind"),
             "scope": obj.get("scope"),
-            "size_bytes": obj.get("size_bytes")
+            "size_bytes": obj.get("size_bytes"),
+            "uncompressed_size_bytes": obj.get("uncompressed_size_bytes")
         })
         return _obj
 

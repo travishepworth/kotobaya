@@ -6,10 +6,12 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **blob_hash** | **str** | Lowercase hex SHA-256 of a blob&#39;s bytes. | 
+**format_version** | **int** | For &#x60;full&#x60; - the package&#39;s &#x60;PRAGMA user_version&#x60;; for &#x60;diff&#x60; - the &#x60;kotobaya-dict-diff&#x60; &#x60;format_version&#x60;. Currently 1. Devices skip artifacts whose version they do not support (&#x60;contracts/db/DICT_PACKAGE.md&#x60; 5-6). | 
 **from_release** | **int** | For &#x60;diff&#x60; - the release id it upgrades from; null for &#x60;full&#x60;. | 
 **kind** | **str** | Full build or diff from an older release. | 
 **scope** | **str** | Which entries the build holds. | 
-**size_bytes** | **int** | Size of the blob. | 
+**size_bytes** | **int** | Size of the blob (compressed bytes, as served by &#x60;GET /blobs/{hash}&#x60;). | 
+**uncompressed_size_bytes** | **int** | Size after zstd decompression, for the device&#39;s free-space check. | 
 
 ## Example
 

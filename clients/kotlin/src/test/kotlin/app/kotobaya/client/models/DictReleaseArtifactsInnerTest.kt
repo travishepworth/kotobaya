@@ -39,6 +39,12 @@ class DictReleaseArtifactsInnerTest : ShouldSpec() {
             //modelInstance.blobHash shouldBe ("TODO")
         }
 
+        // to test the property `formatVersion` - For `full` - the package's `PRAGMA user_version`; for `diff` - the `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6).
+        should("test formatVersion") {
+            // uncomment below to test the property
+            //modelInstance.formatVersion shouldBe ("TODO")
+        }
+
         // to test the property `fromRelease` - For `diff` - the release id it upgrades from; null for `full`.
         should("test fromRelease") {
             // uncomment below to test the property
@@ -57,10 +63,16 @@ class DictReleaseArtifactsInnerTest : ShouldSpec() {
             //modelInstance.scope shouldBe ("TODO")
         }
 
-        // to test the property `sizeBytes` - Size of the blob.
+        // to test the property `sizeBytes` - Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`).
         should("test sizeBytes") {
             // uncomment below to test the property
             //modelInstance.sizeBytes shouldBe ("TODO")
+        }
+
+        // to test the property `uncompressedSizeBytes` - Size after zstd decompression, for the device's free-space check.
+        should("test uncompressedSizeBytes") {
+            // uncomment below to test the property
+            //modelInstance.uncompressedSizeBytes shouldBe ("TODO")
         }
 
     }

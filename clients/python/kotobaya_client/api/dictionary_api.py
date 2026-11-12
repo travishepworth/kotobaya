@@ -331,7 +331,7 @@ class DictionaryApi:
     ) -> DictRelease:
         """The current dictionary release and its downloadable device builds.
 
-        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. 
+        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. Package and diff formats, hashes and the full install/update algorithm: `contracts/db/DICT_PACKAGE.md`. 
 
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -396,7 +396,7 @@ class DictionaryApi:
     ) -> ApiResponse[DictRelease]:
         """The current dictionary release and its downloadable device builds.
 
-        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. 
+        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. Package and diff formats, hashes and the full install/update algorithm: `contracts/db/DICT_PACKAGE.md`. 
 
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -461,7 +461,7 @@ class DictionaryApi:
     ) -> RESTResponseType:
         """The current dictionary release and its downloadable device builds.
 
-        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. 
+        The phone compares `id` with the release of its dictionary file and, when behind, downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals its release and whose `scope` matches, else the `full` build. `404` when no release has been loaded yet. Package and diff formats, hashes and the full install/update algorithm: `contracts/db/DICT_PACKAGE.md`. 
 
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request

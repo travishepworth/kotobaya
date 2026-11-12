@@ -71,7 +71,7 @@ ApiClient.accessToken = ""
 
 The current dictionary release and its downloadable device builds.
 
-The phone compares &#x60;id&#x60; with the release of its dictionary file and, when behind, downloads an artifact through &#x60;GET /blobs/{hash}&#x60;: a &#x60;diff&#x60; whose &#x60;from_release&#x60; equals its release and whose &#x60;scope&#x60; matches, else the &#x60;full&#x60; build. &#x60;404&#x60; when no release has been loaded yet. 
+The phone compares &#x60;id&#x60; with the release of its dictionary file and, when behind, downloads an artifact through &#x60;GET /blobs/{hash}&#x60;: a &#x60;diff&#x60; whose &#x60;from_release&#x60; equals its release and whose &#x60;scope&#x60; matches, else the &#x60;full&#x60; build. &#x60;404&#x60; when no release has been loaded yet. Package and diff formats, hashes and the full install/update algorithm: &#x60;contracts/db/DICT_PACKAGE.md&#x60;. 
 
 ### Example
 ```kotlin

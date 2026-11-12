@@ -28,10 +28,12 @@ import com.google.gson.annotations.SerializedName
 
 /**
  * @param blobHash Lowercase hex SHA-256 of a blob's bytes.
+ * @param formatVersion For `full` - the package's `PRAGMA user_version`; for `diff` - the `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6).
  * @param fromRelease For `diff` - the release id it upgrades from; null for `full`.
  * @param kind Full build or diff from an older release.
  * @param scope Which entries the build holds.
- * @param sizeBytes Size of the blob.
+ * @param sizeBytes Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`).
+ * @param uncompressedSizeBytes Size after zstd decompression, for the device's free-space check.
  */
 
 
@@ -40,6 +42,10 @@ data class DictReleaseArtifactsInner (
     /* Lowercase hex SHA-256 of a blob's bytes. */
     @SerializedName("blob_hash")
     val blobHash: kotlin.String,
+
+    /* For `full` - the package's `PRAGMA user_version`; for `diff` - the `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6). */
+    @SerializedName("format_version")
+    val formatVersion: kotlin.Int,
 
     /* For `diff` - the release id it upgrades from; null for `full`. */
     @SerializedName("from_release")
@@ -53,9 +59,13 @@ data class DictReleaseArtifactsInner (
     @SerializedName("scope")
     val scope: DictReleaseArtifactsInner.Scope,
 
-    /* Size of the blob. */
+    /* Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`). */
     @SerializedName("size_bytes")
-    val sizeBytes: kotlin.Long
+    val sizeBytes: kotlin.Long,
+
+    /* Size after zstd decompression, for the device's free-space check. */
+    @SerializedName("uncompressed_size_bytes")
+    val uncompressedSizeBytes: kotlin.Long
 
 ) {
 

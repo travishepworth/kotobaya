@@ -36,18 +36,22 @@ class TestDictReleaseArtifactsInner(unittest.TestCase):
         if include_optional:
             return DictReleaseArtifactsInner(
                 blob_hash = 'bf325375e030fccba00917317c574773100bf03b5fc61486286e564b23e9566b',
-                from_release = 56,
-                kind = 'full',
-                scope = 'top60k',
-                size_bytes = 0
-            )
-        else:
-            return DictReleaseArtifactsInner(
-                blob_hash = 'bf325375e030fccba00917317c574773100bf03b5fc61486286e564b23e9566b',
+                format_version = 1,
                 from_release = 56,
                 kind = 'full',
                 scope = 'top60k',
                 size_bytes = 0,
+                uncompressed_size_bytes = 0
+            )
+        else:
+            return DictReleaseArtifactsInner(
+                blob_hash = 'bf325375e030fccba00917317c574773100bf03b5fc61486286e564b23e9566b',
+                format_version = 1,
+                from_release = 56,
+                kind = 'full',
+                scope = 'top60k',
+                size_bytes = 0,
+                uncompressed_size_bytes = 0,
         )
         """
 
