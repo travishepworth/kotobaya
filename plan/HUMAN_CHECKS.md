@@ -44,6 +44,13 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] **P2 — History import:** import your jpdb review history; spot-check 20 cards' due dates against jpdb.
 
 ## Daily use
+- [ ] **GATE-P2 (deferred) — "you review your jpdb cards in the web app and stop using jpdb's scheduler":**
+  1. `make dev-up` (or k3d via `deploy/k3d/up.sh`), log in at the web app.
+  2. Run the live jpdb history import (steps under "jpdb import" below); skim /import results.
+  3. /review: study a session keyboard-only (1–4 or 1–5 per settings, u undo, b bury, s suspend, e edit); check interval previews look sane.
+  4. /cards: search (e.g. `deck:Mining is:due`), bulk dry-run then apply a tag; /decks: create a smart deck; /note-types: preview a template; /settings: change limits, create a PAT (shown once), pair a device QR.
+  5. Push/pull from a second client (or two browsers) and confirm a duplicate word added on both merges (no 503).
+  Web screens were never exercised in a real browser by the build — expect small UI bugs; list them for fix tickets.
 - [ ] **P1 (GATE-P1, deferred; `make test` green 2026-11-12):** `helm install` the chart (k3d: `deploy/k3d/` scripts; set the AUTH_PASSWORD_HASH Secret first), log in, run the dict-refresh job (W-1 item above), then search the dictionary through the API (e.g. `GET /api/v1/dict/search?q=食べる`) and confirm sensible results. Note: login over plain http in k3d dev doesn't resend the Secure cookie — use HTTPS or see FOLLOWUPS.
 - [ ] **P2:** review in the web app for 3 days. Note anything off.
 - [ ] **P3:** pair the phone; review offline (airplane mode) for a week; sync; confirm review counts match on web and phone.

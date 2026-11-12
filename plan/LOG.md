@@ -461,3 +461,6 @@
 2026-11-12T18:40:58Z F-3 REVIEW_APPROVE (5 minors; architect pass not needed per reviewer)
 2026-11-12T18:40:58Z F-3 MERGE; backups-toggle hazard removed from HUMAN_CHECKS
 2026-11-12T18:40:58Z - PHASE P2 all merged; make test running
+2026-11-12T18:43:02Z - CHECK_GREEN make test (all modules) P2
+2026-11-12T18:43:02Z GATE-P2 GATE_CLOSE deferred to HUMAN_CHECKS (single-session)
+2026-11-12T18:43:02Z RETRO P2: ~2.0 attempts/ticket. Overruns all in contract/sync (C-6 2, C-7 2, C-8 4, T202a 4, T202b 2): root cause = contract allowed values/edge cases that platforms or Postgres treat differently (regex semantics, depth, storable values, re-mint keying). Fixed at contract level (C-5..C-9). Non-sync tickets ~1.1. Keep: architect verification on every sync contract change; require concrete failure scenarios.
