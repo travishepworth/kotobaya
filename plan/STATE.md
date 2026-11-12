@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:38:07Z
+Updated: 2026-11-12T11:38:35Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -11,7 +11,6 @@ Updated: 2026-11-12T11:38:07Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T004 (att. 3) | architect verification (opus) | 2026-11-12T11:38:07Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -28,9 +27,10 @@ Updated: 2026-11-12T11:38:07Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 11/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
+Merged 12/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T004 OpenAPI contract — 3 attempts (1 Fable, 2 Opus); reviewer + architect APPROVE; 117 operations
 - T005 sync contract — 4 attempts (1 Fable, 3 Opus); reviewer + architect APPROVE; restore detection, clock re-mint, op size cap
 - T003 DB schema contract — 2 attempts; reviewer + architect APPROVE; 13 followups (T005 carries 8)
 - T009b make check MODULE=deploy → helm check.sh (verified fails on broken chart)

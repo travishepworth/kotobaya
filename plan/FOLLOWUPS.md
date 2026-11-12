@@ -30,3 +30,7 @@
 - T005 (doc): `card.preset_set` on an existing card pointing at a preset created in the window is re-minted (contradicts "edits of existing rows discard-only"); clarify text.
 - T005: pin op-size measurement to raw UTF-8 compact JSON (no \uXXXX escaping beyond JSON's requirements).
 - T005 → T303 (sync client): store the last /meta limits durably and check max_op_bytes before minting (a server below the 1 MiB default would otherwise force Discard of offline notes).
+- T004: idempotent-retry responses carry no `Kotobaya-Seq` (no op emitted); consider returning the original op's seq.
+- T004: `Kotobaya-Seq` is only meaningful within one log_epoch; include the epoch in the header or document "ignore after log reset".
+- T004 → T303: pull page bound by max_push_bytes is only a SHOULD; clients must accept pages up to max_push_bytes + max_op_bytes.
+- Makefile `check MODULE=contracts`: wire contracts/db/check.sh + contracts/sync/check.sh + contracts/api/check.sh (plus contracts/core once T006 lands).
