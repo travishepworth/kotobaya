@@ -410,3 +410,7 @@
 2026-11-12T17:44:11Z T209 DISPATCH writer(sonnet)
 2026-11-12T17:44:11Z T210a DISPATCH writer(sonnet)
 2026-11-12T17:47:03Z C-8 REVIEW_CHANGES 1 major: re-mint discards e:<seq> deck.item_put + word.status of window notes → week of offline mining silently leaves its deck; 6 minors (discard list MUST, refused-card MUST skip, 6.3 step 2b, kanji deck newPerDay=0). Awaiting architect
+2026-11-12T17:48:17Z C-8 REVIEW_CHANGES architect: same major (re-mint drops offline-mined deck items) + 6 minors; interim safe except backups disabled→enabled toggle
+2026-11-12T17:48:17Z DECIDE re-mint: e:<seq> item ops + word.status of window notes → E (re-minted as n:<note>); discard list MUST be shown
+2026-11-12T17:48:17Z DECIDE add_kanji kanji count against own home deck (may exceed), not drawing deck; vocab+kanji atomic; BEFORE = kanji first
+2026-11-12T17:48:17Z C-8 DISPATCH attempt 2 (same agent)
