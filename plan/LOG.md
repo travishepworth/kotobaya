@@ -165,3 +165,8 @@
 2026-11-12T12:35:45Z T103 MERGE
 2026-11-12T12:35:45Z C-3 DISPATCH architect(opus): dictionary package/diff format into contracts (T103 invented it)
 2026-11-12T12:39:03Z - DECIDE ADR-009 (human): jpdb import JP→EN only, merge duplicate vids, known only when sole event, keywords editable
+2026-11-12T12:40:23Z C-3 HANDOFF DONE; CHECK_GREEN db+api
+2026-11-12T12:40:23Z C-3 REVIEW combined (opus) dispatched
+2026-11-12T12:40:23Z T110 BLOCK kotlin/python generators fail on 3.1 shapes; TS ok
+2026-11-12T12:40:23Z - DECIDE T110: ship TS; try other generators for kotlin/python, else tested post-gen patch; never change frozen contract for tooling
+2026-11-12T12:40:23Z T110 ESCALATE haiku→sonnet attempt 2 (same worktree)
