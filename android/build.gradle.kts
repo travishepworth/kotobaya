@@ -32,8 +32,9 @@ android {
         applicationId = "kotobaya.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.0.0"
+        // T312: set by the release workflow from the v<major>.<minor>.<patch> tag; local builds keep the defaults.
+        versionCode = System.getenv("VERSION_CODE")?.toInt() ?: 1
+        versionName = System.getenv("VERSION_NAME") ?: "0.0.0"
     }
     // T305a: AnkiDroid stand-in flavors. Code namespace stays kotobaya.android in both; only one app
     // per device can own the provider authority and permission (see ankiapi/provider/AnkiContract.kt).
