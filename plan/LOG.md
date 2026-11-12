@@ -177,3 +177,7 @@
 2026-11-12T12:42:38Z C-3 DISPATCH attempt 2 (same opus agent)
 2026-11-12T12:43:08Z T108b HANDOFF DONE but execution test missing (snapshots only)
 2026-11-12T12:43:08Z T108b DISPATCH attempt 2 (same writer): sqlite+postgres execution tests, DST-correct day bounds
+2026-11-12T12:44:25Z T107b REVIEW_APPROVE (6 minor → FOLLOWUPS)
+2026-11-12T12:44:25Z T107b MERGE
+2026-11-12T12:44:25Z C-3 HANDOFF DONE attempt 2; CHECK_GREEN
+2026-11-12T12:44:25Z C-3 REVIEW verification dispatched

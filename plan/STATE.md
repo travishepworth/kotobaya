@@ -1,12 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T12:43:08Z
+Updated: 2026-11-12T12:44:25Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-3 | architect (gp/opus) | 2 | t/C-3-dict-package (existing worktree) | 2026-11-12T12:42:38Z |
 | T104 | writer (gp/sonnet) | 1 | t/T104-server-skeleton | 2026-11-12T12:34:15Z |
 | T108b | writer (gp/sonnet) | 2 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
 | T110 | writer (gp/sonnet, escalated) | 2 | t/T110-clients | 2026-11-12T12:34:15Z |
@@ -15,7 +14,7 @@ Updated: 2026-11-12T12:43:08Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T107b | reviewer (opus) | 2026-11-12T12:41:40Z |
+| C-3 (att. 2) | reviewer verification (opus) | 2026-11-12T12:44:25Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -36,6 +35,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T107b FSRS scheduler — reviewer verified line-by-line vs py-fsrs 6.3.2; jvm+js identical
 - T103 dictionary device package + diffs (zstd, S3 SigV4) — real size budget unmeasured
 - C-2 freeze fixes — freeze A + B APPROVE; GATE-CONTRACTS auto-closed
 - T107a PortableMath (fdlibm 5.3) — reviewer verified digests against StrictMath independently; jsTest on node wired

@@ -56,3 +56,4 @@
 - Freeze B → T207: RESOLVED by ADR-009 (human answers). Needs a small C-ticket on openapi JobResultJpdbHistory (one card per vocab note; suspended writing cards; known-only handling) before T207 starts.
 - Freeze B → T112: order the object-storage mirror against pg_dump (mirror after dump, or include in "verified").
 - Freeze B → T202/T111/T112: name the "backups disabled" server setting and wire it in Helm, else durable_seq stays 0 and devices never purge.
+- T107b minors (next core touch): fix the round(-0.5) comment (Python returns int 0); mark the fuzz lastPositive fallback unreachable; remove unused kotlin.math.floor import; add a repeated-AGAIN test that hits the difficulty clamp at 10 (vectors never reach it, nor STABILITY_MIN); FsrsVectorsDriftTest should also compare vectors.json `scheduler` block with vectorParams/defaultWeights. KotobayaCore `instant()` rejects pre-1970 ms.

@@ -196,7 +196,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T107a.md (split from T107)
 
 ### T107b — FSRS: Scheduler + golden vectors + jvm/js bit-identity digest
-- model: opus · risk: high · deps: T107a · status: IN_REVIEW
+- model: opus · risk: high · deps: T107a · status: MERGED
 - see plan/tickets/T107b.md (split from T107)
 
 ### T108 — Search query language
