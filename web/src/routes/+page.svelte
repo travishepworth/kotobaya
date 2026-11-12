@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { coreVersion } from '@kotobaya/core';
 	import { t } from '../lib/i18n';
+	import { session } from '../lib/session.svelte';
 </script>
 
+<svelte:head><title>{t('app.name')}</title></svelte:head>
+
 <h1>{t('app.name')}</h1>
-<p>{coreVersion()}</p>
+<p>{t('home.welcome')}</p>
+{#if session.principal}<p>{session.principal.name}</p>{/if}

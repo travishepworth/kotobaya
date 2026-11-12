@@ -1,0 +1,129 @@
+/* Design tokens. Light by default; dark follows the OS unless data-theme forces one. */
+:root {
+	--kb-font:
+		'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic',
+		'Meiryo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--kb-font-serif: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+	--kb-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+	--kb-bg: #fafaf7;
+	--kb-surface: #ffffff;
+	--kb-surface-2: #f0efe9;
+	--kb-border: #d9d7cc;
+	--kb-text: #1c1b18;
+	--kb-text-muted: #5f5d54;
+	--kb-accent: #b3261e;
+	--kb-accent-text: #ffffff;
+	--kb-link: #1a5fb4;
+	--kb-error: #b3261e;
+	--kb-error-bg: #fde8e6;
+	--kb-info-bg: #e4eefb;
+	--kb-focus: #1a5fb4;
+
+	--kb-space-1: 0.25rem;
+	--kb-space-2: 0.5rem;
+	--kb-space-3: 0.75rem;
+	--kb-space-4: 1rem;
+	--kb-space-6: 1.5rem;
+	--kb-radius: 0.5rem;
+	--kb-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--kb-bg: #151513;
+		--kb-surface: #1f1e1b;
+		--kb-surface-2: #2a2926;
+		--kb-border: #3d3b35;
+		--kb-text: #ece9df;
+		--kb-text-muted: #a5a296;
+		--kb-accent: #ef8a82;
+		--kb-accent-text: #1c1b18;
+		--kb-link: #8ab4f8;
+		--kb-error: #ff9a92;
+		--kb-error-bg: #3b1f1d;
+		--kb-info-bg: #1e2a3d;
+		--kb-focus: #8ab4f8;
+		--kb-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme='dark'] {
+	--kb-bg: #151513;
+	--kb-surface: #1f1e1b;
+	--kb-surface-2: #2a2926;
+	--kb-border: #3d3b35;
+	--kb-text: #ece9df;
+	--kb-text-muted: #a5a296;
+	--kb-accent: #ef8a82;
+	--kb-accent-text: #1c1b18;
+	--kb-link: #8ab4f8;
+	--kb-error: #ff9a92;
+	--kb-error-bg: #3b1f1d;
+	--kb-info-bg: #1e2a3d;
+	--kb-focus: #8ab4f8;
+	--kb-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+	color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--kb-font);
+	background: var(--kb-bg);
+	color: var(--kb-text);
+	line-height: 1.6;
+}
+
+body {
+	margin: 0;
+}
+
+a {
+	color: var(--kb-link);
+}
+
+:focus-visible {
+	outline: 2px solid var(--kb-focus);
+	outline-offset: 2px;
+}
+
+button,
+input {
+	font: inherit;
+	color: inherit;
+}
+
+.kb-btn {
+	background: var(--kb-accent);
+	color: var(--kb-accent-text);
+	border: 0;
+	border-radius: var(--kb-radius);
+	padding: var(--kb-space-2) var(--kb-space-4);
+	cursor: pointer;
+}
+
+.kb-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.kb-btn-quiet {
+	background: transparent;
+	color: var(--kb-text);
+	border: 1px solid var(--kb-border);
+}
+
+.kb-input {
+	background: var(--kb-surface);
+	border: 1px solid var(--kb-border);
+	border-radius: var(--kb-radius);
+	padding: var(--kb-space-2) var(--kb-space-3);
+	width: 100%;
+}

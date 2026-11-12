@@ -9,6 +9,7 @@ RUN npm install -g pnpm
 WORKDIR /src
 COPY --from=core /src/core/build/npm/core core/build/npm/core
 COPY assets assets
+COPY clients/typescript clients/typescript
 COPY web web
 WORKDIR /src/web
 RUN pnpm install --frozen-lockfile && pnpm build

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Create a local k3d cluster, build + import dev images, install the chart, verify /healthz.
-# Usage: deploy/k3d/up.sh [up|down]     env: CLUSTER (default kotobaya), HOST_PORT (default 8088)
+# Usage: deploy/k3d/up.sh [up|down]     env: CLUSTER (default kotobaya), HOST_PORT (http, default 8088), HTTPS_PORT (default 8443)
+# Dev HTTPS: Traefik serves its default self-signed cert on :443 (browser warning once). The session
+# cookie is `Secure`, so browse the https URL; plain HTTP logins do not persist.
 # Then load a dictionary fixture with deploy/k3d/load-dict-fixture.sh.
 # Dev-only credentials below; never reuse them anywhere real.
 set -euo pipefail
 
 CLUSTER="${CLUSTER:-kotobaya}"
 HOST_PORT="${HOST_PORT:-8088}"
+HTTPS_PORT="${HTTPS_PORT:-8443}"
 NS=kotobaya
 REL=kotobaya
 TAG=dev
@@ -20,7 +23,7 @@ if [ "${1:-up}" = "down" ]; then
 fi
 
 k3d cluster list "$CLUSTER" >/dev/null 2>&1 ||
-  k3d cluster create "$CLUSTER" --agents 0 -p "${HOST_PORT}:80@loadbalancer" --wait
+  k3d cluster create "$CLUSTER" --agents 0 -p "${HOST_PORT}:80@loadbalancer" -p "${HTTPS_PORT}:443@loadbalancer" --wait
 kubectl config use-context "k3d-${CLUSTER}" >/dev/null
 
 # Images: prefer `make images` if the Makefile defines it, else build T001's Dockerfiles.
@@ -75,7 +78,8 @@ for _ in $(seq 1 60); do
   if curl -fsS -H "Host: $HOST" "http://localhost:${HOST_PORT}/healthz"; then
     echo
     curl -fsS -H "Host: $HOST" "http://localhost:${HOST_PORT}/api/v1/health" && echo
-    echo "OK: cluster '$CLUSTER' is up; add '127.0.0.1 $HOST' to /etc/hosts to browse http://$HOST:${HOST_PORT}/"
+    curl -fsSk -H "Host: $HOST" "https://localhost:${HTTPS_PORT}/api/v1/health" >/dev/null && echo "https ok"
+    echo "OK: cluster '$CLUSTER' is up; add '127.0.0.1 $HOST' to /etc/hosts to browse https://$HOST:${HTTPS_PORT}/ (self-signed cert; accept the warning)"
     exit 0
   fi
   sleep 2
