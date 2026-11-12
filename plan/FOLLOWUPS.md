@@ -143,3 +143,6 @@
 - C-7 verify -> T212b/server loaders: convert jsonb settings numbers to binary64 before the integer test; never test BigDecimal scale (1.0000000000000001 must be valid = 1). Also guard Infinity (1e309) with the range check.
 - T202c architect: fuzz oracle RefReplica narrower than model.py (fsrs_params.deleted ignores clock rule; cacheOf uses DEFAULT_PARAMS; note.created skips grammar_point check) — make projection() fail on non-Default preset or out-of-subset op types.
 - T202c: implement C-8's engine-refusal behaviour (stale marker) in CoreCardCache once C-8 merges (server follow-up ticket).
+- T212b -> C-8: SCHEMA 6.1 says valid settings values are 'stored as sent', but OpApply canonical JSON stores 1.0 as 1 (same value, valid). Reword to 'stored in canonical JSON form'.
+- T212b -> wiring (W-2): Main.kt `handlers += SettingsModule(db, sync.opApply).handlers`.
+- T202d review: OpApply.validateOwn calls encodeTree first, so REST NUL 422 loses its field pointer; call nulPointer first. SyncJson.containsNul (recursive) + OpRules.kt:93 branch now dead on push path; delete/replace with nulPointer.

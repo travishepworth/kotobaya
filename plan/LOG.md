@@ -391,3 +391,7 @@
 2026-11-12T17:24:29Z T202c CHECK_GREEN server after rebase on C-6/C-7
 2026-11-12T17:24:29Z T202c MERGE 1 attempt
 2026-11-12T17:24:29Z C-8 DISPATCH architect(opus): engine refusal, BACKUPS_DISABLED toggle, §10.4 re-mint gaps
+2026-11-12T17:29:49Z T212b HANDOFF DONE attempt 2; CHECK_GREEN server; MERGE
+2026-11-12T17:29:49Z T202d REVIEW_APPROVE (3 minors); DECIDE skip architect 2nd pass (56-line impl of C-6 rule reviewed twice; reviewer: no conformance issue)
+2026-11-12T17:29:49Z T202d MERGE
+2026-11-12T17:29:49Z T205 HANDOFF DONE (35 rule tests + determinism property tests)
