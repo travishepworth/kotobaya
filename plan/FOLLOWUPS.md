@@ -21,3 +21,6 @@
 - T005 → contracts/db (C-ticket or T006 batch): SCHEMA.md §5.3 purge wording (acked rows kept until durable_seq) + 4 new sync_state keys.
 - T005: after a server restore, REST- and job-originated ops since the last backup are lost (device ops are re-pushed). Backups ticket (T112) should note it; HUMAN_CHECKS on backup frequency.
 - T004: job retention unspecified; importMedia.import_id idempotency depends on job/media rows surviving — define retention in the jobs ticket (T109).
+- T004: POST /cards/bulk/schedule needs only `review` (a review-only token can reset 5000 cards) — consider requiring review+write.
+- T004 → T105 (auth): `x-auth: body-key` / `x-body-key-scope` are custom extensions; the auth filter must implement them by hand.
+- T004: /cards/bulk/schedule retry is not idempotent (extra manual rows per card; same schedule). Consider an optional request id.
