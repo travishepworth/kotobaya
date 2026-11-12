@@ -73,6 +73,24 @@
       "expect": { "rows": [] }
     },
     {
+      "comment": "`or` is not read as `and`: the whole selection is not understood",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id"],
+      "selection": "mid=1 or csum in (3364594046)",
+      "logsUnknown": true,
+      "expect": { "rows": [] }
+    },
+    {
+      "comment": "sfld=? binds the placeholder by position",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["sfld"],
+      "selection": "mid=1 and sfld=?",
+      "args": ["見る"],
+      "expect": { "rows": [["見る"]] }
+    },
+    {
       "comment": "missing note / model ids answer no rows",
       "method": "query",
       "uri": "content://com.ichi2.anki.flashcards/notes/424242",

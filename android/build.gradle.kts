@@ -135,18 +135,21 @@ androidComponents {
     onVariants { variant ->
         val expected = expectedAppIds[variant.flavorName] ?: return@onVariants
         val taskName = "verify${variant.name.replaceFirstChar { it.uppercase() }}AnkiApiManifest"
-        tasks.register<VerifyAnkiApiManifest>(taskName) {
+        val verify = tasks.register<VerifyAnkiApiManifest>(taskName) {
             mergedManifest.set(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.MERGED_MANIFEST))
             expectedApplicationId.set(expected)
         }
+        // Every APK, debug or release (`make apk`), is checked as it is assembled.
+        val assembleName = "assemble${variant.name.replaceFirstChar { it.uppercase() }}"
+        tasks.matching { it.name == assembleName }.configureEach { dependsOn(verify) }
     }
 }
 
 // `make check MODULE=android` runs `:android:testDebugUnitTest`, which flavors would remove. Keep the
-// name as one aggregate: unit tests of the default flavor, plus both debug flavors built and verified.
+// name as one aggregate: unit tests of the default flavor, plus both debug flavors built and all four manifests verified.
 tasks.register("testDebugUnitTest") {
     group = "verification"
-    description = "Unit tests (ankidroid flavor); builds and verifies the manifests of both debug flavors."
+    description = "Unit tests (ankidroid flavor); builds both debug flavors; verifies all four merged manifests."
     dependsOn(
         "testAnkidroidDebugUnitTest",
         "assembleAnkidroidDebug",
@@ -154,6 +157,8 @@ tasks.register("testDebugUnitTest") {
         "compileOwnDebugUnitTestKotlin",
         "verifyAnkidroidDebugAnkiApiManifest",
         "verifyOwnDebugAnkiApiManifest",
+        "verifyAnkidroidReleaseAnkiApiManifest",
+        "verifyOwnReleaseAnkiApiManifest",
     )
 }
 

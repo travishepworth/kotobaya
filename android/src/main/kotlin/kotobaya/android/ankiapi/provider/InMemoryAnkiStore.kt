@@ -114,7 +114,6 @@ class InMemoryAnkiStore(
         val deckId = note.deckId ?: model.deckId
         if (decks.none { it.id == deckId }) throw AnkiStoreException.NotFound("deck $deckId")
         val id = newId()
-        val sfld = note.fields[model.sortFieldIndex]
         val row = AnkiNote(
             id = id,
             guid = "kb$id",
@@ -122,8 +121,8 @@ class InMemoryAnkiStore(
             fields = note.fields,
             tags = note.tags,
             modSeconds = clockSeconds(),
-            sortField = sfld,
-            checksum = AnkiContract.fieldChecksum(sfld),
+            sortField = AnkiContract.stripHtmlMedia(note.fields[model.sortFieldIndex]),
+            checksum = AnkiContract.fieldChecksum(note.fields[0]),
         )
         notes.add(row)
         model.templates.indices.forEach { cards.add(CardRow(id, it, deckId)) }
@@ -139,13 +138,12 @@ class InMemoryAnkiStore(
         if (newFields.size != model.fields.size) {
             throw AnkiStoreException.Invalid("model ${model.id} has ${model.fields.size} fields, got ${newFields.size}")
         }
-        val sfld = newFields[model.sortFieldIndex]
         notes[i] = old.copy(
             fields = newFields,
             tags = tags ?: old.tags,
             modSeconds = clockSeconds(),
-            sortField = sfld,
-            checksum = AnkiContract.fieldChecksum(sfld),
+            sortField = AnkiContract.stripHtmlMedia(newFields[model.sortFieldIndex]),
+            checksum = AnkiContract.fieldChecksum(newFields[0]),
         )
         true
     }

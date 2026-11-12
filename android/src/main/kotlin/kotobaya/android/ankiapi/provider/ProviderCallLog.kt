@@ -41,7 +41,18 @@ object ProviderCallLog {
         synchronized(lines) { lines.clear() }
     }
 
-    /** Makes the unit separator and newlines visible so field boundaries show in the log. */
+    /**
+     * Whether string data (note fields, names, selection args, returned cells) is written verbatim.
+     * True only in debuggable builds (set by [AnkiProvider.onCreate]); release builds log the shape
+     * of each value (length and field count) so the log carries no note content.
+     */
+    @Volatile
+    var revealValues: Boolean = false
+
+    /**
+     * Data values: in debug builds strings appear with the unit separator and newlines made
+     * visible; in release builds as `<str len=N fields=K>`. Keys and numbers are always shown.
+     */
     fun show(value: Any?): String = when (value) {
         null -> "null"
         is Array<*> -> value.joinToString(prefix = "[", postfix = "]") { show(it) }
@@ -50,9 +61,26 @@ object ProviderCallLog {
             @Suppress("DEPRECATION")
             "$it=${show(value.get(it))}"
         }
-        is String -> "\"" + value.replace(AnkiContract.FIELD_SEPARATOR, "<US>").replace("\n", "\\n") + "\""
+        is String -> if (revealValues) visible(value) else shape(value)
         else -> value.toString()
     }
+
+    /** Column names and other identifiers: always verbatim. */
+    fun showNames(names: Array<out String>?): String =
+        names?.joinToString(prefix = "[", postfix = "]") { visible(it) } ?: "null"
+
+    /** SQL-ish selections: structure always verbatim, quoted literals redacted in release builds. */
+    fun showSelection(selection: String?): String = when {
+        selection == null -> "null"
+        revealValues -> visible(selection)
+        else -> visible(selection.replace(Regex("""'(?:[^']|'')*'|"(?:[^"]|"")*"""")) { shape(it.value.drop(1).dropLast(1)) })
+    }
+
+    private fun visible(s: String): String =
+        "\"" + s.replace(AnkiContract.FIELD_SEPARATOR, "<US>").replace("\n", "\\n") + "\""
+
+    private fun shape(s: String): String =
+        "<str len=${s.length} fields=${s.count { it == AnkiContract.FIELD_SEPARATOR[0] } + 1}>"
 
     private const val LOGCAT_CHUNK = 3500
 }

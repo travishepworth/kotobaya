@@ -69,12 +69,12 @@
       "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1001" }
     },
     {
-      "comment": "csum is over the sort field with HTML stripped",
+      "comment": "csum is over the first field with HTML stripped; sfld is stripped too",
       "method": "query",
       "uri": "content://com.ichi2.anki.flashcards/notes_v2",
       "projection": ["_id", "sfld", "csum"],
       "selection": "mid=${model} and csum in (567984260)",
-      "expect": { "rows": [["${note}", "<b>食べる</b>", 567984260]] }
+      "expect": { "rows": [["${note}", "食べる", 567984260]] }
     },
     {
       "method": "query",

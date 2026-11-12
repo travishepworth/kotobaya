@@ -4,6 +4,7 @@ import android.content.ContentProvider
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.UriMatcher
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.database.MatrixCursor
@@ -13,7 +14,6 @@ import kotobaya.android.ankiapi.provider.AnkiContract.CardTemplate
 import kotobaya.android.ankiapi.provider.AnkiContract.Deck
 import kotobaya.android.ankiapi.provider.AnkiContract.Model
 import kotobaya.android.ankiapi.provider.AnkiContract.Note
-import org.koin.core.context.GlobalContext
 
 /**
  * AnkiDroid's FlashCardsContract provider (authority `com.ichi2.anki.flashcards`), answering what
@@ -31,31 +31,39 @@ import org.koin.core.context.GlobalContext
 class AnkiProvider : ContentProvider() {
     @Volatile
     private var attachedStore: AnkiStore? = null
-    private val fallbackStore by lazy {
-        ProviderCallLog.log("no AnkiStore registered; using the in-memory store (lost on restart)")
-        InMemoryAnkiStore()
-    }
 
-    /** The store: one attached explicitly (tests), else Koin's (T305c), else in-memory. */
-    private val store: AnkiStore
-        get() = attachedStore
-            ?: runCatching { GlobalContext.getOrNull()?.getOrNull<AnkiStore>() }.getOrNull()
-            ?: fallbackStore
+    /**
+     * The store: one attached explicitly (tests), else the app's from [AnkiStoreHolder] (waiting
+     * briefly during a cold start). Never an in-memory fallback: with no real store the call fails
+     * with IllegalStateException, so a client never believes an unsaved note was saved.
+     */
+    private fun requireStore(): AnkiStore {
+        attachedStore?.let { return it }
+        return AnkiStoreHolder.await()
+            ?: throw IllegalStateException("Kotobaya's note store is not ready; nothing was saved").also {
+                ProviderCallLog.log("  -> refused: no AnkiStore registered")
+            }
+    }
 
     /** Test seam: pins the store this provider instance uses. */
     fun attachStore(store: AnkiStore) {
         attachedStore = store
     }
 
-    override fun onCreate(): Boolean = true
+    override fun onCreate(): Boolean {
+        val info = context?.applicationInfo
+        ProviderCallLog.revealValues = info != null && (info.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        return true
+    }
 
     private fun caller(): String = runCatching { callingPackage }.getOrNull() ?: "?"
 
+    /** Checked before anything is logged, so an unpermitted caller adds one short line only. */
     private fun requirePermission(what: String, uri: Uri?) {
         val granted = context?.checkCallingOrSelfPermission(AnkiContract.READ_WRITE_PERMISSION) ==
             PackageManager.PERMISSION_GRANTED
         if (!granted) {
-            ProviderCallLog.log("$what refused: caller=${caller()} lacks ${AnkiContract.READ_WRITE_PERMISSION} uri=$uri")
+            ProviderCallLog.log("$what refused: caller=${caller()} lacks permission")
             throw SecurityException("Permission ${AnkiContract.READ_WRITE_PERMISSION} required for $what $uri")
         }
     }
@@ -91,12 +99,12 @@ class AnkiProvider : ContentProvider() {
         selectionArgs: Array<out String>?,
         sortOrder: String?,
     ): Cursor {
-        ProviderCallLog.log(
-            "query caller=${caller()} uri=$uri projection=${ProviderCallLog.show(projection)} " +
-                "selection=${ProviderCallLog.show(selection)} args=${ProviderCallLog.show(selectionArgs)} " +
-                "sort=${ProviderCallLog.show(sortOrder)}",
-        )
         requirePermission("query", uri)
+        ProviderCallLog.log(
+            "query caller=${caller()} uri=$uri projection=${ProviderCallLog.showNames(projection)} " +
+                "selection=${ProviderCallLog.showSelection(selection)} args=${ProviderCallLog.show(selectionArgs)} " +
+                "sort=${ProviderCallLog.showSelection(sortOrder)}",
+        )
         val cursor = mapped { queryChecked(uri, projection, selection, selectionArgs) }
         ProviderCallLog.log("  -> ${cursor.count} row(s)${describe(cursor)}")
         cursor.moveToPosition(-1)
@@ -109,7 +117,7 @@ class AnkiProvider : ContentProvider() {
         selection: String?,
         args: Array<out String>?,
     ): MatrixCursor {
-        val s = store
+        val s by lazy { requireStore() }
         val onUnknown = { col: String -> ProviderCallLog.unknown("unknown column $col for $uri") }
         return when (matcher.match(uri)) {
             NOTES, NOTES_V2 -> AnkiColumns.note.cursor(projection, notesFor(s, selection, args), onUnknown)
@@ -163,7 +171,7 @@ class AnkiProvider : ContentProvider() {
             NoteSelection.Parsed.All -> s.findNotes(NoteFilter())
             is NoteSelection.Parsed.Filter -> s.findNotes(parsed.filter)
             NoteSelection.Parsed.NotUnderstood -> {
-                ProviderCallLog.unknown("notes selection not understood; answering no rows: ${ProviderCallLog.show(selection)}")
+                ProviderCallLog.unknown("notes selection not understood; answering no rows: ${ProviderCallLog.showSelection(selection)}")
                 emptyList()
             }
         }
@@ -171,18 +179,20 @@ class AnkiProvider : ContentProvider() {
     // --- insert ----------------------------------------------------------------------------------
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
-        ProviderCallLog.log("insert caller=${caller()} uri=$uri values=${ProviderCallLog.show(values)}")
         requirePermission("insert", uri)
-        val result = mapped { insertChecked(store, uri, values ?: ContentValues()) }
+        ProviderCallLog.log("insert caller=${caller()} uri=$uri values=${ProviderCallLog.show(values)}")
+        val result = mapped { insertChecked(uri, values ?: ContentValues()) }
         ProviderCallLog.log("  -> $result")
         return result
     }
 
-    private fun insertChecked(s: AnkiStore, uri: Uri, v: ContentValues): Uri? = when (matcher.match(uri)) {
-        NOTES, NOTES_V2 -> ContentUris.withAppendedId(AnkiContract.NOTES_URI, s.addNote(newNote(uri, v)).id)
+    private fun insertChecked(uri: Uri, v: ContentValues): Uri? = insertMatched(lazy { requireStore() }, uri, v)
+
+    private fun insertMatched(store: Lazy<AnkiStore>, uri: Uri, v: ContentValues): Uri? = when (matcher.match(uri)) {
+        NOTES, NOTES_V2 -> ContentUris.withAppendedId(AnkiContract.NOTES_URI, store.value.addNote(newNote(uri, v)).id)
         MODELS -> {
             val fields = v.getAsString(Model.FIELD_NAMES)?.let(AnkiContract::splitFields).orEmpty()
-            val model = s.addModel(
+            val model = store.value.addModel(
                 NewModel(
                     name = v.getAsString(Model.NAME) ?: throw AnkiStoreException.Invalid("${Model.NAME} is required"),
                     fields = fields,
@@ -199,12 +209,12 @@ class AnkiProvider : ContentProvider() {
             ContentUris.withAppendedId(AnkiContract.MODELS_URI, model.id)
         }
         MODEL_TEMPLATES -> {
-            val ord = s.addTemplate(uri.idAt(1), templateEdit(v))
+            val ord = store.value.addTemplate(uri.idAt(1), templateEdit(v))
             ContentUris.withAppendedId(uri, ord.toLong())
         }
         DECKS -> {
             val name = v.getAsString(Deck.DECK_NAME) ?: throw AnkiStoreException.Invalid("${Deck.DECK_NAME} is required")
-            ContentUris.withAppendedId(AnkiContract.DECKS_URI, s.addDeck(name, v.getAsString(Deck.DECK_DESC)).id)
+            ContentUris.withAppendedId(AnkiContract.DECKS_URI, store.value.addDeck(name, v.getAsString(Deck.DECK_DESC)).id)
         }
         else -> {
             ProviderCallLog.unknown("unhandled insert uri=$uri")
@@ -232,11 +242,11 @@ class AnkiProvider : ContentProvider() {
      * the return value counts the notes actually added (AddContentApi compares it to its input).
      */
     override fun bulkInsert(uri: Uri, values: Array<out ContentValues>): Int {
-        ProviderCallLog.log("bulkInsert caller=${caller()} uri=$uri count=${values.size}")
         requirePermission("bulkInsert", uri)
+        ProviderCallLog.log("bulkInsert caller=${caller()} uri=$uri count=${values.size}")
         val count = when (matcher.match(uri)) {
             NOTES, NOTES_V2 -> mapped {
-                val s = store
+                val s = requireStore()
                 s.transaction {
                     values.count { v ->
                         try {
@@ -258,14 +268,14 @@ class AnkiProvider : ContentProvider() {
     // --- update / delete -------------------------------------------------------------------------
 
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int {
+        requirePermission("update", uri)
         ProviderCallLog.log(
             "update caller=${caller()} uri=$uri values=${ProviderCallLog.show(values)} " +
-                "selection=${ProviderCallLog.show(selection)} args=${ProviderCallLog.show(selectionArgs)}",
+                "selection=${ProviderCallLog.showSelection(selection)} args=${ProviderCallLog.show(selectionArgs)}",
         )
-        requirePermission("update", uri)
         val v = values ?: ContentValues()
         val count = mapped {
-            val s = store
+            val s by lazy { requireStore() }
             when (matcher.match(uri)) {
                 NOTE -> s.updateNote(
                     uri.idAt(1),
@@ -288,14 +298,14 @@ class AnkiProvider : ContentProvider() {
     }
 
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
+        requirePermission("delete", uri)
         ProviderCallLog.log(
-            "delete caller=${caller()} uri=$uri selection=${ProviderCallLog.show(selection)} " +
+            "delete caller=${caller()} uri=$uri selection=${ProviderCallLog.showSelection(selection)} " +
                 "args=${ProviderCallLog.show(selectionArgs)}",
         )
-        requirePermission("delete", uri)
         val count = mapped {
             when (matcher.match(uri)) {
-                NOTE -> store.deleteNote(uri.idAt(1)).toCount()
+                NOTE -> requireStore().deleteNote(uri.idAt(1)).toCount()
                 else -> {
                     ProviderCallLog.unknown("unhandled delete uri=$uri")
                     0
@@ -308,10 +318,10 @@ class AnkiProvider : ContentProvider() {
 
     /** AnkiDroid's provider defines no `call()` methods; logged so we learn if a client uses one. */
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+        requirePermission("call", null)
         ProviderCallLog.unknown(
             "call caller=${caller()} method=$method arg=${ProviderCallLog.show(arg)} extras=${ProviderCallLog.show(extras)}",
         )
-        requirePermission("call", null)
         return null
     }
 

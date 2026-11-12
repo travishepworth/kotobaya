@@ -10,6 +10,13 @@ table and AnkiDroid's `AddContentApi` call sequence (getDeckList, addNewDeck, ge
 getFieldList, findDuplicateNotes, addNote, addNotes) as remembered. When the human sends the call log
 from a real Takoboto session (logcat tag `KotobayaAnkiApi`), add a file per session in this format.
 
+**Known deliberate differences, to confirm against a real call log:**
+- Adding a deck whose name already exists returns the existing deck's id. AnkiDroid (as remembered)
+  throws IllegalArgumentException instead.
+- A `notes` selection we can't fully parse returns no rows (AnkiDroid runs it as SQL).
+- With no persistent store registered (cold start beyond a 5 s wait), every call fails with
+  IllegalStateException; nothing is ever saved to memory only.
+
 ## Format
 
 ```json

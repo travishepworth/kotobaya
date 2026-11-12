@@ -43,6 +43,60 @@ class AnkiProviderUnitsTest {
     }
 
     @Test
+    fun selectionParserRejectsLeftoversOrAndUnboundPlaceholders() {
+        fun f(sel: String, vararg args: String) = NoteSelection.parse(sel, arrayOf(*args))
+        val nu = NoteSelection.Parsed.NotUnderstood
+        assertEquals(nu, f("mid=1 or csum in (5)"))
+        assertEquals(nu, f("mid=1 and flags=0"))
+        assertEquals(nu, f("mid=1 and not csum=5"))
+        // mid=? is not bound, so the leftover `?` makes it unparseable rather than misbinding args[0].
+        assertEquals(nu, f("mid=? and sfld=?", "5", "x"))
+        assertEquals(nu, f("mid=1 and sfld=?"))
+        assertEquals(
+            NoteSelection.Parsed.Filter(NoteFilter(1, null, "x")),
+            f("(mid=1) AND (sfld=?)", "x"),
+        )
+        assertEquals(nu, f("mid=1 and mid=2"))
+    }
+
+    @Test
+    fun checksumIsOverTheFirstFieldAndSortFieldIsStripped() {
+        val store = InMemoryAnkiStore()
+        val model = store.addModel(
+            NewModel("M", listOf("Word", "Reading"), 1, "", null, 1, 0, null, null, null),
+        )
+        val note = store.addNote(NewNote(model.id, listOf("<b>食べる</b>", "<i>たべる</i>"), emptyList(), null, null))
+        assertEquals(567984260L, note.checksum)
+        assertEquals("たべる", note.sortField)
+    }
+
+    @Test
+    fun stripHtmlIsBoundedOnHugeInput() {
+        val huge = "<".repeat(1_000_000)
+        assertTrue(AnkiContract.stripHtmlMedia(huge).length <= AnkiContract.MAX_STRIP_CHARS)
+        AnkiContract.fieldChecksum(huge)
+    }
+
+    @Test
+    fun releaseLogsShapesNotFieldValues() {
+        val values = android.content.ContentValues().apply {
+            put("mid", 5L)
+            put("flds", "食べる\u001fto eat")
+        }
+        try {
+            ProviderCallLog.revealValues = false
+            val shown = ProviderCallLog.show(values)
+            assertTrue("食べる" !in shown && "mid=5" in shown && "len=10 fields=2" in shown, shown)
+            val sel = ProviderCallLog.showSelection("mid=5 and sfld='食べる'")
+            assertTrue("食べる" !in sel && "mid=5" in sel, sel)
+            ProviderCallLog.revealValues = true
+            assertTrue("食べる<US>to eat" in ProviderCallLog.show(values))
+        } finally {
+            ProviderCallLog.revealValues = false
+        }
+    }
+
+    @Test
     fun callLogIsBounded() {
         ProviderCallLog.clear()
         repeat(ProviderCallLog.CAPACITY + 50) { ProviderCallLog.log("line $it") }

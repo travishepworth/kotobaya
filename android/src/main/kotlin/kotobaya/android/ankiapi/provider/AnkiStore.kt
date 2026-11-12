@@ -87,7 +87,9 @@ data class AnkiNote(
     val tags: List<String>,
     /** Seconds since the epoch, as Anki stores `mod`. */
     val modSeconds: Long,
+    /** `sfld`: the sort field with HTML stripped ([AnkiContract.stripHtmlMedia]). */
     val sortField: String,
+    /** `csum`: [AnkiContract.fieldChecksum] of the FIRST field, as Anki computes it. */
     val checksum: Long,
 )
 

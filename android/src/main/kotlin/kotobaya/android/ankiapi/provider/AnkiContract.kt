@@ -112,18 +112,22 @@ object AnkiContract {
 
     fun joinTags(tags: List<String>): String = tags.joinToString(" ")
 
+    /** Longest input [stripHtmlMedia] processes; longer fields are truncated first (bounds regex cost). */
+    const val MAX_STRIP_CHARS: Int = 64 * 1024
+
     /**
      * Anki's `fieldChecksum`: the first 8 hex digits of SHA-1 over the field with HTML stripped.
-     * AddContentApi computes this on the client for `csum in (...)` duplicate checks, so a store
-     * must produce exactly the same number.
+     * Anki takes it over the note's FIRST field (not the sort field). AddContentApi computes it on
+     * the client for `csum in (...)` duplicate checks, so a store must produce the same number.
      */
     fun fieldChecksum(field: String): Long {
-        val digest = MessageDigest.getInstance("SHA-1").digest(stripHtml(field).toByteArray(Charsets.UTF_8))
+        val digest = MessageDigest.getInstance("SHA-1").digest(stripHtmlMedia(field).toByteArray(Charsets.UTF_8))
         val hex = digest.joinToString("") { "%02x".format(it) }
         return hex.substring(0, 8).toLong(16)
     }
 
-    private fun stripHtml(s: String): String = s
+    /** Anki's `stripHTMLMedia`: tags removed, image file names kept, basic entities decoded. Also `sfld`. */
+    fun stripHtmlMedia(field: String): String = field.take(MAX_STRIP_CHARS)
         .replace(Regex("(?s)<!--.*?-->"), "")
         .replace(Regex("(?is)<style.*?>.*?</style>"), "")
         .replace(Regex("(?is)<script.*?>.*?</script>"), "")
