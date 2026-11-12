@@ -116,7 +116,7 @@ def test_diff_survives_compressed_blobs(tmp_path: Path) -> None:
     a, b = tmp_path / "a.sqlite", tmp_path / "b.sqlite"
     build_sqlite(a, make_rows(2, 30))
     build_sqlite(b, make_rows(3, 30, changed=frozenset({5}), extra=(31,)))
-    arts = build_artifacts(b, "top60k", tmp_path / "out", previous_package=a)
+    arts = build_artifacts(b, "top60k", tmp_path / "out", base=a)
     assert [x.kind for x in arts] == ["full", "diff"]
     assert arts[1].from_release == 2 and arts[0].from_release is None
     full = tmp_path / "full.sqlite"
@@ -125,7 +125,15 @@ def test_diff_survives_compressed_blobs(tmp_path: Path) -> None:
     apply_diff_file(a, arts[1].path)
     assert dump(a) == dump(b)
     entry = arts[1].manifest_entry()
-    assert set(entry) == {"kind", "scope", "from_release", "blob_hash", "size_bytes"}
+    assert set(entry) == {
+        "kind",
+        "scope",
+        "from_release",
+        "format_version",
+        "blob_hash",
+        "size_bytes",
+        "uncompressed_size_bytes",
+    }
     assert re.fullmatch(r"[0-9a-f]{64}", entry["blob_hash"])
 
 
@@ -178,6 +186,13 @@ class _FakeS3(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def do_GET(self) -> None:
+        body = self.store.get(self.path.strip("/"))
+        self.send_response(200 if body is not None else 404)
+        self.send_header("Content-Length", str(len(body or b"")))
+        self.end_headers()
+        self.wfile.write(body or b"")
+
     def do_PUT(self) -> None:
         n = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(n)
@@ -209,7 +224,8 @@ def test_upload_creates_bucket_content_addressed(
     build_sqlite(p, make_rows(1, 10))
     s3 = S3Client(S3Config(fake_s3, "kotobaya", access_key, "sk" if access_key else ""))
     art = build_artifacts(p, "top60k", tmp_path / "out", s3=s3)[0]
-    stored = _FakeS3.store[f"kotobaya/{blob_key(art.blob_hash)}"]
+    assert blob_key(art.blob_hash) == art.blob_hash  # bare key, no prefix (DICT_PACKAGE.md 4)
+    stored = _FakeS3.store[f"kotobaya/{art.blob_hash}"]
     assert stored == art.path.read_bytes() and len(stored) == art.size_bytes
     assert all(a.startswith("AWS4-HMAC-SHA256") for a in _FakeS3.auth) == bool(access_key)
     build_artifacts(p, "top60k", tmp_path / "out", s3=s3)  # idempotent re-run

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
+import struct
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,8 @@ Row = tuple[Any, ...]
 Diff = dict[str, Any]
 DIFF_FORMAT = "kotobaya-dict-diff"
 DIFF_FORMAT_VERSION = 1
+TABLE_NAMES = tuple(t.name for t in TABLES)
+EMPTY_TABLE_DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def _pk_of(t: Table, row: Row) -> Row:
@@ -72,6 +76,31 @@ def row_counts(con: sqlite3.Connection) -> dict[str, int]:
     return {t.name: con.execute(f"SELECT count(*) FROM {t.name}").fetchone()[0] for t in TABLES}
 
 
+def table_digest(con: sqlite3.Connection, t: Table) -> str:
+    """Table digest of DICT_PACKAGE.md 3.5: SHA-256 over the self-delimiting row encoding.
+
+    NULL = 0x00; integer = 0x01 + int64 big-endian; text = 0x02 + uint32 big-endian UTF-8 length
+    + bytes. A real or blob value raises (it never occurs in a valid package).
+    """
+    h = hashlib.sha256()
+    for row in _ordered(con, t):
+        for v in row:
+            if v is None:
+                h.update(b"\x00")
+            elif isinstance(v, int):
+                h.update(b"\x01" + struct.pack(">q", v))
+            elif isinstance(v, str):
+                raw = v.encode("utf-8")
+                h.update(b"\x02" + struct.pack(">I", len(raw)) + raw)
+            else:
+                raise ValueError(f"{t.name}: value of type {type(v).__name__} in a package")
+    return h.hexdigest()
+
+
+def table_digests(con: sqlite3.Connection) -> dict[str, str]:
+    return {t.name: table_digest(con, t) for t in TABLES}
+
+
 def _ordered(con: sqlite3.Connection, t: Table) -> Iterator[Row]:
     cur = con.execute(f"SELECT {','.join(t.columns)} FROM {t.name} ORDER BY {','.join(t.pk)}")
     return iter(cur)
@@ -126,23 +155,50 @@ def compute_diff(old: Path, new: Path) -> Diff:
             "scope": scope_b,
             "tables": tables,
             "row_counts": row_counts(b),
+            "table_digests": table_digests(b),
         }
     finally:
         a.close()
         b.close()
 
 
-def apply_diff(db: Path, diff: Diff) -> None:
-    """Patch the package at ``db`` in place to the diff's target release (one transaction)."""
+def _validate_envelope(diff: Diff) -> None:
+    """Step 1 of DICT_PACKAGE.md 3.4: format, version, exact table sets, columns and pk."""
     if diff.get("format") != DIFF_FORMAT or diff.get("format_version") != DIFF_FORMAT_VERSION:
         raise ValueError("unsupported diff format")
+    for key in ("tables", "row_counts", "table_digests"):
+        got = diff.get(key)
+        if not isinstance(got, dict) or set(got) != set(TABLE_NAMES):
+            raise ValueError(f"diff {key} is not exactly the {len(TABLE_NAMES)} dictionary tables")
+    for t in TABLES:
+        spec = diff["tables"][t.name]
+        if spec.get("columns") != list(t.columns) or spec.get("pk") != list(t.pk):
+            raise ValueError(f"diff columns/pk for {t.name} do not match the schema")
+    for key in ("from_release", "to_release"):
+        if type(diff.get(key)) is not int:
+            raise ValueError(f"diff {key} missing or not an integer")
+
+
+def _release_row(con: sqlite3.Connection) -> list[tuple[int, str]]:
+    return [(r[0], r[1]) for r in con.execute("SELECT id, scope FROM dict_release")]
+
+
+def apply_diff(db: Path, diff: Diff) -> None:
+    """Patch the package at ``db`` in place to the diff's target release (DICT_PACKAGE.md 3.4).
+
+    Everything is checked before COMMIT (row counts, table digests, release row, foreign keys);
+    any failure rolls back and raises ``ValueError``, leaving the file untouched.
+    """
+    _validate_envelope(diff)
     con = sqlite3.connect(db, isolation_level=None)
     try:
-        rel, scope = con.execute("SELECT id, scope FROM dict_release").fetchone()
-        if rel != diff["from_release"] or scope != diff["scope"]:
-            raise ValueError(
-                f"diff is {diff['from_release']}/{diff['scope']}, file is {rel}/{scope}"
-            )
+        con.execute("PRAGMA foreign_keys = OFF")
+        uv = con.execute("PRAGMA user_version").fetchone()[0]
+        if uv != USER_VERSION:
+            raise ValueError(f"file user_version {uv} != {USER_VERSION}")
+        rows = _release_row(con)
+        if rows != [(diff["from_release"], diff["scope"])]:
+            raise ValueError(f"diff is {diff['from_release']}/{diff['scope']}, file is {rows}")
         con.execute("BEGIN")
         try:
             tables = diff["tables"]
@@ -150,17 +206,23 @@ def apply_diff(db: Path, diff: Diff) -> None:
                 where = " AND ".join(f"{c} = ?" for c in t.pk)
                 con.executemany(f"DELETE FROM {t.name} WHERE {where}", tables[t.name]["delete"])
             for t in TABLES:
-                cols = tables[t.name]["columns"]
-                if cols != list(t.columns):
-                    raise ValueError(f"diff columns for {t.name} do not match the schema")
-                ph = ",".join("?" * len(cols))
+                ph = ",".join("?" * len(t.columns))
                 con.executemany(
-                    f"INSERT OR REPLACE INTO {t.name} ({','.join(cols)}) VALUES ({ph})",
+                    f"INSERT OR REPLACE INTO {t.name} ({','.join(t.columns)}) VALUES ({ph})",
                     tables[t.name]["upsert"],
                 )
             counts = row_counts(con)
             if counts != diff["row_counts"]:
                 raise ValueError(f"row counts after apply differ: {counts}")
+            digests = table_digests(con)
+            bad = [n for n in TABLE_NAMES if digests[n] != diff["table_digests"][n]]
+            if bad:
+                raise ValueError(f"table digests after apply differ: {bad}")
+            if _release_row(con) != [(diff["to_release"], diff["scope"])]:
+                raise ValueError("dict_release after apply is not (to_release, scope)")
+            dangling = con.execute("PRAGMA foreign_key_check").fetchall()
+            if dangling:
+                raise ValueError(f"foreign_key_check failed after apply: {dangling[:3]}")
             con.execute("COMMIT")
         except BaseException:
             con.execute("ROLLBACK")

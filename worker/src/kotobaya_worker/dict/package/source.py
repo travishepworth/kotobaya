@@ -94,3 +94,22 @@ def read_rows(
             expected[table] = one[0]
         cur.execute("DROP TABLE _sel")
     return rows, expected
+
+
+def referenced_seqs(conn: psycopg.Connection[Any]) -> list[int]:
+    """Entry seqs the user's data points at (DICT_PACKAGE.md 2.3.2), sorted.
+
+    MUST: every live ``app.note`` and every ``app.word_status`` row. SHOULD: every live
+    ``app.deck_item`` (not deleted, in a live deck). Soft references: seqs missing from
+    ``ref.dict_entry`` are simply not selected later by :func:`read_rows`.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT entry_seq FROM app.note WHERE entry_seq IS NOT NULL AND deleted_at IS NULL
+               UNION SELECT entry_seq FROM app.word_status
+               UNION SELECT i.entry_seq FROM app.deck_item i JOIN app.deck d ON d.id = i.deck_id
+                     WHERE i.entry_seq IS NOT NULL AND i.deleted_at IS NULL
+                       AND d.deleted_at IS NULL
+               ORDER BY 1"""
+        )
+        return [int(r[0]) for r in cur.fetchall()]

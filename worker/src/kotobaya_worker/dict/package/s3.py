@@ -2,7 +2,7 @@
 
 Configured from ``S3_ENDPOINT``, ``S3_BUCKET``, ``S3_ACCESS_KEY``, ``S3_SECRET_KEY``. With no
 access key the requests are unsigned (the SeaweedFS dev store has no auth). Blobs are stored
-under ``blobs/<sha256>``.
+under the bare ``<sha256>`` key (DICT_PACKAGE.md 4).
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ class S3Config:
 
 
 def blob_key(sha256: str) -> str:
-    return f"blobs/{sha256}"
+    return sha256
 
 
 def _hmac(key: bytes, msg: str) -> bytes:
@@ -93,6 +93,11 @@ class S3Client:
         self._host = u.netloc
 
     def _request(self, method: str, path: str, body: Path | None = None, sha: str = "") -> int:
+        return self._call(method, path, body, sha)[0]
+
+    def _call(
+        self, method: str, path: str, body: Path | None = None, sha: str = ""
+    ) -> tuple[int, bytes]:
         payload = sha or _EMPTY_SHA
         headers = sign_headers(self.cfg, method, path, self._host, payload, datetime.now(UTC))
         cls = http.client.HTTPSConnection if self._https else http.client.HTTPConnection
@@ -106,8 +111,8 @@ class S3Client:
                 with body.open("rb") as f:
                     conn.request(method, quote(path, safe="/-_.~"), body=f, headers=headers)
             resp = conn.getresponse()
-            resp.read()
-            return resp.status
+            data = resp.read()
+            return resp.status, data
         finally:
             conn.close()
 
@@ -119,8 +124,17 @@ class S3Client:
         if status not in (200, 409):  # 409: created concurrently
             raise RuntimeError(f"cannot create bucket {self.cfg.bucket}: HTTP {status}")
 
+    def get_blob(self, sha256: str) -> bytes | None:
+        """The stored bytes of ``<sha256>``; ``None`` when absent. Not verified here."""
+        status, data = self._call("GET", f"/{self.cfg.bucket}/{blob_key(sha256)}")
+        if status == 404:
+            return None
+        if status != 200:
+            raise RuntimeError(f"download of {sha256} failed: HTTP {status}")
+        return data
+
     def put_blob(self, file: Path, sha256: str) -> None:
-        """Upload ``file`` as ``blobs/<sha256>`` unless already there."""
+        """Upload ``file`` as ``<sha256>`` unless already there."""
         path = f"/{self.cfg.bucket}/{blob_key(sha256)}"
         if self._request("HEAD", path) == 200:
             return
