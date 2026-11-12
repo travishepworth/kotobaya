@@ -84,7 +84,7 @@ public interface HlcRules {
      * form: wrong length, uppercase hex, missing dashes, a non-canonical device UUID.
      *
      * Example: `parse("0193a1b2c3d4-0001-01931f3e-0000-7000-8000-0000000000a1")` →
-     * `HlcParts(1733323211732, 1, "01931f3e-0000-7000-8000-0000000000a1")`.
+     * `HlcParts(1733584667604, 1, "01931f3e-0000-7000-8000-0000000000a1")`.
      */
     public fun parse(hlc: String): HlcParts?
 

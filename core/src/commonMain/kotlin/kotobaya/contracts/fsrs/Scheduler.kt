@@ -181,7 +181,11 @@ public data class CardSchedule(
     public val dueAt: InstantMs?,
     /** `card.interval_days`: whole days scheduled by the last review; 0 in (re)learning; null when NEW. */
     public val intervalDays: Int?,
-    /** `card.last_review_at`: `reviewed_at` of the last row folded (rated or manual); null if none. */
+    /**
+     * `card.last_review_at` (C-1b): `reviewed_at` of the last **rated** (scheduled/learning) row
+     * folded since the last reset; null if none. Manual SET_DUE rows leave it unchanged; RESET sets it
+     * to null. Elapsed time and retrievability are always measured from it.
+     */
     public val lastReviewAt: InstantMs?,
     /** `card.reps`: number of folded rated (scheduled/learning) reviews since the last reset. */
     public val reps: Int,
@@ -203,7 +207,12 @@ public data class RatedReview(
     public val reviewedAt: InstantMs,
     /** `review_log.rating`. */
     public val rating: Rating,
-    /** `review_log.utc_offset_min`; null = unknown, treated as 0 (UTC) for easy days. */
+    /**
+     * `review_log.utc_offset_min`; null = unknown. **Deviation, stated on purpose:** a null offset is
+     * treated as 0 (UTC) for easy days. The scheduler is pure (no settings, no time-zone database), so
+     * it cannot fall back to `scheduler.timezone` as stats do (SCHEMA `utc_offset_min`). jpdb imports
+     * have null offsets, so their fuzzed easy-day choice uses UTC weekdays.
+     */
     public val utcOffsetMin: Int?,
 )
 
@@ -233,7 +242,25 @@ public data class RatingOutcome(
  *
  * Golden vectors: every review of every sequence of `fixtures/fsrs/vectors.json` (fuzz off,
  * default weights, retention 0.9, steps 60/600 s and 600 s, max 36500) must give `state`, `step`,
- * `dueAt` exactly and `stability`, `difficulty` within 1e-6.
+ * `dueAt` exactly and `stability`, `difficulty` within 1e-6 of py-fsrs.
+ *
+ * **Cross-platform determinism (normative).** For the same inputs, every output double is
+ * **bit-identical** on jvm, android and js (py-fsrs itself is only matched within 1e-6). Therefore:
+ * - one implementation in `commonMain`, no `expect`/`actual` on the scheduling path;
+ * - every power and exponential goes through a [PortableMath] (fdlibm port); kotlin.math
+ *   transcendentals are banned (list in [PortableMath]). py-fsrs's `a ** b` is `pow(a, b)` and its
+ *   `math.e ** x` is `pow(PortableMath.E, x)`; py-fsrs uses no other transcendental;
+ * - evaluate each formula with the operand order and parenthesisation of py-fsrs 6.3.2
+ *   `scheduler.py` (e.g. `_FACTOR = pow(0.9, 1 / DECAY) − 1` with `DECAY = −w[20]`), no algebraic
+ *   rewriting, no fused multiply-add;
+ * - elapsed days use `Long` arithmetic, never a double division.
+ *
+ * **Rounding (normative).** py-fsrs rounds with Python 3 `round()`, which is round-half-to-even on the
+ * double. Wherever py-fsrs calls `round` (the review interval `round(stability / FACTOR ·
+ * (pow(desiredRetention, 1 / DECAY) − 1))`, and the fuzz bounds below) use
+ * `roundHalfEven(x)`: `f = floor(x); d = x − f` (exact); `d > 0.5` → `f + 1`; `d < 0.5` → `f`;
+ * `d == 0.5` → `f` if `f` is even, else `f + 1`. Examples: 2.5 → 2, 3.5 → 4, 2.4999999999999996 → 2.
+ * The interval is then clamped `max(·, 1)` and `min(·, maximumIntervalDays)` in that order.
  *
  * **Fuzz** (when [SchedulerParams.fuzz]; replaces py-fsrs's `random.random()`, applied only where
  * py-fsrs fuzzes, i.e. to REVIEW intervals of `>= 2.5` days, after the maximum-interval clamp):
@@ -261,8 +288,17 @@ public interface Scheduler {
 
     /**
      * Scheduling parameters of a preset row. `weights` are used iff `row.weights != null`,
-     * `row.fsrsVersion == fsrsVersion` and it has exactly 21 finite values; otherwise
-     * [defaultWeights]. `weightsVersion = row.weightsVersion` in both cases (so a cache stamped with
+     * `row.fsrsVersion == fsrsVersion`, it has exactly 21 values, and every `w[i]` lies within the
+     * py-fsrs 6.3.2 bounds `LOWER_BOUNDS_PARAMETERS[i] <= w[i] <= UPPER_BOUNDS_PARAMETERS[i]`
+     * (the same bounds the `fsrs_params.published` schema enforces at push, C-1f; NaN fails); otherwise
+     * [defaultWeights] — all 21 together, never per weight. Bounds by index:
+     * `0–3: [0.001, 100]`, `4: [1, 10]`, `5: [0.001, 4]`, `6: [0.001, 4]`, `7: [0.001, 0.75]`,
+     * `8: [0, 4.5]`, `9: [0, 0.8]`, `10: [0.001, 3.5]`, `11: [0.001, 5]`, `12: [0.001, 0.25]`,
+     * `13: [0.001, 0.9]`, `14: [0, 4]`, `15: [0, 1]`, `16: [1, 6]`, `17: [0, 2]`, `18: [0, 2]`,
+     * `19: [0, 0.8]`, `20: [0.1, 0.8]`. Within bounds, stability stays `>= 0.001` (py-fsrs
+     * `STABILITY_MIN` clamp) and is never NaN.
+     * `desiredRetention` outside `(0, 1)` or non-finite falls back to 0.9, `maximumIntervalDays < 1` to
+     * 36500, and an `easyDays` that is not 7 finite values in `[0, 1]` to all ones. `weightsVersion = row.weightsVersion` in both cases (so a cache stamped with
      * it is current either way). The caller passes the **effective preset** (SYNC.md 9.1: the card's
      * preset row, or the Default preset if that row is tombstoned).
      */
@@ -276,14 +312,17 @@ public interface Scheduler {
     public fun review(before: CardSchedule, review: RatedReview, params: SchedulerParams): CardSchedule
 
     /**
-     * Folds one `manual` row:
-     * - [ManualAction.RESET] → [CardSchedule.NEW] with `lastReviewAt = reviewedAt`.
-     * - [ManualAction.SET_DUE] on a NEW card → unchanged except `lastReviewAt = reviewedAt`
-     *   (a new card has no schedule to move; the CHECK `state = new ⇔ due_at IS NULL` forbids a due date).
-     * - SET_DUE otherwise → state, step, stability, difficulty, reps, lapses kept; `dueAt = manualDueAt`
-     *   (may be in the past = due now); `lastReviewAt = reviewedAt`; in REVIEW
+     * Folds one `manual` row (C-1b: manual rows never move `lastReviewAt` forward):
+     * - [ManualAction.RESET] → [CardSchedule.NEW] (`lastReviewAt = null`, reps and lapses 0).
+     * - [ManualAction.SET_DUE] on a NEW card → unchanged (a new card has no schedule to move; the
+     *   CHECK `state = new ⇔ due_at IS NULL` forbids a due date).
+     * - SET_DUE otherwise → state, step, stability, difficulty, reps, lapses and `lastReviewAt` kept;
+     *   `dueAt = manualDueAt` (may be in the past = due now); in REVIEW
      *   `intervalDays = max(0, floor((manualDueAt − reviewedAt) / 86400000))`, otherwise unchanged.
-     *   The next rated review measures elapsed time from this `lastReviewAt`.
+     *   The next rated review measures elapsed time (and retrievability) from the last **rated**
+     *   review, so a review right after a reschedule is not treated as same-day.
+     *
+     * [reviewedAt] is the manual row's `reviewed_at`; it only enters `intervalDays`.
      *
      * @throws IllegalArgumentException if [action] is SET_DUE and [manualDueAt] is null.
      */
@@ -309,9 +348,10 @@ public interface Scheduler {
     ): List<RatingOutcome>
 
     /**
-     * Probability of recall at [at] (FSRS-6 forgetting curve with `w[20]` decay; elapsed days as in
-     * py-fsrs `get_card_retrievability`: whole days, `>= 0`). Null for a NEW card or one without
-     * stability. In `0..1`.
+     * Probability of recall at [at] (FSRS-6 forgetting curve with `w[20]` decay, through
+     * [PortableMath.pow]; elapsed days as in py-fsrs `get_card_retrievability`: whole days since
+     * `schedule.lastReviewAt` (the last rated review), `>= 0`). Null for a NEW card or one without
+     * stability or `lastReviewAt`. In `0..1`.
      */
     public fun retrievability(schedule: CardSchedule, at: InstantMs, params: SchedulerParams): Double?
 }

@@ -23,8 +23,9 @@ public data class JsonBool(
  *
  * Every number in a v1 op is either an integer with magnitude `< 2^53` (instants, `entry_seq`,
  * offsets, counts, versions) or a finite double (`desired_retention`, `easy_days`, `weights`), so a
- * double represents all of them exactly. A decoder MUST report an integer literal with magnitude
- * `>= 2^53` as invalid rather than round it.
+ * double represents all of them exactly. [CanonicalJson.decode] accepts any finite number (an
+ * integral double `>= 2^53` such as `1e20` is a valid JSON number and round-trips). The `< 2^53`
+ * limit applies only to **integer-typed** schema properties and is enforced by [OpCodec] validation.
  */
 public data class JsonNumber(
     /** The value; always finite (NaN and ±Infinity are not JSON). */
@@ -44,9 +45,9 @@ public data class JsonArray(
 ) : JsonValue
 
 /**
- * A JSON object. [members] keeps insertion order (use `LinkedHashMap` / `mapOf`, which preserve it
- * on every Kotlin platform); [CanonicalJson.encode] writes members in that order. A decoder
- * rejects an object with a duplicate key.
+ * A JSON object. [members] keeps insertion/document order (use `LinkedHashMap` / `mapOf`), but that
+ * order carries no meaning: equality ignores it and [CanonicalJson.encode] sorts members (canonical
+ * member order). A decoder rejects an object with a duplicate key.
  */
 public data class JsonObject(
     /** The members, in document order. */
@@ -73,35 +74,53 @@ public data class JsonDecodeResult(
  * The one JSON text form used for ops: **compact canonical JSON**. It is what a client pushes
  * (`PushRequest.ops[i]`), what `max_op_bytes` is measured on (SYNC.md 5.4) and what a device stores
  * in `pending_op`. Server and clients compute an op's size as
- * `utf8Size(encode(op))`, so they always agree.
+ * `utf8Size(encode(op))` (= [sizeOf] of its tree), so they always agree, whatever member order or
+ * whitespace a sender used.
  *
- * Encoding rules (all normative):
+ * Encoding rules (all normative). They make `encode` a function of the **value**: `a == b` (structural,
+ * order-insensitive equality) ⇒ `encode(a) == encode(b)`, on every platform; the converse holds
+ * except that `-0.0` and `0.0` both encode as `0`.
  * - No whitespace anywhere outside strings.
- * - Object members in [JsonObject.members] order; arrays in order.
+ * - **Canonical member order:** at every depth (envelope, payload, nested objects), object members
+ *   sorted by key in ascending order of UTF-16 code units (as RFC 8785 JCS; all v1 keys are ASCII, so
+ *   this is byte order). Example: `{"op_id":…,"device_id":…}` is written `{"device_id":…,"op_id":…}`.
+ *   Arrays keep their order.
  * - Strings: `"` → `\"`, `\` → `\\`, U+0008 → `\b`, U+000C → `\f`, U+000A → `\n`, U+000D → `\r`,
  *   U+0009 → `\t`, other code points below U+0020 → `\u00XX` with lowercase hex. Every other code
  *   point, including `/`, U+007F and all non-ASCII text, is written **raw** (UTF-8 in bytes), never
  *   `\u`-escaped. A string with an unpaired surrogate cannot be encoded (IllegalArgumentException).
- * - Numbers: if the value is integral and its magnitude is `< 2^53`, its decimal digits with an
- *   optional leading `-` and no fraction or exponent (`1`, not `1.0`; `-0.0` → `0`). Otherwise the
- *   ECMAScript `Number::toString` form (shortest round-trip digits; exponent form `1e+21` / `1e-7`
- *   exactly as JavaScript prints it). This is what `JSON.stringify` produces; JVM code MUST NOT use
- *   `Double.toString`, which differs.
+ * - Numbers: exactly the ECMAScript `Number::toString` form, which is what `JSON.stringify` produces:
+ *   shortest round-trip digits; integral magnitudes `< 1e21` as plain digits (`1`, not `1.0`;
+ *   `1e20` → `100000000000000000000`); `-0.0` → `0`; exponent form `1e+21` / `1e-7` exactly as
+ *   JavaScript prints it. JVM code MUST NOT use `Double.toString`, which differs.
  * - `true`, `false`, `null` as literals.
  *
- * Example: `{"a":[1,0.9,"食べる\n"],"b":null}` is canonical; `{"a": [1.0]}` is not (its canonical
- * form is `{"a":[1]}`).
+ * Example: `{"a":[1,0.9,"食べる\n"],"b":null}` is canonical; `{"b":null, "a": [1.0]}` is not (its
+ * canonical form is `{"a":[1],"b":null}`).
  */
 public interface CanonicalJson {
     /**
-     * Parses any RFC 8259 JSON text (whitespace allowed, any escapes). Rejects: trailing content
-     * after the value, duplicate object keys, unpaired surrogates (raw or `\u`-escaped), integer
-     * literals with magnitude `>= 2^53`, numbers that overflow a double. Never throws.
+     * Parses any RFC 8259 JSON text (whitespace allowed, any escapes). A number literal becomes the
+     * nearest double (as `JSON.parse` does). Rejects: trailing content after the value, duplicate
+     * object keys, unpaired surrogates (raw or `\u`-escaped), numbers that overflow a double
+     * (`1e400`). Never throws.
      */
     public fun decode(text: String): JsonDecodeResult
 
-    /** Encodes [value] canonically (rules above). `decode(encode(v)).value == v` for every encodable `v`. */
+    /**
+     * Encodes [value] canonically (rules above). `decode(encode(v)).value == v` for every encodable
+     * `v` (finite numbers, no unpaired surrogates), including integral doubles `>= 2^53`, except that a
+     * `-0.0` comes back as `0.0`.
+     */
     public fun encode(value: JsonValue): String
+
+    /**
+     * `utf8Size(encode(value))`, the size measure of SYNC.md 5.3/5.4 (C-1e). The server applies it to
+     * each raw element of `PushRequest.ops` as parsed, **before** decoding or validating it, so an
+     * unsupported or invalid op is measured too and the result does not depend on the sender's
+     * whitespace or member order. May be computed without building the string.
+     */
+    public fun sizeOf(value: JsonValue): Int
 
     /** Number of bytes of [text] in UTF-8 (a surrogate pair counts 4). */
     public fun utf8Size(text: String): Int

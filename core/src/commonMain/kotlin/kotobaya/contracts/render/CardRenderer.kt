@@ -63,6 +63,15 @@ public data class RenderOptions(
     public val pitch: Boolean,
     /** Show the note's mnemonic on the back (true while the word is hot). */
     public val showMnemonic: Boolean,
+    /**
+     * How the host serves media blobs: a URL template containing `{sha256}` exactly once, replaced
+     * by the 64-hex blob hash in every emitted `img src`. Browsers and WebViews cannot load the stored
+     * notation `blob:<sha256>`, so each host maps it to a URL it serves, e.g. web
+     * `/api/v1/media/{sha256}`, Android WebView (WebViewAssetLoader)
+     * `https://appassets.androidplatform.net/media/{sha256}`. Only this substitution differs between
+     * hosts; the rest of the HTML is identical for identical input.
+     */
+    public val mediaUrlTemplate: String,
 )
 
 /** Everything needed to render one side of one card. */
@@ -123,7 +132,9 @@ public data class RenderedCard(
  * **Sanitising** (applied to field values and to custom templates; the output contains nothing else):
  * allowed elements `div span p br hr b i u em strong small sub sup ruby rb rt rp ul ol li img button`;
  * allowed attributes: `class` (only classes of [CardClasses.ALL] or starting with `user-`), `lang`,
- * `img src` (only `blob:<sha256>`) and `alt`, `button data-kb-audio` (a sha256). Everything else is
+ * `img src` (in the source only `blob:<sha256>`; any other `src` drops the `img`; in the output the
+ * hash is written through [RenderOptions.mediaUrlTemplate], attribute-escaped) and `alt`,
+ * `button data-kb-audio` (a sha256; the host resolves it to audio). Everything else is
  * removed: other elements are unwrapped (their text kept) except `script style iframe object embed
  * svg math template`, which are removed with their content; comments removed. `[sound:<sha256>]`
  * becomes `<button class="kb-audio" data-kb-audio="<sha256>"></button>`. Text is HTML-escaped.
@@ -132,7 +143,12 @@ public data class RenderedCard(
  * the mora before the drop gets `kb-pitch-drop` too; one `<span class="kb-pitch">` per pattern.
  */
 public interface CardRenderer {
-    /** Renders one side. Never throws for any note content; malformed HTML is repaired by sanitising. */
+    /**
+     * Renders one side. Never throws for any note content; malformed HTML is repaired by sanitising.
+     *
+     * @throws IllegalArgumentException if `options.mediaUrlTemplate` does not contain `{sha256}`
+     *   exactly once (a host bug, not note content).
+     */
     public fun render(input: RenderInput): RenderedCard
 }
 

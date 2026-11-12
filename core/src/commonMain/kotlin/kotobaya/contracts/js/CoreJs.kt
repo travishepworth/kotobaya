@@ -217,6 +217,8 @@ public class JsRenderInput(
     public val pitch: Boolean,
     /** Show the mnemonic. */
     public val showMnemonic: Boolean,
+    /** `RenderOptions.mediaUrlTemplate`, e.g. `/api/v1/media/{sha256}`. */
+    public val mediaUrlTemplate: String,
 )
 
 /** `RenderedCard`. */

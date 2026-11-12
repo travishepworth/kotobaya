@@ -382,15 +382,49 @@ public interface SearchQueryParser {
      * Keys and `is:`/`type:`/`status:` values are lowercase only; `or`/`OR`/`and`/`AND` are the only
      * operator spellings (`Or` is text). A bare word cannot start with `-` and cannot contain
      * whitespace, `"`, `(`, `)`, `:`, `<`, `>`, `=` unescaped (quote it instead).
-     * `and`/`or` are flattened (`a b c` is one [SearchNode.And] with three children).
+     * `and`/`or` are flattened (`a b c` is one [SearchNode.And] with three children), and so is a
+     * parenthesised group whose node has the same operator as its parent: `(a b) c` = `a b c` =
+     * `And(a, b, c)`; `(a or b) or c` = `Or(a, b, c)`. A [SearchNode.Not] is never flattened.
+     *
+     * **Well-formed trees** are exactly the trees [parse] can return: [SearchNode.All] only as the
+     * root; [SearchNode.And]/[SearchNode.Or] with `>= 2` children, never directly inside a node of
+     * the same type; patterns with at least one non-empty segment or at least one wildcard; term
+     * values within the ranges the grammar and [SearchErrorCode.BAD_VALUE] allow;
+     * [SearchTerm.Compare.value] finite.
      */
     public fun parse(query: String): SearchParseResult
 
     /**
-     * Canonical text of a tree: terms separated by one space, ` or ` between OR children,
-     * parentheses only where needed (an [SearchNode.Or] inside an [SearchNode.And] or under
-     * [SearchNode.Not]), patterns bare when possible, else quoted. `parse(format(n))` gives `n`
-     * again apart from spans. Used to store smart-deck queries in a stable form.
+     * Canonical text of a well-formed tree (see [parse]). Used to store smart-deck queries in a
+     * stable form. **Round trip:** `parse(format(n)).query == n` ignoring spans, for **every**
+     * well-formed `n`; and `format(parse(q).query)` is a fixed point of `format ∘ parse`.
+     *
+     * Rules:
+     * - [SearchNode.All] → `""`.
+     * - [SearchNode.And] → children joined by one space; a child that is an [SearchNode.Or] is wrapped
+     *   in `(` `)`.
+     * - [SearchNode.Or] → children joined by ` or ` (an [SearchNode.And] child needs no parentheses).
+     * - [SearchNode.Not] → `-` followed by the child; a child that is an [SearchNode.And] or an
+     *   [SearchNode.Or] is wrapped in `(` `)` (`Not(And(a, b))` → `-(a b)`, never `-a b`);
+     *   `Not(Not(x))` → `--x`.
+     * - Keyed terms → `key:` + value: enum values by their wire text, numbers in decimal without
+     *   leading zeros, `rated:<days>[:<rating>]`, `field:<key>:<pattern>`.
+     * - [SearchTerm.Compare] → property, operator, number: the shortest decimal digits that read back
+     *   as the same double (as ECMAScript `Number::toString` chooses them) written **without
+     *   exponent**; integral values without a fraction; a leading `-` iff the sign bit is set
+     *   (`-0.0` → `-0`). Examples: `10.5`, `3`, `0.0000001`.
+     * - A pattern is written **bare** when possible: segments joined by `*`, each segment with `\`,
+     *   `*`, `(`, `)`, `"` escaped by a backslash; bare is possible iff the result is non-empty and
+     *   contains no whitespace. A [SearchTerm.Text] bare word must additionally contain none of
+     *   `:` `<` `>` `=`, not start with `-`, and not equal `or`/`OR`/`and`/`AND`. Otherwise the
+     *   pattern is **quoted**: `"` + segments joined by `*`, each with `\`, `"`, `*` escaped + `"`.
+     *   Examples: Text `["or"]` → `"or"`; Text `["a:b"]` → `"a:b"`; Text `["-a"]` → `"-a"`; Deck
+     *   `["Frieren: Beyond"]` → `deck:"Frieren: Beyond"`; Deck `["Anime:S1"]` → `deck:Anime:S1`.
+     *
+     * The reference implementation of these rules is `contracts/core/check_search.py`, which checks
+     * the round trip on every `+` line of `search-examples.tsv`.
+     *
+     * @throws IllegalArgumentException if [node] is not well-formed.
      */
     public fun format(node: SearchNode): String
 

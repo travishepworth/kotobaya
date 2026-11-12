@@ -108,11 +108,17 @@ public data class UndoOutcome(
  *
  * **Invariant (fold = replay):** for every replay set S sorted by key and every row r that sorts
  * after all of S, `fold(replay(S, p), r, p) == replay(S + r, p)` exactly (bit-identical doubles).
+ * This holds under C-1b too: a manual row leaves `lastReviewAt` unchanged in both paths.
  *
- * **Core version:** [schedulerVersion] identifies the algorithm. A replica stores the version it last
- * replayed with (location is the replica's: suggested device `sync_state` key
- * `core_scheduler_version`, server: a row of its own) and, when it differs from [schedulerVersion]
- * at startup, fully replays every live, non-loser card (SYNC.md 9.2 last row) before reading caches.
+ * **Cross-platform invariant:** `replay` and `fold` give bit-identical doubles on jvm, android and js
+ * for the same inputs (SYNC.md 11.3 convergence). They add no arithmetic of their own beyond
+ * `Scheduler.review`/`Scheduler.manual`; the [kotobaya.contracts.fsrs.PortableMath] rules and the ban
+ * on kotlin.math transcendentals apply to this implementation as well.
+ *
+ * **Core version (C-1c):** [schedulerVersion] identifies the algorithm. A device stores the version it
+ * last replayed with in `sync_state` key `core_scheduler_version` (SYNC.md 10.5; the server in the
+ * place SYNC.md 10.5 names). When it differs from [schedulerVersion], the replica fully replays every
+ * live, non-loser card **before folding anything**, then stores the new version.
  */
 public interface ReplayEngine {
     /** Opaque version of the replay algorithm, e.g. `"fsrs6-1"`. Changes whenever any output for any input could change. */
@@ -123,8 +129,9 @@ public interface ReplayEngine {
 
     /**
      * Full replay: start from [CardSchedule.NEW]; for each row in 9.1 order fold it
-     * (rated → `Scheduler.review`, manual → `Scheduler.manual`). Elapsed time between consecutive
-     * rows is the `reviewed_at` difference, clamped to `>= 0`.
+     * (rated → `Scheduler.review`, manual → `Scheduler.manual`). Elapsed time for a rated row is
+     * measured from the previous **rated** row's `reviewed_at` (`CardSchedule.lastReviewAt`, C-1b;
+     * manual rows do not move it), clamped to `>= 0`.
      *
      * Result: `lastReviewId` = id of the last row (null if the set is empty); `weightsVersion =
      * params.weightsVersion` **always** (a full replay makes the cache current). An empty set, or

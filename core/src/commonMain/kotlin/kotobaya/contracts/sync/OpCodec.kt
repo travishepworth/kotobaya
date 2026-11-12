@@ -207,7 +207,7 @@ public data class Op(
     public val deviceId: Uuid,
     /** `hlc`. */
     public val hlc: HlcString,
-    /** `payload`, as received/minted. Member order is kept and is the order [OpCodec.encode] writes. */
+    /** `payload`, as received/minted. Member order is kept but meaningless: [OpCodec.encode] writes members in canonical (sorted) order. */
     public val payload: JsonObject,
     /** `seq`: non-null iff the op was pulled ([OpSource.PULLED]). */
     public val seq: Long? = null,
@@ -229,7 +229,7 @@ public sealed interface OpDecodeResult {
      * `op_version` is an integer ≥ 1, the other envelope properties have their types), but the
      * `op_type` is not one of [OpType] or `op_version > OpType.MAX_SUPPORTED_VERSION`. The payload is
      * not validated. A device applies the ops before it, sets `pull_seq` to the `seq` of the op
-     * before it, and stops in *upgrade required*; it never skips the op. The server
+     * before it, and stops in *upgrade required*; it never skips the op (SYNC.md 6.1). The server
      * answers such a pushed op `unsupported_op`.
      */
     public data class Unsupported(
@@ -246,9 +246,11 @@ public sealed interface OpDecodeResult {
     /**
      * Not a valid op: not JSON, not an object, the lenient envelope shape fails, or a known
      * type/version fails its schemas (including `additionalProperties: false`, `allOf` conditionals,
-     * `seq` presence per [OpSource]). The server answers `schema_invalid`. A device that meets one in
-     * a pull treats it like [Unsupported] (stops before it, never skips it) and reports it as a
-     * diagnostic, because the log is never wrong by construction.
+     * `seq` presence per [OpSource], and an **integer-typed** property — `"type": "integer"` in the
+     * schema — whose value is not integral or has magnitude `>= 2^53`). The server answers
+     * `schema_invalid`. A device that meets one in a pull treats it exactly like [Unsupported]
+     * (SYNC.md 6.1 as amended by C-1d): applies the ops before it, sets `pull_seq` to the `seq` before
+     * it, stops pulling and surfaces "update required / server sent invalid op"; it never skips it.
      */
     public data class Invalid(
         /** English diagnostic naming the failing rule; for logs and `error.message` only. */
@@ -280,18 +282,21 @@ public enum class EnvelopeError {
  * common.schema.json) using [CanonicalJson].
  *
  * Round trip: for every op `o` with `decode(encode(o), src) == Known(o2)`, `o2 == o`.
- * Determinism: [encode] of equal ops gives identical strings on every platform.
+ * Determinism: [encode] of equal ops (data-class equality, which ignores payload member order) gives
+ * identical strings on every platform, because [CanonicalJson] sorts members.
  */
 public interface OpCodec {
     /**
-     * Canonical compact JSON of the envelope. Member order: `op_id`, `op_type`, `op_version`,
-     * `entity_type`, `entity_id`, `device_id`, `hlc`, `payload` (members in [Op.payload] order),
-     * then — only if [Op.seq] is non-null — `seq` and `caused_by_op_id` (JSON `null` when
-     * [Op.causedByOpId] is null). No other members. This exact string is what a client pushes.
+     * Canonical compact JSON ([CanonicalJson.encode]) of the envelope tree: members `op_id`,
+     * `op_type`, `op_version`, `entity_type`, `entity_id`, `device_id`, `hlc`, `payload`, and — only
+     * if [Op.seq] is non-null — `seq` and `caused_by_op_id` (JSON `null` when [Op.causedByOpId] is
+     * null). No other members. Members are written in canonical (sorted) order at every depth:
+     * `caused_by_op_id`, `device_id`, `entity_id`, `entity_type`, `hlc`, `op_id`, `op_type`,
+     * `op_version`, `payload`, `seq`. This exact string is what a client pushes.
      */
     public fun encode(op: Op): String
 
-    /** [encode] as a [JsonObject] (same members, same order), for embedding into an HTTP body built as a tree. */
+    /** [encode] as a [JsonObject] (same members), for embedding into an HTTP body built as a tree. */
     public fun encodeTree(op: Op): JsonObject
 
     /**
@@ -299,10 +304,11 @@ public interface OpCodec {
      * known type and supported version (else [OpDecodeResult.Unsupported]) → full schema validation
      * (else [OpDecodeResult.Invalid]) → [OpDecodeResult.Known]. Never throws.
      *
-     * Number handling: integer-valued properties (`op_version`, `seq`, instants, `entry_seq`, …)
-     * accept any JSON number that is integral (`3` and `3.0` both decode to 3) and fail on a
-     * fraction. The returned payload holds [JsonNumber]s as decoded; re-encoding normalises
-     * `3.0` to `3`.
+     * Number handling: integer-typed properties (`op_version`, `seq`, instants, `entry_seq`, …)
+     * accept any JSON number whose decoded double is integral with magnitude `< 2^53` (`3` and `3.0`
+     * both decode to 3) and are [OpDecodeResult.Invalid] otherwise (a fraction, or `>= 2^53`, which a
+     * double may already have rounded). Number-typed properties accept any finite value. The returned
+     * payload holds [JsonNumber]s as decoded; re-encoding normalises `3.0` to `3`.
      */
     public fun decode(json: String, source: OpSource): OpDecodeResult
 
@@ -329,10 +335,18 @@ public interface OpCodec {
     public fun envelopeErrors(op: Op, source: OpSource): List<EnvelopeError>
 
     /**
-     * The op's size of SYNC.md 5.4: `utf8Size(encode(op))`. A client MUST refuse to mint an op with
-     * `sizeBytes(op) > maxOpBytes` (SYNC.md 4); the server rejects such a pushed op `op_too_large`
-     * (measuring the canonical re-encoding of what it decoded, so whitespace a client added does not
-     * count). An op of exactly `maxOpBytes` is allowed.
+     * The op's size of SYNC.md 5.4: `utf8Size(encode(op))` (= `CanonicalJson.sizeOf(encodeTree(op))`).
+     * A client MUST refuse to mint an op with `sizeBytes(op) > maxOpBytes` (SYNC.md 4). An op of
+     * exactly `maxOpBytes` is allowed.
      */
     public fun sizeBytes(op: Op): Int
+
+    /**
+     * The size of a **raw** op tree as received, before any decoding or validation (C-1e):
+     * `CanonicalJson.sizeOf(raw)`. The server checks `op_too_large` with this on every element of
+     * `PushRequest.ops` first, so an op that would decode as [OpDecodeResult.Unsupported] or
+     * [OpDecodeResult.Invalid] is measured the same way. For an op that decodes as
+     * [OpDecodeResult.Known] from `raw`, `rawSizeBytes(raw) == sizeBytes(op)`.
+     */
+    public fun rawSizeBytes(raw: JsonValue): Int
 }

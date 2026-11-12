@@ -59,3 +59,13 @@
 -	"(a)(b)"	groups need whitespace between them
 -	"type:verb"	unknown base type
 -	"entry:0123"	leading zero
++	"-(a b)"	negated and-group: formats as -(a b), never -a b
++	"-(a or b) c"	negated or-group inside an and
++	"-(a b) or c"	negated and-group inside an or
++	"(a or b) (c or d)"	two or-groups in an and
++	"(a b) c"	same-operator group flattens to one and
++	"x -(y -(z or w)) or -v"	nested negated groups
++	"-(-a or b)"	negation inside a negated group
++	"\"or\" \"-a\" \"a:b\" \"a b\" OR \"x=y\""	texts that must stay quoted
++	"deck:a\\(b\\) tag:\"x y\" field:reading:\"*\""	escaped parentheses, quoted values, bare-able quoted wildcard
++	"stability>10.50 due>=-0 difficulty<0.0000001"	numbers normalise but keep their value and sign

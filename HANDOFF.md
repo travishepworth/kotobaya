@@ -1,24 +1,22 @@
-# HANDOFF T006
+# HANDOFF T006 (attempt 2)
 
-STATUS: BLOCKED
+STATUS: DONE
 BRANCH: t/T006-core-interfaces
-CHECK: `make check MODULE=core` → green; `make check MODULE=web` → green; android compiles; `contracts/core/check.sh` → green
+CHECK: `contracts/core/check.sh` green (67 examples, 44 round trips); `make check MODULE=core` green; `make check MODULE=web` green; android + js compile
 
 ## Changed (≤ 6 lines)
-- core/src/commonMain/kotlin/kotobaya/contracts/: HLC/remint, canonical JSON + OpCodec/OpType, Scheduler, ReplayEngine + ReviewLogRules, QueueBuilder + WordStatusRules, CardGenerator, HotScorer, Search AST/parser, CardRenderer, CoreJs facade
-- contracts/core/: README.md (map + required tests), search.ebnf, search-examples.tsv (57), check.sh
-
-## Acceptance → tests
-- jvm/android/js compile → make check core/web, :core:compileDebugKotlinAndroid
-- KDoc on every public member → check_kotlin.py
-- EBNF parses spec examples → check_search.py
+- fsrs: new `PortableMath` (fdlibm 5.3 port, kotlin.math transcendentals banned); `Scheduler` bit-identity rules, `roundHalfEven`, py-fsrs weight bounds in `paramsOf`, C-1b manual rows, null-offset deviation
+- replay: cross-platform invariant, C-1a/C-1b/C-1c; queue: deckless source (ADR-006, `decklessPriority`, tier round-robin), disabled-only cards not introduced, in-build sibling burying
+- search: exact `format` rules (`Not(And)` → `-(a b)`); `check_search.py` reference formatter checks the round trip; 10 new examples
+- sync: sorted canonical member order, `sizeOf`/`rawSizeBytes` (C-1e), ≥ 2^53 only for integer-typed properties, C-1d; Hlc example fixed
+- render: `RenderOptions.mediaUrlTemplate` (+ `JsRenderInput`); README tests incl. jvm/js bit identity
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- No collection-aware load balancing (deterministic fuzz seeded by review id); set_due restarts elapsed time.
-- Unknown search keys are errors; field search is `field:key:value`.
+- Equal-priority decks now also take turns (round-robin), from ADR-006's "interleaved".
+- Setting `scheduler.deckless_new_priority` needs a row in SCHEMA.md 6 (follow-up).
 
-## If BLOCKED
-QUESTION: The Write tool refused contracts/core/SUMMARY.md ("Subagents should return findings as text, not write report files"). Its full text is in my reply. Should the orchestrator commit it, or allow me to write it?
+## SUMMARY.md
+The Write tool refused `contracts/core/SUMMARY.md` again; the updated text is in my reply. Please commit it.

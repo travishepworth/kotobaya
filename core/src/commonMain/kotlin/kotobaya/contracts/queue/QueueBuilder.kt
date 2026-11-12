@@ -46,7 +46,7 @@ public enum class AddKanjiMode(
 public data class QueueDeck(
     /** `deck.id`. */
     public val id: Uuid,
-    /** `deck.priority`; new cards come from decks in ascending `(priority, id)` order. */
+    /** `deck.priority`; new-card sources are drawn in ascending priority tiers (see [QueueBuilder] rule 4). */
     public val priority: Int,
     /** `deck.enabled`; a disabled deck supplies no new cards (its cards are still reviewed). */
     public val enabled: Boolean,
@@ -87,7 +87,7 @@ public data class QueueCandidate(
     public val kindOrder: Int,
     /** The note's base type. */
     public val noteBaseType: NoteBaseType,
-    /** `note.created_at`; orders new cards that belong to no enabled deck. */
+    /** `note.created_at`; orders the new cards of the deckless source (cards with no deck membership at all). */
     public val noteCreatedAt: InstantMs,
     /** `card.state` (cache, after any pending replay). */
     public val state: CardState,
@@ -169,6 +169,11 @@ public data class QueueInput(
     public val today: List<TodayReview>,
     /** Entries of enabled decks without a live note. */
     public val pendingEntries: List<PendingEntry>,
+    /**
+     * Priority of the **deckless source** (ADR-006): setting `scheduler.deckless_new_priority`
+     * (int, default 0 = the same tier as ordinary decks of priority 0, interleaved with them).
+     */
+    public val decklessPriority: Int = 0,
 )
 
 /** Why an item is in the queue. */
@@ -212,6 +217,10 @@ public data class ReviewQueue(
  *    not NEVER_FORGET, BLACKLISTED or IGNORED; and, if `burySiblings`, not **sibling-buried**: a
  *    card in state NEW or REVIEW is buried when [QueueInput.today] has a `scheduled` or `learning`
  *    review of another card of the same note. LEARNING/RELEARNING cards are never sibling-buried.
+ *    **Within one build** (if `burySiblings`): at most one NEW or REVIEW item per note. Rule 3 runs
+ *    before rule 4; once a NEW or REVIEW card of note N is taken, every later NEW/REVIEW candidate of
+ *    N is skipped (not taken, not counted against any limit). LEARNING items do not bury and are
+ *    not buried.
  * 2. **Learning**: eligible LEARNING/RELEARNING cards with `dueAt <= now + learnAheadMs`, ordered
  *    by `(dueAt, cardId)`. Not limited. Those due later but before `day.endMs` set `nextLearningDueAt`.
  * 3. **Reviews**: eligible REVIEW cards with `dueAt < day.endMs`, ordered by `(dueAt, cardId)`.
@@ -221,11 +230,18 @@ public data class ReviewQueue(
  *    (`reviewsPerDay` − today's reviews attributed to that home deck, if the deck has a limit) are
  *    both `> 0`; taking it decrements both.
  * 4. **New**: budget = `min(newPerDay − today's introducedNew, newPerSession − newShownThisSession)`
- *    (`>= 0`). Sources are the **enabled** decks in `(priority, id)` order, plus one virtual source
- *    for NEW cards with no enabled-deck membership, placed before every deck of priority `>= 0`
- *    and ordered by `(noteCreatedAt, kindOrder, cardId)`, with no deck limit. A NEW card is drawn
- *    only from its home new-source (the first enabled deck of its memberships, or the virtual
- *    source). Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
+ *    (`>= 0`). Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
+ *    holding the NEW cards with **no deck membership at all** (`memberships` empty), ordered by
+ *    `(noteCreatedAt, kindOrder, cardId)`, with priority [QueueInput.decklessPriority] and no deck
+ *    limit. A NEW card's **home new-source** is the first **enabled** deck of its memberships in
+ *    `(priority, id)` order; with no memberships, the deckless source; if it has memberships but all
+ *    of their decks are disabled, it has none and **is not introduced** ("a disabled deck supplies no
+ *    new cards"). A NEW card is drawn only from its home new-source.
+ *    Sources are grouped into **tiers** by priority, ascending; a tier is exhausted (every source
+ *    empty or at its limit) before the next starts. Inside a tier, sources take turns round-robin —
+ *    decks in ascending `id`, the deckless source last in each round — one **turn** being one card
+ *    (together with its add_kanji cards, below) or one pending entry; an exhausted source is skipped.
+ *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    (counting 1 against the budgets) unless their `wordOverride` is KNOWN, NEVER_FORGET,
  *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
