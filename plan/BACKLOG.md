@@ -57,7 +57,7 @@ Originally, before any ticket ran, the human would:
 - accept: DDL applies cleanly to Postgres 17; SQLDelight files compile; every learning-data table maps to at least one op in T005 (cross-check listed in SCHEMA.md).
 
 ### T004 — Contract: OpenAPI 3.1
-- model: fable · risk: high · deps: T003 · status: RUNNING
+- model: fable · risk: high · deps: T003 · status: IN_REVIEW
 - paths: `contracts/api/`
 - spec: Public API and scripting, Sync and offline
 - do: Full `openapi.yaml` for `/api/v1`: every endpoint in the spec's Resources table plus auth, devices, tokens, settings, events (SSE documented), errors (RFC 9457 problem+json), pagination (cursor), scopes per operation. Examples for each request/response.

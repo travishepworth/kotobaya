@@ -1,17 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:33:10Z
+Updated: 2026-11-12T11:38:07Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T006 | architect (gp/opus) | 1 | t/T006-core-interfaces | 2026-11-12T11:33:34Z |
-| T004 | architect (gp/opus) | 3 | t/T004-openapi rebased on main | 2026-11-12T11:33:10Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T004 (att. 3) | architect verification (opus) | 2026-11-12T11:38:07Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
