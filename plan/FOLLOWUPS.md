@@ -57,3 +57,5 @@
 - Freeze B → T112: order the object-storage mirror against pg_dump (mirror after dump, or include in "verified").
 - Freeze B → T202/T111/T112: name the "backups disabled" server setting and wire it in Helm, else durable_seq stays 0 and devices never purge.
 - T107b minors (next core touch): fix the round(-0.5) comment (Python returns int 0); mark the fuzz lastPositive fallback unreachable; remove unused kotlin.math.floor import; add a repeated-AGAIN test that hits the difficulty clamp at 10 (vectors never reach it, nor STABILITY_MIN); FsrsVectorsDriftTest should also compare vectors.json `scheduler` block with vectorParams/defaultWeights. KotobayaCore `instant()` rejects pre-1970 ms.
+- C-3 doc: DICT_PACKAGE 3.2 envelope example lacks `table_digests`; 3.4 step 1 should check `table_digests` has exactly the 11 tables (T103b implements it anyway). Next C-ticket.
+- C-3 → T302: digest pass over the `all` scope runs inside the write transaction (millions of gloss rows) — run off the main thread; expect seconds.

@@ -250,8 +250,12 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ---
 
 ### C-3 — Contract: dictionary package + diff format (additive)
-- model: opus · risk: high · deps: T103 · status: RUNNING
+- model: opus · risk: high · deps: T103 · status: MERGED
 - see plan/tickets/C-3.md
+
+### T103b — Worker: align dictionary packaging with C-3
+- model: sonnet · risk: med · deps: T103, C-3 · status: RUNNING
+- see plan/tickets/T103b.md
 
 ## Phase 2 — Review loop (web)
 
