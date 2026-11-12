@@ -1,0 +1,86 @@
+-- Android queue loader queries (T304a). Reads only; learning-data writes go through sync ops.
+-- Every query is set-based (one pass per table); nothing is looked up per card.
+
+schedulerSettings:
+SELECT key, value FROM settings WHERE key LIKE 'scheduler.%';
+
+-- Live cards of live notes that can be queued today. A refused cache (SYNC.md 9.4) is never a candidate.
+queueCandidates:
+SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
+       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq, n.fields
+FROM card c
+JOIN note n ON n.id = c.note_id
+LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
+  AND (c.state = 'new' OR c.due_at < :dayEnd)
+  AND c.last_review_id IS NOT :refusedId;
+
+liveDecks:
+SELECT id, priority, enabled, new_cards_per_day, reviews_per_day, settings, type
+FROM deck WHERE deleted_at IS NULL ORDER BY priority, id;
+
+noteTypeTemplates:
+SELECT id, templates FROM note_type;
+
+-- deck_item memberships of non-smart live decks: e:<seq> items match the live vocab note of the entry,
+-- n:<id> items follow merged_into_id (SYNC.md 8.5).
+deckItemMemberships:
+SELECT di.deck_id, di.position, di.item_key, n.id AS note_id
+FROM deck_item di
+JOIN deck d ON d.id = di.deck_id AND d.deleted_at IS NULL AND d.type <> 'smart'
+JOIN note n ON n.entry_seq = di.entry_seq AND n.deleted_at IS NULL
+WHERE di.deleted_at IS NULL AND di.entry_seq IS NOT NULL
+UNION ALL
+SELECT di.deck_id, di.position, di.item_key, n.id AS note_id
+FROM deck_item di
+JOIN deck d ON d.id = di.deck_id AND d.deleted_at IS NULL AND d.type <> 'smart'
+JOIN note src ON src.id = di.note_id
+JOIN note n ON n.id = COALESCE(src.merged_into_id, src.id)
+WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL;
+
+-- Today's non-undone answers; introduced_new = a learning row whose card had no earlier schedule-feeding row,
+-- or whose last one was a reset. Cards resolve through merged_into_id.
+todayReviews:
+SELECT x.card_id, x.note_id, x.review_type,
+       (x.review_type = 'learning' AND (x.prev_id IS NULL OR (SELECT manual_action FROM review_log WHERE id = x.prev_id) = 'reset')) AS introduced_new
+FROM (
+  SELECT sc.id AS card_id, sc.note_id AS note_id, r.review_type AS review_type,
+         (SELECT p.id FROM review_log p JOIN card pc ON pc.id = p.card_id
+           WHERE COALESCE(pc.merged_into_id, pc.id) = sc.id AND p.undone_at IS NULL
+             AND p.review_type IN ('scheduled', 'learning', 'manual')
+             AND (p.reviewed_at, p.hlc, p.id) < (r.reviewed_at, r.hlc, r.id)
+           ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1) AS prev_id
+  FROM review_log r
+  JOIN card c ON c.id = r.card_id
+  JOIN card sc ON sc.id = COALESCE(c.merged_into_id, c.id)
+  WHERE r.undone_at IS NULL AND r.review_type IN ('scheduled', 'learning', 'drill', 'cram')
+    AND r.reviewed_at >= :dayStart AND r.reviewed_at <= :now
+) x;
+
+-- Earliest instant a started, queueable card becomes due after now (a buried card: when the bury ends).
+nextDueAfter:
+SELECT MIN(CASE WHEN c.buried_until IS NOT NULL AND c.buried_until > c.due_at THEN c.buried_until ELSE c.due_at END)
+FROM card c
+JOIN note n ON n.id = c.note_id
+LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
+  AND c.state <> 'new' AND c.due_at IS NOT NULL
+  AND c.last_review_id IS NOT :refusedId
+  AND (ws.override_status IS NULL OR ws.override_status = 'known')
+  AND (CASE WHEN c.buried_until IS NOT NULL AND c.buried_until > c.due_at THEN c.buried_until ELSE c.due_at END) > :now;
+
+-- Hour buckets of started, queueable cards due before :horizon; overdue cards fall in bucket 0.
+forecastBuckets:
+SELECT CASE WHEN due < :now THEN 0 ELSE (due - :now) / 3600000 END AS bucket, COUNT(*) AS n
+FROM (
+  SELECT CASE WHEN c.buried_until IS NOT NULL AND c.buried_until > c.due_at THEN c.buried_until ELSE c.due_at END AS due
+  FROM card c
+  JOIN note n ON n.id = c.note_id
+  LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+  WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
+    AND c.state <> 'new' AND c.due_at IS NOT NULL
+    AND c.last_review_id IS NOT :refusedId
+    AND (ws.override_status IS NULL OR ws.override_status = 'known')
+)
+WHERE due < :horizon
+GROUP BY bucket;
