@@ -6,3 +6,5 @@
 - Helm migrate hook is a `true` placeholder; P1 migrations ticket replaces it.
 - T207: importer must still tolerate `from_anki: true` records (none in the real export, so the fixture omits them).
 - Release APK is unsigned (no signingConfig); add signing via env vars in a later android ticket.
+- Makefile `check MODULE=contracts` is a stub: wire to contracts/db/check.sh (+ later contract checks). Fold into T110 or a small ticket after T004–T006.
+- V1 migration aborts on LC_CTYPE=C databases (pg_trgm ignores Japanese). Helm postgres (T111) and any external Postgres must init with a UTF-8 ctype (C.UTF-8); add to HUMAN_CHECKS if using an existing cluster DB.

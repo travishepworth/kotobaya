@@ -40,3 +40,6 @@
 2026-11-12T09:44:36Z T009b HANDOFF DONE
 2026-11-12T09:44:36Z T009b CHECK_GREEN check deploy
 2026-11-12T09:44:36Z T009b MERGE
+2026-11-12T09:55:03Z T003 HANDOFF DONE
+2026-11-12T09:55:03Z T003 CHECK_GREEN contracts/db/check.sh (pg17 apply, sqlite parity, sqldelight)
+2026-11-12T09:55:03Z T003 REVIEW dispatched reviewer(opus) + architect(fable)
