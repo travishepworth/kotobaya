@@ -109,6 +109,11 @@ class OpCodecTest {
         "op-short-hlc.json" to Expect.Invalid("/hlc"),
         "op-unknown-type.json" to Expect.Unsupported("review.deleted"),
         "op-uppercase-uuid.json" to Expect.Invalid("/op_id"),
+        // C-5: ECMA-262 pattern semantics, identical on jvm and js
+        "op-id-trailing-newline.json" to Expect.Invalid("/op_id"),
+        "note-created-tag-ideographic-space.json" to Expect.Invalid("/payload/tags/1"),
+        "note-created-tag-nbsp.json" to Expect.Invalid("/payload/tags/1"),
+        "note-created-tag-bom.json" to Expect.Invalid("/payload/tags/1"),
         "op-wrong-entity-type.json" to Expect.Invalid("/entity_type"),
         "pull-op-without-seq.json" to Expect.Body(OpSource.PULLED, ""),
         "pull-response-without-log-epoch.json" to Expect.Body(),

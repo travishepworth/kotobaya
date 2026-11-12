@@ -5,20 +5,20 @@ BRANCH: t/T202a-sync-core-r
 CHECK: `make check MODULE=core` → green (jvmTest + jsTest)
 
 ## Changed (≤ 6 lines)
-- `core/.../sync/`: `DefaultHlcRules`, `DefaultRemintRules`, `DefaultCanonicalJson` (+ pure-Kotlin JS `Number::toString`), `DefaultOpCodec`
-- `SyncSchemas` (2020-12 subset validator, schemas in generated `SyncSchemaTexts.kt`); `PortableRegex` rewrites `$`, `\s`, `\S` to ECMA semantics and refuses constructs that don't port
-- `PushBodyParser`: per-op `DuplicateKey` / `TooDeep` (SYNC 5.2, C-2); `MAX_DEPTH` 512 now applies to decode, encode/sizeOf (IAE) and `decodeTree` (Invalid)
-- Attempt 3: pushed unknown op carrying `seq` → Unsupported; `\u` escapes accept ASCII hex only; KDoc says `opVersion` is capped at `Int.MAX_VALUE`
+- `core/.../sync/`: `DefaultHlcRules`, `DefaultRemintRules`, `DefaultCanonicalJson` (JS number printing), `DefaultOpCodec`, `SyncSchemas` + `PortableRegex` (ECMA `$`/`\s`/`\S`; refuses `\-` outside a class and `[`/`&&` inside one)
+- `PushBodyParser`: per-op `DuplicateKey` / `TooDeep`; whole-body 400 otherwise (SYNC 5.2)
+- Attempt 4: depth counts containers (C-5). `MAX_OP_DEPTH` 500 applies in decodeTree, encode, encodeTree, sizeBytes and per push element; `MAX_DOCUMENT_DEPTH` 512 applies to bodies. The iterative deep scan is gone.
+- Embeddings regenerated after C-5 (non-ASCII now written as `\uXXXX`); 4 new invalid examples and 2 raw-push examples pass
 
 ## Acceptance → tests
-- examples → `OpCodecTest.everyExampleOpDecodesKnownAndReencodesCanonically`, `everyInvalidExampleIsRejectedWithTheExpectedReason`
-- HLC → `HlcTest.uniquenessUnderSkewProperty`, `guardBoundaries`, `scenarioClockBehindRemint`, `remintShiftEdgeCases`
-- jvm = js → `CanonicalJsonTest.numbersMatchJavaScriptVectors`, `OpCodecTest.canonicalGoldensFromJavaScript`, `PortableRegexTest.patternsBehaveAsEcmaScriptOnEveryPlatform` (28 rows; node-verified with and without the `u` flag), `opsWithNonEcmaValuesAreRejectedEverywhere`
-- Per-op errors → `PushBodyParserTest.duplicateKeyInOneOpIsAPerOpErrorNotAWholeBodyFailure`, `tooDeepElementIsAPerOpErrorNotAWholeBodyFailure`
+- examples → `OpCodecTest.everyExampleOpDecodesKnownAndReencodesCanonically`, `everyInvalidExampleIsRejectedWithTheExpectedReason`, `PushBodyParserTest.everyRawPushExampleGetsItsVerdict` (8)
+- HLC → `HlcTest.uniquenessUnderSkewProperty`, `guardBoundaries`, `scenarioClockBehindRemint`
+- jvm = js → `CanonicalJsonTest.numbersMatchJavaScriptVectors`, `PortableRegexTest.patternsBehaveAsEcmaScriptOnEveryPlatform`
+- Depth/dup per-op → `OpCodecTest.opDepthLimitLeavesRoomForTheBody`, `PushBodyParserTest.tooDeepElementIsAPerOpErrorNotAWholeBodyFailure`, `duplicateKeyInOneOpIsAPerOpErrorNotAWholeBodyFailure`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Depth is counted from each push element's own root, the same way `encode` counts it. A too-deep body member other than `ops` is still a 400; a correct client never sends one.
-- New public variant `PushElement.TooDeep`; T202b must handle it the way it handles `DuplicateKey`.
+- An element of depth 511 or more makes the body deeper than 512, so the whole body is a 400 (per C-5).
+- Constants are renamed to `MAX_OP_DEPTH` / `MAX_DOCUMENT_DEPTH` to match SYNC.md 2.1.

@@ -82,7 +82,9 @@ class SyncContractDriftTest {
                 '\n' -> append("\\n")
                 '\r' -> append("\\r")
                 '\t' -> append("\\t")
-                else -> if (c.code < 0x20) append("\\u%04x".format(c.code)) else append(c)
+                // non-ASCII as \uXXXX: invisible code points (U+FEFF, U+00A0, U+3000) stay visible in review
+                // and the JS build never re-encodes source text
+                else -> if (c.code < 0x20 || c.code > 0x7e) append("\\u%04x".format(c.code)) else append(c)
             }
         }
     }

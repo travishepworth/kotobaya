@@ -35,7 +35,7 @@ class PushBodyParserTest {
 
     @Test
     fun everyRawPushExampleGetsItsVerdict() {
-        assertTrue(SyncExamples.rawPushBodies.size >= 6)
+        assertEquals(8, SyncExamples.rawPushBodies.size)
         for ((name, body) in SyncExamples.rawPushBodies) {
             val expected = j.decode(SyncExamples.rawPushExpected.getValue(name.replace(".body.txt", ".expected.json"))).value
             assertEquals(expected, verdict(PushBodyParser.parse(body)), name)
