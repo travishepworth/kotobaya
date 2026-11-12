@@ -487,3 +487,5 @@
 2026-11-12T19:00:24Z T305a DISPATCH writer-senior(opus)
 2026-11-12T19:00:24Z T304a HANDOFF DONE; rebase conflict FeatureModules.kt (T301b line) → back to writer to rebase
 2026-11-12T19:01:10Z T304a HANDOFF DONE after rebase; CHECK_GREEN android; MERGE
+2026-11-12T19:01:26Z T302 DISPATCH writer(sonnet)
+2026-11-12T19:01:26Z - T308 ready, queued (Gradle cap)
