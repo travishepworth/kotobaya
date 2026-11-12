@@ -1,26 +1,23 @@
-# HANDOFF T110
+# HANDOFF T110 (attempt 2)
 
-STATUS: BLOCKED
+STATUS: DONE
 BRANCH: t/T110-clients
-CHECK: `make check MODULE=contracts` → red (not wired; clients not generated)
+CHECK: `make check MODULE=contracts` green (4 contract scripts, regeneration, drift check, compile of all 3 clients)
 
-## Changed (≤ 6 lines)
-- No changes under `clients/` or `Makefile` (blocked before wiring).
-- Verified on this tree: `contracts/{db,sync,api,core}/check.sh` all exit 0.
-- Trial generation (openapi-generator 7.27.0 via `@openapitools/openapi-generator-cli` 2.42.2, spec bundled with `@redocly/cli` 2.77.0): TypeScript `typescript-fetch` generates and typechecks under `tsc --strict`.
+## Changed
+- `clients/{kotlin,typescript,python}` generated; `clients/generate.sh` (bundle, normalise, generate, compile), `normalize_spec.py`, `openapitools.json`, `README.md`.
+- Makefile `check-contracts`: db, sync, api, core checks, `generate.sh`, `git diff --exit-code -- clients/` plus untracked-file check.
 
-## Acceptance → tests
-- Four check scripts pass individually → not yet wired into Makefile.
-- Clients compile → TypeScript ok; Kotlin and Python fail (see below).
+## Acceptance -> tests
+- Drift: renamed an operationId, regenerated, `git diff` on clients/ non-empty; reverted.
+- Compile: `tsc --strict --noEmit`; Python compileall + import of all modules; Kotlin `gradle compileKotlin`.
+- Generation is deterministic (second run: no diff).
 
-## New dependencies
-- `@openapitools/openapi-generator-cli@2.42.2` with generator jar 7.27.0 (not added yet; pending the decision below).
+## New dependencies (pinned)
+- openapi-generator 7.27.0 via `@openapitools/openapi-generator-cli@2.42.2`; `@redocly/cli@2.77.0`; `typescript@5.9.3` (npx only). Needs java, gradle, uv.
+- Kotlin: `kotlin` generator, jvm-ktor + gson (kotlinx_serialization crashes on `Map<String, Any>`; `enumPropertyNaming=UPPERCASE` for enum value `name`). Python: `-g python` (pydantic v2) works after normalisation; `openapi-python-client` rejects boolean schemas.
+- Patches (spec-level, in temp copy only, each rule must match or the script fails): drop string param defaults; drop `if/then/else` allOf; drop `false` property schemas; string `const` -> `enum`. Documented in clients/README.md.
 
-## For the reviewer (≤ 3 lines)
-- Both failing generators choke on OpenAPI 3.1 shapes the frozen contract uses.
-
-## If BLOCKED
-QUESTION: How should generator failures on the frozen spec be resolved (contracts/ is read-only)?
-1. Kotlin (`jvm-ktor` and `jvm-okhttp4`, generator 7.21.0 and 7.27.0): models with `additionalProperties: true` plus `properties` (SentenceToken, AnkiConnectRequest, DeckSettings) emit `: kotlin.collections.HashMap<String, kotlin.Any>()()`, which does not compile.
-2. Python (`-g python`, 7.27.0): throws "Codegen Property not yet supported in getPydanticType" on an inline any-of with `{}` (PushResult_error, `any_of_1`).
-Options: (a) post-generation patch step in clients/generate.sh; (b) a different generator per language; (c) drop Kotlin and Python from T110 and ship TypeScript only; (d) CONTRACT_CHANGE_REQUEST to simplify those schemas.
+## For the reviewer
+- Python mypy has 1 generator-side error, so only compileall + import are gated. Defaults for string query params are absent in clients.
+- Contract check scripts need docker (postgres:17) as before.
