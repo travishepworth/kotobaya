@@ -104,7 +104,7 @@ Install the spike APK (AnkiDroid not installed), add a word from Takoboto, send 
 Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki` variant.
 
 ### S02 — Spike: jpdb deck fetch and JMdict mapping
-- model: sonnet · risk: low · deps: T008 · status: TODO · parallel-ok
+- model: sonnet · risk: low · deps: T008 · status: RUNNING · parallel-ok
 - paths: `spikes/jpdb-map/`
 - spec: Content and media import › jpdb import
 - do: Script that, using the API key from `.env.local`, fetches one user-chosen deck's vocabulary with occurrence counts (API first, page fallback with polite rate limiting and caching), maps to JMdict sequence numbers, and reports hit rate and unmapped samples. Also parses the jpdb export sample and reports its structure.

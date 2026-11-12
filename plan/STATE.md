@@ -10,6 +10,7 @@ Updated: 2026-11-12T09:37:30Z
 | T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
 | T009 | writer (gp/sonnet) | 1 | t/T009-helm | 2026-11-12T09:33:27Z |
 | S01 | writer-senior (gp/opus) | 1 | t/S01-ankidroid-standin | 2026-11-12T09:33:27Z |
+| S02 | writer (gp/sonnet) | 1 | t/S02-jpdb-map | 2026-11-12T09:37:54Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |

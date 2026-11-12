@@ -14,3 +14,4 @@
 2026-11-12T09:37:30Z T008 HANDOFF DONE
 2026-11-12T09:37:30Z T008 CHECK_GREEN fixtures/tools pytest 3 passed
 2026-11-12T09:37:30Z T008 MERGE
+2026-11-12T09:37:54Z S02 DISPATCH writer(gp, sonnet); no API key, real export present (structure only)
