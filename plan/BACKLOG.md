@@ -93,7 +93,7 @@ Originally, before any ticket ran, the human would:
 - accept: `helm lint` and `helm template` clean; `k3d/up.sh` brings up a cluster where `/healthz` answers.
 
 ### S01 — Spike: Takoboto → AnkiDroid stand-in
-- model: opus · risk: med · deps: T001 · status: RUNNING · parallel-ok
+- model: opus · risk: med · deps: T001 · status: MERGED · parallel-ok
 - paths: `spikes/ankidroid-standin/`
 - spec: Clients › Takoboto integration
 - do: Minimal Android app that declares AnkiDroid's ContentProvider authority and permission, implements decks / models / model fields / notes insert / duplicate query against an in-memory store, and logs every call with arguments to a screen and logcat. Build variant with `applicationId com.ichi2.anki`.

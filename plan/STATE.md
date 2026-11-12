@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T09:37:30Z
+Updated: 2026-11-12T09:38:38Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -9,7 +9,6 @@ Updated: 2026-11-12T09:37:30Z
 | T001b+T002 | writer-light (gp/haiku) | 1 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
 | T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
 | T009 | writer (gp/sonnet) | 1 | t/T009-helm | 2026-11-12T09:33:27Z |
-| S01 | writer-senior (gp/opus) | 1 | t/S01-ankidroid-standin | 2026-11-12T09:33:27Z |
 | S02 | writer (gp/sonnet) | 1 | t/S02-jpdb-map | 2026-11-12T09:37:54Z |
 
 ## Ready for review / In review
@@ -29,8 +28,9 @@ Updated: 2026-11-12T09:37:30Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 2/11 (T007 dropped, T001b added) · attempts 6 · escalations 0
+Merged 3/12 (S02 counted) (T007 dropped, T001b added) · attempts 6 · escalations 0
 
 ## Recently merged (last 10)
+- S01 AnkiDroid stand-in spike — both APK variants build; GATE-S01 deferred to HUMAN_CHECKS
 - T008 golden fixtures — 240 FSRS vectors (py-fsrs 6.3.2), dict subsets, media, jpdb shape (unverified)
 - T001 monorepo scaffold — make test green; compose minio unpullable → ADR-003/T001b
