@@ -6,3 +6,4 @@
 - Makefile `check MODULE=deploy` is a stub: wire it to `deploy/helm/check.sh` (after T002 merges, to avoid Makefile conflicts).
 - Env var contract for api/worker (`DATABASE_URL` JDBC form, `S3_*`) was guessed by T009; P1 server/worker tickets must read exactly these names or update chart + compose together.
 - Helm migrate hook is a `true` placeholder; P1 migrations ticket replaces it.
+- T207: importer must still tolerate `from_anki: true` records (none in the real export, so the fixture omits them).

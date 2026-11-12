@@ -1,14 +1,13 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T09:42:37Z
+Updated: 2026-11-12T09:43:05Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T001b+T002 | writer-light (gp/haiku) | 2 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
 | T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
-| T008b | writer-light (gp/haiku) | 1 | t/T008b-jpdb-fixture | 2026-11-12T09:42:03Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -27,9 +26,10 @@ Updated: 2026-11-12T09:42:37Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 5/13 (S02, T008b added) (T007 dropped, T001b added) · attempts 6 · escalations 0
+Merged 6/13 (S02, T008b added) (T007 dropped, T001b added) · attempts 6 · escalations 0
 
 ## Recently merged (last 10)
+- T008b jpdb fixture aligned to real export shape (invented values)
 - T009 Helm chart + k3d — lint/template clean; k3d /healthz ok
 - S02 jpdb map spike — 99.93% hit rate (GATE-S02 not triggered); jpdb vid == JMdict seq
 - S01 AnkiDroid stand-in spike — both APK variants build; GATE-S01 deferred to HUMAN_CHECKS

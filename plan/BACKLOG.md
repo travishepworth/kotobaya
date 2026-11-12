@@ -110,6 +110,12 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - do: Script that, using the API key from `.env.local`, fetches one user-chosen deck's vocabulary with occurrence counts (API first, page fallback with polite rate limiting and caching), maps to JMdict sequence numbers, and reports hit rate and unmapped samples. Also parses the jpdb export sample and reports its structure.
 - accept: Report in `spikes/jpdb-map/REPORT.md`. → **GATE-S02** if hit rate < 95%.
 
+### T008b — Fix jpdb fixture shape from S02 report
+- model: haiku · risk: low · deps: S02 · status: MERGED
+- paths: `fixtures/jpdb/`
+- do: Rewrite `fixtures/jpdb/reviews-sample.json` (invented values) to the real export structure in `spikes/jpdb-map/REPORT.md`.
+- accept: fixtures/tools pytest green; README cites REPORT.md.
+
 ### GATE-CONTRACTS — Freeze contracts (human)
 Single-session: auto-closed after the automated cross-contract review (ORCHESTRATOR.md §8a); the human
 reviews `contracts/SUMMARY.md` later from `plan/HUMAN_CHECKS.md`. Gated: human reviews `contracts/`
