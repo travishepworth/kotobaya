@@ -13,8 +13,8 @@ Updated: 2026-11-12T18:54:38Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T301b | writer (sonnet) | 1 | t/T301b-android-pairing | 2026-11-12T18:54:38Z |
-| T304a | writer (sonnet) | 1 | t/T304a-android-queue | 2026-11-12T18:54:38Z |
+| T301b | writer (sonnet) | 1 | t/T301b-pairing | 2026-11-12T18:54:38Z |
+| T304a | writer (sonnet) | 1 | t/T304a-queue-loader | 2026-11-12T18:54:38Z |
 | T303a | writer-senior (opus) | 1 | t/T303a-sync-client-protocol | 2026-11-12T18:49:57Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
