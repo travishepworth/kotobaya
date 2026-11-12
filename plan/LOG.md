@@ -337,3 +337,6 @@
 2026-11-12T16:35:43Z T202b CHECK_GREEN server after rebase
 2026-11-12T16:35:43Z T202b REVIEW dispatched reviewer(opus) + architect(opus) 2nd pass
 2026-11-12T16:39:22Z T202b REVIEW_APPROVE reviewer: 8 minors; wiring gated on T202c; awaiting architect
+2026-11-12T16:42:58Z T202b REVIEW_CHANGES architect: 2 major — instant ≥ year 10000 → Postgres error → 500 → outbox wedged; merge seam mints h1≠h2 → loser deleted_at diverges
+2026-11-12T16:42:58Z T202b DISPATCH attempt 2 (same agent) + 5 cheap minors
+2026-11-12T16:42:58Z C-6 DISPATCH architect(opus): storable-values contract (breaking, no data) + doc minors from T203/C-5
