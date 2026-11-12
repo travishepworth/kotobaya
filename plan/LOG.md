@@ -43,3 +43,4 @@
 2026-11-12T09:55:03Z T003 HANDOFF DONE
 2026-11-12T09:55:03Z T003 CHECK_GREEN contracts/db/check.sh (pg17 apply, sqlite parity, sqldelight)
 2026-11-12T09:55:03Z T003 REVIEW dispatched reviewer(opus) + architect(fable)
+2026-11-12T09:56:34Z T003 REVIEW_CHANGES reviewer: 4 major (entry_seq LWW vs live uq; merge register rule; list deck uq; grammar span cascade), 4 minor
