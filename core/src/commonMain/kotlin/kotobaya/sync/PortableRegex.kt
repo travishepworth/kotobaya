@@ -15,7 +15,9 @@ package kotobaya.sync
  *   is refused (IllegalArgumentException), as is any other backslash class letter (`\d`, `\w`,
  *   `\b`, `\p`, …) that no schema uses. A new pattern using one fails the schema keyword test.
  *
- * A bare `.` is refused too (the JVM's excludes U+0085, JavaScript's does not).
+ * A bare `.` is refused too (the JVM's excludes U+0085, JavaScript's does not), as are `\-` outside
+ * a class (a syntax error under JavaScript's `u` flag) and `[` or `&&` inside a class (a nested class
+ * and an intersection on the JVM, literal characters in JavaScript).
  *
  * `^` is left alone: without MULTILINE it means start of input on both engines.
  */
@@ -24,8 +26,9 @@ internal object PortableRegex {
     const val ECMA_WS: String =
         "\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff"
 
-    // identity escapes plus \n \t \r \f \uXXXX; not \v (a class on the JVM) nor digits (backreferences)
-    private const val ALLOWED_ESCAPES = "\\^$.|?*+()[]{}/-ntrfu"
+    // identity escapes plus \n \t \r \f \uXXXX; not \v (a class on the JVM) nor digits (backreferences).
+    // `\-` only inside a class: JavaScript's `u` flag rejects it outside one.
+    private const val ALLOWED_ESCAPES = "\\^$.|?*+()[]{}/ntrfu"
 
     fun compile(pattern: String): Regex = Regex(translate(pattern))
 
@@ -42,13 +45,16 @@ internal object PortableRegex {
                     when {
                         e == 's' -> sb.append(if (inClass) ECMA_WS else "[$ECMA_WS]")
                         e == 'S' && !inClass -> sb.append("[^$ECMA_WS]")
-                        e in ALLOWED_ESCAPES -> sb.append(c).append(e)
+                        e in ALLOWED_ESCAPES || (e == '-' && inClass) -> sb.append(c).append(e)
                         else -> throw IllegalArgumentException("unsupported escape \\$e in /$pattern/")
                     }
                     i += 2
                     continue
                 }
                 inClass -> {
+                    // Java reads `[` (nested class) and `&&` (intersection) specially; JavaScript as literals
+                    require(c != '[') { "'[' inside a class in /$pattern/" }
+                    require(!(c == '&' && pattern.getOrNull(i + 1) == '&')) { "'&&' inside a class in /$pattern/" }
                     if (c == ']') inClass = false
                     sb.append(c)
                 }

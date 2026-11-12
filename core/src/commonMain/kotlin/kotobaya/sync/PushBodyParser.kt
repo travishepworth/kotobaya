@@ -2,7 +2,6 @@ package kotobaya.sync
 
 import kotobaya.contracts.Uuid
 import kotobaya.contracts.sync.JsonArray
-import kotobaya.contracts.sync.JsonNull
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
@@ -39,9 +38,10 @@ public sealed interface PushElement {
     ) : PushElement
 
     /**
-     * The element nests deeper than [DefaultCanonicalJson.MAX_DEPTH] below its own root, so it has no
-     * tree. Handled exactly like [DuplicateKey]: step 1, then `rejected` / `schema_invalid` (before
-     * `op_too_large`). Never a whole-body 400, which would leave that outbox stuck for good.
+     * The element is deeper than [DefaultCanonicalJson.MAX_OP_DEPTH] (depth 501–510; the body itself
+     * is still within [DefaultCanonicalJson.MAX_DOCUMENT_DEPTH]). Handled exactly like
+     * [DuplicateKey]: step 1, then `rejected` / `schema_invalid` (before `op_too_large`), never a
+     * whole-body 400 (SYNC.md 2.1, 5.2).
      */
     public data class TooDeep(
         override val opId: Uuid,
@@ -68,18 +68,18 @@ public sealed interface PushElement {
  * Mirrors `push_body_verdict` of `contracts/sync/tools/validate.py` and the verdicts of
  * `contracts/sync/examples/raw-push/`.
  *
- * Nesting: each element is measured from its own root, with the limit [DefaultCanonicalJson] applies
- * to `encode` and `decode`. A deeper element is still syntax-checked (iteratively, at any depth) and
- * becomes [PushElement.TooDeep].
+ * Nesting (SYNC.md 2.1, C-5): a body deeper than [DefaultCanonicalJson.MAX_DOCUMENT_DEPTH] (512) is
+ * a [PushBody.BadRequest]; within it, an element deeper than [DefaultCanonicalJson.MAX_OP_DEPTH]
+ * (500, the element object counting 1) becomes [PushElement.TooDeep].
  *
- * [PushBody.BadRequest] when: not JSON (RFC 8259, duplicates allowed); not an object; a key repeated
+ * [PushBody.BadRequest] when: not JSON (RFC 8259, duplicates allowed); too deep; not an object; a key repeated
  * at the top level of the body; the body (duplicates collapsed, later member wins) fails
  * `batch.schema.json#/$defs/PushRequestLenient`; an element repeats its `op_id` member; or two
  * elements share an `op_id` with different contents (equal = both duplicate-free, not too deep and
  * equal as JSON values, or byte-identical source texts).
  */
 public object PushBodyParser {
-    private const val ELEMENT_DEPTH = 0
+    private const val ELEMENT_DEPTH = 2
 
     /** Parses [text]; never throws. */
     public fun parse(text: String): PushBody {
@@ -144,7 +144,7 @@ public object PushBodyParser {
         return PushBody.Ops(out)
     }
 
-    /** [tree] is the whole element; for a [tooDeep] one only `{"op_id": …}` (all PushRequestLenient reads). */
+    /** One element of `ops` as parsed (duplicates collapsed, later member wins). */
     private class RawElement(
         val tree: JsonValue,
         val source: String,
@@ -171,17 +171,13 @@ public object PushBodyParser {
             val start = p.pos
             p.sawDuplicate = false
             p.duplicateKeys.clear()
-            val element = try {
-                val v = p.parseValue(ELEMENT_DEPTH)
-                val opIdRepeated = p.duplicateKeys.any { it.first == ELEMENT_DEPTH && it.second == "op_id" }
-                RawElement(v, p.text.substring(start, p.pos), p.sawDuplicate, opIdRepeated)
-            } catch (e: JsonDepthException) {
-                p.pos = start
-                val opIds = scanDeep(p)
-                val tree = JsonObject(opIds.lastOrNull()?.let { mapOf("op_id" to it) } ?: emptyMap())
-                RawElement(tree, p.text.substring(start, p.pos), false, opIds.size > 1, tooDeep = true)
-            }
-            out.add(element)
+            p.deepest = 0
+            // enclosed by the body object and the ops array; deeper than the document limit throws (400)
+            val v = p.parseValue(ELEMENT_DEPTH)
+            val elementDepth = p.deepest - ELEMENT_DEPTH
+            val opIdRepeated = p.duplicateKeys.any { it.first == ELEMENT_DEPTH && it.second == "op_id" }
+            val tooDeep = elementDepth > DefaultCanonicalJson.MAX_OP_DEPTH
+            out.add(RawElement(v, p.text.substring(start, p.pos), p.sawDuplicate, opIdRepeated, tooDeep))
             p.skipWs()
             when (p.peek()) {
                 ',' -> p.pos++
@@ -192,64 +188,5 @@ public object PushBodyParser {
                 else -> p.fail("expected ',' or ']'")
             }
         }
-    }
-
-    /**
-     * Syntax-checks one value from `p.pos` without recursion (any depth), leaving `p.pos` after it.
-     * Returns the values of the members named `op_id` of the value's top-level object; a container
-     * value is recorded as JSON null, which then fails PushRequestLenient.
-     */
-    private fun scanDeep(p: JsonParser): List<JsonValue> {
-        val opIds = ArrayList<JsonValue>()
-        val stack = ArrayList<Char>()
-        var key: String? = null
-        while (true) {
-            // a value is expected here
-            p.skipWs()
-            val recordOpId = stack.size == 1 && stack[0] == '{' && key == "op_id"
-            val c = p.peek()
-            if (c == '{' || c == '[') {
-                if (recordOpId) opIds.add(JsonNull)
-                p.pos++
-                p.skipWs()
-                if (p.peek() == (if (c == '{') '}' else ']')) {
-                    p.pos++
-                } else {
-                    stack.add(c)
-                    if (c == '{') key = readKey(p)
-                    continue
-                }
-            } else {
-                val v = p.parseValue(0) // a scalar: no nesting
-                if (recordOpId) opIds.add(v)
-            }
-            // after a value: close containers, or step to the next element / member
-            while (true) {
-                if (stack.isEmpty()) return opIds
-                p.skipWs()
-                val top = stack[stack.size - 1]
-                val n = p.peek()
-                if (n == ',') {
-                    p.pos++
-                    if (top == '{') key = readKey(p)
-                    break
-                }
-                if ((n == '}' && top == '{') || (n == ']' && top == '[')) {
-                    p.pos++
-                    stack.removeAt(stack.size - 1)
-                } else {
-                    p.fail("expected ',' or the end of the enclosing ${if (top == '{') "object" else "array"}")
-                }
-            }
-        }
-    }
-
-    private fun readKey(p: JsonParser): String {
-        p.skipWs()
-        if (p.peek() != '"') p.fail("expected a member name")
-        val k = p.parseString()
-        p.skipWs()
-        p.expect(':')
-        return k
     }
 }

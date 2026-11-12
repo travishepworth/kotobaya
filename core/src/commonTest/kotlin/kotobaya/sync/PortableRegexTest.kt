@@ -68,9 +68,12 @@ class PortableRegexTest {
 
     @Test
     fun unportableConstructsAreRefused() {
-        for (p in listOf("\\d", "\\w", "\\b", "\\p{L}", "[\\S]", "a.b", "\\1", "\\v", "[]a]")) {
+        for (p in listOf("\\d", "\\w", "\\b", "\\p{L}", "[\\S]", "a.b", "\\1", "\\v", "[]a]", "a\\-b", "[a[b]]", "[a-z&&[^b]]")) {
             assertFailsWith<IllegalArgumentException>(p) { PortableRegex.compile(p) }
         }
+        // `\-` inside a class and `\/` anywhere are fine under JavaScript's `u` flag and on the JVM
+        assertEquals(true, PortableRegex.compile("^[a\\-z]+\\/$").containsMatchIn("-a-/"))
+        assertEquals(false, PortableRegex.compile("^[a\\-z]+\\/$").containsMatchIn("b/"))
     }
 
     @Test

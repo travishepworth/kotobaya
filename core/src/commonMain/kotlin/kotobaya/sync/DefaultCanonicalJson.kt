@@ -14,16 +14,21 @@ import kotobaya.contracts.sync.JsonValue
 /**
  * The [CanonicalJson] of the shared core (contracts/sync/Json.kt; SYNC.md 5.3/5.4, C-1e).
  *
- * Implementation limit, the same on every path: a value nested more than [MAX_DEPTH] levels below
- * the root (root = depth 0; each array element / object member is one level deeper) is refused.
- * [decode] returns an error (never a stack overflow), and [encode] / [sizeOf] throw
- * IllegalArgumentException, so a client cannot mint an op that no replica could parse.
- * [PushBodyParser] answers such an element per op (`schema_invalid`), never with a whole-body 400.
- * No op schema comes near the limit. Contract ticket C-5 pins the value in SYNC.md.
+ * Nesting depth (SYNC.md 2.1, C-5): the depth of a value is the number of arrays and objects on its
+ * deepest path (a scalar is 0, `[]` and `{}` are 1, `{"a":[1]}` is 2). Two limits:
+ * - [MAX_DOCUMENT_DEPTH] = 512, for a **whole JSON text** (push/pull bodies, an op's text). [decode]
+ *   returns an error for a deeper text (never a stack overflow); [encode] / [sizeOf] throw
+ *   IllegalArgumentException for a deeper value.
+ * - [MAX_OP_DEPTH] = 500, for **one op**, from the op object (which counts 1). `DefaultOpCodec`
+ *   applies it in `decodeTree`, `encode`, `encodeTree` and `sizeBytes`; [PushBodyParser] applies it
+ *   per element (`PushElement.TooDeep`). `{"ops":[op]}` adds 2, so a legal op always fits a body.
  */
 public object DefaultCanonicalJson : CanonicalJson {
-    /** Deepest accepted nesting level (the root value is level 0). */
-    public const val MAX_DEPTH: Int = 512
+    /** `MAX_DOCUMENT_DEPTH` of SYNC.md 2.1: deepest accepted whole JSON text. */
+    public const val MAX_DOCUMENT_DEPTH: Int = 512
+
+    /** `MAX_OP_DEPTH` of SYNC.md 2.1: deepest accepted op, the op object counting 1. */
+    public const val MAX_OP_DEPTH: Int = 500
 
     override fun decode(text: String): JsonDecodeResult {
         val p = JsonParser(text, allowDuplicateKeys = false)
@@ -46,11 +51,13 @@ public object DefaultCanonicalJson : CanonicalJson {
 
     override fun sizeOf(value: JsonValue): Int = utf8Size(encode(value))
 
-    /** True if [value] nests deeper than [MAX_DEPTH] (recursion bounded by the limit). */
-    internal fun exceedsMaxDepth(value: JsonValue, depth: Int = 0): Boolean = when {
-        depth > MAX_DEPTH -> true
-        value is JsonArray -> value.items.any { exceedsMaxDepth(it, depth + 1) }
-        value is JsonObject -> value.members.values.any { exceedsMaxDepth(it, depth + 1) }
+    /**
+     * True if the depth of [value] (containers on its deepest path) exceeds [limit]; [enclosing] is
+     * the number of containers around it. Recursion is bounded by the limit.
+     */
+    internal fun exceedsDepth(value: JsonValue, limit: Int, enclosing: Int = 0): Boolean = when (value) {
+        is JsonArray -> enclosing + 1 > limit || value.items.any { exceedsDepth(it, limit, enclosing + 1) }
+        is JsonObject -> enclosing + 1 > limit || value.members.values.any { exceedsDepth(it, limit, enclosing + 1) }
         else -> false
     }
 
@@ -73,8 +80,11 @@ public object DefaultCanonicalJson : CanonicalJson {
         return n
     }
 
+    /** [depth] = containers enclosing [v]. */
     private fun write(sb: StringBuilder, v: JsonValue, depth: Int) {
-        require(depth <= MAX_DEPTH) { "nesting deeper than $MAX_DEPTH" }
+        if (v is JsonArray || v is JsonObject) {
+            require(depth + 1 <= MAX_DOCUMENT_DEPTH) { "nesting deeper than $MAX_DOCUMENT_DEPTH" }
+        }
         when (v) {
             JsonNull -> sb.append("null")
             is JsonBool -> sb.append(if (v.value) "true" else "false")
@@ -135,7 +145,7 @@ public object DefaultCanonicalJson : CanonicalJson {
 /** A syntax error at [offset] (UTF-16 index). */
 internal open class JsonParseException(message: String, val offset: Int) : Exception(message)
 
-/** The input nests deeper than [DefaultCanonicalJson.MAX_DEPTH] (it may be syntactically fine). */
+/** The input nests deeper than the parser's limit (it may be syntactically fine). */
 internal class JsonDepthException(message: String, offset: Int) : JsonParseException(message, offset)
 
 /**
@@ -172,11 +182,20 @@ internal class JsonParser(val text: String, private val allowDuplicateKeys: Bool
         pos++
     }
 
+    /** Largest container count seen on any path since the last reset (containers enclosing + 1). */
+    var deepest: Int = 0
+
+    /** Parses a value enclosed by [depth] containers; a container here has depth `depth + 1`. */
     fun parseValue(depth: Int): JsonValue {
-        if (depth > DefaultCanonicalJson.MAX_DEPTH) {
-            throw JsonDepthException("nesting deeper than ${DefaultCanonicalJson.MAX_DEPTH}", pos)
+        val c = peek()
+        if (c == '{' || c == '[') {
+            val d = depth + 1
+            if (d > DefaultCanonicalJson.MAX_DOCUMENT_DEPTH) {
+                throw JsonDepthException("nesting deeper than ${DefaultCanonicalJson.MAX_DOCUMENT_DEPTH}", pos)
+            }
+            if (d > deepest) deepest = d
         }
-        return when (val c = peek()) {
+        return when (c) {
             '{' -> parseObject(depth)
             '[' -> parseArray(depth)
             '"' -> JsonString(parseString())

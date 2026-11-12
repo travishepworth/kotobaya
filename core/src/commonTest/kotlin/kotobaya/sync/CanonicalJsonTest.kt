@@ -161,24 +161,33 @@ class CanonicalJsonTest {
         assertNotNull(j.decode(ok).value)
     }
 
-    /** One limit on every path: decode, encode and sizeOf agree at the boundary (root = depth 0). */
+    /**
+     * SYNC.md 2.1: depth = containers on the deepest path (scalar 0, `[]` 1, `{"a":[1]}` 2); a document
+     * of depth 512 is accepted by decode, encode and sizeOf alike, 513 by none.
+     */
     @Test
-    fun depthLimitIsTheSameForDecodeAndEncode() {
-        val max = DefaultCanonicalJson.MAX_DEPTH
-        fun nested(n: Int): JsonValue {
-            var v: JsonValue = JsonArray(emptyList())
+    fun documentDepthLimitIsTheSameForDecodeAndEncode() {
+        val max = DefaultCanonicalJson.MAX_DOCUMENT_DEPTH
+        fun nested(n: Int, leaf: JsonValue? = null): JsonValue {
+            var v: JsonValue = JsonArray(listOfNotNull(leaf))
             repeat(n - 1) { v = JsonArray(listOf(v)) }
             return v
         }
-        // max + 1 nested arrays: the innermost sits at depth max
-        val edge = "[".repeat(max + 1) + "]".repeat(max + 1)
-        assertEquals(nested(max + 1), j.decode(edge).value)
-        assertEquals(edge, j.encode(nested(max + 1)))
-        assertEquals(edge.length, j.sizeOf(nested(max + 1)))
-        val over = "[".repeat(max + 2) + "]".repeat(max + 2)
+        val edge = "[".repeat(max) + "]".repeat(max)
+        assertEquals(nested(max), j.decode(edge).value)
+        assertEquals(edge, j.encode(nested(max)))
+        assertEquals(edge.length, j.sizeOf(nested(max)))
+        // a scalar adds no depth
+        val edgeLeaf = "[".repeat(max) + "1" + "]".repeat(max)
+        assertEquals(edgeLeaf, j.encode(j.decode(edgeLeaf).value!!))
+        val over = "[".repeat(max + 1) + "]".repeat(max + 1)
         assertNull(j.decode(over).value)
-        assertFailsWith<IllegalArgumentException> { j.encode(nested(max + 2)) }
-        assertFailsWith<IllegalArgumentException> { j.sizeOf(JsonObject(mapOf("k" to nested(max + 1)))) }
+        assertFailsWith<IllegalArgumentException> { j.encode(nested(max + 1)) }
+        assertFailsWith<IllegalArgumentException> { j.sizeOf(JsonObject(mapOf("k" to nested(max)))) }
+        assertNull(j.decode("{\"k\":$edge}").value)
+        assertTrue(DefaultCanonicalJson.exceedsDepth(j.decode("{\"a\":[1]}").value!!, 1))
+        assertEquals(false, DefaultCanonicalJson.exceedsDepth(j.decode("{\"a\":[1]}").value!!, 2))
+        assertEquals(false, DefaultCanonicalJson.exceedsDepth(JsonNumber(1.0), 0))
     }
 
     @Test

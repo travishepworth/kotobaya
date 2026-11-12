@@ -26,7 +26,7 @@ class PushBodyParserTest {
                 "http_status" to JsonNumber(200.0),
                 "per_op" to JsonArray(
                     body.elements.map {
-                        JsonString(if (it is PushElement.DuplicateKey) "schema_invalid" else "checked")
+                        JsonString(if (it is PushElement.Parsed) "checked" else "schema_invalid")
                     },
                 ),
             ),
@@ -35,7 +35,7 @@ class PushBodyParserTest {
 
     @Test
     fun everyRawPushExampleGetsItsVerdict() {
-        assertEquals(6, SyncExamples.rawPushBodies.size)
+        assertTrue(SyncExamples.rawPushBodies.size >= 6)
         for ((name, body) in SyncExamples.rawPushBodies) {
             val expected = j.decode(SyncExamples.rawPushExpected.getValue(name.replace(".body.txt", ".expected.json"))).value
             assertEquals(expected, verdict(PushBodyParser.parse(body)), name)
@@ -60,15 +60,19 @@ class PushBodyParserTest {
         }
     }
 
-    /** A legal-looking op nested too deep is a per-op error, never a 400 that would block the outbox. */
+    /**
+     * SYNC.md 2.1/5.2 (C-5): an element of depth 501–510 is a per-op error (never a 400 that would block
+     * the outbox); depth 500 is fine; a body deeper than 512 (element > 510) is a 400.
+     */
     @Test
     fun tooDeepElementIsAPerOpErrorNotAWholeBodyFailure() {
         val good = SyncExamples.rawPushBodies.getValue("same-op-id-equal-contents.body.txt")
         val goodOp = (j.decode(good).value as JsonObject).members.getValue("ops").let { (it as JsonArray).items[0] }
         val goodText = j.encode(goodOp)
-        val depth = DefaultCanonicalJson.MAX_DEPTH + 100
         val deepId = "0193a1b2-00ff-7005-8000-0000000000dd"
-        val deep = """{"op_id":"$deepId","payload":{"x":${"[".repeat(depth)}1,{"k":"v","k":"w"}${"]".repeat(depth)}},"z":null}"""
+        // element {1} > payload {2} > 505 arrays: depth 507
+        val k = 505
+        val deep = """{"op_id":"$deepId","payload":{"x":${"[".repeat(k)}1,{"k":"v","k":"w"}${"]".repeat(k)}},"z":null}"""
         val r = assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$goodText,$deep,$goodText]}"""))
         assertEquals(3, r.elements.size)
         assertIs<PushElement.Parsed>(r.elements[0])
@@ -78,17 +82,21 @@ class PushBodyParserTest {
         assertIs<PushElement.Parsed>(r.elements[2])
         // the same element pushed twice is a retry, not a conflict
         assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$deep,$deep]}"""))
-        // exactly at the limit an element still parses (element root = depth 0, as for encode)
-        val max = DefaultCanonicalJson.MAX_DEPTH
-        val edge = """{"op_id":"$deepId","p":${"[".repeat(max)}${"]".repeat(max)}}"""
-        assertIs<PushElement.Parsed>(assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$edge]}""")).elements.single())
-        val over = """{"op_id":"$deepId","p":${"[".repeat(max + 1)}${"]".repeat(max + 1)}}"""
-        assertIs<PushElement.TooDeep>(assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$over]}""")).elements.single())
+
+        // element {"op_id":…,"p":m arrays} has depth 1 + m
+        fun element(m: Int) = """{"op_id":"$deepId","p":${"[".repeat(m)}${"]".repeat(m)}}"""
+        fun single(m: Int) = PushBodyParser.parse("""{"ops":[${element(m)}]}""")
+        val max = DefaultCanonicalJson.MAX_OP_DEPTH
+        assertIs<PushElement.Parsed>(assertIs<PushBody.Ops>(single(max - 1)).elements.single()) // depth 500
+        assertIs<PushElement.TooDeep>(assertIs<PushBody.Ops>(single(max)).elements.single()) // 501
+        assertIs<PushElement.TooDeep>(assertIs<PushBody.Ops>(single(509)).elements.single()) // 510: body 512
+        assertIs<PushBody.BadRequest>(single(510)) // element 511: body 513
+
         // still a whole-body 400: bad syntax deep down, a missing or repeated op_id, an op_id that is not a uuid
-        val nest = "[".repeat(depth) + "]".repeat(depth)
+        val nest = "[".repeat(k) + "]".repeat(k)
         for (b in listOf(
-            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(depth)}1,${"]".repeat(depth)}}]}""",
-            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(depth)}${"]".repeat(depth - 1)}}]}""",
+            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(k)}1,${"]".repeat(k)}}]}""",
+            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(k)}${"]".repeat(k - 1)}}]}""",
             """{"ops":[{"p":$nest}]}""",
             """{"ops":[{"op_id":"$deepId","op_id":"$deepId","p":$nest}]}""",
             """{"ops":[{"op_id":[],"p":$nest}]}""",
@@ -96,9 +104,12 @@ class PushBodyParserTest {
         )) {
             assertIs<PushBody.BadRequest>(PushBodyParser.parse(b), b.take(80))
         }
-        // and a client cannot mint it: encode refuses the tree
-        assertNull(j.decode(deep).value)
+        // as a document the element is fine (≤ 512), but as an op it is Invalid
+        val plain = j.decode(element(max)).value
+        assertNotNull(plain)
+        assertIs<OpDecodeResult.Invalid>(c.decodeTree(plain, OpSource.PUSHED))
     }
+
 
     @Test
     fun wholeBodyFailures() {

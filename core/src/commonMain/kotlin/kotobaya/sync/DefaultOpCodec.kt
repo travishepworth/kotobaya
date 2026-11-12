@@ -28,9 +28,10 @@ import kotobaya.contracts.sync.OpType
  * [OpDecodeResult.Unsupported.opVersion] is the received `op_version` capped at `Int.MAX_VALUE`
  * (the lenient shape allows any integer up to 2^53 - 1).
  *
- * A tree nested deeper than [DefaultCanonicalJson.MAX_DEPTH] is [OpDecodeResult.Invalid] at `""`,
- * and [encode] / [sizeBytes] of such an op throw IllegalArgumentException: no replica mints, accepts
- * or applies an op it could not parse back.
+ * An op tree nested deeper than [DefaultCanonicalJson.MAX_OP_DEPTH] (500, counted from the op object)
+ * is [OpDecodeResult.Invalid] at `""`, and [encode] / [encodeTree] / [sizeBytes] of such an op throw
+ * IllegalArgumentException. So no replica mints or accepts an op that would not fit a push or pull
+ * body (document limit [DefaultCanonicalJson.MAX_DOCUMENT_DEPTH] = 512).
  */
 public object DefaultOpCodec : OpCodec {
     private const val TWO_POW_53 = 9007199254740992.0
@@ -67,7 +68,11 @@ public object DefaultOpCodec : OpCodec {
             m["seq"] = JsonNumber(seq.toDouble())
             m["caused_by_op_id"] = op.causedByOpId?.let { JsonString(it) } ?: JsonNull
         }
-        return JsonObject(m)
+        val tree = JsonObject(m)
+        require(!DefaultCanonicalJson.exceedsDepth(tree, DefaultCanonicalJson.MAX_OP_DEPTH)) {
+            "op nests deeper than ${DefaultCanonicalJson.MAX_OP_DEPTH}"
+        }
+        return tree
     }
 
     override fun decode(json: String, source: OpSource): OpDecodeResult {
@@ -78,8 +83,8 @@ public object DefaultOpCodec : OpCodec {
 
     override fun decodeTree(json: JsonValue, source: OpSource): OpDecodeResult {
         if (json !is JsonObject) return OpDecodeResult.Invalid("an op must be a JSON object", "", null)
-        if (DefaultCanonicalJson.exceedsMaxDepth(json)) {
-            return OpDecodeResult.Invalid("nesting deeper than ${DefaultCanonicalJson.MAX_DEPTH}", "", null)
+        if (DefaultCanonicalJson.exceedsDepth(json, DefaultCanonicalJson.MAX_OP_DEPTH)) {
+            return OpDecodeResult.Invalid("op nests deeper than ${DefaultCanonicalJson.MAX_OP_DEPTH}", "", null)
         }
         val m = json.members
         val seq = m["seq"]?.let { asLong(it) }?.takeIf { it >= 1 }

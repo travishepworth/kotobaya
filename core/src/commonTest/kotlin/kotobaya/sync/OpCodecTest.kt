@@ -234,18 +234,54 @@ class OpCodecTest {
         assertEquals(Int.MAX_VALUE, assertIs<OpDecodeResult.Unsupported>(huge).opVersion)
     }
 
+    /**
+     * Op limit 500 vs document limit 512 (SYNC.md 2.1; depth = containers on the deepest path, the op
+     * object counting 1): an op of depth 500 round-trips and still fits a push body and a pull body;
+     * one of depth 501 is refused per op.
+     */
     @Test
-    fun tooDeepOpsAreInvalidAndCannotBeEncoded() {
-        val known = known(SyncExamples.ops.getValue("note.created.json"), OpSource.PUSHED)
-        var deep: JsonValue = JsonArray(emptyList())
-        repeat(DefaultCanonicalJson.MAX_DEPTH) { deep = JsonArray(listOf(deep)) }
-        val fields = JsonObject(mapOf("sentence" to deep)) // payload/fields/sentence/... > MAX_DEPTH
-        val op = known.copy(payload = JsonObject(known.payload.members + ("fields" to fields)))
-        assertFailsWith<IllegalArgumentException> { c.encode(op) }
-        assertFailsWith<IllegalArgumentException> { c.sizeBytes(op) }
-        val tree = JsonObject(tree(SyncExamples.ops.getValue("note.created.json")).members + ("payload" to op.payload))
-        val r = assertIs<OpDecodeResult.Invalid>(c.decodeTree(tree, OpSource.PUSHED))
-        assertEquals("", r.pointer)
+    fun opDepthLimitLeavesRoomForTheBody() {
+        val settings = known(SyncExamples.ops.getValue("settings.set.json"), OpSource.PUSHED)
+        // op {1} > payload {2} > n arrays in value: op depth 2 + n
+        fun withValueDepth(opDepth: Int): Op {
+            var v: JsonValue = JsonArray(emptyList())
+            repeat(opDepth - 3) { v = JsonArray(listOf(v)) }
+            return settings.copy(payload = JsonObject(settings.payload.members + ("value" to v)))
+        }
+        val max = DefaultCanonicalJson.MAX_OP_DEPTH
+        val edge = withValueDepth(max)
+        assertEquals(false, DefaultCanonicalJson.exceedsDepth(c.encodeTree(edge), max))
+        assertTrue(DefaultCanonicalJson.exceedsDepth(c.encodeTree(edge), max - 1)) // exactly 500
+        val text = c.encode(edge)
+        assertEquals(OpDecodeResult.Known(edge), c.decode(text, OpSource.PUSHED))
+        assertEquals(j.utf8Size(text), c.sizeBytes(edge))
+        // push body: per-op Parsed, then Known
+        val push = assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$text]}"""))
+        val parsed = assertIs<PushElement.Parsed>(push.elements.single())
+        assertEquals(OpDecodeResult.Known(edge), c.decodeTree(parsed.tree, OpSource.PUSHED))
+        // pull body: the whole document decodes, its op decodes Known
+        val pulled = edge.copy(seq = 7, causedByOpId = null)
+        val body = """{"ops":[${c.encode(pulled)}],"next_since":7,"has_more":false,"high_water_seq":7,""" +
+            """"server_time":1733584666641,"log_epoch":"0193a1b2-0000-7000-8000-0000000000e1","durable_seq":7}"""
+        val doc = assertNotNull(j.decode(body).value, "pull body at op depth $max must decode")
+        assertNull(SyncSchemas.validate("batch.schema.json#/\$defs/PullResponseLenient", doc))
+        val op = ((doc as JsonObject).members.getValue("ops") as JsonArray).items.single()
+        assertEquals(OpDecodeResult.Known(pulled), c.decodeTree(op, OpSource.PULLED))
+
+        // one level deeper: refused on every path, per op
+        val over = withValueDepth(max + 1)
+        assertFailsWith<IllegalArgumentException> { c.encode(over) }
+        assertFailsWith<IllegalArgumentException> { c.encodeTree(over) }
+        assertFailsWith<IllegalArgumentException> { c.sizeBytes(over) }
+        val overTree = JsonObject(c.encodeTree(edge).members + ("payload" to over.payload))
+        assertEquals("", assertIs<OpDecodeResult.Invalid>(c.decodeTree(overTree, OpSource.PUSHED)).pointer)
+        val overText = j.encode(overTree) // the document limit still allows it as plain JSON
+        assertIs<OpDecodeResult.Invalid>(c.decode(overText, OpSource.PUSHED))
+        // (a different op_id: the same op_id with other contents would be a whole-body 400)
+        val overOther = j.encode(JsonObject(overTree.members + ("op_id" to JsonString("0193a1b2-00ff-7000-8000-0000000000ff"))))
+        val r = assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$text,$overOther]}"""))
+        assertIs<PushElement.Parsed>(r.elements[0])
+        assertIs<PushElement.TooDeep>(r.elements[1])
     }
 
     @Test
