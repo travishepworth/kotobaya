@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:31:35Z
+Updated: 2026-11-12T11:32:43Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -10,7 +10,6 @@ Updated: 2026-11-12T11:31:35Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T005 (att. 4) | architect final verification (opus) | 2026-11-12T11:31:35Z |
 | T004 | reviewer APPROVE; architect CHANGES (1 major op-size, 5 minor) — attempt 3 (opus) after T005 merges | 2026-11-12T11:22:30Z |
 
 ## Blocked
@@ -28,9 +27,10 @@ Updated: 2026-11-12T11:31:35Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 10/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
+Merged 11/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T005 sync contract — 4 attempts (1 Fable, 3 Opus); reviewer + architect APPROVE; restore detection, clock re-mint, op size cap
 - T003 DB schema contract — 2 attempts; reviewer + architect APPROVE; 13 followups (T005 carries 8)
 - T009b make check MODULE=deploy → helm check.sh (verified fails on broken chart)
 - T001b+T002 SeaweedFS compose (dev-up all healthy), images/push/apk targets; apk fixed on attempt 2

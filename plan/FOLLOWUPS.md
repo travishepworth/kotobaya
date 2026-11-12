@@ -25,3 +25,8 @@
 - T004 → T105 (auth): `x-auth: body-key` / `x-body-key-scope` are custom extensions; the auth filter must implement them by hand.
 - T004: /cards/bulk/schedule retry is not idempotent (extra manual rows per card; same schedule). Consider an optional request id.
 - T005 → T006/T107 acceptance: reference scenarios `clock-behind-remint` and the new clock_ahead re-mint scenario.
+- T005 (doc/contract minor): replay by reviewed_at can put a causally later review first when one device's clock is ahead within tolerance. Same on all replicas; consider max(reviewed_at, newest observed review wall) or document.
+- T005: re-mint misses `deck.item_put` (`e:<seq>` into an existing deck) and `word.status_set` for words created in the window → discarded; count `e:` keys as dependent on W notes holding that entry_seq.
+- T005 (doc): `card.preset_set` on an existing card pointing at a preset created in the window is re-minted (contradicts "edits of existing rows discard-only"); clarify text.
+- T005: pin op-size measurement to raw UTF-8 compact JSON (no \uXXXX escaping beyond JSON's requirements).
+- T005 → T303 (sync client): store the last /meta limits durably and check max_op_bytes before minting (a server below the 1 MiB default would otherwise force Discard of offline notes).
