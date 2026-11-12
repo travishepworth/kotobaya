@@ -113,3 +113,8 @@
 2026-11-12T12:05:39Z C-1 REVIEW combined reviewer+architect (opus) dispatched (small non-breaking change)
 2026-11-12T12:07:54Z C-1 REVIEW_CHANGES 2 major (app.job marker vs closed JobKind enum + retention), 4 minor
 2026-11-12T12:07:54Z C-1 DISPATCH attempt 2 (same opus agent): server-only state table instead of app.job
+2026-11-12T12:11:12Z T006 HANDOFF DONE attempt 2; orchestrator committed SUMMARY text (Write refusal again)
+2026-11-12T12:11:12Z T006 CHECK_GREEN core/web/contracts-core (67 examples, 44 round trips)
+2026-11-12T12:11:12Z C-1 HANDOFF DONE attempt 2; CHECK_GREEN
+2026-11-12T12:11:12Z T006 REVIEW + C-1 REVIEW verification passes dispatched (3 reviewers, human said go hard)
+2026-11-12T12:11:12Z - DISPATCH planner(sonnet): Phase 1 ticket files

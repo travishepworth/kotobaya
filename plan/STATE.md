@@ -1,17 +1,18 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T12:07:54Z
+Updated: 2026-11-12T12:11:12Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-1 | architect (gp/opus) | 2 | t/C-1-contract-align (existing worktree) | 2026-11-12T12:07:54Z |
-| T006 | architect (gp/opus) | 2 | t/T006-core-interfaces (existing worktree) | 2026-11-12T11:59:59Z |
+| P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T006 (att. 2) | reviewer + architect verification (opus) | 2026-11-12T12:11:12Z |
+| C-1 (att. 2) | reviewer verification (opus) | 2026-11-12T12:11:12Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -19,7 +20,7 @@ Updated: 2026-11-12T12:07:54Z
 
 ## Notes
 - Project agent types not registered; dispatch = general-purpose + model override + inlined role (human OK'd).
-- MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once.
+- MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 - Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.
 - Review rounds (human, 2026-11-12): loop while findings are REAL — blocker/major with a concrete failure scenario (inputs → wrong result/data loss/divergence). Minors and style never block (→ FOLLOWUPS). Re-reviews verify prior findings + only genuinely new majors. Safety cap: §9 (5 attempts → BLOCKED_HUMAN).

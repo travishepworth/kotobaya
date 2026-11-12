@@ -71,7 +71,7 @@ Originally, before any ticket ran, the human would:
 - accept: Schemas validate the examples; every conflict case in the spec has a worked example.
 
 ### T006 — Contract: core interfaces
-- model: fable · risk: high · deps: T003, T005 · status: RUNNING
+- model: fable · risk: high · deps: T003, T005 · status: IN_REVIEW
 - paths: `contracts/core/`, `core/src/commonMain/kotlin/kotobaya/contracts/`
 - spec: Scheduling, Public API › Card search language
 - do: Kotlin interfaces + data classes (no implementations) for: `Scheduler` (FSRS), `QueueBuilder`, `CardGenerator`, `ReplayEngine`, `HotScorer`, `SearchQueryParser` (with the AST, plus `complete(prefix)` for autocomplete), `CardRenderer` (note + card kind + render options such as furigana on/off and pitch on/off → sanitised HTML fragment using only classes from `assets/card/`), `Hlc`, `OpCodec`. A `CoreJs` facade listing exactly what is `@JsExport`ed to the web app (search parse/complete, card render, FSRS interval preview), with JS-friendly types (no Long/collections in signatures). KDoc with exact semantics, edge cases, and invariants. Grammar for the search language in EBNF.
@@ -122,7 +122,7 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - accept: `make check MODULE=deploy` runs `deploy/helm/check.sh` and is green; fails if the chart breaks.
 
 ### C-1 — Contract alignment from T006 reviews (db + sync, non-breaking)
-- model: opus · risk: high · deps: T005 · status: RUNNING
+- model: opus · risk: high · deps: T005 · status: IN_REVIEW
 - paths: `contracts/db/`, `contracts/sync/`
 - see plan/tickets/C-1.md
 
