@@ -441,7 +441,67 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.grading_buttons` | `4` \| `5` | `4` | Five = jpdb-style. |
 | `scheduler.leech_threshold` | int | `8` | Lapses at which a card is a leech. |
 | `scheduler.bury_siblings` | bool | `true` | |
+| `scheduler.kanji_before_vocab` | bool | `false` | Queue order only (C-7): default for the `add_kanji` ordering where no deck sets one. See 6.2. |
+| `scheduler.mined_priority` | int, −2147483648…2147483647 | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
 | `audio.prefetch_days` | int | `7` | Audio prefetch horizon. |
+
+### 6.1 Storage and validation
+
+- **Any key matching `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$` is stored**, well-known or not, with
+  any JSON value (`settings.set` payload unchanged). Unknown keys are kept and returned untouched by
+  `listSettings`; they are never rejected (forward compatibility: an older server must keep a newer
+  client's key).
+- **Only well-known keys are type-checked, and only by `updateSettings`** (`PATCH /settings`): a
+  value of the wrong type or outside the stated range is `422` with problem `pointer`
+  `/values/<key>` (e.g. `/values/scheduler.mined_priority`), and nothing in the request is written.
+  JSON `null` is always accepted (reset to default). `bool` = JSON `true`/`false` only (not `0`/`1`,
+  not `"true"`). `int` = a JSON number with no fractional part (`3`, not `3.5`, not `"3"`).
+- `POST /sync/push` does **not** type-check `settings.set` values (OPS.md `settings.set`), so a
+  replica can still hold a wrongly typed or out-of-range value for a well-known key. Every reader
+  (core, server, web) treats such a value, a missing row, and JSON `null` alike: **use the
+  default**. It never fails or clamps.
+- Example: `PATCH /settings {"values": {"scheduler.mined_priority": 5, "ui.theme": "dark"}}` →
+  two `settings.set` ops (keys ascending); `ui.theme` is stored unchecked.
+  `{"values": {"scheduler.kanji_before_vocab": "yes"}}` → `422`, pointer
+  `/values/scheduler.kanji_before_vocab`, no op emitted.
+
+### 6.2 The two queue keys (C-7)
+
+Both are read by the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205); the
+platform loads them from `settings` and passes them in. Neither changes card creation, a card's
+schedule, or replay (OPS.md `settings.set`: "Replay: None").
+
+**`scheduler.mined_priority`** is the priority of the virtual deckless new-card source of
+ADR-006 (NEW cards with no deck membership at all, e.g. mined from Yomitan); it is the value of
+`QueueInput.decklessPriority`. (That property's KDoc currently names the key
+`scheduler.deckless_new_priority`; `scheduler.mined_priority` is the one name, follow-up to fix
+the KDoc.) Meaning, on the same scale as `deck.priority` (QueueBuilder rule 4):
+- New-card sources are drawn in tiers by priority, **ascending**: a lower number is drawn
+  earlier; a **higher number means later** (lower precedence).
+- Equal to a deck's priority (default `0` vs. decks at the default `0`) → the same tier: the
+  deckless source takes turns round-robin with those decks, one card per turn, going **last** in
+  each round.
+- Below every enabled deck's priority (e.g. `-1` with all decks at `0`) → mined cards are
+  introduced before any deck's; above all (e.g. `1`) → only once every deck tier is exhausted or at
+  its limit for the day.
+- No per-source limit: only the global `scheduler.new_per_day` / `scheduler.new_per_session` bound it.
+- Range: the int4 range of `deck.priority` (op schema `deck.created`), −2147483648…2147483647
+  inclusive; outside it → `422` from `updateSettings`.
+
+**`scheduler.kanji_before_vocab`** (bool) sets the `add_kanji` **ordering** where nothing more
+specific does. Effective ordering mode of a new-card source (the `AddKanjiMode` QueueBuilder rule 4
+uses):
+- an enabled deck whose `settings` has an `add_kanji` key → that key's value (`off` | `before` |
+  `alongside`); the deck's explicit choice always wins, including an explicit `off`;
+- a deck without the key, and the deckless source → `before` if `scheduler.kanji_before_vocab` is
+  `true`, else `off`.
+`before` means (rule 4): right before drawing a vocab card, the source draws the eligible, not yet
+taken NEW cards of kanji notes whose literal appears in the word's expression, and they count
+against that source and the budget. The key only orders cards that already exist; whether adding a
+vocab card *creates* kanji cards stays governed by the deck's explicit `add_kanji` alone (absent =
+none created). With the default `false` every source behaves exactly as before C-7. Applying it to
+the deckless source needs an additive `QueueInput` member (follow-up C-ticket before T205); until
+then the deckless source uses `off`.
 
 ## 7. Cross-check: table ↔ op ↔ API
 

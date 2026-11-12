@@ -130,3 +130,22 @@
   restore script sets it, and the server finishes the restore at startup). Only comments changed.
 - The old table↔op↔API cross-check in §7 was stale. It is replaced by a pointer to SYNC.md §14 and
   the API summary. The `job.kind` comment now lists the API's job kinds.
+
+## C-7 changes (settings keys; additive)
+
+- Two new well-known settings in SCHEMA.md §6: `scheduler.kanji_before_vocab` (bool, default
+  `false`) and `scheduler.mined_priority` (int, default `0`). These are the names the web settings
+  page already writes. No table, column or op changed. `settings.set` still accepts any JSON.
+- **Mined priority** uses the same scale as deck priority: lower is drawn first, and the range
+  is the same int4 range. At the default 0, mined cards take turns with your priority-0 decks
+  (ADR-006). Set it to -1 to put them first, or to 1 to put them after all priority-0 decks.
+- **Kanji before vocab** only changes the order of cards. It applies to decks that have no
+  `add_kanji` setting of their own, and to mined cards. A deck's own `add_kanji` (including
+  `off`) always wins. It never creates kanji cards.
+- §6 now says plainly: any key is stored; only well-known keys are type-checked, and only by
+  `PATCH /settings` (422 at `/values/<key>`). Values that arrive by sync are not checked, so a
+  bad value is read as the default.
+- Worth a second look: (1) whether kanji-before-vocab should override a deck's explicit
+  `add_kanji` rather than act only as a fallback; (2) the core KDoc still calls the priority key
+  `scheduler.deckless_new_priority`, and the deckless source needs a new `QueueInput` member for
+  kanji ordering. Both are left for a small core-contract follow-up before T205.
