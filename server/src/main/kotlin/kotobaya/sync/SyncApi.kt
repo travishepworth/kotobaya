@@ -66,11 +66,8 @@ private suspend fun ApplicationCall.handlePush(m: SyncModule) {
     } catch (e: CharacterCodingException) {
         throw Problems.invalidRequest("The body is not valid UTF-8.")
     }
-    val outcome = try {
-        withContext(Dispatchers.IO) { m.push.push(text, auth.principal) }
-    } catch (e: MergeUnavailableException) {
-        throw Problems.unavailable("A duplicate needs the merge procedure, which this server does not run yet; retry later.")
-    }
+    // A collision without a merge policy is already a 503 ApiException (OpApply maps it on every path).
+    val outcome = withContext(Dispatchers.IO) { m.push.push(text, auth.principal) }
     when (outcome) {
         is PushOutcome.BadRequest -> throw Problems.invalidRequest(outcome.message)
         is PushOutcome.Ok -> respondJson(outcome.body)

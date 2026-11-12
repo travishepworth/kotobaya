@@ -20,7 +20,12 @@ object RejectCode {
 }
 
 /** A per-op rejection: `PushResult.error` (`code`, English `message`). */
-data class Rejection(val code: String, val message: String)
+data class Rejection(
+    val code: String,
+    val message: String,
+    /** For `invalid_target`: the target's kind (a deck's `type`), so REST can pick the right 409. Not sent to clients. */
+    val targetKind: String? = null,
+)
 
 /**
  * An op the server was asked to mint ([OpTx.emit]) fails its own schema, nests deeper than
@@ -48,7 +53,13 @@ class OpRefused(val rejection: Rejection) : IllegalStateException("${rejection.c
     fun toApiException(): ApiException = when (rejection.code) {
         RejectCode.UNKNOWN_REFERENCE -> ApiException(HttpStatusCode.NotFound, "not_found", "Not found", rejection.message)
         RejectCode.IMMUTABLE -> ApiException(HttpStatusCode.Conflict, "builtin_immutable", "Conflict", rejection.message)
-        RejectCode.INVALID_TARGET -> ApiException(HttpStatusCode.Conflict, "deck_read_only", "Conflict", rejection.message)
+        // openapi: items of a smart deck are `not_applicable`; media/list decks are `deck_read_only`.
+        RejectCode.INVALID_TARGET ->
+            if (rejection.targetKind == "smart") {
+                ApiException(HttpStatusCode.Conflict, "not_applicable", "Conflict", rejection.message)
+            } else {
+                ApiException(HttpStatusCode.Conflict, "deck_read_only", "Conflict", rejection.message)
+            }
         else -> OpInputInvalid("", rejection.message).toApiException()
     }
 }

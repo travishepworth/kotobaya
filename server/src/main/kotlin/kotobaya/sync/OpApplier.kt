@@ -90,7 +90,7 @@ internal class OpApplier(
         val h = op.hlc
         return when (op.opType) {
             NOTE_TYPE_CREATED -> noteTypeCreated(p, h)
-            NOTE_TYPE_UPDATED -> registers("note_type", p.reqStr("id"), h, setWrites(p.obj("set")!!, jsonKeyed = setOf("templates")))
+            NOTE_TYPE_UPDATED -> registers("note_type", p.reqStr("id"), h, setWrites(p.reqObj("set"), jsonKeyed = setOf("templates")))
             NOTE_TYPE_DELETED -> deleted("note_type", p.reqStr("id"), h).let { none() }
             NOTE_CREATED -> noteCreated(op)
             NOTE_UPDATED -> noteUpdated(op)
@@ -126,10 +126,10 @@ internal class OpApplier(
             }
             REVIEW_LOGGED -> reviewLogged(op)
             REVIEW_UNDONE -> reviewUndone(op)
-            WORD_STATUS_SET -> wordStatus(p.long("entry_seq")!!, p.reqStr("status"), p.str("origin") ?: "manual", h)
-            WORD_STATUS_CLEARED -> wordStatus(p.long("entry_seq")!!, null, null, h)
+            WORD_STATUS_SET -> wordStatus(p.reqLong("entry_seq"), p.reqStr("status"), p.str("origin") ?: "manual", h)
+            WORD_STATUS_CLEARED -> wordStatus(p.reqLong("entry_seq"), null, null, h)
             DECK_CREATED -> deckCreated(p, h)
-            DECK_UPDATED -> registers("deck", p.reqStr("id"), h, setWrites(p.obj("set")!!, jsonKeyed = setOf("settings")))
+            DECK_UPDATED -> registers("deck", p.reqStr("id"), h, setWrites(p.reqObj("set"), jsonKeyed = setOf("settings")))
             DECK_DELETED -> deleted("deck", p.reqStr("id"), h).let { none() }
             DECK_CONTENT_PUBLISHED -> published("deck", p.reqStr("deck_id"), p, h, emptyList(), allowEqual = false)
             DECK_ITEM_PUT -> deckItem(p, h, removed = false)
@@ -138,7 +138,7 @@ internal class OpApplier(
             CONFUSABLE_CONFIRMED -> confusable(p, h, "confirmed")
             CONFUSABLE_REJECTED -> confusable(p, h, "rejected")
             GRAMMAR_CREATED -> grammarCreated(p, h)
-            GRAMMAR_UPDATED -> registers("grammar_point", p.reqStr("id"), h, setWrites(p.obj("set")!!))
+            GRAMMAR_UPDATED -> registers("grammar_point", p.reqStr("id"), h, setWrites(p.reqObj("set")))
             GRAMMAR_DELETED -> deleted("grammar_point", p.reqStr("id"), h).let { none() }
             GRAMMAR_SPAN_PUT -> span(p, h, removed = false)
             GRAMMAR_SPAN_REMOVED -> span(p, h, removed = true)
@@ -147,7 +147,7 @@ internal class OpApplier(
             FSRS_PARAMS_UPDATED -> {
                 val id = p.reqStr("id")
                 val ed = editor("fsrs_params", id)
-                val won = setWrites(p.obj("set")!!).filter { w -> ed.register(w.name, h, w.write) }.map { it.name }
+                val won = setWrites(p.reqObj("set")).filter { w -> ed.register(w.name, h, w.write) }.map { it.name }
                 rows.update("fsrs_params", ID, ed.row, ed.dirty)
                 if (won.any { it != "name" }) cache.presetChanged(dsl, UUID.fromString(id), PresetChange.UPDATED)
                 none()
@@ -158,7 +158,7 @@ internal class OpApplier(
             }
             FSRS_PARAMS_PUBLISHED -> presetPublished(p, h)
             MEDIA_CREATED -> mediaCreated(p, h)
-            MEDIA_UPDATED -> registers("media", p.reqStr("id"), h, setWrites(p.obj("set")!!))
+            MEDIA_UPDATED -> registers("media", p.reqStr("id"), h, setWrites(p.reqObj("set")))
             MEDIA_DELETED -> mediaDeleted(p.reqStr("id"), h)
             MEDIA_CONTENT_PUBLISHED ->
                 published("media", p.reqStr("media_id"), p, h, listOf("parse_status", "parse_error"), allowEqual = true)
@@ -258,7 +258,7 @@ internal class OpApplier(
         for (reg in loser.clockNames()) {
             if (reg in notForwarded(table)) continue
             val w = copyOf(loser.row, reg)
-            survivor.register(reg, loser.clockOf(reg)!!, w.write)
+            survivor.register(reg, checkNotNull(loser.clockOf(reg)) { "clock of $reg" }, w.write)
         }
         rows.update(table, ID, survivor.row, survivor.dirty)
         if (loser.row["deleted_at"].isNull) loser.set("deleted_at", instant(wall(h)))
@@ -323,7 +323,7 @@ internal class OpApplier(
         row.put("builtin", false)
         row.set<JsonNode>("fields", p.node("fields")); stamp(row, "fields", h)
         val templates = SyncJson.obj()
-        p.obj("templates")!!.members.forEach { (k, v) ->
+        p.reqObj("templates").members.forEach { (k, v) ->
             if (!isEmpty(v)) {
                 templates.set<JsonNode>(k, SyncJson.toJackson(v)); stamp(row, "templates.$k", h)
             }
@@ -395,7 +395,7 @@ internal class OpApplier(
     private fun noteUpdated(op: Op): List<FollowUp> {
         val p = op.payload
         val id = p.reqStr("id")
-        val set = p.obj("set")!!
+        val set = p.reqObj("set")
         val before = (dsl.fetchValue("select entry_seq from app.note where id = ?::uuid", id) as Number?)?.toLong()
         forwarded("note", id, op.hlc, setWrites(set, jsonKeyed = setOf("fields"))) { ed, won ->
             val seq = ed.row["entry_seq"]
@@ -551,7 +551,7 @@ internal class OpApplier(
     private fun published(table: String, id: String, p: JsonObject, h: String, extra: List<String>, allowEqual: Boolean): List<FollowUp> {
         val ed = editor(table, id)
         val stored = ed.row["content_version"].asLong()
-        val v = p.long("content_version")!!
+        val v = p.reqLong("content_version")
         if (v > stored || (allowEqual && v == stored)) {
             (listOf("content_version", "content_blob_hash") + extra).forEach { ed.set(it, p.node(it)) }
             ed.bumpUpdated(wall(h))
@@ -581,7 +581,7 @@ internal class OpApplier(
         } else {
             row.putNull("entry_seq"); row.put("note_id", key.substring(2))
         }
-        row.put("position", if (removed) 0 else p.long("position")!!)
+        row.put("position", if (removed) 0 else p.reqLong("position"))
         row.put("occurrence_count", 0)
         row.put("added_at", SyncJson.iso(wall(h)))
         row.set<JsonNode>("deleted_at", if (removed) instant(wall(h)) else n.nullNode())
@@ -604,7 +604,7 @@ internal class OpApplier(
             return none()
         }
         val ed = RowEditor(existing)
-        if (w < SyncJson.ms(existing["created_at"])!!) ed.set("created_at", n.textNode(SyncJson.iso(w)))
+        if (w < SyncJson.reqMs(existing["created_at"])) ed.set("created_at", n.textNode(SyncJson.iso(w)))
         fun rank(s: String) = if (s == "suggested") 0 else 1
         val r = rank(status)
         val sr = rank(existing["status"].asText())
@@ -640,8 +640,8 @@ internal class OpApplier(
         val row = SyncJson.obj()
         row.put("sentence_id", p.reqStr("sentence_id"))
         row.put("grammar_point_id", p.reqStr("grammar_point_id"))
-        row.put("start_offset", p.long("start_offset")!!)
-        row.put("end_offset", p.long("end_offset")!!)
+        row.put("start_offset", p.reqLong("start_offset"))
+        row.put("end_offset", p.reqLong("end_offset"))
         row.put("origin", "manual")
         row.set<JsonNode>("media_id", if (removed) n.nullNode() else p.node("media_id"))
         row.putNull("rule_index")
@@ -686,7 +686,7 @@ internal class OpApplier(
     private fun presetPublished(p: JsonObject, h: String): List<FollowUp> {
         val id = p.reqStr("id")
         val ed = editor("fsrs_params", id)
-        if (p.long("weights_version")!! <= ed.row["weights_version"].asLong()) return none()
+        if (p.reqLong("weights_version") <= ed.row["weights_version"].asLong()) return none()
         for (c in listOf("weights_version", "fsrs_version", "weights", "optimizer_stats")) ed.set(c, p.node(c))
         ed.set("optimized_at", instant(p.long("optimized_at")))
         ed.bumpUpdated(wall(h))
@@ -708,7 +708,15 @@ internal class OpApplier(
         row.set<JsonNode>("cover_blob_hash", p.node("cover_blob_hash"))
         if (p.member("cover_blob_hash") != null) stamp(row, "cover_blob_hash", h)
         rows.insert("media", row)
-        return none()
+        // OPS.md: "The server emits the media's deck.created (id = media id) right after, with caused_by_op_id."
+        val title = p.reqStr("title")
+        val name = if (title.codePointCount(0, title.length) <= DECK_NAME_MAX) title else title.substring(0, title.offsetByCodePoints(0, DECK_NAME_MAX))
+        val deck = JsonObject(
+            linkedMapOf(
+                "id" to JsonString(id), "name" to JsonString(name), "type" to JsonString("media"), "media_id" to JsonString(id),
+            ),
+        )
+        return listOf(FollowUp(DECK_CREATED, deck))
     }
 
     /**
@@ -747,7 +755,7 @@ internal class OpApplier(
             return none()
         }
         val ed = RowEditor(existing)
-        if (w < SyncJson.ms(existing["created_at"])!!) ed.set("created_at", n.textNode(SyncJson.iso(w)))
+        if (w < SyncJson.reqMs(existing["created_at"])) ed.set("created_at", n.textNode(SyncJson.iso(w)))
         if (h > existing["hlc"].asText()) values.fields().forEach { (k, v) -> ed.set(k, v) }
         rows.update("parse_override", ID, ed.row, ed.dirty)
         return none()
@@ -767,6 +775,9 @@ internal class OpApplier(
 
     companion object {
         val ID = listOf("id")
+
+        /** `deck.created` `name` maxLength (code points); a media title may be longer (500). */
+        const val DECK_NAME_MAX = 200
         val SCHEDULE_FEEDING = setOf("scheduled", "learning", "manual")
 
         /** `fsrs_params` column defaults (V1), compared by JSON equality for the creation rule. */

@@ -82,17 +82,20 @@ data class Collision(
  *   `entry_seq` on a live note, or a `card.created`, when the write would create a second live
  *   holder of an `entry_seq` / `kanji_literal` / `grammar_point_id` / `(note_id, kind)`. Postgres'
  *   partial unique indexes would reject that write, so the loser must be tombstoned **in the same
- *   statement** (V1 `smoke.sql`): the policy returns the `deleted_at` (epoch ms) the apply then
- *   writes together with the op's values — normally `wall` of the merge op's HLC, which the policy
- *   mints now (`tx.clock.mint()`) and keeps for [afterLogged]. `merged_into_id` is set later by
+ *   statement** (V1 `smoke.sql`): the policy returns the `deleted_at` (epoch ms) the apply writes
+ *   together with the op's values. It MUST be `wall(h)` of the merge op's own HLC: reserve it now
+ *   with `h = tx.reserveHlc()`, keep `h`, and return `wall(h)`. `merged_into_id` is set later by
  *   applying `note.merged` / `card.merged` (8.2 step 2 leaves an existing `deleted_at` alone).
  * - [afterLogged] runs after every applied op's `change` row is written (pushed or server-minted),
- *   in the same transaction; a policy emits `note.merged`, `card.created`, `card.merged` there with
- *   `tx.emit(…, causedByOpId = op.opId)`, which applies and logs them with the next seqs. It also
- *   handles the non-colliding case "card created on a merged note".
+ *   in the same transaction; a policy emits the merge there with
+ *   `tx.emit(NOTE_MERGED, payload, causedByOpId = op.opId, hlc = h)` — the reserved `h`, so the
+ *   server's `deleted_at` and every device's `wall(merge hlc)` are the same value (§11). Missing
+ *   survivor cards (`card.created`) and `card.merged` ops are emitted the same way. It also handles
+ *   the non-colliding case "card created on a merged note".
  *
- * The default [Unavailable] refuses collisions with [MergeUnavailableException] (the push answers
- * 503 and the client retries later; nothing is applied or lost) and does nothing after logging.
+ * The default [Unavailable] refuses collisions with [MergeUnavailableException], which [OpApply]
+ * turns into `503 unavailable` on every path (push and REST: the transaction rolls back, the client
+ * retries later; nothing is applied or lost), and does nothing after logging.
  */
 interface MergePolicy {
     fun collision(tx: OpTx, op: Op, collision: Collision): Long

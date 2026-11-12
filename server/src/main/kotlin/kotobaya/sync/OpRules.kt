@@ -85,7 +85,7 @@ internal class OpRules(private val dsl: DSLContext) {
      */
     fun values(op: Op, pushed: Boolean): Rejection? =
         invalidValue(op, pushed)?.let { Rejection(RejectCode.INVALID_VALUE, it) }
-            ?: invalidTarget(op, pushed)?.let { Rejection(RejectCode.INVALID_TARGET, it) }
+            ?: invalidTarget(op, pushed)?.let { (msg, kind) -> Rejection(RejectCode.INVALID_TARGET, msg, kind) }
             ?: immutable(op)?.let { Rejection(RejectCode.IMMUTABLE, it) }
 
     private fun invalidValue(op: Op, pushed: Boolean): String? {
@@ -146,11 +146,18 @@ internal class OpRules(private val dsl: DSLContext) {
         }
     }
 
-    private fun invalidTarget(op: Op, pushed: Boolean): String? {
+    /** The message and the target deck's `type`. */
+    private fun invalidTarget(op: Op, pushed: Boolean): Pair<String, String?>? {
         val p = op.payload
         return when (op.opType) {
-            DECK_DELETED -> if (pushed && deckType(p.reqStr("id")) == "media") "delete the media instead of its deck" else null
-            DECK_ITEM_PUT, DECK_ITEM_REMOVED -> deckType(p.reqStr("deck_id")).let { if (it != "user") "items of a $it deck are server-built" else null }
+            DECK_DELETED -> if (pushed && deckType(p.reqStr("id")) == "media") "delete the media instead of its deck" to "media" else null
+            DECK_ITEM_PUT, DECK_ITEM_REMOVED -> deckType(p.reqStr("deck_id")).let { t ->
+                when (t) {
+                    "user" -> null
+                    "smart" -> "a smart deck has no items" to t
+                    else -> "items of a $t deck are server-built" to t
+                }
+            }
             else -> null
         }
     }

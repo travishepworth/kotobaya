@@ -5,20 +5,21 @@ BRANCH: t/T202b-sync-server
 CHECK: `make check MODULE=server` → green
 
 ## Changed (≤ 6 lines)
-- `server/.../sync/`: `OpApply`/`OpTx` (lock 7033001, `hlc_last` clock, `emit()` → `OpInputInvalid` 422 / `OpRefused`), `OpRules` (5.3 order), `OpApplier` (all 45 ops, 7.1–7.9, 8.2/8.3 apply, media.deleted cascade)
-- `PushService`, `PullService`, `SyncModule.handlers`, `AppendOnlyGuard`, `ReplaySets`; hooks: `CardCacheHook`/`AutoStatusHook` (no-op), `MergePolicy` (T202c seam), `SyncEvents`
-- NOT wired (Main.kt not mine): add `SyncModule(db, SyncConfig(events = { d, hw, _ -> jobs.bus.syncChangedInTx(d, hw) }))` and its `handlers`
+- Attempt 2, architect fixes. Instants are written as `YYYY[Y]-MM-DD HH:MM:SS.mmm+00`, never `Instant.toString`, and parsed with 5-digit years, so every value up to 2^48−1 stores.
+- Merge seam: `OpTx.reserveHlc()` plus `emit(…, hlc = h)`, each reservation usable once. The KDoc tells T202c to return `wall(h)` as the loser's `deleted_at` and to emit the merge with `h`.
+- `media.created` now emits the media deck's `deck.created` (caused_by_op_id). `invalid_target` on a smart deck maps to `not_applicable`. `MergeUnavailableException` → 503 on every `OpApply` path.
+- `AppendOnlyGuard` matches anywhere in the statement, so CTEs are caught. No `!!` left in main code.
+- Unchanged from attempt 1: all 45 op types, push/pull, hooks. Main.kt is still not wired (not my path).
 
 ## Acceptance → tests
-- 12.1/12.2/12.4, raw-push → `ScenarioTest.workedExample12_*`, `RawPushExamplesTest`, `PushHttpTest.sameOpIdEqualContents…`
-- Idempotency/out-of-order → `OpApplyTest.rePushingABatch…`, `anOpBeforeItsCreator…`, `aTombstoneBeforeAnOlderEdit…`, `PullTest.theSameBatchPushedTwiceConcurrently…`
-- Append-only → `OpApplyTest.updatingOrDeletingChangeOrReviewLog…`; scope → `PushHttpTest.aReviewOpPushedWithoutTheReviewScope…`
-- Pull, `hlc_last` restart → `PullTest.pullReturnsExactly…`, `OpApplyTest.hlcLastIsPersisted…`
+- 12.1/12.2/12.4, raw-push → `ScenarioTest.workedExample12_*`, `RawPushExamplesTest`
+- Idempotency/out-of-order/append-only/scope/pull/hlc → as attempt 1 (`OpApplyTest`, `PushHttpTest`, `PullTest`)
+- New: `OpApplyTest.instantsUpToTwoToThe48…`, `aReservedHlcIsUsed…`, `aMergePolicyThatReservesItsHlc…` (ticking clock), `…503OnRestPathsToo`, `itemOpsOnASmartDeck…`, `theAppendOnlyGuardAlsoCatchesCtes`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Merge scenarios (12.3, 7 files) need 8.1 detection (T202c); without it a colliding write answers 503, batch rolled back.
-- U+0000 in a payload and int4 overflows → `invalid_value` (Postgres can't store them; contract gap, not 500).
-- No jOOQ codegen (rows via `to_jsonb`/`jsonb_populate_record`); `Kotobaya-Seq` absent on idempotent retry.
+- A media deck's name is the media title cut to 200 code points (the deck schema's maxLength).
+- U+0000 and int4 overflow still map to `invalid_value`, as an interim until C-6.
+- Merge detection (8.1) is still T202c; until then a colliding write gets 503.

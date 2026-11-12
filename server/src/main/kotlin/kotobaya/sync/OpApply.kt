@@ -9,6 +9,7 @@ import kotobaya.contracts.sync.OpSource
 import kotobaya.contracts.sync.OpType
 import kotobaya.server.Database
 import kotobaya.server.Limits
+import kotobaya.server.Problems
 import kotobaya.server.SERVER_DEVICE_ID
 import kotobaya.server.SYNC_LOCK
 import kotobaya.server.ServerStateKeys
@@ -64,7 +65,12 @@ class OpApply(private val db: Database, val config: SyncConfig = SyncConfig()) {
     fun <T> transactionBlocking(tokenId: UUID? = null, block: (OpTx) -> T): T = db.txBlocking { raw ->
         raw.execute("select pg_advisory_xact_lock(?)", SYNC_LOCK)
         val tx = OpTx(AppendOnlyGuard.guard(raw), config, tokenId)
-        val result = block(tx)
+        val result = try {
+            block(tx)
+        } catch (e: MergeUnavailableException) {
+            // REST and push alike: a duplicate the server cannot merge yet is "retry later", never a 500.
+            throw Problems.unavailable("A duplicate needs the merge procedure, which this server does not run yet; retry later.")
+        }
         tx.finish()
         result
     }
@@ -85,6 +91,18 @@ class OpTx internal constructor(
     internal val rules = OpRules(dsl)
     private val applier = OpApplier(dsl, config.cardCache, config.autoStatus) { op, c -> config.merge.collision(this, op, c) }
     private val logged = mutableListOf<LoggedOp>()
+    private val reserved = mutableSetOf<String>()
+
+    /**
+     * Mints a server HLC now and reserves it for a later [emit] in this transaction (`emit(…, hlc = h)`),
+     * so a value derived from it can be written before the op exists. T202c's [MergePolicy.collision]
+     * uses it: `h = tx.reserveHlc()`, return `wall(h)` as the loser's `deleted_at`, and in
+     * [MergePolicy.afterLogged] emit `note.merged` / `card.merged` with `hlc = h` — so the server's
+     * `deleted_at` equals `wall(merge op hlc)` exactly as every replica computes it (8.2 step 2, §11).
+     * A reserved value is unique and above everything minted or observed before it; one that is never
+     * used is harmless (the clock only moves forward).
+     */
+    fun reserveHlc(): String = clock.mint().also { reserved += it }
 
     /** Every op this transaction logged so far, in seq order (consequences included). */
     val loggedOps: List<LoggedOp> get() = logged.toList()
@@ -105,9 +123,16 @@ class OpTx internal constructor(
      * - Not checked: clock bounds, `server_only`, scopes (SYNC.md 3.4, 5.3).
      *
      * [causedByOpId] is set for ops emitted as a consequence of another op (merge, cascade).
+     * [hlc] = a value from [reserveHlc] of this transaction (each usable once); null mints a fresh one.
      */
-    fun emit(type: OpType, payload: JsonObject, causedByOpId: String? = null): LoggedOp {
-        val op = build(type, payload, clock.mint())
+    fun emit(type: OpType, payload: JsonObject, causedByOpId: String? = null, hlc: String? = null): LoggedOp {
+        val h = if (hlc == null) {
+            clock.mint()
+        } else {
+            require(reserved.remove(hlc)) { "hlc $hlc was not reserved in this transaction with reserveHlc(), or was already used" }
+            hlc
+        }
+        val op = build(type, payload, h)
         validateOwn(op)?.let { throw it }
         (rules.references(op) ?: rules.values(op, pushed = false))?.let { throw OpRefused(it) }
         return applyAndLog(op, causedByOpId)

@@ -239,7 +239,8 @@ class OpApplyTest : SyncFixture() {
      */
     @Test
     fun everyExampleOpTypeAppliesInOrder() {
-        val skip = setOf("note.created.duplicate", "card.created.duplicate", "note.merged", "card.merged", "deck.deleted.cascade")
+        // deck.created.media and deck.deleted.cascade are the server's own consequences of media.created / media.deleted.
+        val skip = setOf("note.created.duplicate", "card.created.duplicate", "note.merged", "card.merged", "deck.created.media", "deck.deleted.cascade")
         val dir = java.io.File(contracts, "examples/ops")
         val ops = dir.listFiles()!!.map { it.name.removeSuffix(".json") }.filter { it !in skip }
             .map { it to example(it) }.sortedBy { it.second["hlc"].asText() }
@@ -257,10 +258,17 @@ class OpApplyTest : SyncFixture() {
         assertEquals(45 - 2, types.size, "every op type except the merges: $types")
         // media.deleted cascaded to the media deck, logged right after it with caused_by_op_id.
         val mediaDeleted = example("media.deleted")["op_id"].asText()
-        val cascade = db.txBlocking {
-            it.fetchOne("select op_type, caused_by_op_id::text, device_id::text from app.change where caused_by_op_id is not null")!!
+        val consequences = db.txBlocking {
+            it.fetch("select op_type, caused_by_op_id::text, device_id::text from app.change where caused_by_op_id is not null order by seq")
+                .map { r -> listOf(r.get(0), r.get(1), r.get(2)) }
         }
-        assertEquals(listOf("deck.deleted", mediaDeleted, SERVER), listOf(cascade.get(0), cascade.get(1), cascade.get(2)))
+        val mediaCreated = db.txBlocking {
+            it.fetchValue("select op_id::text from app.change where op_type = 'media.created'") as String
+        }
+        assertEquals(listOf(listOf("deck.created", mediaCreated, SERVER), listOf("deck.deleted", mediaDeleted, SERVER)), consequences)
+        val mediaDeck = row("deck", "id" to "0193a1b2-0007-7000-8000-000000000001")!!
+        assertEquals("media", mediaDeck["type"].asText())
+        assertEquals(1, mediaDeck["content_version"].asInt())
         assertNotNull(row("deck", "id" to "0193a1b2-0007-7000-8000-000000000001")!!["deleted_at"].textValue())
         // A few end states.
         val deck = row("deck", "id" to "0193a1b2-0004-7000-8000-000000000001")!!
@@ -329,5 +337,108 @@ class OpApplyTest : SyncFixture() {
         val e1 = epoch()
         StartupSequence(db).runOnce()
         assertEquals(e1, epoch())
+    }
+
+    // ------------------------------------------------------------------ attempt 2 (architect review)
+
+    @Test
+    fun instantsUpToTwoToThe48StoreAndReadBackInsteadOfWedgingTheOutbox() {
+        val max = 281_474_976_710_655L // instant_ms maximum (year 10889)
+        val year10000 = 253_402_300_800_000L
+        val a = principal(A)
+        push(
+            a, noteOp(),
+            op(CARD_CREATED, A, base + 2, """{"id":"$card1","note_id":"$note1","kind":"meaning","buried_until":$max}"""),
+            op(REVIEW_LOGGED, A, base + 3, """{"id":"$rev1","card_id":"$card1","reviewed_at":${base + 3},"utc_offset_min":null,"review_type":"manual","rating":null,"manual_action":"set_due","manual_due_at":$max}"""),
+        ).forEach(::assertAccepted)
+        assertEquals(max, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
+        assertEquals(max, SyncJson.ms(row("review_log", "id" to rev1)!!["manual_due_at"]))
+        assertAccepted(push(a, op(CARD_BURIED, A, base + 4, """{"id":"$card1","until":$year10000}""")).single())
+        assertEquals(year10000, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
+        assertAccepted(push(a, op(CARD_BURIED, A, base + 5, """{"id":"$card1","until":$max}""")).single())
+        assertEquals(max, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
+        assertEquals("1970-01-01 00:00:00.000+00", SyncJson.iso(0))
+    }
+
+    @Test
+    fun aReservedHlcIsUsedByTheLaterEmitAndOnlyOnce() {
+        sync.opApply.transactionBlocking { tx ->
+            val h = tx.reserveHlc()
+            val other = tx.emit(SETTINGS_SET, obj("""{"key":"a.a","value":1}"""))
+            assertTrue(other.op.hlc > h, "later mints are above the reservation")
+            val used = tx.emit(SETTINGS_SET, obj("""{"key":"a.b","value":1}"""), hlc = h)
+            assertEquals(h, used.op.hlc)
+            assertFailsWith<IllegalArgumentException> { tx.emit(SETTINGS_SET, obj("""{"key":"a.c","value":1}"""), hlc = h) }
+            assertFailsWith<IllegalArgumentException> { tx.emit(SETTINGS_SET, obj("""{"key":"a.c","value":1}"""), hlc = "%012x-0000-%s".format(base, SERVER)) }
+        }
+    }
+
+    /**
+     * The seam T202c builds on: the policy reserves the merge HLC during the colliding write and emits
+     * the merge with it afterwards, so the loser's `deleted_at` on the server equals `wall(merge hlc)`
+     * — the value every device computes from the pulled `note.merged` — even when the clock ticks in between.
+     */
+    @Test
+    fun aMergePolicyThatReservesItsHlcTombstonesTheLoserAtWallOfTheMergeOp() {
+        StartupSequence(db).runOnce()
+        var tick = base + 1_000
+        val pending = mutableMapOf<String, Pair<String, String>>() // op id -> (hlc, survivor)
+        val policy = object : MergePolicy {
+            override fun collision(tx: OpTx, op: kotobaya.contracts.sync.Op, collision: Collision): Long {
+                val h = tx.reserveHlc()
+                pending[op.opId] = h to collision.survivorId.toString()
+                return wall(h)
+            }
+            override fun afterLogged(tx: OpTx, op: kotobaya.contracts.sync.Op, seq: Long) {
+                val (h, survivor) = pending.remove(op.opId) ?: return
+                tx.emit(NOTE_MERGED, obj("""{"loser_id":"${op.payload.str("id")}","survivor_id":"$survivor"}"""), op.opId, hlc = h)
+            }
+        }
+        val module = SyncModule(db, SyncConfig(clock = { Instant.ofEpochMilli(tick++) }, merge = policy))
+        val who = principal(A)
+        val loser = "0193a1b2-0001-7000-8000-0000000000ee"
+        listOf(noteOp(), noteOp(hlc = base + 5, id = loser)).forEach { o ->
+            val r = module.push.push(json.writeValueAsString(mapOf("ops" to listOf(o))), who) as PushOutcome.Ok
+            assertAccepted(r.results.single())
+        }
+        val mergeHlc = db.txBlocking { it.fetchValue("select hlc::text from app.change where op_type = 'note.merged'") as String }
+        val l = row("note", "id" to loser)!!
+        assertEquals(wall(mergeHlc), SyncJson.ms(l["deleted_at"]))
+        assertEquals(note1, l["merged_into_id"].asText())
+    }
+
+    @Test
+    fun withoutAMergePolicyACollisionIs503OnRestPathsToo() {
+        push(principal(A), noteOp()).forEach(::assertAccepted)
+        val e = assertFailsWith<kotobaya.server.ApiException> {
+            emit(NOTE_CREATED, """{"id":"0193a1b2-0001-7000-8000-0000000000ef","note_type_id":"00000000-0000-7000-8000-000000000101","entry_seq":1358280}""")
+        }
+        assertEquals(503, e.status.value)
+    }
+
+    @Test
+    fun itemOpsOnASmartDeckMapToNotApplicableAndOnAMediaDeckToDeckReadOnly() {
+        emit(DECK_CREATED, """{"id":"0193a1b2-0004-7000-8000-000000000002","name":"Leeches","type":"smart","query":"tag:leech"}""")
+        val smart = assertFailsWith<OpRefused> {
+            emit(DECK_ITEM_PUT, """{"deck_id":"0193a1b2-0004-7000-8000-000000000002","item_key":"e:1","position":0}""")
+        }
+        assertEquals("not_applicable", smart.toApiException().code)
+        emit(MEDIA_CREATED, """{"id":"0193a1b2-0007-7000-8000-000000000001","title":"Frieren","kind":"anime","source":"file"}""")
+        val media = assertFailsWith<OpRefused> {
+            emit(DECK_ITEM_PUT, """{"deck_id":"0193a1b2-0007-7000-8000-000000000001","item_key":"e:1","position":0}""")
+        }
+        assertEquals("deck_read_only", media.toApiException().code)
+    }
+
+    @Test
+    fun theAppendOnlyGuardAlsoCatchesCtes() {
+        for (sql in listOf(
+            "with x as (delete from app.change returning seq) select count(*) from x",
+            "WITH y AS (UPDATE \"app\".\"review_log\" SET rating = 1 RETURNING id) SELECT 1",
+        )) {
+            assertFailsWith<AppendOnlyViolation>(sql) { AppendOnlyGuard.check(sql) }
+        }
+        AppendOnlyGuard.check("insert into app.change_note select 1") // other tables are fine
+        AppendOnlyGuard.check(AppendOnlyGuard.UNDO_SQL)
     }
 }

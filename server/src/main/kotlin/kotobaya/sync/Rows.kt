@@ -75,7 +75,7 @@ internal object AppendOnlyGuard : ExecuteListener {
         "update app.review_log set undone_hlc = ?, undone_at = ?::timestamptz where id = ? and (undone_hlc is null or undone_hlc > ?)"
 
     private val forbidden = Regex(
-        "^\\s*(update\\s+(only\\s+)?|delete\\s+from\\s+(only\\s+)?|truncate\\s+(table\\s+)?)\"?app\"?\\.\"?(change|review_log)\\b",
+        "\\b(update\\s+(only\\s+)?|delete\\s+from\\s+(only\\s+)?|truncate\\s+(table\\s+)?(only\\s+)?)\"?app\"?\\s*\\.\\s*\"?(change|review_log)\\b",
         RegexOption.IGNORE_CASE,
     )
 

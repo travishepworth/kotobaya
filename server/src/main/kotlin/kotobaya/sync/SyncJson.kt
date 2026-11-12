@@ -13,6 +13,7 @@ import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 /**
  * Conversions between the core's [JsonValue] (ops) and Jackson (rows as `to_jsonb(t)` /
@@ -56,11 +57,33 @@ internal object SyncJson {
     /** JSON equality as SYNC.md 7.2 uses it: structural, numbers compared as doubles. */
     fun jsonEquals(a: JsonNode?, b: JsonNode?): Boolean = fromJackson(a) == fromJackson(b)
 
-    /** RFC 3339 UTC text for a timestamptz column. */
-    fun iso(ms: Long): String = Instant.ofEpochMilli(ms).toString()
+    /**
+     * Text for a timestamptz column that Postgres reads for every `instant_ms` (0 ..= 2^48 − 1, i.e. up
+     * to year 10889): `YYYY[Y]-MM-DD HH:MM:SS.mmm+00`. Never `Instant.toString()`, which writes years
+     * past 9999 as `+10000-…`, a form Postgres rejects (the op would 500 and wedge the outbox).
+     */
+    fun iso(ms: Long): String {
+        val t = Instant.ofEpochMilli(ms).atOffset(ZoneOffset.UTC)
+        return "%04d-%02d-%02d %02d:%02d:%02d.%03d+00".format(
+            t.year, t.monthValue, t.dayOfMonth, t.hour, t.minute, t.second, t.nano / 1_000_000,
+        )
+    }
 
-    /** Epoch ms of a timestamptz as `to_jsonb` renders it, or null. */
-    fun ms(n: JsonNode?): Long? = if (n == null || n.isNull || n.isMissingNode) null else OffsetDateTime.parse(n.asText()).toInstant().toEpochMilli()
+    /**
+     * Epoch ms of a timestamptz as `to_jsonb` renders it (`2024-12-07T15:17:46.634+00:00`, or with a
+     * 5-digit year `10889-…` and no sign), or null.
+     */
+    fun ms(n: JsonNode?): Long? {
+        if (n == null || n.isNull || n.isMissingNode) return null
+        // Also accepts [iso]'s own form (`… 15:17:46.626+00`), which rows carry until they are re-read.
+        var text = n.asText().replace(' ', 'T')
+        if (text.endsWith("+00")) text += ":00"
+        val yearDigits = text.indexOf('-')
+        val iso = if (yearDigits > 4 && text[0].isDigit()) "+$text" else text
+        return OffsetDateTime.parse(iso).toInstant().toEpochMilli()
+    }
+
+    fun reqMs(n: JsonNode?): Long = checkNotNull(ms(n)) { "timestamp column is null" }
 
     fun obj(): ObjectNode = nodes.objectNode()
 
@@ -77,6 +100,10 @@ internal fun JsonObject.str(name: String): String? = (member(name) as? JsonStrin
 internal fun JsonObject.reqStr(name: String): String = requireNotNull(str(name)) { "payload.$name is required" }
 
 internal fun JsonObject.long(name: String): Long? = (member(name) as? JsonNumber)?.value?.toLong()
+
+internal fun JsonObject.reqLong(name: String): Long = requireNotNull(long(name)) { "payload.$name is required" }
+
+internal fun JsonObject.reqObj(name: String): JsonObject = requireNotNull(obj(name)) { "payload.$name is required" }
 
 internal fun JsonObject.bool(name: String): Boolean? = (member(name) as? JsonBool)?.value
 
