@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:22:10Z
+Updated: 2026-11-12T11:22:30Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -11,7 +11,7 @@ Updated: 2026-11-12T11:22:10Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T004 (att. 2) | reviewer verification + architect 2nd pass (opus) | 2026-11-12T11:17:57Z |
+| T004 | reviewer APPROVE; architect CHANGES (1 major op-size, 5 minor) — attempt 3 (opus) after T005 merges | 2026-11-12T11:22:30Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
