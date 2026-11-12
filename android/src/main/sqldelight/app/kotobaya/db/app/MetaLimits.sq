@@ -1,0 +1,6 @@
+-- T301b: device-local /meta limits live in sync_state under the "meta." key namespace.
+syncStateByPrefix:
+SELECT key, value FROM sync_state WHERE key LIKE ? ESCAPE '\';
+
+deleteSyncState:
+DELETE FROM sync_state WHERE key = ?;

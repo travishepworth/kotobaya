@@ -35,5 +35,5 @@ class FeatureRegistry(val entries: List<FeatureEntry>) {
  * Nobody else edits the nav graph.
  */
 val featureEntries: List<FeatureEntry> = listOf(
-    // e.g. syncFeature,
+    kotobaya.android.pairing.pairingFeature,
 )
