@@ -43,6 +43,23 @@ Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml
   the head is an empty `200` page whose `log_epoch` / `high_water_seq` trigger the client's log
   reset (no `cursor_ahead` error). REST elsewhere keeps RFC 3339 strings; only the sync bodies
   use integer `instant_ms`. "Head" is called `high_water_seq` everywhere (meta, events).
+- **Size limits are per op, not per push.** `GET /meta` publishes `limits.max_op_bytes`
+  (default 1 MiB, at most `max_push_bytes − 4096`). An op over it is a per-op `op_too_large`
+  rejection; `413` is only for a whole push body, and the client answers it by halving the batch
+  down to one op (SYNC.md §5.4), so one large op can never block the outbox.
+- **Creates are checked and emitted under the sync lock.** The "id exists → 200, emit nothing"
+  check and the emit run in one transaction holding advisory lock `7033001`, so a racing retry of
+  `createNote` cannot mint a second set of cards.
+- **REST reviews get the clock bounds pushes get from the device guards.** `POST /review/answer`
+  refuses `reviewed_at` more than 5 min ahead, before 2020-01-01, or more than 24 h before
+  `min(card.created_at, now)` — the bound SYNC.md §10.4 Re-mint uses. Pushed reviews still have
+  no card-age check (SYNC.md §3.4 known issue).
+- **Re-pairing checks `hlc_last`.** `pairDevice` takes an optional `hlc_last`; below the
+  greatest HLC logged for that device id it is `422 hlc_regressed` (an Auto Backup restore) and
+  the code stays valid so the client pairs again with a new device id.
+- **Review history is listed in replay order, reversed**: `(reviewed_at, hlc, id)` descending
+  (SYNC.md §9.1). Notes of a deleted note type stay usable (SYNC.md §7.3); `POST /notes` refuses
+  the deleted type.
 - **Writing review history needs `review`** on every path: answer/undo, `review.*` ops in push,
   and bulk reschedule/reset, which moved to their own operation `POST /cards/bulk/schedule`.
 - **Auth exceptions are declared, not prose.** A device manages its own row through
@@ -50,7 +67,9 @@ Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml
   `/devices/{id}` is admin only. `POST /ankiconnect` has `security: [{}, …]` plus
   `x-auth: body-key` and `x-body-key-scope: write`; the check script allows `{}` nowhere else.
 - **Device ids are never reused after local data loss** (SYNC.md §3.3): a reinstall or cleared
-  data mints a new id; only an intact install re-pairs with its old id.
+  data mints a new id; only an intact install re-pairs with its old id (checked through
+  `hlc_last` where the server can). Re-minted ops (SYNC.md §10.4) are ordinary pushes with new
+  op ids and need nothing from the API.
 - **Cursors are keyset without snapshot**; the skip/repeat behaviour for mutable sort keys is
   specified, and clients de-duplicate by `id`.
 - **Imports are jobs.** Files are uploaded as content-addressed blobs first, then referenced by
@@ -207,6 +226,11 @@ Everything else (additions):
 
 ## Cross-check: table ↔ ops ↔ API operations
 
+This table is a superset of SYNC.md §14: every `METHOD /path` there exists here and (if
+mutating) emits an op of its row's table or is a job — `check_contract.py` rule 7 enforces it.
+Rows here also list readers (stats, coverage) and two emitters §14 does not name
+(`importJpdbHistory` creates notes and cards; `importMedia` creates the media deck).
+
 Op names are those of `contracts/db/SCHEMA.md` §4. "(job)" = emitted by a server job the
 operation starts; "(consequence)" = emitted by the op-apply path. Every op also flows through
 `syncPush` / `syncPull`.
@@ -239,6 +263,7 @@ against its schema; then runs `check_contract.py`: every operation declares a sc
 mutating operation declares `x-emits-ops` with op names known to SCHEMA.md, every request and
 response body and every parameter has an example, the tables above cover every operationId
 and every learning-data table, the three sync bodies are exactly the `batch.schema.json` `$defs`,
-and every example marked `x-example-source` equals its file under `contracts/sync/examples/`.
+every example marked `x-example-source` equals its file under `contracts/sync/examples/`, and
+every endpoint in SYNC.md §14 exists with a matching emitted op.
 `check.sh` fails if `contracts/sync/batch.schema.json` is missing (the permissive stand-in of
 attempt 1 is gone). Needs node and python3; network on first run.

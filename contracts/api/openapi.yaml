@@ -118,6 +118,16 @@ info:
     requires `id` (a duplicate review would corrupt scheduling); `POST /media/import` takes the same
     optional idempotency id as `media_id`.
 
+    The existence check and the emit are **one transaction that takes advisory lock `7033001`
+    before the check** and holds it until commit (the lock `POST /sync/push` takes per op,
+    SYNC.md 5.2): check whether `id` exists; if not, mint, apply and log the op(s) - for
+    `createNote` the `note.created` and every `card.created` - then commit. Without the lock two
+    concurrent retries of the same create both pass the check; the second `note.created` is a
+    no-op on the row (SYNC.md 7.2) but its `card.created` ops carry fresh card ids, so the note
+    would get duplicate cards. The same holds for every other id-idempotent call
+    (`POST /review/answer`, `POST /review/undo`, `POST /media/import`), and a pushed op that
+    creates the same id races safely because it takes the same lock.
+
     **Tombstones and merges.** Deleted learning rows are tombstones (`deleted_at` set). `GET` by
     id of a deleted row returns `410 gone` unless `include_deleted=true`; lists omit deleted rows
     unless `include_deleted=true`. A note or card that lost a merge (`merged_into_id` set) is
@@ -172,7 +182,7 @@ info:
     | 409 | `card_not_reviewable` | Card is suspended. |
     | 409 | `job_not_cancellable` | Job already finished. |
     | 410 | `gone` | Tombstoned row requested without `include_deleted=true`. |
-    | 413 | `payload_too_large` | Body over the limit in `GET /meta`. |
+    | 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. |
     | 415 | `unsupported_media_type` | Wrong `Content-Type`. |
     | 422 | `validation_failed` | Well-formed but invalid; `errors[]` lists each problem. |
     | 422 | `invalid_query` | Card search string does not parse; `errors[0].position` is the UTF-16 offset. |
@@ -394,12 +404,26 @@ paths:
           `device_id` on first launch, after a reinstall, after clearing app data and after
           restoring the local database from a backup, and MUST send their existing id only when
           re-pairing an intact install (typically after the device was revoked, or its token
-          was lost). The server cannot detect a violation and trusts the client.
+          was lost). The server cannot detect every violation; it checks what it can (next item).
+        - **`hlc_last` check** (optional field). A client re-pairing an existing `device_id`
+          SHOULD send its persisted `sync_state.hlc_last`. Inside the pairing transaction, if
+          `hlc_last` is present and is below (byte-wise, SYNC.md 3.1) the greatest `change.hlc`
+          logged with `device_id` = this device, the local database went backwards (typically
+          an Android Auto Backup restore, or a copied database) and reusing the id could repeat
+          HLCs: `422 validation_failed` with `errors[0].pointer = /hlc_last`,
+          `errors[0].code = hlc_regressed`. The transaction is rolled back, so the code is
+          **not** consumed; the client mints a new UUIDv7 `device_id`, resets its replica state
+          as for a new device, and pairs again with the same code. `hlc_last` whose device part
+          is not `device_id` is also `422 validation_failed` (`code = invalid_value`). Equal to
+          the greatest logged HLC is fine (it is the last op the device minted). Absent, or a
+          `device_id` that has never logged an op: no check. The server reads the maximum under
+          advisory lock `7033001`, so a concurrent push cannot slip between the check and the commit.
         - `device_id` already exists and the request re-pairs that intact install: the row is
           reused, `name`, `kind`, `push_topic` are overwritten, `revoked_at` is cleared,
           `paired_at` is set to now. Ops the device pushed earlier stay; its unpushed outbox can
           now be pushed.
         - `device_id` is the server device id: `422 validation_failed`.
+        - Both checks above run before the code is consumed; on `422` the code stays valid.
         - Code unknown, expired or used: `401 invalid_pairing_code`. More than 10 failures from
           one client address in 15 minutes: `429 rate_limited`.
         - Two requests race with one code: exactly one succeeds.
@@ -417,6 +441,14 @@ paths:
                   name: Pixel 9
                   kind: android
                   push_topic: https://ntfy.example.net/up-kotobaya-a1b2c3
+              repair:
+                summary: Re-pairing an intact install after its device was revoked
+                value:
+                  code: K7Q2M9XD
+                  device_id: 01931f3e-0000-7000-8000-0000000000a1
+                  name: Pixel 9
+                  kind: android
+                  hlc_last: 0193a1b2c3d4-0001-01931f3e-0000-7000-8000-0000000000a1
       responses:
         '201':
           description: Paired. Store `token` securely; it cannot be retrieved again.
@@ -425,6 +457,24 @@ paths:
               schema: {$ref: '#/components/schemas/PairResponse'}
               examples: {default: {$ref: '#/components/examples/PairResponse'}}
         '401': {$ref: '#/components/responses/Unauthenticated'}
+        '422':
+          description: Invalid body, the server device id, or `hlc_last` below what this device id has already logged.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+              examples:
+                hlc_regressed:
+                  value:
+                    type: urn:kotobaya:problem:validation_failed
+                    title: Validation failed
+                    status: 422
+                    code: validation_failed
+                    detail: This device's local database is older than its synced history; pair as a new device.
+                    request_id: 01931f43-aaaa-7000-8000-00000000r031
+                    errors:
+                    - pointer: /hlc_last
+                      code: hlc_regressed
+                      detail: hlc_last 0193a1b2c3d4-0001-… is below 0193a1b2c9f0-0000-…, the latest op logged for this device.
         '429': {$ref: '#/components/responses/RateLimited'}
         default: {$ref: '#/components/responses/Problem'}
   /devices/self:
@@ -1000,9 +1050,15 @@ paths:
       summary: Delete one of your own note types.
       description: |
         Server emits `note_type.deleted`. Built-in: `409 builtin_immutable`. Any live note uses
-        it: `409 in_use` (delete or leave the notes first; an offline device may still create a
-        note of a deleted type, which stays usable - readers must tolerate a tombstoned note type).
-        Already deleted: `204`, no op.
+        it: `409 in_use` (delete or leave the notes first). Already deleted: `204`, no op.
+
+        Notes of a deleted type stay usable (SYNC.md 7.3): an offline device may still create a
+        note of a type deleted elsewhere (its push is accepted), and deletion is permanent, so
+        hiding such notes would lose them for good. They are listed, searched, edited (`PATCH
+        /notes/{id}`) and their cards reviewed like any other; they are rendered with the type's
+        last `fields`, `templates` and `css`, which `GET /note-types/{id}?include_deleted=true`
+        returns. The deleted type is omitted from `GET /note-types` (without `include_deleted`)
+        and `POST /notes` refuses it (a client SHOULD NOT offer it for new notes).
       x-emits-ops: [note_type.deleted]
       security:
         - bearerAuth: [write]
@@ -1739,7 +1795,9 @@ paths:
       summary: Review history of a card (its whole replay set plus drills and crams).
       description: |
         Rows of `review_log` whose `card_id` is this card or any card merged into it, every
-        `review_type`, newest first by `(hlc, id)` descending. Undone rows are included
+        `review_type`, newest first by `(reviewed_at, hlc, id)` descending - the reverse of the
+        replay order (SYNC.md 9.1), so a late or re-minted review (SYNC.md 10.4) sits where it was
+        answered, not where it was logged. Undone rows are included
         (`undone_at` set) so the history is complete. A merge loser's id resolves to the
         survivor. Works for deleted cards (history is never deleted).
       security:
@@ -1830,8 +1888,22 @@ paths:
         - `rating` is the FSRS rating 1-4. `button`, when sent, must map to `rating`
           (`again`, `nothing`, `something` → 1; `hard` → 2; `good`, `okay` → 3; `easy` → 4);
           otherwise `422`. Clients in five-button mode MUST send `button`.
-        - `reviewed_at` defaults to the server's now; a value more than 5 minutes in the future
-          is `422`; past values are accepted (late submission).
+        - `reviewed_at` defaults to the server's now. Past values are accepted (late
+          submission) within these bounds, each `422 validation_failed` with
+          `errors[0].pointer = /reviewed_at`:
+          - more than 5 minutes after the server's now (`code = in_future`);
+          - before `FLOOR` = 2020-01-01T00:00:00Z (`code = before_floor`);
+          - before `min(card.created_at, now) − 24 h` (`code = before_card`), where `card` is the
+            card the review is logged on (the survivor, for a merge loser's id) and `created_at`
+            is `wall(hlc)` of the `card.created` op that inserted the row (SYNC.md 7.2, 7.5).
+          The op the server mints is exempt from the push-time clock checks (SYNC.md 3.4), so
+          these are the only bounds a REST review gets; they reproduce the device guards
+          (G1, and G2's implied `reviewed_at >= card.created_at − 24 h`) and the lower bound
+          Re-mint uses (SYNC.md 10.4 step 4). The `min` with now keeps a card created by a
+          device up to 24 h ahead reviewable at once. The bound uses the replicated
+          `created_at`, which comes from the creating device's clock; SYNC.md 3.4 records
+          that a pushed review is not checked against it (known issue) - this REST check does
+          not change that.
         - `utc_offset_min` SHOULD be sent by browsers (`-new Date().getTimezoneOffset()`); when
           absent it is stored as NULL.
         - `duration_ms` above 600000 is clamped to 600000.
@@ -2460,7 +2532,7 @@ paths:
         emits, as server ops: `note.created` and `card.created` for vocabulary without a note,
         `review.logged` for every historical review (`import_source = jpdb`, deterministic
         review ids derived from the export so that re-running imports nothing twice), and
-        `word.status_set` (`override_origin = jpdb_import`) for known, never-forget and
+        `word.status_set` (payload `origin = jpdb_import`, stored as `override_origin`) for known, never-forget and
         blacklisted words. Records that cannot be mapped are counted and listed in the job
         result. An equivalent queued or running job is returned with `200`.
       x-emits-ops: []
@@ -2795,7 +2867,7 @@ paths:
       tags: [words]
       summary: Set an explicit status override (known, never-forget, blacklisted, ignored).
       description: |
-        Server emits `word.status_set` with `override_origin = manual`. `new` and `learning`
+        Server emits `word.status_set` with payload `origin = manual` (stored as `override_origin`). `new` and `learning`
         cannot be set (they are derived): to return to the derived status use `DELETE`.
         The entry need not exist in the dictionary and need not have a note. Setting the status
         it already has still emits (bumps the clock).
@@ -3794,7 +3866,8 @@ paths:
         correct client sends; the server never rejects a whole request because an op fails it.
 
         **Everything else is per op** (SYNC.md 5.2, 5.3), in array order, and reported as a
-        `rejected` result while the remaining ops are still processed: unknown op type or
+        `rejected` result while the remaining ops are still processed: an op over
+        `limits.max_op_bytes` (`op_too_large`, checked first; SYNC.md 5.4), unknown op type or
         version (`unsupported_op`), an op invalid against `op.schema.json` (`schema_invalid`),
         an op whose `device_id` is not the caller's device (`device_mismatch`), server-only ops
         (`server_only`), missing references (`unknown_reference`), a wrong device clock
@@ -3810,6 +3883,14 @@ paths:
         - `400 invalid_request`: not JSON, or `PushRequestLenient` fails (empty `ops`, more than
           500 ops, an op without a valid `op_id`, ...).
         - `413 payload_too_large`: body over `limits.max_push_bytes` (`GET /meta`, default 8 MiB).
+          This is about the batch, never about one op: a single op over `limits.max_op_bytes`
+          (default 1 MiB, at most `max_push_bytes - 4096`) is a per-op `op_too_large` result in
+          a `200`. On a `413` the client does not back off (SYNC.md 5.4): it halves the batch
+          (the first `ceil(n/2)` ops, still in ascending `hlc`) and pushes again at once, down to
+          a single op. If a single op still gets `413` (the server's limits are inconsistent or
+          the client's view of them is stale), the client marks that row rejected with
+          `op_too_large` itself and continues with the next ops; it is then an ordinary rejected
+          op (SYNC.md 10).
         - `415`, `429`, `5xx` as everywhere.
         There is no whole-request `409` and no whole-request `422` on this operation.
 
@@ -4030,7 +4111,7 @@ paths:
                       "durable_seq": 2
                     }
                 rejected:
-                  summary: Every rejection code of SYNC.md 5.3, including clock_ahead and clock_behind
+                  summary: Rejections from contracts/sync (clock codes included); op_too_large and insufficient_scope have their own examples
                   x-example-source: '../sync/examples/batches/push-response.rejected.json'
                   value:
                     {
@@ -4132,14 +4213,6 @@ paths:
                           }
                         },
                         {
-                          "op_id": "0193a1b2-00ff-7e00-8000-00000000000d",
-                          "status": "rejected",
-                          "error": {
-                            "code": "clock_behind",
-                            "message": "reviewed_at is more than 24 h before the card was created"
-                          }
-                        },
-                        {
                           "op_id": "0193a1b2-00ff-700e-8000-000000000004",
                           "status": "accepted",
                           "seq": 4
@@ -4162,6 +4235,22 @@ paths:
                       error:
                         code: insufficient_scope
                         message: review.logged needs the review scope
+                    high_water_seq: 12
+                    server_time: 1733584666729
+                    log_epoch: 0193a1b2-00ee-7000-8000-000000000001
+                    durable_seq: 2
+                op_too_large:
+                  summary: One op over limits.max_op_bytes is rejected on its own; the rest of the batch is applied
+                  value:
+                    results:
+                    - op_id: 0193a1b2-00ff-7005-8000-00000000000b
+                      status: rejected
+                      error:
+                        code: op_too_large
+                        message: op is 1310720 bytes; max_op_bytes is 1048576
+                    - op_id: 0193a1b2-00ff-7005-8000-00000000000c
+                      status: accepted
+                      seq: 12
                     high_water_seq: 12
                     server_time: 1733584666729
                     log_epoch: 0193a1b2-00ee-7000-8000-000000000001
@@ -4190,7 +4279,9 @@ paths:
         **Semantics** (SYNC.md 6.1, restated, not extended):
         - `ops` are the `change` rows with `seq > since`, ascending by `seq`, at most `limit`, from
           **every** origin, including ops the caller pushed itself and ops that had no effect.
-          There is no option to skip one's own ops.
+          There is no option to skip one's own ops. The server SHOULD also end a page before its
+          body would exceed `limits.max_push_bytes` (always at least one op), so pages stay
+          bounded although each op may be up to `limits.max_op_bytes`; `has_more` is then `true`.
         - `next_since` = the `seq` of the last op returned, or `since` when `ops` is empty.
           `has_more` = rows exist after `next_since`; the client pulls again at once.
         - Every op carries its `seq` and `caused_by_op_id`. `seq` may have gaps.
@@ -5470,6 +5561,7 @@ components:
           required:
           - max_push_ops
           - max_push_bytes
+          - max_op_bytes
           - max_pull_ops
           - max_blob_bytes
           - max_json_bytes
@@ -5483,9 +5575,26 @@ components:
               - 500
             max_push_bytes:
               type: integer
-              description: Maximum body size of `POST /sync/push`.
+              minimum: 5120
+              description: |
+                Maximum body size (bytes) of `POST /sync/push`; a larger body is
+                `413 payload_too_large` (the client then halves the batch, SYNC.md 5.4). Default
+                8 MiB (`8388608`). Also the size a `GET /sync/pull` page SHOULD stay under (SYNC.md 6.1).
               examples:
               - 8388608
+            max_op_bytes:
+              type: integer
+              minimum: 1024
+              description: |
+                Maximum size (bytes) of one op: the UTF-8 length of the op envelope serialized as
+                compact JSON, as it appears in `PushRequest.ops` (SYNC.md 5.4). Default 1 MiB
+                (`1048576`). Invariant: `max_op_bytes <= max_push_bytes - 4096`, so a batch holding
+                one maximal op always fits in a push body. Clients MUST NOT mint a larger op
+                (SYNC.md 4); a client that has not read `/meta` yet uses the default. A pushed op
+                over the limit is rejected **per op** with `op_too_large` (never a whole-request
+                `413`).
+              examples:
+              - 1048576
             max_pull_ops:
               type: integer
               const: 1000
@@ -5728,6 +5837,12 @@ components:
           format: uri
           maxLength: 2000
           description: UnifiedPush endpoint, if already known.
+        hlc_last:
+          $ref: '#/components/schemas/Hlc'
+          description: The device's persisted `sync_state.hlc_last` (SYNC.md 3.2), sent when re-pairing an existing
+            `device_id`. Its device part must equal `device_id`. If it is below the greatest HLC the server has
+            logged for that device, pairing fails with `422` (`hlc_regressed`) and the client must pair as a new device.
+            Omitted by a fresh install.
     PairResponse:
       type: object
       description: Result of pairing.
@@ -7902,7 +8017,8 @@ components:
           description: Time from card shown to answer; clamped to 600000.
         reviewed_at:
           $ref: '#/components/schemas/Timestamp'
-          description: When the answer was given. Default - now.
+          description: When the answer was given. Default - now. Must be at most 5 minutes after now, not before
+            2020-01-01, and not more than 24 h before `min(card.created_at, now)`; otherwise `422` (see `answerReview`).
         utc_offset_min:
           type: integer
           minimum: -1080
@@ -11015,6 +11131,7 @@ components:
         limits:
           max_push_ops: 500
           max_push_bytes: 8388608
+          max_op_bytes: 1048576
           max_pull_ops: 1000
           max_blob_bytes: 2147483648
           max_json_bytes: 4194304

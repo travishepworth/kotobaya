@@ -1,23 +1,22 @@
-# HANDOFF T004 (attempt 2)
+# HANDOFF T004 (attempt 3)
 
 STATUS: DONE
 BRANCH: t/T004-openapi
-CHECK: `contracts/api/check.sh` → green against the real `../sync/batch.schema.json` (stand-in removed; missing file now fails)
+CHECK: `contracts/api/check.sh` → green against the real `../sync/batch.schema.json`, sync examples and SYNC.md §14
 
 ## Changed (≤ 6 lines)
-- Sync: bodies are exactly `batch.schema.json#/$defs/PushRequest|PushResponse|PullResponse`; 400 only on `PushRequestLenient`; all else per op (adds `insufficient_scope`); no `exclude_own`, limit ≤ 1000, past-head `since` → empty 200; `high_water_seq`/`log_epoch` used everywhere.
-- Review: `answerReview.id` and `undoReview.review_id` are required; reschedule/reset moved to `POST /cards/bulk/schedule` (scope `review`).
-- Auth: `GET/PATCH /devices/self`; ankiConnect `security: [{}, …]` + `x-auth: body-key`.
-- Minors fixed: device-id reuse (SYNC §3.3), keyset cursor skip/repeat semantics, `importMedia.import_id`.
-- check_contract.py: sync bodies must be the `$defs`; sync examples must equal `contracts/sync/examples` files.
+- Size: `/meta` publishes `limits.max_op_bytes` (1 MiB, ≤ `max_push_bytes − 4096`); oversized op → per-op `op_too_large` (+ example); 413 = whole batch only, client halves down to one op.
+- `answerReview`: 422 for `reviewed_at` > now+5 min, < 2020-01-01, or < `min(card.created_at, now) − 24 h` (Re-mint's bound; push-side known issue unchanged).
+- Idempotent creates: id check + emit in one tx under advisory lock 7033001.
+- `pairDevice`: optional `hlc_last`; below the device's max logged HLC → 422 `hlc_regressed`, code not consumed.
+- `origin` (not `override_origin`) for op payloads; review history ordered `(reviewed_at, hlc, id)` desc; deleted note types' notes stay usable; pull pages bounded by `max_push_bytes`; rejected example re-synced from T005.
 
 ## Acceptance → tests
-- Spec endpoints, scopes, tables → `check_contract.py`; validity and examples → Redocly lint.
+- check_contract.py rule 7 (new): every SYNC §14 endpoint exists and emits its table's op or is a job.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Per-op `insufficient_scope` is permanent; the alternative (whole-request 403) blocks the outbox.
-- `import_id` idempotency relies on job/media rows surviving; job retention is unspecified.
-- T005's §10.4 re-mint change is device-side; no API impact.
+- SYNC §14 omits `importJpdbHistory` under `note`/`card` and `importMedia` under `deck`; API table is a superset.
+- Re-minted ops (§10.4) need no API change.

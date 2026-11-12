@@ -20,6 +20,9 @@ Checks (T004 acceptance):
   6. The sync bodies are exactly contracts/sync/batch.schema.json#/$defs/PushRequest,
      PushResponse and PullResponse (no API-owned wrapper), and every example that declares
      `x-example-source` equals that file of contracts/sync/examples byte-for-byte as JSON.
+  7. Every `METHOD /path` named in contracts/sync/SYNC.md section 14 exists in the spec, and
+     each mutating one either emits an op of that row's table (`x-emits-ops`) or is a job
+     (`x-emits-ops: []`, ops minted asynchronously by the server).
 """
 import json
 import os
@@ -192,6 +195,51 @@ def walk(node):
 
 
 walk(spec["paths"])
+
+
+def check_sync_table():
+    path = os.path.normpath(os.path.join(api_dir, "../sync/SYNC.md"))
+    try:
+        text = open(path, encoding="utf-8").read()
+    except OSError:
+        err("contracts/sync/SYNC.md not found")
+        return
+    m = re.search(r"^## 14\..*?(?=^## 15\.)", text, re.S | re.M)
+    if not m:
+        err("SYNC.md section 14 not found")
+        return
+
+    def norm(p):
+        return re.sub(r"\{[^}]+\}", "{}", p)
+
+    by_norm = {norm(p): p for p in spec["paths"]}
+    rows = 0
+    for line in m.group(0).splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != 3:
+            continue
+        rows += 1
+        prefixes = set(re.findall(r"`([a-z_]+)\.[a-z_]+`", cells[1]))
+        for mm in re.finditer(r"`((?:GET|POST|PUT|PATCH|DELETE)(?:/(?:GET|POST|PUT|PATCH|DELETE))*) (/[^`? ]+)`", cells[2]):
+            api_path = by_norm.get(norm(mm.group(2)))
+            for method in mm.group(1).split("/"):
+                where = "SYNC.md 14 %s %s %s" % (cells[0], method, mm.group(2))
+                op = spec["paths"].get(api_path, {}).get(method.lower()) if api_path else None
+                if op is None:
+                    err("%s: no such operation" % where)
+                    continue
+                if method == "GET":
+                    continue
+                emits = op.get("x-emits-ops", [])
+                if emits and not any(e.split(".")[0] in prefixes for e in emits):
+                    err("%s: %s emits none of %s" % (where, op.get("operationId"), sorted(prefixes)))
+    if rows == 0:
+        err("SYNC.md section 14 has no table rows")
+
+
+check_sync_table()
 
 if errors:
     print("\n".join(errors))
