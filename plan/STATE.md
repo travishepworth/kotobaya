@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T16:50:20Z
+Updated: 2026-11-12T16:50:43Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,7 +13,12 @@ Updated: 2026-11-12T16:50:20Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
+| T201b | writer (sonnet) | 1 | t/T201b-notes-api | 2026-11-12T16:50:43Z |
 | C-6 | architect (opus) | 1 | t/C-6-storable-values | 2026-11-12T16:42:58Z |
+
+## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
+- T204 decks (server, sonnet) · T212b settings server (sonnet)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -35,7 +40,7 @@ Updated: 2026-11-12T16:50:20Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 11/25 · attempts 20 · escalations 0
+P2: merged 11/25 · attempts 22 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

@@ -345,3 +345,6 @@
 2026-11-12T16:48:01Z T202b REVIEW dispatched architect verification
 2026-11-12T16:50:20Z T202b REVIEW_APPROVE architect verification (2 majors + 3 minors fixed; 2 new minors)
 2026-11-12T16:50:20Z T202b MERGE 2 attempts
+2026-11-12T16:50:43Z T202c DISPATCH architect(opus)
+2026-11-12T16:50:43Z T201b DISPATCH writer(sonnet)
+2026-11-12T16:50:43Z - T204, T212b ready; queued for Gradle slot (C-6, T202c, T201b running)
