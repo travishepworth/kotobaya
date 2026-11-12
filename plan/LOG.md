@@ -515,3 +515,4 @@
 2026-11-12T19:27:01Z T303b DISPATCH writer-senior(opus)
 2026-11-12T19:27:26Z T312 HANDOFF BLOCKED (versionCode/Name in defaultConfig outside paths) → DECIDE approve env-driven version + .gitignore keystores + Makefile comment; attempt 1 continued
 2026-11-12T19:29:42Z T312 HANDOFF DONE attempt 2; CHECK_GREEN android; MERGE (approved out-of-path: defaultConfig version, .gitignore, Makefile comment)
+2026-11-12T19:31:41Z T307+T309 HANDOFF DONE (android/server/deploy green); asked writer to wire NtfySink in Main.kt before merge
