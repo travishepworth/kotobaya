@@ -69,3 +69,7 @@
 - T106: romaji→hiragana converter is local to server dict/ — move to core if the device (T302) needs parity. /dict/entries/{seq}/examples stays 501 until example sentences are populated (T102 data + media). note_id overlay untested.
 - T105a → W-1 + T111: wire Auth(db, AuthConfig.fromEnv()) into AppDeps; Helm/compose must pass AUTH_PASSWORD_HASH (required) and AUTH_TOTP_SECRET (optional) from a Secret. Setup command: java -cp server-all.jar kotobaya.auth.HashPasswordKt (→ HUMAN_CHECKS at deploy).
 - T105a → W-1/T111: Traefik externalTrafficPolicy: Local; set AUTH_TRUSTED_PROXIES to the ingress/pod CIDR so login rate limiting is per real client.
+- T109a → W-1: wire `val jobs = JobsModule(db, config.databaseUrl)`, `AppDeps(handlers = jobs.handlers)`, `jobs.start(scope)`.
+- T109a → T109b: worker heartbeats/progress writes must be guarded by `status='running'` (cancel sets cancelled immediately). job.updated comes from a 250 ms poll of app.job; NOTIFY is only a hint. Retention: terminal jobs pruned after 90 d; media-import / jpdb-* kept forever.
+- T109a → T105b: call `hub.closeToken(id)` on revocation and `bus.publish` for device.* events (credentialValid hook exists).
+- T109a → T309: ntfy forwarding needs a sink on EventHub + a base-URL setting.

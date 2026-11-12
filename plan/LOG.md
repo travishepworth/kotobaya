@@ -208,3 +208,7 @@
 2026-11-12T13:04:29Z T105a REVIEW reviewer(opus) dispatched (flag: rate limiter behind ingress)
 2026-11-12T13:06:01Z T105a REVIEW_CHANGES 1 major (limiter keys on ingress IP → global lockout), 4 minor
 2026-11-12T13:06:01Z T105a DISPATCH attempt 2 (same writer): AUTH_TRUSTED_PROXIES + XFF, TOTP restart, argon2 mem cap
+2026-11-12T13:07:01Z T109a HANDOFF DONE
+2026-11-12T13:07:01Z T109a CHECK_GREEN server after rebase
+2026-11-12T13:07:01Z T109a MERGE
+2026-11-12T13:07:01Z T109b DISPATCH writer(sonnet)

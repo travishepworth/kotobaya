@@ -220,11 +220,11 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: 1000 jobs across 3 workers complete exactly once; SSE delivers progress events.
 
 ### T109a — Jobs API, retention, SSE
-- model: sonnet · risk: med · deps: T104 · status: RUNNING
+- model: sonnet · risk: med · deps: T104 · status: MERGED
 - see plan/tickets/T109a.md (split from T109)
 
 ### T109b — Worker runner + 1000-jobs test
-- model: sonnet · risk: med · deps: T109a · status: TODO
+- model: sonnet · risk: med · deps: T109a · status: RUNNING
 - see plan/tickets/T109b.md (split from T109)
 
 ### T110 — Generated API clients
