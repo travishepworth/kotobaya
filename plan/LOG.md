@@ -91,3 +91,4 @@
 2026-11-12T11:31:35Z T005 REVIEW architect final verification (last round before cap)
 2026-11-12T11:32:43Z T005 REVIEW_APPROVE architect final verification: fixed, no new majors; 6 followups
 2026-11-12T11:32:43Z T005 MERGE
+2026-11-12T11:33:10Z T004 DISPATCH attempt 3 (opus): op size/413, reviewed_at floor, lock, pair hlc_last, origin; align with T005 final

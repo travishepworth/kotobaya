@@ -1,16 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:32:43Z
+Updated: 2026-11-12T11:33:10Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T004 | architect (gp/opus) | 3 | t/T004-openapi rebased on main | 2026-11-12T11:33:10Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T004 | reviewer APPROVE; architect CHANGES (1 major op-size, 5 minor) — attempt 3 (opus) after T005 merges | 2026-11-12T11:22:30Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
