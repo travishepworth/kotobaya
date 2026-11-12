@@ -79,7 +79,7 @@ push:
 	$(RUN) docker push $(REGISTRY)/web:$(VERSION)
 	$(RUN) docker push $(REGISTRY)/backup:$(VERSION)
 
-# Unsigned release APK. Gradle has no signingConfig yet (android/ is outside T002 scope).
+# Release APKs, both flavors (T305a, T312). Signed only when ANDROID_KEYSTORE_PATH and the other signing env vars are set (android/signing/README.md); otherwise unsigned.
 apk:
 	@if [ -z "$(ANDROID_SDK)" ] && [ ! -f local.properties ]; then echo "apk: Android SDK not found (set ANDROID_HOME or create local.properties)" >&2; exit 1; fi
 	$(RUN) $(GRADLE) :android:assembleRelease
