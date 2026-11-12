@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T12:34:15Z
+Updated: 2026-11-12T12:35:45Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -10,7 +10,7 @@ Updated: 2026-11-12T12:34:15Z
 | T108b | writer (gp/sonnet) | 1 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
 | T110 | writer-light (gp/haiku) | 1 | t/T110-clients | 2026-11-12T12:34:15Z |
 | T107b | writer-senior (gp/opus) | 1 | t/T107b-fsrs-scheduler | 2026-11-12T12:32:59Z |
-| T103 | writer (gp/sonnet) | 1 | t/T103-dict-package | 2026-11-12T12:30:14Z |
+| C-3 | architect (gp/opus) | 1 | t/C-3-dict-package | 2026-11-12T12:35:45Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
@@ -36,6 +36,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T103 dictionary device package + diffs (zstd, S3 SigV4) — real size budget unmeasured
 - C-2 freeze fixes — freeze A + B APPROVE; GATE-CONTRACTS auto-closed
 - T107a PortableMath (fdlibm 5.3) — reviewer verified digests against StrictMath independently; jsTest on node wired
 - T102 pitch/frequency/Tatoeba loaders — idempotent, coverage floors, CC0 test data
