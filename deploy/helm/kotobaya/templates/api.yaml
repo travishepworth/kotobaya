@@ -37,6 +37,9 @@ spec:
             {{- with .Values.api.trustedProxies }}
             - { name: AUTH_TRUSTED_PROXIES, value: {{ . | quote }} }
             {{- end }}
+            {{- with .Values.api.publicUrl }}
+            - { name: PUBLIC_URL, value: {{ . | quote }} }
+            {{- end }}
             {{- range $k, $v := .Values.api.env }}
             - { name: {{ $k }}, value: {{ $v | quote }} }
             {{- end }}

@@ -1,25 +1,24 @@
-# HANDOFF T105b
+# HANDOFF T105b (attempt 2)
 
 STATUS: DONE
-BRANCH: t/T105b-auth-scopes
-CHECK: `make check MODULE=server` → green
+BRANCH: t/T105b-auth-scopes (rebased on main)
+CHECK: `make check MODULE=server` → green; `make check MODULE=deploy` → green
 
 ## Changed (≤ 6 lines)
-- auth/Scopes.kt: `ScopePolicy` (Auth's default ScopeCheck, driven by spec `security`), `PushOpAuth.check` and `requireDevice()` for T202
-- auth/Devices.kt, PairingCodes.kt: pairings (in memory; a restart invalidates codes), pair, list/get/patch/revoke, /devices/self
-- auth/ApiTokens.kt: /tokens create/list/get/revoke. AnkiConnectGate.kt: body-key auth; actions plug in via `Auth(ankiConnect=)`
-- auth/AuthEvents.kt: `AuthEvents.of(bus, hub)` sends device.* events and calls `closeToken` on revocation. W-1 passes `Auth(events=...)`
-- ClientAddress.kt: XFF walked right-to-left, IPv6 keyed on /64, IP parsing without DNS. UsageRecorder sets last_used_at/last_seen_at
+- Main.kt composeApp builds jobs first and passes `Auth(events = AuthEvents.of(jobs.bus, jobs.hub))`. `credentialValid` now re-checks `TokenValidator.isLive` (uncached) every `eventsGuardMs`
+- pairing_uri: PUBLIC_URL first, then X-Forwarded-Proto/Host from trusted peers (`ClientAddressResolver.isTrusted`), then a direct https request. Otherwise `500 internal` saying to set PUBLIC_URL
+- Chart: `api.publicUrl` sets env PUBLIC_URL; it is empty by default and up.sh is unchanged
+- Body-key use updates last_used_at. Re-pairing a `script` device id with another kind is `422 /kind`
+- Pairing limiter global cap is now 1000 per 15 min, a backstop only. The 40-bit, 10-minute code and the per-address limit are the real protection
 
 ## Acceptance → tests
-- Scope table → ScopeEnforcementTest.everyScopedOperationRefuses…, publicOperationsNeedNoCredential…, scriptTokensWithoutAdmin…
-- Revocation → TokensApiTest.tokenRevocationIsEffective…, DevicesApiTest.revokingADeviceKillsAllItsTokens…, revocationEndsOpenEventStreams…
-- Pairing → DevicesApiTest.pairingCodeIsSingleUse, …Expires…, rePairOverwrites…, wrongCodesAreRateLimited…, hlcRegressed…, twoRequestsRacing…
-- Body key → TokensApiTest.ankiConnect*, aBodyKeyIsAcceptedNowhereButAnkiConnect
+- Scope table, revocation, pairing and body key: unchanged from attempt 1 (ScopeEnforcementTest, DevicesApiTest, TokensApiTest)
+- Stream wiring → wiring/RevocationWiringTest uses the real composeApp: a device revoke ends the stream, device.revoked is published, and an expired token's stream ends
+- Origin branches → DevicesApiTest.publicUrlWins…, withoutPublicUrlForwarded…, …PlainHttp…, publicOriginBranches
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- New optional env `PUBLIC_URL` (pairing_uri). Without it the URL comes from the Host header. Deploy should set it.
-- Ankiconnect: every auth failure, CSRF included, goes in the 200 envelope. `key` accepts only personal tokens. CCR candidate: bulkScheduleCards should need review+write (FOLLOWUPS); implemented as review only.
+- The direct-https branch is unit-tested only, because Ktor's test engine always reports scheme http.
+- Ankiconnect auth failures, CSRF included, go in the 200 envelope. CCR candidate: bulkScheduleCards should need review+write; it is implemented as review only.

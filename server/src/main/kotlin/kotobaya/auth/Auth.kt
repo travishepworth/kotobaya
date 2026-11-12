@@ -55,8 +55,16 @@ class Auth(
     private val events: AuthEvents = AuthEvents.None,
     ankiConnect: AnkiConnectActions? = null,
     pairingCodes: PairingCodes = PairingCodes(),
-    /** openapi `pairDevice`: more than 10 failures from one client address in 15 minutes is `429`. */
-    pairLimiter: LoginRateLimiter = LoginRateLimiter(perAddress = 10, global = 200),
+    /**
+     * openapi `pairDevice`: more than 10 failures from one client address in 15 minutes is `429`. The global cap
+     * (1000 per 15 minutes) is only a backstop against a distributed flood; the real protection is the 40-bit code
+     * that lives 10 minutes, so it is set high enough that it cannot lock the owner out in practice.
+     */
+    pairLimiter: LoginRateLimiter = LoginRateLimiter(perAddress = 10, global = 1000),
+    /** Whether the request's TCP peer is a trusted proxy (its `X-Forwarded-Proto`/`-Host` then build the pairing URI). */
+    trustedPeer: (ApplicationCall) -> Boolean = ClientAddressResolver(config.trustedProxies).let { r ->
+        { call -> r.isTrusted(call.request.local.remoteAddress) }
+    },
 ) {
     private val log = LoggerFactory.getLogger("kotobaya.auth")
     private val totp = config.totpKey?.let { Totp(it, startedAt = clock()) }
@@ -68,14 +76,14 @@ class Auth(
 
     val authenticator = TokenAuthenticator(validator, scopeCheck) { usage.record(it) }
 
-    private val devices = Devices(db, validator, events, pairingCodes, pairLimiter, clock, clientAddress, config.publicUrl)
+    private val devices = Devices(db, validator, events, pairingCodes, pairLimiter, clock, clientAddress, config.publicUrl, trustedPeer)
     private val tokens = ApiTokens(db, validator, events, clock)
 
     val handlers: Map<String, OperationHandler> = mapOf(
         "login" to { login(this) },
         "logout" to { logout(this) },
         "getPrincipal" to { getPrincipal(this) },
-        "ankiConnect" to AnkiConnectGate(validator, ankiConnect).handler,
+        "ankiConnect" to AnkiConnectGate(validator, ankiConnect) { usage.record(it) }.handler,
     ) + devices.handlers + tokens.handlers
 
     private suspend fun login(call: ApplicationCall) {

@@ -30,6 +30,10 @@ api:
   # AUTH_TRUSTED_PROXIES: CIDR(s) of the ingress/pod network whose X-Forwarded-For is trusted by the
   # login rate limiter. Empty = variable not set. k3s default pod CIDR is 10.42.0.0/16.
   trustedProxies: ""
+  # PUBLIC_URL: public origin put into pairing QR codes, e.g. https://kotobaya.example.net. Empty = not set:
+  # the API then trusts X-Forwarded-Proto/Host only from trustedProxies, and refuses to create pairing codes
+  # if it cannot tell the public URL.
+  publicUrl: ""
   resources:
     requests: { cpu: 100m, memory: 384Mi }
     limits: { memory: 1Gi }

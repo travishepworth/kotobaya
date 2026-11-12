@@ -7,6 +7,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotobaya.auth.Auth
 import kotobaya.auth.AuthConfig
+import kotobaya.auth.AuthEvents
+import kotobaya.auth.TokenValidator
+import java.util.UUID
 import kotobaya.dict.dictHandlers
 import kotobaya.jobs.JobsModule
 import io.ktor.server.netty.Netty
@@ -52,6 +55,10 @@ class ComposedApp(val deps: AppDeps, val jobs: JobsModule)
 /**
  * The one place the modules meet: auth (login, token authenticator), dictionary and jobs/events handlers.
  * `Auth.handlers` is taken whole, so handlers other tickets add there (devices, pairing, tokens) come along.
+ *
+ * Jobs is built first so auth can publish `device.*` events on its bus and close revoked tokens' `/events` streams
+ * on its hub; every open stream also re-checks its credential every [eventsGuardMs] through the shared validator
+ * (revoked, expired, or its device revoked: the stream ends).
  */
 fun composeApp(
     db: Database,
@@ -59,9 +66,15 @@ fun composeApp(
     authConfig: AuthConfig,
     startup: StartupSequence? = null,
     bucketInit: BucketInit = BucketInit.Disabled,
+    eventsGuardMs: Long = 5_000,
 ): ComposedApp {
-    val auth = Auth(db, authConfig)
-    val jobs = JobsModule(db, databaseUrl)
+    val validator = TokenValidator(db)
+    val jobs = JobsModule(
+        db, databaseUrl,
+        credentialValid = { token -> token?.id?.let { runCatching { UUID.fromString(it) }.getOrNull() }?.let { validator.isLive(it) } ?: false },
+        guardIntervalMs = eventsGuardMs,
+    )
+    val auth = Auth(db, authConfig, validator = validator, events = AuthEvents.of(jobs.bus, jobs.hub))
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,

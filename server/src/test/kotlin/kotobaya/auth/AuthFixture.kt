@@ -12,6 +12,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.runBlocking
@@ -63,15 +64,23 @@ abstract class AuthFixture {
         authEvents: AuthEvents = events,
         ankiConnect: AnkiConnectActions? = null,
         extraHandlers: Map<String, OperationHandler> = emptyMap(),
+        publicUrl: String? = "https://kotobaya.example.net/",
+        /** Default: the peer counts as a trusted proxy when the test sends `X-Test-Trusted-Peer: 1`. */
+        trustedPeer: (ApplicationCall) -> Boolean = { it.request.headers["X-Test-Trusted-Peer"] == "1" },
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
         val clock = { now.get() }
+        val env = buildMap {
+            put("AUTH_PASSWORD_HASH", cheapHash)
+            publicUrl?.let { put("PUBLIC_URL", it) }
+        }
         auth = Auth(
-            db, AuthConfig.fromEnv(mapOf("AUTH_PASSWORD_HASH" to cheapHash, "PUBLIC_URL" to "https://kotobaya.example.net/")), clock,
+            db, AuthConfig.fromEnv(env), clock,
             validator = TokenValidator(db, clock, nanoTime = { nanos.get() }),
             clientAddress = { it.request.headers["X-Test-Client"] ?: "client-a" },
             events = authEvents,
             ankiConnect = ankiConnect,
+            trustedPeer = trustedPeer,
         )
         val handlers = if (withHandlers) auth.handlers + extraHandlers else extraHandlers
         application { kotobayaModule(AppDeps(db, authenticator = auth.authenticator, handlers = handlers)) }

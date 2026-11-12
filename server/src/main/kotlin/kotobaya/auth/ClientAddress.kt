@@ -114,6 +114,9 @@ class ClientAddressResolver(private val trustedProxies: List<Cidr>) {
         return key(leftmost)
     }
 
+    /** True when the TCP [peer] is one of [trustedProxies] (so its `X-Forwarded-*` headers may be believed). */
+    fun isTrusted(peer: String): Boolean = parseIpLiteral(peer)?.let(::trusted) ?: false
+
     private fun trusted(a: InetAddress) = trustedProxies.any { it.contains(a) }
 
     companion object {

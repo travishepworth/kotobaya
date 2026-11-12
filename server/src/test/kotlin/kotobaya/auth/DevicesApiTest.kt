@@ -160,7 +160,7 @@ class DevicesApiTest : AuthFixture() {
         assertEquals(200, client.call(get, "/devices/self", bearer = first).status.value)
 
         // Re-pair without a revoke: the earlier token dies at once.
-        val second = client.pair(client.newCode(admin), id, "Pixel 9 Pro", mapOf("kind" to "script")).json()["token"].asText()
+        val second = client.pair(client.newCode(admin), id, "Pixel 9 Pro", mapOf("push_topic" to "https://ntfy.example.net/up-1")).json()["token"].asText()
         assertProblem(client.call(get, "/devices/self", bearer = first), 401, "unauthenticated")
         assertEquals(200, client.call(get, "/devices/self", bearer = second).status.value)
 
@@ -173,9 +173,99 @@ class DevicesApiTest : AuthFixture() {
         assertTrue(d["revoked_at"].isNull)
         assertEquals("Pixel 10", d["name"].asText())
         assertEquals("android", d["kind"].asText())
+        assertTrue(d["push_topic"].isNull, "push_topic overwritten")
         assertEquals("2026-11-12T09:30:05.000Z", d["paired_at"].asText())
         assertEquals(1, db.txBlocking { it.fetchCount(it.selectFrom("app.device").where("id = ?", id)) })
         assertEquals(1, db.txBlocking { it.fetchCount(it.selectFrom("app.api_token").where("device_id = ? and revoked_at is null", id)) })
+    }
+
+    @Test
+    fun rePairingAScriptDeviceAsAPhoneIs422AndKeepsTheScriptTokenAndTheCode() = app {
+        val admin = admin()
+        val created = client.call(post, "/tokens", bearer = admin, body = mapOf("name" to "pusher", "scopes" to listOf("read", "write"), "with_device" to true)).json()
+        val script = created["token"].asText()
+        val id = UUID.fromString(created["info"]["device_id"].asText())
+        val code = client.newCode(admin)
+        val r = client.pair(code, id)
+        assertProblem(r, 422, "validation_failed")
+        assertEquals("/kind", r.json()["errors"][0]["pointer"].asText())
+        assertEquals(200, client.call(get, "/devices/self", bearer = script).status.value, "script token untouched")
+        assertEquals(201, client.pair(code, id, extra = mapOf("kind" to "script")).status.value, "same kind is a re-pair")
+    }
+
+    // ---------------------------------------------------------------- pairing_uri origin
+
+    private fun uriServer(r: HttpResponse): String {
+        assertEquals(201, r.status.value)
+        return URLDecoder.decode(r.json()["pairing_uri"].asText().substringAfter("server=").substringBefore('&'), Charsets.UTF_8)
+    }
+
+    @Test
+    fun publicUrlWinsOverForwardedHeaders() = app {
+        val r = client.call(post, "/devices/pairings", bearer = admin()) {
+            header("X-Test-Trusted-Peer", "1")
+            header("X-Forwarded-Proto", "https")
+            header("X-Forwarded-Host", "evil.example.com")
+        }
+        assertEquals("https://kotobaya.example.net/api/v1", uriServer(r))
+    }
+
+    @Test
+    fun withoutPublicUrlForwardedProtoAndHostAreBelievedOnlyFromTrustedProxies() = app(publicUrl = null) {
+        val admin = admin()
+        val trusted = client.call(post, "/devices/pairings", bearer = admin) {
+            header("X-Test-Trusted-Peer", "1")
+            header("X-Forwarded-Proto", "https")
+            header("X-Forwarded-Host", "kotobaya.lan:8443")
+        }
+        assertEquals("https://kotobaya.lan:8443/api/v1", uriServer(trusted))
+        val hostOnly = client.call(post, "/devices/pairings", bearer = admin) {
+            header("X-Test-Trusted-Peer", "1")
+            header("X-Forwarded-Proto", "https")
+            header(HttpHeaders.Host, "kotobaya.local")
+        }
+        assertEquals("https://kotobaya.local/api/v1", uriServer(hostOnly))
+
+        // The same headers from an untrusted peer over plain http: refused, nothing put in a QR code.
+        val untrusted = client.call(post, "/devices/pairings", bearer = admin) {
+            header("X-Forwarded-Proto", "https")
+            header("X-Forwarded-Host", "kotobaya.lan")
+        }
+        assertProblem(untrusted, 500, "internal")
+        assertTrue(untrusted.json()["detail"].asText().contains("PUBLIC_URL"))
+        // A trusted peer with a header that is not a host is refused too.
+        assertProblem(
+            client.call(post, "/devices/pairings", bearer = admin) {
+                header("X-Test-Trusted-Peer", "1")
+                header("X-Forwarded-Proto", "https")
+                header("X-Forwarded-Host", "evil.example.com/x?y")
+            },
+            500, "internal",
+        )
+    }
+
+    @Test
+    fun withoutPublicUrlOrTrustedProxyAPlainHttpRequestCannotCreateAPairing() = app(publicUrl = null) {
+        assertProblem(client.call(post, "/devices/pairings", bearer = admin()), 500, "internal")
+    }
+
+    @Test
+    fun publicOriginBranches() {
+        val h = mapOf("Host" to "kotobaya.home", "X-Forwarded-Proto" to "https", "X-Forwarded-Host" to "fwd.example")
+        assertEquals("https://pub.example", Devices.publicOrigin("https://pub.example/", true, "http") { h[it] })
+        assertEquals("https://fwd.example", Devices.publicOrigin(null, true, "http") { h[it] })
+        assertEquals("https://kotobaya.home", Devices.publicOrigin(null, false, "https") { h[it] }, "direct TLS")
+        assertNull(Devices.publicOrigin(null, false, "http") { h[it] }, "plain http, untrusted peer")
+        assertNull(Devices.publicOrigin(null, false, "https") { null }, "no Host")
+        assertNull(Devices.publicOrigin(null, true, "http") { mapOf("Host" to "x")[it] }, "trusted peer without X-Forwarded-Proto")
+    }
+
+    @Test
+    fun theDefaultTrustCheckUsesTheProxyList() {
+        val r = ClientAddressResolver(ClientAddressResolver.parseList("10.42.0.0/16"))
+        assertTrue(r.isTrusted("10.42.3.4"))
+        assertTrue(!r.isTrusted("203.0.113.9"))
+        assertTrue(!r.isTrusted("localhost"))
     }
 
     @Test

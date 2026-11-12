@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.plugins.origin
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import kotobaya.server.ApiException
@@ -41,6 +40,7 @@ internal class Devices(
     private val clock: () -> Instant,
     private val clientAddress: (ApplicationCall) -> String,
     private val publicUrl: String?,
+    private val trustedPeer: (ApplicationCall) -> Boolean,
 ) {
     private val log = LoggerFactory.getLogger("kotobaya.auth")
     private val serverDevice: UUID = UUID.fromString(SERVER_DEVICE_ID)
@@ -158,10 +158,20 @@ internal class Devices(
         )
     }
 
+    /**
+     * The public origin for `pairing_uri`, in this order: `PUBLIC_URL`; `X-Forwarded-Proto` and
+     * `X-Forwarded-Host` (or `Host`), believed only from a trusted proxy peer (`AUTH_TRUSTED_PROXIES`); `https://` +
+     * `Host` when the request itself arrived over TLS. Otherwise the server cannot know the URL the phone must use (a
+     * TLS-terminating ingress talks plain http to us), so it refuses rather than put an `http` URL in the QR code.
+     */
     private fun baseUrl(call: ApplicationCall): String {
-        publicUrl?.let { return it.trimEnd('/') }
-        val host = call.request.headers[HttpHeaders.Host] ?: "${call.request.origin.serverHost}:${call.request.origin.serverPort}"
-        return "${call.request.origin.scheme}://$host"
+        publicOrigin(publicUrl, trustedPeer(call), call.request.local.scheme) { call.request.headers[it] }?.let { return it }
+        log.error("cannot build pairing_uri: set PUBLIC_URL", kv("event", "auth.pairing"), kv("request_id", call.requestId))
+        throw ApiException(
+            HttpStatusCode.InternalServerError, "internal", "Public URL unknown",
+            "The server does not know its public URL. Set the PUBLIC_URL environment variable (Helm: api.publicUrl), " +
+                "or list the ingress in AUTH_TRUSTED_PROXIES so its X-Forwarded-Proto/Host are believed.",
+        )
     }
 
     private class PairRequest(
@@ -235,6 +245,11 @@ internal class Devices(
             db.tx { dsl ->
                 // The same lock as push (SYNC.md 5.2): no op of this device can be logged between the check and the commit.
                 dsl.execute("select pg_advisory_xact_lock(?)", SYNC_LOCK)
+                val existingKind = dsl.fetchOne("select kind from app.device where id = ? for update", req.deviceId)?.get(0, String::class.java)
+                if (existingKind == "script" && req.kind != "script") {
+                    // A `with_device` script's id: re-pairing it as a phone would silently revoke the script's token.
+                    throw validationFailed("/kind", "invalid_value", "device_id belongs to a script device; pair it with kind script or use a new device_id.")
+                }
                 req.hlcLast?.let { last -> checkHlc(dsl, req.deviceId, last) }
                 dsl.execute(
                     """
@@ -313,6 +328,24 @@ internal class Devices(
     companion object {
         const val API_BASE = "/api/v1"
         val DEVICE_SCOPES = listOf("read", "write", "review")
+        /** See [baseUrl]; null when the public origin cannot be known. [scheme] is the scheme the request arrived with. */
+        fun publicOrigin(publicUrl: String?, trustedPeer: Boolean, scheme: String, header: (String) -> String?): String? {
+            publicUrl?.let { return it.trimEnd('/') }
+            fun first(name: String) = header(name)?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
+            if (trustedPeer) {
+                val proto = first("X-Forwarded-Proto")?.lowercase()
+                val host = first("X-Forwarded-Host") ?: first(HttpHeaders.Host)
+                if (proto in setOf("http", "https") && host != null && HOST.matches(host)) return "$proto://$host"
+            }
+            if (scheme == "https") {
+                val host = first(HttpHeaders.Host)
+                if (host != null && HOST.matches(host)) return "https://$host"
+            }
+            return null
+        }
+
+        /** A host name or IP literal with an optional port; nothing that could break out of the URI. */
+        private val HOST = Regex("^([A-Za-z0-9.-]+|\\[[0-9A-Fa-f:.]+])(:[0-9]{1,5})?$")
         private val HLC = Regex("^[0-9a-f]{12}-[0-9a-f]{4}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
         private const val COLUMNS = "id, name, kind, paired_at, last_seen_at, last_push_at, last_pull_seq, push_topic, revoked_at"
 

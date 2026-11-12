@@ -86,6 +86,22 @@ class TokenValidator(
         }.orElse(null)
     }
 
+    /**
+     * True while the token [tokenId] is valid (same rule as [validate], read from the database, never cached).
+     * The `/events` stream guard asks this so a stream ends when its credential is revoked or expires.
+     */
+    suspend fun isLive(tokenId: UUID): Boolean = db.tx { dsl ->
+        dsl.fetchOne(
+            """
+            select 1 from app.api_token t left join app.device d on d.id = t.device_id
+            where t.id = ? and t.revoked_at is null
+              and (t.expires_at is null or t.expires_at > ?::timestamptz)
+              and (t.device_id is null or d.revoked_at is null)
+            """.trimIndent(),
+            tokenId, OffsetDateTime.ofInstant(clock(), java.time.ZoneOffset.UTC),
+        ) != null
+    }
+
     /** Sets `revoked_at` on one token (no-op if already revoked) and makes it invalid at once. True if it was live. */
     suspend fun revoke(tokenId: UUID): Boolean {
         val n = db.tx { dsl ->

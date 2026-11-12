@@ -199,6 +199,8 @@ class TokensApiTest : AuthFixture() {
         assertTrue(r["error"].isNull)
         assertEquals(id, recorded.single().second.principal.tokenId)
         assertEquals(CredentialSource.BODY_KEY, recorded.single().second.source)
+        val lastUsed = db.txBlocking { it.fetchValue("select last_used_at from app.api_token where id = ?", id) }
+        assertEquals(java.time.OffsetDateTime.parse("2026-11-12T09:30:00Z").toInstant(), (lastUsed as java.time.OffsetDateTime).toInstant(), "body key use is recorded")
     }
 
     @Test

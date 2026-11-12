@@ -45,6 +45,8 @@ internal val BodyKeyRequirementKey = AttributeKey<ScopeRequirement>("kotobaya.au
 internal class AnkiConnectGate(
     private val validator: TokenValidator,
     private val actions: AnkiConnectActions?,
+    /** Usage bookkeeping (`last_used_at`), as the authenticator does for header credentials. */
+    private val onAuthenticated: suspend (Principal) -> Unit = {},
 ) {
     val handler: OperationHandler = { handle(this) }
 
@@ -76,6 +78,7 @@ internal class AnkiConnectGate(
         val auth = Authenticated(principal, CredentialSource.BODY_KEY)
         call.attributes.put(AuthenticatedKey, auth)
         call.attributes.put(TokenKey, TokenInfo(principal.tokenId.toString(), principal.name))
+        onAuthenticated(principal)
         return auth
     }
 
