@@ -92,3 +92,9 @@
 - T213a: CardCssDriftTest lives in core/src/jvmTest/…/render/ (outside owned paths; accepted, same pattern as BuiltInNoteTypesDriftTest).
 - T213a: {{pitch:}}/{{cloze:}} work only in built-in templates; frontIsEmpty ignores sentence/image extras; cloze hint = ClozeSentence.translation.
 - T207a -> T207b: register handler in worker runner/__main__.py: reg.register("jpdb-history-import", make_jpdb_history_import(DATABASE_URL, fetch_blob, apply_plan)); PostgresRefLookup has no DB test; ImportPlan JSON schema v1 in plan.py docstring.
+- T207a review -> contract (next review-id version): vocab id key lacks entry_seq; a vid text-mapped to two seqs with identical (t, grade, occ) collides → 2nd counted already-imported, review lost silently (S02: ~never on real data). Add entry_seq or a collision bucket.
+- T207a review -> contract: occ counts same-timestamp events per group; a newly-mapped row after a JMdict update can shift occ → reimport. Note in id rule.
+- T207a review -> C-ticket: openapi 'malformed' should state timestamp range 0..2^48-1 ms (writer counts out-of-range as reviews_unknown_grade).
+- T207a review -> T207b/Phase 4: carry Mapped.candidates into VocabRow/plan JSON so ambiguous text matches are visible.
+- T207a review -> T207b: Testcontainers parity test PostgresRefLookup vs in-memory.
+- T207a review: B_MALFORMED == B_UNKNOWN_GRADE string coincidence in plan.py:74; use one constant.

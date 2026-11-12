@@ -294,3 +294,5 @@
 2026-11-12T15:44:18Z T213b DISPATCH writer-senior(opus)
 2026-11-12T15:45:19Z T202a HANDOFF DONE (jvm drift test outside owned paths, flagged)
 2026-11-12T15:45:19Z T202a CHECK_RED core after rebase onto T213a; ci-triage dispatched
+2026-11-12T15:45:51Z T207a REVIEW_APPROVE 6 minors → FOLLOWUPS
+2026-11-12T15:45:51Z T207a MERGE

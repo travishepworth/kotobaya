@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T15:44:18Z
+Updated: 2026-11-12T15:45:51Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -19,7 +19,6 @@ Updated: 2026-11-12T15:44:18Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T207a | reviewer (opus), check green | 2026-11-12T15:43:34Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -37,11 +36,12 @@ Updated: 2026-11-12T15:44:18Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 5/23 · attempts 9 · escalations 0
+P2: merged 6/23 · attempts 10 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T207a jpdb history import plan (worker): buckets property-tested, stable review ids, ADR-009 — reviewer APPROVE
 - T213a card renderer + sanitiser (55 hostile payloads), 36 goldens jvm+js, card.css drift test
 - T212 web settings/devices/PAT/QR pairing/attribution (web half; server half split → T212b, dep T202b)
 - T208 web shell: login/session/nav/tokens/toasts/SSE; k3d dev HTTPS on :8443 (login verified)
