@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:56:26Z
+Updated: 2026-11-12T17:59:01Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,9 +13,8 @@ Updated: 2026-11-12T17:56:26Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| C-9 | architect (opus) | 1 | t/C-9-internal-jobs | 2026-11-12T17:59:01Z |
 | F-1 | writer (sonnet) | 1 | t/F-1-decks-fixes | 2026-11-12T17:56:01Z |
-| C-8 | architect (opus) | 2 | t/C-8-sync-gaps | 2026-11-12T17:48:17Z |
-| T207b | writer-senior (opus) | 1 | t/T207b-jpdb-server | 2026-11-12T17:44:11Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -23,6 +22,8 @@ Updated: 2026-11-12T17:56:26Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T207b (server green; CCR → C-9 + T207c) | reviewer (opus) | 2026-11-12T17:59:01Z |
+| C-8 att 2 (contracts+core+server green) | architect verification | 2026-11-12T17:59:01Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -40,7 +41,7 @@ Updated: 2026-11-12T17:56:26Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 26/31 · attempts 42 · escalations 0
+P2: merged 26/33 · attempts 44 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

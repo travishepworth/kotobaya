@@ -424,3 +424,7 @@
 2026-11-12T17:56:01Z T204 SPOT_CHECK no majors; 7 minors → F-1
 2026-11-12T17:56:01Z F-1 DISPATCH writer(sonnet)
 2026-11-12T17:56:26Z W-3 HANDOFF DONE; CHECK_GREEN web; MERGE
+2026-11-12T17:59:01Z T207b HANDOFF CONTRACT_CHANGE_REQUEST (server side done; internal job kind + reviews_id_collisions); CHECK_GREEN server; reviewer dispatched
+2026-11-12T17:59:01Z C-9 DISPATCH architect(opus) additive
+2026-11-12T17:59:01Z - T207c added (worker fetch_blob/apply_plan + Main.kt ImportsModule; deps T207b, C-9)
+2026-11-12T17:59:01Z C-8 HANDOFF DONE attempt 2; architect verification dispatched

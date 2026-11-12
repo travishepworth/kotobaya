@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- C-8: a word status set offline during a clock-skew window is re-minted at its estimated time and can beat another device's earlier status for the same word.
 - C-8: after a clock-skew Re-mint, offline-mined words keep their deck membership and statuses (re-minted); other edits of rows the server already had that depend on window rows are discarded, and the device MUST show the discard list before you confirm.
 - C-8: kanji drawn via add_kanji count against their own deck (may exceed its newPerDay; a newPerDay=0 kanji deck still feeds via vocab), not the drawing deck; vocab+kanji drawn atomically.
 - HAZARD until the C-8 server follow-up merges: do NOT switch backups from disabled to enabled (durable_seq could drop → data loss on a later restore).
