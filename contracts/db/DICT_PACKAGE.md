@@ -34,9 +34,17 @@ Rules for the list of one release `R`:
 3. For every scope that appears at all there is a `full` artifact of that scope.
 4. A `diff` exists only if its `from_release` file was built for the same scope and the same
    format generation (`user_version` 1 ↔ diff `format_version` 1). The worker builds a diff from
-   the immediately preceding release when it still has that release's package; it MAY add diffs
-   from older releases. Diffs are never chained by the device (section 5).
-5. `[]` is valid (release loaded, no device builds yet); the device then keeps what it has.
+   the immediately preceding release; it MAY add diffs from older releases. Diffs are never
+   chained by the device (section 5).
+5. **Diff base = the published file, nothing else.** The source file of a diff MUST be the
+   decompressed bytes of the `full` artifact that `ref.dict_release.artifacts` of `from_release`
+   lists for the same `scope` and `format_version`. The producer obtains it either by downloading
+   that blob (object key = its `blob_hash`) or from a local copy, and in both cases MUST first
+   check that SHA-256 of the compressed bytes equals that `blob_hash`. It MUST NOT rebuild the
+   source file from `ref.*` (which already holds newer content). If the published `full` is
+   missing, unreadable or fails the check, the producer emits **no** diff for that
+   `from_release`; devices then download the `full` (section 5).
+6. `[]` is valid (release loaded, no device builds yet); the device then keeps what it has.
 
 ## 2. Full package (`kind = full`)
 
@@ -68,7 +76,10 @@ Rules for the list of one release `R`:
    - `top60k`: entries with `retired_release_id IS NULL AND freq_rank <= 60000`, plus every
      *referenced* seq that exists in `ref.dict_entry` (retired or not, any `freq_rank`).
      Referenced = chosen by the job; it MUST include every `entry_seq` of a live `app.note` and
-     of every `app.word_status` row at build time, and MAY include more.
+     of every `app.word_status` row at build time, SHOULD include every `entry_seq` of a live
+     `app.deck_item`, and MAY include more. The set is fixed at build time: an entry referenced
+     only after the build (e.g. a note added later) and outside the top 60k is missing on the
+     device until the next release includes it. Readers already tolerate this (soft references).
 3. `kanji` and `freq_list` are always complete (every `ref.*` row), whatever the scope.
 4. Every other child table (`dict_entry_form`, `dict_entry_gloss`, `entry_kanji`, `entry_freq`,
    `entry_pitch`, `example_sentence_entry`) holds exactly the `ref.*` rows whose `seq` is in the
@@ -108,6 +119,7 @@ top-level keys (section 6) but MUST reject unknown or missing tables (3.2).
 | `scope` | Scope of both the source and the target file; equals the artifact's `scope`. |
 | `tables` | Object with **exactly** the 11 `Dict.sq` tables as keys (empty lists when unchanged). |
 | `row_counts` | Object with exactly the 11 tables as keys: `count(*)` of each table in the target file. |
+| `table_digests` | Object with exactly the 11 tables as keys: the table digest (3.5) of each table in the target file, lowercase hex. Required in v1. |
 
 ### 3.3 Per table
 
@@ -158,15 +170,35 @@ On a connection with `PRAGMA foreign_keys = OFF` (set before `BEGIN`; this overr
 5. For each table in canonical order: `INSERT OR REPLACE INTO t (<columns>) VALUES (...)` for each
    `upsert` row.
 6. Verify, still inside the transaction: `count(*)` of every table equals `row_counts`;
-   `dict_release` is exactly one row `(to_release, scope)`; `PRAGMA foreign_key_check` returns
-   nothing.
+   the table digest (3.5) of every table equals `table_digests`; `dict_release` is exactly one
+   row `(to_release, scope)`; `PRAGMA foreign_key_check` returns nothing.
 7. All checks pass → `COMMIT`. Any check fails or any statement errors → `ROLLBACK`; the diff is
    unusable for this file (section 5 falls back to `full`).
 
+### 3.5 Table digest
+
+The digest of table `t` in a package file is SHA-256 over the concatenation, for every row of
+`SELECT <columns> FROM t ORDER BY <pk>` (columns and pk as in 3.3, SQLite default `BINARY`
+collation, ascending), of the encoding of each column value in `columns` order:
+
+| `typeof(value)` | Bytes |
+|---|---|
+| `null` | `0x00` |
+| `integer` | `0x01`, then the value as 8-byte big-endian two's-complement int64 |
+| `text` | `0x02`, then the UTF-8 byte length as 4-byte big-endian unsigned, then the UTF-8 bytes (no terminator, no normalisation) |
+
+There are no row or table separators (the encoding is self-delimiting). A value of type `real`
+or `blob` never occurs in a valid package; a digest computation that meets one fails, and so
+does the apply. An empty table digests to SHA-256 of zero bytes
+(`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`). Digests are computed on the
+target file by the producer and on the patched copy by the device; they prove the patched file
+has the target's exact content, not merely the target's row counts.
+
 ## 4. Hashes and storage
 
-- The only hash is `blob_hash` = SHA-256 over the compressed bytes. Uncompressed content is not
-  hashed; it is covered transitively, because decompression is deterministic.
+- `blob_hash` = SHA-256 over the compressed bytes. The uncompressed bytes are not hashed; they
+  are covered transitively, because decompression is deterministic. The only other hashes are
+  the per-table content digests of a diff (3.5), which cover table contents, not file bytes.
 - Object-storage key = the bare `blob_hash` at the root of the configured bucket (no prefix),
   as `app.blob.hash` defines ("Also the object key") and as the `302` example of
   `GET /blobs/{hash}` shows.
@@ -180,8 +212,12 @@ On a connection with `PRAGMA foreign_keys = OFF` (set before `BEGIN`; this overr
 
 ## 5. Device install and update
 
-Device state: the installed file (opened read-only), its `dict_release.id` (also kept in
-`sync_state.dict_release_id`), its `scope` and `user_version`; the user's chosen scope (setting).
+Device state: the installed file (opened read-only), its `dict_release.id`, its `scope` and
+`user_version`; the user's chosen scope (setting). **The file's own `dict_release` row is
+authoritative** for the installed id and scope. `sync_state.dict_release_id` is only a cache of
+it: at app startup (after any interrupted install, step 10) the device reads the row from the
+installed file and rewrites `sync_state.dict_release_id` if it differs, or deletes the key if
+there is no installed file. Decisions below always use the file's row.
 
 1. `GET /dict/release`. `404` → no release yet; keep the current file (or none). Done.
 2. If installed id = `id` and installed scope = chosen scope → done.
@@ -197,15 +233,21 @@ Device state: the installed file (opened read-only), its `dict_release.id` (also
 6. Download with `GET /blobs/{blob_hash}` (follow redirects, `Range` resume allowed). Verify
    length = `size_bytes` and SHA-256 = `blob_hash`; mismatch → delete and retry once, then treat
    as failed.
-7. Build a staging file next to the installed one:
+7. Build a staging file next to the installed one (same directory, fixed name). First delete any
+   leftover staging file and its `-journal` (and `-wal`/`-shm`, if present) from an earlier
+   attempt, then:
    - `full`: decompress into it; check `user_version` = `format_version`, `dict_release` is one row
      `(id, scope)`, and `PRAGMA foreign_key_check` is empty.
    - `diff`: copy the installed file, decompress the diff, apply it to the copy per 3.4.
-8. On success: close the staging connection, `fsync`, atomically rename over the installed file,
-   reopen read-only, then set `sync_state.dict_release_id` = `id`.
+8. On success: close the staging connection (no `-journal` may remain), `fsync` the staging file,
+   atomically rename it over the installed file, `fsync` the parent directory, reopen read-only,
+   then set `sync_state.dict_release_id` from the new file's `dict_release` row.
 9. On any failure of a `diff` (verification, rollback, parse error, `404`): discard the staging
-   file and go to step 6 with the `full` candidate. A failed `full` leaves the installed file
-   untouched; retry on the next sync with backoff.
+   file and its `-journal` (and `-wal`/`-shm`) and go to step 6 with the `full` candidate. A
+   failed `full` is discarded the same way and leaves the installed file untouched; retry on the
+   next sync with backoff.
+10. At startup, before opening the installed file, delete any staging file and its sidecars: an
+    install interrupted before the rename never took effect.
 
 The learning database never depends on the swap (all `entry_seq` references are soft), so the
 installer may run at any time; readers holding the old file keep working until they reopen.

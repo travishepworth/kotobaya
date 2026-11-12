@@ -417,8 +417,8 @@ The learning database must work with no dictionary file at all (all `entry_seq` 
 
 **`DICT_PACKAGE.md` (C-3) is authoritative** for the downloadable package (zstd, scope contents,
 integrity rules), the diff format `kotobaya-dict-diff` v1, hashes and object keys, the shape of
-`ref.dict_release.artifacts` (it adds `format_version` and `uncompressed_size_bytes` to the shape
-in the column comment), and the device install/update algorithm. Its diff-apply connection is the
+`ref.dict_release.artifacts` (incl. `format_version` and `uncompressed_size_bytes`, also listed
+in the column comment), the diff base rule and per-table digests, and the device install/update algorithm. Its diff-apply connection is the
 one exception to `foreign_keys = ON` above.
 
 ## 6. Well-known `settings` keys (provisional; defaults live in the core)

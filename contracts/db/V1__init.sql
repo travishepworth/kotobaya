@@ -55,7 +55,7 @@ COMMENT ON TABLE  ref.dict_release IS 'One row per dictionary release built by d
 COMMENT ON COLUMN ref.dict_release.id IS 'Monotonically increasing release number (1, 2, 3...). Higher = newer.';
 COMMENT ON COLUMN ref.dict_release.version IS 'Human-readable version, e.g. 2026.11.0.';
 COMMENT ON COLUMN ref.dict_release.sources IS 'Per-source provenance for the attribution page: {"jmdict":{"version":"2026-11-01","license":"CC BY-SA 4.0","url":"..."}, ...}.';
-COMMENT ON COLUMN ref.dict_release.artifacts IS 'Downloadable device builds: [{"kind":"full|diff","scope":"top60k|all","from_release":null|int,"blob_hash":"<sha256>","size_bytes":int}].';
+COMMENT ON COLUMN ref.dict_release.artifacts IS 'Downloadable device builds: [{"kind":"full|diff","scope":"top60k|all","from_release":null|int,"format_version":int,"blob_hash":"<sha256 of compressed bytes>","size_bytes":int,"uncompressed_size_bytes":int}]. Formats and rules: contracts/db/DICT_PACKAGE.md.';
 
 CREATE TABLE ref.dict_entry (
   seq                 bigint   PRIMARY KEY CHECK (seq > 0),
