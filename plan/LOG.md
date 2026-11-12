@@ -373,3 +373,6 @@
 2026-11-12T17:09:54Z C-7 HANDOFF DONE (SCHEMA §6 keys + QueueInput.decklessAddKanji, key renamed mined_priority)
 2026-11-12T17:09:54Z C-7 CHECK_GREEN contracts + core after rebase
 2026-11-12T17:09:54Z C-7 REVIEW dispatched reviewer(opus)
+2026-11-12T17:11:36Z C-7 REVIEW_CHANGES 2 major: settings int validity undefined (1.0 web=1, android=default); invalid deck add_kanji present-vs-absent ambiguous → queue divergence
+2026-11-12T17:11:36Z DECIDE settings int = mathematical integer in range (1.0 valid), else default; add_kanji only exact off/before/alongside else absent; kanji drawn only with a home new-source (ADR-006)
+2026-11-12T17:11:36Z C-7 DISPATCH attempt 2 (same agent)

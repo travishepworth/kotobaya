@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:09:54Z
+Updated: 2026-11-12T17:11:36Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,6 +13,7 @@ Updated: 2026-11-12T17:09:54Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| C-7 | architect (opus) | 2 | t/C-7-settings-keys | 2026-11-12T17:11:36Z |
 | T211 | writer (sonnet) | 1 | t/T211-web-decks | 2026-11-12T17:08:29Z |
 | C-6 | architect (opus) | 2 | t/C-6-storable-values | 2026-11-12T17:07:11Z |
 | T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
@@ -23,7 +24,6 @@ Updated: 2026-11-12T17:09:54Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| C-7 (contracts+core green; additive) | reviewer (opus) | 2026-11-12T17:09:54Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -42,7 +42,7 @@ Updated: 2026-11-12T17:09:54Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 13/27 · attempts 26 · escalations 0
+P2: merged 13/27 · attempts 27 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
