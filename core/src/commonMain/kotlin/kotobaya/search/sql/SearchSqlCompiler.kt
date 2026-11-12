@@ -41,6 +41,13 @@ public data class SearchContext(
     public val hotNoteIds: Set<Uuid> = emptySet(),
     /** Live smart decks (their membership is the result of their query). Nested smart-deck references are resolved without the deck itself (no cycles). */
     public val smartDecks: List<SmartDeckRef> = emptyList(),
+    /**
+     * First instant of the study day [offset] days from today (`0` = [studyDay]`.startMs`, `-1` = yesterday,
+     * `1` = [studyDay]`.endMs`), computed by the caller's platform code with the user's time zone and
+     * rollover hour (core has no zone database). Must be strictly increasing in `offset`. Called with
+     * offsets in `-36500..100000`. The default assumes 24-hour days, which is an hour off across a DST change.
+     */
+    public val dayStart: (offset: Int) -> InstantMs = { offset -> studyDay.startMs + offset.toLong() * 86_400_000L },
 )
 
 /** SQL text with positional `?` placeholders and the values to bind, in order. */
@@ -141,7 +148,6 @@ private typealias Pred = (ResidualRow) -> Boolean
 /** `node` is equivalent to `sql AND pred` (pred null: exactly `sql`); `sql` may over-select only when pred is non-null. */
 private class C(val sql: String, val params: List<Any> = emptyList(), val pred: Pred? = null)
 
-private const val DAY_MS = 86_400_000L
 private const val UPPER = "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"
 private const val LOWER = "'abcdefghijklmnopqrstuvwxyz'"
 private val TRUE_C = C("TRUE")
@@ -240,15 +246,15 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
         is SearchTerm.Flag -> C("c.flags = ?", listOf(t.flag.toLong()))
         is SearchTerm.Rated -> rated(t.days, t.rating, ctx)
         is SearchTerm.Added -> {
-            val from = ctx.studyDay.startMs - (t.days - 1).toLong() * DAY_MS
+            val from = ctx.dayStart(-(t.days - 1))
             tsCmp("c.created_at", ">=", from)
         }
         is SearchTerm.NoteId -> C(
-            "(n.id = ? OR EXISTS (SELECT 1 FROM ${table("note")} l WHERE l.id = ? AND l.merged_into_id = n.id))",
+            "(n.id = ${uuidParam()} OR EXISTS (SELECT 1 FROM ${table("note")} l WHERE l.id = ${uuidParam()} AND l.merged_into_id = n.id))",
             listOf(t.id, t.id),
         )
         is SearchTerm.CardId -> C(
-            "(c.id = ? OR EXISTS (SELECT 1 FROM ${table("card")} l WHERE l.id = ? AND l.merged_into_id = c.id))",
+            "(c.id = ${uuidParam()} OR EXISTS (SELECT 1 FROM ${table("card")} l WHERE l.id = ${uuidParam()} AND l.merged_into_id = c.id))",
             listOf(t.id, t.id),
         )
         is SearchTerm.Field -> field(t.key, t.pattern)
@@ -330,6 +336,9 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
         IsValue.FLAGGED -> C("c.flags <> 0")
     }
 
+    /** A bound uuid: Postgres needs the cast (JDBC binds text), SQLite stores uuids as text. */
+    fun uuidParam() = if (pg) "CAST(? AS uuid)" else "?"
+
     fun boolTrue(col: String) = if (pg) col else "$col = 1"
 
     fun boolFalse(col: String) = if (pg) "NOT $col" else "$col = 0"
@@ -338,7 +347,7 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
         if (!pg) return C("TRUE", emptyList()) { r -> r.noteId in ids }
         if (ids.isEmpty()) return FALSE_C
         val sorted = ids.sorted()
-        return C(sorted.joinToString(",", "n.id IN (", ")") { "?" }, sorted)
+        return C(sorted.joinToString(",", "n.id IN (", ")") { uuidParam() }, sorted)
     }
 
     fun deck(p: SearchPattern, ctx: SearchContext): C {
@@ -357,7 +366,7 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
     }
 
     fun rated(days: Int, rating: Int?, ctx: SearchContext): C {
-        val from = tsCmp("rl.reviewed_at", ">=", ctx.studyDay.startMs - (days - 1).toLong() * DAY_MS)
+        val from = tsCmp("rl.reviewed_at", ">=", ctx.dayStart(-(days - 1)))
         val ratingSql = if (rating != null) " AND rl.rating = ?" else ""
         val params = from.params + (if (rating != null) listOf<Any>(rating.toLong()) else emptyList())
         return C(
@@ -385,12 +394,11 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
 
     /**
      * `due<op>v`: the study-day index of `due_at` is `floor((due_at - start) / 1 day)`. The comparison is
-     * rewritten as a range test on `due_at` itself (days are taken as 24 h; a 23/25 h DST day shifts the
-     * boundary by an hour, the StudyDay carries no zone to do better).
+     * rewritten as a range test on `due_at` itself, against the caller-supplied day boundaries
+     * ([SearchContext.dayStart]), so 23/25 h DST days are exact.
      */
     fun dueCompare(op: CompareOp, v: Double, ctx: SearchContext): C {
-        val start = ctx.studyDay.startMs
-        fun at(k: Double): Long = start + k.coerceIn(-1_000_000.0, 1_000_000.0).toLong() * DAY_MS
+        fun at(k: Double): Long = ctx.dayStart(k.coerceIn(-100_000.0, 100_000.0).toInt())
         fun cmp(o: String, k: Double): C = tsCmp("c.due_at", o, at(k))
         val notNull = "c.due_at IS NOT NULL"
         fun wrap(vararg cs: C): C {

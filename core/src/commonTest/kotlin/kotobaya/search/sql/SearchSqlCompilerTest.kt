@@ -185,7 +185,7 @@ class SearchSqlCompilerTest {
         assertTrue(c.accepts(row(noteId = HOT)))
         assertFalse(c.accepts(row(noteId = "other")))
         val pg = compile("is:hot", Dialect.POSTGRES).select()
-        assertTrue(pg.sql.contains("n.id IN (?)"))
+        assertTrue(pg.sql.contains("n.id IN (CAST(? AS uuid))"))
         assertEquals(listOf<Any>(HOT), pg.params.takeLast(1))
         assertTrue(compile("is:hot", Dialect.POSTGRES, CTX.copy(hotNoteIds = emptySet())).select().sql.contains("1 = 0"))
     }
@@ -211,6 +211,32 @@ class SearchSqlCompilerTest {
         val eq = compile("due=1", Dialect.SQLITE).select().params
         assertTrue(eq.contains(start + day) && eq.contains(start + 2 * day))
         assertTrue(compile("due=1.5", Dialect.SQLITE).select().sql.contains("1 = 0"))
+    }
+
+    @Test
+    fun dayBoundariesComeFromTheCallerAcrossDst() {
+        // fake zone: the clocks go forward at the start of day 2, so day 1 lasts 23 hours; days before 0 are 24 h
+        val h = 3_600_000L
+        val day = 86_400_000L
+        val start = CTX.studyDay.startMs
+        val fake: (Int) -> Long = { k -> start + k * day - (if (k >= 2) h else 0L) }
+        val ctx = CTX.copy(dayStart = fake)
+        // due=1 is [dayStart(1), dayStart(2)) = [start + 24h, start + 47h)
+        val eq = compile("due=1", Dialect.SQLITE, ctx).select().params
+        assertTrue(eq.containsAll(listOf(start + day, start + 2 * day - h)), eq.toString())
+        assertFalse(eq.contains(start + 2 * day))
+        // due>1 starts at day 2; due<=1 ends before it
+        assertTrue(compile("due>1", Dialect.SQLITE, ctx).select().params.contains(start + 2 * day - h))
+        assertTrue(compile("due<=1", Dialect.SQLITE, ctx).select().params.contains(start + 2 * day - h))
+        // a day beyond the change shifts by the hour as well
+        assertTrue(compile("due>=3", Dialect.SQLITE, ctx).select().params.contains(start + 3 * day - h))
+        // rated/added use dayStart(-(N-1)); the default and the fake agree before the change
+        assertTrue(compile("added:3", Dialect.SQLITE, ctx).select().params.contains(start - 2 * day))
+        // the same numbers on Postgres
+        assertTrue(compile("due=1", Dialect.POSTGRES, ctx).select().params.contains(start + 2 * day - h))
+        // a change in the past: day -1 lasted 25 hours
+        val back = CTX.copy(dayStart = { k -> start + k * day - (if (k <= -1) h else 0L) })
+        assertTrue(compile("rated:2", Dialect.SQLITE, back).select().params.contains(start - day - h))
     }
 
     @Test

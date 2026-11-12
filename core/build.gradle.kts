@@ -30,6 +30,12 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // T108b execution tests: the compiled SQL is run against real SQLite and Postgres 17.
+        jvmTest.dependencies {
+            implementation("org.xerial:sqlite-jdbc:3.41.2.2")
+            implementation("org.postgresql:postgresql:42.7.4")
+            implementation("org.testcontainers:postgresql:1.21.4")
+        }
     }
 }
 
