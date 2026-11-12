@@ -68,7 +68,7 @@ class PushService(private val opApply: OpApply) {
                 tx.dsl.execute("update app.device set last_push_at = now(), last_seen_at = now() where id = ?", it)
             }
             val hw = tx.highWaterSeq()
-            val id = checkNotNull(logIdentity(tx.dsl, hw)) { "log_epoch vanished inside the push transaction" }
+            val id = checkNotNull(logIdentity(tx.dsl, hw, config.backupsDisabled)) { "log_epoch vanished inside the push transaction" }
             val body = linkedMapOf<String, Any?>(
                 "results" to results.map { it.toMap() },
                 "high_water_seq" to hw,

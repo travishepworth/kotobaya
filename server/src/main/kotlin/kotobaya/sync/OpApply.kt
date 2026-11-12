@@ -30,6 +30,8 @@ data class SyncConfig(
     val maxOpBytes: Int = Limits.MAX_OP_BYTES,
     /** `limits.max_push_bytes`: a push body above it is 413; a pull page ends before exceeding it. */
     val maxPushBytes: Int = Limits.MAX_PUSH_BYTES,
+    /** T202c: `BACKUPS_DISABLED=true` → `durable_seq` = `high_water_seq` (SYNC.md 6.3; `restore.DurableSeq`). */
+    val backupsDisabled: Boolean = false,
 )
 
 /**
@@ -206,11 +208,11 @@ class OpTx internal constructor(
 /** `log_epoch` and `durable_seq` as reported in push/pull responses (SYNC.md 6.2, 6.3). */
 internal data class LogIdentity(val logEpoch: String, val durableSeq: Long)
 
-internal fun logIdentity(dsl: DSLContext, highWater: Long): LogIdentity? {
+internal fun logIdentity(dsl: DSLContext, highWater: Long, backupsDisabled: Boolean = false): LogIdentity? {
     val epoch = dsl.fetchOptional("select value from app.server_state where key = ?", ServerStateKeys.LOG_EPOCH)
         .map { it.get(0, String::class.java) }.orElse(null) ?: return null
     val durable = dsl.fetchOptional("select value from app.server_state where key = ?", ServerStateKeys.DURABLE_SEQ)
         .map { it.get(0, String::class.java).toLongOrNull() ?: 0L }.orElse(0L)
-    // Never report a durable_seq above the high-water mark (6.3). Backups-disabled reporting is T202c.
-    return LogIdentity(epoch, minOf(durable, highWater))
+    // Never report a durable_seq above the high-water mark (6.3); backups disabled → high-water (T202c).
+    return LogIdentity(epoch, kotobaya.sync.restore.DurableSeq.reported(durable, highWater, backupsDisabled))
 }
