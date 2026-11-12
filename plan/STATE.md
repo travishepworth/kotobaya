@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:38:04Z
+Updated: 2026-11-12T17:44:11Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,8 +13,9 @@ Updated: 2026-11-12T17:38:04Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T206 | writer (sonnet) | 1 | t/T206-review-api | 2026-11-12T17:31:48Z |
-| C-8 | architect (opus) | 1 | t/C-8-sync-gaps | 2026-11-12T17:24:29Z |
+| T207b | writer-senior (opus) | 1 | t/T207b-jpdb-job | 2026-11-12T17:44:11Z |
+| T209 | writer (sonnet) | 1 | t/T209-web-review | 2026-11-12T17:44:11Z |
+| T210a | writer (sonnet) | 1 | t/T210a-browse-api | 2026-11-12T17:44:11Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -22,6 +23,7 @@ Updated: 2026-11-12T17:38:04Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| C-8 (contracts+core+server green; breaking for T202c/T203/T205 code) | reviewer + architect 2nd pass | 2026-11-12T17:44:11Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -39,11 +41,12 @@ Updated: 2026-11-12T17:38:04Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 21/29 · attempts 35 · escalations 0
+P2: merged 22/29 · attempts 38 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T206 review API (queue via core builder, answer/undo via ReviewOps, drill/cram, word status, DST StudyDay, deleted-deck fallback) — live in Main.kt
 - W-2 wiring: sync/notes/decks/settings live in Main.kt (shared OpApply), startup replay, placeholder scheduler version removed; e2e SyncWiringTest (REST→push→cache→pull, 2-device merge)
 - T205 core queue builder (rules 1–5, round-robin, deckless/add_kanji, determinism property tests) + word auto status — reviewer APPROVE, 1 attempt
 - T202d core NO_NUL codec check (iterative, jvm=js, per-op on push) — reviewer APPROVE; architect pass skipped (small, no conformance issue per reviewer)

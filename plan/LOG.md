@@ -404,3 +404,8 @@
 2026-11-12T17:38:04Z W-2 HANDOFF DONE (StoryServer test helper edit outside paths accepted)
 2026-11-12T17:38:04Z W-2 CHECK_GREEN server after rebase
 2026-11-12T17:38:04Z W-2 MERGE
+2026-11-12T17:44:11Z C-8 HANDOFF DONE (refused cache, durable_seq when backups off, re-mint list D, add_kanji attribution); CHECK_GREEN contracts+core+server; reviewer + architect dispatched
+2026-11-12T17:44:11Z T206 HANDOFF DONE; CHECK_GREEN server; MERGE (Main.kt registration line allowed)
+2026-11-12T17:44:11Z T207b DISPATCH writer-senior(opus)
+2026-11-12T17:44:11Z T209 DISPATCH writer(sonnet)
+2026-11-12T17:44:11Z T210a DISPATCH writer(sonnet)

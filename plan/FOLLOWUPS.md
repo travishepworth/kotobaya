@@ -148,3 +148,5 @@
 - T202d review: OpApply.validateOwn calls encodeTree first, so REST NUL 422 loses its field pointer; call nulPointer first. SyncJson.containsNul (recursive) + OpRules.kt:93 branch now dead on push path; delete/replace with nulPointer.
 - W-2: device pairing codes are in-memory (single API replica only); persist if the API ever scales out.
 - W-2 -> T206: add `handlers += ReviewModule(db, sync.opApply).handlers` in Main.kt composeApp (W-2 is merged; T206 or a follow-up owns it).
+- T206 -> T209/C-ticket: queue doesn't pass pendingEntries (deck entries without a note) to the builder because getQueue emits no ops; if web must introduce them, needs a CONTRACT_CHANGE_REQUEST (e.g. a materialise endpoint).
+- T206: drill sources hot_words/confusables → 501; listCardReviews left to T210a; sentence always null (no sentence tables); newShownThisSession=0; utc_offset_min stored NULL when absent (per contract). Dict entry/kanji JSON duplicated from DictApi — dedupe.

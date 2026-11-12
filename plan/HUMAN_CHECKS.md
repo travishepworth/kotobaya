@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- C-8 (pending review): after a clock-skew Re-mint, ops that only edit rows the server already had but depend on a window-created row (e.g. a word added offline to an existing deck via e:<seq>, word statuses of window-created words) are DISCARDED, not re-minted; the device shows the count before you confirm. Redo by hand.
 - ADR-011: turning on an optional card kind does not add cards to existing notes; add per note (T210a createCard).
 - C-6 (breaking contract change, no user data yet): sync schemas forbid U+0000, cap int4 fields at 2147483647, cap instant_ms at year 9999 — values Postgres cannot store. Reviewer + architect approval required.
 - ADR-010: sync JSON nesting limits op 500 / document 512 (T202a, C-5).
