@@ -24,3 +24,4 @@
 - T004: POST /cards/bulk/schedule needs only `review` (a review-only token can reset 5000 cards) — consider requiring review+write.
 - T004 → T105 (auth): `x-auth: body-key` / `x-body-key-scope` are custom extensions; the auth filter must implement them by hand.
 - T004: /cards/bulk/schedule retry is not idempotent (extra manual rows per card; same schedule). Consider an optional request id.
+- T005 → T006/T107 acceptance: reference scenarios `clock-behind-remint` and the new clock_ahead re-mint scenario.

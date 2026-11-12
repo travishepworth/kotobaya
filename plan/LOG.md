@@ -83,3 +83,5 @@
 2026-11-12T11:20:43Z T005 HANDOFF DONE attempt 3: re-mint, device guard, card-age check dropped
 2026-11-12T11:20:43Z T005 CHECK_GREEN 16 scenarios
 2026-11-12T11:20:43Z T005 REVIEW architect final verification dispatched
+2026-11-12T11:22:10Z T005 REVIEW_CHANGES verification: re-mint fixed for existing cards; offline-created rows under clock_ahead still discard-only (major)
+2026-11-12T11:22:10Z T005 DISPATCH attempt 4 (opus): re-mint creations + replay order (reviewed_at,hlc,id). Attempt 4 of cap 5.
