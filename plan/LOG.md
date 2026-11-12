@@ -387,3 +387,7 @@
 2026-11-12T17:20:46Z T202d DISPATCH architect(opus)
 2026-11-12T17:20:46Z T205 DISPATCH writer-senior(opus)
 2026-11-12T17:20:46Z T212b DISPATCH attempt 2 writer(sonnet)
+2026-11-12T17:24:29Z T202c REVIEW_APPROVE architect 2nd pass (5 minors; 3 contract gaps → C-8)
+2026-11-12T17:24:29Z T202c CHECK_GREEN server after rebase on C-6/C-7
+2026-11-12T17:24:29Z T202c MERGE 1 attempt
+2026-11-12T17:24:29Z C-8 DISPATCH architect(opus): engine refusal, BACKUPS_DISABLED toggle, §10.4 re-mint gaps
