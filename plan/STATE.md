@@ -13,6 +13,7 @@ Updated: 2026-11-12T19:23:09Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T312 | writer-light (haiku) | 1 | t/T312-android-release | 2026-11-12T19:23:22Z |
 | T307+T309 | writer (sonnet) | 1 | t/T307+T309-widget-ntfy | 2026-11-12T19:19:41Z |
 | T303a | writer-senior (opus) | 2 | t/T303a-sync-client-protocol | 2026-11-12T19:18:06Z |
 | C-10 | architect (opus) | 1 | t/C-10-log-reset-pull-seq | 2026-11-12T19:18:06Z |
@@ -41,7 +42,7 @@ Updated: 2026-11-12T19:23:09Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 6/23 · attempts 12 · escalations 0
+P3: merged 6/23 · attempts 13 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
