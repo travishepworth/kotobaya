@@ -29,8 +29,10 @@ object SyncWiring {
     )
 
     /** The SYNC.md 6.3 / 10.5 startup sequence with the core's scheduler version and replay. */
-    fun startup(db: Database): StartupSequence {
+    fun startup(db: Database, env: Map<String, String> = System.getenv()): StartupSequence {
         val replay = CoreSchedulerReplay(cache)
-        return StartupSequence(db, schedulerVersion = replay.schedulerVersion, replay = replay)
+        return StartupSequence(
+            db, schedulerVersion = replay.schedulerVersion, replay = replay, backupsDisabled = DurableSeq.backupsDisabled(env),
+        )
     }
 }

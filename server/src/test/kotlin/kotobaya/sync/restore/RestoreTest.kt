@@ -108,6 +108,21 @@ class RestoreTest {
         assertEquals(seen.sorted(), seen, "never decreases: $seen")
     }
 
+    /** SYNC.md 6.3 startup step 3 through the production wiring: an enabled→disabled restart raises the row at startup. */
+    @Test
+    fun theProductionStartupRaisesDurableSeqWhenBackupsAreDisabled() = StoryServer(start).use { s ->
+        val a = SimDevice(A).also { it.pt = start }
+        notes(s, a, 3)
+        assertNull(s.serverState("durable_seq")?.takeIf { it != "0" }, "enabled: nothing raised it")
+        SyncWiring.startup(s.db, env = emptyMap()).runOnce()
+        assertNull(s.serverState("durable_seq")?.takeIf { it != "0" }, "enabled startup leaves it alone")
+        SyncWiring.startup(s.db, env = mapOf("BACKUPS_DISABLED" to "true")).runOnce()
+        assertEquals("3", s.serverState("durable_seq"), "disabled startup persists max(seq) before any push")
+        s.db.txBlocking { it.execute("update app.server_state set value = '9' where key = 'durable_seq'") }
+        SyncWiring.startup(s.db, env = mapOf("BACKUPS_DISABLED" to "true")).runOnce()
+        assertEquals("9", s.serverState("durable_seq"), "greatest(): never lowered")
+    }
+
     /** "Freeze A → T202/T104": restore finalisation raises `hlc_last` so the server never mints behind its pre-restore clock. */
     @Test
     fun restoreFinalisationRaisesHlcLastSoTheServerNeverMintsBehindItsPreRestoreClock() = StoryServer(start).use { s ->

@@ -41,16 +41,11 @@ class StoryServer(startMs: Long, backupsDisabled: Boolean = false) : AutoCloseab
         startup()
     }
 
-    /**
-     * The SYNC.md 6.3 startup: [StartupSequence] (steps 1–2), then step 3 (C-8) under lock 7033001 with this
-     * instance's backups setting. (`server/Startup.kt` does not call step 3 yet; see F-3 HANDOFF.)
-     */
+    /** The real SYNC.md 6.3 startup ([StartupSequence], steps 1–3) with this instance's backups setting. */
     private fun startup() {
-        StartupSequence(db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }).runOnce()
-        db.txBlocking { dsl ->
-            dsl.execute("select pg_advisory_xact_lock(?)", kotobaya.server.SYNC_LOCK)
-            DurableSeq.raiseOnStartup(dsl, backupsDisabled)
-        }
+        StartupSequence(
+            db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }, backupsDisabled = backupsDisabled,
+        ).runOnce()
     }
 
     /** Restarts the server with another backups setting (same database, same epoch). */

@@ -57,6 +57,8 @@ class StartupSequence(
     private val schedulerVersion: String = DEFAULT_REPLAY.schedulerVersion,
     private val replay: SchedulerReplay = DEFAULT_REPLAY,
     private val now: () -> Instant = Instant::now,
+    /** `BACKUPS_DISABLED` (SYNC.md 6.2): startup step 3 raises `durable_seq` when true. */
+    private val backupsDisabled: Boolean = false,
     val state: StartupState = StartupState(),
 ) {
     private val log = LoggerFactory.getLogger(StartupSequence::class.java)
@@ -110,6 +112,8 @@ class StartupSequence(
             upsert(dsl, ServerStateKeys.LOG_EPOCH, epoch.toString())
             log.info("created log epoch", kv("log_epoch", epoch.toString()))
         }
+        // SYNC.md 6.3 step 3 (C-8): in every case, with backups disabled, raise durable_seq to max(seq).
+        kotobaya.sync.restore.DurableSeq.raiseOnStartup(dsl, backupsDisabled)
     }
 
     internal fun checkSchedulerVersion() = tx { dsl ->
