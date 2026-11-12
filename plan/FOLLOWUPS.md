@@ -154,3 +154,4 @@
 - T210a -> next C-ticket: bulk/schedule has no idempotency id; a retried POST appends extra manual review rows (end state same for set_due/reset, but log grows). Add request_id / derived manual-row ids.
 - T210a: is:hot matches nothing (HotScorer inputs not loaded); card list cursors offset-based not keyset; bulk/schedule scope review-only (T105b review+write CCR candidate still open).
 - T210b: no deck column (Card/NoteSummary API has no deck); no tag listing endpoint; preview passes no dict entry. 'All matching' needs non-empty query (contract minLength 1).
+- W-3: nav active marking is exact-match; /cards/<id> etc. don't highlight parent — switch to prefix match.

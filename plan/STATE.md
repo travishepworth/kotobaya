@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:56:01Z
+Updated: 2026-11-12T17:56:26Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -14,7 +14,6 @@ Updated: 2026-11-12T17:56:01Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | F-1 | writer (sonnet) | 1 | t/F-1-decks-fixes | 2026-11-12T17:56:01Z |
-| W-3 | writer-light (haiku) | 1 | t/W-3-web-nav | 2026-11-12T17:55:02Z |
 | C-8 | architect (opus) | 2 | t/C-8-sync-gaps | 2026-11-12T17:48:17Z |
 | T207b | writer-senior (opus) | 1 | t/T207b-jpdb-server | 2026-11-12T17:44:11Z |
 
@@ -41,11 +40,12 @@ Updated: 2026-11-12T17:56:01Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 25/31 · attempts 41 · escalations 0
+P2: merged 26/31 · attempts 42 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- W-3 web nav: Cards + Note types links (Review/Decks/Settings already present)
 - T210b web card browser (windowed table, core search/preview, bulk with dry-run count) — untested in a live browser
 - T210a cards API (list/get/create/update/delete/reviews, search via T108b, bulk ≤5000 + bulk/schedule via OpApply) — live in Main.kt
 - T209 web review screen (grading 4/5 buttons, core previewIntervals, keyboard shortcuts, undo/bury/suspend, drill) + shared CardView — untested in a live browser
