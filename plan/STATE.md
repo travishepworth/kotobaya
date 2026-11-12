@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T12:11:27Z
+Updated: 2026-11-12T12:12:46Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -11,7 +11,6 @@ Updated: 2026-11-12T12:11:27Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T006 (att. 2) | reviewer + architect verification (opus) | 2026-11-12T12:11:12Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -28,9 +27,10 @@ Updated: 2026-11-12T12:11:27Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 13/15 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
+Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T006 core interfaces — 2 attempts; reviewer + architect APPROVE; PortableMath (fdlibm), search round-trip, queue rules
 - C-1 db/sync contract alignment — 2 attempts; replay order, last_review_at, server_state, op versioning rule, FSRS bounds
 - T004 OpenAPI contract — 3 attempts (1 Fable, 2 Opus); reviewer + architect APPROVE; 117 operations
 - T005 sync contract — 4 attempts (1 Fable, 3 Opus); reviewer + architect APPROVE; restore detection, clock re-mint, op size cap

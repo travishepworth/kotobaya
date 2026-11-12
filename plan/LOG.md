@@ -121,3 +121,6 @@
 2026-11-12T12:11:27Z C-1 REVIEW_APPROVE verification: 6/6 fixed
 2026-11-12T12:11:27Z C-1 MERGE
 2026-11-12T12:11:52Z T006 REVIEW_APPROVE reviewer verification: 8 fixed, 2 acceptable; 5 followups
+2026-11-12T12:12:46Z T006 REVIEW_APPROVE architect verification: float determinism fixed
+2026-11-12T12:12:46Z T006 CHECK_GREEN after rebase (all 4 contract checks + core)
+2026-11-12T12:12:46Z T006 MERGE

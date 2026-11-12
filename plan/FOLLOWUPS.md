@@ -43,3 +43,4 @@
 - T006 → T107: verify py-fsrs 6.3.2 uses only `**` / `math.e ** x` (no math.exp) and mirror exactly; test paramsOf fallback values equal py-fsrs defaults.
 - T006 → T104/server push: an op with a duplicate JSON key makes CanonicalJson.decode reject the whole body (400 for the entire outbox). Decide: per-op `schema_invalid` via a lenient per-op parse. Raise in the freeze review.
 - T006/ADR-006: round-robin within a priority tier — confirm the deck.priority default and that it matches SPEC "priority order" (HUMAN_CHECKS).
+- T006 → T107: jvm/js digest must include fdlibm special-case and subnormal arguments (unsigned-compare branches of e_pow), not only FSRS ranges; build PortableMath constants with Double.fromBits from fdlibm hex words.
