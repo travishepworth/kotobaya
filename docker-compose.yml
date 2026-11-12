@@ -14,16 +14,13 @@ services:
       timeout: 3s
       retries: 20
 
-  minio:
-    image: quay.io/minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-kotobaya}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-kotobaya-dev-secret}
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["miniodata:/data"]
+  objectstore:
+    image: chrislusf/seaweedfs:3.80
+    command: server -s3 -dir=/data
+    ports: ["8333:8333"]
+    volumes: ["objectdata:/data"]
     healthcheck:
-      test: ["CMD-SHELL", "mc ready local || curl -fs http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/dir/status >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -32,10 +29,14 @@ services:
     build: { context: ., dockerfile: server/Dockerfile }
     environment:
       PORT: "8080"
+      S3_ENDPOINT: http://objectstore:8333
+      S3_BUCKET: ${S3_BUCKET:-kotobaya}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-kotobaya}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-kotobaya-dev-secret}
     ports: ["8080:8080"]
     depends_on:
       postgres: { condition: service_healthy }
-      minio: { condition: service_healthy }
+      objectstore: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /healthz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
       interval: 5s
@@ -45,9 +46,14 @@ services:
   worker:
     build: { context: worker }
     ports: ["8081:8081"]
+    environment:
+      S3_ENDPOINT: http://objectstore:8333
+      S3_BUCKET: ${S3_BUCKET:-kotobaya}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-kotobaya}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-kotobaya-dev-secret}
     depends_on:
       postgres: { condition: service_healthy }
-      minio: { condition: service_healthy }
+      objectstore: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz')"]
       interval: 5s
@@ -67,4 +73,4 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  objectdata:
