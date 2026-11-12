@@ -146,3 +146,5 @@
 - T212b -> C-8: SCHEMA 6.1 says valid settings values are 'stored as sent', but OpApply canonical JSON stores 1.0 as 1 (same value, valid). Reword to 'stored in canonical JSON form'.
 - T212b -> wiring (W-2): Main.kt `handlers += SettingsModule(db, sync.opApply).handlers`.
 - T202d review: OpApply.validateOwn calls encodeTree first, so REST NUL 422 loses its field pointer; call nulPointer first. SyncJson.containsNul (recursive) + OpRules.kt:93 branch now dead on push path; delete/replace with nulPointer.
+- W-2: device pairing codes are in-memory (single API replica only); persist if the API ever scales out.
+- W-2 -> T206: add `handlers += ReviewModule(db, sync.opApply).handlers` in Main.kt composeApp (W-2 is merged; T206 or a follow-up owns it).

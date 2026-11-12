@@ -401,3 +401,6 @@
 2026-11-12T17:31:48Z T205 REVIEW_APPROVE (3 minors: loader drops non-live memberships + StudyDay DST → T206; add_kanji attribution → C-8)
 2026-11-12T17:31:48Z T205 MERGE
 2026-11-12T17:31:48Z T206 DISPATCH writer(sonnet)
+2026-11-12T17:38:04Z W-2 HANDOFF DONE (StoryServer test helper edit outside paths accepted)
+2026-11-12T17:38:04Z W-2 CHECK_GREEN server after rebase
+2026-11-12T17:38:04Z W-2 MERGE
