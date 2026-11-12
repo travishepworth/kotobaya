@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dict_section_title">Offline storage</string>
+    <string name="dict_not_installed">No dictionary installed.</string>
+    <string name="dict_installed">Dictionary %1$s (release %2$d, %3$s)</string>
+    <string name="dict_size">Dictionary file: %1$s MB</string>
+    <string name="dict_scope_label">Dictionary size</string>
+    <string name="dict_scope_top60k">Top 60,000 words</string>
+    <string name="dict_scope_all">Everything</string>
+    <string name="dict_update_now">Update now</string>
+    <string name="dict_state_checking">Checking for a new dictionary...</string>
+    <string name="dict_state_downloading">Downloading %1$s of %2$s MB</string>
+    <string name="dict_state_verifying">Verifying download...</string>
+    <string name="dict_state_applying">Installing...</string>
+    <string name="dict_result_no_release">The server has no dictionary yet.</string>
+    <string name="dict_result_up_to_date">Dictionary is up to date.</string>
+    <string name="dict_result_installed">Installed dictionary release %1$d.</string>
+    <string name="dict_result_needs_newer_app">Dictionary update needs a newer app.</string>
+    <string name="dict_result_no_space">Not enough free space: need %1$s MB, have %2$s MB.</string>
+    <string name="dict_result_failed">Dictionary update failed: %1$s</string>
+</resources>

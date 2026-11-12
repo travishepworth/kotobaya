@@ -37,4 +37,5 @@ class FeatureRegistry(val entries: List<FeatureEntry>) {
 val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.pairing.pairingFeature,
     kotobaya.android.queue.queueFeature,
+    kotobaya.android.dict.dictFeature,
 )

@@ -85,6 +85,11 @@ dependencies {
     // T301b: HTTP client and QR scanner (see HANDOFF)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    // T302: zstd for dictionary packages (the aar carries the Android natives, the plain jar the host natives
+    // for unit tests) and WorkManager for the update job
+    implementation("com.github.luben:zstd-jni:1.5.6-4@aar")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    testImplementation("com.github.luben:zstd-jni:1.5.6-4")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit4)
