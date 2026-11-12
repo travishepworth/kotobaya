@@ -14,7 +14,7 @@ Updated: 2026-11-12T18:49:57Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T301a | writer (sonnet) | 1 | t/T301a-android-shell | 2026-11-12T18:49:57Z |
-| T303a | writer-senior (opus) | 1 | t/T303a-sync-client-core | 2026-11-12T18:49:57Z |
+| T303a | writer-senior (opus) | 1 | t/T303a-sync-client-protocol | 2026-11-12T18:49:57Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
