@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
-Updated: 2026-11-12T12:24:47Z
+Updated: 2026-11-12T12:26:33Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -9,7 +9,6 @@ Updated: 2026-11-12T12:24:47Z
 | T102 | writer (gp/sonnet) | 1 | t/T102-dict-extras | 2026-11-12T12:24:47Z |
 | C-2 | architect (gp/opus) | 1 | t/C-2-freeze-fixes | 2026-11-12T12:18:34Z |
 | T107a | writer-senior (gp/opus) | 1 | t/T107a-portable-math | 2026-11-12T12:18:34Z |
-| T108a | writer (gp/sonnet) | 1 | t/T108a-search-parser | 2026-11-12T12:18:34Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
@@ -34,6 +33,7 @@ Updated: 2026-11-12T12:24:47Z
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T108a search parser/format/complete — examples, round trip, 3000 random trees
 - T101 dictionary pipeline (JMdict/KANJIDIC2/KRADFILE → ref.*) — 13 tests incl. Postgres 17
 - T006 core interfaces — 2 attempts; reviewer + architect APPROVE; PortableMath (fdlibm), search round-trip, queue rules
 - C-1 db/sync contract alignment — 2 attempts; replay order, last_review_at, server_state, op versioning rule, FSRS bounds

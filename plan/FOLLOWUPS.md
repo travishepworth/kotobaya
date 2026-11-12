@@ -48,3 +48,5 @@
 - Planner: health routes differ (compose/chart probe /healthz, backlog /healthz /readyz /metrics, openapi /health). T104 serves all; T111 aligns probes (readiness = /readyz incl. the SYNC 10.5 startup replay).
 - Planner: worker package path is worker/src/kotobaya_worker/ (backlog said worker/kotobaya_worker/); tickets corrected.
 - T101: KRAD tested only on a synthetic zip (no KRAD fixture); EDRDG URLs unverified offline; `ref.kanji.radical` = KANJIDIC2 classical radical number as text (contract silent). First real run → HUMAN_CHECKS.
+- T108a: SearchExamples.kt is a snapshot of search-examples.tsv (commonTest can't read files) — regenerate when the tsv changes (C-2 may add examples). JS tests for search run once T107a wires :core:jsTest.
+- T108a: CoreJsImpl.renderCard/previewIntervals throw NotImplementedError until T213/T107b.

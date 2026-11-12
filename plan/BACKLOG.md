@@ -205,7 +205,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Every spec example parses; property tests: random ASTs → print → parse round-trips.
 
 ### T108a — Search: parser, format, complete
-- model: sonnet · risk: med · deps: T006 · status: RUNNING
+- model: sonnet · risk: med · deps: T006 · status: MERGED
 - see plan/tickets/T108a.md (split from T108)
 
 ### T108b — Search: SQL compiler
