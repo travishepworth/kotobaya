@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:19:41Z
+Updated: 2026-11-12T19:23:09Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -16,7 +16,6 @@ Updated: 2026-11-12T19:19:41Z
 | T307+T309 | writer (sonnet) | 1 | t/T307+T309-widget-ntfy | 2026-11-12T19:19:41Z |
 | T303a | writer-senior (opus) | 2 | t/T303a-sync-client-protocol | 2026-11-12T19:18:06Z |
 | C-10 | architect (opus) | 1 | t/C-10-log-reset-pull-seq | 2026-11-12T19:18:06Z |
-| T305a | writer-senior (opus) | 2 | t/T305a-ankiapi-provider | 2026-11-12T19:15:31Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -42,11 +41,12 @@ Updated: 2026-11-12T19:19:41Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 5/23 · attempts 12 · escalations 0
+P3: merged 6/23 · attempts 12 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T305a AnkiDroid-API provider + flavors (ankidroid default com.ichi2.anki, own); no silent fallback (AnkiStoreHolder); both APKs build — 2 attempts, reviewer APPROVE
 - T308 notifications/due alarms (inexact alarms, boot/TZ reschedule, DueTrigger seam, stale-sync notice)
 - T302 on-device dictionary (DICT_PACKAGE installer, atomic swap, offline search = server on 50 T106 queries; core Romaji)
 - T304a Android queue loader (mirrors server loader rules; DST StudyDay; counts/forecast) — smart decks + headword seams empty

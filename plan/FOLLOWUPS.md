@@ -167,3 +167,4 @@
 - Android FeatureModules.kt: every Android ticket adds one line → rebase conflicts; resolve by keeping all entries.
 - T302 -> app wiring: app start should call DictWork.ensurePeriodic + installer.startup(); db.DictionaryProvider seam superseded by InstalledDictionary (remove). core/dict/Romaji.kt DUPLICATES server dict/Romaji.kt — server should depend on core's. Unverified on device: zstd-jni, HTTP Range resume → HUMAN_CHECKS.
 - T308 -> T303c/T304b: callers that change reviews or sync must call get<DueTrigger>().fire(); NotifySignals seam reads sync_state.last_sync_at — swap to T303c SyncStatusRepository. Notification permission rationale route `notify_permission` exists; onboarding must navigate to it.
+- T305a: make apk builds both flavors (Makefile apk line not owned); provider call-log debug screen not built (needs FeatureModules line + strings); APK rename uses internal AGP BaseVariantOutputImpl (may break on AGP upgrade).
