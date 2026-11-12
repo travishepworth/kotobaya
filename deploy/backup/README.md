@@ -123,9 +123,10 @@ Offline checks (`make check MODULE=deploy` runs them): `deploy/backup/check.sh`.
 
 With no backups there is nothing to restore from, so a device may purge acked ops at once; the server
 must then report `durable_seq = high_water_seq` (SYNC.md 6.3). The server does not read a setting yet.
-Chosen name: env `BACKUPS_DISABLED=true` on the api (`api.env.BACKUPS_DISABLED`). Until the server
-reads it, `backup.enabled=false` leaves `durable_seq` at 0 and devices keep acked ops forever
-(safe, just never purged). With `backup.enabled=true` leave it unset.
+With `backup.enabled=false` the chart sets env `BACKUPS_DISABLED=true` on the api and renders no backup
+CronJobs; the watchdog CronJob (and its RBAC) is removed too, so nothing alerts about missing backups.
+Until the server reads the variable, `durable_seq` stays at 0 and devices keep acked ops forever
+(safe, just never purged). With `backup.enabled=true` it is unset.
 
 ## HUMAN_CHECKS
 

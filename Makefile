@@ -57,7 +57,7 @@ dev-up:
 dev-down:
 	docker compose down
 
-# Release artefacts (T002). Images: $(REGISTRY)/{api,worker,web}:$(VERSION).
+# Release artefacts (T002). Images: $(REGISTRY)/{api,worker,web,backup}:$(VERSION).
 # DRY_RUN=1 prints the commands instead of running them.
 ARCH ?= amd64
 REGISTRY ?= registry.example.invalid/kotobaya
@@ -70,12 +70,14 @@ images:
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f server/Dockerfile -t $(REGISTRY)/api:$(VERSION) .
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f worker/Dockerfile -t $(REGISTRY)/worker:$(VERSION) worker
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f web/Dockerfile -t $(REGISTRY)/web:$(VERSION) .
+	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f deploy/backup/Dockerfile -t $(REGISTRY)/backup:$(VERSION) deploy/backup
 
 push:
 	@case "$(REGISTRY)" in *.invalid*) echo "push: REGISTRY is still the placeholder '$(REGISTRY)'; set REGISTRY=<host>/<path>" >&2; exit 1;; esac
 	$(RUN) docker push $(REGISTRY)/api:$(VERSION)
 	$(RUN) docker push $(REGISTRY)/worker:$(VERSION)
 	$(RUN) docker push $(REGISTRY)/web:$(VERSION)
+	$(RUN) docker push $(REGISTRY)/backup:$(VERSION)
 
 # Unsigned release APK. Gradle has no signingConfig yet (android/ is outside T002 scope).
 apk:

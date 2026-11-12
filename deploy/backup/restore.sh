@@ -24,7 +24,10 @@ dbs_pre_restore() { psqlq -d postgres -c "SELECT datname FROM pg_database WHERE 
 # RESTORE_MODE=cleanup (run by restore-k8s.sh after the server finalized): drop the pre-restore copies.
 if [ "${RESTORE_MODE:-}" = cleanup ]; then
   wait_net
-  for d in $(dbs_pre_restore); do psqlq -d postgres -c "DROP DATABASE \"$d\" WITH (FORCE)"; log "dropped $d"; done
+  # Only the copy THIS run created (RESTORE_STAMP); older operator-kept copies are never touched.
+  [ -n "${RESTORE_STAMP:-}" ] || { log "cleanup needs RESTORE_STAMP; nothing dropped"; trap - EXIT; exit 0; }
+  d="${LIVE_DB}_pre_restore_${RESTORE_STAMP}"
+  psqlq -d postgres -c "DROP DATABASE IF EXISTS \"$d\" WITH (FORCE)"; log "dropped $d (if it existed)"
   trap - EXIT; exit 0
 fi
 
@@ -93,10 +96,13 @@ compare_counts "$COUNTS" "$SCRATCH_DB"
 # The pre-restore database is KEPT; restore-k8s.sh drops it (RESTORE_MODE=cleanup) once the server
 # has finalized. Manual cleanup: DROP DATABASE "<db>_pre_restore_<timestamp>".
 RESTORED=$SCRATCH_DB; SCRATCH_DB=""
-OLD="${LIVE_DB}_pre_restore_$(date -u +%Y%m%d%H%M%S)"
+OLD="${LIVE_DB}_pre_restore_${RESTORE_STAMP:-$(date -u +%Y%m%d%H%M%S)}"
 if [ "$(psqlq -d postgres -c "SELECT count(*) FROM pg_database WHERE datname = '$LIVE_DB'")" != 0 ]; then
   psqlq -d postgres -c "ALTER DATABASE \"$LIVE_DB\" RENAME TO \"$OLD\"" \
     || { psqlq -d postgres -c "DROP DATABASE \"$RESTORED\" WITH (FORCE)"; exit 1; }   # live still in place
+fi
+if [ -n "${KILL_BETWEEN_RENAMES:-}" ] && [ "${DRILL:-}" != 1 ]; then
+  log "KILL_BETWEEN_RENAMES is a drill-only hook and requires DRILL=1; refusing"; exit 2
 fi
 [ -z "${KILL_BETWEEN_RENAMES:-}" ] || { log "KILL_BETWEEN_RENAMES set (drill): dying between the renames"; kill -9 $$; }
 psqlq -d postgres -c "ALTER DATABASE \"$RESTORED\" RENAME TO \"$LIVE_DB\""

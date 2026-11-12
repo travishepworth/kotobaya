@@ -13,6 +13,7 @@
 set -euo pipefail
 NS=${NS:-kotobaya}; REL=${REL:-kotobaya}; TIMEOUT=${TIMEOUT:-1800}; K=${KUBECTL:-kubectl}
 k() { $K -n "$NS" "$@"; }
+RESTORE_STAMP=$(date -u +%Y%m%d%H%M%S)   # names this run's pre-restore database; cleanup drops only that one
 
 if [ -n "${RESTORE_SNAPSHOT:-}" ] && [ "${RESTORE_CONFIRM_OLDER:-}" != yes ]; then
   echo "RESTORE_SNAPSHOT set without RESTORE_CONFIRM_OLDER=yes. Restoring anything but the newest verified" >&2
@@ -36,6 +37,9 @@ for c in $CRONS; do
   if [ "$(k get cronjob "$c" -o jsonpath='{.spec.suspend}')" != true ]; then
     k annotate cronjob "$c" kotobaya/suspended-by-restore="$(date -u +%s)" --overwrite >/dev/null
     k patch cronjob "$c" -p '{"spec":{"suspend":true}}' >/dev/null
+  elif [ -n "$(k get cronjob "$c" -o jsonpath='{.metadata.annotations.kotobaya/suspended-by-restore}')" ]; then
+    # retry of an earlier run: refresh the timestamp so the watchdog does not see a stale suspension
+    k annotate cronjob "$c" kotobaya/suspended-by-restore="$(date -u +%s)" --overwrite >/dev/null
   fi
 done
 echo "backup CronJobs suspended; waiting for running backup jobs to finish"
@@ -60,8 +64,8 @@ run_restore_job() { # $1 = mode ("" = restore, "cleanup"); returns 0 when the Jo
   local job ok bad deadline=$((SECONDS + TIMEOUT))
   job="$REL-restore-${1:-run}-$(date -u +%Y%m%d%H%M%S)"
   k create job "$job" --from="cronjob/$REL-backup-restore" --dry-run=client -o json |
-    jq --arg s "${RESTORE_SNAPSHOT:-}" --arg c "${RESTORE_CONFIRM_OLDER:-}" --arg m "${1:-}" --arg kill "${KILL_BETWEEN_RENAMES:-}" \
-      '.spec.template.spec.containers[0].env += [{"name":"RESTORE_SNAPSHOT","value":$s},{"name":"RESTORE_CONFIRM_OLDER","value":$c},{"name":"RESTORE_MODE","value":$m},{"name":"KILL_BETWEEN_RENAMES","value":$kill}]' |
+    jq --arg s "${RESTORE_SNAPSHOT:-}" --arg c "${RESTORE_CONFIRM_OLDER:-}" --arg m "${1:-}" --arg kill "${KILL_BETWEEN_RENAMES:-}" --arg drill "${DRILL:-}" --arg stamp "$RESTORE_STAMP" \
+      '.spec.template.spec.containers[0].env += [{"name":"RESTORE_SNAPSHOT","value":$s},{"name":"RESTORE_CONFIRM_OLDER","value":$c},{"name":"RESTORE_MODE","value":$m},{"name":"KILL_BETWEEN_RENAMES","value":$kill},{"name":"DRILL","value":$drill},{"name":"RESTORE_STAMP","value":$stamp}]' |
     k apply -f - >/dev/null
   echo "job $job started"
   JOB=$job
@@ -85,7 +89,15 @@ fi
 echo "scaling api and worker back up"
 k scale deploy "$REL-api" --replicas="$API_REPLICAS"
 k scale deploy "$REL-worker" --replicas="$WORKER_REPLICAS"
-k rollout status deploy "$REL-api" --timeout=600s   # readiness = /readyz: restore finalized, scheduler checked
+# readiness = /readyz: restore finalized, scheduler checked
+if ! k rollout status deploy "$REL-api" --timeout=600s; then
+  echo "ERROR: api not ready within 600s. The restore itself succeeded; the pre-restore database is kept and" >&2
+  echo "the backup CronJobs stay suspended. Next steps: inspect 'kubectl -n $NS logs deploy/$REL-api', then either" >&2
+  echo "re-run this script (safe; it restores again), or once the api is ready resume the CronJobs by hand:" >&2
+  echo "  kubectl -n $NS patch cronjob $REL-backup -p '{\"spec\":{\"suspend\":false}}'   (same for $REL-backup-verify)" >&2
+  echo "and remove their kotobaya/suspended-by-restore annotations; drop ${REL}_pre_restore_$RESTORE_STAMP by hand." >&2
+  exit 1
+fi
 k annotate deploy "$REL-api" "$REL-worker" kotobaya/replicas-before-restore- >/dev/null
 # The server has finalized: only now drop the pre-restore database (kept until here so a crash
 # between the two renames, or a restore that must be undone, can be recovered).

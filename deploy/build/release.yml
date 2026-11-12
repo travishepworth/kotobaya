@@ -17,4 +17,5 @@ jobs:
           registry: ${{ vars.REGISTRY_HOST }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_TOKEN }}
+      # builds and pushes api, worker, web and backup (deploy/backup/Dockerfile)
       - run: make images push REGISTRY=${{ vars.REGISTRY }}

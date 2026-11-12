@@ -40,6 +40,9 @@ spec:
             {{- with .Values.api.publicUrl }}
             - { name: PUBLIC_URL, value: {{ . | quote }} }
             {{- end }}
+            {{- if and (not .Values.backup.enabled) (not (hasKey .Values.api.env "BACKUPS_DISABLED")) }}
+            - { name: BACKUPS_DISABLED, value: "true" }
+            {{- end }}
             {{- range $k, $v := .Values.api.env }}
             - { name: {{ $k }}, value: {{ $v | quote }} }
             {{- end }}

@@ -205,7 +205,7 @@ run_job backup-watchdog
 echo "ASSERT OK   watchdog exited 0"
 
 step "crash between the two renames: restore job killed, then recovery on re-run"
-set +e; KILL_BETWEEN_RENAMES=1 NS=$NS REL=$REL "$HERE/restore-k8s.sh" >/tmp/drill-kill.log 2>&1; KRC=$?; set -e
+set +e; DRILL=1 KILL_BETWEEN_RENAMES=1 NS=$NS REL=$REL "$HERE/restore-k8s.sh" >/tmp/drill-kill.log 2>&1; KRC=$?; set -e
 tail -n 5 /tmp/drill-kill.log
 assert_ne "restore-k8s.sh failed when the job was killed" "$KRC" "0"
 DB=postgres
