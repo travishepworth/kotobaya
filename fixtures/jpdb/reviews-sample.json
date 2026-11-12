@@ -1,0 +1,55 @@
+{
+  "_note": "Derived from public format docs, unverified against a real export. All vids, timestamps and histories are invented.",
+  "cards_vocabulary_jp_en": [
+    {
+      "vid": 1000001, "spelling": "学校", "reading": "がっこう",
+      "reviews": [
+        {"timestamp": 1700000000, "grade": "okay", "from_anki": false},
+        {"timestamp": 1700086400, "grade": "okay", "from_anki": false},
+        {"timestamp": 1700345600, "grade": "easy", "from_anki": false},
+        {"timestamp": 1701900000, "grade": "okay", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 1000002, "spelling": "猫", "reading": "ねこ",
+      "reviews": [
+        {"timestamp": 1700000100, "grade": "something", "from_anki": false},
+        {"timestamp": 1700000700, "grade": "okay", "from_anki": false},
+        {"timestamp": 1700172800, "grade": "nothing", "from_anki": false},
+        {"timestamp": 1700176400, "grade": "okay", "from_anki": false},
+        {"timestamp": 1700600000, "grade": "hard", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 1000003, "spelling": "間に合う", "reading": "まにあう",
+      "reviews": [
+        {"timestamp": 1699000000, "grade": "okay", "from_anki": true},
+        {"timestamp": 1699500000, "grade": "okay", "from_anki": true},
+        {"timestamp": 1702000000, "grade": "nothing", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 1000004, "spelling": "静か", "reading": "しずか",
+      "reviews": [
+        {"timestamp": 1701000000, "grade": "easy", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 1000005, "spelling": "寿司", "reading": "すし",
+      "reviews": []
+    }
+  ],
+  "cards_vocabulary_en_jp": [
+    {
+      "vid": 1000001, "spelling": "学校", "reading": "がっこう",
+      "reviews": [
+        {"timestamp": 1700010000, "grade": "okay", "from_anki": false},
+        {"timestamp": 1700400000, "grade": "something", "from_anki": false}
+      ]
+    }
+  ],
+  "vocabulary_status": [
+    {"vid": 1000006, "spelling": "私", "reading": "わたし", "status": "never-forget"},
+    {"vid": 1000007, "spelling": "食べ物", "reading": "たべもの", "status": "blacklisted"}
+  ]
+}
