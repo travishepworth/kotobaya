@@ -13,7 +13,7 @@ Updated: 2026-11-12T18:59:51Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T305a | writer-senior (opus) | 1 | (see ticket) | 2026-11-12T18:59:51Z |
+| T305a | writer-senior (opus) | 1 | t/T305a-ankiapi-provider | 2026-11-12T18:59:51Z |
 | T304a | writer (sonnet) | 1 | t/T304a-queue-loader | 2026-11-12T18:54:38Z |
 | T303a | writer-senior (opus) | 1 | t/T303a-sync-client-protocol | 2026-11-12T18:49:57Z |
 

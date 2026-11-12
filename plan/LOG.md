@@ -484,3 +484,5 @@
 2026-11-12T18:59:51Z T301b HANDOFF DONE (okhttp, play-services-code-scanner deps justified); CHECK_GREEN android; MERGE
 2026-11-12T18:59:51Z DECIDE ADR-012 provisional: hand-written OkHttp client on Android (generated client Kotlin version mismatch)
 2026-11-12T18:59:51Z T305a DISPATCH writer-senior(opus)
+2026-11-12T19:00:24Z T305a DISPATCH writer-senior(opus)
+2026-11-12T19:00:24Z T304a HANDOFF DONE; rebase conflict FeatureModules.kt (T301b line) → back to writer to rebase
