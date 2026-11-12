@@ -320,3 +320,6 @@
 2026-11-12T16:01:37Z T202a told: container-count depth definition + new C-5 examples
 2026-11-12T16:03:28Z C-5 REVIEW_APPROVE 4 minors → FOLLOWUPS
 2026-11-12T16:03:28Z C-5 MERGE additive
+2026-11-12T16:08:28Z T202a HANDOFF DONE attempt 4 (op 500/doc 512 container count, C-5 examples embedded)
+2026-11-12T16:08:28Z T202a CHECK_GREEN core on top of C-5
+2026-11-12T16:08:28Z T202a REVIEW dispatched verification re-review (attempt 4)
