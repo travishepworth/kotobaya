@@ -86,3 +86,6 @@
 2026-11-12T11:22:10Z T005 REVIEW_CHANGES verification: re-mint fixed for existing cards; offline-created rows under clock_ahead still discard-only (major)
 2026-11-12T11:22:10Z T005 DISPATCH attempt 4 (opus): re-mint creations + replay order (reviewed_at,hlc,id). Attempt 4 of cap 5.
 2026-11-12T11:22:30Z T004 REVIEW_CHANGES architect 2nd pass: 1 major (no per-op size cap → 413 blocks outbox), 5 minor; sync side sent to T005 att. 4
+2026-11-12T11:31:35Z T005 HANDOFF DONE attempt 4: re-mint creations, replay order (reviewed_at,hlc,id), max_op_bytes
+2026-11-12T11:31:35Z T005 CHECK_GREEN
+2026-11-12T11:31:35Z T005 REVIEW architect final verification (last round before cap)
