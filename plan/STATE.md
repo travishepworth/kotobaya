@@ -13,6 +13,7 @@ Updated: 2026-11-12T18:00:53Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T214 | writer (sonnet) | 1 | t/T214-web-import | 2026-11-12T18:01:02Z |
 | C-9 | architect (opus) | 1 | t/C-9-internal-jobs | 2026-11-12T17:59:01Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -39,7 +40,7 @@ Updated: 2026-11-12T18:00:53Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 28/33 · attempts 45 · escalations 0
+P2: merged 28/33 · attempts 46 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

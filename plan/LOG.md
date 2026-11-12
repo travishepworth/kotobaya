@@ -432,3 +432,4 @@
 2026-11-12T18:00:53Z T207b REVIEW_APPROVE (6 minors → T207c, owned paths widened to server imports/)
 2026-11-12T18:00:53Z T207b MERGE
 2026-11-12T18:00:53Z DECIDE jpdb re-run skips groups whose reviews sit on user-deleted cards (no resurrection)
+2026-11-12T18:01:02Z T214 DISPATCH writer(sonnet)
