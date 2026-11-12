@@ -28,9 +28,9 @@
     },
     "maximum_interval_days": {
       "type": "integer",
-      "description": "Register 'maximum_interval_days'. Column default 36500.",
+      "description": "Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values).",
       "minimum": 1,
-      "maximum": 2147483647
+      "maximum": 36500
     },
     "learning_steps_s": {
       "type": "array",

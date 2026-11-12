@@ -261,7 +261,12 @@
     relearning steps, `content_version`, `weights_version`).
   - Instants stop at 9999-12-31T23:59:59.999Z (RFC 3339 cannot write a 5-digit year).
   - `parse_override.put` `match_text` is at most 200 code points (it has a btree index; the API
-    already capped it at 200).
+    already capped it at 200). `list_key` and `jpdb_id` (unique indexes) too.
+  - `maximum_interval_days` is at most 36500, as in the API (attempt 2). With a huge maximum and a
+    low retention the scheduler computed a `due_at` Postgres cannot store, so the server failed
+    every retry of the next review and the outbox stuck. Derived cache columns now count as
+    "storable" too. The 9999 cap is for op values only: a derived `due_at` can reach about year
+    10099, so the server keeps writing 5-digit years.
 - **REST and importers never build an invalid op.** REST answers `422 invalid_value`; importers
   split tags on JavaScript's whitespace set, drop and count the bad ones, and strip U+0000.
 - SYNC.md 3.2/6.3 and SCHEMA.md 4.4 now name the server's clock row: `server_state.hlc_last`.
@@ -273,7 +278,8 @@
   stack. So the rule went next to the depth walk instead.
 - **Migration:** no real data exists. A development database cannot hold U+0000 at all. It could
   hold an instant after 9999 or a long `match_text` only in theory: a dev reset clears them.
-  Server: until core implements `NO_NUL` (follow-up), T202b's interim `invalid_value` catches what
+  Reset dev device replicas and outboxes as well as the server
+  database. Server: until core implements `NO_NUL` (T202d), T202b's interim `invalid_value` catches what
   the schemas miss.
 - **Worth a second look:** (1) `NO_NUL` is a rule outside JSON Schema (like depth), so a plain
   schema validator misses U+0000 inside open JSON. (2) The 9999 cap is based on the API's text

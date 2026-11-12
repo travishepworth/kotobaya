@@ -33,7 +33,7 @@ class FsrsParamsCreatedSchema(BaseModel):
     fuzz: Optional[StrictBool] = Field(default=None, description="Register 'fuzz'. Column default true.")
     id: Annotated[str, Field(strict=True)] = Field(description="Id of the new preset. Equals the envelope's entity_id.")
     learning_steps_s: Optional[Annotated[List[Annotated[int, Field(le=2147483647, strict=True, ge=1)]], Field(max_length=20)]] = Field(default=None, description="Register 'learning_steps_s': steps in seconds, in order; [] = none.")
-    maximum_interval_days: Optional[Annotated[int, Field(le=2147483647, strict=True, ge=1)]] = Field(default=None, description="Register 'maximum_interval_days'. Column default 36500.")
+    maximum_interval_days: Optional[Annotated[int, Field(le=36500, strict=True, ge=1)]] = Field(default=None, description="Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values).")
     name: Annotated[str, Field(min_length=1, strict=True, max_length=200)] = Field(description="Register 'name'.")
     relearning_steps_s: Optional[Annotated[List[Annotated[int, Field(le=2147483647, strict=True, ge=1)]], Field(max_length=20)]] = Field(default=None, description="Register 'relearning_steps_s': steps in seconds, in order; [] = none.")
     additional_properties: Dict[str, Any] = {}

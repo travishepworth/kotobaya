@@ -342,8 +342,10 @@ class OpApplyTest : SyncFixture() {
     // ------------------------------------------------------------------ attempt 2 (architect review)
 
     @Test
-    fun instantsUpToTwoToThe48StoreAndReadBackInsteadOfWedgingTheOutbox() {
-        val max = 281_474_976_710_655L // instant_ms maximum (year 10889)
+    fun everySchemaValidInstantStoresAndReadsBackAndLaterOnesAreSchemaInvalid() {
+        // C-6: instant_ms maximum = 9999-12-31T23:59:59.999Z. Every schema-valid instant must store (no wedged
+        // outbox); one ms later is refused by the schema, before anything touches the database.
+        val max = 253_402_300_799_999L
         val year10000 = 253_402_300_800_000L
         val a = principal(A)
         push(
@@ -353,8 +355,8 @@ class OpApplyTest : SyncFixture() {
         ).forEach(::assertAccepted)
         assertEquals(max, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
         assertEquals(max, SyncJson.ms(row("review_log", "id" to rev1)!!["manual_due_at"]))
-        assertAccepted(push(a, op(CARD_BURIED, A, base + 4, """{"id":"$card1","until":$year10000}""")).single())
-        assertEquals(year10000, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
+        assertRejected("schema_invalid", push(a, op(CARD_BURIED, A, base + 4, """{"id":"$card1","until":$year10000}""")).single())
+        assertEquals(max, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
         assertAccepted(push(a, op(CARD_BURIED, A, base + 5, """{"id":"$card1","until":$max}""")).single())
         assertEquals(max, SyncJson.ms(row("card", "id" to card1)!!["buried_until"]))
         assertEquals("1970-01-01 00:00:00.000+00", SyncJson.iso(0))

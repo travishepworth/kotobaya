@@ -63,7 +63,7 @@ class DeckcreatedschemaTest : ShouldSpec() {
             //modelInstance.language shouldBe ("TODO")
         }
 
-        // to test the property `listKey` - Required iff type = list. Slug, e.g. jlpt-n3.
+        // to test the property `listKey` - Required iff type = list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq).
         should("test listKey") {
             // uncomment below to test the property
             //modelInstance.listKey shouldBe ("TODO")

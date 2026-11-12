@@ -9,7 +9,7 @@
 | **source** | [**inline**](#Source) | Immutable. |  |
 | **title** | **kotlin.String** | Register &#39;title&#39;. |  |
 | **coverBlobHash** | **kotlin.String** | Register &#39;cover_blob_hash&#39;; null &#x3D; no cover. |  [optional] |
-| **jpdbId** | **kotlin.String** | jpdb deck id when source &#x3D; jpdb. Immutable. Default null. |  [optional] |
+| **jpdbId** | **kotlin.String** | jpdb deck id when source &#x3D; jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq). |  [optional] |
 
 
 <a id="Kind"></a>

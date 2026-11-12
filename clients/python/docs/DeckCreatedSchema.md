@@ -9,7 +9,7 @@ Name | Type | Description | Notes
 **enabled** | **bool** | false &#x3D; supplies no new cards. Default true. | [optional] [default to True]
 **id** | **str** | Id of the new deck (for a media deck: equal to media_id). Equals the envelope&#39;s entity_id. | 
 **language** | **str** | Default &#39;ja&#39;. | [optional] 
-**list_key** | **str** | Required iff type &#x3D; list. Slug, e.g. jlpt-n3. | [optional] 
+**list_key** | **str** | Required iff type &#x3D; list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq). | [optional] 
 **media_id** | **str** | Required iff type &#x3D; media; equals id. | [optional] 
 **name** | **str** | Display name; not unique. | 
 **new_cards_per_day** | **int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. | [optional] 

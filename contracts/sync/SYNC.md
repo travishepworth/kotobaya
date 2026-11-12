@@ -182,9 +182,11 @@ cheaply, into the op-level rules next to the depth limit:
 
 | Rule | Where | Column limit it mirrors |
 |---|---|---|
-| **No U+0000** in any string anywhere in an op, nor in any object member name — envelope and payload, open JSON shapes included (`settings` values, deck `settings`, note type `fields`/`templates`, `tokens`, `optimizer_stats`, unknown preserved keys, …). | Two layers, one rule. (1) Every typed string schema carries `"pattern": "^[^\\u0000]*$"` (tags: the regex `^[^\s\u0000]+$`; the other patterns already exclude it). (2) **Op-level rule `NO_NUL`**: an op containing U+0000 anywhere is invalid, checked by the same walk that enforces `MAX_OP_DEPTH` (`OpCodec` decode/encode; `nul_pointer` in `tools/validate.py`), iteratively. Layer 2 alone decides; layer 1 only makes the common case visible in the schemas. A recursive "no NUL anywhere" schema was rejected: it makes schema validation recurse once per nesting level, which overflows a 1 MB thread stack on legal 500-deep ops. | Postgres `text` and `jsonb` reject U+0000. |
-| Integers stored in an `integer` (int4) column are at most `2147483647`. C-6 added the bound to: `deck.created` / `deck.updated` `new_cards_per_day`, `reviews_per_day`; the items of `learning_steps_s` / `relearning_steps_s` in `fsrs_params.created` / `fsrs_params.updated`; `content_version` of `deck.content_published` and `media.content_published`; `weights_version` of `fsrs_params.published`. Already bounded: `priority`, `maximum_interval_days`, grammar span offsets, and the `smallint` ones (`flags`, `rating`, `jlpt`, `utc_offset_min`; `duration_ms` ≤ 600000). | the op schemas | `app.deck`, `app.fsrs_params`, `app.media` (`V1__init.sql`). `entry_seq` and `position` go to `bigint`; `optimizer_stats` and other open shapes go to `jsonb` (any finite number). |
-| An instant is at most `253402300799999` (9999-12-31T23:59:59.999Z). | `common.schema.json#/$defs/instant_ms` | Postgres `timestamptz` would hold more, but the API renders instants as RFC 3339 (4-digit year) and the platform date libraries disagree past year 9999. |
+| **No U+0000** in any string anywhere in an op, nor in any object member name — envelope and payload, open JSON shapes included (`settings` values, deck `settings`, note type `fields`/`templates`, `tokens`, `optimizer_stats`, unknown preserved keys, …). | Two layers, one rule. (1) Every typed string schema carries `"pattern": "^[^\\u0000]*$"` (tags: the regex `^[^\s\u0000]+$`; the other patterns already exclude it). (2) **Op-level rule `NO_NUL`**: an op containing U+0000 anywhere is invalid, checked by an iterative walk like the depth walk (`OpCodec` decode/encode; `nul_pointer` in `tools/validate.py`); its position in the check order is as in "`NO_NUL` in the codec" below. Layer 2 alone decides; layer 1 only makes the common case visible in the schemas. A recursive "no NUL anywhere" schema was rejected: it makes schema validation recurse once per nesting level, which overflows a 1 MB thread stack on legal 500-deep ops. | Postgres `text` and `jsonb` reject U+0000. |
+| Integers stored in an `integer` (int4) column are at most `2147483647`. C-6 added the bound to: `deck.created` / `deck.updated` `new_cards_per_day`, `reviews_per_day`; the items of `learning_steps_s` / `relearning_steps_s` in `fsrs_params.created` / `fsrs_params.updated`; `content_version` of `deck.content_published` and `media.content_published`; `weights_version` of `fsrs_params.published`. Already bounded: `priority`, grammar span offsets, and the `smallint` ones (`flags`, `rating`, `jlpt`, `utc_offset_min`; `duration_ms` ≤ 600000). | the op schemas | `app.deck`, `app.fsrs_params`, `app.media` (`V1__init.sql`). `entry_seq` and `position` go to `bigint`; `optimizer_stats` and other open shapes go to `jsonb` (any finite number). |
+| `maximum_interval_days` is at most `36500` (= the API bound). | `fsrs_params.created` / `fsrs_params.updated` | Not its own column's limit but a **derived** one: it caps every interval the scheduler computes, so `card.due_at` (≤ `reviewed_at` + 36500 d, or + the longest step) stays far inside `timestamptz`. Before C-6 a preset with `maximum_interval_days` 2147483647 and a low `desired_retention` gave a `due_at` near 1.9e17 ms on the next Good review; the server's apply of that `review.logged` failed on every retry and wedged the outbox. Example: [`fsrs-params-updated-max-interval-over-36500`](examples/invalid/fsrs-params-updated-max-interval-over-36500.json). |
+| An instant is at most `253402300799999` (9999-12-31T23:59:59.999Z). | `common.schema.json#/$defs/instant_ms` | Postgres `timestamptz` would hold more, but the API renders instants as RFC 3339 (4-digit year) and the platform date libraries disagree past year 9999. **This cap is on op values only.** Columns the server derives (`card.due_at`) can reach about year 10099 (an op instant near 9999 + 36500 d), so the server's rendering of instants with a 5-digit year (T202b) MUST stay, and readers MUST accept it. |
+| `deck.created` `list_key` and `media.created` `jpdb_id` are at most 200 characters. | their op schemas | unique btree indexes `deck_live_list_uq`, `media_live_jpdb_uq`. |
 | `parse_override.put` `match_text` is at most 200 code points. | `ops/parse_override.put.schema.json` | btree index `parse_override_match_idx`: an index entry is capped at about 2.7 kB. |
 
 - Doubles need no extra bound: every schema `number` is finite and `double precision` columns
@@ -232,9 +234,11 @@ server builds the op, API section 3), and the same rule holds: the op is never b
   that is still not a valid tag (longer than 100 code points, beyond the 200th, a duplicate, or
   `leech`) is dropped and **counted** in the job result (a `tags_dropped` counter in that
   importer's result schema; the importers specified today build no tags). U+0000 is removed from
-  every imported string (it carries no text). A record that would still mint an invalid op (e.g. an
-  instant after 9999) is not imported and is counted in the importer's existing skip counter;
-  nothing is dropped silently.
+  **display text only** (note fields, titles, sentences, remarks: it carries no text). A record
+  whose identifier or dedupe field (e.g. `jpdb_id`, a list key, an external id) contains U+0000 is
+  **not** cleaned — cleaning could collapse two distinct records into one — but skipped and
+  counted. A record that would still mint an invalid op (e.g. an instant after 9999) is not
+  imported and is counted in the importer's existing skip counter; nothing is dropped silently.
 
 ## 3. Hybrid logical clock
 
@@ -474,7 +478,7 @@ Checked in this order; the first failure decides the code.
 | `schema_invalid` (duplicate key, C-2; too deep, C-5) | The op element repeats a key in some object, or is nested deeper than 500 (`MAX_OP_DEPTH`, 2.1) (5.2, "Parsing the body"). Checked first, because such an element has no canonical size (resp. is not decodable by `CanonicalJson.decode`). | every op |
 | `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Measured on the raw op tree **before** it is decoded or validated (see below). Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op, including unsupported and schema-invalid ones |
 | `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
-| `schema_invalid` | The op does not match `op.schema.json` (including the storable-value bounds of 2.1, C-6: U+0000, int4 maxima, instants after 9999); or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
+| `schema_invalid` | The op breaks the op-level rule `NO_NUL` (2.1, C-6), or does not match `op.schema.json` (including the storable-value bounds of 2.1, C-6: U+0000, int4 maxima, `maximum_interval_days` ≤ 36500, instants after 9999); or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
 | `insufficient_scope` | The op needs a scope the caller's credential lacks (T004: a `review.*` op pushed by a token without the `review` scope). Added by the API to the open set (C-2). | every op |
 | `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
@@ -1704,9 +1708,12 @@ All 45 ops also flow through `POST /sync/push` (client-emittable ones) and `GET 
   exactly 21 bounded weights) before any deployment; that is fine only because no log exists yet.
   Second and last such exception: C-6 (storable values, 2.1) narrowed v1 the same way before any
   deployment: U+0000 anywhere, int4 maxima, `instant_ms` ≤ 9999-12-31T23:59:59.999Z,
-  `match_text` ≤ 200 code points. No real log exists; a development database holding such a value
-  could not have stored it (Postgres refused it) except an instant after 9999 or a long
-  `match_text` that compressed into the index, which a dev reset clears.
+  `match_text`, `list_key`, `jpdb_id` ≤ 200, `maximum_interval_days` ≤ 36500. No real log exists.
+  A development server database could not have stored U+0000 (Postgres refused it); an instant
+  after 9999, a long `match_text` or a large `maximum_interval_days` it may hold. **Reset every dev
+  replica together**: the server database, and every dev device's SQLite replica and outbox
+  (`pending_op`), which can hold ops minted under the old schemas that the new server rejects or
+  that the device itself would now refuse on pull.
 - New op types follow the same rule: old clients stop pulling at the first one they do not know.
 - New `settings` keys, new keys inside open JSON shapes, new `origin` values and new rejection
   codes need no version change.

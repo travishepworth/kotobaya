@@ -1,0 +1,20 @@
+{
+  "schema": "op.schema.json",
+  "why": "maximum_interval_days above 36500 (C-6): with a low desired_retention the next Good review would give card.due_at around 1.9e17 ms, beyond Postgres timestamptz, and the server's apply of review.logged would fail on every retry (SYNC.md 2.1 storable values: derived cache columns count too)",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000006",
+    "op_type": "fsrs_params.updated",
+    "op_version": 1,
+    "entity_type": "fsrs_params",
+    "entity_id": "0193a1b2-0006-7000-8000-000000000001",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c006-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "id": "0193a1b2-0006-7000-8000-000000000001",
+      "set": {
+        "desired_retention": 0.1,
+        "maximum_interval_days": 2147483647
+      }
+    }
+  }
+}

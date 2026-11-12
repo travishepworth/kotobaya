@@ -136,6 +136,7 @@ class OpCodecTest {
         "media-content-published-version-over-int4.json" to Expect.Invalid("/payload/content_version"),
         "review-reviewed-at-after-9999.json" to Expect.Invalid("/payload/reviewed_at"),
         "parse-override-match-text-too-long.json" to Expect.Invalid("/payload/match_text"),
+        "fsrs-params-updated-max-interval-over-36500.json" to Expect.Invalid("/payload/set/maximum_interval_days"),
     )
 
     @Test

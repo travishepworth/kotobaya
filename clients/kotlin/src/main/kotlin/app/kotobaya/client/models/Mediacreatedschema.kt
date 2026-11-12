@@ -34,7 +34,7 @@ import com.google.gson.annotations.SerializedName
  * @param source Immutable.
  * @param title Register 'title'.
  * @param coverBlobHash Register 'cover_blob_hash'; null = no cover.
- * @param jpdbId jpdb deck id when source = jpdb. Immutable. Default null.
+ * @param jpdbId jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq).
  */
 
 
@@ -60,7 +60,7 @@ data class Mediacreatedschema (
     @SerializedName("cover_blob_hash")
     val coverBlobHash: kotlin.String? = null,
 
-    /* jpdb deck id when source = jpdb. Immutable. Default null. */
+    /* jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq). */
     @SerializedName("jpdb_id")
     val jpdbId: kotlin.String? = null
 

@@ -295,7 +295,7 @@ for p in sorted((ROOT / "examples/invalid").glob("*.json")):
 
 # ------------------------------------------------------------------ op-level rules beyond JSON Schema (C-6)
 def nul_pointer(v) -> str | None:  # noqa: ANN001
-    """JSON Pointer of the first string or member name containing U+0000 (document order), else None.
+    """Some JSON Pointer to a string or member name containing U+0000 (diagnostic only), else None.
     Iterative, like the depth limit: an op may be 500 deep (SYNC.md 2.1)."""
     stack = [(v, "")]
     while stack:

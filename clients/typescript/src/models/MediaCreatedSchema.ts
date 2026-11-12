@@ -28,7 +28,7 @@ export interface MediaCreatedSchema {
      */
     id: string;
     /**
-     * jpdb deck id when source = jpdb. Immutable. Default null.
+     * jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq).
      */
     jpdbId?: string | null;
     /**

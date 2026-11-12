@@ -63,7 +63,7 @@ class MediacreatedschemaTest : ShouldSpec() {
             //modelInstance.coverBlobHash shouldBe ("TODO")
         }
 
-        // to test the property `jpdbId` - jpdb deck id when source = jpdb. Immutable. Default null.
+        // to test the property `jpdbId` - jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq).
         should("test jpdbId") {
             // uncomment below to test the property
             //modelInstance.jpdbId shouldBe ("TODO")

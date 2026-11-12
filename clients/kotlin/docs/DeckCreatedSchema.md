@@ -9,7 +9,7 @@
 | **type** | [**inline**](#Type) | Immutable. media and list: server-emitted only. |  |
 | **enabled** | **kotlin.Boolean** | false &#x3D; supplies no new cards. Default true. |  [optional] |
 | **language** | [**inline**](#Language) | Default &#39;ja&#39;. |  [optional] |
-| **listKey** | **kotlin.String** | Required iff type &#x3D; list. Slug, e.g. jlpt-n3. |  [optional] |
+| **listKey** | **kotlin.String** | Required iff type &#x3D; list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq). |  [optional] |
 | **mediaId** | **kotlin.String** | Required iff type &#x3D; media; equals id. |  [optional] |
 | **newCardsPerDay** | **kotlin.Int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. |  [optional] |
 | **priority** | **kotlin.Int** | New cards are drawn from enabled decks in ascending (priority, id). Default 0. |  [optional] |

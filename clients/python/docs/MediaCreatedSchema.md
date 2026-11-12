@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **cover_blob_hash** | **str** | Register &#39;cover_blob_hash&#39;; null &#x3D; no cover. | [optional] 
 **id** | **str** | Id of the new media. Equals the envelope&#39;s entity_id. | 
-**jpdb_id** | **str** | jpdb deck id when source &#x3D; jpdb. Immutable. Default null. | [optional] 
+**jpdb_id** | **str** | jpdb deck id when source &#x3D; jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq). | [optional] 
 **kind** | **str** | Register &#39;kind&#39;. | 
 **source** | **str** | Immutable. | 
 **title** | **str** | Register &#39;title&#39;. | 

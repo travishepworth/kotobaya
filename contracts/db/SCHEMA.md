@@ -68,7 +68,10 @@ Implementers: if something you need is missing or wrong here, do not work around
     `text`/`jsonb`, the `integer` range, btree index entry size, RFC 3339-renderable instants) is
     mirrored by a bound in the op schemas (`contracts/sync/SYNC.md` 2.1, "Storable values"), so
     the op-apply path never meets a value the database refuses. A change that adds such a limit
-    adds the schema bound in the same contract change.
+    adds the schema bound in the same contract change. **Derived columns count too**: a cache column
+    computed from op values (`card.due_at`, `interval_days`, `stability`, …) must stay storable for
+    every schema-valid input, which is why `maximum_interval_days` is capped at 36500 (it bounds
+    every interval, so `due_at` stays near or below year 10099, inside `timestamptz`).
 
 ## 3. Clocks and last-writer-wins
 

@@ -31,7 +31,7 @@ class DeckCreatedSchema(BaseModel):
     enabled: Optional[StrictBool] = Field(default=True, description="false = supplies no new cards. Default true.")
     id: Annotated[str, Field(strict=True)] = Field(description="Id of the new deck (for a media deck: equal to media_id). Equals the envelope's entity_id.")
     language: Optional[StrictStr] = Field(default=None, description="Default 'ja'.")
-    list_key: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Required iff type = list. Slug, e.g. jlpt-n3.")
+    list_key: Optional[Annotated[str, Field(strict=True, max_length=200)]] = Field(default=None, description="Required iff type = list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq).")
     media_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Required iff type = media; equals id.")
     name: Annotated[str, Field(min_length=1, strict=True, max_length=200)] = Field(description="Display name; not unique.")
     new_cards_per_day: Optional[Annotated[int, Field(le=2147483647, strict=True, ge=0)]] = Field(default=None, description="Per-deck daily new-card limit; null = only the global limit applies.")

@@ -57,7 +57,7 @@ class FsrsParamsUpdatedSchemaSetTest : ShouldSpec() {
             //modelInstance.learningStepsS shouldBe ("TODO")
         }
 
-        // to test the property `maximumIntervalDays` - Register 'maximum_interval_days'. Column default 36500.
+        // to test the property `maximumIntervalDays` - Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values).
         should("test maximumIntervalDays") {
             // uncomment below to test the property
             //modelInstance.maximumIntervalDays shouldBe ("TODO")

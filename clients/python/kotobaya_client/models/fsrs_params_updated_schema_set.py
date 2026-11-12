@@ -32,7 +32,7 @@ class FsrsParamsUpdatedSchemaSet(BaseModel):
     easy_days: Optional[Annotated[List[Union[Annotated[float, Field(le=1, strict=True, ge=0)], Annotated[int, Field(le=1, strict=True, ge=0)]]], Field(min_length=7, max_length=7)]] = Field(default=None, description="Register 'easy_days': load multiplier per ISO weekday, Monday first. Column default [1,1,1,1,1,1,1].")
     fuzz: Optional[StrictBool] = Field(default=None, description="Register 'fuzz'. Column default true.")
     learning_steps_s: Optional[Annotated[List[Annotated[int, Field(le=2147483647, strict=True, ge=1)]], Field(max_length=20)]] = Field(default=None, description="Register 'learning_steps_s': steps in seconds, in order; [] = none.")
-    maximum_interval_days: Optional[Annotated[int, Field(le=2147483647, strict=True, ge=1)]] = Field(default=None, description="Register 'maximum_interval_days'. Column default 36500.")
+    maximum_interval_days: Optional[Annotated[int, Field(le=36500, strict=True, ge=1)]] = Field(default=None, description="Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values).")
     name: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Register 'name'.")
     relearning_steps_s: Optional[Annotated[List[Annotated[int, Field(le=2147483647, strict=True, ge=1)]], Field(max_length=20)]] = Field(default=None, description="Register 'relearning_steps_s': steps in seconds, in order; [] = none.")
     additional_properties: Dict[str, Any] = {}

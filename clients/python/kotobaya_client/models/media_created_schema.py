@@ -30,7 +30,7 @@ class MediaCreatedSchema(BaseModel):
     """ # noqa: E501
     cover_blob_hash: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Register 'cover_blob_hash'; null = no cover.")
     id: Annotated[str, Field(strict=True)] = Field(description="Id of the new media. Equals the envelope's entity_id.")
-    jpdb_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="jpdb deck id when source = jpdb. Immutable. Default null.")
+    jpdb_id: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq).")
     kind: StrictStr = Field(description="Register 'kind'.")
     source: StrictStr = Field(description="Immutable.")
     title: Annotated[str, Field(min_length=1, strict=True, max_length=500)] = Field(description="Register 'title'.")

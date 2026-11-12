@@ -34,7 +34,7 @@ import com.google.gson.annotations.SerializedName
  * @param type Immutable. media and list: server-emitted only.
  * @param enabled false = supplies no new cards. Default true.
  * @param language Default 'ja'.
- * @param listKey Required iff type = list. Slug, e.g. jlpt-n3.
+ * @param listKey Required iff type = list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq).
  * @param mediaId Required iff type = media; equals id.
  * @param newCardsPerDay Per-deck daily new-card limit; null = only the global limit applies.
  * @param priority New cards are drawn from enabled decks in ascending (priority, id). Default 0.
@@ -66,7 +66,7 @@ data class Deckcreatedschema (
     @SerializedName("language")
     val language: Deckcreatedschema.Language? = null,
 
-    /* Required iff type = list. Slug, e.g. jlpt-n3. */
+    /* Required iff type = list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq). */
     @SerializedName("list_key")
     val listKey: kotlin.String? = null,
 

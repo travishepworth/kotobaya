@@ -54,12 +54,13 @@
       "description": "Immutable."
     },
     "jpdb_id": {
-      "description": "jpdb deck id when source = jpdb. Immutable. Default null.",
+      "description": "jpdb deck id when source = jpdb. Immutable. Default null. At most 200 code points (C-6: unique btree index media_live_jpdb_uq).",
       "anyOf": [
         {
           "type": "string",
           "pattern": "^[^\\u0000]*$",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 200
         },
         {
           "type": "null"

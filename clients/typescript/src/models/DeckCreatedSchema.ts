@@ -32,7 +32,7 @@ export interface DeckCreatedSchema {
      */
     language?: DeckCreatedSchemaLanguageEnum;
     /**
-     * Required iff type = list. Slug, e.g. jlpt-n3.
+     * Required iff type = list. Slug, e.g. jlpt-n3. At most 200 characters (C-6: unique btree index deck_live_list_uq).
      */
     listKey?: string;
     /**

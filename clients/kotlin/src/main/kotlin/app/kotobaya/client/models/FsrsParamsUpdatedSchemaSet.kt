@@ -33,7 +33,7 @@ import com.google.gson.annotations.SerializedName
  * @param easyDays Register 'easy_days': load multiplier per ISO weekday, Monday first. Column default [1,1,1,1,1,1,1].
  * @param fuzz Register 'fuzz'. Column default true.
  * @param learningStepsS Register 'learning_steps_s': steps in seconds, in order; [] = none.
- * @param maximumIntervalDays Register 'maximum_interval_days'. Column default 36500.
+ * @param maximumIntervalDays Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values).
  * @param name Register 'name'.
  * @param relearningStepsS Register 'relearning_steps_s': steps in seconds, in order; [] = none.
  */
@@ -57,7 +57,7 @@ data class FsrsParamsUpdatedSchemaSet (
     @SerializedName("learning_steps_s")
     val learningStepsS: kotlin.collections.List<kotlin.Int>? = null,
 
-    /* Register 'maximum_interval_days'. Column default 36500. */
+    /* Register 'maximum_interval_days'. Column default 36500. At most 36500 (C-6, = the API bound): it caps every derived interval, so card.due_at stays within Postgres timestamptz whatever desired_retention is (SYNC.md 2.1 storable values). */
     @SerializedName("maximum_interval_days")
     val maximumIntervalDays: kotlin.Int? = null,
 
