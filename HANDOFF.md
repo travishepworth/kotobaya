@@ -1,26 +1,26 @@
-# HANDOFF T005
+# HANDOFF T005 (attempt 2)
 
 STATUS: DONE
 BRANCH: t/T005-sync
-CHECK: `contracts/sync/check.sh` → green (not yet wired into `make check`)
+CHECK: `contracts/sync/check.sh` → green (`make check MODULE=contracts` is still a stub)
 
 ## Changed (≤ 6 lines)
-- `contracts/sync/SYNC.md`: protocol, HLC, apply/merge/replay rules, rejected ops, convergence, diagrams.
-- `OPS.md`, `ops/*.schema.json`, `ops/index.json`: 45 ops (SCHEMA.md names).
-- `batch.schema.json` (T004 entry point: `#/$defs/PushRequest|PushResponse|PullResponse|PushRequestLenient`), `op.schema.json`, `common.schema.json`.
-- `examples/`: 53 op examples, 6 batches, 18 must-fail instances, 14 scenarios (`scenario.schema.json`).
-- `tools/model.py`, `tools/validate.py`, `check.sh`; `SUMMARY.md`.
+- Restore: `log_epoch`, `durable_seq` in Push/PullResponse; log reset; acked rows kept until backed up; server HLC raised on restore (SYNC §6.2, §12.5).
+- Clocks: `clock_ahead` (>24 h), `clock_behind` (<2020, review >24 h before card); discard-only, HLC repair (§3.4, §10.4).
+- Fold only if `weights_version` matches (§9.2); duplicate check under lock (§5.2); rebuild finishes at upgrade stop (§10.3).
+- `batch.schema.json`: lenient-validation rules, new `PullResponseLenient`; existing $defs names unchanged.
+- §8.5 deck-item removal covers all equivalent keys; §10.2 rejected parent documented.
+- model.py: Server (derived verdicts, validation subset, restore) and Device sim; new scenario `merge-two-level-cards`.
 
 ## Acceptance → tests
-- Schemas validate all examples → `check.sh`.
-- Every spec conflict case has an example → SYNC.md §12.4, `examples/scenarios/`.
-- Every §4.1 op has schema, rule, example → `validate.py` registry check.
-- "Must also resolve" 1–8 → SYNC.md §11, §8.2, §8.4, §8.4, §8.5, §7.9, §10, §8.4.
+- Merge verdicts derived → `validate.py check_server`.
+- Restore loses nothing (legacy loses) → `restore_story`.
+- Clock codes → `rejected-ops` scenario.
 
 ## New dependencies
-- none (`check.sh` needs python `jsonschema>=4.18`, else uses `uv`).
+- none
 
 ## For the reviewer (≤ 3 lines)
-- Riskiest: no clock-skew rejection (§3.4); discard of a rejected op = full rebuild from seq 0 (§10.3); `fsrs_params.updated` forces replay (§9.2, T006 must confirm).
-- Decisions beyond the ticket: REST-originated ops use the server device id; instants are epoch ms; new `sync_state` key `rebuild_pending`.
-- T004: validate push bodies with `PushRequestLenient`, per-op errors go in `PushResult`. Snapshot blob formats undefined.
+- Reviews made with a clock >24 h off are lost (Discard only).
+- Follow-up for `contracts/db`: SCHEMA.md 5.3 purge wording and four new `sync_state` keys.
+- After a restore, REST and job ops since the last backup are lost.

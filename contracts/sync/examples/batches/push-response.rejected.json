@@ -73,11 +73,45 @@
       }
     },
     {
+      "op_id": "0193a1b2-00ff-7e00-8000-00000000000a",
+      "status": "rejected",
+      "error": {
+        "code": "clock_ahead",
+        "message": "reviewed_at is more than 24 h after server time"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-00000000000b",
+      "status": "rejected",
+      "error": {
+        "code": "clock_ahead",
+        "message": "hlc wall time is more than 24 h after server time"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-00000000000c",
+      "status": "rejected",
+      "error": {
+        "code": "clock_behind",
+        "message": "reviewed_at is before 2020-01-01"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-00000000000d",
+      "status": "rejected",
+      "error": {
+        "code": "clock_behind",
+        "message": "reviewed_at is more than 24 h before the card was created"
+      }
+    },
+    {
       "op_id": "0193a1b2-00ff-700e-8000-000000000004",
       "status": "accepted",
       "seq": 4
     }
   ],
   "high_water_seq": 4,
-  "server_time": 1733584666729
+  "server_time": 1733584666729,
+  "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+  "durable_seq": 0
 }

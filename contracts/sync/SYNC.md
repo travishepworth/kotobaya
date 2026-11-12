@@ -14,7 +14,7 @@ Frozen interface between every replica of the learning data: the server (Postgre
 | `common.schema.json` | Shared scalar types (uuid, hlc, instant, item key, …). |
 | `scenario.schema.json`, `examples/scenarios/` | Machine-readable worked examples (section 13) for the convergence tests. |
 | `examples/ops/`, `examples/batches/`, `examples/invalid/` | One or more examples per op, example HTTP bodies, and instances that must be rejected. |
-| `tools/model.py`, `tools/validate.py`, `check.sh` | Reference model of a replica and the contract's self-check (section 16). Not normative. |
+| `tools/model.py`, `tools/validate.py`, `check.sh` | Reference model of a replica, the server (validation, merge verdicts, restore) and a device's sync procedure; the contract's self-check (section 16). Not normative. |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
 
 Depends on `contracts/db` (tables, registers, clocks, merge columns). Where this document and
@@ -141,6 +141,9 @@ mint():                                   observe(h):            # h = any HLC s
 - `replay_hlc` inside a `review.logged` payload is data, not a clock event: it is never observed.
 - `last` MUST be persisted in the same transaction as the op that was minted or applied.
 - The first HLC of a new replica: `last = (0, 0)` before the first mint.
+- `last` never goes backwards. The only two places where it is *set* rather than advanced are
+  the server's restore procedure (6.2, where it is raised) and the device's clock recovery (10.4,
+  where it is lowered under conditions that keep every HLC unique).
 
 ### 3.3 Uniqueness invariants
 
@@ -152,19 +155,35 @@ mint():                                   observe(h):            # h = any HLC s
 - Per device, HLCs are strictly increasing in mint order, so "ascending hlc" = "the order in
   which the device made its changes".
 
-### 3.4 Clock skew
+### 3.4 Clock skew and the clock bounds
 
 - A replica whose physical clock is behind still mints increasing HLCs (it keeps counting on `last`).
 - A replica whose physical clock is **ahead** mints HLCs in the future. Its writes win
   last-writer-wins comparisons against writes other replicas make before they have seen them.
-  Once an op with a future HLC has been observed, every replica mints above it, so writes made
-  *after* syncing still win. Wall times derived from HLCs (`created_at`, `updated_at`) are then
-  ahead of real time until real time catches up.
-- **The server does not reject ops for clock skew** (rejecting would strand reviews made
-  offline). Instead `PushResponse.server_time` and `PullResponse.server_time` let a client compare:
-  if `|server_time − pt| > 5 minutes` the client MUST show a clock warning in its sync status.
-- Review timing never depends on HLC wall time: `reviewed_at` is carried separately, and replay
-  clamps negative elapsed time to 0 (section 9.3).
+  Once an op with a future HLC has been observed, every replica mints above it. Wall times derived
+  from HLCs (`created_at`, `updated_at`) are then ahead of real time until real time catches up.
+- To bound that damage, the server **rejects** a pushed op (5.3), comparing with `now` = the
+  server's wall clock when it validates the op:
+
+  | Code | Condition |
+  |---|---|
+  | `clock_ahead` | `wall(hlc) > now + 24 h`; or, for `review.logged`, `reviewed_at > now + 24 h`. |
+  | `clock_behind` | `wall(hlc) < FLOOR`; or, for `review.logged`, `reviewed_at < FLOOR` or `reviewed_at < card.created_at − 24 h` (the addressed card row, as stored on the server). |
+
+  `FLOOR` = `1577836800000` (2020-01-01T00:00:00Z). The 24 h tolerance is `86400000` ms; it
+  absorbs ordinary skew and time-zone mistakes, so a correct phone never meets these codes. Ops
+  the server mints itself (REST, jobs, imports with `import_source`) are not checked: imported
+  history is legitimately older than its card.
+- Consequences: no op in the log has an HLC more than 24 h ahead of the server's clock at the
+  time it was accepted, so a wrong date can make edits win for at most a day; and replay never sees
+  a `reviewed_at` decades off (a phone reset to 1970 would otherwise produce a 56-year interval).
+- Everything else is still tolerated: old HLCs, ops addressed to tombstones, `reviewed_at`
+  disagreeing with HLC order (replay clamps negative elapsed time to 0, section 9.3).
+- **Client duties.** `PushResponse.server_time` and `PullResponse.server_time` let a client compare:
+  if `|server_time − pt| > 5 minutes` it MUST show a clock warning in its sync status; if
+  `|server_time − pt| > 24 h` it MUST also stop minting (reviewing and editing are blocked with a
+  "your device clock is wrong" status) until a later response shows the difference below 5 minutes.
+  A rejection with a clock code is handled as in 10.4.
 
 ## 4. Making a change on a device
 
@@ -174,6 +193,9 @@ In **one local transaction**:
 2. Apply it with the local apply function (sections 7–9) — exactly the code path used for pulled ops.
 3. Insert the `pending_op` row (`state = 'pending'`, `created_at` = now).
 4. Persist `hlc_last`.
+
+A device MUST NOT mint while `sync_state.rebuild_pending` is set (10.3) or while its clock is
+known to be more than 24 h off the server's (3.4).
 
 Client duties before minting (the server will reject otherwise, section 5.3):
 
@@ -205,18 +227,24 @@ still in its outbox that address the loser are pushed unchanged.
 
 ### 5.2 Server procedure
 
-The server may fail the **whole request** (HTTP 400, T004) only if the body does not match
-`#/$defs/PushRequestLenient` (a JSON object with `ops`: 1–500 objects each having a UUID `op_id`).
-Everything else is decided **per op**, in array order, so one bad op never blocks the outbox:
+The server validates the body against `#/$defs/PushRequestLenient` **only** (a JSON object with
+`ops`: 1–500 objects each having a UUID `op_id`) and may fail the **whole request** (HTTP 400, T004)
+only if that fails. It never validates the body against `#/$defs/PushRequest`: that would turn one
+op of an unknown type or a malformed op into a 400 for the whole outbox. Everything else is decided
+**per op**, in array order, so one bad op never blocks the outbox.
+
+For each op, **in one transaction that takes advisory lock `7033001` before step 1** (the lock is
+held until commit):
 
 1. **Duplicate?** If `op_id` is already in `change`: result `duplicate` with the original `seq`.
-   Nothing else is looked at (not even whether the content is the same).
+   Nothing else is looked at (not even whether the content is the same). This check MUST run
+   under the lock: otherwise the same op pushed twice concurrently (a retry racing a slow first
+   attempt) passes the check twice and the second insert fails on `change.op_id UNIQUE`.
 2. **Validate** (section 5.3). On failure: result `rejected`; no table is touched, no `change` row.
-3. **Apply**, in one transaction holding advisory lock `7033001`:
-   `observe(op.hlc)`; apply the op (sections 7–9); insert the `change` row; then run collision
-   detection (section 8.1), which may mint, apply and log further ops with
+3. **Apply:** `observe(op.hlc)`; apply the op (sections 7–9); insert the `change` row; then run
+   collision detection (section 8.1), which may mint, apply and log further ops with
    `caused_by_op_id = op.op_id` — in the same transaction, with consecutive `seq`.
-4. Result `accepted` with the op's `seq`.
+4. Commit. Result `accepted` with the op's `seq`.
 
 An accepted op may have **no effect** (it lost a clock comparison, or the row/review id already
 existed). It is still logged, still gets a `seq`, and is still delivered to every replica.
@@ -224,8 +252,8 @@ existed). It is still logged, still gets a `seq`, and is still delivered to ever
 A rejected op does not stop the batch. Ops that depended on it are validated on their own and
 will usually be rejected too (`unknown_reference`).
 
-The server MAY process a batch in one transaction with a savepoint per op, or one transaction per
-op; the results must be the same. If the response is lost the client pushes the same ops again and
+The server MAY process a batch in one transaction holding the lock throughout, with a savepoint
+per op, or one transaction per op; the results must be the same. If the response is lost the client pushes the same ops again and
 gets `duplicate` for those that were committed.
 
 ### 5.3 Validation and rejection codes
@@ -239,6 +267,8 @@ Checked in this order; the first failure decides the code.
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
 | `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
 | `unknown_reference` | A row the op needs does not exist on the server (the target of an update/delete, a card's note, a review's card, …). Tombstoned rows *do* exist. | per op, OPS.md |
+| `clock_ahead` | `wall(hlc)`, or a review's `reviewed_at`, is more than 24 h after the server's clock. | every op; `review.logged` (3.4) |
+| `clock_behind` | `wall(hlc)` before 2020-01-01; or a review's `reviewed_at` before 2020-01-01 or more than 24 h before its card was created. | every op; `review.logged` (3.4) |
 | `invalid_value` | A cross-field or cross-row rule is violated (e.g. `entry_seq` on a kanji note). | per op, OPS.md |
 | `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck). | per op, OPS.md |
 | `immutable` | Attempt to delete or cripple a built-in (note types, the Default preset). | per op, OPS.md |
@@ -247,8 +277,8 @@ Checked in this order; the first failure decides the code.
 - `error.message` is an English diagnostic; clients show it but never parse it.
 - Soft references (`entry_seq`, `sentence_id`, `source_*_id`, `media_id` on spans and overrides,
   `related_ids`) are **never** validated.
-- The server never rejects because of what a clock says: old HLCs, future HLCs and ops addressed
-  to tombstones are all accepted.
+- Apart from the two clock codes (3.4), the server never rejects because of what a clock says:
+  old HLCs, HLCs up to 24 h ahead and ops addressed to tombstones are all accepted.
 - Example with every code: [`examples/batches/push-response.rejected.json`](examples/batches/push-response.rejected.json),
   scenario [`rejected-ops`](examples/scenarios/rejected-ops.json).
 
@@ -258,7 +288,7 @@ Checked in this order; the first failure decides the code.
 
 | `status` | Client action on the `pending_op` row |
 |---|---|
-| `accepted`, `duplicate` | `state = 'acked'`, `acked_seq = seq`. |
+| `accepted`, `duplicate` | `state = 'acked'`, `acked_seq = seq`; `sync_state.hlc_acked = max(hlc_acked, op.hlc)` in the same transaction. |
 | `rejected` | `state = 'rejected'`, `last_error = "<code>: <message>"`. The local effect stays. See section 10. |
 
 - No response, a 5xx or a 429: rows stay `pending`, `attempts += 1`, retry with exponential
@@ -266,12 +296,25 @@ Checked in this order; the first failure decides the code.
 - A 400 for the whole request means a client bug: rows stay `pending`, the error is shown in the
   sync status, retried with the same backoff.
 - A 401/403: stop syncing and ask the user to re-pair / log in. Rows stay `pending`.
-- `acked` rows may be deleted once `pull_seq >= acked_seq`.
-- `high_water_seq` is informational ("n changes to download").
+- An `acked` row may be deleted only once **`acked_seq <= pull_seq` and `acked_seq <= durable_seq`**
+  (the latest `durable_seq` of the current `log_epoch`, 6.2). Until a verified backup covers it, the
+  device's copy is the only one that survives a restore of the server.
+  (This narrows `contracts/db/SCHEMA.md` 5.3, which only says "may be purged once
+  `pull_seq >= acked_seq`".)
+- Before acting on the results, compare `log_epoch` and `high_water_seq` with the stored state as
+  in 6.2. If the log changed, the results are still recorded (they are valid in the new log), and
+  then the log reset of 6.2 starts.
+- Otherwise `high_water_seq` is informational ("n changes to download"); store `durable_seq`.
 
 ## 6. Pull
 
+### 6.1 Pulling
+
 `GET /sync/pull?since=<seq>` — response [`batch.schema.json#/$defs/PullResponse`](batch.schema.json).
+A client validates the body against `#/$defs/PullResponseLenient` (open `op_type` / `op_version`)
+and each op against `op.schema.json` only if it supports that type and version; validating the whole
+body against `PullResponse` would make an old client reject the page instead of applying the ops
+before the first unknown one.
 
 - The server returns `change` rows with `seq > since` in ascending `seq`, at most 1000 (the page
   size and a `limit` parameter are T004's; recommended default 500), from **every** origin,
@@ -285,9 +328,11 @@ Checked in this order; the first failure decides the code.
 
 **Client procedure**, one local transaction per page:
 
+0. Compare `log_epoch` / `high_water_seq` with the stored state (6.2). If the log changed, discard
+   the page (apply nothing) and start the log reset.
 1. For each op in order: `observe(op.hlc)`; apply it (sections 7–9). Ops with
    `device_applies = false` in `ops/index.json` are skipped (cursor still advances).
-2. Set `sync_state.pull_seq = next_since`; persist `hlc_last`.
+2. Set `sync_state.pull_seq = next_since`, `durable_seq`; persist `hlc_last`.
 3. Commit; if `has_more`, pull again.
 
 - **Own ops come back** in the pull. The device applies them like any other op; they are no-ops
@@ -300,9 +345,64 @@ Checked in this order; the first failure decides the code.
   diagnostic; the cursor advances.
 - A device never validates or rejects pulled ops.
 
-**Sync cycle:** push until the outbox has no `pending` rows, then pull until `has_more` is false,
-then set `last_sync_at`. Run on app open, after a review session, and in the background while the
+**Sync cycle:** push until the outbox has no `pending` rows; if `rebuild_pending` is set, run the
+rebuild (10.3); otherwise pull until `has_more` is false; then delete the `acked` rows allowed by
+5.4 and set `last_sync_at`. Run on app open, after a review session, and in the background while the
 server is reachable.
+
+### 6.2 Log identity: backups and restores
+
+A server restored from a backup has lost the tail of its log, and its `seq` restarts below values
+devices have already seen. Without detection a device that pulled up to `seq` 150 asks for
+`since=150`, gets nothing, and never sees the new ops 101–120; and if devices had already purged
+their acked ops, the ops 101–150 are gone everywhere. Two values in every `PushResponse` and
+`PullResponse` prevent this:
+
+| Property | Definition |
+|---|---|
+| `log_epoch` | UUID naming the log. Created with the database; replaced by a new UUIDv7 on **every restore** (and on any other event that can make `seq` values repeat or disappear). Never reused. |
+| `durable_seq` | Highest `seq` *s* such that every `change` row with `seq <= s` is in a **verified** backup that any future restore will start from. `0 <= durable_seq <= high_water_seq`; never decreases within an epoch. Set by the backup job after verifying a backup (T-deploy/T-server choose where it is stored). A server configured with no backups reports `durable_seq = high_water_seq` (there is nothing it could be restored from). |
+
+**Server, on restore** (T-server implements, T-deploy's restore script triggers):
+
+1. Restore the newest verified backup. Restoring an older one loses ops that devices have
+   already purged (they trusted the newer `durable_seq`); the restore tool MUST warn and require
+   confirmation.
+2. In the restored database, before serving any request: new `log_epoch`; `durable_seq` = the
+   highest `seq` in the restored `change` (that backup is verified).
+3. **Clock:** set `last` = the greatest of the restored `last`, every `change.hlc` in the restored
+   log, and `(now + 24 h, 0)` — unless T-server keeps a copy of `last` outside the database that
+   is known to be at least as new as the lost state, in which case that copy replaces the third
+   term. Every op accepted before the loss had `wall(hlc) <= its receive time + 24 h` (3.4) and
+   every op the server minted was at most one tick above those or its own clock, so this bound is
+   above every HLC the lost log contained: the server's clock never goes backwards and never
+   reissues a lost server HLC.
+4. Server-emitted ops that were lost are re-derived where possible: merges are re-emitted when
+   the devices push their ops again (8.1). Ops minted for REST callers or jobs since the backup
+   (REST edits, `media.created`, `*.published`, suggestions) are lost; jobs SHOULD be re-run.
+
+**Device, on every response** (push or pull), compare before using it:
+
+- No `sync_state.log_epoch` stored yet (new device, or an app that predates this key): store
+  the response's value; no reset.
+- The response's `log_epoch` differs from the stored one, **or** `high_water_seq < pull_seq`
+  (a log that went backwards without an epoch change; treat it the same):
+  **log reset**.
+
+**Log reset.** In one local transaction: every `pending_op` row in state `acked` becomes
+`pending` (`acked_seq = NULL`, `attempts = 0`); store the new `log_epoch` and `durable_seq`; set
+`rebuild_pending = "1"`. Then the sync cycle continues as usual: it pushes every pending row
+(the server answers `duplicate` for ops the backup contained and `accepted` with a new `seq` for
+ops it lost) and runs the rebuild (10.3), which wipes everything the device had pulled from the
+lost log and pulls the new one from 0. The procedure is restartable at any point.
+
+- Ops re-pushed by one device can be rejected with `unknown_reference` if they depend on a lost
+  op of another device that has not re-pushed yet (a review of a card another phone created).
+  They are ordinary rejected ops (section 10): the user can Retry once the other device has synced.
+- A device's ops that were in the lost tail and are no longer in its outbox cannot be recovered;
+  with the rule of 5.4 this happens only if an older backup than the newest verified one was restored.
+- Worked example: 12.5.
+
 
 ## 7. Applying an op
 
@@ -551,6 +651,12 @@ Readers resolve through `merged_into_id` (one hop; it is never a chain):
   `entry_seq`, else `n:<resolved note id>`. If several live items of one deck have the same
   effective identity they are **one** item: the one with the smallest `(position, item_key)`;
   the others are ignored. An item whose resolved note is tombstoned is hidden.
+- **Removing such an item** (the user removes what the UI shows as one item): the client MUST mint
+  `deck.item_removed` for **every** live key of that deck with the same effective identity, as
+  resolved locally, in one transaction. Removing only the displayed key would let the next one
+  surface as if the removal had not happened. A key that only becomes equivalent later (a merge
+  that arrives after the removal) is not covered and the item reappears; the user removes it
+  again. Re-adding uses one `deck.item_put` on the canonical key (`e:<seq>` if the note has an entry).
 - **Confusables:** both ids are resolved. Rows that resolve to the same unordered pair and
   reason are one pair whose status is that of the row with the highest `(rank, hlc)`; a row whose
   two ids resolve to the same note is ignored; a pair with a tombstoned resolved note is hidden.
@@ -586,8 +692,8 @@ row is tombstoned.
 
 | Event (the op was applied, not merely received) | Cards | Kind |
 |---|---|---|
-| `review.logged` (schedule-feeding type) that sorts **after** the target's last folded review, or the target has none | target | incremental fold |
-| `review.logged` (schedule-feeding type) that sorts **before** the target's `last_review_id` row in `(hlc, id)` order — out-of-order arrival | target | full replay |
+| `review.logged` (schedule-feeding type) that sorts **after** the target's last folded review (or the target has none), **and** the target's cache is current: `card.weights_version` = the effective preset's `weights_version` | target | incremental fold |
+| `review.logged` (schedule-feeding type) that sorts **before** the target's `last_review_id` row in `(hlc, id)` order — out-of-order arrival; **or** sorts after it but the cache is not current (`weights_version` mismatch, 9.3) | target | full replay |
 | `review.undone` that changes a schedule-feeding review from not-undone to undone | target | full replay |
 | `card.merged` | survivor | full replay |
 | `card.preset_set` that wins (directly or forwarded) | the card it won on | full replay |
@@ -608,7 +714,10 @@ Nothing else touches a cache: not suspend/bury/flag, not note edits, not setting
 - An empty replay set (or one ending in `manual`/`reset`) gives `state = 'new'`, `due_at = NULL`.
 - A replay is done **in the transaction that applied the triggering op**. The only event that
   may be handled lazily is the `weights_version` mismatch, because the mismatch itself is the
-  durable marker; such a card MUST be replayed before its cache is next read.
+  durable marker; such a card MUST be replayed before its cache is next read — **and before
+  anything is folded into it**. Folding a review into a stale cache and stamping the current
+  version would make it permanently different from a replica that replayed first; hence the fold
+  condition in 9.2. A full replay always stamps `weights_version` = the effective preset's.
 - Caches of cards that are tombstoned or merged losers need not be maintained.
 - A device answering a card computes the new cache itself (it is the "incremental fold" of the
   `review.logged` it mints, section 4).
@@ -626,19 +735,31 @@ still applied**, so the device knowingly differs from the server until the user 
 - The sync status MUST show the number of rejected ops, and a list with, per op: what it was
   (`op_type`, a human label of the entity), when (`created_at`), and why (`last_error`; the code
   is mapped to an i18n string, unknown codes to a generic one).
-- With a correct client, rejections do not happen. They indicate a client bug, a client newer
-  than the server (`unsupported_op`), or tampering.
+- With a correct client and a correct device clock, rejections do not happen. They indicate a
+  client bug, a client newer than the server (`unsupported_op`), a wrong device clock
+  (`clock_ahead`, `clock_behind`, 10.4), a dependency on an op lost in a server restore (6.2), or
+  tampering.
 
 ### 10.2 The two user actions
 
 | Action | Effect |
 |---|---|
-| **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. |
+| **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
 | **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
 
 The UI SHOULD offer "discard all". There is no automatic cascade: if a rejected `note.created`
 is discarded while a rejected `card.created` for it is kept, the kept op simply has no effect
 after the rebuild (7.7) and stays listed.
+
+**A rejected parent takes its children with it.** If `note.created` N is rejected (say
+`invalid_value`), then N's `card.created` ops and every `review.logged`, `card.suspended`, … for
+those cards are rejected too (`unknown_reference`), because the server never had N. Retry cannot
+help until N itself is accepted, and N cannot change: an op is immutable once minted. So the only
+exit is Discard, and **the reviews made on those cards are lost**. There is deliberately no
+re-home action (re-minting the children against another note would need per-op rewriting rules
+for a case that only a client bug produces). Clients MUST therefore validate a new note locally
+with the same rules as the server (OPS.md, `note.created` rejections) before minting it, and the
+rejection list SHOULD group children under their rejected parent so the user sees one item.
 
 ### 10.3 Rebuild: how a local effect is rolled back
 
@@ -646,19 +767,62 @@ Replicas keep no undo information, so the effect of a discarded op is removed by
 learning tables from the server's log. Requires connectivity; while `rebuild_pending` is set
 the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
 
+0. Push until no row is `pending` (section 5). Pushing is allowed while `rebuild_pending` is
+   set; it makes the rebuild download the device's own ops instead of re-applying them in step 3.
+   If the server is unreachable, stop and try again in the next cycle.
 1. In one transaction: delete every row of every table in `Learning.sq` and `Media.sq`
    (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"`. Keep
-   `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`).
-2. Pull from 0 until `has_more` is false (section 6).
-3. In one transaction: re-apply, in ascending `hlc`, every `pending_op` row in state `pending`
-   or `rejected` with the local apply function (their effects are not in the log); then delete
-   the `rebuild_pending` key.
+   `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`,
+   `hlc_acked`, `log_epoch`, `durable_seq`).
+2. Pull from 0 until `has_more` is false (section 6), **or until the pull stops at an op this
+   client does not support** (*upgrade required*, section 6). In the second case the rebuild
+   still continues with step 3: the device then holds a correct prefix of the log, exactly like a
+   device that stopped there in normal operation, and the pull resumes at the same op after the
+   app update. If a page shows that the log changed again (6.2), start a new log reset.
+3. In one transaction: re-apply, in ascending `hlc`, with the local apply function, every
+   `pending_op` row in state `pending` or `rejected` (their effects are not in the log), and every
+   `acked` row with `acked_seq > pull_seq` (only after an *upgrade required* stop: the device's own
+   ops beyond the stop, so they do not vanish from its screens; pulling them later is a no-op,
+   7.8); then delete the `rebuild_pending` key. Reviewing is possible again — also in the *upgrade required* case.
 4. Snapshots are re-installed by the normal mechanism (`installed_content_version` is 0 again;
    the blobs are usually still in `blob_cache`).
 
 The procedure is restartable: if the app dies, `rebuild_pending` is still set and it starts
-again from step 1. `sync_state.rebuild_pending` is a key defined by this contract (absent =
-no rebuild in progress).
+again from step 0.
+
+### 10.4 Clock rejections
+
+`clock_ahead` and `clock_behind` mean the device's clock was wrong when it minted the op. They are
+listed like every rejected op (10.1), with **Discard** as the only action.
+
+- After a `clock_ahead`, the device's `hlc_last` is itself far in the future, so every op it mints
+  from now on would be rejected too. Discarding the `clock_ahead` rows therefore also repairs the
+  clock, in the same transaction as the discard (10.2):
+  `hlc_last` = the greatest of `hlc_acked` and the `hlc` of every `pending_op` row that is kept
+  (states `pending`, `acked`, `rejected`). This is safe: every HLC of this device that is in the
+  log is ≤ `hlc_acked` or belongs to a kept row (an op whose push response was lost is still
+  `pending`), and the discarded HLCs never left the device, so no HLC can repeat and the device's
+  logged ops stay in mint order. The rebuild that follows removes the future clocks from the local
+  registers and observes the log again.
+- Discard of `clock_ahead` rows is possible only while the device's clock is correct
+  (`|server_time − pt| <= 5 min` at the last response) and no `pending` row has
+  `wall(hlc) > server_time + 24 h` (such rows are pushed, rejected and discarded with the others).
+- `clock_behind` needs no clock repair (the device's `hlc_last` is fine; only `reviewed_at` or a
+  fresh replica's first HLCs were wrong). Discard as usual.
+- What is lost: the reviews and edits made while the clock was wrong. That is the price of the
+  bound in 3.4; the warning of 3.4 is shown long before a clock is 24 h off.
+
+### 10.5 Device bookkeeping keys
+
+Keys of `sync_state` defined by this contract, in addition to those listed in `Local.sq`
+(`device_id`, `pull_seq`, `hlc_last`, `last_sync_at`, `dict_release_id`):
+
+| Key | Value | Absent means |
+|---|---|---|
+| `rebuild_pending` | `"1"` while a rebuild (10.3) is in progress. | no rebuild in progress |
+| `log_epoch` | The `log_epoch` (6.2) the device's `pull_seq` and `acked_seq` values belong to. | not yet known; the next response sets it |
+| `durable_seq` | Latest `durable_seq` (6.2) of that epoch, decimal. | `"0"` |
+| `hlc_acked` | Greatest `hlc` among this device's ops that the server acknowledged (`accepted` or `duplicate`). Only ever increases. | no op acknowledged yet |
 
 REST callers never see rejected ops: a REST request that would produce an invalid op fails with
 an HTTP error (T004) and nothing is minted.
@@ -823,8 +987,53 @@ sequenceDiagram
 | Duplicate deleted before push; loser `deleted_at` | 8.2, 8.4 | `duplicate-deleted-before-push` |
 | Survivor deleted concurrently | 8.4 | `survivor-deleted-concurrently` |
 | Re-match races (arrival-order dependence) | 8.4 | `rematch-arrival-order-a`, `-b` |
-| Rejected ops | 5.3, 10 | `rejected-ops` |
+| Rejected ops, clock bounds | 5.3, 3.4, 10 | `rejected-ops` |
+| Card merged twice, undos on both losers | 8.2, 9.1, 7.9 | `merge-two-level-cards` |
+| Server restored from a backup | 6.2 | 12.5 (protocol simulation in `tools/validate.py`) |
 | Retried push | 5.2 | `examples/batches/push-response.retry.json` |
+
+### 12.5 The server is restored from a backup
+
+Checked by `tools/validate.py` (`restore_story`), which runs the same story with the attempt-1
+rules (A's reviews are lost) and with the rules of 6.2 (nothing is lost, all three converge).
+
+```mermaid
+sequenceDiagram
+    participant A as Phone A
+    participant S as Server
+    participant B as Phone B
+    A->>S: push note, card
+    S-->>A: seq 1, 2 (epoch E1)
+    B->>S: pull since=0
+    S-->>B: seq 1, 2
+    Note over S: verified backup of seq 1..2, durable_seq = 2
+    A->>S: push 5 reviews
+    S-->>A: accepted seq 3..7, durable_seq 2
+    A->>S: pull since=2
+    S-->>A: seq 3..7
+    Note over A: acked_seq 3..7 > durable_seq 2, rows kept
+    Note over S: disk lost, restored to seq 2, new epoch E2, clock raised to now + 24 h
+    B->>S: push tag note, suspend card
+    S-->>B: accepted seq 3, 4 (epoch E2)
+    Note over B: epoch changed, log reset, rows pending again, re-push (duplicate), rebuild from 0
+    A->>S: pull since=7
+    S-->>A: epoch E2, high_water 4
+    Note over A: epoch changed, page discarded, log reset
+    A->>S: re-push 5 reviews
+    S-->>A: accepted seq 5..9
+    A->>S: pull since=0 (rebuild)
+    S-->>A: seq 1..9
+    B->>S: pull since=4
+    S-->>B: seq 5..9
+```
+
+| Step | Attempt-1 rules | Rules of 6.2 |
+|---|---|---|
+| A after pulling seq 3..7 | purges its 5 acked rows | keeps them (`acked_seq > durable_seq`) |
+| B's push after the restore | gets seq 3, 4 again | same; B notices the new epoch and resets |
+| A's next pull | `since=7`, empty page; A never sees seq 3, 4 | new epoch: A re-pushes its reviews (seq 5..9), rebuilds |
+| End state | A's reviews exist only on A (until A is rebuilt: then nowhere) | server, A and B identical, all 5 reviews present |
+| Server clock | restored `last` (behind ops already minted) | raised past every HLC the lost log could hold |
 
 ## 13. Scenario files (for the convergence and fuzz tests)
 
@@ -834,7 +1043,8 @@ sequenceDiagram
   server-emitted ops included, with the ids and clocks the server "happened" to mint.
 - `expected.rows`: partial rows per table in device representation; `expected.absent`: keys that
   must not exist; `expected.replay_sets`: card id → review ids in replay order.
-- `rejected`: pushed ops the server must refuse, with the expected code.
+- `rejected`: pushed ops the server must refuse, with the expected code (and, optionally, the
+  server's receive time for the clock checks).
 - `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
   `tools/validate.py` with 300 random interleavings and re-deliveries each).
 
@@ -844,9 +1054,12 @@ How implementations use them:
   in order, compare with `expected`; then apply random interleavings as described and compare
   under the section 11 projection. The fuzz test generalises this with generated logs.
 - **Server:** push each device's ops (those whose `device_id` is not the server's) in `log`
-  order; the server must emit ops equal to the log's server-emitted ones **except for `op_id`,
-  `hlc`, `seq` and the `id` of a server-created card**; then compare tables with `expected`.
-  Push every `rejected[].op` and expect `rejected[].code`.
+  order, with the server clock set to `wall(op.hlc)`; ops the server minted without a cause (job
+  output such as `confusable.suggested`) are applied as the server's own. The server must emit ops
+  equal to the log's server-emitted ones **except for `op_id`, `hlc`, `seq` and the `id` of a
+  server-created card**; then compare tables with `expected`. Push every `rejected[].op` and
+  expect `rejected[].code`. `tools/validate.py` does exactly this with the model's `Server`, so
+  every verdict in the scenario logs is derived, not hand-written.
 
 ## 14. Cross-check: table ↔ op ↔ API
 
@@ -884,7 +1097,9 @@ All 45 ops also flow through `POST /sync/push` (client-emittable ones) and `GET 
 - New op types follow the same rule: old clients stop pulling at the first one they do not know.
 - New `settings` keys, new keys inside open JSON shapes, new `origin` values and new rejection
   codes need no version change.
-- The HTTP body shapes (`batch.schema.json`) are closed; changing them is an API version matter (T004).
+- The HTTP body shapes (`batch.schema.json`) are closed for senders; changing them is an API
+  version matter (T004). Receivers validate against the lenient shapes, so a server MAY add a
+  top-level response property without breaking existing clients.
 
 ## 16. Verifying
 
@@ -895,8 +1110,10 @@ contracts/sync/check.sh
 Needs `python3` with the `jsonschema` package (≥ 4.18), or `uv` (the script then runs
 `uv run --with jsonschema`). It checks that every schema is valid, every op type has a schema, an
 example and an OPS.md section with a conflict rule, every example validates and every
-`examples/invalid` instance is rejected, and that every scenario's expected state follows from the
-rules (reference model) including the idempotency and interleaving claims.
+`examples/invalid` instance is rejected, that every scenario's expected state follows from the
+rules (reference model) including the idempotency and interleaving claims, that the model server
+derives every merge verdict and every checked rejection code of the scenarios, and that the
+restore story of 12.5 converges without loss.
 
 ## 17. Edge cases — index
 
@@ -910,7 +1127,13 @@ rules (reference model) including the idempotency and interleaving claims.
 | Same review id in two ops | Second is accepted, no effect. | OPS.md |
 | Same thing created twice (different ids) | Notes/cards: server merge. Deck items, spans, confusables, word status, settings: natural key, one row. Grammar points, user decks, presets, note types: two rows (no natural key). | 8, 7.4 |
 | Op arrives out of order | Clock rule / replay; never rejected for being old. | 7.1, 9.2 |
-| Clock ahead or behind | No rejection; warning; reviews use `reviewed_at`. | 3.4 |
+| Clock ahead or behind by less than 24 h | Accepted; warning above 5 min; reviews use `reviewed_at`. | 3.4 |
+| Clock ahead by more than 24 h, or a review before 2020 / before its card | `clock_ahead` / `clock_behind`; Discard only; clock repaired. | 3.4, 10.4 |
+| Server restored from a backup | New `log_epoch`; devices re-push un-backed-up ops and rebuild. | 6.2, 12.5 |
+| Rebuild meets an unknown op | Rebuild ends at it; reviewing resumes; *upgrade required*. | 10.3 |
+| Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews. | 10.2 |
+| Removing a deck item shown once for several keys | One `deck.item_removed` per equivalent key. | 8.5 |
+| Same op pushed twice concurrently | Duplicate check under the lock; second gets `duplicate`. | 5.2 |
 | Op for a deleted row | Applied to the tombstone; row stays deleted. | 7.3 |
 | Child created under a deleted parent | Accepted; hidden. | 7.3 |
 | Op for a merged row | Applied to it and forwarded. | 8.3 |

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Sync batch",
-  "description": "Entry point for the sync HTTP bodies. A document is exactly one of the three shapes; reference a specific one as batch.schema.json#/$defs/PushRequest, #/$defs/PushResponse or #/$defs/PullResponse. SYNC.md sections 5 and 6.",
+  "description": "Entry point for the sync HTTP bodies. A document is exactly one of the three shapes; reference a specific one as batch.schema.json#/$defs/PushRequest, #/$defs/PushResponse or #/$defs/PullResponse. SYNC.md sections 5 and 6. Two lenient shapes say what a RECEIVER validates the whole body against: the server validates a push body against #/$defs/PushRequestLenient only (a mismatch is HTTP 400) and checks each op on its own, so a single op can be answered with unsupported_op or schema_invalid while the rest of the batch is processed; a client validates a pull body against #/$defs/PullResponseLenient and checks each op against op.schema.json only when it knows the op_type and op_version, so an old client applies the ops before the first unknown one and stops there (SYNC.md 6, 'upgrade required'). PushRequest and PullResponse are what a correct SENDER produces.",
   "oneOf": [
     {
       "$ref": "#/$defs/PushRequest"
@@ -50,7 +50,7 @@
       "required": [
         "ops"
       ],
-      "description": "The only whole-body check a server may fail a push request on (HTTP 400). Everything stricter is checked per op and reported as a 'rejected' result, so one bad op never blocks the rest of the outbox.",
+      "description": "What the server validates a push body against; the only whole-body check it may fail a push request on (HTTP 400). Everything stricter (op.schema.json, the envelope rules, the per-op checks of SYNC.md 5.3) is checked per op and reported as a 'rejected' result with unsupported_op, schema_invalid, ..., so one bad op never blocks the rest of the outbox.",
       "properties": {
         "ops": {
           "type": "array",
@@ -110,11 +110,13 @@
               "type": "string",
               "pattern": "^[a-z][a-z0-9_]*$",
               "examples": [
-                "schema_invalid",
                 "unsupported_op",
+                "schema_invalid",
                 "device_mismatch",
                 "server_only",
                 "unknown_reference",
+                "clock_ahead",
+                "clock_behind",
                 "invalid_value",
                 "invalid_target",
                 "immutable"
@@ -166,7 +168,9 @@
       "required": [
         "results",
         "high_water_seq",
-        "server_time"
+        "server_time",
+        "log_epoch",
+        "durable_seq"
       ],
       "description": "Body of a successful POST /sync/push response.",
       "properties": {
@@ -180,11 +184,20 @@
         "high_water_seq": {
           "type": "integer",
           "minimum": 0,
-          "description": "Highest change.seq committed when the response was built; >= every seq in results. Informational (pending pull count)."
+          "description": "Highest change.seq committed when the response was built; >= every seq in results. A client whose pull_seq is greater starts a log reset (SYNC.md 6.2); otherwise informational (pending pull count)."
         },
         "server_time": {
           "$ref": "common.schema.json#/$defs/instant_ms",
-          "description": "Server wall clock when the response was built; clients use it only to warn about clock skew."
+          "description": "Server wall clock when the response was built; clients compare it with their own clock to warn about skew and to block minting when it exceeds 24 h (SYNC.md 3.4)."
+        },
+        "log_epoch": {
+          "$ref": "common.schema.json#/$defs/uuid",
+          "description": "Identity of the server's log (SYNC.md 6.2). Changes only when the log is replaced (a restore from backup): seq values of different epochs are unrelated. A client that sees a value different from the one it stored starts a log reset."
+        },
+        "durable_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest seq s such that every change row with seq <= s is in a verified backup that any restore will start from (SYNC.md 6.2). <= high_water_seq; never decreases within one log_epoch. A device keeps each acked pending_op row until acked_seq <= durable_seq."
         }
       }
     },
@@ -197,7 +210,9 @@
         "next_since",
         "has_more",
         "high_water_seq",
-        "server_time"
+        "server_time",
+        "log_epoch",
+        "durable_seq"
       ],
       "description": "Body of GET /sync/pull?since=<seq>.",
       "properties": {
@@ -231,11 +246,127 @@
         "high_water_seq": {
           "type": "integer",
           "minimum": 0,
-          "description": "Highest change.seq committed when the response was built."
+          "description": "As in PushResponse."
         },
         "server_time": {
           "$ref": "common.schema.json#/$defs/instant_ms",
           "description": "As in PushResponse."
+        },
+        "log_epoch": {
+          "$ref": "common.schema.json#/$defs/uuid",
+          "description": "Identity of the server's log (SYNC.md 6.2). Changes only when the log is replaced (a restore from backup): seq values of different epochs are unrelated. A client that sees a value different from the one it stored starts a log reset."
+        },
+        "durable_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest seq s such that every change row with seq <= s is in a verified backup that any restore will start from (SYNC.md 6.2). <= high_water_seq; never decreases within one log_epoch. A device keeps each acked pending_op row until acked_seq <= durable_seq."
+        }
+      }
+    },
+    "PullResponseLenient": {
+      "title": "PullResponseLenient",
+      "type": "object",
+      "required": [
+        "ops",
+        "next_since",
+        "has_more",
+        "high_water_seq",
+        "server_time",
+        "log_epoch",
+        "durable_seq"
+      ],
+      "description": "What a client validates a pull body against. Same as PullResponse, except that each op is only required to be an object with a known envelope shape and an open op_type / op_version: a client checks an op against op.schema.json only if it supports that op_type and op_version, and stops at the first op it does not support (SYNC.md 6). Unknown top-level properties are ignored, so the server may add some.",
+      "properties": {
+        "ops": {
+          "type": "array",
+          "maxItems": 1000,
+          "description": "Log entries with seq > since, in strictly ascending seq, from every origin including the requester itself.",
+          "items": {
+            "type": "object",
+            "required": [
+              "op_id",
+              "op_type",
+              "op_version",
+              "entity_type",
+              "entity_id",
+              "device_id",
+              "hlc",
+              "payload",
+              "seq",
+              "caused_by_op_id"
+            ],
+            "properties": {
+              "op_id": {
+                "$ref": "common.schema.json#/$defs/uuid"
+              },
+              "op_type": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+                "description": "May be a type this client does not know."
+              },
+              "op_version": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "May be higher than this client supports."
+              },
+              "entity_type": {
+                "type": "string"
+              },
+              "entity_id": {
+                "type": "string"
+              },
+              "device_id": {
+                "$ref": "common.schema.json#/$defs/uuid"
+              },
+              "hlc": {
+                "$ref": "common.schema.json#/$defs/hlc"
+              },
+              "payload": {
+                "type": "object"
+              },
+              "seq": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "caused_by_op_id": {
+                "anyOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "next_since": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cursor for the next pull: seq of the last op returned, or the request's since when ops is empty."
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "true = more ops exist after next_since; pull again immediately."
+        },
+        "high_water_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "As in PushResponse."
+        },
+        "server_time": {
+          "$ref": "common.schema.json#/$defs/instant_ms",
+          "description": "As in PushResponse."
+        },
+        "log_epoch": {
+          "$ref": "common.schema.json#/$defs/uuid",
+          "description": "Identity of the server's log (SYNC.md 6.2). Changes only when the log is replaced (a restore from backup): seq values of different epochs are unrelated. A client that sees a value different from the one it stored starts a log reset."
+        },
+        "durable_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest seq s such that every change row with seq <= s is in a verified backup that any restore will start from (SYNC.md 6.2). <= high_water_seq; never decreases within one log_epoch. A device keeps each acked pending_op row until acked_seq <= durable_seq."
         }
       }
     }

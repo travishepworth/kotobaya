@@ -1,0 +1,11 @@
+{
+  "schema": "batch.schema.json#/$defs/PullResponse",
+  "why": "log_epoch and durable_seq are required: without them a device cannot detect a restored server (SYNC.md 6.2)",
+  "instance": {
+    "ops": [],
+    "next_since": 14,
+    "has_more": false,
+    "high_water_seq": 14,
+    "server_time": 1733584666744
+  }
+}

@@ -80,6 +80,10 @@
           },
           "why": {
             "type": "string"
+          },
+          "received_at": {
+            "$ref": "common.schema.json#/$defs/instant_ms",
+            "description": "Server receive time used for the clock checks (SYNC.md 3.4). Default: wall(hlc) of the last log op."
           }
         }
       }

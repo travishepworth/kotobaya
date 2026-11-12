@@ -1,0 +1,400 @@
+{
+  "id": "merge-two-level-cards",
+  "title": "A card merged twice (L1 -> M -> W) with undos addressed to both losers",
+  "covers": [
+    "merge: card.merged into a card that is itself merged later (flattening)",
+    "replay set: reviews of a loser two levels down count for the final survivor",
+    "undo: an undo addressed to a loser's review removes it from the survivor's replay set",
+    "undo: earliest undo wins, also for a merged card's review",
+    "server verdicts: derived from the device ops by the model's Server (SYNC.md 8.1)"
+  ],
+  "narrative": [
+    "A has W (食べる, card Wc) and M (持つ, card Mc). B, offline, creates its own L1 for 持つ with card L1c and reviews L1c (r1, T+11).",
+    "The server merges L1 into M (seq 6) and, when L1c arrives, L1c into Mc (seq 8): the card was created on a note that is already merged.",
+    "A reviews Mc (r2, learning, T+16) and Wc (r3, T+17), then re-matches M to 食べる (T+20). That collides with W: M is merged into W (seq 13) and Mc into Wc (seq 14). L1c.merged_into_id is re-pointed from Mc to Wc (never a chain).",
+    "B, still offline, undoes r1 (T+30) and reviews L1c again (r4, T+31). A undoes r2 (T+32); B undoes r2 too, later (T+33): the earliest undo (A's, T+32) is the one recorded.",
+    "Wc's replay set is every non-undone schedule-feeding review addressed to Wc, Mc or L1c: r3, r4, in (hlc, id) order. r1 and r2 are undone."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000003",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1315720
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000004",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000002",
+        "note_id": "0193a1b2-0001-7000-8000-000000000002",
+        "kind": "meaning"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000005",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000003",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1315720,
+        "fields": {
+          "sentence": "荷物を持つ"
+        }
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000006",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000003",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000002"
+      },
+      "seq": 6,
+      "caused_by_op_id": "0193a1b2-00ff-7010-8000-000000000005"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000007",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00a-0001-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000003",
+        "note_id": "0193a1b2-0001-7000-8000-000000000003",
+        "kind": "meaning"
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000008",
+      "op_type": "card.merged",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0001-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0002-7000-8000-000000000003",
+        "survivor_id": "0193a1b2-0002-7000-8000-000000000002"
+      },
+      "seq": 8,
+      "caused_by_op_id": "0193a1b2-00ff-7010-8000-000000000007"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000009",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00b-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000003",
+        "reviewed_at": 1733584666635,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 3000
+      },
+      "seq": 9,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000a",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c010-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000002",
+        "card_id": "0193a1b2-0002-7000-8000-000000000002",
+        "reviewed_at": 1733584666640,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 3000
+      },
+      "seq": 10,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000b",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c011-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000003",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666641,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 3000
+      },
+      "seq": 11,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000c",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1358280
+        }
+      },
+      "seq": 12,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000d",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c065-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 13,
+      "caused_by_op_id": "0193a1b2-00ff-7010-8000-00000000000c"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000e",
+      "op_type": "card.merged",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c065-0001-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0002-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0002-7000-8000-000000000001"
+      },
+      "seq": 14,
+      "caused_by_op_id": "0193a1b2-00ff-7010-8000-00000000000c"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-00000000000f",
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "review_id": "0193a1b2-0003-7000-8000-000000000001"
+      },
+      "seq": 15,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000010",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000004",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01f-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000004",
+        "card_id": "0193a1b2-0002-7000-8000-000000000003",
+        "reviewed_at": 1733584666655,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 3000
+      },
+      "seq": 16,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000011",
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c020-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "review_id": "0193a1b2-0003-7000-8000-000000000002"
+      },
+      "seq": 17,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7010-8000-000000000012",
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c021-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "review_id": "0193a1b2-0003-7000-8000-000000000002"
+      },
+      "seq": 18,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "merged_into_id": null,
+          "deleted_at": null
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0002-7000-8000-000000000001",
+          "deleted_at": 1733584666725
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000003",
+          "merged_into_id": "0193a1b2-0002-7000-8000-000000000001",
+          "deleted_at": 1733584666724
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "merged_into_id": null,
+          "deleted_at": null,
+          "entry_seq": 1358280,
+          "fields": {
+            "sentence": "荷物を持つ"
+          }
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666725
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666724
+        }
+      ],
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000003",
+          "undone_hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+          "undone_at": 1733584666654
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000002",
+          "undone_hlc": "0193a1b2c020-0000-01931f3e-0000-7000-8000-0000000000a1",
+          "undone_at": 1733584666656
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000001",
+          "undone_hlc": null
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000004",
+          "card_id": "0193a1b2-0002-7000-8000-000000000003",
+          "undone_hlc": null
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000003",
+        "0193a1b2-0003-7000-8000-000000000004"
+      ]
+    }
+  }
+}

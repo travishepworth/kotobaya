@@ -25,20 +25,35 @@
 - **Reviews:** all kept. A card's schedule is recomputed from scratch whenever a review arrives
   that belongs earlier than one already counted, a review is undone, cards are merged, or the
   card's preset or its settings change.
-- **Rejected ops** (should only happen with a client bug or a too-new client) stay visible on the
+- **A wrong phone clock is bounded.** The server refuses an op stamped more than a day ahead of its
+  own clock, and a review dated before 2020 or before its card existed. The phone warns at 5
+  minutes off and stops recording reviews at a day off. A refused op can only be discarded, which
+  also puts the phone's clock state right.
+- **A restored server is detected.** Every sync answer names the log (`log_epoch`, new after every
+  restore) and says how far the last verified backup reaches (`durable_seq`). A phone keeps its
+  own synced changes until a backup covers them; when it sees a new log it sends them again and
+  re-downloads everything. The server's clock is moved forward on restore so it never repeats one.
+- **Rejected ops** (should only happen with a client bug, a too-new client or a wrong clock) stay visible on the
   device with the reason. The user can retry or discard. Discarding rebuilds the phone's learning
   data from the server's log, because that is the only rollback that is certainly correct.
 - **"Converged" is defined precisely** for the tests: all rows equal, except that a note or card
   that was merged away is compared only on its id, what it was merged into, and when.
-- **14 machine-readable scenarios** cover every conflict case in the spec and every follow-up
+- **15 machine-readable scenarios** cover every conflict case in the spec and every follow-up
   from the database review. A small reference model replays each one in 300 random orders with
-  duplicate deliveries and checks the result is always the same.
+  duplicate deliveries and checks the result is always the same. The model also plays the server:
+  every merge decision in the scenarios is computed from the phones' ops, not written by hand, and
+  a simulated backup-restore shows the old rules losing reviews and the new ones losing none.
 
 ## Alternatives rejected
 
-- **Rejecting ops whose clock is far in the future.** Protects against a phone with a wrong
-  date, but would strand every review made on that phone while offline. Instead nothing is
-  rejected for its clock, and clients warn when their clock is more than 5 minutes off the server's.
+- **Accepting any clock (attempt 1).** A phone set a year ahead would have hidden cards for a year
+  on every device and won every edit conflict; one reset to 1970 would have produced a 56-year
+  interval. Rejected in review: the reviews made with a badly wrong clock are lost instead.
+- **Re-pairing a phone to fix a clock that ran ahead.** Correct, but it would strand the phone's
+  other unsynced changes under the old device id. Lowering the clock to the last value the server
+  acknowledged is just as safe.
+- **Re-homing the children of a rejected note** onto another note. Needs rewriting rules per op
+  type for a case only a client bug produces; the client validates new notes locally instead.
 - **Undo information per op, to roll back a rejected op precisely.** More code on the path that
   must never be wrong, for an event that should not occur. Rebuilding from the log is slower but
   obviously right.
@@ -56,10 +71,9 @@
 
 ## Three choices most worth a second look
 
-1. **A wrong phone clock is tolerated, not rejected.** If a phone's date is set a month ahead
-   and it syncs, its edits win conflicts for a month and "last updated" times are a month ahead
-   everywhere until real time catches up. Reviews are unaffected. If you would rather refuse such
-   ops, say so before the server ticket: it changes the rejected-op flow.
+1. **Reviews made with a clock more than a day off are lost.** The server refuses them; the phone
+   blocks reviewing once it notices, but anything recorded before the first sync is discarded.
+   Below a day, edits from a fast clock can win conflicts for up to that day.
 2. **Discarding a rejected op re-downloads everything.** On a phone with years of history that
    is a long sync, during which reviewing is blocked, and it needs a connection. It should
    essentially never happen; if it turns out to, a targeted rollback can replace it later without
@@ -84,6 +98,17 @@
 - A newer value typed into a duplicate replaces the original's value for that field.
 - One op type (media parse status) relies on being delivered in server order. It always is.
 - A brand-new device downloads the whole history; the log is never trimmed in v1.
+- If a new note is refused by the server, the reviews of its cards are refused too and can only
+  be discarded (a client bug is the only cause; the client checks notes before creating them).
+- After a server restore, changes made through the REST API or by server jobs since the last
+  backup are lost (jobs should be re-run); phones' changes are not. Restoring anything but the
+  newest verified backup can lose changes phones have already cleared.
+- Phones keep their synced changes until a backup covers them; with backups disabled the server
+  reports everything as covered.
+- Removing a word from a deck removes every entry for it in that deck, but if two copies of the
+  word are merged only later, the second entry can reappear.
+- A rebuild that stops at an op the app does not know finishes with what it has; reviewing works,
+  the rest arrives after an app update.
 
 ## Smaller things to know
 
@@ -92,5 +117,9 @@
 - A phone restored from a backup must be paired again.
 - The format of the downloadable snapshots (media content, generated deck contents) is not
   defined here; the ops only announce a version and a file hash.
-- One extra bookkeeping key on the phone (`rebuild_pending`) is defined here, in the existing
-  key/value table.
+- Four extra bookkeeping keys on the phone (`rebuild_pending`, `log_epoch`, `durable_seq`,
+  `hlc_acked`) are defined here, in the existing key/value table. The database contract's wording
+  "acked rows may be purged once pulled" is narrowed here to "once pulled and backed up"; the
+  database contract should say the same and list the keys (follow-up for `contracts/db`).
+- The server stores `log_epoch` and `durable_seq` where the server and deploy tickets choose; the
+  backup job sets `durable_seq` after verifying a backup.

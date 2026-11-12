@@ -13,6 +13,12 @@
    the log gives the expected state on a server replica and on a device replica,
    replaying the log twice changes nothing, and - where order_free is claimed -
    random interleavings with random re-deliveries converge.
+6. The server's verdicts in every scenario log (note.merged, card.merged and the
+   card.created it makes) are DERIVED: the model's Server is given only the
+   device ops and must emit exactly the logged ones (SYNC.md 8.1). Every rejected
+   op whose code the model decides gets that code.
+7. The backup-restore story (SYNC.md 12.5) loses data under the attempt-1 rules
+   and converges without loss under log_epoch / durable_seq.
 """
 from __future__ import annotations
 
@@ -28,7 +34,8 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 sys.path.insert(0, str(Path(__file__).parent))
-from model import SERVER, MissingRow, Replica  # noqa: E402
+from model import (CHECKED_CODES, SERVER, VERDICT_OPS, Device, MissingRow, Replica,  # noqa: E402
+                   Server, wall)
 
 ROOT = Path(__file__).resolve().parent.parent
 PERMUTATIONS = 300
@@ -123,6 +130,7 @@ for p, op in sorted(example_ops.items(), key=lambda kv: kv[1]["hlc"]):
 
 # ------------------------------------------------------------------ examples/batches
 SHAPES = {"push-request": "PushRequest", "push-response": "PushResponse", "pull-response": "PullResponse"}
+LENIENT = {"PushRequest": "PushRequestLenient", "PullResponse": "PullResponseLenient"}
 for p in sorted((ROOT / "examples/batches").glob("*.json")):
     where, doc = str(p.relative_to(ROOT)), load(p)
     shape = SHAPES.get(p.name.split(".")[0])
@@ -131,8 +139,9 @@ for p in sorted((ROOT / "examples/batches").glob("*.json")):
         continue
     must_validate("batch.schema.json", doc, where)
     must_validate(f"batch.schema.json#/$defs/{shape}", doc, where)
+    if shape in LENIENT:
+        must_validate(f"batch.schema.json#/$defs/{LENIENT[shape]}", doc, where)
     if shape == "PushRequest":
-        must_validate("batch.schema.json#/$defs/PushRequestLenient", doc, where)
         hlcs = [o["hlc"] for o in doc["ops"]]
         if hlcs != sorted(set(hlcs)) or len({o["device_id"] for o in doc["ops"]}) != 1:
             fail(f"{where}: ops must come from one device in strictly ascending hlc")
@@ -177,6 +186,42 @@ def interleave(log, rng: random.Random) -> list:
                 order.append(again)
                 probe.apply(again)
     return order
+
+
+def check_server(sc: dict, where: str) -> None:
+    """Derive the server's verdicts from the device ops (SYNC.md 8.1) and check the rejection codes."""
+    log = sc["log"]
+    derived = [o for o in log if o["device_id"] == SERVER and o["caused_by_op_id"] and o["op_type"] in VERDICT_OPS]
+    hlcs = iter([o["hlc"] for o in derived])
+    card_ids = iter([o["payload"]["id"] for o in derived if o["op_type"] == "card.created"])
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op),
+                 mint=lambda: next(hlcs, "ffffffffffff-ffff-" + SERVER), new_card_id=lambda: next(card_ids, "?"))
+    for op in log:
+        if op["device_id"] == SERVER and op["caused_by_op_id"] and op["op_type"] in VERDICT_OPS:
+            continue  # must be produced by the server below
+        clean = {k: v for k, v in op.items() if k not in ("seq", "caused_by_op_id")}
+        if op["device_id"] == SERVER:
+            srv.accept(clean)  # e.g. confusable.suggested from a job: minted by the server, not pushed
+            continue
+        srv.pt = wall(op["hlc"])
+        res = srv.push([clean])["results"][0]
+        if res["status"] != "accepted":
+            fail(f"{where}: the model server does not accept seq {op['seq']} ({res})")
+            return
+    for want, got in zip(log, srv.log):
+        keys = [k for k in want if not (k == "op_id" and want["device_id"] == SERVER)]
+        if any(want[k] != got[k] for k in keys):
+            fail(f"{where}: seq {want['seq']}: the server's derived verdict differs: expected "
+                 f"{want['op_type']} {want['payload']}, model emits {got['op_type']} {got['payload']}")
+            return
+    if len(srv.log) != len(log):
+        fail(f"{where}: the model server emits {len(srv.log)} log entries, the scenario has {len(log)}")
+    now = wall(log[-1]["hlc"])
+    for r in sc.get("rejected", []):
+        if r["code"] in CHECKED_CODES:
+            got = srv.validate(r["op"], r.get("received_at", now))
+            if got != r["code"]:
+                fail(f"{where}: rejected op {r['op']['op_id']}: expected {r['code']}, model says {got}")
 
 
 for p in sorted((ROOT / "examples/scenarios").glob("*.json")):
@@ -247,6 +292,69 @@ for p in sorted((ROOT / "examples/scenarios").glob("*.json")):
                 diff = [(t, key) for t in canon for key in set(canon[t]) | set(got[t]) if canon[t].get(key) != got[t].get(key)]
                 fail(f"{where}: interleaving {k} does not converge; differs at {diff[:3]}; order = {[o['seq'] for o in order]}")
                 break
+
+    check_server(sc, where)
+
+
+# ------------------------------------------------------------------ restore story (SYNC.md 12.5)
+def restore_story(legacy: bool):
+    A, B = "01931f3e-0000-7000-8000-0000000000a1", "01931f3e-0000-7000-8000-0000000000b2"
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op))
+    a, b = Device(A, legacy), Device(B, legacy)
+    t = [0x0193a1b2c000]
+
+    def tick(*who):
+        t[0] += 1000
+        for x in who:
+            x.pt = t[0]
+
+    tick(srv, a, b)
+    note, card = a.new_id(1), a.new_id(2)
+    a.make("note.created", {"id": note, "note_type_id": "00000000-0000-7000-8000-000000000101", "entry_seq": 1358280})
+    a.make("card.created", {"id": card, "note_id": note, "kind": "meaning"})
+    a.sync(srv)
+    b.sync(srv)
+    snap = srv.backup()  # covers seq 1..2
+    reviews = []
+    for _ in range(5):  # A's reviews: seq 3..7, acked and pulled
+        tick(srv, a, b)
+        rid = a.new_id(3)
+        reviews.append(rid)
+        a.make("review.logged", {"id": rid, "card_id": card, "reviewed_at": a.pt, "utc_offset_min": 540,
+                                 "review_type": "scheduled", "rating": 3, "button": "good"})
+    a.sync(srv)
+    hlc_before = srv.hlc_last
+    tick(srv, a, b)
+    srv.restore(snap)  # back to seq 2; B's next ops reuse seq 3..
+    if srv.hlc_last[:17] < hlc_before[:17]:
+        fail("restore story: the server's hlc went backwards")
+    tick(srv, a, b)
+    b.make("note.updated", {"id": note, "set": {"tags": ["restored"]}})
+    b.make("card.suspended", {"id": card})
+    b.sync(srv)
+    for _ in range(2):
+        tick(srv, a, b)
+        a.sync(srv)
+        b.sync(srv)
+    return srv, a, b, reviews
+
+
+srv, a, b, reviews = restore_story(legacy=True)
+if all(r in srv.r.t["review_log"] for r in reviews):
+    fail("restore story: under the attempt-1 rules A's reviews should be lost (the story no longer shows the bug)")
+srv, a, b, reviews = restore_story(legacy=False)
+lost = [r for r in reviews if r not in srv.r.t["review_log"]]
+if lost:
+    fail(f"restore story: A's reviews {lost} were lost")
+sp = srv.r.projection()
+sp["parse_override"] = {}
+for d in (a, b):
+    if d.r.projection() != sp:
+        fail(f"restore story: device {d.id[-2:]} does not converge with the server")
+    if d.rebuild_pending or any(r["state"] != "acked" for r in d.outbox):
+        fail(f"restore story: device {d.id[-2:]} has unfinished work")
+if srv.r.t["card"][next(iter(srv.r.t["card"]))]["suspended"] is not True:
+    fail("restore story: B's edit after the restore is missing")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

@@ -10,7 +10,8 @@ Conventions used in every entry:
 - **Entity**: `entity_type`, and how `entity_id` is derived from the payload.
 - **Payload**: the JSON Schema is the definition of every property (meaning, constraints, default).
 - **Server rejects**: checks in addition to the common ones that apply to every pushed op
-  (`schema_invalid`, `unsupported_op`, `device_mismatch`, `server_only`; SYNC.md 5.3). Devices never
+  (`schema_invalid`, `unsupported_op`, `device_mismatch`, `server_only`, and `clock_ahead` /
+  `clock_behind` on `wall(hlc)`; SYNC.md 5.3, 3.4). Devices never
   validate pulled ops: whatever is in the log is applied.
 - **Conflict rule**: what happens when the op meets a concurrent or later-arriving op on the same value.
   An op that loses is still accepted, logged and delivered to everyone.
@@ -259,10 +260,10 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Emitter:** client (any replica).
 - **Entity:** `review_log`; `entity_id` = `id`.
 - **Payload:** [`ops/review.logged.schema.json`](ops/review.logged.schema.json)
-- **Server rejects:** `unknown_reference`: `card_id` does not exist on the server. `server_only`: `import_source` or `replay_hlc` is non-null in a pushed op.
+- **Server rejects:** `unknown_reference`: `card_id` does not exist on the server. `server_only`: `import_source` or `replay_hlc` is non-null in a pushed op. `clock_ahead`: `reviewed_at` is more than 24 h after the server's clock. `clock_behind`: `reviewed_at` is before 2020-01-01 (`1577836800000`), or more than 24 h before the addressed card's `created_at` (SYNC.md 3.4). Not checked for server-minted imports.
 - **Conflict rule:** Never conflicts. A `review_log.id` that already exists makes the op a no-op even if its content differs (first write wins). The op is still accepted and logged.
 - **Apply:** Insert one row: `device_id` = the op's `device_id`; `hlc` = `replay_hlc` if given, else the op's hlc; `undone_at`, `undone_hlc` NULL; omitted nullable properties NULL. Inserted also when the card or its note is tombstoned or merged; `card_id` is stored as given and never rewritten.
-- **Replay:** Only for `review_type` scheduled, learning, manual (drill and cram never touch a cache). Target card T = the card, or its survivor if merged. If T has no `last_review_id`, or the new row sorts after T's last folded review in `(hlc, id)` order: fold it in (incremental). Otherwise: **full replay** of T (SYNC.md 9.2).
+- **Replay:** Only for `review_type` scheduled, learning, manual (drill and cram never touch a cache). Target card T = the card, or its survivor if merged. If (T has no `last_review_id`, or the new row sorts after T's last folded review in `(hlc, id)` order) **and** `T.weights_version` equals the effective preset's `weights_version`: fold it in (incremental). Otherwise: **full replay** of T (SYNC.md 9.2) — never fold into a cache that a `fsrs_params.published` has made stale.
 - **Example:** [`review.logged.import.json`](examples/ops/review.logged.import.json), [`review.logged.json`](examples/ops/review.logged.json), [`review.logged.manual.json`](examples/ops/review.logged.manual.json)
 
 ### `review.undone`
@@ -366,6 +367,7 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Payload:** [`ops/deck.item_removed.schema.json`](ops/deck.item_removed.schema.json)
 - **Server rejects:** `unknown_reference`: deck does not exist, or the key is `n:<id>` and the note does not exist. `invalid_target`: the deck's `type` is not user.
 - **Conflict rule:** Same register as `deck.item_put`. Reversible: a later put brings the item back.
+- **Client duty:** when the user removes an item, mint one `deck.item_removed` for **every** live key of the deck with the same effective identity (SYNC.md 8.5: `n:<loser>` keys and the `e:<seq>` key of the same word), in one transaction; otherwise the next equivalent key surfaces.
 - **Apply:** When applied, the op determines every column: `position` = 0, `occurrence_count` = 0, `added_at` = `deleted_at` = wall(hlc), `hlc`. If no row exists, a tombstone row is inserted, so that an older put arriving later loses.
 - **Replay:** None.
 - **Example:** [`deck.item_removed.json`](examples/ops/deck.item_removed.json)
@@ -520,7 +522,7 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Server rejects:** Always `server_only` when pushed.
 - **Conflict rule:** Higher version wins: applied iff `weights_version` > the stored one. The server increments it under the op-apply lock, so versions are unique per preset.
 - **Apply:** Set `weights_version`, `fsrs_version`, `weights`, `optimized_at`, `optimizer_stats`; `updated_at` = max(`updated_at`, wall(hlc)). Applied to tombstoned presets too.
-- **Replay:** **Yes** - every card whose effective preset is this one now has `card.weights_version` <> the preset's and must be replayed before its cache is next read (may be done lazily; the mismatch is the durable marker).
+- **Replay:** **Yes** - every card whose effective preset is this one now has `card.weights_version` <> the preset's and must be replayed before its cache is next read or folded into (may be done lazily; the mismatch is the durable marker; SYNC.md 9.2-9.3).
 - **Example:** [`fsrs_params.published.json`](examples/ops/fsrs_params.published.json)
 
 ## `media`

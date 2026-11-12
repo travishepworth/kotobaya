@@ -32,5 +32,7 @@
     }
   ],
   "high_water_seq": 14,
-  "server_time": 1733584666824
+  "server_time": 1733584666824,
+  "log_epoch": "0193a1b2-00ee-7000-8000-000000000001",
+  "durable_seq": 2
 }

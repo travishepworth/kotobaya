@@ -6,10 +6,17 @@ self-consistent (the expected state really follows from the rules, and the
 order-independence claims hold). If the model and the documents disagree, the
 documents win and the model has a bug.
 
-It models a *pure replica*: it applies the ops it is given. It does not validate
-or reject (server, SYNC.md 5.2), does not detect collisions and emit merges
-(server, SYNC.md 8.1), and does not compute FSRS state: instead of the card cache
-it exposes each card's replay set (SYNC.md 9.1).
+Three parts:
+
+- `Replica`: a *pure replica*. It applies the ops it is given (sections 7-9). It does
+  not compute FSRS state: instead of the card cache it exposes each card's replay set
+  (SYNC.md 9.1).
+- `Server`: a Replica plus what only the server does: validation (a subset of the
+  rejection codes, `CHECKED_CODES`), the collision verdicts that emit `note.merged` /
+  `card.merged` / `card.created` (SYNC.md 8.1), the log with `seq`, `log_epoch`,
+  `durable_seq`, backup and restore (SYNC.md 5.5, 6.2).
+- `Device`: a Replica plus the outbox and the device's sync procedure: push, pull,
+  garbage collection of acked rows, log reset and rebuild (SYNC.md 5.4, 6, 10.3).
 
 Rows use the device representation: instants are epoch milliseconds, arrays are
 JSON arrays.
@@ -17,6 +24,8 @@ JSON arrays.
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 
 SERVER = "00000000-0000-7000-8000-000000000001"
 DEFAULT_PRESET = "00000000-0000-7000-8000-000000000010"
@@ -39,6 +48,17 @@ PRESET_DEFAULTS = {"desired_retention": 0.9, "maximum_interval_days": 36500, "le
                    "relearning_steps_s": [600], "fuzz": True, "easy_days": [1] * 7}
 
 
+INDEX = {m["op_type"]: m for m in json.loads(
+    (Path(__file__).resolve().parent.parent / "ops/index.json").read_text(encoding="utf-8"))["ops"]}
+DAY_MS = 86_400_000
+FLOOR_MS = 1_577_836_800_000  # 2020-01-01T00:00:00Z, SYNC.md 3.4
+# Rejection codes the model's Server decides. Others (device_mismatch, invalid_value, invalid_target,
+# immutable) need auth or per-op rules the model does not implement; the model accepts those ops.
+CHECKED_CODES = ("unsupported_op", "schema_invalid", "server_only", "unknown_reference", "clock_ahead",
+                 "clock_behind")
+VERDICT_OPS = {"note.merged", "card.merged", "card.created"}  # what 8.1 may emit
+
+
 class MissingRow(Exception):
     """The op references a row this replica does not have (cannot happen in seq order)."""
 
@@ -46,6 +66,28 @@ class MissingRow(Exception):
 def wall(hlc: str) -> int:
     """Wall-clock milliseconds of an HLC = the op's wall time."""
     return int(hlc[:12], 16)
+
+
+def hlc_mint(last: str, pt: int, device: str) -> str:
+    """mint() of SYNC.md 3.2. `last` is a full HLC string ('' = (0, 0)); only its (ms, ctr) part counts."""
+    ms, ctr = (int(last[:12], 16), int(last[13:17], 16)) if last else (0, 0)
+    if pt > ms:
+        ms, ctr = pt, 0
+    elif ctr < 0xFFFF:
+        ctr += 1
+    else:
+        ms, ctr = ms + 1, 0
+    return f"{ms:012x}-{ctr:04x}-{device}"
+
+
+def hlc_observe(last: str, h: str) -> str:
+    """observe() of SYNC.md 3.2."""
+    return h if not last or h[:17] > last[:17] else last
+
+
+def entity_id(op_type: str, payload: dict) -> str:
+    return "|".join(part[1:-1] if part.startswith("'") else str(payload[part])
+                    for part in INDEX[op_type]["entity_id"])
 
 
 def is_empty(v) -> bool:
@@ -454,3 +496,301 @@ class Replica:
         pk = PRIMARY_KEY.get(table, ["id"])
         hits = [r for r in self.t[table].values() if all(r.get(k) == partial[k] for k in pk)]
         return hits[0] if hits else None
+
+
+# ====================================================================== server
+class Server:
+    """The server replica: validation, collision verdicts, the log (SYNC.md 5, 6, 8.1).
+
+    new_card_id(), mint() and new_op_id() may be injected so that a test can make the server
+    'happen' to pick the ids and clocks a scenario's log shows; by default it makes its own."""
+
+    def __init__(self, schema_problems=None, new_card_id=None, mint=None, new_op_id=None):
+        self.r = Replica(device=False)
+        self.log: list[dict] = []
+        self.by_op_id: dict[str, int] = {}
+        self.seq = 0
+        self.epoch_n = 1
+        self.log_epoch = self._epoch_id(1)
+        self.durable_seq = 0
+        self.hlc_last = ""
+        self.pt = 0
+        self._n = 0
+        self.schema_problems = schema_problems
+        self._new_card_id = new_card_id or (lambda: self._uuid(0x0c))
+        self._mint = mint or self._own_mint
+        self._new_op_id = new_op_id or (lambda: self._uuid(0x0e))
+
+    @staticmethod
+    def _epoch_id(n: int) -> str:
+        return f"0193a1b2-00ee-7000-8000-{n:012x}"
+
+    def _uuid(self, kind: int) -> str:
+        self._n += 1
+        return f"0193a1b2-5{kind:03x}-7000-8000-{self._n:012x}"
+
+    def _own_mint(self) -> str:
+        return hlc_mint(self.hlc_last, self.pt, SERVER)
+
+    # ---------------------------------------------------------------- validation (5.3)
+    def validate(self, op: dict, now: int):
+        t, p = op.get("op_type"), op.get("payload", {})
+        if t not in INDEX or op.get("op_version") != INDEX[t]["op_version"]:
+            return "unsupported_op"
+        if (self.schema_problems and self.schema_problems(op)) or op["entity_type"] != INDEX[t]["entity_type"] \
+                or op["entity_id"] != entity_id(t, p) or op["hlc"][18:] != op["device_id"]:
+            return "schema_invalid"
+        if INDEX[t]["emitter"] == "server" or op["device_id"] == SERVER \
+                or (t == "deck.created" and p.get("type") in ("media", "list")) \
+                or (t == "review.logged" and (p.get("import_source") is not None or p.get("replay_hlc") is not None)) \
+                or (t == "word.status_set" and p.get("origin") == "jpdb_import"):
+            return "server_only"
+        try:
+            copy.deepcopy(self.r).apply(op)
+        except MissingRow:
+            return "unknown_reference"
+        w = wall(op["hlc"])
+        if w > now + DAY_MS or (t == "review.logged" and p["reviewed_at"] > now + DAY_MS):
+            return "clock_ahead"
+        if w < FLOOR_MS or (t == "review.logged" and (
+                p["reviewed_at"] < FLOOR_MS
+                or p["reviewed_at"] < self.r.t["card"][p["card_id"]]["created_at"] - DAY_MS)):
+            return "clock_behind"
+        return None
+
+    # ---------------------------------------------------------------- log
+    def _log(self, op: dict, cause) -> dict:
+        self.seq += 1
+        entry = {**op, "seq": self.seq, "caused_by_op_id": cause}
+        self.log.append(entry)
+        self.by_op_id[op["op_id"]] = self.seq
+        return entry
+
+    def _emit(self, op_type: str, payload: dict, cause: str) -> dict:
+        h = self._mint()
+        self.hlc_last = hlc_observe(self.hlc_last, h)
+        op = {"op_id": self._new_op_id(), "op_type": op_type, "op_version": 1,
+              "entity_type": INDEX[op_type]["entity_type"], "entity_id": entity_id(op_type, payload),
+              "device_id": SERVER, "hlc": h, "payload": payload}
+        self.r.apply(op)
+        return self._log(op, cause)
+
+    def accept(self, op: dict) -> int:
+        """Step 3 of SYNC.md 5.2 for an op that passed validation (or one the server minted itself)."""
+        self.hlc_last = hlc_observe(self.hlc_last, op["hlc"])
+        before = copy.deepcopy(self.r.t["card"]) if op["op_type"] == "card.created" else None
+        self.r.apply(op)
+        entry = self._log(op, None)
+        self._verdicts(op, before)
+        return entry["seq"]
+
+    def push(self, ops: list) -> dict:
+        """POST /sync/push (SYNC.md 5.2). Returns a PushResponse."""
+        results = []
+        for op in ops:
+            if op["op_id"] in self.by_op_id:
+                results.append({"op_id": op["op_id"], "status": "duplicate", "seq": self.by_op_id[op["op_id"]]})
+                continue
+            code = self.validate(op, self.pt)
+            if code:
+                results.append({"op_id": op["op_id"], "status": "rejected",
+                                "error": {"code": code, "message": code}})
+                continue
+            results.append({"op_id": op["op_id"], "status": "accepted", "seq": self.accept(op)})
+        return {"results": results, **self._meta()}
+
+    def pull(self, since: int, limit: int = 500) -> dict:
+        """GET /sync/pull (SYNC.md 6). Returns a PullResponse."""
+        page = [o for o in self.log if o["seq"] > since][:limit]
+        more = bool(page) and page[-1]["seq"] < self.seq
+        return {"ops": copy.deepcopy(page), "next_since": page[-1]["seq"] if page else since, "has_more": more,
+                **self._meta()}
+
+    def _meta(self) -> dict:
+        return {"high_water_seq": self.seq, "server_time": self.pt, "log_epoch": self.log_epoch,
+                "durable_seq": self.durable_seq}
+
+    # ---------------------------------------------------------------- backup / restore (6.2)
+    def backup(self):
+        """A verified backup of everything committed so far; durable_seq advances to it."""
+        snap = copy.deepcopy((self.r, self.log, self.by_op_id, self.seq, self.hlc_last))
+        self.durable_seq = self.seq
+        return snap
+
+    def restore(self, snap):
+        """Restore a backup: new epoch, durable_seq = the backup's seq, clock never backwards."""
+        self.r, self.log, self.by_op_id, self.seq, restored_last = copy.deepcopy(snap)
+        self.epoch_n += 1
+        self.log_epoch = self._epoch_id(self.epoch_n)
+        self.durable_seq = self.seq
+        floor = f"{self.pt + DAY_MS:012x}-0000-{SERVER}"  # no op minted before the loss can be above this
+        last = restored_last
+        for o in self.log:
+            last = hlc_observe(last, o["hlc"])
+        self.hlc_last = hlc_observe(last, floor)
+
+    # ---------------------------------------------------------------- verdicts (8.1)
+    def _live_card(self, note_id: str, kind: str, exclude=None):
+        hits = sorted(c["id"] for c in self.r.t["card"].values()
+                      if c["note_id"] == note_id and c["kind"] == kind and c["deleted_at"] is None
+                      and c["id"] != exclude)
+        return hits[0] if hits else None
+
+    def _merge_card_into_note(self, card: dict, survivor_note: str, cause: str):
+        target = self._live_card(survivor_note, card["kind"])
+        if target is None:
+            target = self._new_card_id()
+            self._emit("card.created", {"id": target, "note_id": survivor_note, "kind": card["kind"]}, cause)
+        self._emit("card.merged", {"loser_id": card["id"], "survivor_id": target}, cause)
+
+    def _verdicts(self, op: dict, cards_before):
+        t, p, h = op["op_type"], op["payload"], op["hlc"]
+        notes, cards = self.r.t["note"], self.r.t["card"]
+        if t == "note.created" or (t == "note.updated" and "entry_seq" in p["set"]
+                                   and notes[p["id"]]["clocks"].get("entry_seq") == h):
+            n = notes[p["id"]]
+            if n["deleted_at"] is not None or n["merged_into_id"]:
+                return
+            for col in ("entry_seq", "kanji_literal", "grammar_point_id"):
+                if n.get(col) is None:
+                    continue
+                w = [x for x in notes.values() if x["id"] != n["id"] and x["deleted_at"] is None
+                     and x.get(col) == n[col]]
+                if w:
+                    self._emit("note.merged", {"loser_id": n["id"], "survivor_id": w[0]["id"]}, op["op_id"])
+                    for c in sorted((c for c in cards.values() if c["note_id"] == n["id"]
+                                     and c["deleted_at"] is None and not c["merged_into_id"]),
+                                    key=lambda c: (c["kind"], c["id"])):
+                        self._merge_card_into_note(c, w[0]["id"], op["op_id"])
+                    return
+        if t == "card.created" and p["id"] not in cards_before:
+            c, n = cards[p["id"]], notes[p["note_id"]]
+            if n["merged_into_id"]:
+                self._merge_card_into_note(c, n["merged_into_id"], op["op_id"])
+            else:
+                other = self._live_card(n["id"], c["kind"], exclude=c["id"])
+                if other:
+                    self._emit("card.merged", {"loser_id": c["id"], "survivor_id": other}, op["op_id"])
+
+
+# ====================================================================== device
+class Device:
+    """A device replica with its outbox and sync procedure (SYNC.md 4, 5.4, 6, 10.3).
+
+    legacy=True reproduces attempt-1 behaviour (purge acked rows once pulled; no log identity),
+    to show the restore failure that log_epoch / durable_seq fix."""
+
+    def __init__(self, device_id: str, legacy: bool = False):
+        self.id, self.legacy = device_id, legacy
+        self.r = Replica(device=True)
+        self.outbox: list[dict] = []  # pending_op rows: op, state, acked_seq, last_error
+        self.pull_seq = 0
+        self.log_epoch = None
+        self.durable_seq = 0
+        self.hlc_last = ""
+        self.hlc_acked = ""
+        self.rebuild_pending = False
+        self.pt = 0
+        self._n = 0
+
+    def new_id(self, kind: int) -> str:
+        self._n += 1
+        return f"0193a1b2-{kind:04x}-7000-8000-{self.id[-4:]}{self._n:08x}"
+
+    def make(self, op_type: str, payload: dict) -> dict:
+        """SYNC.md 4: mint, apply locally, queue."""
+        assert not self.rebuild_pending, "no minting while a rebuild is pending"
+        self.hlc_last = hlc_mint(self.hlc_last, self.pt, self.id)
+        op = {"op_id": self.new_id(0xff), "op_type": op_type, "op_version": 1,
+              "entity_type": INDEX[op_type]["entity_type"], "entity_id": entity_id(op_type, payload),
+              "device_id": self.id, "hlc": self.hlc_last, "payload": payload}
+        self.r.apply(op)
+        self.outbox.append({"op": op, "state": "pending", "acked_seq": None, "last_error": None})
+        return op
+
+    # ---------------------------------------------------------------- log identity (6.2)
+    def _log_changed(self, resp: dict) -> bool:
+        if self.legacy:
+            return False
+        if self.log_epoch is None:
+            self.log_epoch = resp["log_epoch"]
+        return resp["log_epoch"] != self.log_epoch or resp["high_water_seq"] < self.pull_seq
+
+    def _start_log_reset(self, resp: dict):
+        """One transaction: every acked row back to pending, new epoch, rebuild_pending."""
+        for row in self.outbox:
+            if row["state"] == "acked":
+                row.update(state="pending", acked_seq=None)
+        self.log_epoch = resp["log_epoch"]
+        self.durable_seq = resp["durable_seq"]
+        self.rebuild_pending = True
+
+    def _note_meta(self, resp: dict):
+        if not self.legacy:
+            self.durable_seq = resp["durable_seq"]
+
+    # ---------------------------------------------------------------- push (5.4)
+    def push(self, server: Server):
+        while True:
+            batch = sorted((r for r in self.outbox if r["state"] == "pending"), key=lambda r: r["op"]["hlc"])[:500]
+            if not batch:
+                return
+            resp = server.push([copy.deepcopy(r["op"]) for r in batch])
+            for row, res in zip(batch, resp["results"]):
+                if res["status"] == "rejected":
+                    row.update(state="rejected", last_error=res["error"]["code"])
+                else:
+                    row.update(state="acked", acked_seq=res["seq"])
+                    self.hlc_acked = max(self.hlc_acked, row["op"]["hlc"])
+            if self._log_changed(resp):
+                self._start_log_reset(resp)
+                continue  # the rows are pending again: push them again
+            self._note_meta(resp)
+
+    # ---------------------------------------------------------------- pull (6)
+    def pull(self, server: Server) -> bool:
+        """Returns False if the pull stopped because the log changed identity."""
+        while True:
+            resp = server.pull(self.pull_seq)
+            if self._log_changed(resp):
+                self._start_log_reset(resp)
+                return False
+            for op in resp["ops"]:
+                self.hlc_last = hlc_observe(self.hlc_last, op["hlc"])
+                try:
+                    self.r.apply(op)
+                except MissingRow:
+                    pass  # 7.7: cannot happen in seq order
+            self.pull_seq = resp["next_since"]
+            self._note_meta(resp)
+            if not resp["has_more"]:
+                return True
+
+    def gc(self):
+        limit = self.pull_seq if self.legacy else min(self.pull_seq, self.durable_seq)
+        self.outbox = [r for r in self.outbox if not (r["state"] == "acked" and r["acked_seq"] <= limit)]
+
+    # ---------------------------------------------------------------- rebuild (10.3)
+    def rebuild(self, server: Server):
+        while True:
+            self.push(server)  # step 0
+            self.r, self.pull_seq = Replica(device=True), 0  # step 1
+            if self.pull(server):  # step 2 (restart if the log changed again)
+                break
+        for row in sorted((r for r in self.outbox if r["state"] in ("pending", "rejected")
+                           or (r["state"] == "acked" and r["acked_seq"] > self.pull_seq)),
+                          key=lambda r: r["op"]["hlc"]):  # step 3
+            try:
+                self.r.apply(row["op"])
+            except MissingRow:
+                pass
+        self.rebuild_pending = False
+
+    def sync(self, server: Server):
+        """Sync cycle (SYNC.md 6): push, then pull; a pending rebuild runs first."""
+        self.push(server)
+        if not self.rebuild_pending:
+            self.pull(server)  # may itself start a log reset
+        if self.rebuild_pending:
+            self.rebuild(server)
+        self.gc()
