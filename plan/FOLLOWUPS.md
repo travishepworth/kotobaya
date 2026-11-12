@@ -37,3 +37,6 @@
 - T006 → T213: assets/card/card.css must define CardClasses.ALL.
 - T006/T005 drift: SCHEMA.md §4.2 replay order (hlc,id) vs SYNC.md §9.1 (reviewed_at,hlc,id); add sync_state key `core_scheduler_version` to SYNC.md §10.5. Fix in a C-ticket at the freeze.
 - Harness: the Write tool refuses SUMMARY.md for subagents. Future contract tickets: name it DESIGN-NOTES.md, or the orchestrator commits it.
+- C-1: V1 edited in place (server_state table, replay index) — any existing dev Postgres volume needs `make dev-down` + volume wipe (Flyway checksum). Fine pre-deploy.
+- C-1 → T104/T111: put the SYNC 10.5 startup replay behind the readiness probe.
+- C-1 → T303/T107: the device's schema check for pulled ops (SYNC 6.1) needs a JSON Schema 2020-12 validator (prefixItems, items:false); declare the dependency in HANDOFF.
