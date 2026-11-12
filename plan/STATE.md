@@ -15,7 +15,6 @@ Updated: 2026-11-12T13:56:32Z (pre-restart handover)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T112 | writer (gp/sonnet) | 1 | t/T112-backups | 2026-11-12T13:29:07Z |
-| P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
