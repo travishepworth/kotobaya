@@ -224,3 +224,7 @@
 2026-11-12T13:16:32Z W-1 HANDOFF DONE
 2026-11-12T13:16:32Z W-1 CHECK_GREEN server+worker
 2026-11-12T13:16:32Z W-1 MERGE
+2026-11-12T13:29:07Z T111 HANDOFF DONE
+2026-11-12T13:29:07Z T111 CHECK_GREEN deploy after rebase; orchestrator k3d e2e: health ok, unauth 401, login 200 (Secure cookie over http not resent → followup)
+2026-11-12T13:29:07Z T111 MERGE
+2026-11-12T13:29:07Z T112 DISPATCH writer(sonnet)

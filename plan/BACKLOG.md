@@ -234,13 +234,13 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Clients compile; `make check MODULE=contracts` green.
 
 ### T111 — Helm: real workloads
-- model: sonnet · risk: med · deps: T009, T104, T109a, T109b · status: RUNNING
+- model: sonnet · risk: med · deps: T009, T104, T109a, T109b · status: MERGED
 - paths: `deploy/helm/`
 - do: api, worker, web, optional postgres (CNPG or StatefulSet) and minio; migrate pre-upgrade hook; ingress with TLS from DECISIONS; resource requests; PodDisruptionBudgets off (single replica).
 - accept: `deploy/k3d/up.sh` → working API with dictionary search through ingress.
 
 ### T112 — Backups and restore verification (early, before real data)
-- model: sonnet · risk: high · deps: T111 · status: TODO
+- model: sonnet · risk: high · deps: T111 · status: RUNNING
 - paths: `deploy/helm/templates/backup*`, `deploy/backup/`
 - do: Nightly `pg_dump` + object-storage mirror, restic-encrypted, to the off-cluster target in DECISIONS; weekly restore into scratch DB with row-count checks; failure → ntfy/alert.
 - accept: Restore drill script documented and passing in k3d.
