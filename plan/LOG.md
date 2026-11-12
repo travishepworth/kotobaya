@@ -395,3 +395,6 @@
 2026-11-12T17:29:49Z T202d REVIEW_APPROVE (3 minors); DECIDE skip architect 2nd pass (56-line impl of C-6 rule reviewed twice; reviewer: no conformance issue)
 2026-11-12T17:29:49Z T202d MERGE
 2026-11-12T17:29:49Z T205 HANDOFF DONE (35 rule tests + determinism property tests)
+2026-11-12T17:30:37Z T205 CHECK_GREEN core after rebase; REVIEW dispatched reviewer(opus)
+2026-11-12T17:30:37Z - W-2 added (wiring sync/notes/decks/settings into Main.kt; collected from FOLLOWUPS)
+2026-11-12T17:30:37Z W-2 DISPATCH writer(sonnet)
