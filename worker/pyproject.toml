@@ -5,6 +5,7 @@ description = "Kotobaya background jobs: dictionary, import, parse, coverage, TT
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "psycopg[binary]>=3.2",
+    "zstandard>=0.25.0",
 ]
 
 [dependency-groups]
