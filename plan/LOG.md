@@ -445,3 +445,4 @@
 2026-11-12T18:10:55Z C-8 DISPATCH attempt 4 of 5 (double removal n:+e:)
 2026-11-12T18:10:55Z RETRO C-8: 4 attempts, each round narrows re-mint deck-item keying edge cases; same root (8.5 effective identity vs per-key removal). Converging; no split.
 2026-11-12T18:17:08Z C-8 HANDOFF DONE attempt 4 (re-keyed removal minted on n: and e:); CHECK_GREEN contracts+core+server; architect verification dispatched
+2026-11-12T18:18:29Z T207c HANDOFF DONE; CHECK_GREEN worker + server after rebase; MERGE (2 small unowned edits accepted)

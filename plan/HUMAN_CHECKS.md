@@ -35,6 +35,11 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] If the own-app-ID flavor is preferred, try it too and record which works in `docs/DECISIONS.md`.
 
 ## jpdb import
+- Live jpdb history import (T207a/b/c; needs server + worker with S3_* env, dev stack up):
+  1. Web: /import → pick your jpdb export → start (or `PUT /blobs/{sha256}` then `POST /import/jpdb/history`), watch `GET /jobs/<id>` until `succeeded`.
+  2. Check (vocabulary_carded + vocabulary_status_only) / (vocabulary_total − vocabulary_en_jp_ignored) ≥ 0.95; skim `unmapped` / `kanji_unmapped`; `reviews_id_collisions` should be 0.
+  3. Spot-check ~20 cards' due dates against jpdb.
+  4. Re-run the same import: 0 new ops. Delete one imported note, re-run: it stays deleted (provisional rule).
 - [ ] **S02:** read `spikes/jpdb-map/REPORT.md`. Hit rate ≥ 95%? If not, work through the mapping review queue in the web app.
 - [ ] **P2 — History import:** import your jpdb review history; spot-check 20 cards' due dates against jpdb.
 
