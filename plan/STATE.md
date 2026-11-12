@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:02:56Z
+Updated: 2026-11-12T17:03:26Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,7 +13,7 @@ Updated: 2026-11-12T17:02:56Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T212b | writer (sonnet) | 1 | t/T212b-settings-server | 2026-11-12T17:02:56Z |
+| C-7 | architect (opus) | 1 | t/C-7-settings-keys | 2026-11-12T17:03:26Z |
 | T204 | writer (sonnet) | 1 | t/T204-decks | 2026-11-12T16:59:32Z |
 | T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
 
@@ -28,6 +28,7 @@ Updated: 2026-11-12T17:02:56Z
 ## Blocked
 | Ticket | Reason | Needs |
 |---|---|---|
+| T212b | BLOCKED_CONTRACT: settings keys kanji_before_vocab / mined_priority missing from SCHEMA §6 | C-7 merge; then redispatch (unknown keys stored per openapi, not 422) |
 
 ## Notes
 - Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
@@ -41,7 +42,7 @@ Updated: 2026-11-12T17:02:56Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 12/26 · attempts 24 · escalations 0
+P2: merged 12/27 · attempts 24 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

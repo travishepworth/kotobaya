@@ -358,3 +358,6 @@
 2026-11-12T17:02:56Z C-6 REVIEW dispatched reviewer + architect (breaking §10)
 2026-11-12T17:02:56Z - T202d added: core NO_NUL codec check + invalid-codec embedding (dep C-6; core sync paths, not T202c)
 2026-11-12T17:02:56Z T212b DISPATCH writer(sonnet)
+2026-11-12T17:03:26Z T212b HANDOFF CONTRACT_CHANGE_REQUEST (settings keys missing; unknown-key rule follows openapi)
+2026-11-12T17:03:26Z T212b BLOCK BLOCKED_CONTRACT → C-7
+2026-11-12T17:03:26Z C-7 DISPATCH architect(opus) additive SCHEMA §6 keys
