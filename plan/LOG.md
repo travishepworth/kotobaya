@@ -433,3 +433,5 @@
 2026-11-12T18:00:53Z T207b MERGE
 2026-11-12T18:00:53Z DECIDE jpdb re-run skips groups whose reviews sit on user-deleted cards (no resurrection)
 2026-11-12T18:01:02Z T214 DISPATCH writer(sonnet)
+2026-11-12T18:02:18Z C-8 REVIEW_CHANGES verification: 7/8 fixed; new majors: item_removed e:→n: re-key loses removal; QueueBuilder rule 4 formula contradicts attribution
+2026-11-12T18:02:18Z C-8 DISPATCH attempt 3 of 5 (same agent)
