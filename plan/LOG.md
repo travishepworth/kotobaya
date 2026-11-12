@@ -501,3 +501,5 @@
 2026-11-12T19:18:06Z DECIDE log reset sets pull_seq=0 (C-10)
 2026-11-12T19:18:06Z T303a DISPATCH attempt 2 (same agent)
 2026-11-12T19:18:06Z C-10 DISPATCH architect(opus)
+2026-11-12T19:19:41Z T308 HANDOFF DONE; CHECK_GREEN android after rebase; MERGE
+2026-11-12T19:19:41Z T307+T309 DISPATCH writer(sonnet) batched (low risk, same module)
