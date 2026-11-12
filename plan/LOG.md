@@ -429,3 +429,6 @@
 2026-11-12T17:59:01Z - T207c added (worker fetch_blob/apply_plan + Main.kt ImportsModule; deps T207b, C-9)
 2026-11-12T17:59:01Z C-8 HANDOFF DONE attempt 2; architect verification dispatched
 2026-11-12T17:59:16Z F-1 HANDOFF DONE; CHECK_GREEN server; MERGE
+2026-11-12T18:00:53Z T207b REVIEW_APPROVE (6 minors → T207c, owned paths widened to server imports/)
+2026-11-12T18:00:53Z T207b MERGE
+2026-11-12T18:00:53Z DECIDE jpdb re-run skips groups whose reviews sit on user-deleted cards (no resurrection)

@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:59:16Z
+Updated: 2026-11-12T18:00:53Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -21,7 +21,6 @@ Updated: 2026-11-12T17:59:16Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T207b (server green; CCR → C-9 + T207c) | reviewer (opus) | 2026-11-12T17:59:01Z |
 | C-8 att 2 (contracts+core+server green) | architect verification | 2026-11-12T17:59:01Z |
 
 ## Blocked
@@ -40,11 +39,12 @@ Updated: 2026-11-12T17:59:16Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 27/33 · attempts 45 · escalations 0
+P2: merged 28/33 · attempts 45 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T207b jpdb history import server side (plan → ops via OpApply, batched/resumable, idempotent re-run, ADR-009) — reviewer APPROVE; not wired until T207c
 - F-1 decks spot-check fixes (no !!, limit/422 tests, refused item ops, deck.updated 2-device convergence, deck: on smart)
 - W-3 web nav: Cards + Note types links (Review/Decks/Settings already present)
 - T210b web card browser (windowed table, core search/preview, bulk with dry-run count) — untested in a live browser
