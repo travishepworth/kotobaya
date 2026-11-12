@@ -258,7 +258,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T103b.md
 
 ### W-1 — Wire server modules and worker jobs
-- model: sonnet · risk: med · deps: T105a, T106, T109a, T109b · status: RUNNING
+- model: sonnet · risk: med · deps: T105a, T106, T109a, T109b · status: MERGED
 - see plan/tickets/W-1.md
 
 ## Phase 2 — Review loop (web)

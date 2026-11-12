@@ -75,3 +75,4 @@
 - T109a → T309: ntfy forwarding needs a sink on EventHub + a base-URL setting.
 - T109b: worker registry is empty; health/readiness and Dockerfile CMD untouched → W-1.
 - T105a hardening (next auth touch, e.g. T105b or T609): parse XFF hops only from the right up to the first untrusted hop (ignore malformed hops further left); key IPv6 clients on /64; strict IP-literal parsing (no getByName DNS fallback).
+- W-1: dict-refresh end-to-end (network + S3) untested; needs DICT_SOURCES_JSON (format in worker/src/kotobaya_worker/jobs/dict_refresh.py), S3_* on the worker. Packaging runs after load, so ref.dict_release.is_current flips before artifacts exist — GET /dict/release should only advertise a release whose artifacts are present (server dict/ or a guard in the job: package first, flip is_current last).
