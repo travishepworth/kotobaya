@@ -297,3 +297,9 @@
 2026-11-12T15:45:51Z T207a REVIEW_APPROVE 6 minors → FOLLOWUPS
 2026-11-12T15:45:51Z T207a MERGE
 2026-11-12T15:46:18Z T202a DISPATCH attempt 2 (same architect): jsTest lone-surrogate literals become '?' (3 tests)
+2026-11-12T15:47:48Z T202a HANDOFF DONE attempt 2
+2026-11-12T15:47:48Z T202a CHECK_GREEN core after rebase
+2026-11-12T15:47:48Z T202a REVIEW dispatched reviewer(opus) + architect(opus) 2nd pass
+2026-11-12T15:47:48Z T213b HANDOFF DONE
+2026-11-12T15:47:48Z T213b CHECK_GREEN web after rebase
+2026-11-12T15:47:48Z T213b MERGE

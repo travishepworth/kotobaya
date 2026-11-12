@@ -98,3 +98,5 @@
 - T207a review -> T207b/Phase 4: carry Mapped.candidates into VocabRow/plan JSON so ambiguous text matches are visible.
 - T207a review -> T207b: Testcontainers parity test PostgresRefLookup vs in-memory.
 - T207a review: B_MALFORMED == B_UNKNOWN_GRADE string coincidence in plan.py:74; use one constant.
+- T213b: web/tests/core.test.ts (pre-existing, outside owned paths) imports @kotobaya/core directly; move to web/tests/core/ or delete. App code must import only web/src/lib/core/index.ts.
+- T213b -> T209/T210b: no app module imports the core wrapper yet, so pnpm build doesn't bundle core; first UI consumer must verify the production build.
