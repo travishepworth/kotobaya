@@ -13,9 +13,9 @@ Updated: 2026-11-12T17:44:11Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T207b | writer-senior (opus) | 1 | t/T207b-jpdb-job | 2026-11-12T17:44:11Z |
+| T207b | writer-senior (opus) | 1 | t/T207b-jpdb-server | 2026-11-12T17:44:11Z |
 | T209 | writer (sonnet) | 1 | t/T209-web-review | 2026-11-12T17:44:11Z |
-| T210a | writer (sonnet) | 1 | t/T210a-browse-api | 2026-11-12T17:44:11Z |
+| T210a | writer (sonnet) | 1 | t/T210a-cards-api | 2026-11-12T17:44:11Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
