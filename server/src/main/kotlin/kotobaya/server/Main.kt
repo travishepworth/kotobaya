@@ -10,6 +10,7 @@ import kotobaya.auth.AuthConfig
 import kotobaya.auth.AuthEvents
 import kotobaya.auth.TokenValidator
 import java.util.UUID
+import kotobaya.cards.CardsModule
 import kotobaya.dict.dictHandlers
 import kotobaya.review.ReviewModule
 import kotobaya.decks.DecksModule
@@ -86,7 +87,7 @@ fun composeApp(
     // One OpApply for every writer: they share its advisory lock, HLC and card cache.
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
         NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
-        ReviewModule(db, sync.opApply).handlers
+        ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,
