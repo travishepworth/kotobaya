@@ -25,3 +25,5 @@
 2026-11-12T09:41:43Z GATE-S02 GATE_CLOSE hit rate >= 95%
 2026-11-12T09:41:43Z T008b SPLIT fix jpdb fixture from S02 report
 2026-11-12T09:41:43Z T002 CHECK_RED make apk fails; ci-triage dispatched
+2026-11-12T09:42:03Z T002 DISPATCH attempt 2 (same writer); scope +android/build.gradle.kts, +.gitignore
+2026-11-12T09:42:03Z T008b DISPATCH writer-light(gp, haiku)

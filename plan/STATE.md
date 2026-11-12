@@ -6,9 +6,10 @@ Updated: 2026-11-12T09:41:43Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T001b+T002 | writer-light (gp/haiku) | 1 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
+| T001b+T002 | writer-light (gp/haiku) | 2 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
 | T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
 | T009 | writer (gp/sonnet) | 1 | t/T009-helm | 2026-11-12T09:33:27Z |
+| T008b | writer-light (gp/haiku) | 1 | t/T008b-jpdb-fixture | 2026-11-12T09:42:03Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
