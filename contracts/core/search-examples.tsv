@@ -1,0 +1,61 @@
+# expect	query (JSON string)	note
+# + = must parse, - = must not parse. Checked by check_search.py against search.ebnf.
+# Implementers of SearchQueryParser (T108) use the same file: every + line parses without errors,
+# every - line returns at least one SearchError.
++	"deck:\"Frieren\" is:due tag:leech lapses>3 kanji:績 rated:7:1 kind:reading"	SPEC Public API: the card search language example
++	"is:leech"	SPEC Public API: CLI example kotobaya cards find 'is:leech'
++	""	empty query matches every live card
++	"   "	whitespace only
++	"食べる"	bare Japanese text
++	"\"to eat\""	quoted text with a space
++	"日本語　is:new"	ideographic space separates terms
++	"deck:Frieren* -is:suspended"	wildcard and negation
++	"deck:\"Frieren: Beyond Journey's End\""	quoted deck name with a colon
++	"deck:Anime:S1"	bare value may contain a colon
++	"(tag:anime or tag:drama) is:due"	group with or
++	"tag:anime OR tag:drama and is:new"	OR / and keywords
++	"-(is:new or is:suspended)"	negated group
++	"--is:new"	double negation
++	"field:meaning:*eat*"	field search with wildcards
++	"rated:1 OR added:3"	day terms
++	"rated:36500:4"	largest day count with a rating
++	"interval<21 stability>10.5 difficulty<=9 due<=0 reps=0 lapses!=0"	every comparison
++	"due>=-3"	negative number
++	"type:vocab kind:listening status:known"	type, kind, word status
++	"status:never_forget or status:blacklisted"	override statuses
++	"nid:0193a1b2-0001-7000-8000-000000000001"	note id
++	"cid:0193a1b2-0002-7000-8000-000000000001 flag:3 is:flagged"	card id, flag
++	"entry:1358280"	JMdict entry
++	"preset:\"Hard words\" notetype:\"My cards\""	quoted preset and note type names
++	"kanji:績 or kanji:責"	kanji terms
++	"kanji:𠮟"	supplementary-plane kanji
++	"tag:jlpt\\*"	escaped star is literal
++	"\"say \\\"hi\\\"\""	escaped quotes inside a quoted string
++	"Or"	mixed-case Or is text
++	"\"or\""	quoted or is text
++	"a b c"	implicit and of three words
++	"( is:due )"	spaces inside parentheses
++	"is:review -is:buried is:hot is:relearning is:learning"	is: values
+-	"dek:Frieren"	unknown key
+-	"is:newer"	bad is: value
+-	"lapses>"	operator without number
+-	"(is:due"	unclosed parenthesis
+-	"is:due)"	unopened parenthesis
+-	"rated:0"	zero days
+-	"rated:7:5"	rating out of range
+-	"kanji:abc"	not a kanji
+-	"flag:8"	flag out of range
+-	"\"\""	empty quoted string
+-	"\"open"	unclosed quote
+-	"- is:new"	negation not attached
+-	"or"	operator alone
+-	"a or"	dangling or
+-	"and b"	dangling and
+-	"deck:"	key without value
+-	"a=b"	bare text with = must be quoted
+-	"Deck:Frieren"	keys are lowercase
+-	"is:DUE"	values are lowercase
+-	"nid:0193A1B2-0001-7000-8000-000000000001"	uppercase uuid
+-	"(a)(b)"	groups need whitespace between them
+-	"type:verb"	unknown base type
+-	"entry:0123"	leading zero

@@ -1,0 +1,78 @@
+/* Kotobaya card search language (T006). Normative for SYNTAX; meaning is in
+   core/src/commonMain/kotlin/kotobaya/contracts/search/Search.kt.
+
+   Notation: W3C EBNF as in the XML 1.0 spec (section 6):
+     name ::= expr     a rule;  "x" or 'x' a literal;  [a-z] [^...] a character class;
+     #xN               a code point;  A B  sequence;  A | B  choice;  A?  A*  A+  repetition;
+     A - B             any match of A that is not a match of B.
+   Matching is over Unicode code points (Kotlin implementations index by UTF-16; a supplementary
+   kanji is one code point here and two UTF-16 units there).
+   Checked by contracts/core/check_search.py against contracts/core/search-examples.tsv. */
+
+query        ::= ws? ( or_expr ws? )?
+
+/* Precedence: '-' binds tightest, then AND (juxtaposition or and/AND), then or/OR. */
+or_expr      ::= and_expr ( ws or_kw ws and_expr )*
+and_expr     ::= unary ( ws ( and_kw ws )? unary )*
+unary        ::= "-" unary | group | term
+group        ::= "(" ws? or_expr ws? ")"
+or_kw        ::= "or" | "OR"
+and_kw       ::= "and" | "AND"
+
+term         ::= keyed_term | compare_term | text_term
+
+keyed_term   ::= deck_term | tag_term | is_term | kind_term | type_term | notetype_term
+               | preset_term | kanji_term | entry_term | status_term | flag_term
+               | rated_term | added_term | nid_term | cid_term | field_term
+
+deck_term     ::= "deck:" pattern
+tag_term      ::= "tag:" pattern
+is_term       ::= "is:" ( "new" | "learning" | "relearning" | "review" | "due" | "suspended"
+                        | "buried" | "leech" | "hot" | "flagged" )
+kind_term     ::= "kind:" key
+type_term     ::= "type:" ( "vocab" | "kanji" | "phrase" | "grammar" | "sentence" | "custom" )
+notetype_term ::= "notetype:" pattern
+preset_term   ::= "preset:" pattern
+kanji_term    ::= "kanji:" kanji
+entry_term    ::= "entry:" [1-9] [0-9]*
+status_term   ::= "status:" ( "new" | "learning" | "known" | "never_forget" | "blacklisted" | "ignored" )
+flag_term     ::= "flag:" [0-7]
+rated_term    ::= "rated:" days ( ":" [1-4] )?
+added_term    ::= "added:" days
+nid_term      ::= "nid:" uuid
+cid_term      ::= "cid:" uuid
+field_term    ::= "field:" key ":" pattern
+
+compare_term ::= property cmp_op number
+property     ::= "lapses" | "reps" | "interval" | "due" | "stability" | "difficulty"
+cmp_op       ::= "<=" | ">=" | "!=" | "<" | ">" | "="
+number       ::= "-"? [0-9]+ ( "." [0-9]+ )?
+
+/* 1..99999 syntactically; values above 36500 are a BAD_VALUE error. */
+days         ::= [1-9] ( [0-9] ( [0-9] ( [0-9] [0-9]? )? )? )?
+key          ::= [a-z] [a-z0-9_]*
+kanji        ::= [#x3400-#x4DBF] | [#x4E00-#x9FFF] | [#xF900-#xFAFF] | [#x20000-#x2FA1F]
+uuid         ::= hex8 "-" hex4 "-" hex4 "-" hex4 "-" hex4 hex8
+hex4         ::= hex hex hex hex
+hex8         ::= hex4 hex4
+hex          ::= [0-9a-f]
+
+/* Values after a key. A bare value may contain ':' '<' '>' '=' (deck names do); it ends at
+   whitespace or an unescaped parenthesis. '*' is a wildcard; escape it as \* for a literal star. */
+pattern      ::= quoted | bare_value
+bare_value   ::= ( vchar | escape )+
+vchar        ::= [^#x20#x9#xA#xD#x3000"()\]
+escape       ::= "\" ( "\" | '"' | "*" | "(" | ")" )
+quoted       ::= '"' ( qchar | qescape )+ '"'
+qchar        ::= [^"\]
+qescape      ::= "\" ( "\" | '"' | "*" )
+
+/* Free text: a quoted string, or a bare word. A bare word does not start with '-', contains none of
+   ':' '<' '>' '=' (so a mistyped key such as dek:x is an error, not a text search), and is not an
+   operator keyword. */
+text_term    ::= quoted | word
+word         ::= ( wfirst ( wchar | escape )* ) - ( or_kw | and_kw )
+wfirst       ::= ( wchar - "-" ) | escape
+wchar        ::= [^#x20#x9#xA#xD#x3000"()\:<>=]
+
+ws           ::= ( #x20 | #x9 | #xA | #xD | #x3000 )+
