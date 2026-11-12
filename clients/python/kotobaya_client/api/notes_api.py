@@ -1,0 +1,1658 @@
+"""
+    Kotobaya API
+
+    Versioned REST/JSON interface at `/api/v1`. The web app uses nothing else; the Android app uses `sync`, `blobs`, `dict/release`, `devices/pair`, `devices/self` and whatever conveniences it likes.  Implementers: this file is the contract. If something you need is missing or wrong, do not work around it; return `CONTRACT_CHANGE_REQUEST`. Additive changes stay in v1; breaking changes go to `/api/v2`.  ## 1. Conventions  - **JSON.** Request and response bodies are `application/json; charset=utf-8` unless stated.   Property names are `snake_case` and equal the column names of `contracts/db/V1__init.sql`   wherever a property mirrors a column; the column `COMMENT` is then the definition. - **Unknown properties.** Servers reject unknown request properties and unknown query   parameters with `422 validation_failed`. Clients MUST ignore unknown response properties and   MUST treat unknown enum values in responses as \"other\" (v1 may add both). - **Absent vs null.** In `PATCH` bodies an absent property means \"leave unchanged\"; `null` means   \"set to NULL\" where the property is nullable and is a validation error otherwise.   Responses always include every documented property; nullable ones are `null`, never absent,   unless the property is documented as \"omitted when ...\". - **Ids.** Row ids are UUIDv7 in canonical lowercase `8-4-4-4-12` text. Uppercase ids in   requests are rejected with `422`. \"Entry\" always means a JMdict sequence number (`seq`,   JSON integer). - **Time.** Instants are RFC 3339 UTC strings with millisecond precision and a `Z` suffix,   e.g. `2026-11-12T09:30:00.000Z`. Servers accept any RFC 3339 offset on input and normalise   to UTC. A \"study day\" is a local date `YYYY-MM-DD` computed from the settings   `scheduler.timezone` and `scheduler.day_rollover_hour`: study day D covers local time   `D rollover:00` (inclusive) to `D+1 rollover:00` (exclusive). - **Text offsets** into sentence text are UTF-16 code units, half-open `[start, end)`. - **Blobs** (audio, images, uploads, snapshots) are addressed by the lowercase hex SHA-256 of   their bytes and transferred through `/blobs/{hash}`, never inline in JSON.  ## 2. Authentication and scopes  Three credential kinds, all rows of `app.api_token` (stored hashed):  | Kind | How obtained | Sent as | Scopes | |---|---|---|---| | `session` | `POST /auth/login` | cookie `kotobaya_session` (HTTP-only) | all five | | `device` | `POST /devices/pair` | `Authorization: Bearer kbd_...` | `read`, `write`, `review` | | `personal` | `POST /tokens` | `Authorization: Bearer kbp_...` | chosen at creation |  Token strings are `<3-letter kind prefix>_<40 characters of [A-Za-z0-9]>` (`kbs_`, `kbd_`, `kbp_`), generated from a CSPRNG. `token_hash` = lowercase hex SHA-256 of the whole string; `token_prefix` = its first 8 characters. A token is valid iff `revoked_at IS NULL` and (`expires_at IS NULL` or `expires_at > now()`) and, when it has a `device_id`, that device is not revoked. Validity is checked on every request (no caching longer than 5 seconds), so revocation takes effect at once.  Scopes are independent (no scope implies another):  | Scope | Grants | |---|---| | `read` | Every `GET` of learning, media and reference data; `POST /parse`; `GET /events`; `GET /sync/pull`; exports. | | `write` | Create, change, delete notes, cards, decks, grammar, note types, presets, settings, word status, parse overrides, media metadata; upload blobs; `POST /sync/push` (non-review ops). | | `review` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`, `POST /cards/bulk/schedule`; `review.*` ops inside `POST /sync/push` (per op; without it the op is rejected with `insufficient_scope`). | | `import` | Start and cancel import, parse, dictionary and optimizer jobs; upload blobs. | | `admin` | Devices, pairing, tokens (a device's own row: `/devices/self` with `read`/`write`). |  Each operation lists the scope it needs in its `security` requirement: the array after the scheme name. When two alternatives are listed for one scheme the caller needs either. A request with no or an invalid credential gets `401 unauthenticated`; a valid credential lacking the scope gets `403 insufficient_scope`. Operations with `security: []` are public.  There are exactly two places where who may call is not just \"scheme + scope\", and both are declared in the operation, not only in prose: - `GET/PATCH /devices/self` (`read` / `write`, bearer only): the token must be bound to a   device, else `403 device_required`. A device never needs `admin` to manage its own row;   `/devices/{device_id}` is admin only. - `POST /ankiconnect` (`x-auth: body-key`): the token may instead be sent in the JSON body   property `key`; the empty `{}` alternative in its `security` only signals that no header is   needed. The scope for `key` is `x-body-key-scope`.  **CSRF.** A request authenticated by the session cookie whose method is not `GET` or `HEAD` MUST carry the header `X-Kotobaya-Csrf: 1`; otherwise `403 csrf_required`. The cookie is set with `HttpOnly; Secure; SameSite=Strict; Path=/api`. The server sends no CORS headers (the web app is served from the same origin). If both a cookie and an `Authorization` header are present, the header wins and the cookie is ignored.  **Audit.** Every request is logged with `token.id` and `token.name` (structured server log; there is no audit table or endpoint in v1). Ops record the token in `change.token_id`.  ## 3. Writes are sync ops  Learning data is only ever changed by applying sync ops (`contracts/sync`). Every REST operation that changes learning data is a convenience wrapper: the server builds the op(s) named in the operation's `x-emits-ops`, applies them through the same op-apply path as `POST /sync/push` in one transaction, and they then appear in `GET /sync/pull` for every device. Op names are those of `contracts/db/SCHEMA.md` section 4; `contracts/sync` is authoritative for names and payloads.  For an op the server builds on behalf of a REST call:  - `op_id` is a fresh UUIDv7; origin `device_id` is the **server device**   `00000000-0000-7000-8000-000000000001` (also for session and device tokens: only one party   ever generates HLCs for a given device id); `hlc` comes from the server's HLC clock;   `change.token_id` is the calling token. - A property absent from a `PATCH` body produces no register write. A property present with   the value the row already has still produces a write (it bumps the register's clock). - If a call changes nothing (documented per operation, e.g. deleting an already deleted   note), no op is emitted and the response is still successful. - Responses to mutating calls carry the header `Kotobaya-Seq`: the `change.seq` of the last op   the call emitted. A client holding a local replica knows it has seen the effect once its   pull cursor is at or past that value. The header is absent when no op was emitted.  **Idempotent creation.** Create bodies accept an optional client-generated `id` (UUIDv7). Re-sending a create with an `id` that already exists returns the existing resource with status `200` instead of `201` and emits nothing, whatever the rest of the body says. Clients that may retry MUST send `id`. When `id` is omitted the server generates one. `POST /review/answer` requires `id` (a duplicate review would corrupt scheduling); `POST /media/import` takes the same optional idempotency id as `media_id`.  The existence check and the emit are **one transaction that takes advisory lock `7033001` before the check** and holds it until commit (the lock `POST /sync/push` takes per op, SYNC.md 5.2): check whether `id` exists; if not, mint, apply and log the op(s) - for `createNote` the `note.created` and every `card.created` - then commit. Without the lock two concurrent retries of the same create both pass the check; the second `note.created` is a no-op on the row (SYNC.md 7.2) but its `card.created` ops carry fresh card ids, so the note would get duplicate cards. The same holds for every other id-idempotent call (`POST /review/answer`, `POST /review/undo`, `POST /media/import`), and a pushed op that creates the same id races safely because it takes the same lock.  **Tombstones and merges.** Deleted learning rows are tombstones (`deleted_at` set). `GET` by id of a deleted row returns `410 gone` unless `include_deleted=true`; lists omit deleted rows unless `include_deleted=true`. A note or card that lost a merge (`merged_into_id` set) is answered with its survivor: `GET`, `PATCH` and review calls addressed to the loser's id act on the survivor and the response body is the survivor (its `id` differs from the requested id; the response has `Content-Location` with the survivor's URL).  ## 4. Pagination  List operations that take `limit` and `cursor` return `{\"items\": [...], \"next_cursor\": ...}`. `next_cursor` is an opaque string, or `null` on the last page. Pass it back unchanged as `cursor` together with the same other parameters; changing any other parameter while passing a cursor is `422 validation_failed` (`pointer` `/cursor`). `limit` defaults to 50, maximum 500. Order is stable and documented per operation; rows created while paging may or may not appear.  **Cursor semantics (keyset, no snapshot).** A cursor encodes the sort-key values and the `id` of the last row returned; the next page is the rows strictly after that tuple in the current order, evaluated against the data at the time of that request. The order is not snapshotted. Consequently, while a client pages through a list sorted by a mutable key (`due_at`, `updated_at`, `lapses`, ...): - a row whose key changes so that it moves from after the cursor to before it is **skipped**; - a row whose key changes so that it moves from before the cursor to after it is **returned   again** (with its new values); - a row deleted while paging disappears; one created may or may not appear. Rows that do not change are returned exactly once. Clients MUST de-duplicate by `id` (last occurrence wins). A client that needs an exact set (bulk actions, exports) uses an `id`-sorted list where offered, `POST /cards/bulk` with `query`, or `GET /export`. Lists sorted by an immutable key (`id`, `created_at`) have no skips or repeats. An empty result is `{\"items\": [], \"next_cursor\": null}` with status `200`.  ## 5. Errors  Every non-2xx response has the body `application/problem+json` (RFC 9457), schema `Problem`. `code` is the stable machine-readable identifier; `type` is `urn:kotobaya:problem:<code>`.  | Status | `code` | When | |---|---|---| | 400 | `invalid_request` | Body is not valid JSON, wrong content type framing, malformed header; `POST /sync/push` body not valid against `PushRequestLenient`. | | 401 | `unauthenticated` | No credential, or it is unknown, expired or revoked. | | 401 | `invalid_credentials` | Wrong password or TOTP code (`POST /auth/login`). | | 401 | `totp_required` | TOTP is enabled and `totp_code` was not sent. | | 401 | `invalid_pairing_code` | Pairing code unknown, expired or already used. | | 403 | `insufficient_scope` | Credential lacks the scope; `required_scope` names it. | | 403 | `csrf_required` | Cookie-authenticated write without `X-Kotobaya-Csrf`. | | 403 | `device_required` | `POST /sync/push` or `/devices/self` with a credential that has no `device_id`. | | 404 | `not_found` | No such resource (also: id of another resource kind). | | 409 | `already_exists` | Natural-key collision; `existing_id` names the holder. | | 409 | `builtin_immutable` | Deleting a built-in note type or the Default preset, or removing a built-in field. | | 409 | `in_use` | Deleting a note type that live notes use. | | 409 | `deck_read_only` | Changing items or deleting a `media`/`list` deck through deck endpoints. | | 409 | `not_applicable` | The resource kind does not support the operation (e.g. items of a smart deck). | | 409 | `card_not_reviewable` | Card is suspended. | | 409 | `job_not_cancellable` | Job already finished. | | 410 | `gone` | Tombstoned row requested without `include_deleted=true`. | | 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. | | 415 | `unsupported_media_type` | Wrong `Content-Type`. | | 422 | `validation_failed` | Well-formed but invalid; `errors[]` lists each problem. | | 422 | `invalid_query` | Card search string does not parse; `errors[0].position` is the UTF-16 offset. | | 422 | `bulk_too_large` | Bulk selector matched more than 5000 cards. | | 422 | `hash_mismatch` | Uploaded bytes do not hash to the `{hash}` in the path. | | 429 | `rate_limited` | Too many login or pairing attempts; see `Retry-After`. | | 500 | `internal` | Bug. Safe to retry idempotent calls. | | 503 | `unavailable` | Database or object store unreachable. Retry with backoff. |  Check order: 401, then 403, then 404/410, then 415/400, then 422, then 409.  ## 6. Events  `GET /events` is a server-sent events stream; see that operation. Event payload schemas are `Event*` in components. 
+
+    The version of the OpenAPI document: 1.0.0
+    Generated by OpenAPI Generator (https://openapi-generator.tech)
+
+    Do not edit the class manually.
+"""  # noqa: E501
+
+
+import warnings
+from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
+from typing import Any, Dict, List, Optional, Tuple, Union
+from typing_extensions import Annotated
+
+from datetime import datetime
+from pydantic import Field, StrictBool, StrictStr, field_validator
+from typing import Optional
+from typing_extensions import Annotated
+from kotobaya_client.models.note import Note
+from kotobaya_client.models.note_base_type import NoteBaseType
+from kotobaya_client.models.note_create import NoteCreate
+from kotobaya_client.models.note_page import NotePage
+from kotobaya_client.models.note_patch import NotePatch
+
+from kotobaya_client.api_client import ApiClient, RequestSerialized
+from kotobaya_client.api_response import ApiResponse
+from kotobaya_client.rest import RESTResponseType
+
+
+class NotesApi:
+    """NOTE: This class is auto generated by OpenAPI Generator
+    Ref: https://openapi-generator.tech
+
+    Do not edit the class manually.
+    """
+
+    def __init__(self, api_client=None) -> None:
+        if api_client is None:
+            api_client = ApiClient.get_default()
+        self.api_client = api_client
+
+
+    @validate_call
+    def create_note(
+        self,
+        note_create: NoteCreate,
+        on_duplicate: Annotated[Optional[StrictStr], Field(description="What to do when a live note already references the same entry, kanji or grammar point.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> Note:
+        """Create a note and its cards.
+
+        Server emits, in one transaction and in this order: `note.created`; one `card.created` per card kind (server-generated card ids; kinds = `card_kinds` if given, else the note type's kinds with `default: true`, in ascending kind order); `deck.item_put` if `deck_id` is given (item key `e:<entry_seq>` when the note has an `entry_seq`, else `n:<note id>`, position = current maximum position in the deck + 1024).  Rules: - `note_type_id` must be a live note type. `type` is derived from it. - At most one of `entry_seq`, `kanji_literal`, `grammar_point_id`, and only the one that   fits the base type (`vocab`, `kanji`, `grammar` respectively); otherwise `422`.   `entry_seq` must exist in `ref.dict_entry` (retired entries are accepted);   `kanji_literal` need not exist in `ref.kanji`; `grammar_point_id` must be a live   grammar point. - Unknown keys in `fields` are stored as given. Missing keys mean `\"\"`. - `tags`: each 1 to 64 characters, no whitespace, not `leech`; stored de-duplicated and   sorted ascending. - `card_kinds` entries must be keys of the note type's `templates`; an empty array   creates a note without cards. - `deck_id` must be a live deck of type `user`; otherwise `409 deck_read_only`.  **Duplicate reference.** If a live note already references the same entry, kanji or grammar point, nothing is created: with `on_duplicate=error` (default) the response is `409 already_exists` with `existing_id`; with `on_duplicate=return_existing` it is `200` with the existing note, unchanged (if `deck_id` was given the `deck.item_put` is still emitted). REST never creates a duplicate on purpose; duplicates created offline are merged by the op-apply path (SCHEMA.md 4.2).  **Idempotency.** An `id` that already exists (live, deleted or merged) returns that note (or its survivor) with `200` and emits nothing. 
+
+        :param note_create: (required)
+        :type note_create: NoteCreate
+        :param on_duplicate: What to do when a live note already references the same entry, kanji or grammar point.
+        :type on_duplicate: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_note_serialize(
+            note_create=note_create,
+            on_duplicate=on_duplicate,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '201': "Note",
+            '409': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def create_note_with_http_info(
+        self,
+        note_create: NoteCreate,
+        on_duplicate: Annotated[Optional[StrictStr], Field(description="What to do when a live note already references the same entry, kanji or grammar point.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[Note]:
+        """Create a note and its cards.
+
+        Server emits, in one transaction and in this order: `note.created`; one `card.created` per card kind (server-generated card ids; kinds = `card_kinds` if given, else the note type's kinds with `default: true`, in ascending kind order); `deck.item_put` if `deck_id` is given (item key `e:<entry_seq>` when the note has an `entry_seq`, else `n:<note id>`, position = current maximum position in the deck + 1024).  Rules: - `note_type_id` must be a live note type. `type` is derived from it. - At most one of `entry_seq`, `kanji_literal`, `grammar_point_id`, and only the one that   fits the base type (`vocab`, `kanji`, `grammar` respectively); otherwise `422`.   `entry_seq` must exist in `ref.dict_entry` (retired entries are accepted);   `kanji_literal` need not exist in `ref.kanji`; `grammar_point_id` must be a live   grammar point. - Unknown keys in `fields` are stored as given. Missing keys mean `\"\"`. - `tags`: each 1 to 64 characters, no whitespace, not `leech`; stored de-duplicated and   sorted ascending. - `card_kinds` entries must be keys of the note type's `templates`; an empty array   creates a note without cards. - `deck_id` must be a live deck of type `user`; otherwise `409 deck_read_only`.  **Duplicate reference.** If a live note already references the same entry, kanji or grammar point, nothing is created: with `on_duplicate=error` (default) the response is `409 already_exists` with `existing_id`; with `on_duplicate=return_existing` it is `200` with the existing note, unchanged (if `deck_id` was given the `deck.item_put` is still emitted). REST never creates a duplicate on purpose; duplicates created offline are merged by the op-apply path (SCHEMA.md 4.2).  **Idempotency.** An `id` that already exists (live, deleted or merged) returns that note (or its survivor) with `200` and emits nothing. 
+
+        :param note_create: (required)
+        :type note_create: NoteCreate
+        :param on_duplicate: What to do when a live note already references the same entry, kanji or grammar point.
+        :type on_duplicate: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_note_serialize(
+            note_create=note_create,
+            on_duplicate=on_duplicate,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '201': "Note",
+            '409': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def create_note_without_preload_content(
+        self,
+        note_create: NoteCreate,
+        on_duplicate: Annotated[Optional[StrictStr], Field(description="What to do when a live note already references the same entry, kanji or grammar point.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Create a note and its cards.
+
+        Server emits, in one transaction and in this order: `note.created`; one `card.created` per card kind (server-generated card ids; kinds = `card_kinds` if given, else the note type's kinds with `default: true`, in ascending kind order); `deck.item_put` if `deck_id` is given (item key `e:<entry_seq>` when the note has an `entry_seq`, else `n:<note id>`, position = current maximum position in the deck + 1024).  Rules: - `note_type_id` must be a live note type. `type` is derived from it. - At most one of `entry_seq`, `kanji_literal`, `grammar_point_id`, and only the one that   fits the base type (`vocab`, `kanji`, `grammar` respectively); otherwise `422`.   `entry_seq` must exist in `ref.dict_entry` (retired entries are accepted);   `kanji_literal` need not exist in `ref.kanji`; `grammar_point_id` must be a live   grammar point. - Unknown keys in `fields` are stored as given. Missing keys mean `\"\"`. - `tags`: each 1 to 64 characters, no whitespace, not `leech`; stored de-duplicated and   sorted ascending. - `card_kinds` entries must be keys of the note type's `templates`; an empty array   creates a note without cards. - `deck_id` must be a live deck of type `user`; otherwise `409 deck_read_only`.  **Duplicate reference.** If a live note already references the same entry, kanji or grammar point, nothing is created: with `on_duplicate=error` (default) the response is `409 already_exists` with `existing_id`; with `on_duplicate=return_existing` it is `200` with the existing note, unchanged (if `deck_id` was given the `deck.item_put` is still emitted). REST never creates a duplicate on purpose; duplicates created offline are merged by the op-apply path (SCHEMA.md 4.2).  **Idempotency.** An `id` that already exists (live, deleted or merged) returns that note (or its survivor) with `200` and emits nothing. 
+
+        :param note_create: (required)
+        :type note_create: NoteCreate
+        :param on_duplicate: What to do when a live note already references the same entry, kanji or grammar point.
+        :type on_duplicate: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._create_note_serialize(
+            note_create=note_create,
+            on_duplicate=on_duplicate,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '201': "Note",
+            '409': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _create_note_serialize(
+        self,
+        note_create,
+        on_duplicate,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        if on_duplicate is not None:
+            
+            _query_params.append(('on_duplicate', on_duplicate))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if note_create is not None:
+            _body_params = note_create
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            self.api_client._set_header(_header_params, 'Content-Type', _content_type)
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                self.api_client._set_header(_header_params, 'Content-Type', _default_content_type)
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/notes',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def delete_note(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> None:
+        """Delete a note (permanent tombstone; hides all its cards).
+
+        Server emits `note.deleted`. Cards are hidden through the note's tombstone; no `card.deleted` ops are emitted. Reviews stay in the log. Word status `auto_status` is re-derived. Already deleted, or the id of a merge loser (deleting a duplicate never deletes the survivor): `204`, no op. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_note_serialize(
+            note_id=note_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def delete_note_with_http_info(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[None]:
+        """Delete a note (permanent tombstone; hides all its cards).
+
+        Server emits `note.deleted`. Cards are hidden through the note's tombstone; no `card.deleted` ops are emitted. Reviews stay in the log. Word status `auto_status` is re-derived. Already deleted, or the id of a merge loser (deleting a duplicate never deletes the survivor): `204`, no op. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_note_serialize(
+            note_id=note_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def delete_note_without_preload_content(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Delete a note (permanent tombstone; hides all its cards).
+
+        Server emits `note.deleted`. Cards are hidden through the note's tombstone; no `card.deleted` ops are emitted. Reviews stay in the log. Word status `auto_status` is re-derived. Already deleted, or the id of a merge loser (deleting a duplicate never deletes the survivor): `204`, no op. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._delete_note_serialize(
+            note_id=note_id,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '204': None,
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _delete_note_serialize(
+        self,
+        note_id,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if note_id is not None:
+            _path_params['note_id'] = note_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='DELETE',
+            resource_path='/notes/{note_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def get_note(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> Note:
+        """One note with its live cards.
+
+        If the id belongs to a merge loser the survivor is returned (status `200`, `Content-Location: /api/v1/notes/<survivor id>`), with or without `include_deleted`. A deleted, unmerged note is `410 gone` unless `include_deleted=true`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_note_serialize(
+            note_id=note_id,
+            include_deleted=include_deleted,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def get_note_with_http_info(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[Note]:
+        """One note with its live cards.
+
+        If the id belongs to a merge loser the survivor is returned (status `200`, `Content-Location: /api/v1/notes/<survivor id>`), with or without `include_deleted`. A deleted, unmerged note is `410 gone` unless `include_deleted=true`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_note_serialize(
+            note_id=note_id,
+            include_deleted=include_deleted,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def get_note_without_preload_content(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """One note with its live cards.
+
+        If the id belongs to a merge loser the survivor is returned (status `200`, `Content-Location: /api/v1/notes/<survivor id>`), with or without `include_deleted`. A deleted, unmerged note is `410 gone` unless `include_deleted=true`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_note_serialize(
+            note_id=note_id,
+            include_deleted=include_deleted,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _get_note_serialize(
+        self,
+        note_id,
+        include_deleted,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if note_id is not None:
+            _path_params['note_id'] = note_id
+        # process the query parameters
+        if include_deleted is not None:
+            
+            _query_params.append(('include_deleted', include_deleted))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/notes/{note_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_notes(
+        self,
+        q: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]], Field(description="Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).")] = None,
+        type: Annotated[Optional[NoteBaseType], Field(description="Only notes of this base type.")] = None,
+        note_type_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only notes of this note type.")] = None,
+        tag: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True)]], Field(description="Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).")] = None,
+        entry_seq: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="Only the (at most one live) note referencing this entry.")] = None,
+        kanji_literal: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=2)]], Field(description="Only the kanji note for this kanji.")] = None,
+        grammar_point_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only the grammar note for this grammar point.")] = None,
+        updated_since: Annotated[Optional[datetime], Field(description="Only notes with `updated_at` strictly after this instant.")] = None,
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> NotePage:
+        """List or search notes.
+
+        All filters combine with AND. Ordered by `created_at` descending, then `id` descending. Merge losers appear only with `include_deleted=true`, as tombstones with `merged_into_id` set. Each note embeds its live cards. 
+
+        :param q: Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).
+        :type q: str
+        :param type: Only notes of this base type.
+        :type type: NoteBaseType
+        :param note_type_id: Only notes of this note type.
+        :type note_type_id: str
+        :param tag: Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).
+        :type tag: str
+        :param entry_seq: Only the (at most one live) note referencing this entry.
+        :type entry_seq: int
+        :param kanji_literal: Only the kanji note for this kanji.
+        :type kanji_literal: str
+        :param grammar_point_id: Only the grammar note for this grammar point.
+        :type grammar_point_id: str
+        :param updated_since: Only notes with `updated_at` strictly after this instant.
+        :type updated_since: datetime
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_notes_serialize(
+            q=q,
+            type=type,
+            note_type_id=note_type_id,
+            tag=tag,
+            entry_seq=entry_seq,
+            kanji_literal=kanji_literal,
+            grammar_point_id=grammar_point_id,
+            updated_since=updated_since,
+            include_deleted=include_deleted,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "NotePage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def list_notes_with_http_info(
+        self,
+        q: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]], Field(description="Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).")] = None,
+        type: Annotated[Optional[NoteBaseType], Field(description="Only notes of this base type.")] = None,
+        note_type_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only notes of this note type.")] = None,
+        tag: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True)]], Field(description="Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).")] = None,
+        entry_seq: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="Only the (at most one live) note referencing this entry.")] = None,
+        kanji_literal: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=2)]], Field(description="Only the kanji note for this kanji.")] = None,
+        grammar_point_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only the grammar note for this grammar point.")] = None,
+        updated_since: Annotated[Optional[datetime], Field(description="Only notes with `updated_at` strictly after this instant.")] = None,
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[NotePage]:
+        """List or search notes.
+
+        All filters combine with AND. Ordered by `created_at` descending, then `id` descending. Merge losers appear only with `include_deleted=true`, as tombstones with `merged_into_id` set. Each note embeds its live cards. 
+
+        :param q: Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).
+        :type q: str
+        :param type: Only notes of this base type.
+        :type type: NoteBaseType
+        :param note_type_id: Only notes of this note type.
+        :type note_type_id: str
+        :param tag: Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).
+        :type tag: str
+        :param entry_seq: Only the (at most one live) note referencing this entry.
+        :type entry_seq: int
+        :param kanji_literal: Only the kanji note for this kanji.
+        :type kanji_literal: str
+        :param grammar_point_id: Only the grammar note for this grammar point.
+        :type grammar_point_id: str
+        :param updated_since: Only notes with `updated_at` strictly after this instant.
+        :type updated_since: datetime
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_notes_serialize(
+            q=q,
+            type=type,
+            note_type_id=note_type_id,
+            tag=tag,
+            entry_seq=entry_seq,
+            kanji_literal=kanji_literal,
+            grammar_point_id=grammar_point_id,
+            updated_since=updated_since,
+            include_deleted=include_deleted,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "NotePage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def list_notes_without_preload_content(
+        self,
+        q: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]], Field(description="Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).")] = None,
+        type: Annotated[Optional[NoteBaseType], Field(description="Only notes of this base type.")] = None,
+        note_type_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only notes of this note type.")] = None,
+        tag: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True)]], Field(description="Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).")] = None,
+        entry_seq: Annotated[Optional[Annotated[int, Field(strict=True, ge=1)]], Field(description="Only the (at most one live) note referencing this entry.")] = None,
+        kanji_literal: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=2)]], Field(description="Only the kanji note for this kanji.")] = None,
+        grammar_point_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only the grammar note for this grammar point.")] = None,
+        updated_since: Annotated[Optional[datetime], Field(description="Only notes with `updated_at` strictly after this instant.")] = None,
+        include_deleted: Annotated[Optional[StrictBool], Field(description="Also return tombstoned rows (`deleted_at` set).")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """List or search notes.
+
+        All filters combine with AND. Ordered by `created_at` descending, then `id` descending. Merge losers appear only with `include_deleted=true`, as tombstones with `merged_into_id` set. Each note embeds its live cards. 
+
+        :param q: Case-insensitive substring of any field value, the mnemonic or the source sentence (`note.search_text`).
+        :type q: str
+        :param type: Only notes of this base type.
+        :type type: NoteBaseType
+        :param note_type_id: Only notes of this note type.
+        :type note_type_id: str
+        :param tag: Only notes carrying this exact tag. The virtual tag `leech` is not accepted here (use `GET /cards?query=tag:leech`).
+        :type tag: str
+        :param entry_seq: Only the (at most one live) note referencing this entry.
+        :type entry_seq: int
+        :param kanji_literal: Only the kanji note for this kanji.
+        :type kanji_literal: str
+        :param grammar_point_id: Only the grammar note for this grammar point.
+        :type grammar_point_id: str
+        :param updated_since: Only notes with `updated_at` strictly after this instant.
+        :type updated_since: datetime
+        :param include_deleted: Also return tombstoned rows (`deleted_at` set).
+        :type include_deleted: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_notes_serialize(
+            q=q,
+            type=type,
+            note_type_id=note_type_id,
+            tag=tag,
+            entry_seq=entry_seq,
+            kanji_literal=kanji_literal,
+            grammar_point_id=grammar_point_id,
+            updated_since=updated_since,
+            include_deleted=include_deleted,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "NotePage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _list_notes_serialize(
+        self,
+        q,
+        type,
+        note_type_id,
+        tag,
+        entry_seq,
+        kanji_literal,
+        grammar_point_id,
+        updated_since,
+        include_deleted,
+        limit,
+        cursor,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        if q is not None:
+            
+            _query_params.append(('q', q))
+            
+        if type is not None:
+            
+            _query_params.append(('type', type.value))
+            
+        if note_type_id is not None:
+            
+            _query_params.append(('note_type_id', note_type_id))
+            
+        if tag is not None:
+            
+            _query_params.append(('tag', tag))
+            
+        if entry_seq is not None:
+            
+            _query_params.append(('entry_seq', entry_seq))
+            
+        if kanji_literal is not None:
+            
+            _query_params.append(('kanji_literal', kanji_literal))
+            
+        if grammar_point_id is not None:
+            
+            _query_params.append(('grammar_point_id', grammar_point_id))
+            
+        if updated_since is not None:
+            if isinstance(updated_since, datetime):
+                _query_params.append(
+                    (
+                        'updated_since',
+                        updated_since.strftime(
+                            self.api_client.configuration.datetime_format
+                        )
+                    )
+                )
+            else:
+                _query_params.append(('updated_since', updated_since))
+            
+        if include_deleted is not None:
+            
+            _query_params.append(('include_deleted', include_deleted))
+            
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if cursor is not None:
+            
+            _query_params.append(('cursor', cursor))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/notes',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def update_note(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        note_patch: NotePatch,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> Note:
+        """Edit a note's fields, tags, mnemonic, source sentence or dictionary match.
+
+        Server emits one `note.updated` carrying exactly the registers the body touches:  | Body property | Register(s) written | |---|---| | `fields.<key>` | `fields.<key>` for each key present (`\"\"` clears the field) | | `tags` | `tags` (whole set) | | `add_tags` / `remove_tags` | `tags`: current set plus/minus the given tags, computed by the server at apply time | | `mnemonic` | `mnemonic` | | any of `source_sentence`, `source_sentence_id`, `source_media_id` | `source_sentence` (one register covering all three; the ones not sent are written as `\"\"` / `null`) | | `entry_seq` | `entry_seq` (vocab notes only; `null` un-matches) |  `tags` together with `add_tags`/`remove_tags` is `422`. An empty body is `422`. If the merged set (current tags plus `add_tags`, minus `remove_tags`) would exceed 200 tags (the op limit, `contracts/sync/common.schema.json#/$defs/tags`), the response is `422 validation_failed` with an error `{pointer: /add_tags, code: out_of_range}` and nothing is emitted (C-2). `note_type_id`, `kanji_literal`, `grammar_point_id` and `origin` are immutable (sending them is `422`).  **Re-match collision.** Setting `entry_seq` to an entry already held by another live note is allowed: the op-apply path merges this note into that one (`note.merged`, plus `card.created`/`card.merged` as needed, all emitted by the server as a consequence) and the response is the survivor.  **Merged or deleted target.** A merge loser's id acts on the survivor. A deleted, unmerged note is `410 gone`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param note_patch: (required)
+        :type note_patch: NotePatch
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_note_serialize(
+            note_id=note_id,
+            note_patch=note_patch,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def update_note_with_http_info(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        note_patch: NotePatch,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[Note]:
+        """Edit a note's fields, tags, mnemonic, source sentence or dictionary match.
+
+        Server emits one `note.updated` carrying exactly the registers the body touches:  | Body property | Register(s) written | |---|---| | `fields.<key>` | `fields.<key>` for each key present (`\"\"` clears the field) | | `tags` | `tags` (whole set) | | `add_tags` / `remove_tags` | `tags`: current set plus/minus the given tags, computed by the server at apply time | | `mnemonic` | `mnemonic` | | any of `source_sentence`, `source_sentence_id`, `source_media_id` | `source_sentence` (one register covering all three; the ones not sent are written as `\"\"` / `null`) | | `entry_seq` | `entry_seq` (vocab notes only; `null` un-matches) |  `tags` together with `add_tags`/`remove_tags` is `422`. An empty body is `422`. If the merged set (current tags plus `add_tags`, minus `remove_tags`) would exceed 200 tags (the op limit, `contracts/sync/common.schema.json#/$defs/tags`), the response is `422 validation_failed` with an error `{pointer: /add_tags, code: out_of_range}` and nothing is emitted (C-2). `note_type_id`, `kanji_literal`, `grammar_point_id` and `origin` are immutable (sending them is `422`).  **Re-match collision.** Setting `entry_seq` to an entry already held by another live note is allowed: the op-apply path merges this note into that one (`note.merged`, plus `card.created`/`card.merged` as needed, all emitted by the server as a consequence) and the response is the survivor.  **Merged or deleted target.** A merge loser's id acts on the survivor. A deleted, unmerged note is `410 gone`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param note_patch: (required)
+        :type note_patch: NotePatch
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_note_serialize(
+            note_id=note_id,
+            note_patch=note_patch,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def update_note_without_preload_content(
+        self,
+        note_id: Annotated[str, Field(strict=True, description="Note id.")],
+        note_patch: NotePatch,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Edit a note's fields, tags, mnemonic, source sentence or dictionary match.
+
+        Server emits one `note.updated` carrying exactly the registers the body touches:  | Body property | Register(s) written | |---|---| | `fields.<key>` | `fields.<key>` for each key present (`\"\"` clears the field) | | `tags` | `tags` (whole set) | | `add_tags` / `remove_tags` | `tags`: current set plus/minus the given tags, computed by the server at apply time | | `mnemonic` | `mnemonic` | | any of `source_sentence`, `source_sentence_id`, `source_media_id` | `source_sentence` (one register covering all three; the ones not sent are written as `\"\"` / `null`) | | `entry_seq` | `entry_seq` (vocab notes only; `null` un-matches) |  `tags` together with `add_tags`/`remove_tags` is `422`. An empty body is `422`. If the merged set (current tags plus `add_tags`, minus `remove_tags`) would exceed 200 tags (the op limit, `contracts/sync/common.schema.json#/$defs/tags`), the response is `422 validation_failed` with an error `{pointer: /add_tags, code: out_of_range}` and nothing is emitted (C-2). `note_type_id`, `kanji_literal`, `grammar_point_id` and `origin` are immutable (sending them is `422`).  **Re-match collision.** Setting `entry_seq` to an entry already held by another live note is allowed: the op-apply path merges this note into that one (`note.merged`, plus `card.created`/`card.merged` as needed, all emitted by the server as a consequence) and the response is the survivor.  **Merged or deleted target.** A merge loser's id acts on the survivor. A deleted, unmerged note is `410 gone`. 
+
+        :param note_id: Note id. (required)
+        :type note_id: str
+        :param note_patch: (required)
+        :type note_patch: NotePatch
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._update_note_serialize(
+            note_id=note_id,
+            note_patch=note_patch,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "Note",
+            '404': "Problem",
+            '410': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _update_note_serialize(
+        self,
+        note_id,
+        note_patch,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if note_id is not None:
+            _path_params['note_id'] = note_id
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if note_patch is not None:
+            _body_params = note_patch
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            self.api_client._set_header(_header_params, 'Content-Type', _content_type)
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                self.api_client._set_header(_header_params, 'Content-Type', _default_content_type)
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='PATCH',
+            resource_path='/notes/{note_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+

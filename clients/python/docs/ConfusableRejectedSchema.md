@@ -1,0 +1,32 @@
+# ConfusableRejectedSchema
+
+User rejects the pair (status 'rejected'); the row stays so it is not suggested again. OPS.md#confusablerejected
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**note_a_id** | **str** | The smaller note id of the pair (lowercase text order). Must exist. | 
+**note_b_id** | **str** | The larger note id. note_a_id &lt; note_b_id. Must exist. | 
+**reason** | **str** | Why they are confused. entity_id &#x3D; &#39;&lt;note_a_id&gt;|&lt;note_b_id&gt;|&lt;reason&gt;&#39;. | 
+
+## Example
+
+```python
+from kotobaya_client.models.confusable_rejected_schema import ConfusableRejectedSchema
+
+# TODO update the JSON string below
+json = "{}"
+# create an instance of ConfusableRejectedSchema from a JSON string
+confusable_rejected_schema_instance = ConfusableRejectedSchema.from_json(json)
+# print the JSON string representation of the object
+print(ConfusableRejectedSchema.to_json())
+
+# convert the object into a dict
+confusable_rejected_schema_dict = confusable_rejected_schema_instance.to_dict()
+# create an instance of ConfusableRejectedSchema from a dict
+confusable_rejected_schema_from_dict = ConfusableRejectedSchema.from_dict(confusable_rejected_schema_dict)
+```
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+

@@ -36,7 +36,13 @@ check-deploy:
 	bash deploy/helm/check.sh
 
 check-contracts:
-	@echo "contracts: no checks yet (stub; contracts arrive in T003-T006)"
+	bash contracts/db/check.sh
+	bash contracts/sync/check.sh
+	bash contracts/api/check.sh
+	bash contracts/core/check.sh
+	bash clients/generate.sh
+	git diff --exit-code -- clients/
+	@test -z "$$(git ls-files --others --exclude-standard -- clients/)" || { echo "clients/: untracked generated files (drift)"; exit 1; }
 
 test:
 	@for m in $(MODULES); do echo "== $$m"; $(MAKE) --no-print-directory check MODULE=$$m || exit 1; done

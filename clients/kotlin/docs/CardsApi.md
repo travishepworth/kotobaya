@@ -1,0 +1,453 @@
+# CardsApi
+
+All URIs are relative to */api/v1*
+
+| Method | HTTP request | Description |
+| ------------- | ------------- | ------------- |
+| [**bulkCards**](CardsApi.md#bulkCards) | **POST** /cards/bulk | Apply one action to many cards (suspend, tag, move, delete, ...). |
+| [**bulkScheduleCards**](CardsApi.md#bulkScheduleCards) | **POST** /cards/bulk/schedule | Reschedule or reset many cards (manual review-log rows). |
+| [**createCard**](CardsApi.md#createCard) | **POST** /cards | Add an optional card kind to an existing note. |
+| [**deleteCard**](CardsApi.md#deleteCard) | **DELETE** /cards/{card_id} | Delete one card (permanent tombstone); the note and its other cards stay. |
+| [**getCard**](CardsApi.md#getCard) | **GET** /cards/{card_id} | One card with its note summary. |
+| [**listCardReviews**](CardsApi.md#listCardReviews) | **GET** /cards/{card_id}/reviews | Review history of a card (its whole replay set plus drills and crams). |
+| [**listCards**](CardsApi.md#listCards) | **GET** /cards | Find cards with the card search language. |
+| [**updateCard**](CardsApi.md#updateCard) | **PATCH** /cards/{card_id} | Suspend, bury, flag or re-preset one card. |
+
+
+<a id="bulkCards"></a>
+# **bulkCards**
+> CardBulkResult bulkCards(cardBulkRequest)
+
+Apply one action to many cards (suspend, tag, move, delete, ...).
+
+Select cards with exactly one of &#x60;card_ids&#x60; (1 to 5000 ids) or &#x60;query&#x60; (card search string). Unknown, deleted and merged-away ids in &#x60;card_ids&#x60; are skipped and counted in &#x60;skipped&#x60; (merge losers are **not** redirected in bulk). A selector matching more than 5000 cards is &#x60;422 bulk_too_large&#x60;; nothing is applied. Matching zero cards is a successful no-op. All ops of one call are applied in one transaction, ordered by card id.  | &#x60;action.type&#x60; | Required params | Server emits, per matched card unless noted | |---|---|---| | &#x60;suspend&#x60; | - | &#x60;card.suspended&#x60; | | &#x60;unsuspend&#x60; | - | &#x60;card.unsuspended&#x60; | | &#x60;bury&#x60; | &#x60;until&#x60; (optional; default &#x3D; start of the next study day) | &#x60;card.buried&#x60; | | &#x60;unbury&#x60; | - | &#x60;card.unburied&#x60; | | &#x60;flag&#x60; | &#x60;flags&#x60; (0-7; 0 clears) | &#x60;card.flag_set&#x60; | | &#x60;set_preset&#x60; | &#x60;preset_id&#x60; (live preset) | &#x60;card.preset_set&#x60; | | &#x60;add_tags&#x60;, &#x60;remove_tags&#x60; | &#x60;tags&#x60; (non-empty) | one &#x60;note.updated&#x60; (register &#x60;tags&#x60;) per **distinct note** of the matched cards | | &#x60;move&#x60; | &#x60;to_deck_id&#x60; (live &#x60;user&#x60; deck), optional &#x60;from_deck_id&#x60; (live &#x60;user&#x60; deck) | per distinct note: &#x60;deck.item_put&#x60; into &#x60;to_deck_id&#x60; (key &#x60;e:&lt;seq&gt;&#x60; or &#x60;n:&lt;note id&gt;&#x60;, appended in card-id order at max position + 1024 each) and, with &#x60;from_deck_id&#x60;, &#x60;deck.item_removed&#x60; there if the item exists | | &#x60;delete&#x60; | - | &#x60;card.deleted&#x60; |  Cards already in the target state still get an op (it bumps the clock) except: &#x60;delete&#x60; on a deleted card, and tag actions that would not change a note&#39;s tag set - those are counted in &#x60;skipped&#x60;. An &#x60;add_tags&#x60; that would give any matched note more than 200 tags is &#x60;422 validation_failed&#x60; (error &#x60;out_of_range&#x60; at &#x60;/action/tags&#x60;); nothing is applied (C-2). Params not listed for the action type are &#x60;422&#x60;. A &#x60;to_deck_id&#x60;/&#x60;from_deck_id&#x60; that is not a live &#x60;user&#x60; deck is &#x60;409 deck_read_only&#x60;. With &#x60;dry_run: true&#x60; nothing is emitted and the counts say what would happen. Repeating a call is safe: register actions converge.  Reschedule and reset write review history (&#x60;review.logged&#x60;) and therefore need the &#x60;review&#x60; scope; they are the separate operation &#x60;POST /cards/bulk/schedule&#x60;. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardBulkRequest : CardBulkRequest = {"action":{"from_deck_id":"01931f40-2000-7000-8000-000000000d02","to_deck_id":"01931f40-2000-7000-8000-000000000d01","type":"move"},"query":"deck:\"Inbox\""} // CardBulkRequest | 
+try {
+    val result : CardBulkResult = apiInstance.bulkCards(cardBulkRequest)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#bulkCards")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#bulkCards")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardBulkRequest** | [**CardBulkRequest**](CardBulkRequest.md)|  | |
+
+### Return type
+
+[**CardBulkResult**](CardBulkResult.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+<a id="bulkScheduleCards"></a>
+# **bulkScheduleCards**
+> CardBulkResult bulkScheduleCards(cardBulkScheduleRequest)
+
+Reschedule or reset many cards (manual review-log rows).
+
+Same selector, limits, ordering, transaction and &#x60;dry_run&#x60; rules as &#x60;POST /cards/bulk&#x60;. Needs the &#x60;review&#x60; scope, like every other way of writing &#x60;review_log&#x60; (&#x60;POST /sync/push&#x60; needs &#x60;review&#x60; for &#x60;review.*&#x60; ops; &#x60;POST /review/answer&#x60;).  | &#x60;action.type&#x60; | Required params | Server emits, per matched card | |---|---|---| | &#x60;reschedule&#x60; | &#x60;due_at&#x60; | &#x60;review.logged&#x60; with &#x60;review_type &#x3D; manual&#x60;, &#x60;manual_action &#x3D; set_due&#x60;, &#x60;manual_due_at &#x3D; due_at&#x60; | | &#x60;reset&#x60; | - | &#x60;review.logged&#x60; with &#x60;review_type &#x3D; manual&#x60;, &#x60;manual_action &#x3D; reset&#x60; |  - &#x60;reset&#x60; of a card in state &#x60;new&#x60; is skipped (counted in &#x60;skipped&#x60;). - &#x60;reschedule&#x60; is &#x60;422&#x60; for the whole call if any matched card is &#x60;new&#x60; (a new card has no   memory state to keep); nothing is applied. - Suspended cards are processed (the manual row changes the schedule cache; the card   stays suspended). - Repeating a call adds another manual row per card with the same effect on the   schedule (manual rows are not deduplicated). Each manual row can be undone with   &#x60;POST /review/undo&#x60; by its id (&#x60;GET /cards/{card_id}/reviews&#x60;). 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardBulkScheduleRequest : CardBulkScheduleRequest = {"action":{"due_at":"2026-11-20T19:00:00.000Z","type":"reschedule"},"dry_run":true,"query":"is:due kind:reading"} // CardBulkScheduleRequest | 
+try {
+    val result : CardBulkResult = apiInstance.bulkScheduleCards(cardBulkScheduleRequest)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#bulkScheduleCards")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#bulkScheduleCards")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardBulkScheduleRequest** | [**CardBulkScheduleRequest**](CardBulkScheduleRequest.md)|  | |
+
+### Return type
+
+[**CardBulkResult**](CardBulkResult.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+<a id="createCard"></a>
+# **createCard**
+> Card createCard(cardCreate)
+
+Add an optional card kind to an existing note.
+
+Server emits &#x60;card.created&#x60;. &#x60;kind&#x60; must be a key of the note type&#39;s &#x60;templates&#x60;. If the note already has a live card of that kind it is returned with &#x60;200&#x60; and nothing is emitted (REST never creates a duplicate &#x60;(note, kind)&#x60;). A merge loser&#39;s &#x60;note_id&#x60; acts on the survivor. A deleted note is &#x60;410 gone&#x60;. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardCreate : CardCreate = {"kind":"listening","note_id":"01931f40-1a2b-7c3d-8e4f-000000000a01"} // CardCreate | 
+try {
+    val result : Card = apiInstance.createCard(cardCreate)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#createCard")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#createCard")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardCreate** | [**CardCreate**](CardCreate.md)|  | |
+
+### Return type
+
+[**Card**](Card.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+<a id="deleteCard"></a>
+# **deleteCard**
+> deleteCard(cardId)
+
+Delete one card (permanent tombstone); the note and its other cards stay.
+
+Server emits &#x60;card.deleted&#x60;. Already deleted or a merge loser - &#x60;204&#x60;, no op.
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardId : kotlin.String = 01931f40-1a2b-7c3d-8e4f-000000000c01 // kotlin.String | Card id.
+try {
+    apiInstance.deleteCard(cardId)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#deleteCard")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#deleteCard")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardId** | **kotlin.String**| Card id. | |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/problem+json
+
+<a id="getCard"></a>
+# **getCard**
+> Card getCard(cardId, includeDeleted)
+
+One card with its note summary.
+
+A merge loser&#39;s id returns the survivor (&#x60;Content-Location&#x60; set). Deleted card, or card of a deleted note - &#x60;410 gone&#x60; unless &#x60;include_deleted&#x3D;true&#x60;.
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardId : kotlin.String = 01931f40-1a2b-7c3d-8e4f-000000000c01 // kotlin.String | Card id.
+val includeDeleted : kotlin.Boolean = false // kotlin.Boolean | Also return tombstoned rows (`deleted_at` set).
+try {
+    val result : Card = apiInstance.getCard(cardId, includeDeleted)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#getCard")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#getCard")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardId** | **kotlin.String**| Card id. | |
+| **includeDeleted** | **kotlin.Boolean**| Also return tombstoned rows (&#x60;deleted_at&#x60; set). | [optional] [default to false] |
+
+### Return type
+
+[**Card**](Card.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+<a id="listCardReviews"></a>
+# **listCardReviews**
+> ReviewPage listCardReviews(cardId, limit, cursor)
+
+Review history of a card (its whole replay set plus drills and crams).
+
+Rows of &#x60;review_log&#x60; whose &#x60;card_id&#x60; is this card or any card merged into it, every &#x60;review_type&#x60;, newest first by &#x60;(reviewed_at, hlc, id)&#x60; descending - the reverse of the replay order (SYNC.md 9.1), so a late or re-minted review (SYNC.md 10.4) sits where it was answered, not where it was logged. Undone rows are included (&#x60;undone_at&#x60; set) so the history is complete. A merge loser&#39;s id resolves to the survivor. Works for deleted cards (history is never deleted). 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardId : kotlin.String = 01931f40-1a2b-7c3d-8e4f-000000000c01 // kotlin.String | Card id.
+val limit : kotlin.Int = 50 // kotlin.Int | Page size.
+val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+try {
+    val result : ReviewPage = apiInstance.listCardReviews(cardId, limit, cursor)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#listCardReviews")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#listCardReviews")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardId** | **kotlin.String**| Card id. | |
+| **limit** | **kotlin.Int**| Page size. | [optional] [default to 50] |
+| **cursor** | **kotlin.String**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] |
+
+### Return type
+
+[**ReviewPage**](ReviewPage.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+<a id="listCards"></a>
+# **listCards**
+> CardPage listCards(query, sort, limit, cursor)
+
+Find cards with the card search language.
+
+&#x60;query&#x60; is a string in the card search language, parsed by the shared core (e.g. &#x60;deck:\&quot;Frieren\&quot; is:due tag:leech lapses&gt;3 kanji:績 rated:7:1 kind:reading&#x60;). Absent or empty &#x3D; all live cards. A string that does not parse is &#x60;422 invalid_query&#x60; with the UTF-16 offset of the error in &#x60;errors[0].position&#x60;. Cards of deleted notes, deleted cards and merge losers never match. Each card embeds a &#x60;note&#x60; summary. &#x60;is:due&#x60; and similar relative terms are evaluated at request time for the current study day. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val query : kotlin.String = deck:"Frieren" is:due lapses>3 // kotlin.String | Card search string (grammar owned by the shared core). Maximum 2000 characters.
+val sort : kotlin.String = due_at // kotlin.String | Sort key; a leading `-` means descending. Ties are broken by card `id` ascending. NULL values sort last in either direction.
+val limit : kotlin.Int = 50 // kotlin.Int | Page size.
+val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+try {
+    val result : CardPage = apiInstance.listCards(query, sort, limit, cursor)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#listCards")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#listCards")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **query** | **kotlin.String**| Card search string (grammar owned by the shared core). Maximum 2000 characters. | [optional] |
+| **sort** | **kotlin.String**| Sort key; a leading &#x60;-&#x60; means descending. Ties are broken by card &#x60;id&#x60; ascending. NULL values sort last in either direction. | [optional] [enum: created_at, -created_at, due_at, -due_at, updated_at, -updated_at, lapses, -lapses, difficulty, -difficulty, stability, -stability, last_review_at, -last_review_at] |
+| **limit** | **kotlin.Int**| Page size. | [optional] [default to 50] |
+| **cursor** | **kotlin.String**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] |
+
+### Return type
+
+[**CardPage**](CardPage.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+<a id="updateCard"></a>
+# **updateCard**
+> Card updateCard(cardId, cardPatch)
+
+Suspend, bury, flag or re-preset one card.
+
+Server emits one op per property present, in this order: &#x60;suspended&#x60; → &#x60;card.suspended&#x60; (true) or &#x60;card.unsuspended&#x60; (false); &#x60;buried_until&#x60; → &#x60;card.buried&#x60; (an instant) or &#x60;card.unburied&#x60; (&#x60;null&#x60;); &#x60;flags&#x60; → &#x60;card.flag_set&#x60;; &#x60;preset_id&#x60; → &#x60;card.preset_set&#x60; (must be a live preset). An empty body is &#x60;422&#x60;. A merge loser&#39;s id acts on the survivor. Schedule properties cannot be patched (use &#x60;POST /cards/bulk/schedule&#x60; &#x60;reschedule&#x60;/&#x60;reset&#x60; or review the card). 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = CardsApi()
+val cardId : kotlin.String = 01931f40-1a2b-7c3d-8e4f-000000000c01 // kotlin.String | Card id.
+val cardPatch : CardPatch = {"buried_until":"2026-11-13T19:00:00.000Z"} // CardPatch | 
+try {
+    val result : Card = apiInstance.updateCard(cardId, cardPatch)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling CardsApi#updateCard")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling CardsApi#updateCard")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **cardId** | **kotlin.String**| Card id. | |
+| **cardPatch** | [**CardPatch**](CardPatch.md)|  | |
+
+### Return type
+
+[**Card**](Card.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
