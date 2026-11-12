@@ -331,3 +331,5 @@
 2026-11-12T16:16:54Z T203 CHECK_GREEN core after rebase
 2026-11-12T16:16:54Z T203 REVIEW dispatched reviewer(opus) + architect(opus) 2nd pass
 2026-11-12T16:17:48Z T203 REVIEW_APPROVE reviewer: 4 minors → FOLLOWUPS; awaiting architect
+2026-11-12T16:19:50Z T203 REVIEW_APPROVE architect 2nd pass (6 minors; 3 routed into T202c ticket)
+2026-11-12T16:19:50Z T203 MERGE 1 attempt

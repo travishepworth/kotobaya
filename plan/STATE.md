@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T16:16:54Z
+Updated: 2026-11-12T16:19:50Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -18,7 +18,6 @@ Updated: 2026-11-12T16:16:54Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T203 (check green) | reviewer (opus) + architect 2nd pass | 2026-11-12T16:16:54Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -36,11 +35,12 @@ Updated: 2026-11-12T16:16:54Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 9/24 · attempts 18 · escalations 0
+P2: merged 10/24 · attempts 18 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T203 replay engine (order/replay/fold/decide, IncrementalReplay), 1000-case property test, jvm=js digest — reviewer + architect APPROVE, 1 attempt
 - T202a sync core: HLC, remint, canonical JSON (jvm=js), op codec, PortableRegex (ECMA), push-body parser (per-op DuplicateKey/TooDeep), depth op 500/doc 512 — 4 attempts; reviewer + architect APPROVE
 - C-5 SYNC 2.1: ECMA-262 pattern semantics (validate.py translator), depth op 500 / doc 512, 7 invalid/raw-push examples — reviewer APPROVE
 - T213b web core wrapper web/src/lib/core/index.ts (renderCard/parseQuery/completeQuery/previewIntervals) + vitest vs T213a goldens

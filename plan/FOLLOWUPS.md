@@ -111,3 +111,7 @@
 - T203 review: HistoryGen has ≤1 params change per history; allow 0–2 (lazy bump then eager same-version change before next fold).
 - T203 review: ReplayGoldenTest compares S/D with 1e-6 tolerance (bit identity covered by jvm/js digest test); note it.
 - T203 review: IncrementalReplay.undo must only be called when UndoOutcome.replayTarget; document in KDoc.
+- T203 architect: property test calls table.read() after every event, so lazy Params is resolved immediately → decide rule 2 / stale-fold guard only unit-tested. Compare against non-mutating view.
+- T203 architect -> next C-ticket: add @throws to ReplayEngine.replay KDoc; reword SYNC §9 (SYNC.md:946) — SET_DUE on NEW card leaves it unchanged (Scheduler.kt:317), T204/T205 UI must not expect a due date.
+- T203 architect: ReplayGoldenTest digest failure message should say "bump SCHEDULER_VERSION" (constant lives in replay/, separate from FsrsScheduler).
+- T203 architect -> next C-ticket or Android: IncrementalReplay/replaySet/rowOrder/SCHEDULER_VERSION public but not frozen.
