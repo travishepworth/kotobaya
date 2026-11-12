@@ -330,3 +330,4 @@
 2026-11-12T16:16:54Z T203 HANDOFF DONE
 2026-11-12T16:16:54Z T203 CHECK_GREEN core after rebase
 2026-11-12T16:16:54Z T203 REVIEW dispatched reviewer(opus) + architect(opus) 2nd pass
+2026-11-12T16:17:48Z T203 REVIEW_APPROVE reviewer: 4 minors → FOLLOWUPS; awaiting architect

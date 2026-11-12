@@ -107,3 +107,7 @@
 - C-5 review -> T201b/T207b/T204/T210a (REST + importers): SYNC 2.1 doesn't say what REST/import does with input that would mint a pattern-failing op (tag with U+3000/NBSP). Default: REST → 422 invalid_value; importers split tags on ECMA \s and count dropped tags. Confirm in next contract ticket.
 - C-5 review -> contract: SYNC 2.1 "MAY reject" deeper-than-512 docs; add "(push parse MUST, 5.2)".
 - T203 (T005 carry-over): replay orders by reviewed_at, so a clock-ahead device (within tolerance) can order a causally-later review first; replicas still converge. Revisit if users see odd intervals after offline multi-device study.
+- T203 review: HistoryGen never delivers a row already undone (undoneHlc at insert, as a rebuild/pull page would); add to property test.
+- T203 review: HistoryGen has ≤1 params change per history; allow 0–2 (lazy bump then eager same-version change before next fold).
+- T203 review: ReplayGoldenTest compares S/D with 1e-6 tolerance (bit identity covered by jvm/js digest test); note it.
+- T203 review: IncrementalReplay.undo must only be called when UndoOutcome.replayTarget; document in KDoc.
