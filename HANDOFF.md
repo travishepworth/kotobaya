@@ -9,6 +9,7 @@ CHECK: `make check MODULE=core` → green (jvmTest + jsTest)
 - `SyncSchemas`: JSON Schema 2020-12 subset validator; schemas embedded in generated `SyncSchemaTexts.kt`
 - `PushBodyParser`: duplicate-tolerant push-body parse, per-op `DuplicateKey` (SYNC 5.2, C-2)
 - Tests in commonTest (run on jvm and js); examples embedded in generated `SyncExamples.kt`
+- Attempt 2: lone-surrogate test inputs are now built at runtime (`Char(0xD800)`), because the JS build turned the source literals into `?`. Main and generated code had no such literals.
 
 ## Acceptance → tests
 - examples ops/invalid → `OpCodecTest.everyExampleOpDecodesKnownAndReencodesCanonically`, `everyInvalidExampleIsRejectedWithTheExpectedReason`
@@ -20,5 +21,5 @@ CHECK: `make check MODULE=core` → green (jvmTest + jsTest)
 - none
 
 ## For the reviewer (≤ 3 lines)
-- OUTSIDE OWNED PATHS: added `core/src/jvmTest/kotlin/kotobaya/sync/SyncContractDriftTest.kt`. The ticket asks for a jvm drift test, and common code can't read files. Keep it or move it.
+- `core/src/jvmTest/kotlin/kotobaya/sync/SyncContractDriftTest.kt` sits outside the owned paths; the coordinator accepted it.
 - Error pointer = the first failure in a fixed keyword order (documented in `SyncSchemas`); an `anyOf` failure reports its deepest branch error.

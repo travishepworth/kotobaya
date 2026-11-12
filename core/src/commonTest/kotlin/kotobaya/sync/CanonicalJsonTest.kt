@@ -20,6 +20,11 @@ import kotlin.test.assertTrue
  * JavaScript `JSON.stringify` output, so both platforms are held to the same strings.
  */
 class CanonicalJsonTest {
+    // Lone surrogates are built at runtime: as source literals the JS build turns them into '?'.
+    private val HI = Char(0xD800).toString()
+    private val HI2 = Char(0xD83D).toString()
+    private val LO = Char(0xDC00).toString()
+
     private val j = DefaultCanonicalJson
 
     private fun canon(text: String): String {
@@ -107,12 +112,12 @@ class CanonicalJsonTest {
 
     @Test
     fun encodeRejectsUnpairedSurrogatesAndNonFinite() {
-        assertFailsWith<IllegalArgumentException> { j.encode(JsonString("a\ud800b")) }
-        assertFailsWith<IllegalArgumentException> { j.encode(JsonString("\udc00")) }
-        assertFailsWith<IllegalArgumentException> { j.encode(JsonString("x\ud83d")) }
+        assertFailsWith<IllegalArgumentException> { j.encode(JsonString("a${HI}b")) }
+        assertFailsWith<IllegalArgumentException> { j.encode(JsonString(LO)) }
+        assertFailsWith<IllegalArgumentException> { j.encode(JsonString("x$HI2")) }
         assertFailsWith<IllegalArgumentException> { j.encode(JsonNumber(Double.NaN)) }
         assertFailsWith<IllegalArgumentException> { j.encode(JsonNumber(Double.POSITIVE_INFINITY)) }
-        assertFailsWith<IllegalArgumentException> { j.sizeOf(JsonObject(mapOf("k" to JsonString("\ud800")))) }
+        assertFailsWith<IllegalArgumentException> { j.sizeOf(JsonObject(mapOf("k" to JsonString(HI)))) }
     }
 
     @Test
@@ -120,7 +125,7 @@ class CanonicalJsonTest {
         val bad = listOf(
             "", " ", "{", "}", "[1,]", "{\"a\":1,}", "{\"a\" 1}", "{a:1}", "'a'", "01", "-", "1.", ".5", "1e",
             "+1", "0x10", "NaN", "Infinity", "-Infinity", "1e400", "-1e400", "tru", "nul", "true false",
-            "{\"a\":1}x", "[1] [2]", "\"\\ud800\"", "\"\\udc00x\"", "\"a\ud800\"", "\"\\x\"", "\"\\u12\"",
+            "{\"a\":1}x", "[1] [2]", "\"\\ud800\"", "\"\\udc00x\"", "\"a$HI\"", "\"\\x\"", "\"\\u12\"",
             "\"\u0001\"", "\"tab\there\"", "\"line\nbreak\"", "\"unterminated", "\ufeff{}",
             "{\"a\":1,\"a\":2}", "{\"x\":{\"b\":1,\"b\":1}}", "[{\"k\":1,\"k\":1}]", "\u00a01",
         )
@@ -172,7 +177,7 @@ class CanonicalJsonTest {
         assertEquals(2, j.utf8Size("é"))
         assertEquals(3, j.utf8Size("食"))
         assertEquals(4, j.utf8Size("😀"))
-        assertEquals(3, j.utf8Size("\ud800")) // lone surrogate: as U+FFFD
+        assertEquals(3, j.utf8Size(HI)) // lone surrogate: as U+FFFD
         val v = j.decode(""" { "b" : "パンを食べる" , "a" : [ 1.0 , "\u00e9" ] } """).value!!
         // counted on the canonical text, never on the input: 19 ASCII bytes + é (2) + 6 kana/kanji (18)
         val canonical = j.encode(v)
