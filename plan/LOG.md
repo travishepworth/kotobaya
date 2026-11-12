@@ -508,3 +508,4 @@
 2026-11-12T19:23:09Z T305a MERGE 2 attempts
 2026-11-12T19:23:22Z T312 DISPATCH writer-light(haiku)
 2026-11-12T19:24:42Z T303a HANDOFF DONE attempt 2 (clock_blocked hysteresis, resetLog pull_seq=0, mintAll at); CHECK_GREEN core; architect verification dispatched
+2026-11-12T19:25:41Z C-10 HANDOFF DONE (6.2 reset sets pull_seq=0; model livelock guard; 12.5.1); review folded into T303a architect verification

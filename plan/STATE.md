@@ -15,7 +15,6 @@ Updated: 2026-11-12T19:24:42Z
 |---|---|---|---|---|
 | T312 | writer-light (haiku) | 1 | t/T312-android-release | 2026-11-12T19:23:22Z |
 | T307+T309 | writer (sonnet) | 1 | t/T307+T309-widget-ntfy | 2026-11-12T19:19:41Z |
-| C-10 | architect (opus) | 1 | t/C-10-log-reset-pull-seq | 2026-11-12T19:18:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -23,6 +22,7 @@ Updated: 2026-11-12T19:24:42Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| C-10 (contracts+core+server green) | reviewed with T303a verification (same architect) | 2026-11-12T19:25:41Z |
 | T303a att 2 (core green) | architect verification | 2026-11-12T19:24:42Z |
 
 ## Blocked
