@@ -1,16 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:54:43Z
+Updated: 2026-11-12T11:59:59Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T006 | architect (gp/opus) | 2 | t/T006-core-interfaces (existing worktree) | 2026-11-12T11:59:59Z |
+| C-1 | architect (gp/opus) | 1 | t/C-1-contract-align | 2026-11-12T11:59:59Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T006 | reviewer (opus) + architect 2nd pass (opus) | 2026-11-12T11:54:43Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -27,7 +28,7 @@ Updated: 2026-11-12T11:54:43Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 12/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
+Merged 12/15 (C-1 added) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
 - T004 OpenAPI contract — 3 attempts (1 Fable, 2 Opus); reviewer + architect APPROVE; 117 operations

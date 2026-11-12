@@ -102,3 +102,9 @@
 2026-11-12T11:54:43Z T006 CHECK_GREEN core, web, contracts/core/check.sh
 2026-11-12T11:54:43Z T006 REVIEW reviewer + architect dispatched
 2026-11-12T11:58:19Z T006 REVIEW_CHANGES architect: 1 major (cross-platform float determinism in FSRS pow/exp/round), 5 minor (2 need C-ticket on SCHEMA/SYNC)
+2026-11-12T11:59:59Z T006 REVIEW_CHANGES reviewer: 3 major (disabled-deck cards introduced; Not(And) format; set_due elapsed), 7 minor
+2026-11-12T11:59:59Z C-1 SPLIT contract-side fixes from T006 reviews (db+sync, non-breaking)
+2026-11-12T11:59:59Z - DECIDE ADR-005 provisional: no collection-wide load balancing
+2026-11-12T11:59:59Z - DECIDE ADR-006 provisional: mined cards priority 0 configurable; disabled decks introduce nothing
+2026-11-12T11:59:59Z T006 DISPATCH attempt 2 (opus, same worktree)
+2026-11-12T11:59:59Z C-1 DISPATCH architect(gp, opus)
