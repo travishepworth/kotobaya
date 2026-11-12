@@ -32,6 +32,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] **Backups:** confirm the first nightly backup landed off-cluster; run the restore drill once.
 
 ## Android
+- [ ] Release signing (T312): create a keystore (see android/signing/README.md), add GitHub secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`; push a tag `vX.Y.Z` (Y,Z < 100); install `kotobaya-<ver>.apk` via Obtainium and confirm it detects the next tag. Back up the keystore offline — a lost key means reinstalling.
 - [ ] Install the offline dictionary on a real phone (Settings > Offline storage); confirm download resumes after toggling airplane mode mid-download, and offline search works.
 - [ ] Pair a phone: QR pairing uses Google Play services (ML Kit code scanner); on a phone without Play services use manual code entry.
 
