@@ -85,3 +85,7 @@
 - C-4 → C-ticket later: `JpdbHistoryImportRequest.import_word_status` description still mentions never-forget/blacklist; align with ADR-009 (doc-only).
 - T208 → any web ticket: eslint.config.js doesn't parse `*.svelte.ts` and flags `no-navigation-without-resolve`; lint isn't a gate, fix opportunistically (owner: whoever next owns web config).
 - T208 → web tickets T209–T214: SvelteKit 3 has no `$lib` alias; use relative imports, generated client via `web/src/lib/api/generated.ts`; adapter config is in vite.config.ts (no svelte.config.js).
+- T212 -> C-ticket/T202c: `/meta` lacks backup fields (last verified backup, durable_seq, BACKUPS_DISABLED); settings UI shows 'not reported'.
+- T212 -> T212b: settings keys `scheduler.kanji_before_vocab`, `scheduler.mined_priority` not in SCHEMA §6; confirm/add via contract (additive).
+- T212: own `web/src/lib/settings/messages.ts` instead of shared i18n.ts; fold into shared i18n later.
+- T212: token scope text says `write` covers bulk scheduling (pending bulkScheduleCards scope CCR).

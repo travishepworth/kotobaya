@@ -281,3 +281,7 @@
 2026-11-12T15:33:37Z T213a DISPATCH writer-senior(opus) restart, branch -r suffix
 2026-11-12T15:33:37Z T207a DISPATCH writer-senior(opus) restart, branch -r suffix
 2026-11-12T15:33:37Z T212 DISPATCH writer(sonnet) restart, branch -r suffix
+2026-11-12T15:37:23Z T212 HANDOFF BLOCKED server half on T202b; web half done
+2026-11-12T15:37:23Z T212 CHECK_GREEN web
+2026-11-12T15:37:23Z T212 SPLIT server half → T212b (dep T202b)
+2026-11-12T15:37:23Z T212 MERGE web half (new dep qrcode-generator, justified)

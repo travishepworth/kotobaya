@@ -577,4 +577,4 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
-- C-4 status: MERGED · T201a MERGED · T201b TODO · T202a TODO · T202b TODO · T202c TODO · T203 TODO · T204 TODO · T205 TODO · T206 TODO · T207a TODO · T207b TODO · T208 MERGED · T209 TODO · T210a TODO · T210b TODO · T211 TODO · T212 TODO · T213a TODO · T213b TODO · T214 TODO
+- C-4 status: MERGED · T201a MERGED · T201b TODO · T202a TODO · T202b TODO · T202c TODO · T203 TODO · T204 TODO · T205 TODO · T206 TODO · T207a TODO · T207b TODO · T208 MERGED · T209 TODO · T210a TODO · T210b TODO · T211 TODO · T212 MERGED (web half) · T212b TODO (server half, dep T202b) · T213a TODO · T213b TODO · T214 TODO
