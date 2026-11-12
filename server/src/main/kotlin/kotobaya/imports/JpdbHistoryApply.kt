@@ -55,17 +55,18 @@ class ImportCancelled : RuntimeException("jpdb history import cancelled")
  * A kanji whose character contains U+0000 cannot be a `kanji_literal` (SYNC.md 2.1): its groups are skipped and
  * moved to `kanji_unmapped` (rows) and `reviews_skipped` (their rating events). U+0000 is stripped from field text.
  */
-class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int = 200) {
+open class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int = 200) {
     private val log = LoggerFactory.getLogger("kotobaya.imports.jpdb")
 
     /** Parses [planJson] (T207a schema v1) and applies it. Blocking; call from an IO thread. */
-    fun apply(planJson: JsonNode, progress: ImportProgress = ImportProgress.None): ObjectNode =
+    open fun apply(planJson: JsonNode, progress: ImportProgress = ImportProgress.None): ObjectNode =
         apply(JpdbPlan.parse(planJson), progress)
 
     internal fun apply(plan: JpdbPlan, progress: ImportProgress): ObjectNode {
         val c = plan.counts
         val planned = plan.vocabGroups.sumOf { it.reviews.size } + plan.kanjiGroups.sumOf { it.reviews.size }
         check(planned == c.reviewsRating) { "jpdb import plan lists $planned reviews but counts ${c.reviewsRating} rating events" }
+        checkPlanSums(plan)
         val run = Run()
 
         val units = mutableListOf<(OpTx) -> Unit>()
@@ -103,6 +104,7 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
         var reviewsImported = 0
         var reviewsAlready = 0
         var collisions = 0
+        var groupsSkippedDeleted = 0
         var wordStatusesSet = 0
         var nulKanjiRows = 0
         var nulKanjiRatings = 0
@@ -113,7 +115,13 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
 
         fun vocab(tx: OpTx, g: JpdbPlan.VocabGroup) {
             val views = NoteViews(tx.dsl)
-            val noteId = views.liveHolder("entry_seq", g.entrySeq)?.also { notesExisting++ } ?: run {
+            val live = views.liveHolder("entry_seq", g.entrySeq)
+            val liveCard = live?.let { liveCardId(tx, it, g.cardKind) }
+            if (liveCard == null && deletedByUser(tx, g.reviews)) {
+                skipDeleted(g.reviews)
+                return
+            }
+            val noteId = live?.also { notesExisting++ } ?: run {
                 val id = Uuid7.generate().toString()
                 val p = json.createObjectNode().put("id", id).put("note_type_id", VOCAB_TYPE).put("entry_seq", g.entrySeq)
                 p.set<JsonNode>("fields", json.createObjectNode())
@@ -141,7 +149,16 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
                 return
             }
             val views = NoteViews(tx.dsl)
-            val noteId = views.liveHolder("kanji_literal", n.character)?.also { kanjiNotesExisting++ } ?: run {
+            val live = views.liveHolder("kanji_literal", n.character)
+            // DECIDED rule 3: a group whose reviews all sit on deleted cards stays deleted (no resurrection).
+            val wanted = groups.filter { g ->
+                val liveCard = live?.let { liveCardId(tx, it, g.cardKind) }
+                val deleted = liveCard == null && deletedByUser(tx, g.reviews)
+                if (deleted) skipDeleted(g.reviews)
+                !deleted
+            }
+            if (live == null && wanted.isEmpty() && groups.isNotEmpty()) return
+            val noteId = live?.also { kanjiNotesExisting++ } ?: run {
                 val id = Uuid7.generate().toString()
                 val fields = json.createObjectNode()
                 n.fields.forEach { (k, v) -> fields.put(k, v.replace("\u0000", "")) }
@@ -152,7 +169,7 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
                 kanjiNotesCreated++
                 id
             }
-            for (g in groups) {
+            for (g in wanted) {
                 val cardId = ensureCard(tx, noteId, g.cardKind, g.suspendedOnCreate) {
                     kanjiCardsCreated++
                     if (g.suspendedOnCreate) kanjiCardsSuspended++
@@ -172,6 +189,39 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
             wordStatusesSet++
         }
 
+        private fun liveCardId(tx: OpTx, noteId: String, kind: String): String? = tx.dsl.fetchOptional(
+            "select id::text from app.card where note_id = ?::uuid and kind = ? and deleted_at is null", noteId, kind,
+        ).map { it.get(0, String::class.java) }.orElse(null)
+
+        /** id -> live merge-survivor card, or "" when that card or its note is tombstoned, for the ids found in review_log. */
+        private fun existingOwners(tx: OpTx, ids: List<String>): Map<String, String> {
+            val out = HashMap<String, String>()
+            ids.chunked(1000).forEach { chunk ->
+                tx.dsl.fetch(
+                    "select r.id::text, case when s.deleted_at is null and n.deleted_at is null then s.id::text else '' end " +
+                        "from app.review_log r join app.card c on c.id = r.card_id " +
+                        "join app.card s on s.id = coalesce(c.merged_into_id, c.id) join app.note n on n.id = s.note_id " +
+                        "where r.id = any(?::uuid[])",
+                    chunk.toTypedArray(),
+                ).forEach { out[it.get(0, String::class.java)] = it.get(1, String::class.java) }
+            }
+            return out
+        }
+
+        /** True when the group has reviews in review_log and every one of them sits on a deleted card or note. */
+        private fun deletedByUser(tx: OpTx, reviews: List<JpdbPlan.Review>): Boolean {
+            if (reviews.isEmpty()) return false
+            val owners = existingOwners(tx, reviews.map { it.id })
+            return owners.isNotEmpty() && owners.values.all { it.isEmpty() }
+        }
+
+        /** The group's reviews are not re-imported: they count as already imported, nothing is written. */
+        private fun skipDeleted(reviews: List<JpdbPlan.Review>) {
+            reviewsAlready += reviews.size
+            reviews.forEach { seen.putIfAbsent(it.id, "") }
+            groupsSkippedDeleted++
+        }
+
         /** The live card of [kind] on [noteId] (an existing one keeps its `suspended` state), else a new one. */
         private fun ensureCard(tx: OpTx, noteId: String, kind: String, suspended: Boolean, created: () -> Unit): String {
             tx.dsl.fetchOptional(
@@ -187,17 +237,7 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
 
         private fun reviews(tx: OpTx, cardId: String, reviews: List<JpdbPlan.Review>) {
             if (reviews.isEmpty()) return
-            // id -> the live card (merge survivor) its row feeds, or "" when that card or its note is tombstoned.
-            val existing = HashMap<String, String>()
-            reviews.map { it.id }.chunked(1000).forEach { ids ->
-                tx.dsl.fetch(
-                    "select r.id::text, case when s.deleted_at is null and n.deleted_at is null then s.id::text else '' end " +
-                        "from app.review_log r join app.card c on c.id = r.card_id " +
-                        "join app.card s on s.id = coalesce(c.merged_into_id, c.id) join app.note n on n.id = s.note_id " +
-                        "where r.id = any(?::uuid[])",
-                    ids.toTypedArray(),
-                ).forEach { existing[it.get(0, String::class.java)] = it.get(1, String::class.java) }
-            }
+            val existing = existingOwners(tx, reviews.map { it.id })
             for (r in reviews) {
                 val owner = seen[r.id] ?: existing[r.id]
                 if (owner != null) {
@@ -226,6 +266,7 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
 
     private fun result(plan: JpdbPlan, run: Run): ObjectNode {
         val c = plan.counts
+        if (run.groupsSkippedDeleted > 0) log.info("jpdb import: {} groups left deleted (their reviews exist on deleted cards)", run.groupsSkippedDeleted)
         val ratingsNotWritten = if (plan.importReviews) run.nulKanjiRatings else c.reviewsRating
         val r = json.createObjectNode()
         r.put("vocabulary_total", c.vocabularyTotal)
@@ -262,18 +303,42 @@ class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits: Int
         const val KANJI_TYPE = "00000000-0000-7000-8000-000000000102"
         const val ORIGIN = "jpdb_import"
 
-        /** The three sums of `JobResultJpdbHistory`; a result that breaks one fails the job instead of hiding records. */
-        fun checkSums(r: JsonNode) {
+        private fun sums(r: JsonNode): List<String> {
             fun n(k: String) = r.path(k).asLong()
-            check(n("vocabulary_total") == n("vocabulary_carded") + n("vocabulary_status_only") + n("vocabulary_en_jp_ignored") + r.path("unmapped").size()) {
-                "vocabulary buckets do not sum to vocabulary_total: $r"
-            }
-            check(n("kanji_total") == n("kanji_carded") + r.path("kanji_unmapped").size()) { "kanji buckets do not sum to kanji_total: $r" }
+            val bad = mutableListOf<String>()
+            val vocab = n("vocabulary_carded") + n("vocabulary_status_only") + n("vocabulary_en_jp_ignored") + r.path("unmapped").size()
+            if (n("vocabulary_total") != vocab) bad += "vocabulary_total=${n("vocabulary_total")} but its buckets sum to $vocab"
+            val kanji = n("kanji_carded") + r.path("kanji_unmapped").size()
+            if (n("kanji_total") != kanji) bad += "kanji_total=${n("kanji_total")} but its buckets sum to $kanji"
             val events = listOf(
                 "reviews_imported", "reviews_already_imported", "reviews_skipped", "reviews_unknown_grade",
                 "status_events_unknown", "status_events_known", "reviews_duplicate_dropped",
             ).sumOf(::n)
-            check(n("reviews_total") == events) { "event buckets do not sum to reviews_total: $r" }
+            if (n("reviews_total") != events) bad += "reviews_total=${n("reviews_total")} but its buckets sum to $events"
+            return bad
+        }
+
+        /** The three sums of `JobResultJpdbHistory`; a result that breaks one fails the job. Names only the counters that disagree. */
+        fun checkSums(r: JsonNode) {
+            val bad = sums(r)
+            check(bad.isEmpty()) { "jpdb import result: " + bad.joinToString("; ") }
+        }
+
+        /**
+         * The sums that depend on the plan alone, checked before the first batch so a bad plan fails without writing.
+         * `reviews_rating` stands for imported + already imported + skipped (all rating events of mapped groups).
+         */
+        internal fun checkPlanSums(plan: JpdbPlan) {
+            val c = plan.counts
+            val bad = mutableListOf<String>()
+            val vocab = c.vocabularyCarded + c.vocabularyStatusOnly + c.vocabularyEnJpIgnored + plan.unmapped.size
+            if (c.vocabularyTotal != vocab) bad += "vocabulary_total=${c.vocabularyTotal} but its buckets sum to $vocab"
+            val kanji = c.kanjiCarded + plan.kanjiUnmapped.size
+            if (c.kanjiTotal != kanji) bad += "kanji_total=${c.kanjiTotal} but its buckets sum to $kanji"
+            val events = c.reviewsRating + c.reviewsSkippedRows + c.reviewsUnknownGrade + c.statusEventsUnknown +
+                c.statusEventsKnown + c.reviewsDuplicateDropped
+            if (c.reviewsTotal != events) bad += "reviews_total=${c.reviewsTotal} but its buckets sum to $events"
+            check(bad.isEmpty()) { "jpdb import plan: " + bad.joinToString("; ") }
         }
     }
 }

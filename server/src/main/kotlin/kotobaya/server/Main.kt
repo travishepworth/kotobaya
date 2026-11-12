@@ -14,6 +14,7 @@ import kotobaya.cards.CardsModule
 import kotobaya.dict.dictHandlers
 import kotobaya.review.ReviewModule
 import kotobaya.decks.DecksModule
+import kotobaya.imports.ImportsModule
 import kotobaya.jobs.JobsModule
 import kotobaya.notes.NotesModule
 import kotobaya.settings.SettingsModule
@@ -53,12 +54,13 @@ fun main(args: Array<String>) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config))
     app.jobs.start(scope)
+    app.imports.start(scope)
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
 }
 
-/** The composed application: [deps] for `kotobayaModule`, and [jobs], which the caller must `start(scope)`. */
-class ComposedApp(val deps: AppDeps, val jobs: JobsModule)
+/** The composed application: [deps] for `kotobayaModule`, and [jobs], and [imports], which the caller must `start(scope)`. */
+class ComposedApp(val deps: AppDeps, val jobs: JobsModule, val imports: ImportsModule)
 
 /**
  * The one place the modules meet: auth (login, token authenticator), dictionary and jobs/events handlers.
@@ -85,9 +87,10 @@ fun composeApp(
     val auth = Auth(db, authConfig, validator = validator, events = AuthEvents.of(jobs.bus, jobs.hub))
     val sync = SyncModule(db, SyncWiring.config(events = SyncEvents { dsl, hw, _ -> jobs.bus.syncChangedInTx(dsl, hw) }))
     // One OpApply for every writer: they share its advisory lock, HLC and card cache.
+    val imports = ImportsModule(db, sync.opApply)
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
         NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
-        ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers
+        ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,
@@ -95,7 +98,7 @@ fun composeApp(
         startup = startup,
         bucketInit = bucketInit,
     )
-    return ComposedApp(deps, jobs)
+    return ComposedApp(deps, jobs, imports)
 }
 
 fun migrateCommand(env: Map<String, String> = System.getenv()): Int {

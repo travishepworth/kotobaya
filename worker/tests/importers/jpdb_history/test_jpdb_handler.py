@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Mapping
 from typing import Any
 
@@ -16,6 +17,7 @@ from kotobaya_worker.runner import API_JOB_KINDS
 class FakeCtx:
     def __init__(self, payload: dict[str, Any]) -> None:
         self.payload = payload
+        self.job_id = uuid.uuid4()
         self.progressed: list[float] = []
 
     def progress(self, fraction: float, message: str | None = None) -> None:

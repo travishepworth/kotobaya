@@ -10,9 +10,9 @@ from kotobaya_worker.runner.__main__ import build_registry
 SHA = "0" * 64
 
 
-def test_registry_has_dict_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_registry_has_dict_refresh_and_jpdb_history(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "jdbc:postgresql://localhost/x")
-    assert build_registry().kinds() == ["dict-refresh"]
+    assert build_registry().kinds() == ["dict-refresh", "jpdb-history-import"]
 
 
 def test_sources_json_priority_and_fingerprint() -> None:
@@ -21,7 +21,10 @@ def test_sources_json_priority_and_fingerprint() -> None:
         "jmdict": d,
         "kanjidic": d,
         "krad": d,
-        "freq_lists": {"jpdb": {**d, "url": "http://x/a.zip"}, "bccwj": {**d, "url": "http://x/b.zip"}},
+        "freq_lists": {
+            "jpdb": {**d, "url": "http://x/a.zip"},
+            "bccwj": {**d, "url": "http://x/b.zip"},
+        },
     }
     src = DictSources.from_json(json.dumps(cfg))
     assert [(s, f.config.priority) for s, f in src.freq.items()] == [("jpdb", 1), ("bccwj", 2)]

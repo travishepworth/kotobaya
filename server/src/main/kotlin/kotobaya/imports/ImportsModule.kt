@@ -23,8 +23,8 @@ private val BLOB_HASH_RE = Regex("^[0-9a-f]{64}$")
 /**
  * Imports (T207b): `importJpdbHistory` and the server half of the `jpdb-history-import` job.
  *
- * Wiring (Main.kt, not this ticket's path): `val imports = ImportsModule(db, sync.opApply)`, add
- * `imports.handlers` to the handler map, and call `imports.start(scope)` next to `jobs.start(scope)`.
+ * Wired in `composeApp` (`ImportsModule(db, sync.opApply)`, handlers merged, `start(scope)` in `main`). The worker half
+ * (`worker/.../importers/jpdb_history/apply.py`) is the other end of the protocol below.
  */
 class ImportsModule(private val db: Database, opApply: OpApply) {
     val jpdbHistory = JpdbHistoryApply(opApply)
@@ -84,13 +84,17 @@ class ImportsModule(private val db: Database, opApply: OpApply) {
  *    or raises with its `error`.
  *
  * A running internal row whose `heartbeat_at` is older than [staleAfterMs] (server restart mid-run) is re-queued;
- * the apply is idempotent, so the re-run writes only what is missing.
+ * the apply is idempotent, so the re-run writes only what is missing. Each claim counts in `attempts`; a row already
+ * claimed [maxStaleRequeues] times is ended `failed` instead (a poison plan must not crash-loop the server). The
+ * runner heartbeats every [heartbeatMs] from a side thread, so a batch that takes minutes is never stale.
  */
 class JpdbHistoryApplyRunner(
     private val db: Database,
     private val apply: JpdbHistoryApply,
     private val pollMs: Long = 1_000,
     private val staleAfterMs: Long = 300_000,
+    private val heartbeatMs: Long = 10_000,
+    private val maxStaleRequeues: Int = MAX_STALE_REQUEUES,
     private val instanceId: String = "server-" + java.util.UUID.randomUUID().toString().take(8),
 ) {
     private val log = org.slf4j.LoggerFactory.getLogger("kotobaya.imports.jpdb")
@@ -110,11 +114,17 @@ class JpdbHistoryApplyRunner(
     /** Claims and runs one queued internal apply job; false if there was none. */
     fun runOnce(): Boolean {
         val claimed = db.txBlocking { dsl ->
-            dsl.execute(
-                "update app.job set status = 'queued', locked_by = null, run_after = now() where kind = ? and status = 'running' " +
-                    "and heartbeat_at < now() - make_interval(secs => ?)",
-                INTERNAL_KIND, staleAfterMs / 1000.0,
+            val stale = "kind = ? and status = 'running' and coalesce(heartbeat_at, started_at, created_at) < now() - make_interval(secs => ?)"
+            val failed = dsl.fetch(
+                "update app.job set status = 'failed', finished_at = now(), locked_by = null, payload = payload - 'plan', " +
+                    "error = 'server stopped mid-apply ' || attempts || ' times; giving up' where $stale and attempts >= ? returning id",
+                INTERNAL_KIND, staleAfterMs / 1000.0, maxStaleRequeues,
             )
+            dsl.execute(
+                "update app.job set status = 'queued', locked_by = null, run_after = now() where $stale and attempts < ?",
+                INTERNAL_KIND, staleAfterMs / 1000.0, maxStaleRequeues,
+            )
+            failed.forEach { dsl.execute("select pg_notify('kotobaya_events', ?)", """{"type":"job.updated","data":{"id":"${it.get(0)}"}}""") }
             dsl.fetchOptional(
                 "update app.job set status = 'running', locked_by = ?, attempts = attempts + 1, started_at = coalesce(started_at, now()), " +
                     "heartbeat_at = now() where id = (select id from app.job where kind = ? and status = 'queued' and run_after <= now() " +
@@ -125,18 +135,55 @@ class JpdbHistoryApplyRunner(
         val (id, payload) = claimed
         val parent = runCatching { java.util.UUID.fromString(payload.path("parent_job_id").asText()) }.getOrNull()
         val plan = payload.get("plan")
+        val beat = startHeartbeat(id)
         try {
             requireNotNull(parent) { "jpdb-history-apply payload lacks parent_job_id" }
             requireNotNull(plan) { "jpdb-history-apply payload lacks plan" }
             val result = apply.apply(plan, ParentProgress(id, parent))
+            beat.stop()
             finish(id, "succeeded", result = json.writeValueAsString(result))
         } catch (e: ImportCancelled) {
+            beat.stop()
             finish(id, "cancelled")
         } catch (e: Exception) {
+            beat.stop()
             log.error("jpdb history import {} failed", parent, e)
             finish(id, "failed", error = e.message ?: e.javaClass.simpleName)
+        } finally {
+            beat.stop()
         }
         return true
+    }
+
+    private class Beat(private val thread: Thread) {
+        fun stop() {
+            thread.interrupt()
+            thread.join(5_000)
+        }
+    }
+
+    /** Refreshes the child's `heartbeat_at` every [heartbeatMs] until stopped, whatever the apply is doing. */
+    private fun startHeartbeat(id: java.util.UUID): Beat {
+        val t = Thread {
+            try {
+                while (true) {
+                    Thread.sleep(heartbeatMs)
+                    runCatching { heartbeat(id) }.onFailure { log.warn("jpdb apply heartbeat failed: {}", it.message) }
+                }
+            } catch (_: InterruptedException) {
+                // stopped
+            }
+        }
+        t.isDaemon = true
+        t.name = "jpdb-apply-heartbeat"
+        t.start()
+        return Beat(t)
+    }
+
+    private fun heartbeat(id: java.util.UUID) {
+        db.txBlocking { dsl ->
+            dsl.execute("update app.job set heartbeat_at = now() where id = ? and status = 'running' and locked_by = ?", id, instanceId)
+        }
     }
 
     private fun finish(id: java.util.UUID, status: String, result: String? = null, error: String? = null) {
@@ -177,5 +224,6 @@ class JpdbHistoryApplyRunner(
         const val PUBLIC_KIND = "jpdb-history-import"
         const val INTERNAL_KIND = "jpdb-history-apply"
         private const val PLANNED = 0.2
+        const val MAX_STALE_REQUEUES = 3
     }
 }

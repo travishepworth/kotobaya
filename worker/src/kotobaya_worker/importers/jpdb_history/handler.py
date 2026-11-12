@@ -4,16 +4,13 @@ The worker reads the export and plans the import; applying the plan (ops, replay
 ``JobResultJpdbHistory``) belongs to the server side (T207b), injected as ``apply_plan``. Blob
 storage access is injected as ``fetch_blob`` (blob hash -> export bytes).
 
-Registry wiring (``runner/__main__.py``, not owned here)::
-
-    from kotobaya_worker.importers.jpdb_history.handler import make_jpdb_history_import
-    reg.register("jpdb-history-import",
-                 make_jpdb_history_import(os.environ["DATABASE_URL"], fetch_blob, apply_plan))
+Registry wiring (``runner/__main__.py``): ``fetch_blob`` and ``apply_plan`` come from ``apply``.
 """
 
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
@@ -30,6 +27,7 @@ class Context(Protocol):
     """The part of ``runner.JobContext`` the handler uses (progress writes are status-guarded)."""
 
     payload: dict[str, Any]
+    job_id: uuid.UUID
 
     def progress(self, fraction: float, message: str | None = None) -> None: ...
 

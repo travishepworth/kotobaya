@@ -435,7 +435,9 @@ def plan_import(
     for array, kind in KANJI_ARRAYS:
         for i, row in enumerate(_array(export, array)):
             ch = _str(row, "character")
-            if len(ch) != 1:
+            if len(ch) != 1 or "\x00" in ch:
+                # U+0000 cannot be a kanji_literal (SYNC.md 2.1): the whole row (every event) is reported
+                # unmapped, whatever the options; its rating events count as skipped.
                 kanji_unmapped.append(UnmappedKanji(ch, kind, len(_events(row))))
                 skip_row(array, i, row, R_KANJI_UNMAPPED)
                 continue
@@ -519,16 +521,25 @@ def job_result(plan: ImportPlan, existing: ExistingState | None = None) -> dict[
     existing = existing or ExistingState()
     c = plan.counts
     opts = plan.options
-    imported = already = 0
+    imported = already = collisions = 0
     if opts.import_reviews:
-        emitted: set[str] = set()
-        for rid in plan.review_ids():
-            # An id seen earlier in this run is "already imported" too (it would hit review_log).
-            if rid in existing.review_ids or rid in emitted:
-                already += 1
-            else:
-                imported += 1
-                emitted.add(rid)
+        emitted: dict[str, str] = {}  # review id -> group it first appeared in
+        groups = [(f"v{g.entry_seq}", g.reviews) for g in plan.vocab_groups] + [
+            (f"k{k.character}/{k.card_kind}", k.reviews) for k in plan.kanji_groups
+        ]
+        for group, reviews in groups:
+            for r in reviews:
+                rid = r.id
+                # An id seen earlier in this run is "already imported" too (it would hit review_log).
+                if rid in existing.review_ids:
+                    already += 1
+                elif rid in emitted:
+                    already += 1
+                    # Held by a different group's card: the known id collision (contract, C-9).
+                    collisions += emitted[rid] != group
+                else:
+                    imported += 1
+                    emitted[rid] = group
     skipped = c.reviews_skipped_rows + (0 if opts.import_reviews else c.reviews_rating)
 
     notes_created = notes_existing = cards_created = 0
@@ -579,4 +590,5 @@ def job_result(plan: ImportPlan, existing: ExistingState | None = None) -> dict[
         "status_events_known": c.status_events_known,
         "word_statuses_set": statuses,
         "unmapped": [asdict(u) for u in plan.unmapped],
+        "reviews_id_collisions": collisions,
     }

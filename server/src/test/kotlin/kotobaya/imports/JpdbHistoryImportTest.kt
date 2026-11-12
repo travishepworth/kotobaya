@@ -224,19 +224,51 @@ class JpdbHistoryImportTest : SyncFixture() {
     }
 
     @Test
-    fun aDeletedNoteIsNotReusedTheImportCreatesANewOneAndItsReviewsCountAsAlreadyImported() {
+    fun aNoteTheUserDeletedStaysDeletedOnARerun() {
         run()
         val gakkou = assertNotNull(liveNote("entry_seq", 1206730L))
         emit(OpType.NOTE_DELETED, """{"id":"$gakkou"}""")
+        val head = count("select max(seq) from app.change")
         val r = run()
-        assertEquals(1, r["notes_created"].asInt())
+        // DECIDED (T207b review 3, provisional): a group whose reviews all sit on deleted cards is not resurrected.
+        assertNull(liveNote("entry_seq", 1206730L))
+        assertEquals(head, count("select max(seq) from app.change"), "nothing is written")
+        assertEquals(0, r["notes_created"].asInt())
         assertEquals(3, r["notes_existing"].asInt())
-        // Review ids are global: the deleted card's rows already hold them, so nothing is re-logged (contract:
-        // "already exists in review_log, any state"); a tombstoned owner is not an id collision.
+        assertEquals(0, r["cards_created"].asInt())
+        // Counted as already imported (their ids are in review_log); a tombstoned owner is not an id collision.
         assertEquals(0, r["reviews_imported"].asInt())
         assertEquals(13, r["reviews_already_imported"].asInt())
         assertEquals(0, r["reviews_id_collisions"].asInt())
         assertSums(r)
+    }
+
+    @Test
+    fun aDeletedKanjiNoteStaysDeletedToo() {
+        run()
+        val neko = assertNotNull(liveNote("kanji_literal", "猫"))
+        emit(OpType.NOTE_DELETED, """{"id":"$neko"}""")
+        val r = run()
+        assertNull(liveNote("kanji_literal", "猫"))
+        assertEquals(1, r["kanji_notes_existing"].asInt())
+        assertEquals(0, r["kanji_notes_created"].asInt())
+        assertEquals(0, r["reviews_imported"].asInt())
+        assertSums(r)
+    }
+
+    @Test
+    fun aPlanWhosePlanOnlySumsAreWrongFailsBeforeTheFirstBatchAndNamesOnlyTheBadCounters() {
+        val p = plan
+        (p["counts"] as ObjectNode).put("vocabulary_total", 99)
+        val e = assertFailsWith<IllegalStateException> { run(p) }
+        assertTrue(e.message!!.contains("vocabulary_total=99"), e.message)
+        assertFalse(e.message!!.contains("kanji_total"), "only the disagreeing counters")
+        assertFalse(e.message!!.contains("山田"), "no unmapped arrays in the message")
+        assertEquals(0, serverOps(OpType.NOTE_CREATED))
+        val p2 = plan
+        (p2["counts"] as ObjectNode).put("reviews_total", 99)
+        assertTrue(assertFailsWith<IllegalStateException> { run(p2) }.message!!.contains("reviews_total=99"))
+        assertEquals(0, serverOps(OpType.NOTE_CREATED))
     }
 
     // ------------------------------------------------------------------ edge cases from FOLLOWUPS
@@ -373,6 +405,46 @@ class JpdbHistoryImportTest : SyncFixture() {
         val c = job(child)
         assertEquals("failed", c["status"])
         assertTrue((c["error"] as String).contains("version"))
+    }
+
+    @Test
+    fun aStaleChildIsRequeuedUpToTheCapThenFailedSoAPoisonPlanCannotCrashLoop() {
+        sync.opApply
+        val parent = insertJob("jpdb-history-import", "running", "{}", lockedBy = "w")
+        val payload = json.writeValueAsString(mapOf("parent_job_id" to parent.toString(), "plan" to plan))
+        val stale = "heartbeat_at = now() - interval '1 hour'"
+        val retried = insertJob(JpdbHistoryApplyRunner.INTERNAL_KIND, "running", payload, lockedBy = "dead-server")
+        db.txBlocking { it.execute("update app.job set $stale, attempts = 1 where id = ?", retried) }
+        val exhausted = insertJob(JpdbHistoryApplyRunner.INTERNAL_KIND, "running", payload, lockedBy = "dead-server")
+        db.txBlocking { it.execute("update app.job set $stale, attempts = 3 where id = ?", exhausted) }
+        val runner = JpdbHistoryApplyRunner(db, importer)
+        assertTrue(runner.runOnce(), "the one under the cap is re-queued and applied")
+        assertEquals("succeeded", job(retried)["status"])
+        assertEquals(2, (db.txBlocking { it.fetchValue("select attempts from app.job where id = ?", retried) } as Number).toInt())
+        val x = job(exhausted)
+        assertEquals("failed", x["status"])
+        assertTrue((x["error"] as String).contains("giving up"), x["error"] as String)
+        assertFalse(json.readTree(x["payload"] as String).has("plan"))
+        assertFalse(runner.runOnce())
+    }
+
+    @Test
+    fun theChildIsHeartbeatInsideALongBatch() {
+        sync.opApply
+        val parent = insertJob("jpdb-history-import", "running", "{}", lockedBy = "w")
+        val child = insertJob(JpdbHistoryApplyRunner.INTERNAL_KIND, "queued", json.writeValueAsString(mapOf("parent_job_id" to parent.toString(), "plan" to plan)))
+        var ageSeconds = Double.MAX_VALUE
+        val slow = object : JpdbHistoryApply(sync.opApply, batchUnits = 1000) {
+            override fun apply(planJson: JsonNode, progress: ImportProgress): ObjectNode {
+                db.txBlocking { it.execute("update app.job set heartbeat_at = now() - interval '1 hour' where id = ?", child) }
+                Thread.sleep(600) // one "batch" that reports nothing
+                ageSeconds = (db.txBlocking { it.fetchValue("select extract(epoch from now() - heartbeat_at) from app.job where id = ?", child) } as Number).toDouble()
+                return super.apply(planJson, progress)
+            }
+        }
+        assertTrue(JpdbHistoryApplyRunner(db, slow, heartbeatMs = 100).runOnce())
+        assertTrue(ageSeconds < 60, "heartbeat refreshed by the side thread, age=$ageSeconds")
+        assertEquals("succeeded", job(child)["status"])
     }
 
     @Test

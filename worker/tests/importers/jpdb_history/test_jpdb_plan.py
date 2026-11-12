@@ -174,6 +174,7 @@ def test_sample_result_has_every_required_member(
         "kanji_notes_created", "kanji_notes_existing", "kanji_cards_created", "kanji_unmapped",
         "reviews_unknown_grade", "status_events_unknown", "status_events_known",
         "reviews_duplicate_dropped", "vocabulary_en_jp_ignored", "kanji_cards_suspended",
+            "reviews_id_collisions",
     }  # fmt: skip
     assert set(r) == required
     json.dumps(r)
