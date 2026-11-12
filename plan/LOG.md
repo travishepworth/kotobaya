@@ -312,3 +312,6 @@
 2026-11-12T15:56:50Z T202a CHECK_GREEN core after rebase
 2026-11-12T15:56:50Z T202a REVIEW dispatched verification re-review (reviewer opus)
 2026-11-12T15:56:50Z - NOTE merge order: C-5 first, then T202a re-embeds new invalid examples (drift test)
+2026-11-12T15:58:30Z T202a REVIEW_CHANGES verification: 5/5 prior fixed; new major: op depth == doc depth → op legal alone, 514 deep in pull body → pull stuck
+2026-11-12T15:58:30Z DECIDE op max depth 500 (from op root), document max depth 512; C-5 told to pin both
+2026-11-12T15:58:30Z T202a DISPATCH attempt 4 of 5 (same architect agent)
