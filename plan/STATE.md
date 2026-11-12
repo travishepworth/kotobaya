@@ -1,7 +1,15 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T13:38:55Z
+Updated: 2026-11-12T13:56:32Z (pre-restart handover)
+
+
+## RESUME HERE (written 2026-11-12T13:56:32Z before a planned session restart)
+- Phase 1: 16/18 merged. Remaining: **T112 backups** (high risk, sonnet) — was RUNNING in worktree .claude/worktrees/agent-af5ce7b42729bb029 on t/T112-backups (base 0d811c6, no commits at handover). If the agent is gone: if the branch has commits + HANDOFF.md → validate (paths, `make check MODULE=deploy`), then send to a reviewer (opus) — high risk; else re-dispatch T112 attempt 1 from plan/tickets/T112.md with the orchestrator notes in plan/LOG.md (SYNC 6.2–6.3 handshake, blob mirror after dump, "backups disabled" setting, k3d restore drill on cluster `kotobaya-t112`).
+- Then: `make test` (all modules) → GATE-P1 deferred (single-session) → write P1 human checks into plan/HUMAN_CHECKS.md → start Phase 2. Phase 2 needs ticket files first (dispatch a sonnet planner like the P1 one: plan/tickets/T201.md… from BACKLOG + FOLLOWUPS + ADRs 002–009).
+- Before T208 (web shell): fix k3d dev HTTPS (Secure cookie) — see FOLLOWUPS. Before T207: ADR-009 + JPDB_API_KEY live check (S02) + small C-ticket on JobResultJpdbHistory.
+- Stale worktrees (merged): agent-ae408d50204f320d0 (T009), agent-af77a050ea16184ff (T111) are harness-locked; after restart run `git worktree remove -f -f <path>` and `git branch -D t/T009-helm t/T111-helm-workloads`.
+- Working conventions this run (also in memory): dispatch via general-purpose + model override + inlined role (project agent types not registered); NO Fable (ADR-004, Opus for architect role); review loop only on real majors with a failure scenario; reviewers get verification passes via SendMessage to the same agent; Write tool refuses SUMMARY.md for subagents → orchestrator commits the text verbatim; agents must report tool refusals, never work around them; archive HANDOFF.md to plan/handoffs/<ID>.md after each merge; MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
