@@ -365,3 +365,8 @@
 2026-11-12T17:07:11Z C-6 REVIEW_CHANGES architect: same interval major + merge would break server OpApplyTest (year ≥10000 instants now schema_invalid)
 2026-11-12T17:07:11Z C-6 DISPATCH attempt 2 (cap maximum_interval_days 36500; owns OpApplyTest instants test; 6 minors)
 2026-11-12T17:07:11Z C-7 HANDOFF DONE; sent back to also rename QueueBuilder KDoc key → scheduler.mined_priority + QueueInput add_kanji member
+2026-11-12T17:08:29Z T204 HANDOFF DONE
+2026-11-12T17:08:29Z T204 CHECK_GREEN server after rebase
+2026-11-12T17:08:29Z T204 MERGE
+2026-11-12T17:08:29Z T211 DISPATCH writer(sonnet)
+2026-11-12T17:08:29Z - T205 ready but held for C-7 (QueueInput contract change)

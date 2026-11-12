@@ -128,3 +128,5 @@
 - T202b verify: OpApplier.kt:523 media deck.created silently skipped if a user deck already has the media id (deliberate UUID reuse only).
 - T201b -> wiring (W-2): Main.kt `handlers += NotesModule(db, sync.opApply).handlers` (same OpApply as SyncModule).
 - T201b -> T210a: per-note card additions for optional kinds go through createCard (ADR-011).
+- T204 -> wiring (W-2): Main.kt `handlers += DecksModule(db, sync.opApply).handlers`.
+- T204: JLPT list decks report item_count 0 (no vocab source in DB yet); getDeckCoverage stays 501 until Phase 4. decks reuse internal helpers from kotobaya.notes (Errors, Reply) — consider a shared http-support package.
