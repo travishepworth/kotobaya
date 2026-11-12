@@ -435,3 +435,4 @@
 2026-11-12T18:01:02Z T214 DISPATCH writer(sonnet)
 2026-11-12T18:02:18Z C-8 REVIEW_CHANGES verification: 7/8 fixed; new majors: item_removed e:→n: re-key loses removal; QueueBuilder rule 4 formula contradicts attribution
 2026-11-12T18:02:18Z C-8 DISPATCH attempt 3 of 5 (same agent)
+2026-11-12T18:03:24Z T214 HANDOFF DONE; CHECK_GREEN web; MERGE (nav link + i18n key outside paths accepted)

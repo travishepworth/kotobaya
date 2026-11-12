@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T18:02:18Z
+Updated: 2026-11-12T18:03:24Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -14,7 +14,6 @@ Updated: 2026-11-12T18:02:18Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | C-8 | architect (opus) | 3 of 5 | t/C-8-sync-gaps | 2026-11-12T18:02:18Z |
-| T214 | writer (sonnet) | 1 | t/T214-web-import | 2026-11-12T18:01:02Z |
 | C-9 | architect (opus) | 1 | t/C-9-internal-jobs | 2026-11-12T17:59:01Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -40,11 +39,12 @@ Updated: 2026-11-12T18:02:18Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 28/33 · attempts 47 · escalations 0
+P2: merged 29/33 · attempts 47 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T214 web jpdb import screen (upload → import → SSE progress → counters + unmapped tables) — usable once T207c wires the server
 - T207b jpdb history import server side (plan → ops via OpApply, batched/resumable, idempotent re-run, ADR-009) — reviewer APPROVE; not wired until T207c
 - F-1 decks spot-check fixes (no !!, limit/422 tests, refused item ops, deck.updated 2-device convergence, deck: on smart)
 - W-3 web nav: Cards + Note types links (Review/Decks/Settings already present)
