@@ -7,6 +7,8 @@
 # (verify must fail AND notify), mutates the DB, restores, starts the server and asserts:
 #   log_epoch changed, durable_seq = S, server ready, data == backup, restore_pending gone,
 #   blobs restored, and the durable_seq write rules (monotonic; skipped on epoch mismatch).
+# F-4: both data-loss warnings (live durable_seq above the backup S; backup metadata L above S) refuse
+# the restore before anything is stopped, and the restore proceeds only with --accept-data-loss.
 # Prints "DRILL PASS" and exits 0, or exits non-zero at the first failed assertion.
 # Everything it creates is dev-only (random restic password, in-cluster repository bucket).
 # Clean up with: k3d cluster delete $CLUSTER; docker rmi kotobaya-local/backup:dev
@@ -172,14 +174,44 @@ assert_eq "durable_seq untouched while restore_pending" "$(state durable_seq)" "
 assert_eq "backup-verify still passes after the refused backup" "$(run_job backup-verify | grep -c 'verify OK')" "1"
 sql <<<"DELETE FROM app.server_state WHERE key='restore_pending'" >/dev/null
 
+step "data-loss warnings (F-4): backups were disabled for a while, so devices may have purged past the backup"
+PRE='[{"name":"RESTORE_MODE","value":"preflight"}]'
+PRE_OK='[{"name":"RESTORE_MODE","value":"preflight"},{"name":"RESTORE_ACCEPT_DATA_LOSS","value":"yes"}]'
+RAISED=$((S_A + 25))
+sql <<<"UPDATE app.server_state SET value='$RAISED' WHERE key='durable_seq'" >/dev/null
+echo "live durable_seq raised to $RAISED (backup S is $S_A)"
+# warning 1: the live database is readable and its durable_seq is above the backup's S
+if OUT=$(run_job backup-restore "$PRE"); then echo "ASSERT FAIL restore preflight passed with live durable_seq above S" >&2; exit 1; fi
+case $OUT in *"lose up to 25 seqs"*) echo "ASSERT OK   live-database warning names 25 seqs";;
+  *) echo "ASSERT FAIL no 25-seq warning: $OUT" >&2; exit 1;; esac
+run_job backup-restore "$PRE_OK" >/dev/null; echo "ASSERT OK   preflight passes with RESTORE_ACCEPT_DATA_LOSS=yes"
+# restore-k8s.sh refuses BEFORE stopping anything
+set +e; NS=$NS REL=$REL "$HERE/restore-k8s.sh" >/tmp/drill-refuse.log 2>&1; RRC=$?; set -e
+assert_eq "restore-k8s.sh refuses without --accept-data-loss (exit 2)" "$RRC" "2"
+assert_eq "refused restore left the api running" "$(k get deploy "$REL-api" -o jsonpath='{.status.readyReplicas}')" "1"
+assert_eq "refused restore left the backup CronJobs running" "$(k get cronjob "$REL-backup" "$REL-backup-verify" -o jsonpath='{.items[*].spec.suspend}')" "false false"
+# warning 2: the live database is not readable (here: a restore is pending in it), so the metadata L is used.
+# A backup taken now records L = the raised durable_seq next to the snapshot.
+run_job backup >/dev/null
+assert_eq "durable_seq kept by the backup (never lowered)" "$(state durable_seq)" "$RAISED"
+sql <<<"INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())" >/dev/null
+if OUT=$(run_job backup-restore "$PRE"); then echo "ASSERT FAIL metadata warning missing" >&2; exit 1; fi
+case $OUT in *"not readable"*"L=$RAISED"*|*"L=$RAISED"*) echo "ASSERT OK   metadata warning cites L=$RAISED";;
+  *) echo "ASSERT FAIL no L warning: $OUT" >&2; exit 1;; esac
+case $OUT in *"lose up to 25 seqs"*) echo "ASSERT OK   metadata warning names 25 seqs";;
+  *) echo "ASSERT FAIL metadata warning lacks the count: $OUT" >&2; exit 1;; esac
+sql <<<"DELETE FROM app.server_state WHERE key='restore_pending'" >/dev/null
+# the restores below start from this state, so they must pass --accept-data-loss
+ACCEPT=--accept-data-loss
+
 step "mutate: add rows after the backup (and lose a blob object)"
 seed b "$BLOB_B" 2 4
 COUNTS_B=$(counts); echo "state B: $COUNTS_B"
 assert_ne "mutation changed the data" "$COUNTS_B" "$COUNTS_A"
 tools "rclone deletefile src:\$S3_BUCKET/$BLOB_A"
 
-step "restore (restore-k8s.sh)"
-NS=$NS REL=$REL "$HERE/restore-k8s.sh"
+step "restore (restore-k8s.sh --accept-data-loss)"
+NS=$NS REL=$REL "$HERE/restore-k8s.sh" $ACCEPT
 
 step "assertions after restore"
 E1=$(state log_epoch)

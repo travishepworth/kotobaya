@@ -19,7 +19,10 @@ one restic snapshot (dump, `counts.json`, blobs), tagged `pending`, `restic chec
 -> only then, in the live database, `durable_seq = S` (monotonic, and only if the live `log_epoch`
 still equals `E`; `durable_seq.sql`). Any failure writes nothing to `durable_seq`, notifies and exits
 non-zero. Retention keeps the newest 14 verified snapshots (`backup.keepLast`); unverified ones are
-dropped. The mirror comes after the dump, so a restored database never references a blob the
+dropped. F-4: right after that write the job tags the verified snapshot `L:<n>` (`L:null` if nothing was
+written), where `L` is the live `durable_seq` read in the same transaction (SYNC.md 6.3 step 4); together
+with the existing `epoch:<E>` and `seq:<S>` tags this is the metadata a restore can read without the live
+database. The mirror comes after the dump, so a restored database never references a blob the
 snapshot lacks (blobs are immutable and a row is inserted only after its object is stored).
 
 `verify.sh` restores the newest verified snapshot into a scratch database and compares
@@ -98,6 +101,16 @@ tells you to rename the right one back by hand).
 External Postgres: the database user must own the database and have `CREATEDB` (the swap renames it).
 Restoring an older snapshot loses ops devices already purged, so it needs
 `RESTORE_SNAPSHOT=<id> RESTORE_CONFIRM_OLDER=yes` and prints a warning.
+
+**Data-loss warning (F-4).** The backup may be older than what devices already purged (typically: backups
+were disabled for a while). `restore.sh` refuses, exit 2, naming the number of seqs that may be lost,
+unless `--accept-data-loss` (`restore-k8s.sh --accept-data-loss`, or `RESTORE_ACCEPT_DATA_LOSS=yes`) is
+given, when: the live database is readable, has the backup's `log_epoch` and a `durable_seq` above the
+backup's `S` (`durable_seq - S` seqs); or, if the live database is not readable (or holds a pending
+restore), a retained verified backup of the same epoch recorded `L` above `S` (`max(L) - S`).
+`restore-k8s.sh` runs this check first as a `RESTORE_MODE=preflight` Job, before stopping anything, so a
+refusal leaves the server and the backup CronJobs untouched; `restore.sh` repeats it once the server is
+down. Choosing an older snapshot additionally needs `RESTORE_CONFIRM_OLDER=yes`.
 
 **Known limit** (FOLLOWUPS T005): after a restore, ops that were not made by devices (REST edits,
 job-originated ops such as `media.created`, `*.published`, suggestions) since the last backup are lost;

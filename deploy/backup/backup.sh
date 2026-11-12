@@ -13,6 +13,9 @@
 #      only then retag `verified`.
 #   5. Only after all of that: in the live database, in one statement, write durable_seq = S
 #      monotonically IF the live log_epoch still equals E, otherwise write nothing.
+#   5b. (F-4, SYNC.md 6.3 step 4) Record L = the live durable_seq read in that same transaction (null
+#      when nothing was written) as the tag `L:<n|null>` on the verified snapshot, so a restore can
+#      warn without the live database.
 #   6. Retention keeps the newest verified snapshot; unverified leftovers are dropped.
 # Any failure: nothing is written to durable_seq, a notification is sent, exit non-zero.
 set -euo pipefail
@@ -26,6 +29,7 @@ restic_need; db_env; rclone_env; wait_net
 cd "$WORK_DIR"
 rm -rf "${WORK_DIR:?}"/* 2>/dev/null || true
 
+L=""
 have_repo=""
 for _ in 1 2 3 4 5; do   # retry: a transient network error must not look like "no repository"
   restic cat config >/dev/null 2>&1 && { have_repo=1; break; }
@@ -92,7 +96,13 @@ if [ -z "$E" ]; then
 else
   res=$(psqlq -d "$LIVE_DB" -v s="$S" -v e="$E" -f "$(dirname "$0")/durable_seq.sql")
   log "$res"
+  L=$(grep -o 'written durable_seq=[0-9]*' <<<"$res" | cut -d= -f2 || true)
 fi
+# The tag rewrite above changed the snapshot id: find the verified one by its identity tags.
+VSNAP=$(restic snapshots --json --tag "kotobaya,verified,epoch:${E:-none},seq:$S" | jq -r 'sort_by(.time) | last | .id // empty')
+[ -n "$VSNAP" ] || { FAIL_DETAIL="cannot find the verified snapshot to record L on. "; log "$FAIL_DETAIL"; exit 1; }
+restic tag --add "L:${L:-null}" "$VSNAP"
+log "recorded L=${L:-null} on snapshot $VSNAP"
 
 log "6/6 retention (keep newest $KEEP_LAST verified; drop unverified)"
 for id in $(restic snapshots --tag pending --json | jq -r '.[].id'); do restic forget "$id"; done

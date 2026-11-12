@@ -52,6 +52,68 @@ grep -q 'pg_advisory_xact_lock(7033001)' "$here/durable_seq.sql" || fail "durabl
 grep -q "restore_pending" "$here/durable_seq.sql" || fail "durable_seq.sql must check restore_pending"
 grep -q 'restore_pending' "$here/backup.sh" || fail "backup.sh must refuse while restore_pending"
 
+# --- restore data-loss warnings (F-4): run restore.sh in preflight mode against fake restic/psql ------
+fb="$tmp/fakebin"; mkdir -p "$fb" "$tmp/work"
+cat >"$fb/restic" <<'EOS'
+#!/usr/bin/env bash
+# fake restic: `snapshots ... [id] --json` prints $FAKE_SNAPS, filtered by an 8-hex snapshot id argument
+[ "$1" = snapshots ] || { echo "fake restic: unexpected $*" >&2; exit 9; }
+id=""; for a in "$@"; do case $a in [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) id=$a;; esac; done
+if [ -n "$id" ]; then jq -c --arg id "$id" '[.[] | select(.id == $id)]' "$FAKE_SNAPS"; else cat "$FAKE_SNAPS"; fi
+EOS
+cat >"$fb/psql" <<'EOS'
+#!/usr/bin/env bash
+# fake psql: the live-state query answers $FAKE_LIVE ("epoch|durable_seq|restore_pending"), or fails when unset
+case "$*" in *durable_seq*) [ -n "${FAKE_LIVE:-}" ] || exit 2; echo "$FAKE_LIVE";; *) echo 1;; esac
+EOS
+printf '#!/bin/sh\nexit 0\n' >"$fb/pg_isready"; cp "$fb/pg_isready" "$fb/curl"; chmod +x "$fb"/*
+mksnap() { # id time epoch seq L   (L may be empty = snapshot from before F-4)
+  jq -nc --arg id "$1" --arg t "$2" --arg e "$3" --arg s "$4" --arg l "$5" \
+    '{id:$id, time:$t, tags:(["kotobaya","verified","epoch:"+$e,"seq:"+$s] + (if $l == "" then [] else ["L:"+$l] end))}'
+}
+preflight() { # extra args to restore.sh; env: FAKE_LIVE, RESTORE_SNAPSHOT, ... ; prints the log
+  PATH="$fb:$PATH" RESTORE_MODE=preflight WORK_DIR="$tmp/work" FAKE_SNAPS="$tmp/snaps.json" \
+    DATABASE_URL='jdbc:postgresql://h/kotobaya?user=u&password=p' RESTIC_REPOSITORY=x RESTIC_PASSWORD=x \
+    S3_ENDPOINT=http://x S3_BUCKET=b S3_ACCESS_KEY=a S3_SECRET_KEY=s bash "$here/restore.sh" "$@" 2>&1
+}
+expect() { # name want_rc want_text -- args...
+  local name=$1 want=$2 text=$3 out rc; shift 4
+  set +e; out=$(preflight "$@"); rc=$?; set -e
+  [ "$rc" = "$want" ] || fail "$name: exit $rc, want $want: $out"
+  case $out in *"$text"*) ;; *) fail "$name: output lacks '$text': $out";; esac
+}
+E1=0194d5e0-0000-7000-8000-000000000001; E2=0194d5e0-0000-7000-8000-000000000002
+# newest verified snapshot: epoch E1, S=100, L=100 (nothing raised durable_seq)
+{ mksnap aaaaaaa1 2026-01-01T00:00:00Z $E1 80 80; mksnap aaaaaaa2 2026-01-02T00:00:00Z $E1 100 100; } | jq -s . >"$tmp/snaps.json"
+unset FAKE_LIVE RESTORE_SNAPSHOT RESTORE_CONFIRM_OLDER RESTORE_ACCEPT_DATA_LOSS
+FAKE_LIVE="$E1|100|0" expect live-equal 0 "preflight OK" --
+FAKE_LIVE="$E1|130|0" expect live-ahead-refused 2 "lose up to 30 seqs" --
+FAKE_LIVE="$E1|130|0" expect live-ahead-accepted 0 "preflight OK" -- --accept-data-loss
+FAKE_LIVE="$E1|130|0" RESTORE_ACCEPT_DATA_LOSS=yes expect live-ahead-accepted-env 0 "preflight OK" --
+FAKE_LIVE="$E2|500|0" expect live-other-epoch 0 "preflight OK" --          # a different log: not comparable
+FAKE_LIVE="" expect unreadable-no-L-above 0 "preflight OK" --              # metadata: max L == S
+FAKE_LIVE="$E1|900|1" expect live-restore-pending-ignored 0 "preflight OK" --
+# backups were disabled for a while: the newest backup recorded L=140 > S=100
+{ mksnap aaaaaaa1 2026-01-01T00:00:00Z $E1 80 80; mksnap aaaaaaa2 2026-01-02T00:00:00Z $E1 100 140; } | jq -s . >"$tmp/snaps.json"
+FAKE_LIVE="" expect meta-refused 2 "lose up to 40 seqs" --
+FAKE_LIVE="" expect meta-accepted 0 "preflight OK" -- --accept-data-loss
+FAKE_LIVE="$E1|900|1" expect live-restore-pending-uses-meta 2 "lose up to 40 seqs" --
+FAKE_LIVE="$E1|100|0" expect live-readable-wins-over-meta 0 "preflight OK" --
+# L of another epoch, a null L and a snapshot without an L tag never count
+{ mksnap aaaaaaa1 2026-01-01T00:00:00Z $E2 80 999; mksnap aaaaaaa2 2026-01-02T00:00:00Z $E1 100 null; mksnap aaaaaaa3 2026-01-03T00:00:00Z $E1 100 ""; } | jq -s . >"$tmp/snaps.json"
+FAKE_LIVE="" expect meta-ignored 0 "preflight OK" --
+# choosing an older snapshot still needs its own confirmation, and then the data-loss warning applies too
+{ mksnap aaaaaaa1 2026-01-01T00:00:00Z $E1 80 80; mksnap aaaaaaa2 2026-01-02T00:00:00Z $E1 100 100; } | jq -s . >"$tmp/snaps.json"
+FAKE_LIVE="$E1|100|0" RESTORE_SNAPSHOT=aaaaaaa1 expect older-needs-confirm 2 "RESTORE_CONFIRM_OLDER" --
+FAKE_LIVE="$E1|100|0" RESTORE_SNAPSHOT=aaaaaaa1 RESTORE_CONFIRM_OLDER=yes expect older-live-ahead 2 "lose up to 20 seqs" --
+FAKE_LIVE="$E1|100|0" RESTORE_SNAPSHOT=aaaaaaa1 RESTORE_CONFIRM_OLDER=yes expect older-both-flags 0 "preflight OK" -- --accept-data-loss
+# a snapshot without identity tags cannot be checked: refuse rather than guess
+jq -nc '[{id:"aaaaaaa9",time:"2026-01-04T00:00:00Z",tags:["kotobaya","verified"]}]' >"$tmp/snaps.json"
+FAKE_LIVE="" expect no-tags 1 "no epoch:/seq: tags" --
+grep -q 'restic tag --add "L:' "$here/backup.sh" || fail "backup.sh must record L as a snapshot tag"
+grep -q 'run_restore_job preflight' "$here/restore-k8s.sh" || fail "restore-k8s.sh must preflight before stopping anything"
+grep -q '"name":"RESTORE_ACCEPT_DATA_LOSS"' "$here/restore-k8s.sh" || fail "restore-k8s.sh must pass RESTORE_ACCEPT_DATA_LOSS"
+
 # --- notify: failure posts, and never fails the caller --------------------------------------------
 NOTIFY_URL="" notify t m 2>/dev/null
 NOTIFY_URL="http://127.0.0.1:9/none" notify t m 2>/dev/null   # unreachable: warns, returns 0

@@ -171,3 +171,54 @@ wait_net() {
     done
   fi
 }
+
+# --- data-loss warnings for restore (contracts/sync/SYNC.md 6.2 / 6.3 restore step 1) -----------------
+# Backups carry their identity as restic tags (readable without restoring them): epoch:<E>, seq:<S>
+# and, since F-4, L:<n|null> (backup job step 4: the live durable_seq right after the upsert).
+
+# tag_value <prefix> : first tag "<prefix>:<value>" of a JSON array of tags on stdin -> value.
+tag_value() { jq -r --arg p "$1:" '[.[] | select(startswith($p)) | ltrimstr($p)] | first // empty'; }
+
+# Live database state as "epoch|durable_seq|restore_pending_count"; prints nothing when the live
+# database is not readable. Overridable in tests.
+live_state() {
+  psqlq -d "$LIVE_DB" -c "SELECT coalesce((SELECT value FROM app.server_state WHERE key = 'log_epoch'), ''),
+    coalesce((SELECT value FROM app.server_state WHERE key = 'durable_seq'), '0'),
+    (SELECT count(*) FROM app.server_state WHERE key = 'restore_pending')" 2>/dev/null || true
+}
+
+# data_loss_check <E> <S> <verified-snapshots-json>
+# Sets LOSS_SEQS (number of seqs that devices may already have purged) and LOSS_WHY, returns 0, when
+# restoring a backup with epoch E and highest seq S can lose acked ops; returns 1 otherwise.
+#   1. The live database is readable (and is not itself a restore in progress): if its log_epoch is E
+#      and its durable_seq D > S, then D - S seqs are at risk.
+#   2. Otherwise use the metadata: the largest L of any retained verified backup of epoch E above S.
+# shellcheck disable=SC2034  # LOSS_SEQS / LOSS_WHY are read by the sourcing script
+data_loss_check() {
+  local e=$1 s=$2 snaps=$3 live le ld lp maxl l
+  LOSS_SEQS=0; LOSS_WHY=""
+  live=$(live_state)
+  if [ -n "$live" ]; then
+    IFS='|' read -r le ld lp <<<"$live"
+    if [ "$lp" = 0 ]; then
+      if [ "$le" = "$e" ] && [ "$ld" -gt "$s" ] 2>/dev/null; then
+        LOSS_SEQS=$((ld - s))
+        LOSS_WHY="the live database (log_epoch $e) has durable_seq $ld, but this backup only contains seqs up to $s"
+        return 0
+      fi
+      return 1
+    fi
+  fi
+  maxl=$s
+  while read -r l; do
+    case $l in ''|*[!0-9]*) continue;; esac
+    [ "$l" -gt "$maxl" ] && maxl=$l
+  done < <(jq -r --arg e "epoch:$e" \
+    '.[] | select(.tags | index($e)) | [.tags[] | select(startswith("L:")) | ltrimstr("L:")] | first // empty' <<<"$snaps")
+  if [ "$maxl" -gt "$s" ]; then
+    LOSS_SEQS=$((maxl - s))
+    LOSS_WHY="the live database is not readable; a retained backup of log_epoch $e recorded durable_seq L=$maxl, but this backup only contains seqs up to $s"
+    return 0
+  fi
+  return 1
+}
