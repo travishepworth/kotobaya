@@ -14,7 +14,7 @@ Updated: 2026-11-12T15:45:51Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T213b | writer-senior (opus) | 1 | t/T213b-core-js-facade | 2026-11-12T15:44:18Z |
-| T202a | ci-triage (check red after rebase) | 1 | t/T202a-sync-core-r | 2026-11-12T15:45:19Z |
+| T202a | architect (opus) | 2 | t/T202a-sync-core-r | 2026-11-12T15:45:19Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -36,7 +36,7 @@ Updated: 2026-11-12T15:45:51Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 6/23 · attempts 10 · escalations 0
+P2: merged 6/23 · attempts 11 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

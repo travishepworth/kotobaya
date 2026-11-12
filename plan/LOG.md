@@ -296,3 +296,4 @@
 2026-11-12T15:45:19Z T202a CHECK_RED core after rebase onto T213a; ci-triage dispatched
 2026-11-12T15:45:51Z T207a REVIEW_APPROVE 6 minors → FOLLOWUPS
 2026-11-12T15:45:51Z T207a MERGE
+2026-11-12T15:46:18Z T202a DISPATCH attempt 2 (same architect): jsTest lone-surrogate literals become '?' (3 tests)
