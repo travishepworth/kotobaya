@@ -60,8 +60,8 @@ are batched. Phase checks are done by you, using the app.
   Claude Code version accepts. Change them there if needed.
 - Subagents can't spawn subagents, so the orchestrator must be the main session.
 - Toolchain on this machine (checked 2026-11-12): JDK 17, Node 26 + pnpm, Docker (daemon up), Helm 4,
-  kubectl, Android SDK (platform 35, build-tools 35), ffmpeg, gh. **Install before starting:**
-  `uv` (worker module; it fetches Python 3.12 itself), `restic` (T112), `k3d` (T009/T111/T112, AUR `k3d-bin`).
+  kubectl, Android SDK (platform 35, build-tools 35), ffmpeg, gh, uv (fetches Python 3.12 itself),
+  restic, k3d v5.9.0 (in `~/.local/bin`).
 - Unattended runs: approve the build tools up front (auto mode, or an allowlist in `.claude/settings.json`),
   or writers stall on permission prompts.
 - Blocking gates in single-session mode: none once `docs/SPEC.md` exists. Everything else is in
