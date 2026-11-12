@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T15:37:23Z
+Updated: 2026-11-12T15:43:34Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -14,12 +14,11 @@ Updated: 2026-11-12T15:37:23Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T202a | architect (opus) | 1 (restart) | t/T202a-sync-core-r | 2026-11-12T15:33:37Z |
-| T213a | writer-senior (opus) | 1 (restart) | t/T213a-card-renderer-r | 2026-11-12T15:33:37Z |
-| T207a | writer-senior (opus) | 1 (restart) | t/T207a-jpdb-worker-r | 2026-11-12T15:33:37Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T207a | reviewer (opus) — pending check | 2026-11-12T15:43:34Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -37,11 +36,12 @@ Updated: 2026-11-12T15:37:23Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 4/23 · attempts 8 · escalations 0
+P2: merged 5/23 · attempts 9 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T213a card renderer + sanitiser (55 hostile payloads), 36 goldens jvm+js, card.css drift test
 - T212 web settings/devices/PAT/QR pairing/attribution (web half; server half split → T212b, dep T202b)
 - T208 web shell: login/session/nav/tokens/toasts/SSE; k3d dev HTTPS on :8443 (login verified)
 - C-4 jpdb import contract aligned with ADR-009 (additive counters, bucket arithmetic for T207a)

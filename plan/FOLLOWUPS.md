@@ -89,3 +89,5 @@
 - T212 -> T212b: settings keys `scheduler.kanji_before_vocab`, `scheduler.mined_priority` not in SCHEMA §6; confirm/add via contract (additive).
 - T212: own `web/src/lib/settings/messages.ts` instead of shared i18n.ts; fold into shared i18n later.
 - T212: token scope text says `write` covers bulk scheduling (pending bulkScheduleCards scope CCR).
+- T213a: CardCssDriftTest lives in core/src/jvmTest/…/render/ (outside owned paths; accepted, same pattern as BuiltInNoteTypesDriftTest).
+- T213a: {{pitch:}}/{{cloze:}} work only in built-in templates; frontIsEmpty ignores sentence/image extras; cloze hint = ClozeSentence.translation.
