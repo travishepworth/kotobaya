@@ -1,0 +1,493 @@
+# BACKLOG
+
+Every ticket the build needs, in phase order. The orchestrator updates only `status` and adds
+tickets (splits, fixes, contract changes). Spec section names refer to `docs/SPEC.md`.
+
+Fields: **model** = who writes it · **risk** = who reviews it (ORCHESTRATOR.md §6) ·
+**deps** = must be MERGED first · **paths** = the only paths the writer may edit ·
+**accept** = definition of done (tests must prove it where possible).
+
+Gate deps: in single-session mode only GATE-0 blocks, and only until `docs/SPEC.md` exists. GATE-CONTRACTS
+is auto-closed by automated review (ORCHESTRATOR.md §8a); every other gate is deferred (§0).
+
+Status values: TODO · RUNNING · IN_REVIEW · MERGED · BLOCKED · BLOCKED_CONTRACT · BLOCKED_HUMAN
+
+Module key for `make check MODULE=`: `core`, `server`, `worker`, `web`, `android`, `deploy`, `contracts`.
+
+---
+
+## GATE-0 — Kickoff (human)
+
+**Status: SATISFIED 2026-11-12** — `docs/SPEC.md` exported; unanswered DECISIONS take their defaults;
+missing items below are tracked in `plan/HUMAN_CHECKS.md` and do not block (ORCHESTRATOR.md §0).
+
+Originally, before any ticket ran, the human would:
+1. Export the spec doc as Markdown to `docs/SPEC.md`.
+2. Answer the spec's open questions in `docs/DECISIONS.md` (template provided).
+3. Provide: container registry URL, cluster arch (amd64/arm64), domain for DNS-01, whether
+   Postgres/S3 already exist on the cluster, jpdb API key (in `.env.local`, never committed).
+4. Put a jpdb review-history export sample at `fixtures/private/jpdb-export.json` (git-ignored).
+
+---
+
+## Phase 0 — Bootstrap, contracts, spikes
+
+### T001 — Monorepo scaffold
+- model: sonnet · risk: med · deps: GATE-0 · status: TODO
+- paths: `/` (root files), `core/`, `server/`, `android/`, `web/`, `worker/`, `deploy/`, `Makefile`, `docker-compose.yml`, `.editorconfig`, `.gitignore`
+- spec: Architecture, Infrastructure › Build and release
+- do: Gradle (Kotlin DSL, version catalog) with modules `core` (KMP: jvm, android, js), `server` (Ktor), `android` (app). `worker/` Python 3.12 with uv + pyproject, ruff, mypy, pytest. `web/` SvelteKit static adapter, TypeScript strict, vitest, eslint. `docker-compose.yml` for postgres, minio, api, worker, web. Makefile targets: `check MODULE=x`, `test`, `fmt`, `dev-up`, `dev-down`. One smoke test per module. No lint gates.
+- accept: `make test` green from a clean clone; `make dev-up` starts all services with health checks passing.
+
+### T002 — Image build and release script
+- model: haiku · risk: low · deps: T001 · status: TODO
+- paths: `deploy/build/`, `Makefile` (`images`, `push`, `apk` targets only)
+- do: `make images` builds api, worker, web for the cluster arch in DECISIONS (buildx); `make push` pushes to the registry; `make apk` builds a release APK. One optional workflow file that runs `make images push` on tag — no per-PR CI.
+- accept: `make images push` publishes 3 images.
+### T003 — Contract: database schema
+- model: fable · risk: high · deps: T001 · status: TODO
+- paths: `contracts/db/`
+- spec: Data model, Sync and offline, Scheduling
+- do: Postgres DDL as Flyway `V1__init.sql` covering every table in the spec, with constraints, indexes (incl. pg_trgm for search), and comments. Separate reference-data schema (`ref.*`) from learning data (`app.*`). Matching SQLDelight `.sq` files for the on-device subset. A `SCHEMA.md` explaining each table, which side(s) hold it, and which sync op mutates it.
+- accept: DDL applies cleanly to Postgres 17; SQLDelight files compile; every learning-data table maps to at least one op in T005 (cross-check listed in SCHEMA.md).
+
+### T004 — Contract: OpenAPI 3.1
+- model: fable · risk: high · deps: T003 · status: TODO
+- paths: `contracts/api/`
+- spec: Public API and scripting, Sync and offline
+- do: Full `openapi.yaml` for `/api/v1`: every endpoint in the spec's Resources table plus auth, devices, tokens, settings, events (SSE documented), errors (RFC 9457 problem+json), pagination (cursor), scopes per operation. Examples for each request/response.
+- accept: Every spec endpoint present; every operation declares a scope.
+
+### T005 — Contract: sync operations and conflict rules
+- model: fable · risk: high · deps: T003 · status: TODO
+- paths: `contracts/sync/`
+- spec: Sync and offline, Data model
+- do: JSON Schema per op type (`review.logged`, `note.created`, `note.updated`, `note.deleted`, `card.suspended`, `card.buried`, `card.rescheduled`, `word.status_set`, `deck.*`, `deck_item.*`, `settings.updated`, `confusable.*`, `grammar_point.*`, `parse_override.*`, `media.*` metadata). HLC format and comparison. Conflict rule per op. Replay semantics (what triggers FSRS re-replay). Idempotency rules. Push/pull batch formats. `SYNC.md` with sequence diagrams and worked examples for: two devices reviewing the same card offline; edit vs delete; same word added on two devices.
+- accept: Schemas validate the examples; every conflict case in the spec has a worked example.
+
+### T006 — Contract: core interfaces
+- model: fable · risk: high · deps: T003, T005 · status: TODO
+- paths: `contracts/core/`, `core/src/commonMain/kotlin/kotobaya/contracts/`
+- spec: Scheduling, Public API › Card search language
+- do: Kotlin interfaces + data classes (no implementations) for: `Scheduler` (FSRS), `QueueBuilder`, `CardGenerator`, `ReplayEngine`, `HotScorer`, `SearchQueryParser` (with the AST), `Hlc`, `OpCodec`. KDoc with exact semantics, edge cases, and invariants. Grammar for the search language in EBNF.
+- accept: Compiles for jvm, android, js; KDoc covers every public member; EBNF parses every example in the spec.
+
+### T007 — (dropped in lean mode)
+- status: MERGED · Phase "Done when" checks are done by the human at each gate.
+### T008 — Golden fixtures
+- model: sonnet · risk: med · deps: T001 · status: TODO
+- paths: `fixtures/`
+- do: FSRS reference vectors (review sequences → expected stability/difficulty/interval) generated from the reference implementation pinned in DECISIONS; a 2k-entry JMdict subset + matching KANJIDIC2 subset; 20 sample sentences with expected segmentation; small SRT, EPUB, and Mokuro samples (public-domain or self-written text only); an anonymised jpdb-export shape derived from the private sample (structure only, no personal data).
+- accept: Each fixture has a README stating origin and licence; FSRS vectors include ≥ 200 sequences incl. lapses and long gaps.
+
+### T009 — Helm chart skeleton and dev cluster
+- model: sonnet · risk: med · deps: T001 · status: TODO
+- paths: `deploy/helm/`, `deploy/k3d/`
+- spec: Infrastructure
+- do: Chart with values for each workload (enabled flags for postgres/minio so existing services can be used), ingress, secrets references, migrate hook placeholder, NetworkPolicies, non-root securityContexts. `deploy/k3d/up.sh` creates a local cluster and installs the chart.
+- accept: `helm lint` and `helm template` clean; `k3d/up.sh` brings up a cluster where `/healthz` answers.
+
+### S01 — Spike: Takoboto → AnkiDroid stand-in
+- model: opus · risk: med · deps: T001 · status: TODO · parallel-ok
+- paths: `spikes/ankidroid-standin/`
+- spec: Clients › Takoboto integration
+- do: Minimal Android app that declares AnkiDroid's ContentProvider authority and permission, implements decks / models / model fields / notes insert / duplicate query against an in-memory store, and logs every call with arguments to a screen and logcat. Build variant with `applicationId com.ichi2.anki`.
+- accept: APK builds; README lists the exact manual test. → **GATE-S01**
+
+### GATE-S01 — Takoboto spike test (human)
+Install the spike APK (AnkiDroid not installed), add a word from Takoboto, send the call log.
+Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki` variant.
+
+### S02 — Spike: jpdb deck fetch and JMdict mapping
+- model: sonnet · risk: low · deps: T008 · status: TODO · parallel-ok
+- paths: `spikes/jpdb-map/`
+- spec: Content and media import › jpdb import
+- do: Script that, using the API key from `.env.local`, fetches one user-chosen deck's vocabulary with occurrence counts (API first, page fallback with polite rate limiting and caching), maps to JMdict sequence numbers, and reports hit rate and unmapped samples. Also parses the jpdb export sample and reports its structure.
+- accept: Report in `spikes/jpdb-map/REPORT.md`. → **GATE-S02** if hit rate < 95%.
+
+### GATE-CONTRACTS — Freeze contracts (human)
+Single-session: auto-closed after the automated cross-contract review (ORCHESTRATOR.md §8a); the human
+reviews `contracts/SUMMARY.md` later from `plan/HUMAN_CHECKS.md`. Gated: human reviews `contracts/`
+(T003–T006) with the architect's summary and approves or requests changes.
+Either way, contracts are then frozen (ORCHESTRATOR.md §10).
+
+---
+
+## Phase 1 — Foundations
+
+### T101 — Dictionary pipeline: JMdict, KANJIDIC2, KRADFILE
+- model: sonnet · risk: med · deps: GATE-CONTRACTS, T008 · status: TODO
+- paths: `worker/kotobaya_worker/dict/`, `worker/tests/dict/`
+- do: Download (with checksums and caching), parse, normalise into `ref.*` tables for a release id.
+- accept: Fixture subset loads exactly; idempotent re-run.
+
+### T102 — Dictionary pipeline: pitch, frequency, Tatoeba
+- model: sonnet · risk: low · deps: T101 · status: TODO
+- paths: `worker/kotobaya_worker/dict/extra/`, `worker/tests/dict/extra/`
+- do: Kanjium pitch; frequency lists in Yomitan format (list configurable in DECISIONS); Tatoeba JP-EN pairs linked to entries.
+- accept: Coverage report (entries with pitch / with freq rank / with examples) printed and asserted above floors set in the test.
+
+### T103 — Dictionary release packaging for devices
+- model: sonnet · risk: med · deps: T102 · status: TODO
+- paths: `worker/kotobaya_worker/dict/package/`, `worker/tests/dict/package/`
+- do: Build the compact SQLite (SQLDelight schema) for a scope (referenced + top N, or full); zstd-compress; content-addressed upload to object storage; manifest with version and diff from previous release.
+- accept: Package for top-60k < budget in DECISIONS; diff between two fixture releases applies correctly.
+
+### T104 — Server skeleton
+- model: sonnet · risk: med · deps: GATE-CONTRACTS · status: TODO
+- paths: `server/`
+- do: Ktor app: config, Hikari + Exposed or jOOQ (per DECISIONS), Flyway from `contracts/db`, problem+json errors, request ids, structured logs, `/healthz` `/readyz` `/metrics`, OpenAPI conformance test (every implemented route matches `contracts/api`), stub routes return 501.
+- accept: Conformance test green.
+
+### T105 — Auth, devices, tokens, audit
+- model: opus · risk: high · deps: T104 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/auth/`, `server/src/test/kotlin/kotobaya/auth/`
+- do: Single-user password (argon2id) + optional TOTP; session cookie (HttpOnly, SameSite=Strict); device pairing via short-lived QR code → device token; PATs with scopes and expiry, stored hashed; scope enforcement middleware driven by the OpenAPI scopes; audit log table writes.
+- accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
+
+### T106 — Dictionary search API
+- model: sonnet · risk: med · deps: T101, T104 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/dict/`, tests alongside
+- do: `/dict/search` (kanji, kana, romaji via wanakana-equivalent conversion, deinflected input), `/dict/entries/{seq}`, `/kanji/{literal}`; ranking by match type then frequency.
+- accept: The 50 fixture queries return the expected top result.
+
+### T107 — FSRS implementation
+- model: opus · risk: high · deps: T006, T008 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/fsrs/`, `core/src/commonTest/kotlin/kotobaya/fsrs/`
+- do: Implement `Scheduler` per contract: FSRS version pinned in DECISIONS, fuzz (seeded), learning/relearning steps, desired retention, easy days, load balancing hook.
+- accept: Matches every golden vector within tolerance on jvm and js targets.
+
+### T108 — Search query language
+- model: sonnet · risk: med · deps: T006 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/search/`, tests
+- do: Parser per EBNF → AST; SQL compiler for Postgres and SQLite dialects.
+- accept: Every spec example parses; property tests: random ASTs → print → parse round-trips.
+
+### T109 — Job queue and events
+- model: sonnet · risk: med · deps: T104 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/jobs/`, `worker/kotobaya_worker/runner/`, tests
+- do: `app.job` table with `SKIP LOCKED` claiming, retries with backoff, progress, cancellation; worker runner loop; `/jobs` endpoints; `/events` SSE fan-out via Postgres LISTEN/NOTIFY.
+- accept: 1000 jobs across 3 workers complete exactly once; SSE delivers progress events.
+
+### T110 — Generated API clients
+- model: haiku · risk: low · deps: T004 · status: TODO
+- paths: `clients/`, `Makefile` (`check MODULE=contracts` target)
+- do: Generate Kotlin (for android), TypeScript (for web), Python (for CLI and worker) clients from `contracts/api`; `make check MODULE=contracts` regenerates and fails on diff.
+- accept: Clients compile; `make check MODULE=contracts` green.
+
+### T111 — Helm: real workloads
+- model: sonnet · risk: med · deps: T009, T104, T109 · status: TODO
+- paths: `deploy/helm/`
+- do: api, worker, web, optional postgres (CNPG or StatefulSet) and minio; migrate pre-upgrade hook; ingress with TLS from DECISIONS; resource requests; PodDisruptionBudgets off (single replica).
+- accept: `deploy/k3d/up.sh` → working API with dictionary search through ingress.
+
+### T112 — Backups and restore verification (early, before real data)
+- model: sonnet · risk: high · deps: T111 · status: TODO
+- paths: `deploy/helm/templates/backup*`, `deploy/backup/`
+- do: Nightly `pg_dump` + object-storage mirror, restic-encrypted, to the off-cluster target in DECISIONS; weekly restore into scratch DB with row-count checks; failure → ntfy/alert.
+- accept: Restore drill script documented and passing in k3d.
+
+→ `make test`, then **GATE-P1**: human runs `helm install` on the real cluster and searches the dictionary.
+
+---
+
+## Phase 2 — Review loop (web)
+
+### T201 — Notes, note types, card generation
+- model: sonnet · risk: med · deps: GATE-P1 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/cards/`, `server/src/main/kotlin/kotobaya/notes/`, tests
+- do: Built-in note types (vocab, kanji, phrase, grammar, sentence, custom) with templates; `CardGenerator`; notes CRUD writing ops; template rendering (sanitised HTML).
+- accept: Creating each note type yields the spec's default cards; optional kinds toggle correctly.
+
+### T202 — Op log, sync push/pull (server)
+- model: fable · risk: high · deps: GATE-P1 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/sync/`, `core/src/commonMain/kotlin/kotobaya/sync/`, tests
+- do: HLC implementation; op validation against `contracts/sync`; idempotent apply; server sequence; push/pull endpoints; tombstones; same-entry merge.
+- accept: Every worked example in `contracts/sync/SYNC.md` is a passing test; fuzz test: random op interleavings from 3 simulated devices converge to identical state.
+
+### T203 — Replay engine
+- model: fable · risk: high · deps: T107, T202 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/replay/`, tests
+- do: Rebuild card state from `review_log` (ordered by HLC), incremental replay for out-of-order inserts, drill/cram exclusion, parameter changes trigger full recompute.
+- accept: Incremental and full replay always agree (property test).
+
+### T204 — Decks and deck items
+- model: sonnet · risk: med · deps: T201 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/decks/`, tests
+- do: Deck types (user, media, list, smart), priorities, limits, ordering, deck_item CRUD via ops.
+- accept: Smart deck query uses T108; reorder ops converge under concurrency.
+
+### T205 — Queue builder
+- model: opus · risk: high · deps: T203, T204 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/queue/`, tests
+- do: Daily limits (global, per deck), deck priority for new cards, sibling burying, interleaving, new-per-session cap, kanji-before-vocab option, day boundary in user's time zone.
+- accept: Deterministic for a given seed and clock; table-driven tests for every rule in Scheduling › Queue building.
+
+### T206 — Review endpoints
+- model: sonnet · risk: med · deps: T205 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/review/`, tests
+- do: `/review/queue`, `/review/answer` (4- and 5-button modes), `/review/undo`, word-status updates, never-forget / blacklist.
+- accept: Undo restores exact prior state; 5-button mapping logged as specified.
+
+### T207 — jpdb history import
+- model: opus · risk: high · deps: T203, T206, S02 · status: TODO
+- paths: `worker/kotobaya_worker/importers/jpdb_history/`, `server/src/main/kotlin/kotobaya/imports/`, tests
+- do: Parse jpdb export; map words (using S02 mapping); create notes/cards; convert reviews to `review.logged` ops; replay; carry over known / never-forget / blacklisted; report unmapped items.
+- accept: On the private sample: ≥ 95% mapped; replay produces due dates; report lists every unmapped item.
+
+### T208 — Web shell
+- model: sonnet · risk: low · deps: T110, T105 · status: TODO
+- paths: `web/src/lib/`, `web/src/routes/+layout*`, `web/src/routes/login/`
+- do: Auth flow, layout, nav, design tokens (light/dark), Japanese font stack, generated TS client wiring, error toasts, SSE hook.
+- accept: Login/logout works against the dev stack (manual).
+
+### T209 — Web review screen
+- model: sonnet · risk: med · deps: T206, T208 · status: TODO
+- paths: `web/src/routes/review/`, `web/src/lib/review/`
+- do: Card rendering (templates), furigana toggle, keyboard-first (1–4 / 1–5, space, u), undo, edit note inline, bury/suspend/never-forget.
+- accept: A full session works keyboard-only (manual).
+
+### T210 — Web card browser and bulk ops
+- model: sonnet · risk: med · deps: T108, T208 · status: TODO
+- paths: `web/src/routes/cards/`, `server/src/main/kotlin/kotobaya/cards/bulk/`
+- do: Search box (query language with autocomplete), virtualised table, bulk tag/move/suspend/reschedule.
+- accept: Bulk op runs as one job with progress.
+
+### T211 — Web decks, note types, templates
+- model: sonnet · risk: low · deps: T204, T208 · status: TODO
+- paths: `web/src/routes/decks/`, `web/src/routes/note-types/`
+- accept: Preview and review use the same rendering component.
+
+### T212 — Web settings, devices, tokens
+- model: sonnet · risk: med · deps: T105, T208 · status: TODO
+- paths: `web/src/routes/settings/`
+- do: Settings, device list + QR pairing, PAT create/revoke with scopes, backup status, attribution page.
+- accept: Token shown once; revoke works.
+
+→ `make test`, then **GATE-P2**: human imports jpdb history and reviews in the web app for 3 days; reports issues.
+
+---
+
+## Phase 3 — Android and offline
+
+### T301 — Android shell and local DB
+- model: sonnet · risk: med · deps: GATE-P2 · status: TODO
+- paths: `android/app/src/main/` (excluding feature packages below), `android/app/src/test/`
+- do: Compose app, navigation, DI (per DECISIONS), SQLDelight DB from contracts, pairing via QR scan, settings store.
+- accept: Pairs with the dev server.
+
+### T302 — On-device dictionary package
+- model: sonnet · risk: med · deps: T103, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/dict/`
+- accept: Downloads, verifies, applies diffs; search works offline; storage shown in settings.
+
+### T303 — Sync client
+- model: opus · risk: high · deps: T202, T203, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/sync/`, `core/src/commonMain/kotlin/kotobaya/sync/client/`
+- do: Op outbox, batching, push/pull, local replay, WorkManager background sync with backoff, connectivity + server-reachability detection, status UI data.
+- accept: Shares the T202 convergence fuzz harness (client side); kill-app-mid-push test loses nothing.
+
+### T304 — Android review UI
+- model: sonnet · risk: med · deps: T205, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/review/`
+- do: Card rendering, furigana, pitch graph, audio, swipe/tap grading (4/5), undo, edit, bury/suspend/never-forget.
+- accept: Grading and undo work (manual on device).
+
+### T305 — AnkiDroid stand-in (production)
+- model: opus · risk: high · deps: GATE-S01, T303 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/ankiapi/`, `android/app/src/main/AndroidManifest.xml` (provider entries only)
+- do: Productionise S01 against the real DB: Takoboto Vocab note type, field mapping, JMdict matching, duplicate detection, offline insert → ops. Build both product flavors: own app ID and `com.ichi2.anki`. In single-session mode the `com.ichi2.anki` flavor is the default; in gated mode, use the GATE-S01 decision.
+- accept: Instrumented test replays the S01 call log and produces the expected notes. → **GATE-T305** (human: add 5 words from Takoboto).
+
+### T306 — Share sheet, PROCESS_TEXT, deep links
+- model: haiku · risk: low · deps: T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/intake/`
+- accept: Each intent works (manual).
+
+### T307 — Home-screen widget and Quick Settings tile
+- model: sonnet · risk: low · deps: T205, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/widget/`
+- accept: Three sizes render from local DB with no network; tile launches review.
+
+### T308 — Notifications and due alarms
+- model: sonnet · risk: med · deps: T205, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/notify/`
+- do: Channels per spec; next-due inexact alarm batching (≥ 15 min); boot/time/timezone receivers; widget refresh from the same trigger; permission onboarding.
+- accept: Unit test for the next-alarm calculation given synthetic due times.
+
+### T309 — ntfy / UnifiedPush
+- model: sonnet · risk: low · deps: T109, T301 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/push/`, `android/app/src/main/kotlin/kotobaya/android/push/`, `deploy/helm/templates/ntfy*`
+- accept: Job completion produces an Android notification in k3d + emulator.
+
+### T310 — Audio prefetch and storage budget
+- model: sonnet · risk: low · deps: T303 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/media/`
+- accept: Prefetch respects budget and N-day window; LRU eviction test.
+
+### T311 — On-device AnkiConnect server
+- model: sonnet · risk: med · deps: T305 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/ankiconnect/`
+- accept: Yomitan-compatible request fixtures pass; bound to localhost only.
+
+### T312 — Android release pipeline
+- model: haiku · risk: low · deps: T002, T301 · status: TODO
+- paths: `.github/workflows/android-release*`, `android/signing/README.md`
+- accept: Tag → signed APK release consumable by Obtainium.
+
+### T313 — Offline chaos suite
+- model: opus · risk: high · deps: T303, T305 · status: TODO
+- paths: `acceptance/offline/`
+- do: Simulated two-device offline week: reviews, adds, edits, deletes, clock skew ±10 min; then sync in random orders.
+- accept: Converges with zero lost reviews across 100 randomised runs (JVM simulation, no devices).
+
+→ `make test`, then **GATE-P3**: one real week in airplane mode on the phone, then sync.
+
+---
+
+## Phase 4 — Media
+
+### T401 — jpdb media deck import
+- model: sonnet · risk: med · deps: GATE-P3, S02 · status: TODO
+- paths: `worker/kotobaya_worker/importers/jpdb_media/`
+- accept: Imports a deck with occurrences and global rank; cache prevents refetch; unmapped → review queue.
+
+### T402 — Text extractors
+- model: sonnet · risk: low · deps: GATE-P3 · status: TODO
+- paths: `worker/kotobaya_worker/extract/`
+- do: SRT/ASS/VTT (timestamps), EPUB/TXT (chapters, ruby handling), Mokuro JSON, URL/HTML (readability), text-hooker logs.
+- accept: Each fixture extracts to expected segments/sentences.
+
+### T403 — Parser
+- model: opus · risk: high · deps: T101, T402 · status: TODO
+- paths: `worker/kotobaya_worker/parse/`
+- do: Normalisation, Sudachi (full dict) mode C → B fallback, deinflection, JMdict candidate ranking, `parse_override` application, `/parse` endpoint backing.
+- accept: ≥ 97% token-level agreement on the 20-sentence fixture (expand fixture to 200 sentences first if needed); overrides survive re-parse.
+
+### T404 — Occurrences and coverage engine
+- model: opus · risk: med · deps: T401, T403 · status: TODO
+- paths: `worker/kotobaya_worker/coverage/`, `server/src/main/kotlin/kotobaya/coverage/`
+- do: Per media/segment unique and token coverage, unknown-by-in-deck-frequency, top-N curve, filters, difficulty estimate; incremental recompute on word-status change.
+- accept: Within 3 percentage points of jpdb's numbers on two imported decks (fixture snapshot).
+
+### T405 — Coverage dashboards (web)
+- model: sonnet · risk: low · deps: T404, T208 · status: TODO
+- paths: `web/src/routes/media/`
+- accept: Unknown words sortable by in-deck count and global rank; curve chart; filters persist.
+
+### T406 — Web reader and parse correction
+- model: sonnet · risk: med · deps: T403, T405 · status: TODO
+- paths: `web/src/routes/media/[id]/read/`, `web/src/lib/reader/`
+- accept: Click word → lookup popup → mine; fix a token in ≤ 2 clicks creating a `parse_override`.
+
+### T407 — jpdb mapping review queue (web)
+- model: haiku · risk: low · deps: T401, T208 · status: TODO
+- paths: `web/src/routes/imports/mapping/`
+
+### T408 — i+1 sentences and sentence cards
+- model: sonnet · risk: low · deps: T404 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/sentences/`, `web/src/routes/media/[id]/sentences/`
+
+### T409 — Audio clip cutting
+- model: sonnet · risk: low · deps: T402 · status: TODO
+- paths: `worker/kotobaya_worker/audio/`
+- accept: ffmpeg-cut clips aligned to subtitle timestamps, stored by hash.
+
+### T410 — Android coverage and sentence lists
+- model: sonnet · risk: low · deps: T404, T301 · status: TODO
+- paths: `android/app/src/main/kotlin/kotobaya/android/media/browse/`
+
+→ `make test`, then **GATE-P4**: human compares coverage on two shows against jpdb.
+
+---
+
+## Phase 5 — Struggle tools and grammar
+
+### T501 — Hot words, hot kanji, leeches
+- model: sonnet · risk: med · deps: GATE-P4 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/struggle/`, `server/src/main/kotlin/kotobaya/struggle/`
+- accept: Scoring matches the spec's definition in table-driven tests; words decay off the list.
+
+### T502 — Confusables
+- model: sonnet · risk: low · deps: T501 · status: TODO
+- paths: `worker/kotobaya_worker/confusables/`, `server/src/main/kotlin/kotobaya/confusables/`
+- do: Homophones, look-alike kanji (component/shape similarity from KRADFILE), close meanings.
+
+### T503 — Drill sessions
+- model: sonnet · risk: med · deps: T501 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/drill/`, `server/src/main/kotlin/kotobaya/drill/`
+- accept: Drill reviews logged as `drill`; replay proves they never change schedules.
+
+### T504 — Struggle UIs (web, Android, widget hot word)
+- model: sonnet · risk: low · deps: T502, T503, T307 · status: TODO
+- paths: `web/src/routes/struggle/`, `android/app/src/main/kotlin/kotobaya/android/struggle/`, `android/app/src/main/kotlin/kotobaya/android/widget/hotword/`
+
+### T505 — Grammar library and seed stubs
+- model: sonnet · risk: low · deps: GATE-P4 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/grammar/`, `fixtures/grammar-seed/`
+- do: CRUD; ~300 N3–N1 stubs (title + pattern only, no copied explanations).
+
+### T506 — Grammar rule DSL and matcher
+- model: opus · risk: high · deps: T403, T505 · status: TODO
+- paths: `worker/kotobaya_worker/grammar/`, `contracts/grammar-dsl/` (via C-ticket if contract change)
+- do: DSL grammar, parser, matcher over Sudachi tokens, rule tester endpoint, batch tagging of sentences.
+- accept: 50 hand-written rules match their positive examples and none of their negative ones.
+
+### T507 — Grammar cards
+- model: sonnet · risk: med · deps: T506, T201 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/cards/grammar/`, `server/src/main/kotlin/kotobaya/grammar/cards/`
+- accept: Sentence rotates per review; prefers i+0 sentences.
+
+### T508 — "Saw something weird" flow
+- model: sonnet · risk: low · deps: T507, T406 · status: TODO
+- paths: `web/src/lib/grammar-capture/`, `android/app/src/main/kotlin/kotobaya/android/grammar/`
+
+→ `make test`, then **GATE-P5**.
+
+---
+
+## Phase 6 — Polish
+
+### T601 — VOICEVOX TTS
+- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- paths: `worker/kotobaya_worker/tts/`, `deploy/helm/templates/voicevox*`
+
+### T602 — Pitch accent display and cards
+- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- paths: `web/src/lib/pitch/`, `android/app/src/main/kotlin/kotobaya/android/pitch/`, `core/src/commonMain/kotlin/kotobaya/cards/pitch/`
+
+### T603 — Server AnkiConnect endpoint
+- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/ankiconnect/`
+
+### T604 — CLI
+- model: haiku · risk: low · deps: T110 · status: TODO
+- paths: `cli/`
+
+### T605 — Stats
+- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/stats/`, `web/src/routes/stats/`
+
+### T606 — FSRS optimizer job
+- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- paths: `worker/kotobaya_worker/optimizer/`, `deploy/helm/templates/cron-optimize*`
+- accept: Parameters published only if they improve log-loss on a held-out split.
+
+### T607 — Optional LLM assist
+- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/llm/`
+- do: Pluggable provider per DECISIONS; outputs labelled generated; off by default.
+
+### T608 — Export (JSON, .apkg)
+- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- paths: `server/src/main/kotlin/kotobaya/export/`
+
+### T609 — Security hardening review
+- model: opus · risk: high · deps: T601–T608 · status: TODO
+- paths: `deploy/`, `docs/SECURITY.md` (findings become new tickets)
+
+### T610 — Runbook and restore drill docs
+- model: haiku · risk: low · deps: T609 · status: TODO
+- paths: `docs/RUNBOOK.md`
+
+→ **GATE-DONE**: human sign-off.

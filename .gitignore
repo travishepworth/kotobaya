@@ -1,0 +1,12 @@
+# Secrets and private data (never commit)
+.env.local
+.env.*.local
+fixtures/private/
+
+# Setup artefacts
+kotoba-kit.zip
+
+# Orchestrator scratch
+/tmp/
+.claude/worktrees/
+.claude/settings.local.json
