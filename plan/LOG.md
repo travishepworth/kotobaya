@@ -415,3 +415,5 @@
 2026-11-12T17:48:17Z DECIDE add_kanji kanji count against own home deck (may exceed), not drawing deck; vocab+kanji atomic; BEFORE = kanji first
 2026-11-12T17:48:17Z C-8 DISPATCH attempt 2 (same agent)
 2026-11-12T17:48:41Z T209 HANDOFF DONE; CHECK_GREEN web after rebase; MERGE (Editor.svelte import + stand-in CardView removal accepted)
+2026-11-12T17:51:22Z T210a HANDOFF DONE; CHECK_GREEN server after rebase; MERGE (Main.kt registration line allowed)
+2026-11-12T17:51:22Z T210b DISPATCH writer(sonnet)

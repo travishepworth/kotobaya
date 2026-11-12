@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:48:41Z
+Updated: 2026-11-12T17:51:22Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,9 +13,9 @@ Updated: 2026-11-12T17:48:41Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T210b | writer (sonnet) | 1 | t/T210b-web-browse | 2026-11-12T17:51:22Z |
 | C-8 | architect (opus) | 2 | t/C-8-sync-gaps | 2026-11-12T17:48:17Z |
 | T207b | writer-senior (opus) | 1 | t/T207b-jpdb-server | 2026-11-12T17:44:11Z |
-| T210a | writer (sonnet) | 1 | t/T210a-cards-api | 2026-11-12T17:44:11Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -40,11 +40,12 @@ Updated: 2026-11-12T17:48:41Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 23/29 · attempts 39 · escalations 0
+P2: merged 24/29 · attempts 40 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T210a cards API (list/get/create/update/delete/reviews, search via T108b, bulk ≤5000 + bulk/schedule via OpApply) — live in Main.kt
 - T209 web review screen (grading 4/5 buttons, core previewIntervals, keyboard shortcuts, undo/bury/suspend, drill) + shared CardView — untested in a live browser
 - T206 review API (queue via core builder, answer/undo via ReviewOps, drill/cram, word status, DST StudyDay, deleted-deck fallback) — live in Main.kt
 - W-2 wiring: sync/notes/decks/settings live in Main.kt (shared OpApply), startup replay, placeholder scheduler version removed; e2e SyncWiringTest (REST→push→cache→pull, 2-device merge)

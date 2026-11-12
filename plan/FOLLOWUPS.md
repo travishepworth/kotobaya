@@ -151,3 +151,5 @@
 - T206 -> T209/C-ticket: queue doesn't pass pendingEntries (deck entries without a note) to the builder because getQueue emits no ops; if web must introduce them, needs a CONTRACT_CHANGE_REQUEST (e.g. a materialise endpoint).
 - T206: drill sources hot_words/confusables → 501; listCardReviews left to T210a; sentence always null (no sentence tables); newShownThisSession=0; utc_offset_min stored NULL when absent (per contract). Dict entry/kanji JSON duplicated from DictApi — dedupe.
 - T209: no furigana alignment in API (whole reading as one ruby segment); sentence/cloze not wired (server null, no span data). Review screen untested in a live browser → HUMAN_CHECKS GATE-P2 walkthrough.
+- T210a -> next C-ticket: bulk/schedule has no idempotency id; a retried POST appends extra manual review rows (end state same for set_due/reset, but log grows). Add request_id / derived manual-row ids.
+- T210a: is:hot matches nothing (HotScorer inputs not loaded); card list cursors offset-based not keyset; bulk/schedule scope review-only (T105b review+write CCR candidate still open).
