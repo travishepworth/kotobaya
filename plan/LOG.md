@@ -241,3 +241,7 @@
 2026-11-12T14:01:02Z T112 DISPATCH attempt 2 (same writer); SeaweedFS preallocation fix moved from T111b into T112
 2026-11-12T14:11:02Z T112 REVIEW_CHANGES verification: 8/9 fixed; new major: suspended CronJobs silence staleness alerts (needs watchdog); must-fix: crash between renames loses live DB name
 2026-11-12T14:11:02Z T112 DISPATCH attempt 3 of 5 (same writer)
+2026-11-12T14:20:10Z T112 REVIEW_APPROVE final verification
+2026-11-12T14:20:10Z T112 MERGE
+2026-11-12T14:20:10Z T111b extended with T112 follow-ups (sonnet)
+2026-11-12T14:20:10Z - HANDOVER updated: next T111b → make test → close P1 → P2 tickets

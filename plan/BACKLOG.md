@@ -240,7 +240,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: `deploy/k3d/up.sh` → working API with dictionary search through ingress.
 
 ### T112 — Backups and restore verification (early, before real data)
-- model: sonnet · risk: high · deps: T111 · status: RUNNING
+- model: sonnet · risk: high · deps: T111 · status: MERGED
 - paths: `deploy/helm/templates/backup*`, `deploy/backup/`
 - do: Nightly `pg_dump` + object-storage mirror, restic-encrypted, to the off-cluster target in DECISIONS; weekly restore into scratch DB with row-count checks; failure → ntfy/alert.
 - accept: Restore drill script documented and passing in k3d.
@@ -258,7 +258,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T103b.md
 
 ### T111b — Deploy fixes from T112 (SeaweedFS preallocation, BACKUPS_DISABLED, backup image)
-- model: haiku · risk: low · deps: T111, T112 · status: TODO
+- model: sonnet · risk: low · deps: T111, T112 · status: TODO
 - see plan/tickets/T111b.md
 
 ### W-1 — Wire server modules and worker jobs
