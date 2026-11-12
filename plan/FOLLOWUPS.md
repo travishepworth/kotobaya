@@ -73,3 +73,4 @@
 - T109a → T109b: worker heartbeats/progress writes must be guarded by `status='running'` (cancel sets cancelled immediately). job.updated comes from a 250 ms poll of app.job; NOTIFY is only a hint. Retention: terminal jobs pruned after 90 d; media-import / jpdb-* kept forever.
 - T109a → T105b: call `hub.closeToken(id)` on revocation and `bus.publish` for device.* events (credentialValid hook exists).
 - T109a → T309: ntfy forwarding needs a sink on EventHub + a base-URL setting.
+- T109b: worker registry is empty; health/readiness and Dockerfile CMD untouched → W-1.

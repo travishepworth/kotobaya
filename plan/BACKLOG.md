@@ -224,7 +224,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T109a.md (split from T109)
 
 ### T109b — Worker runner + 1000-jobs test
-- model: sonnet · risk: med · deps: T109a · status: RUNNING
+- model: sonnet · risk: med · deps: T109a · status: MERGED
 - see plan/tickets/T109b.md (split from T109)
 
 ### T110 — Generated API clients
@@ -234,7 +234,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Clients compile; `make check MODULE=contracts` green.
 
 ### T111 — Helm: real workloads
-- model: sonnet · risk: med · deps: T009, T104, T109a, T109b · status: TODO
+- model: sonnet · risk: med · deps: T009, T104, T109a, T109b · status: RUNNING
 - paths: `deploy/helm/`
 - do: api, worker, web, optional postgres (CNPG or StatefulSet) and minio; migrate pre-upgrade hook; ingress with TLS from DECISIONS; resource requests; PodDisruptionBudgets off (single replica).
 - accept: `deploy/k3d/up.sh` → working API with dictionary search through ingress.
@@ -256,6 +256,10 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ### T103b — Worker: align dictionary packaging with C-3
 - model: sonnet · risk: med · deps: T103, C-3 · status: MERGED
 - see plan/tickets/T103b.md
+
+### W-1 — Wire server modules and worker jobs
+- model: sonnet · risk: med · deps: T105a, T106, T109a, T109b · status: TODO
+- see plan/tickets/W-1.md
 
 ## Phase 2 — Review loop (web)
 
