@@ -315,3 +315,6 @@
 2026-11-12T15:58:30Z T202a REVIEW_CHANGES verification: 5/5 prior fixed; new major: op depth == doc depth → op legal alone, 514 deep in pull body → pull stuck
 2026-11-12T15:58:30Z DECIDE op max depth 500 (from op root), document max depth 512; C-5 told to pin both
 2026-11-12T15:58:30Z T202a DISPATCH attempt 4 of 5 (same architect agent)
+2026-11-12T16:01:37Z C-5 HANDOFF DONE (SYNC 2.1 ECMA patterns, depth op 500/doc 512, 7 new examples)
+2026-11-12T16:01:37Z C-5 REVIEW dispatched reviewer(opus)
+2026-11-12T16:01:37Z T202a told: container-count depth definition + new C-5 examples

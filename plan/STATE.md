@@ -14,7 +14,7 @@ Updated: 2026-11-12T15:58:30Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T202a | architect (opus) | 4 of 5 | t/T202a-sync-core-r | 2026-11-12T15:58:30Z |
-| C-5 | architect (opus) | 1 | t/C-5-sync-portable-patterns | 2026-11-12T15:51:14Z |
+| C-5 | reviewer (opus), handoff DONE | 1 | t/C-5-sync-portable-patterns | 2026-11-12T16:01:37Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
