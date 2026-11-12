@@ -6,14 +6,14 @@ CHECK: `contracts/sync/check.sh` → green (not yet wired into `make check`)
 
 ## Changed (≤ 6 lines)
 - `contracts/sync/SYNC.md`: protocol, HLC, apply/merge/replay rules, rejected ops, convergence, diagrams.
-- `contracts/sync/OPS.md` + `ops/*.schema.json` + `ops/index.json`: 45 ops (SCHEMA.md names), each with schema, conflict rule, example.
+- `OPS.md`, `ops/*.schema.json`, `ops/index.json`: 45 ops (SCHEMA.md names).
 - `batch.schema.json` (T004 entry point: `#/$defs/PushRequest|PushResponse|PullResponse|PushRequestLenient`), `op.schema.json`, `common.schema.json`.
 - `examples/`: 53 op examples, 6 batches, 18 must-fail instances, 14 scenarios (`scenario.schema.json`).
 - `tools/model.py`, `tools/validate.py`, `check.sh`; `SUMMARY.md`.
 
 ## Acceptance → tests
 - Schemas validate all examples → `check.sh`.
-- Every spec conflict case has a worked example → SYNC.md §12.4 table ↔ `examples/scenarios/`.
+- Every spec conflict case has an example → SYNC.md §12.4, `examples/scenarios/`.
 - Every §4.1 op has schema, rule, example → `validate.py` registry check.
 - "Must also resolve" 1–8 → SYNC.md §11, §8.2, §8.4, §8.4, §8.5, §7.9, §10, §8.4.
 
