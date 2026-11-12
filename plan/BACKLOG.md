@@ -160,7 +160,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Package for top-60k < budget in DECISIONS; diff between two fixture releases applies correctly.
 
 ### T104 — Server skeleton
-- model: sonnet · risk: med · deps: GATE-CONTRACTS · status: RUNNING
+- model: sonnet · risk: med · deps: GATE-CONTRACTS · status: MERGED
 - paths: `server/`
 - do: Ktor app: config, Hikari + Exposed or jOOQ (per DECISIONS), Flyway from `contracts/db`, problem+json errors, request ids, structured logs, `/healthz` `/readyz` `/metrics`, OpenAPI conformance test (every implemented route matches `contracts/api`), stub routes return 501.
 - accept: Conformance test green.
@@ -172,7 +172,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
 
 ### T105a — Auth: password, TOTP, session, login rate limit
-- model: opus · risk: high · deps: T104 · status: TODO
+- model: opus · risk: high · deps: T104 · status: RUNNING
 - see plan/tickets/T105a.md (split from T105)
 
 ### T105b — Auth: devices, pairing, PATs, scope middleware
@@ -180,7 +180,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T105b.md (split from T105)
 
 ### T106 — Dictionary search API
-- model: sonnet · risk: med · deps: T101, T104 · status: TODO
+- model: sonnet · risk: med · deps: T101, T104 · status: RUNNING
 - paths: `server/src/main/kotlin/kotobaya/dict/`, tests alongside
 - do: `/dict/search` (kanji, kana, romaji via wanakana-equivalent conversion, deinflected input), `/dict/entries/{seq}`, `/kanji/{literal}`; ranking by match type then frequency.
 - accept: The 50 fixture queries return the expected top result.
@@ -220,7 +220,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: 1000 jobs across 3 workers complete exactly once; SSE delivers progress events.
 
 ### T109a — Jobs API, retention, SSE
-- model: sonnet · risk: med · deps: T104 · status: TODO
+- model: sonnet · risk: med · deps: T104 · status: RUNNING
 - see plan/tickets/T109a.md (split from T109)
 
 ### T109b — Worker runner + 1000-jobs test

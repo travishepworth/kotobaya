@@ -194,3 +194,9 @@
 2026-11-12T12:53:14Z T110 CHECK_RED after rebase: drift from C-3 (check worked); orchestrator committed regenerated output
 2026-11-12T12:53:14Z T110 CHECK_GREEN make check contracts
 2026-11-12T12:53:14Z T110 MERGE
+2026-11-12T12:54:21Z T104 HANDOFF DONE
+2026-11-12T12:54:21Z T104 CHECK_GREEN server after rebase
+2026-11-12T12:54:21Z T104 MERGE
+2026-11-12T12:54:21Z T105a DISPATCH writer-senior(opus)
+2026-11-12T12:54:21Z T106 DISPATCH writer(sonnet)
+2026-11-12T12:54:21Z T109a DISPATCH writer(sonnet)
