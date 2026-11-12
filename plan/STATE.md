@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T18:29:43Z
+Updated: 2026-11-12T18:38:45Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,7 +13,6 @@ Updated: 2026-11-12T18:29:43Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| F-3 | architect (opus) | 1 | t/F-3-server-c8 | 2026-11-12T18:19:26Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -21,6 +20,7 @@ Updated: 2026-11-12T18:29:43Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| F-3 (server green, 293 tests) | reviewer (opus) | 2026-11-12T18:38:45Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

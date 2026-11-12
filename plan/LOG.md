@@ -457,3 +457,4 @@
 2026-11-12T18:29:43Z F-2 REVIEW_APPROVE (3 minors; ALONGSIDE-after-answer contract gap → P3 C-ticket, provisional default logged)
 2026-11-12T18:29:43Z F-2 MERGE
 2026-11-12T18:29:43Z DECIDE (provisional, P3) add_kanji K of a word introduced today stay drawable today
+2026-11-12T18:38:45Z F-3 HANDOFF DONE (Startup.kt raiseOnStartup added on request); CHECK_GREEN server; reviewer dispatched
