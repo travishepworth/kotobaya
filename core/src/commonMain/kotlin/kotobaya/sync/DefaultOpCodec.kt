@@ -2,7 +2,6 @@ package kotobaya.sync
 
 import kotobaya.contracts.sync.EnvelopeError
 import kotobaya.contracts.sync.JsonArray
-import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNull
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
@@ -20,8 +19,18 @@ import kotobaya.contracts.sync.OpType
  * Lenient envelope shape: for [OpSource.PULLED] exactly
  * `batch.schema.json#/$defs/PullResponseLenient/properties/ops/items` (so `seq` and
  * `caused_by_op_id` are required); for [OpSource.PUSHED] the same item schema without those two in
- * `required` and with both forbidden (`batch.schema.json#/$defs/PushRequest`: pushed ops carry no
- * `seq`). A failure there is [OpDecodeResult.Invalid] even for an unknown `op_type`.
+ * `required`. A failure there is [OpDecodeResult.Invalid] even for an unknown `op_type`. A pushed op
+ * of an unknown type/version that carries `seq` is therefore [OpDecodeResult.Unsupported] (SYNC.md
+ * 5.3 order: `unsupported_op` before `schema_invalid`); a pushed op of a known type that carries
+ * `seq` or `caused_by_op_id` is [OpDecodeResult.Invalid] at `/seq` / `/caused_by_op_id`
+ * (`batch.schema.json#/$defs/PushRequest`).
+ *
+ * [OpDecodeResult.Unsupported.opVersion] is the received `op_version` capped at `Int.MAX_VALUE`
+ * (the lenient shape allows any integer up to 2^53 - 1).
+ *
+ * A tree nested deeper than [DefaultCanonicalJson.MAX_DEPTH] is [OpDecodeResult.Invalid] at `""`,
+ * and [encode] / [sizeBytes] of such an op throw IllegalArgumentException: no replica mints, accepts
+ * or applies an op it could not parse back.
  */
 public object DefaultOpCodec : OpCodec {
     private const val TWO_POW_53 = 9007199254740992.0
@@ -38,10 +47,6 @@ public object DefaultOpCodec : OpCodec {
                 it != JsonString("seq") && it != JsonString("caused_by_op_id")
             },
         )
-        val props = LinkedHashMap((m.getValue("properties") as JsonObject).members)
-        props["seq"] = JsonBool(false)
-        props["caused_by_op_id"] = JsonBool(false)
-        m["properties"] = JsonObject(props)
         JsonObject(m)
     }
 
@@ -73,6 +78,9 @@ public object DefaultOpCodec : OpCodec {
 
     override fun decodeTree(json: JsonValue, source: OpSource): OpDecodeResult {
         if (json !is JsonObject) return OpDecodeResult.Invalid("an op must be a JSON object", "", null)
+        if (DefaultCanonicalJson.exceedsMaxDepth(json)) {
+            return OpDecodeResult.Invalid("nesting deeper than ${DefaultCanonicalJson.MAX_DEPTH}", "", null)
+        }
         val m = json.members
         val seq = m["seq"]?.let { asLong(it) }?.takeIf { it >= 1 }
         val lenient = when (source) {
@@ -87,6 +95,11 @@ public object DefaultOpCodec : OpCodec {
             // lenient shape held, so version is an integer in 1 until 2^53; clamp for the Int field
             val v = if (version > Int.MAX_VALUE) Int.MAX_VALUE else version.toInt()
             return OpDecodeResult.Unsupported(wire, v, seq, json)
+        }
+        if (source == OpSource.PUSHED) {
+            for (name in listOf("seq", "caused_by_op_id")) {
+                if (name in m) return OpDecodeResult.Invalid("a pushed op carries no $name", "/$name", seq)
+            }
         }
         SyncSchemas.validate("op.schema.json", json)?.let { return OpDecodeResult.Invalid(it.message, it.pointer, seq) }
         val op = Op(

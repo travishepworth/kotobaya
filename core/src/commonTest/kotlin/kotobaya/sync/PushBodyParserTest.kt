@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** SYNC.md 5.2 "Parsing the body" (C-2): the duplicate-tolerant push-body parse. */
@@ -57,6 +58,46 @@ class PushBodyParserTest {
             assertIs<OpDecodeResult.Known>(c.decodeTree(el.tree, OpSource.PUSHED), el.opId)
             assertTrue(c.rawSizeBytes(el.tree) > 0)
         }
+    }
+
+    /** A legal-looking op nested too deep is a per-op error, never a 400 that would block the outbox. */
+    @Test
+    fun tooDeepElementIsAPerOpErrorNotAWholeBodyFailure() {
+        val good = SyncExamples.rawPushBodies.getValue("same-op-id-equal-contents.body.txt")
+        val goodOp = (j.decode(good).value as JsonObject).members.getValue("ops").let { (it as JsonArray).items[0] }
+        val goodText = j.encode(goodOp)
+        val depth = DefaultCanonicalJson.MAX_DEPTH + 100
+        val deepId = "0193a1b2-00ff-7005-8000-0000000000dd"
+        val deep = """{"op_id":"$deepId","payload":{"x":${"[".repeat(depth)}1,{"k":"v","k":"w"}${"]".repeat(depth)}},"z":null}"""
+        val r = assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$goodText,$deep,$goodText]}"""))
+        assertEquals(3, r.elements.size)
+        assertIs<PushElement.Parsed>(r.elements[0])
+        val tooDeep = assertIs<PushElement.TooDeep>(r.elements[1])
+        assertEquals(deepId, tooDeep.opId)
+        assertEquals(deep, tooDeep.sourceText)
+        assertIs<PushElement.Parsed>(r.elements[2])
+        // the same element pushed twice is a retry, not a conflict
+        assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$deep,$deep]}"""))
+        // exactly at the limit an element still parses (element root = depth 0, as for encode)
+        val max = DefaultCanonicalJson.MAX_DEPTH
+        val edge = """{"op_id":"$deepId","p":${"[".repeat(max)}${"]".repeat(max)}}"""
+        assertIs<PushElement.Parsed>(assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$edge]}""")).elements.single())
+        val over = """{"op_id":"$deepId","p":${"[".repeat(max + 1)}${"]".repeat(max + 1)}}"""
+        assertIs<PushElement.TooDeep>(assertIs<PushBody.Ops>(PushBodyParser.parse("""{"ops":[$over]}""")).elements.single())
+        // still a whole-body 400: bad syntax deep down, a missing or repeated op_id, an op_id that is not a uuid
+        val nest = "[".repeat(depth) + "]".repeat(depth)
+        for (b in listOf(
+            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(depth)}1,${"]".repeat(depth)}}]}""",
+            """{"ops":[{"op_id":"$deepId","p":${"[".repeat(depth)}${"]".repeat(depth - 1)}}]}""",
+            """{"ops":[{"p":$nest}]}""",
+            """{"ops":[{"op_id":"$deepId","op_id":"$deepId","p":$nest}]}""",
+            """{"ops":[{"op_id":[],"p":$nest}]}""",
+            """{"ops":[{"op_id":"$deepId","p":$nest},{"op_id":"$deepId","p":[]}]}""",
+        )) {
+            assertIs<PushBody.BadRequest>(PushBodyParser.parse(b), b.take(80))
+        }
+        // and a client cannot mint it: encode refuses the tree
+        assertNull(j.decode(deep).value)
     }
 
     @Test

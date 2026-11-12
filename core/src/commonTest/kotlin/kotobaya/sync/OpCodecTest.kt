@@ -220,6 +220,34 @@ class OpCodecTest {
         assertNull(noSeq.seq)
     }
 
+    /** SYNC.md 5.3 order: an unknown pushed op is `unsupported_op` even if it (wrongly) carries seq. */
+    @Test
+    fun pushedUnknownOpWithSeqIsUnsupportedKnownOneIsInvalid() {
+        val base = tree(SyncExamples.ops.getValue("note.created.json"))
+        val withSeq = with(with(base, listOf("seq"), JsonNumber(9.0)), listOf("caused_by_op_id"), kotobaya.contracts.sync.JsonNull)
+        val unknown = assertIs<OpDecodeResult.Unsupported>(c.decodeTree(with(withSeq, listOf("op_type"), JsonString("foo.bar")), OpSource.PUSHED))
+        assertEquals(9L, unknown.seq)
+        assertIs<OpDecodeResult.Unsupported>(c.decodeTree(with(withSeq, listOf("op_version"), JsonNumber(2.0)), OpSource.PUSHED))
+        assertEquals("/seq", (c.decodeTree(withSeq, OpSource.PUSHED) as OpDecodeResult.Invalid).pointer)
+        // an op_version beyond Int is reported capped
+        val huge = c.decodeTree(with(base, listOf("op_version"), JsonNumber(9007199254740991.0)), OpSource.PUSHED)
+        assertEquals(Int.MAX_VALUE, assertIs<OpDecodeResult.Unsupported>(huge).opVersion)
+    }
+
+    @Test
+    fun tooDeepOpsAreInvalidAndCannotBeEncoded() {
+        val known = known(SyncExamples.ops.getValue("note.created.json"), OpSource.PUSHED)
+        var deep: JsonValue = JsonArray(emptyList())
+        repeat(DefaultCanonicalJson.MAX_DEPTH) { deep = JsonArray(listOf(deep)) }
+        val fields = JsonObject(mapOf("sentence" to deep)) // payload/fields/sentence/... > MAX_DEPTH
+        val op = known.copy(payload = JsonObject(known.payload.members + ("fields" to fields)))
+        assertFailsWith<IllegalArgumentException> { c.encode(op) }
+        assertFailsWith<IllegalArgumentException> { c.sizeBytes(op) }
+        val tree = JsonObject(tree(SyncExamples.ops.getValue("note.created.json")).members + ("payload" to op.payload))
+        val r = assertIs<OpDecodeResult.Invalid>(c.decodeTree(tree, OpSource.PUSHED))
+        assertEquals("", r.pointer)
+    }
+
     @Test
     fun syntaxErrorsAndNonObjectsAreInvalid() {
         for (t in listOf("", "{", "[]", "1", "null", "{\"op_id\":1,\"op_id\":1}")) {

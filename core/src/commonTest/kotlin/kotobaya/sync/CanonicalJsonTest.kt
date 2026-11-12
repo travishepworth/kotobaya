@@ -161,6 +161,36 @@ class CanonicalJsonTest {
         assertNotNull(j.decode(ok).value)
     }
 
+    /** One limit on every path: decode, encode and sizeOf agree at the boundary (root = depth 0). */
+    @Test
+    fun depthLimitIsTheSameForDecodeAndEncode() {
+        val max = DefaultCanonicalJson.MAX_DEPTH
+        fun nested(n: Int): JsonValue {
+            var v: JsonValue = JsonArray(emptyList())
+            repeat(n - 1) { v = JsonArray(listOf(v)) }
+            return v
+        }
+        // max + 1 nested arrays: the innermost sits at depth max
+        val edge = "[".repeat(max + 1) + "]".repeat(max + 1)
+        assertEquals(nested(max + 1), j.decode(edge).value)
+        assertEquals(edge, j.encode(nested(max + 1)))
+        assertEquals(edge.length, j.sizeOf(nested(max + 1)))
+        val over = "[".repeat(max + 2) + "]".repeat(max + 2)
+        assertNull(j.decode(over).value)
+        assertFailsWith<IllegalArgumentException> { j.encode(nested(max + 2)) }
+        assertFailsWith<IllegalArgumentException> { j.sizeOf(JsonObject(mapOf("k" to nested(max + 1)))) }
+    }
+
+    @Test
+    fun unicodeEscapesTakeOnlyAsciiHexDigits() {
+        assertEquals(JsonString("\u00e9"), j.decode("\"\\u00E9\"").value)
+        val fullwidthA = Char(0xFF21).toString()
+        val arabicIndicOne = Char(0x0661).toString()
+        for (bad in listOf("\"\\u00e$fullwidthA\"", "\"\\u00e$arabicIndicOne\"", "\"\\u00eg\"")) {
+            assertNull(j.decode(bad).value, bad)
+        }
+    }
+
     @Test
     fun encodingIsAFunctionOfTheValue() {
         val a = JsonObject(linkedMapOf("x" to JsonNumber(1.0), "y" to JsonArray(listOf(JsonString("s"), JsonNull))))

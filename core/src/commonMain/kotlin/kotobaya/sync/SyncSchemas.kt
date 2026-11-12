@@ -25,7 +25,7 @@ public data class SchemaError(
  * A small validator for exactly the keywords those schemas use (no dependency):
  * `$ref` (relative file + JSON Pointer fragment), `type`, `const`, `enum`, `minimum`, `maximum`,
  * `exclusiveMinimum`, `exclusiveMaximum`, `minLength`, `maxLength` (code points), `pattern`
- * (unanchored search), `prefixItems`, `items` (schema or `false`), `minItems`, `maxItems`,
+ * (unanchored search with ECMA-262 semantics on every platform, see [PortableRegex]), `prefixItems`, `items` (schema or `false`), `minItems`, `maxItems`,
  * `uniqueItems`, `required`, `properties`, `additionalProperties`, `propertyNames`,
  * `minProperties`, `dependentRequired`, `allOf`, `anyOf`, `oneOf`, `if`/`then`/`else`, and boolean
  * schemas. Annotations (`title`, `description`, `examples`, `default`, `$schema`, `$defs`, `$comment`)
@@ -70,7 +70,7 @@ public object SyncSchemas {
         fun walk(v: JsonValue) {
             when (v) {
                 is JsonObject -> v.members.forEach { (k, x) ->
-                    if (k == "pattern" && x is JsonString) out.getOrPut(x.value) { Regex(x.value) }
+                    if (k == "pattern" && x is JsonString) out.getOrPut(x.value) { PortableRegex.compile(x.value) }
                     walk(x)
                 }
                 is JsonArray -> v.items.forEach(::walk)
@@ -223,7 +223,7 @@ public object SyncSchemas {
             num(s["minLength"])?.let { if (len < it) return SchemaError("shorter than ${it.toLong()} characters", ptr) }
             num(s["maxLength"])?.let { if (len > it) return SchemaError("longer than ${it.toLong()} characters", ptr) }
             (s["pattern"] as? JsonString)?.let { p ->
-                val re = regexCache[p.value] ?: Regex(p.value)
+                val re = regexCache[p.value] ?: PortableRegex.compile(p.value)
                 if (!re.containsMatchIn(inst.value)) return SchemaError("does not match ${p.value}", ptr)
             }
         }

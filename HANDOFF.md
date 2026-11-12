@@ -6,20 +6,19 @@ CHECK: `make check MODULE=core` → green (jvmTest + jsTest)
 
 ## Changed (≤ 6 lines)
 - `core/.../sync/`: `DefaultHlcRules`, `DefaultRemintRules`, `DefaultCanonicalJson` (+ pure-Kotlin JS `Number::toString`), `DefaultOpCodec`
-- `SyncSchemas`: JSON Schema 2020-12 subset validator; schemas embedded in generated `SyncSchemaTexts.kt`
-- `PushBodyParser`: duplicate-tolerant push-body parse, per-op `DuplicateKey` (SYNC 5.2, C-2)
-- Tests in commonTest (run on jvm and js); examples embedded in generated `SyncExamples.kt`
-- Attempt 2: lone-surrogate test inputs are now built at runtime (`Char(0xD800)`), because the JS build turned the source literals into `?`. Main and generated code had no such literals.
+- `SyncSchemas` (2020-12 subset validator, schemas in generated `SyncSchemaTexts.kt`); `PortableRegex` rewrites `$`, `\s`, `\S` to ECMA semantics and refuses constructs that don't port
+- `PushBodyParser`: per-op `DuplicateKey` / `TooDeep` (SYNC 5.2, C-2); `MAX_DEPTH` 512 now applies to decode, encode/sizeOf (IAE) and `decodeTree` (Invalid)
+- Attempt 3: pushed unknown op carrying `seq` → Unsupported; `\u` escapes accept ASCII hex only; KDoc says `opVersion` is capped at `Int.MAX_VALUE`
 
 ## Acceptance → tests
-- examples ops/invalid → `OpCodecTest.everyExampleOpDecodesKnownAndReencodesCanonically`, `everyInvalidExampleIsRejectedWithTheExpectedReason`
-- HLC → `HlcTest.uniquenessUnderSkewProperty`, `guardBoundaries`, `mintRefusesToOverflowTheWallField`, `scenarioClockBehindRemint`, `remintShiftEdgeCases`
-- Canonical goldens jvm=js, raw UTF-8 size → `CanonicalJsonTest.numbersMatchJavaScriptVectors` (440 node-verified), `OpCodecTest.canonicalGoldensFromJavaScript`, `CanonicalJsonTest.sizesAreRawUtf8OfCompactCanonicalJson`
-- Duplicate key per-op → `PushBodyParserTest.duplicateKeyInOneOpIsAPerOpErrorNotAWholeBodyFailure`, `everyRawPushExampleGetsItsVerdict`
+- examples → `OpCodecTest.everyExampleOpDecodesKnownAndReencodesCanonically`, `everyInvalidExampleIsRejectedWithTheExpectedReason`
+- HLC → `HlcTest.uniquenessUnderSkewProperty`, `guardBoundaries`, `scenarioClockBehindRemint`, `remintShiftEdgeCases`
+- jvm = js → `CanonicalJsonTest.numbersMatchJavaScriptVectors`, `OpCodecTest.canonicalGoldensFromJavaScript`, `PortableRegexTest.patternsBehaveAsEcmaScriptOnEveryPlatform` (28 rows; node-verified with and without the `u` flag), `opsWithNonEcmaValuesAreRejectedEverywhere`
+- Per-op errors → `PushBodyParserTest.duplicateKeyInOneOpIsAPerOpErrorNotAWholeBodyFailure`, `tooDeepElementIsAPerOpErrorNotAWholeBodyFailure`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- `core/src/jvmTest/kotlin/kotobaya/sync/SyncContractDriftTest.kt` sits outside the owned paths; the coordinator accepted it.
-- Error pointer = the first failure in a fixed keyword order (documented in `SyncSchemas`); an `anyOf` failure reports its deepest branch error.
+- Depth is counted from each push element's own root, the same way `encode` counts it. A too-deep body member other than `ops` is still a 400; a correct client never sends one.
+- New public variant `PushElement.TooDeep`; T202b must handle it the way it handles `DuplicateKey`.
