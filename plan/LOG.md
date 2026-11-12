@@ -108,3 +108,6 @@
 2026-11-12T11:59:59Z - DECIDE ADR-006 provisional: mined cards priority 0 configurable; disabled decks introduce nothing
 2026-11-12T11:59:59Z T006 DISPATCH attempt 2 (opus, same worktree)
 2026-11-12T11:59:59Z C-1 DISPATCH architect(gp, opus)
+2026-11-12T12:05:39Z C-1 HANDOFF DONE
+2026-11-12T12:05:39Z C-1 CHECK_GREEN db + sync checks (22 invalid rejected)
+2026-11-12T12:05:39Z C-1 REVIEW combined reviewer+architect (opus) dispatched (small non-breaking change)

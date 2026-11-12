@@ -122,7 +122,7 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - accept: `make check MODULE=deploy` runs `deploy/helm/check.sh` and is green; fails if the chart breaks.
 
 ### C-1 — Contract alignment from T006 reviews (db + sync, non-breaking)
-- model: opus · risk: high · deps: T005 · status: RUNNING
+- model: opus · risk: high · deps: T005 · status: IN_REVIEW
 - paths: `contracts/db/`, `contracts/sync/`
 - see plan/tickets/C-1.md
 
