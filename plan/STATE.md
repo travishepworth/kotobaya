@@ -1,21 +1,21 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T14:23:50Z
+Updated: 2026-11-12T14:26:49Z
 
 
-## RESUME HERE (updated 2026-11-12T14:20:10Z, before a planned session restart)
-- Phase 1: 18/18 merged (T111b merged 2026-11-12T14:23:50Z). Was: **T111b** (sonnet, low; plan/tickets/T111b.md: BACKUPS_DISABLED env, backup image build, T112 review follow-ups in deploy/backup/). Dispatch it first; no review needed (low), just `make check MODULE=deploy`.
-- Then: `make test` (all modules; needs Docker) → if green: GATE-P1 deferred (single-session) → write P1 human checks (use the app per SPEC P1 "Done when") into plan/HUMAN_CHECKS.md → start Phase 2. If red: ci-triage (haiku) on the log, fix tickets.
-- Phase 2 needs ticket files first: dispatch a sonnet planner like the P1 one (plan/tickets/T201.md … T213.md from BACKLOG Phase 2 rows + plan/FOLLOWUPS.md + ADRs 002–009 + contracts; split anything > ~600 lines). Then dispatch: T201 + T202 (opus, architect role, high risk; reviewer + architect 2nd pass) + T213 first.
-- Before T208 (web shell): k3d dev HTTPS (Secure cookie) — FOLLOWUPS. Before T207: ADR-009 + JPDB_API_KEY live check (S02, needs .env.local) + small C-ticket on JobResultJpdbHistory. T202 must read BACKUPS_DISABLED and fill server_state hlc_last (FOLLOWUPS).
-- Stale harness-locked worktrees (all merged): T009 agent-ae408d50204f320d0, T111 agent-af77a050ea16184ff, T112 agent-af5ce7b42729bb029 → `git worktree remove -f -f <path>`; `git branch -D t/T009-helm t/T111-helm-workloads t/T112-backups` plus any `worktree-agent-*` branches.
-- Working conventions (also in memory): dispatch via general-purpose + model override + inlined role (project agent types not registered); NO Fable (ADR-004; Opus for architect role); review loop only on real majors with a failure scenario, verification passes via SendMessage to the same reviewer; Write tool refuses SUMMARY.md for subagents → orchestrator commits the text verbatim; agents report tool refusals, never work around them; archive HANDOFF.md to plan/handoffs/<ID>.md after each merge; MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy; k3d drills need ~15 GB free on / (check df first).
+## RESUME HERE (updated 2026-11-12T14:26:49Z)
+- P1 done (18/18, make test green, GATE-P1 deferred). P2 tickets in plan/tickets/ (splits: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4; T214). Per-ticket status: BACKLOG.md "Phase 2 splits" line.
+- Next after running ones: T213a (after T201a), T202b (after T202a), T207a (after C-4), T203 (after T202a). High-risk (T202*, T203, T205, T207*) → reviewer (opus) + architect 2nd pass for sync/replay.
+- Conventions: named agent types now registered; architect-role tickets run with model=opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy. Review loop only on real majors with failure scenarios.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| P2-plan | planner (sonnet) | 1 | main (plan/tickets only) | 2026-11-12T14:21:23Z |
+| C-4 | architect (opus) | 1 | t/C-4-jpdb-adr009 | 2026-11-12T14:26:49Z |
+| T202a | architect (opus) | 1 | t/T202a-sync-core | 2026-11-12T14:26:49Z |
+| T201a | writer (sonnet) | 1 | t/T201a-card-generator | 2026-11-12T14:26:49Z |
+| T208 | writer (sonnet) | 1 | t/T208-web-shell | 2026-11-12T14:26:49Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -37,6 +37,7 @@ Updated: 2026-11-12T14:23:50Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P2: merged 0/21 · attempts 4 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

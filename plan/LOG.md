@@ -259,3 +259,7 @@
 2026-11-12T14:26:18Z - DECIDE T212 also owns settings/presets endpoints (unowned otherwise)
 2026-11-12T14:26:18Z - DECIDE bulk card ops synchronous per frozen contract (≤5000 cards), not a job; backlog text superseded
 2026-11-12T14:26:18Z - DECIDE add T214 web jpdb import screen (GATE-P2 needs import from web)
+2026-11-12T14:26:49Z C-4 DISPATCH architect(opus)
+2026-11-12T14:26:49Z T202a DISPATCH architect(opus)
+2026-11-12T14:26:49Z T201a DISPATCH writer(sonnet)
+2026-11-12T14:26:49Z T208 DISPATCH writer(sonnet)
