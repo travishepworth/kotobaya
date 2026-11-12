@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notify_section_title">Notifications</string>
+    <string name="notify_channel_due">Due count</string>
+    <string name="notify_channel_due_desc">A silent, permanent notification with today\'s counts.</string>
+    <string name="notify_channel_nudges">Nudges</string>
+    <string name="notify_channel_nudges_desc">Reminders to review. Off until you turn them on in Settings.</string>
+    <string name="notify_channel_server">Server events</string>
+    <string name="notify_channel_server_desc">Things the server tells you about, such as a sync that has not run.</string>
+    <string name="notify_due_count">%1$d due · %2$d new</string>
+    <string name="notify_nudge_threshold">%1$d cards are due.</string>
+    <string name="notify_nudge_evening">You have not reviewed today; %1$d cards are due.</string>
+    <string name="notify_sync_stale_title">Sync is behind</string>
+    <string name="notify_sync_stale_text">This phone has not synced for 2 days.</string>
+    <string name="notify_permission_title">Allow notifications</string>
+    <string name="notify_permission_rationale">Kotobaya shows how many cards are due in a quiet notification. It never makes a sound unless you turn on nudges.</string>
+    <string name="notify_permission_allow">Allow notifications</string>
+    <string name="notify_permission_granted">Notifications are allowed.</string>
+    <string name="notify_permission_denied_note">Without permission the app works the same, but shows no due count or reminders.</string>
+    <string name="notify_nudges_enable">Nudges</string>
+    <string name="notify_evening_enable">Evening reminder at %1$d:00 if I have not reviewed</string>
+</resources>

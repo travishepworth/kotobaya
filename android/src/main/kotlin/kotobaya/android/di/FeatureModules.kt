@@ -38,4 +38,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.pairing.pairingFeature,
     kotobaya.android.queue.queueFeature,
     kotobaya.android.dict.dictFeature,
+    kotobaya.android.notify.notifyFeature,
 )
