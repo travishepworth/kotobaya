@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:23:09Z
+Updated: 2026-11-12T19:24:42Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -15,7 +15,6 @@ Updated: 2026-11-12T19:23:09Z
 |---|---|---|---|---|
 | T312 | writer-light (haiku) | 1 | t/T312-android-release | 2026-11-12T19:23:22Z |
 | T307+T309 | writer (sonnet) | 1 | t/T307+T309-widget-ntfy | 2026-11-12T19:19:41Z |
-| T303a | writer-senior (opus) | 2 | t/T303a-sync-client-protocol | 2026-11-12T19:18:06Z |
 | C-10 | architect (opus) | 1 | t/C-10-log-reset-pull-seq | 2026-11-12T19:18:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -24,6 +23,7 @@ Updated: 2026-11-12T19:23:09Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T303a att 2 (core green) | architect verification | 2026-11-12T19:24:42Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
