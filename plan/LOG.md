@@ -476,3 +476,8 @@
 2026-11-12T18:49:57Z - DECIDE DECIDE P3-9: T302 may add a new core/.../kotobaya/dict/ package (romaji-to-hiragana parity with server, per FOLLOWUPS T106) rather than leaving it Android-only; server copy untouch
 2026-11-12T18:49:57Z T301a DISPATCH writer(sonnet)
 2026-11-12T18:49:57Z T303a DISPATCH writer-senior(opus)
+2026-11-12T18:54:38Z T301a HANDOFF DONE (new deps: Koin, Compose, SQLDelight 2.0.2, Robolectric — justified); CHECK_GREEN android; MERGE (android/src/main/sqldelight/ outside paths accepted)
+2026-11-12T18:54:38Z - T301b gets token-encryption follow-up (plain SharedPreferences)
+2026-11-12T18:54:38Z T301b DISPATCH writer(sonnet)
+2026-11-12T18:54:38Z T304a DISPATCH writer(sonnet)
+2026-11-12T18:54:38Z - T305a queued (Gradle cap)
