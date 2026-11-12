@@ -117,7 +117,7 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - accept: fixtures/tools pytest green; README cites REPORT.md.
 
 ### T009b — Wire `make check MODULE=deploy` to the Helm check
-- model: haiku · risk: low · deps: T002, T009 · status: RUNNING
+- model: haiku · risk: low · deps: T002, T009 · status: MERGED
 - paths: `Makefile` (check-deploy target only)
 - accept: `make check MODULE=deploy` runs `deploy/helm/check.sh` and is green; fails if the chart breaks.
 
