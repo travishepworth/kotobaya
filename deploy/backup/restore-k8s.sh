@@ -20,11 +20,41 @@ if [ -n "${RESTORE_SNAPSHOT:-}" ] && [ "${RESTORE_CONFIRM_OLDER:-}" != yes ]; th
   exit 2
 fi
 
-API_REPLICAS=$(k get deploy "$REL-api" -o jsonpath='{.spec.replicas}')
-WORKER_REPLICAS=$(k get deploy "$REL-worker" -o jsonpath='{.spec.replicas}')
+live_pods() { k get pods -l "$1" --field-selector=status.phase!=Succeeded,status.phase!=Failed -o name; }
+wait_no_pods() { # selector, what
+  local deadline=$((SECONDS + 600))
+  while [ -n "$(live_pods "$1")" ]; do
+    [ $SECONDS -lt $deadline ] || { echo "ERROR: $2 pods still present after 10 min:" >&2; live_pods "$1" >&2; exit 1; }
+    sleep 3
+  done
+}
+
+# 1. Suspend the backup jobs (a backup of a half-restored database must never become "verified").
+#    Remember which we suspended (annotation) so a re-run after a failure still resumes them.
+CRONS="$REL-backup $REL-backup-verify"
+for c in $CRONS; do
+  if [ "$(k get cronjob "$c" -o jsonpath='{.spec.suspend}')" != true ]; then
+    k annotate cronjob "$c" kotobaya/suspended-by-restore=true --overwrite >/dev/null
+    k patch cronjob "$c" -p '{"spec":{"suspend":true}}' >/dev/null
+  fi
+done
+echo "backup CronJobs suspended; waiting for running backup jobs to finish"
+wait_no_pods "app.kubernetes.io/component in (backup,backup-verify)" "backup"
+
+# Replica counts are kept in an annotation so a re-run after a failed restore (workloads at 0) restores them.
+replicas() { # deployment
+  local r; r=$(k get deploy "$1" -o jsonpath='{.metadata.annotations.kotobaya/replicas-before-restore}')
+  if [ -z "$r" ]; then
+    r=$(k get deploy "$1" -o jsonpath='{.spec.replicas}')
+    k annotate deploy "$1" "kotobaya/replicas-before-restore=$r" --overwrite >/dev/null
+  fi
+  echo "$r"
+}
+API_REPLICAS=$(replicas "$REL-api")
+WORKER_REPLICAS=$(replicas "$REL-worker")
 echo "scaling api ($API_REPLICAS) and worker ($WORKER_REPLICAS) to 0"
 k scale deploy "$REL-api" "$REL-worker" --replicas=0
-k wait --for=delete pod -l "app.kubernetes.io/component in (api,worker)" --timeout=300s >/dev/null 2>&1 || true
+wait_no_pods "app.kubernetes.io/component in (api,worker)" "api/worker"
 
 JOB="$REL-restore-$(date -u +%Y%m%d%H%M%S)"
 k create job "$JOB" --from="cronjob/$REL-backup-restore" --dry-run=client -o json |
@@ -43,7 +73,8 @@ while [ $SECONDS -lt $deadline ]; do
 done
 k logs "job/$JOB" || true
 if [ $rc -ne 0 ]; then
-  echo "RESTORE FAILED; api and worker left scaled to 0. Job: $JOB" >&2
+  echo "RESTORE FAILED; api and worker left scaled to 0 and the backup CronJobs suspended. Job: $JOB" >&2
+  echo "(the restore loads a temporary database first, so the live one is untouched unless the final rename ran)" >&2
   exit 1
 fi
 
@@ -51,4 +82,12 @@ echo "scaling api and worker back up"
 k scale deploy "$REL-api" --replicas="$API_REPLICAS"
 k scale deploy "$REL-worker" --replicas="$WORKER_REPLICAS"
 k rollout status deploy "$REL-api" --timeout=600s   # readiness = /readyz: restore finalized, scheduler checked
-echo "restore complete; api is ready"
+k annotate deploy "$REL-api" "$REL-worker" kotobaya/replicas-before-restore- >/dev/null
+# Only now (restore finalized by the server) may backups run again.
+for c in $CRONS; do
+  if [ "$(k get cronjob "$c" -o jsonpath='{.metadata.annotations.kotobaya/suspended-by-restore}')" = true ]; then
+    k patch cronjob "$c" -p '{"spec":{"suspend":false}}' >/dev/null
+    k annotate cronjob "$c" kotobaya/suspended-by-restore- >/dev/null
+  fi
+done
+echo "restore complete; api is ready; backup CronJobs resumed"

@@ -131,9 +131,16 @@ backup:
   # Failure notification target, an ntfy topic URL (e.g. https://ntfy.example.invalid/kotobaya-alerts).
   # Treat a real topic URL as secret: put NOTIFY_URL in the backup Secret instead and leave this empty.
   notify: { url: "" }
-  workSize: 10Gi                # scratch space: dump + full blob mirror
+  # Alert when the newest verified snapshot is older than this (about 2x the nightly schedule): catches
+  # jobs killed without a chance to alert (OOMKill, eviction, SIGKILL), checked by backup and verify.
+  staleHours: 52
+  # Limits. The blob mirror is staged on disk: workSize must hold the dump plus ALL blobs
+  # (raise it as the media grows; exceeding it evicts the pod, which staleHours then reports).
+  # tmpSize holds restic's cache/temp. Memory: restic + pg_dump; raise for a very large repository.
+  workSize: 10Gi
+  tmpSize: 2Gi
   activeDeadlineSeconds: 7200
   env: {}
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits: { memory: 1Gi }
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 2Gi }

@@ -36,13 +36,31 @@ if [ -z "$have_repo" ]; then
   restic init   # fails if the repository exists but cannot be opened (wrong password, network)
 fi
 
+# Earlier backups that never finished (OOM kill, eviction, deadline) leave no trace but a stale
+# newest snapshot: alert, then carry on (this run may be the one that repairs it).
+check_fresh || notify "kotobaya backup STALE" "$FAIL_DETAIL"
+FAIL_DETAIL=""
+
+# Never back up a database that was just restored and not yet finalized by the server: it is
+# either half loaded or carries the previous epoch's identity (restore-k8s.sh also suspends this job).
+pending() { psqlq -d "$1" -c "SELECT count(*) FROM app.server_state WHERE key = 'restore_pending'"; }
+if [ "$(pending "$LIVE_DB")" != 0 ]; then
+  FAIL_DETAIL="restore_pending is set in the live database: a restore is in progress or not yet finalized; refusing to back it up. "
+  log "$FAIL_DETAIL"; exit 3
+fi
+
 log "1/6 pg_dump $LIVE_DB"
 pg_dump -Fc --no-owner -f "$WORK_DIR/db.dump" "$LIVE_DB"
 pg_restore --list "$WORK_DIR/db.dump" >/dev/null
+sha256sum "$WORK_DIR/db.dump" | cut -d' ' -f1 >"$WORK_DIR/db.dump.sha256"
 
 log "2/6 verify: restore the dump into a scratch database"
 create_scratch
 pg_restore --no-owner --exit-on-error -d "$SCRATCH_DB" "$WORK_DIR/db.dump"
+if [ "$(pending "$SCRATCH_DB")" != 0 ]; then
+  FAIL_DETAIL="the dump contains restore_pending (taken while a restore was being finalized); refusing. "
+  log "$FAIL_DETAIL"; exit 3
+fi
 db_counts "$SCRATCH_DB" >"$WORK_DIR/counts.json"
 E=$(jq -r '.log_epoch // empty' "$WORK_DIR/counts.json")
 S=$(jq -r '.change_max_seq' "$WORK_DIR/counts.json")
@@ -59,7 +77,12 @@ restic backup --host kotobaya --tag kotobaya --tag pending --tag "epoch:${E:-non
   --json "$WORK_DIR/db.dump" "$WORK_DIR/counts.json" "$WORK_DIR/blobs" | tail -n 1 >"$WORK_DIR/summary.json"
 SNAP=$(jq -r '.snapshot_id' "$WORK_DIR/summary.json")
 [ -n "$SNAP" ] && [ "$SNAP" != null ] || { log "no snapshot id from restic"; exit 1; }
-restic check
+# Verify what was uploaded: structure + a sample of pack data, and the dump read back byte for byte.
+restic check --read-data-subset=10%
+want=$(cat "$WORK_DIR/db.dump.sha256")
+got=$(restic dump "$SNAP" "$WORK_DIR/db.dump" | sha256sum | cut -d' ' -f1)
+[ "$want" = "$got" ] || { FAIL_DETAIL="db.dump read back from the repository differs from what was dumped. "; log "$FAIL_DETAIL"; exit 1; }
+log "dump read back from the repository: sha256 $got OK"
 restic tag --add verified --remove pending "$SNAP"
 log "snapshot verified (restic tag rewrites the snapshot, so its id changed from $SNAP)"
 

@@ -25,7 +25,7 @@ spec:
           image: {{ .Values.objectStore.image }}
           securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           # single process master+volume+filer+S3; S3 identities come from s3.json in the secret
-          args: [server, -dir=/data, -s3, -s3.config=/etc/seaweedfs/s3.json, -s3.port=8333, -ip.bind=0.0.0.0]
+          args: [server, -dir=/data, -s3, -s3.config=/etc/seaweedfs/s3.json, -s3.port=8333, -ip.bind=0.0.0.0, -master.volumePreallocate=false, -volume.max=40]
           ports: [{ name: s3, containerPort: 8333 }]
           readinessProbe:
             tcpSocket: { port: s3 }

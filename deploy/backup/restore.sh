@@ -43,19 +43,26 @@ BLOBS=$(dirname "$DUMP")/blobs
 [ -s "$DUMP" ] && [ -s "$COUNTS" ] && [ -d "$BLOBS" ] || { log "snapshot lacks db.dump, counts.json or blobs/"; exit 1; }
 pg_restore --list "$DUMP" >/dev/null
 
-psqlq -d postgres -c "DROP DATABASE IF EXISTS \"$LIVE_DB\""   # fails if api/worker still connected
-psqlq -d postgres -c "CREATE DATABASE \"$LIVE_DB\" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8'"
-pg_restore --no-owner --exit-on-error -d "$LIVE_DB" "$DUMP"
+# Load into a temporary database first: a failed or mismatched restore leaves the live DB untouched.
+create_scratch
+pg_restore --no-owner --exit-on-error -d "$SCRATCH_DB" "$DUMP"
 
 log "2/3 restoring blobs"
 rclone copy "$BLOBS" "src:$S3_BUCKET" --transfers 4
-check_blobs "$LIVE_DB" "$BLOBS"
+check_blobs "$SCRATCH_DB" "$BLOBS"
 
-log "3/3 restore_pending"
-psqlq -d "$LIVE_DB" <<'SQL'
+log "3/3 restore_pending, then swap the restored database in"
+psqlq -d "$SCRATCH_DB" <<'SQL'
 INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())
 ON CONFLICT (key) DO UPDATE SET value = '1', updated_at = now();
 SQL
 # the restored data must equal the backup (the epoch is still the old one until the server finalizes)
-compare_counts "$COUNTS" "$LIVE_DB"
+compare_counts "$COUNTS" "$SCRATCH_DB"
+# Swap: the renames fail while anything is connected (api/worker must be stopped). If the second
+# rename fails the live name is missing; re-running the script starts again from step 1.
+OLD="${LIVE_DB}_pre_restore_$(date -u +%Y%m%d%H%M%S)"
+psqlq -d postgres -c "ALTER DATABASE \"$LIVE_DB\" RENAME TO \"$OLD\""
+psqlq -d postgres -c "ALTER DATABASE \"$SCRATCH_DB\" RENAME TO \"$LIVE_DB\""
+SCRATCH_DB=""
+psqlq -d postgres -c "DROP DATABASE \"$OLD\"" || log "WARNING: could not drop the previous database $OLD; drop it by hand"
 log "restore OK: snapshot $SNAP loaded, restore_pending set; start the server to finalize"

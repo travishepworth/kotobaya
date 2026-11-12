@@ -73,11 +73,10 @@ spec:
       image: $REG/backup:$TAG
       imagePullPolicy: Never
       command: [sleep, "36000"]
+      envFrom: [{ secretRef: { name: kotobaya-objectstore } }]   # S3_ACCESS_KEY, S3_SECRET_KEY
       env:
         - { name: S3_ENDPOINT, value: "http://$REL-objectstore:8333" }
         - { name: S3_BUCKET, value: kotobaya }
-        - { name: S3_ACCESS_KEY, value: "$S3K" }
-        - { name: S3_SECRET_KEY, value: "$S3S" }
 YAML
 helm upgrade "$REL" "$CHART" -n "$NS" --reuse-values --wait --timeout 8m \
   --set backup.enabled=true --set backup.image.tag="$TAG" \
@@ -156,10 +155,22 @@ case $SINK in *"backup-verify FAILED"*) echo "ASSERT OK   ntfy sink received the
   *) echo "ASSERT FAIL no notification in sink log: $SINK" >&2; exit 1;; esac
 
 step "durable_seq write rules (the SQL the backup job uses)"
-runsql() { k exec -i "$PG" -- psql -X -v ON_ERROR_STOP=1 -At -U kotobaya -d kotobaya -v s="$1" -v e="$2" <"$HERE/durable_seq.sql"; }
+runsql() { k exec -i "$PG" -- psql -X -q -v ON_ERROR_STOP=1 -At -U kotobaya -d kotobaya -v s="$1" -v e="$2" <"$HERE/durable_seq.sql"; }
 OUT=$(runsql 999999 "00000000-0000-7000-8000-00000000dead"); assert_eq "epoch mismatch writes nothing" "${OUT%%:*}" "skipped"
 assert_eq "durable_seq untouched after mismatch" "$(state durable_seq)" "$S_A"
 runsql 1 "$E0" >/dev/null; assert_eq "lower S never decreases durable_seq" "$(state durable_seq)" "$S_A"
+
+step "restore_pending guards: backup refuses, durable_seq.sql writes nothing"
+sql <<<"INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())" >/dev/null
+SINK_BEFORE=$(k exec ntfy-sink -- grep -c "backup FAILED" /tmp/sink.log || true)
+if run_job backup; then echo "ASSERT FAIL backup ran while restore_pending was set" >&2; exit 1; fi
+echo "ASSERT OK   backup refused while restore_pending is set"
+SINK_AFTER=$(k exec ntfy-sink -- grep -c "backup FAILED" /tmp/sink.log || true)
+assert_ne "refused backup sent an alert" "$SINK_AFTER" "$SINK_BEFORE"
+OUT=$(runsql 999999 "$E0"); assert_eq "durable_seq.sql refuses while restore_pending" "${OUT%%:*}" "skipped"
+assert_eq "durable_seq untouched while restore_pending" "$(state durable_seq)" "$S_A"
+assert_eq "backup-verify still passes after the refused backup" "$(run_job backup-verify | grep -c 'verify OK')" "1"
+sql <<<"DELETE FROM app.server_state WHERE key='restore_pending'" >/dev/null
 
 step "mutate: add rows after the backup (and lose a blob object)"
 seed b "$BLOB_B" 2 4
@@ -179,6 +190,9 @@ assert_eq "server ready (api Available, /readyz)" "$(k get deploy "$REL-api" -o 
 assert_eq "data matches the backup" "$(counts)" "$COUNTS_A"
 assert_eq "rows added after the backup are gone" "$(sql <<<"SELECT count(*) FROM app.blob WHERE hash='$BLOB_B'")" "0"
 assert_eq "blob restored into the object store" "$(tools "rclone lsf src:\$S3_BUCKET/$BLOB_A" )" "$BLOB_A"
+
+assert_eq "backup CronJobs resumed after restore" "$(k get cronjob "$REL-backup" "$REL-backup-verify" -o jsonpath='{.items[*].spec.suspend}')" "false false"
+assert_eq "no previous database left behind" "$(sql <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'kotobaya_pre_restore%' OR datname LIKE 'kotobaya_scratch%'")" "0"
 
 step "next backup after the restore uses the new epoch"
 run_job backup

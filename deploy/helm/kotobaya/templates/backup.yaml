@@ -21,6 +21,7 @@ jobTemplate:
           app.kubernetes.io/component: {{ $comp }}
       spec:
         restartPolicy: Never
+        terminationGracePeriodSeconds: 60
         securityContext:
           {{- toYaml $root.Values.podSecurityContext | nindent 10 }}
           runAsUser: 65534
@@ -29,13 +30,15 @@ jobTemplate:
             image: {{ include "kotobaya.image" (dict "root" $root "img" $v.image) }}
             imagePullPolicy: {{ $root.Values.imagePullPolicy }}
             securityContext: {{- toYaml $root.Values.containerSecurityContext | nindent 14 }}
-            command: [{{ .script | quote }}]
+            # tini -g forwards SIGTERM to the whole process group so the script's EXIT trap can alert
+            command: [/sbin/tini, -g, --, {{ .script | quote }}]
             envFrom:
               # RESTIC_REPOSITORY, RESTIC_PASSWORD, AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (S3 repo), NOTIFY_URL (optional)
               - secretRef: { name: {{ $v.secretName }} }
             env:
               {{- include "kotobaya.appEnv" $root | nindent 14 }}
               - { name: KEEP_LAST, value: {{ $v.keepLast | quote }} }
+              - { name: STALE_SECONDS, value: {{ mul $v.staleHours 3600 | quote }} }
               {{- with $v.notify.url }}
               - { name: NOTIFY_URL, value: {{ . | quote }} }
               {{- end }}
@@ -49,7 +52,8 @@ jobTemplate:
         volumes:
           - name: work
             emptyDir: { sizeLimit: {{ $v.workSize }} }
-          - { name: tmp, emptyDir: {} }
+          - name: tmp
+            emptyDir: { sizeLimit: {{ $v.tmpSize }} }
 {{- end -}}
 {{- if .Values.backup.enabled }}
 apiVersion: batch/v1

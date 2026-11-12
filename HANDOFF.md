@@ -1,23 +1,22 @@
-# HANDOFF T112
+# HANDOFF T112 (attempt 2)
 
 STATUS: DONE
-BRANCH: t/T112-backups
-CHECK: `make check MODULE=deploy` → green. Restore drill run on k3d `kotobaya-t112`: `DRILL PASS` (cluster and images deleted).
+BRANCH: t/T112-backups (rebased on main)
+CHECK: `make check MODULE=deploy` → green. Restore drill on k3d `kotobaya-t112`: `DRILL PASS` (cluster and images deleted).
 
-## Changed
-- `deploy/backup/`: image (alpine, restic, rclone, pg17), `backup.sh`, `verify.sh`, `restore.sh`, `durable_seq.sql`, `restore-k8s.sh`, `restore-drill.sh`, `check.sh`, README.
-- `templates/backup.yaml`: nightly backup, weekly backup-verify, suspended restore CronJob. `values.yaml`: `backup:` block only (default `enabled: false`).
-- Order: dump → scratch-restore (E, S, counts read from the dump) → blob mirror after dump + every `app.blob` row checked → restic snapshot `pending` → `restic check` → `verified` → `durable_seq` (monotonic, only if live epoch == E).
+## Changed (review fixes)
+- Major 1: `restore-k8s.sh` suspends backup/backup-verify CronJobs, waits for their pods, scales down (fails if pods remain), resumes after `rollout status`; `backup.sh` exits 3 with an alert if `restore_pending` is in the live DB or the dump.
+- Major 2: `durable_seq.sql` runs in one transaction under `pg_advisory_xact_lock(7033001)`, requires no `restore_pending` and live epoch == E.
+- Major 3: jobs run under `tini -g` plus a TERM trap (alert on deadline/delete); `check_fresh` (newest verified snapshot older than `backup.staleHours`=52): `verify.sh` fails, `backup.sh` alerts and continues (so it can repair). Memory 2Gi, `workSize`/`tmpSize` limits documented.
+- Minors: restore into temp DB, compare, set restore_pending, rename swap (live untouched on failure); `restic check --read-data-subset=10%` plus dump sha256 read-back before tagging verified; README (external PG must own DB); drill asserts refusal under `restore_pending`, CronJobs resumed, envFrom Secret.
+- `objectstore.yaml`: `-master.volumePreallocate=false -volume.max=40` (permanent).
 
 ## Acceptance → tests
-- Drill passes → `restore-drill.sh` asserts: durable_seq = S, verify passes, injected corrupt counts fail the Job and reach the ntfy sink, mismatched-epoch/lower-S writes nothing, after restore log_epoch changed, durable_seq = S, api ready, data == backup, post-backup rows gone, blob restored.
-- Templates render with/without `backup.enabled`, no secrets → `deploy/backup/check.sh` (also JDBC conversion, count compare).
+- Drill (`restore-drill.sh`): all attempt-1 asserts plus restore_pending guards (backup fails + alert; durable_seq.sql skips). `deploy/backup/check.sh`: staleness, SQL shape, tini/STALE_SECONDS/preallocate render.
 
 ## New dependencies
-- Image only: restic, rclone, postgresql17-client, jq, curl (alpine 3.21).
+- tini in the backup image.
 
 ## For the reviewer
-- Edited outside owned paths (needed): `deploy/helm/check.sh` (one line calling `../backup/check.sh`). Needs from others: build/push a `backup` image in `deploy/build/release.yml`; wire `api.yaml` to set `BACKUPS_DISABLED=true` when `backup.enabled=false`.
-- "Backups disabled": server does not read any setting. Chosen env `BACKUPS_DISABLED=true` (api); T202 must read it and report durable_seq = high_water_seq. Until then durable_seq stays 0 (safe).
-- T111 BUG: SeaweedFS in `objectstore.yaml` preallocates 1 GiB per volume (7 volumes per collection): first upload consumed ~15 GB real disk and filled `/`. Add `-master.volumePreallocate=false -volume.max=40` (verified in drill).
-- Restic repo target in DECISIONS is empty; drill uses an in-cluster S3 bucket. Backup frequency is a HUMAN_CHECKS item (README). K8s netpolicy refuses brand-new pods for ~seconds, so scripts `wait_net`.
+- Still needed elsewhere: `deploy/helm/check.sh` calls `../backup/check.sh` (edited); build the `backup` image in release.yml; api.yaml `BACKUPS_DISABLED=true` when backups off (server must read it, T202).
+- Not drilled: OOMKill/eviction path (covered only by the unit-tested staleness check) and the race itself (guards asserted, not interleaved).

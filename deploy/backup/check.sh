@@ -38,6 +38,20 @@ db_counts() { jq '.v1_checksum = null' "$tmp/counts.json"; }
 compare_counts "$tmp/counts.json" ignored 2>/dev/null && fail "missing V1 checksum must fail"
 unset -f db_counts
 
+# --- staleness (stubbed restic) ---------------------------------------------------------------------
+restic() { echo "[{\"time\":\"$STUB_TIME\"}]"; }
+STUB_TIME="$(date -u -d '-1 hour' +%FT%T.123456789Z)" STALE_SECONDS=7200 check_fresh 2>/dev/null || fail "fresh snapshot flagged stale"
+STUB_TIME="$(date -u -d '-3 hours' +%FT%T.123456789Z)"
+if STALE_SECONDS=7200 check_fresh 2>/dev/null; then fail "stale snapshot not flagged"; fi
+restic() { echo "[]"; }
+check_fresh 2>/dev/null || fail "empty repository must not be stale"
+unset -f restic
+
+# --- durable_seq.sql / restore guards are exercised by restore-drill.sh; assert their shape here
+grep -q 'pg_advisory_xact_lock(7033001)' "$here/durable_seq.sql" || fail "durable_seq.sql must take the sync lock"
+grep -q "restore_pending" "$here/durable_seq.sql" || fail "durable_seq.sql must check restore_pending"
+grep -q 'restore_pending' "$here/backup.sh" || fail "backup.sh must refuse while restore_pending"
+
 # --- notify: failure posts, and never fails the caller --------------------------------------------
 NOTIFY_URL="" notify t m 2>/dev/null
 NOTIFY_URL="http://127.0.0.1:9/none" notify t m 2>/dev/null   # unreachable: warns, returns 0
@@ -50,6 +64,9 @@ helm lint kotobaya --set backup.enabled=true >/dev/null
 helm template t kotobaya --set backup.enabled=true --set backup.notify.url=http://ntfy.example.invalid/x >"$tmp/on.yaml"
 eq cronjobs "$(grep -c '^kind: CronJob' "$tmp/on.yaml")" 3
 for s in backup.sh verify.sh restore.sh; do grep -q "/opt/backup/$s" "$tmp/on.yaml" || fail "no job runs $s"; done
+grep -q '/sbin/tini' "$tmp/on.yaml" || fail "jobs must run under tini"
+grep -q 'name: STALE_SECONDS' "$tmp/on.yaml" || fail "staleness limit not rendered"
+grep -q 'volumePreallocate=false' "$tmp/off.yaml" || fail "SeaweedFS must not preallocate volumes"
 grep -q 'suspend: true' "$tmp/on.yaml" || fail "restore CronJob must be suspended"
 grep -q 'secretRef' "$tmp/on.yaml" || fail "restic credentials must come from a Secret"
 grep -q 'name: DATABASE_URL' "$tmp/on.yaml" || fail "backup pods need DATABASE_URL"

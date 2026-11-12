@@ -16,6 +16,7 @@ rm -rf "${WORK_DIR:?}"/* 2>/dev/null || true
 
 SNAP=$(restic snapshots --tag verified --latest 1 --json | jq -r 'sort_by(.time) | last | .id // empty')
 [ -n "$SNAP" ] || { FAIL_DETAIL="no verified snapshot in the repository. "; log "$FAIL_DETAIL"; exit 1; }
+check_fresh || exit 1
 log "restoring snapshot $SNAP"
 restic restore "$SNAP" --target "$WORK_DIR/r" >/dev/null
 DUMP=$(find "$WORK_DIR/r" -name db.dump | head -n 1)

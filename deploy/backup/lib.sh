@@ -62,7 +62,7 @@ db_env() {
   : "${PGUSER:?no user in DATABASE_URL}"
 }
 
-psqlq() { psql -X -v ON_ERROR_STOP=1 -At "$@"; }
+psqlq() { psql -X -q -v ON_ERROR_STOP=1 -At "$@"; }
 
 # Scratch database. V1 needs a UTF-8 ctype (a C ctype aborts the migration), so create it C.UTF-8.
 create_scratch() {
@@ -114,6 +114,26 @@ check_blobs() {
 }
 
 restic_need() { : "${RESTIC_REPOSITORY:?}" "${RESTIC_PASSWORD:?}"; }
+
+# SIGTERM (pod deletion, activeDeadlineSeconds) must run the EXIT trap so the failure is announced.
+# bash runs the trap once its foreground child ends; the Job's command is `tini -g`, which signals
+# the whole process group. SIGKILL (OOM, eviction) cannot be trapped: check_fresh covers those.
+trap 'exit 143' TERM INT
+
+# Staleness: return 1 (FAIL_DETAIL set) when the newest verified snapshot is older than STALE_SECONDS
+# (chart: backup.staleHours, about 2x the schedule), so a job that dies silently (OOMKill, eviction,
+# deadline) or never runs is noticed by the next job that does run.
+# No verified snapshot at all is not "stale" here (fresh repository); verify.sh rejects that itself.
+check_fresh() {
+  local newest age
+  newest=$(restic snapshots --tag verified --json | jq -r 'map(.time) | max // empty')
+  [ -n "$newest" ] || return 0
+  age=$(( $(date -u +%s) - $(date -u -d "$newest" +%s) ))
+  if [ "$age" -gt "${STALE_SECONDS:-187200}" ]; then
+    FAIL_DETAIL="newest verified backup is $((age / 3600)) h old (limit $(( ${STALE_SECONDS:-187200} / 3600 )) h): backups are not completing. "
+    log "$FAIL_DETAIL"; return 1
+  fi
+}
 
 # Compare recorded counts ($1 = JSON file) with the live counts of database $2. Prints each field.
 # BACKUP_VERIFY_INJECT_FAILURE=1 (drill only) corrupts the expected note count by one.
