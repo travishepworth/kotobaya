@@ -80,3 +80,6 @@
 2026-11-12T11:17:57Z T004 CHECK_GREEN against real batch.schema.json
 2026-11-12T11:17:57Z T004 REVIEW reviewer verification + architect 2nd pass dispatched
 2026-11-12T11:18:33Z T004 REVIEW_APPROVE reviewer verification: 10/10 fixed, no new majors; 3 followups
+2026-11-12T11:20:43Z T005 HANDOFF DONE attempt 3: re-mint, device guard, card-age check dropped
+2026-11-12T11:20:43Z T005 CHECK_GREEN 16 scenarios
+2026-11-12T11:20:43Z T005 REVIEW architect final verification dispatched

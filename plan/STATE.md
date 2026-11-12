@@ -1,16 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:17:57Z
+Updated: 2026-11-12T11:20:43Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T005 | architect (gp/opus) | 3 | t/T005-sync (existing worktree) | 2026-11-12T11:10:45Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T005 (att. 3) | architect final verification (opus) | 2026-11-12T11:20:43Z |
 | T004 (att. 2) | reviewer verification + architect 2nd pass (opus) | 2026-11-12T11:17:57Z |
 
 ## Blocked
