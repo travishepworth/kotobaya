@@ -636,7 +636,7 @@ it `BACKUPS_DISABLED`; Helm sets it when `backup.enabled=false`) never changes w
 changes who writes the row:
 
 - **While disabled**, the server raises the row to `max(change.seq)` (a) in its startup transaction
-  (6.3 step 2b) and (b) in **every transaction that inserts `change` rows** (push, REST-minted and
+  (6.3 server startup step 3) and (b) in **every transaction that inserts `change` rows** (push, REST-minted and
   job-minted ops), under lock 7033001, with the same `greatest()` upsert as the backup job. So the
   reported value equals `high_water_seq`, as before, and is **persisted**.
 - **Re-enabling backups lowers nothing.** The row keeps its value; the backup job's `greatest()`
@@ -733,6 +733,10 @@ The deploy side (T112: backup CronJob, restore script) and the server (T202) mee
    ```
    A failed, partial or unverified backup writes nothing. Retention MUST keep the newest verified
    backup (the one `durable_seq` was taken from) until a newer one has been verified.
+4. (C-8) Store next to the backup, as metadata the restore tool can read without the live
+   database: `E`, `S`, and `L` = the live `durable_seq` read in the transaction of step 3 after
+   the upsert (`L >= S`; `L > S` when the live server had raised it further, e.g. while backups
+   were disabled). A backup whose step 3 wrote nothing (epoch changed) records `L` = null.
 
 **Restore script (T112).** With the server and worker stopped (no instance may serve the database
 while it is restored):
@@ -741,7 +745,10 @@ while it is restored):
    confirmation, 6.2 step 1). If the live database is still readable and its `log_epoch` equals
    the backup's `E` and its `durable_seq` is above the backup's `S`, the backup is older than what
    devices may have purged (typically: backups were disabled for a while, 6.2): the same warning
-   and confirmation, naming the number of seqs at risk (`durable_seq − S`). (C-8)
+   and confirmation, naming the number of seqs at risk (`durable_seq − S`). When the live database
+   is not readable, the tool uses the backups' metadata instead (backup job step 4): if any
+   retained backup of the same epoch `E` recorded an `L` above the chosen backup's `S`, the same
+   warning, with `max(L) − S`. (C-8)
 2. In the restored database, before any server instance starts:
    ```sql
    INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())
@@ -760,10 +767,10 @@ re-reading the rows under the lock:
    as in 6.2 step 3 (greatest of the restored `last`, every `change.hlc`, and `(now + 24 h, 0)`)
    and persist it; delete `restore_pending`. Log it at WARN.
 2. Else if `log_epoch` is absent (a fresh database), insert a new UUIDv7.
-   2b. (C-8) If this instance runs with backups disabled (6.2), raise `durable_seq` to
-   `coalesce(max(change.seq), 0)` with the `greatest()` upsert of the backup job. With backups
-   enabled, `durable_seq` is not touched.
-3. Commit. Then the `core_scheduler_version` check of 10.5 runs (its own transaction).
+3. (C-8) **In every case** (after step 1 or 2, or neither): if this instance runs with backups
+   disabled (6.2), raise `durable_seq` to `coalesce(max(change.seq), 0)` with the `greatest()`
+   upsert of the backup job. With backups enabled, `durable_seq` is not touched here.
+4. Commit. Then the `core_scheduler_version` check of 10.5 runs (its own transaction).
 
 Because of the lock and the re-read, several instances starting together finalize once. Every
 `PushResponse` / `PullResponse` reports the committed `log_epoch` and `durable_seq` rows
@@ -1157,8 +1164,10 @@ so every replica behaves the same and nothing is left half-current. **Server and
    `core_scheduler_version`: the refused card holds the refused cache, not an old-engine cache).
    The replica logs the card id and the exception at ERROR. A device SHOULD show it in its sync
    diagnostics.
-4. **Readers:** the refused card has `state = 'new'`, so it is offered as a new card. That is
-   acceptable for a state that a correct replica never reaches; queue builders MAY skip it.
+4. **Readers:** the refused card has `state = 'new'`, but it has no trustworthy schedule. Queue
+   loaders and builders **MUST skip** every card whose `last_review_id` is `REPLAY_REFUSED_ID`
+   (core `QueueInput.candidates`): otherwise it would be re-offered as a new card every day and
+   each answer would be refused again. It stays visible in browse/search.
 
 The server's `CoreCardCache` (T202c) logged and skipped, keeping the old cache: it MUST write the
 refused cache instead (breaking for T202c, no data impact: unreachable with the schema's checks).
@@ -1192,7 +1201,7 @@ still applied**, so the device knowingly differs from the server until the user 
 |---|---|
 | **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
 | **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
-| **Re-mint** | Only for clock rejections, and the **default** action whenever any row is clock-rejected: rows created with the wrong clock (with everything that depends on them and writes one of those rows) and reviews are minted again with corrected times; edits of rows the server already has, or that other replicas can have (window row, 10.4), are discarded. Section 10.4. |
+| **Re-mint** | Only for clock rejections, and the **default** action whenever any row is clock-rejected: rows created with the wrong clock (with everything that depends on them and writes one of those rows, and the deck items and word statuses of their words) and reviews are minted again with corrected times; other edits of rows the server already has, or that other replicas can have (window row, 10.4), are discarded — listed to the user before confirming (MUST). Section 10.4. |
 
 The UI SHOULD offer "discard all". There is no automatic cascade: if a rejected `note.created`
 is discarded while a rejected `card.created` for it is kept, the kept op simply has no effect
@@ -1279,7 +1288,22 @@ What can be re-minted, and why:
 *window row* iff that identity contains the id of a row created in the window (set `W` of step 1):
 one of the `|`-separated parts of `entity_id` is in `W`, where a deck item key `n:<id>` counts as
 `<id>`. Such a row cannot exist on any other replica (nobody else knows the id), so its writes
-can be re-minted. Consequences, each with a scenario in
+can be re-minted.
+
+**Window-derived op** (C-8 attempt 2). An op that addresses a word by its entry rather than by a
+row id — `deck.item_put` / `deck.item_removed` with key `e:<seq>`, `word.status_set`,
+`word.status_cleared` — whose `seq` / `entry_seq` is the `entry_seq` of a `note.created` in `E`
+(a note created in the window; the first such note in `hlc` order if several). It writes a shared
+row, but it is part of making that word, so it is **re-minted** (step 1c) rather than lost. A
+week of offline mining into an existing deck, or words marked known as they were added, must
+survive a clock rejection. A window-derived **deck item** is re-minted with key `n:<that note's
+id>` (step 6a) instead of `e:<seq>`: a window row, and by the effective identity of 8.5 (`n:` of a
+note whose `entry_seq` is the seq means `e:<seq>`) the same item, also after the note is merged
+into another device's note of the same word. A window-derived **word status** keeps its payload;
+it is re-minted with `mint_at`, so its estimated real time decides it against other replicas'
+statuses of the entry, like a forwarded edit after a merge.
+
+Consequences, each with a scenario in
 [`examples/remint-scenarios/`](examples/remint-scenarios/) (13):
 
 | Op (made in the window) | Window row? | Re-mint | Scenario |
@@ -1287,15 +1311,20 @@ can be re-minted. Consequences, each with a scenario in
 | `card.preset_set` of a card in `W` (to any preset) | yes (the card) | re-minted | `remint-preset-set-existing-card` |
 | `card.preset_set` of a card the server had, to a preset in `W` | no: register `preset_id` of a shared card | `unknown_reference`; **discarded** (list `D`) | `remint-preset-set-existing-card` |
 | `deck.item_put` / `_removed` `n:<note in W>` into any deck, or any key into a deck in `W` | yes | re-minted | `remint-deck-items` |
-| `deck.item_put` / `_removed` `e:<seq>` into a deck the server had | no: `(deck, e:<seq>)` is written by every replica that adds the same word | `clock_ahead` itself (its only reference exists); **discarded** | `remint-deck-items` |
-| `word.status_set` / `_cleared`, `settings.set` | no: keyed by `entry_seq` / key, shared; soft or no references | clock code itself; **discarded**, also for the entry of a note created in the window | `remint-word-status` |
+| `deck.item_put` / `_removed` `e:<seq>` into a deck the server had, `seq` = entry of a note in `W` | window-derived | `clock_ahead` itself; **re-minted with key `n:<note>`**, after the note | `remint-deck-items` |
+| `deck.item_put` / `_removed` `e:<seq>` into a deck the server had, no window note for `seq` | no: `(deck, e:<seq>)` is written by every replica that adds the word | `clock_ahead` itself; **discarded** | `remint-deck-items` |
+| `word.status_set` / `_cleared` of the entry of a note in `W` | window-derived | clock code itself; **re-minted**, same payload | `remint-word-status` |
+| `word.status_set` / `_cleared` of any other entry, `settings.set` | no: keyed by `entry_seq` / key, shared | clock code itself; **discarded** | `remint-word-status` |
+| an op with a clock code whose row is a window row (e.g. `grammar.span_put` whose `sentence_id` is in `W`; its only reference, the grammar point, exists) | yes | re-minted (step 1a) | — |
 | `confusable.*` with a note in `W`; `grammar.span_*` of a grammar point in `W` | yes | re-minted | — |
 | `note.updated` / `card.*` / `deck.updated` … of a row in `W` | yes (the row itself) | re-minted | 12.7 |
 
-So a word added to an existing deck with the canonical `e:<seq>` key (8.5) during the window is
-not re-added: the user adds it again. The device SHOULD show, before the user confirms Re-mint,
-how many rejected ops it will discard without minting them again (`C`, `D` and `U` minus `E` and
-`R`, plus the undone reviews dropped in step 4), and list them as for Discard.
+**Discard list (MUST).** Before the user confirms Re-mint, the device MUST show how many rejected
+ops Re-mint will delete without minting them again — `C`, `D` and `U` minus `E` and `R`, plus the
+reviews of `R` dropped in step 4 because they were undone — and MUST let the user see the list
+(per op as in 10.1: what, when, why; `D` ops included, grouped under their window parent where
+there is one). Nothing on that list is ever silently lost: the user confirms with the list
+available, or chooses Discard / Retry per op instead.
 
 Rejected ops never got a `change` row, so no other replica has seen them: replacing them is safe.
 
@@ -1333,19 +1362,31 @@ status says "fix your device clock, then sync".
    `review.undone`: `review_id`; `deck.item_*`: `deck_id` and the note of an `n:` key;
    `confusable.*`: both notes; `grammar.span_*`: `grammar_point_id`. Start with `W` = {} (rows
    created in the window), `C`, `D`, `E`, `R`, `U` = empty lists. For each row, with code `k`:
-   - `k` is `clock_ahead` or `clock_behind`: add the row to `C`; and if the op is `review.logged`,
-     append it to `R`; if it is a `*.created`, append it to `E` and add its row id to `W`.
-   - `k` is `unknown_reference` and `refs(op)` meets `W` or the review ids of `R`: if the op is
+   - **1a.** `k` is `clock_ahead` or `clock_behind`: add the row to `C`; and if the op is
+     `review.logged`, append it to `R`; if it is a `*.created`, append it to `E` and add its row id
+     to `W`; otherwise, if it writes a window row (its only references exist, so it met the clock
+     check itself, e.g. `grammar.span_put` whose `sentence_id` is in `W`), append it to `E`.
+   - **1b.** `k` is `unknown_reference` and `refs(op)` meets `W` or the review ids of `R`: if the op is
      `review.logged`, append it to `R`; if `review.undone`, append it to `U`; else if it is a
      `*.created` or writes a window row (above), append it to `E` and, if it is a `*.created`, add
      its row id to `W`; **otherwise append it to `D`** (it depends on a window row but writes a row
      other replicas can have, e.g. `card.preset_set` of an existing card to a window preset; C-8).
    - otherwise the row is not touched (it stays listed as it is).
 
+   - **1c.** After the pass: every row of `C` that is not in `E` or `R` and is **window-derived**
+     (above: an `e:<seq>` deck item or a word status whose seq is the `entry_seq` of a
+     `note.created` in `E`) is appended to `E`. Its **owner** is that note (the first in `hlc` order
+     if several notes in `E` have the entry).
+   - **Order of `E`:** ascending by `(max(hlc, owner's hlc), hlc < owner's hlc, hlc)` (no owner:
+     `(hlc, false, hlc)`). This is the original order, except that a window-derived op minted
+     before its note (an `e:<seq>` put into a deck as a pending entry, the note created later)
+     moves to just after the note, so its re-minted `n:` key never reaches the server before the
+     note.
+
    Then add to `U` every other `review.undone` row (any state) whose `review_id` is the id of a
-   review in `R`. `E` holds the creations and the ops that depend on them, in original order; an op
-   of `E` or `R` that also depends on a row missing for another reason is simply rejected again
-   after the re-mint and listed.
+   review in `R`. `E` holds the creations, the ops that write window rows and the window-derived
+   ops; an op of `E` or `R` that also depends on a row missing for another reason is simply
+   rejected again after the re-mint and listed.
 2. Delete `C`, `D`, `E`, `R` and `U` (discard). Apply the clock repair if any row of `C` is `clock_ahead`.
 3. Check G1 and G2; if either holds, roll the transaction back (nothing changes).
 4. Drop from `R` every review whose local `review_log` row has `undone_hlc` set (the user undid it;
@@ -1377,8 +1418,11 @@ status says "fix your device clock, then sync".
    than the window (`d_lo > d_hi`) does the per-item clamp bite. The results satisfy the server's
    checks: `FLOOR <= t' <= now`.
 6. Mint, exactly as in section 4 (new `op_id`, apply locally, insert `pending`):
-   - **6a.** For each op of `E`, in original order: the **same** `op_type` and payload (same row
-     ids, same values), new `hlc` = `mint_at(t')` (3.2). Its rows' `created_at` / `updated_at`
+   - **6a.** For each op of `E`, in the order of step 1: the **same** `op_type` and payload (same row
+     ids, same values) — except a window-derived `deck.item_put` / `deck.item_removed` into a deck
+     not in `W`, whose `item_key` `e:<seq>` becomes `n:<owner note id>` (and `entity_id` with it);
+     every other property unchanged — new `hlc` = `mint_at(t')` (3.2). `t` stays `wall` of the op's
+     own original `hlc`. Its rows' `created_at` / `updated_at`
      (from `wall(hlc)`, 7.5) become the estimated real times. (`mint_at` never returns a value at
      or below `hlc_last`; when `t'` is not above it, the HLC lands just above `hlc_last` instead.)
    - **6b.** Then for each `r_i` in order: a new `review.logged` with `hlc` = `mint()`: the
@@ -1400,9 +1444,9 @@ only on the device and are removed by the rebuild; every replica then holds the 
 Rows of `W` keep their ids: the server never had them, so the re-minted creation is the first one
 anywhere.
 
-What re-mint does not restore: edits of rows the server already had, made with the wrong clock
-(including those that refer to a window row, list `D`, and deck items `e:<seq>` and word statuses
-of words created in the window);
+What re-mint does not restore (all of it on the MUST-show discard list): edits of rows the server
+already had, made with the wrong clock (including those that refer to a window row, list `D`, and
+`e:<seq>` deck items and word statuses of entries that have no note created in the window);
 and, when `o` was wrong, the absolute dates (the spacing is kept). If only part of an offline
 period was refused (an ahead clock stays inside the 24 h tolerance for ops pushed soon enough), the
 accepted part keeps its ahead `reviewed_at` and the re-minted part is moved back, so the two can
@@ -1750,15 +1794,15 @@ ordered by `hlc` (attempt 3), A's reviews all replay after B's.
   recomputed and checked. With `creations_from` / `creations_to` / `discarded` (C-8) the whole
   selection of step 1 is recomputed from the `rejected` rows and their codes, and the re-minted
   creations' `wall(hlc)` are checked against step 5.
+- `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
+  `tools/validate.py` with 300 random interleavings and re-deliveries each).
 
 **Re-mint scenarios** (C-8): `examples/remint-scenarios/*.json`, same schema. They are kept out of
 `examples/scenarios/` so that the server's existing scenario tests, which count that directory and
 judge `rejected` against the whole log, stay valid; a server test that runs them must honour
 `after_seq`. Device implementers (Re-mint, T107/android) MUST run them: feed the `rejected` rows
-with their codes to the step-1 selection and compare `E`, `R` and the discarded ops; apply `log`
+with their codes to the step-1 selection and compare `E` (with the step-6a payloads: window-derived items re-keyed `n:<note>`), `R` and the discarded ops; apply `log`
 and compare `expected` as for any scenario.
-- `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
-  `tools/validate.py` with 300 random interleavings and re-deliveries each).
 
 How implementations use them:
 
@@ -1874,7 +1918,8 @@ lowers `durable_seq` within an epoch (6.2, C-8).
 | Oversized op that is also unknown or invalid | `op_too_large` (measured on the canonical op tree before decoding). | 5.3 |
 | Replay engine refuses a card's replay set (duplicate id, CHECK-violating row) | Refused cache (`state = 'new'`, `last_review_id` = nil UUID); every later touch replays in full; the op still commits. | 9.4 |
 | Backups disabled, then enabled again | `durable_seq` persisted at `high_water_seq` while disabled; never lowered; a backup from before is older than `durable_seq` (restore warns). | 6.2, 6.3 |
-| Clock-rejected op that refers to a window row but writes a shared row (`card.preset_set` of an old card to a new preset; `e:<seq>` item into an old deck; word status) | Discarded by Re-mint, not re-minted. | 10.4 |
+| Clock-rejected op that refers to a window row but writes a shared row (`card.preset_set` of an old card to a new preset) | Discarded by Re-mint, on the MUST-show discard list. | 10.4 |
+| Words mined offline (wrong clock) into an existing deck, or marked known | `e:<seq>` items and word statuses of words created in the window are window-derived: re-minted (items re-keyed `n:<note>`). | 10.4 |
 | App or server runs a new core scheduler version | Full replay of every card cache before anything is folded; then the new version is stored. | 9.2, 10.5 |
 | Review right after a reschedule (manual `set_due`) | `last_review_at` is still the last rated review; FSRS elapsed time counts from it. | 9 |
 | Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews (clock codes: Re-mint keeps them, 10.4). | 10.2 |

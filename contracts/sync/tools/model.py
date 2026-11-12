@@ -125,21 +125,34 @@ def row_ids(op: dict) -> set:
     return parts | {x[2:] for x in parts if x.startswith("n:")}
 
 
-def remint_select(rows: list) -> tuple[list, list, list, list, list, set]:
+def window_seq(op: dict):
+    """The entry_seq an op addresses by entry rather than by row id (SYNC.md 10.4 step 1c,
+    "window-derived"): the seq of an `e:<seq>` deck item key, or of a word status op; else None."""
+    t, p = op["op_type"], op["payload"]
+    if t in ("deck.item_put", "deck.item_removed") and p["item_key"].startswith("e:"):
+        return int(p["item_key"][2:])
+    if t in ("word.status_set", "word.status_cleared"):
+        return p["entry_seq"]
+    return None
+
+
+def remint_select(rows: list) -> tuple[list, list, list, list, list, set, dict]:
     """Step 1 of Re-mint (SYNC.md 10.4). `rows` = the pending_op rows in state `rejected`
-    ({"op", "last_error"}), in any order. Returns (C, E, R, U, D, W):
-    C the clock-rejected rows; E the creations and the ops that write a window row, in original order;
-    R the reviews to re-mint; U the undos among `rows` that undo a review of R (the caller adds the
-    undos of R's reviews in other states); D the unknown_reference ops that depend on a window row but
-    write a row other replicas can have (discarded, never re-minted); W the ids of the rows created in
-    the window."""
+    ({"op", "last_error"}), in any order. Returns (C, E, R, U, D, W, payloads):
+    C the clock-rejected rows; E the creations, the ops that write a window row and the
+    window-derived ops, in step-1 order; R the reviews to re-mint; U the undos among `rows` that undo
+    a review of R (the caller adds the undos of R's reviews in other states); D the unknown_reference
+    ops that depend on a window row but write a row other replicas can have (discarded, never
+    re-minted); W the ids of the rows created in the window; payloads: op_id -> the payload step 6a
+    mints for each op of E (the original one, except `e:<seq>` deck items, re-keyed `n:<note>`)."""
     W: set = set()
     C: list = []
     E: list = []
     R: list = []
     U: list = []
     D: list = []
-    for r in sorted(rows, key=lambda r: r["op"]["hlc"]):
+    ordered = sorted(rows, key=lambda r: r["op"]["hlc"])
+    for r in ordered:  # 1a/1b: one pass in ascending original hlc
         op, code = r["op"], r["last_error"]
         t = op["op_type"]
         if code in CLOCK_CODES:
@@ -149,6 +162,8 @@ def remint_select(rows: list) -> tuple[list, list, list, list, list, set]:
             elif t in CREATES:
                 E.append(r)
                 W.add(op["payload"]["id"])
+            elif row_ids(op) & W:
+                E.append(r)
         elif code == "unknown_reference" and refs(op) & (W | {x["op"]["payload"]["id"] for x in R}):
             if t == "review.logged":
                 R.append(r)
@@ -160,7 +175,30 @@ def remint_select(rows: list) -> tuple[list, list, list, list, list, set]:
                     W.add(op["payload"]["id"])
             else:
                 D.append(r)
-    return C, E, R, U, D, W
+    # 1c: window-derived ops: an e:<seq> deck item or a word status whose seq is the entry of a note
+    # created in the window. The first such note.created (in hlc order) owns the seq.
+    owner: dict = {}
+    for r in E:
+        o = r["op"]
+        if o["op_type"] == "note.created" and o["payload"].get("entry_seq") is not None:
+            owner.setdefault(o["payload"]["entry_seq"], o)
+    taken = {id(r) for r in E + R}
+    for r in ordered:
+        if id(r) in taken or r not in C:
+            continue
+        seq = window_seq(r["op"])
+        if seq in owner:
+            E.append(r)
+    note_hlc = lambda r: owner[window_seq(r["op"])]["hlc"] if window_seq(r["op"]) in owner else ""  # noqa: E731
+    E.sort(key=lambda r: (max(r["op"]["hlc"], note_hlc(r)), r["op"]["hlc"] < note_hlc(r), r["op"]["hlc"]))  # after its note
+    payloads = {}
+    for r in E:
+        p = copy.deepcopy(r["op"]["payload"])
+        if r["op"]["op_type"].startswith("deck.item_") and p["item_key"].startswith("e:") \
+                and window_seq(r["op"]) in owner and p["deck_id"] not in W:
+            p["item_key"] = "n:" + owner[window_seq(r["op"])]["payload"]["id"]
+        payloads[r["op"]["op_id"]] = p
+    return C, E, R, U, D, W, payloads
 
 
 def entity_id(op_type: str, payload: dict) -> str:
@@ -701,7 +739,7 @@ class Server:
         return snap
 
     def start(self, backups_disabled: bool):
-        """A (re)start with the given configuration (6.3 server startup step 2b): with backups disabled,
+        """A (re)start with the given configuration (6.3 server startup step 3): with backups disabled,
         durable_seq is raised to high_water_seq; it is never lowered when backups are enabled again."""
         self.backups_disabled = backups_disabled
         if backups_disabled:
@@ -894,7 +932,7 @@ class Device:
         assert not any(r["state"] == "pending" for r in self.outbox), "push until nothing is pending"
         assert self.last_skew is not None and abs(self.last_skew) <= WARN_MS, "clock must be correct"
         # 1. Selection, one pass in ascending original hlc.
-        C, E, R, U, D, W = remint_select([r for r in self.outbox if r["state"] == "rejected"])
+        C, E, R, U, D, W, payloads = remint_select([r for r in self.outbox if r["state"] == "rejected"])
         ids = {r["op"]["payload"]["id"] for r in R}
         U += [r for r in self.outbox if r["op"]["op_type"] == "review.undone"
               and r["op"]["payload"]["review_id"] in ids and r not in U]
@@ -914,7 +952,7 @@ class Device:
         if items:  # 4-5. one shift for the whole batch
             delta, times = remint_times(items, self.remint_offset or 0, self.pt)
             for r, v in zip(E, times):  # 6a. rows created in the window and their edits, mint_at(v)
-                self.make(r["op"]["op_type"], copy.deepcopy(r["op"]["payload"]), at=v)
+                self.make(r["op"]["op_type"], payloads[r["op"]["op_id"]], at=v)
             for p, t in zip(todo, times[len(E):]):  # 6b. reviews, in the original hlc order
                 q = {**p, "id": self.new_id(3), "reviewed_at": t}
                 if q.get("manual_due_at") is not None:

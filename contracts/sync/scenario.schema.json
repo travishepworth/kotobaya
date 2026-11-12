@@ -145,14 +145,14 @@
           "items": {
             "$ref": "common.schema.json#/$defs/uuid"
           },
-          "description": "op_ids (in `rejected`) of the list E of SYNC.md 10.4 step 1 (creations in the window and the ops that write a window row), in original hlc order. When present, tools/validate.py recomputes the whole selection from `rejected` and requires E, R (= `from` plus undone reviews) and `discarded` to match. Added by C-8."
+          "description": "op_ids (in `rejected`) of the list E of SYNC.md 10.4 step 1 (creations in the window, the ops that write a window row, the window-derived ops), in step-1 order. When present, tools/validate.py recomputes the whole selection from `rejected` and requires E, R (= `from` plus undone reviews) and `discarded` to match. Added by C-8."
         },
         "creations_to": {
           "type": "array",
           "items": {
             "$ref": "common.schema.json#/$defs/uuid"
           },
-          "description": "op_ids (in `log`) of the re-minted E ops (step 6a): same order, length, op_type and payload as `creations_from`; wall(hlc) = the item's shifted time t' (step 5, one batch with the reviews of `from`). Required with `creations_from`."
+          "description": "op_ids (in `log`) of the re-minted E ops (step 6a): same order, length and op_type as `creations_from`, and the step-6a payload (the original one; a window-derived e:<seq> deck item re-keyed n:<owner note id>); wall(hlc) = mint_at of the item's shifted time t' (step 5, one batch with the reviews of `from`). Required with `creations_from`."
         },
         "discarded": {
           "type": "array",

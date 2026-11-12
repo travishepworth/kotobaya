@@ -564,7 +564,7 @@ for p in SCENARIO_FILES:
         E: list = []
         W: set = set()
         if "creations_from" in rm:  # step 1, recomputed from the rejected rows and their codes
-            C, E, R, U, D, W = remint_select([{"op": r["op"], "last_error": r["code"]} for r in rej.values()])
+            C, E, R, U, D, W, payloads = remint_select([{"op": r["op"], "last_error": r["code"]} for r in rej.values()])
             ids = lambda rows: [r["op"]["op_id"] for r in rows]  # noqa: E731
             if ids(E) != rm["creations_from"]:
                 fail(f"{where}: re-mint E is {ids(E)}, the scenario says {rm['creations_from']}")
@@ -578,18 +578,21 @@ for p in SCENARIO_FILES:
                 fail(f"{where}: creations_to must pair with creations_from")
                 E = []
             for i, j in zip(rm["creations_from"], rm["creations_to"]):
-                if logged[j]["op_type"] != rej[i]["op"]["op_type"] or logged[j]["payload"] != rej[i]["op"]["payload"]:
-                    fail(f"{where}: re-minted {j} must repeat the op type and payload of {i} (step 6a)")
+                if logged[j]["op_type"] != rej[i]["op"]["op_type"] or logged[j]["payload"] != payloads.get(i):
+                    fail(f"{where}: re-minted {j} must repeat the op type and payload of {i}, an e:<seq> item of a "
+                         f"window note re-keyed n:<note> (step 6a)")
         old = [rej[i]["op"]["payload"] for i in rm["from"]]
         items = [(wall(r["op"]["hlc"]), FLOOR_MS) for r in E] + \
             [(q["reviewed_at"], FLOOR_MS if q["card_id"] in W else server.t["card"][q["card_id"]]["created_at"])
              for q in old]
         if items:
             _, times = remint_times(items, rm["offset_ms"], rm["now"])
-            got = [wall(logged[j]["hlc"]) for j in rm.get("creations_to", [])] + \
-                [logged[i]["payload"]["reviewed_at"] for i in rm["to"]]
-            if got != times:
-                fail(f"{where}: re-minted times do not follow SYNC.md 10.4 step 5: expected {times}, log has {got}")
+            minted = [wall(logged[j]["hlc"]) for j in rm.get("creations_to", [])]
+            # mint_at(t') (3.2): t', or just above the previous HLC when t' is not above it
+            want = [max([t] + minted[:k]) for k, t in enumerate(times[:len(minted)])] + times[len(minted):]
+            got = minted + [logged[i]["payload"]["reviewed_at"] for i in rm["to"]]
+            if got != want and not (minted and got[1:] == want[1:] and got[0] >= want[0]):
+                fail(f"{where}: re-minted times do not follow SYNC.md 10.4 step 5: expected {want}, log has {got}")
         if any(logged[i]["payload"]["id"] == q["id"] for i, q in zip(rm["to"], old)):
             fail(f"{where}: a re-minted review must have a new id")
 

@@ -173,7 +173,11 @@ public data class QueueInput(
     public val limits: QueueLimits,
     /** All live decks. */
     public val decks: List<QueueDeck>,
-    /** Candidate cards. */
+    /**
+     * Candidate cards. The loader MUST NOT pass a card whose `card.last_review_id` is
+     * `Reserved.REPLAY_REFUSED_ID` (refused cache, SYNC.md 9.4): it has no trustworthy schedule and
+     * would be offered as new every day. (C-8)
+     */
     public val candidates: List<QueueCandidate>,
     /** Today's non-undone reviews (`reviewed_at` in `[day.startMs, now]`), any order. */
     public val today: List<TodayReview>,
@@ -265,22 +269,33 @@ public data class ReviewQueue(
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    (counting 1 against the budgets) unless their `wordOverride` is KNOWN, NEVER_FORGET,
  *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
- *    Per-deck limit: `deck.newPerDay` − today's `introducedNew` reviews whose card's home
- *    new-source is that deck (computed from [TodayReview.deckIds] and the decks now; how the card
- *    was drawn, by its own deck or by another deck's add_kanji, does not matter), minus the cards
- *    taken in this build whose home new-source is that deck. **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the
- *    deckless source [QueueInput.decklessAddKanji]): BEFORE — before a vocab card,
- *    draw the eligible NEW cards of kanji notes whose `kanjiLiteral` is in its `expressionKanji`
- *    (expression order, then `kindOrder`) that are not yet taken **and have a home new-source** (any
- *    source, not necessarily the drawing one; per ADR-006 a kanji card whose decks are all disabled
- *    is never introduced, not even this way); ALONGSIDE — the same cards right
- *    after the word's card. **Attribution (C-8):** an add_kanji card counts against the budget and
- *    against the per-deck limit of **its own home new-source**, never the drawing source's — the
- *    same attribution that [QueueInput.today] gets after it is answered (per-deck counts use the
- *    card's home new-source), so a rebuild neither frees nor double-counts any deck's limit. A
- *    kanji card whose home new-source is a deck with no remaining per-deck limit is **not drawn**
- *    (skipped, not taken; the deckless source has no limit). If the budget ends in the middle,
- *    the cards already drawn stay.
+ *    Per-deck limit (remaining, clamped to `>= 0`): `deck.newPerDay` − today's `introducedNew`
+ *    reviews whose card's home new-source is that deck (from [TodayReview.deckIds] and the decks
+ *    now) − the cards taken in this build **from** that deck (not counting add_kanji cards drawn by
+ *    another source; see below).
+ *    **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the deckless source
+ *    [QueueInput.decklessAddKanji]; C-8 attempt 2):
+ *    - **Group.** With BEFORE or ALONGSIDE, drawing a vocab card V means drawing the **group** of V
+ *      and its kanji cards K: the eligible NEW cards of kanji notes whose `kanjiLiteral` is in V's
+ *      `expressionKanji` (expression order, then `kindOrder`) that are not yet taken **and have a
+ *      home new-source** (any source, not necessarily the drawing one; per ADR-006 a kanji card
+ *      whose decks are all disabled is never introduced, not even this way). Group order in the
+ *      queue: BEFORE = K then V; ALONGSIDE = V then K.
+ *    - **Atomic.** The group is drawn iff V fits the drawing source's per-deck remaining (`>= 1`;
+ *      the deckless source has no limit) **and** the whole group (`1 + |K|`) fits the budget (the
+ *      global new remaining and the session remaining). Otherwise **none** of the group is drawn;
+ *      V is skipped for this build (not taken) and the turn passes on as for an empty turn.
+ *    - **Attribution.** V counts against the drawing source's limit. Each K card counts against
+ *      the budget (global and session) and against **its own home new-source's** daily count, never
+ *      the drawing source's. Its home deck's remaining may therefore go below zero (clamped to 0
+ *      for that deck's own later turns): a kanji card is **never skipped** because its home deck's
+ *      limit is used up, so a kanji deck with `newPerDay = 0` still feeds kanji through add_kanji.
+ *    - **Same attribution after answering.** [QueueInput.today] counts an answered kanji card
+ *      against its home new-source (the per-deck rule above), exactly as in the build that drew it,
+ *      so a rebuild neither frees the drawing deck's limit nor double-counts anything.
+ *    - **Breaking (C-8 attempt 2)** against T205's tests (`QueueBuilderTest.kt` add_kanji cases):
+ *      add_kanji cards no longer count against the drawing deck, and a group that does not fit is
+ *      not drawn in part.
  * 5. **Order**: learning items first; then reviews `R` and new `N` interleaved: if either is empty
  *    the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and position
  *    `i` (0-based within the interleaved part) holds a new card iff `(i + 1) % k == 0` and new

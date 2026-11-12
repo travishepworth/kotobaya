@@ -1,24 +1,40 @@
-# HANDOFF C-8
+# HANDOFF C-8 (attempt 2)
 
 STATUS: DONE
-BRANCH: t/C-8-sync-gaps
-CHECK: `make check MODULE=contracts` → green; `core` → green; `server` → green (unchanged code; new scenarios not yet run by it)
+BRANCH: t/C-8-sync-gaps (rebased on main)
+CHECK: `make check MODULE=contracts` → green; `core` → green; `server` → green
 
 ## Changed (≤ 6 lines)
-- SYNC.md: new 9.4 (refused cache); 6.2/6.3 (backups disabled, `durable_seq` persisted); 10.4 "window row" rule, new list `D`; 13/16/17.
-- Core contract KDoc: `Reserved.REPLAY_REFUSED_ID` (nil UUID); `ReplayEngine.decide` step 1b; `QueueBuilder` rule 4 (add_kanji counts against its own home source).
-- SCHEMA.md: 6.1 settings stored canonical (`1.0`→`1`); refused-cache and `durable_seq` writer notes.
-- `examples/remint-scenarios/` (3 files); scenario schema adds `after_seq` and `creations_from`/`creations_to`/`discarded`; model/validate updated, plus a backups-toggle story.
+- SYNC.md 10.4:
+  - Step 1a: a clock-coded op that writes a window row goes to E.
+  - New step 1c: `e:<seq>` items and `word.status_*` of window notes are window-derived. They go to E, ordered after their note. Step 6a re-keys those items to `n:<note>`.
+  - The discard list (with `D`) is now a MUST.
+- SYNC.md 9.4: queues MUST skip refused cards. 6.3: startup step 3 runs in every case. New backup job step 4 records `L` (the live `durable_seq`); the restore tool warns from it.
+- Core contract KDoc: `QueueBuilder` rule 4 rewritten per decision 6 (atomic group; kanji charged to their own home deck, never skipped). `candidates` excludes refused cards.
+- 3 remint-scenarios regenerated (mining kept; status re-minted). `validate.py` checks the 6a payloads. Section 13 formatting fixed.
 
-## Follow-ups to ticket (breaking for T202c; no data impact, no migration)
-- Server: `CoreCardCache.guarded` writes `CardCache(NEW, REPLAY_REFUSED_ID, params.weightsVersion)`. With backups disabled, raise `durable_seq` by `greatest()` at startup (6.3 step 2b) and in every tx that inserts `change`. Run the remint-scenarios (honour `after_seq`). Drop stale `mergeScenariosAreLeftToT202c`.
-- Core: `DefaultReplayEngine.decide` step 1b. `DefaultQueueBuilder`: charge add_kanji cards to their home source, and skip one whose home deck is at its limit.
-- Device (Re-mint): compute list `D` and discard it; SHOULD show the discard count before confirming.
-- T112 restore tool: warn when live `durable_seq` > backup `S`.
+## Follow-ups
+- `core/…/replay/IncrementalReplay.kt`: on refusal, hold the refused cache, stay consistent, never fail a pull page.
+- `DefaultReplayEngine.decide`: add step 1b.
+- Android op-apply and rebuild replay callers write the refused cache.
+- T205 (breaking):
+  - Rewrite `QueueBuilderTest.kt:345` per decision 6.
+  - Update `DefaultQueueBuilder`.
+  - Loaders exclude refused cards.
+- Device re-mint: implement the new E rules (1a/1c, ordering, `n:` re-key), the `D` list, and the MUST-show discard list.
+- Server:
+  - `CoreCardCache` writes the refused cache.
+  - With backups disabled, persist `durable_seq` (startup step 3 and every `change` transaction).
+  - Run the remint-scenarios (honour `after_seq`).
+- T112: backup metadata `L` and the restore warnings.
+
+## Interim state is safe
+- Nothing deployed relies on the new rules: Re-mint is not implemented on any device yet, and replay refusals cannot happen with the schema's checks in place.
+- The one hazard: do NOT switch backups from disabled to enabled before the server `durable_seq` follow-up lands, or the reported `durable_seq` drops.
 
 ## New dependencies
 - none
 
-## For the reviewer (≤ 3 lines)
-- Re-mint scenarios live outside `examples/scenarios/` so the server's file-count tests stay green.
-- `e:<seq>` items and word statuses of window words are discarded, not re-minted.
+## For the reviewer
+- A window-derived word status is re-minted at its estimated time, so it can beat another device's earlier status for that entry.
+- The 1a clock-branch case has no scenario. It only occurs when a span's `sentence_id` is in W, and that cannot really happen because sentences are not op rows.
