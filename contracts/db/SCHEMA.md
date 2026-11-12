@@ -7,6 +7,7 @@ Frozen interface. Files:
 | `V1__init.sql` | Postgres 17 DDL (Flyway). Every column has a `COMMENT` with its definition; this document does not repeat them. |
 | `sqldelight/app/kotobaya/db/app/*.sq` | On-device learning database (`AppDatabase`, package `kotobaya.db.app`). |
 | `sqldelight/ref/kotobaya/db/ref/Dict.sq` | On-device dictionary file (`RefDatabase`, package `kotobaya.db.ref`), built by the worker. |
+| `DICT_PACKAGE.md` | Dictionary device package, diff format, blob keys, device update algorithm (section 5.4). |
 | `test/smoke.sql` | One worked example row per table plus the constraints you may rely on. Read it for examples. |
 | `check.sh` | Verifies all of the above (see section 8). |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
@@ -413,6 +414,12 @@ Where this section and `contracts/sync/SYNC.md` overlap, **SYNC.md wins** (C-2).
 A separate SQLite file conforming to `Dict.sq`, `PRAGMA user_version = 1`, opened read-only.
 It may hold a subset of entries; all child rows refer to entries present in the file.
 The learning database must work with no dictionary file at all (all `entry_seq` lookups miss).
+
+**`DICT_PACKAGE.md` (C-3) is authoritative** for the downloadable package (zstd, scope contents,
+integrity rules), the diff format `kotobaya-dict-diff` v1, hashes and object keys, the shape of
+`ref.dict_release.artifacts` (it adds `format_version` and `uncompressed_size_bytes` to the shape
+in the column comment), and the device install/update algorithm. Its diff-apply connection is the
+one exception to `foreign_keys = ON` above.
 
 ## 6. Well-known `settings` keys (provisional; defaults live in the core)
 

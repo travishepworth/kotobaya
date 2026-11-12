@@ -1181,7 +1181,8 @@ paths:
         The phone compares `id` with the release of its dictionary file and, when behind,
         downloads an artifact through `GET /blobs/{hash}`: a `diff` whose `from_release` equals
         its release and whose `scope` matches, else the `full` build. `404` when no release has
-        been loaded yet.
+        been loaded yet. Package and diff formats, hashes and the full install/update algorithm:
+        `contracts/db/DICT_PACKAGE.md`.
       security:
         - bearerAuth: [read]
         - sessionCookie: [read]
@@ -6930,7 +6931,9 @@ components:
           description: Tatoeba pairs.
     DictRelease:
       type: object
-      description: The current dictionary release (`ref.dict_release`).
+      description: The current dictionary release (`ref.dict_release`). The artifact formats
+        (zstd SQLite package, `kotobaya-dict-diff` diff), what `blob_hash` covers and how a device
+        installs or updates are defined in `contracts/db/DICT_PACKAGE.md`.
       required:
       - id
       - version
@@ -7002,6 +7005,8 @@ components:
             - from_release
             - blob_hash
             - size_bytes
+            - format_version
+            - uncompressed_size_bytes
             properties:
               kind:
                 type: string
@@ -7026,7 +7031,22 @@ components:
                 type: integer
                 format: int64
                 minimum: 0
-                description: Size of the blob.
+                description: Size of the blob (compressed bytes, as served by `GET /blobs/{hash}`).
+              format_version:
+                type: integer
+                minimum: 1
+                description: For `full` - the package's `PRAGMA user_version`; for `diff` - the
+                  `kotobaya-dict-diff` `format_version`. Currently 1. Devices skip artifacts whose
+                  version they do not support (`contracts/db/DICT_PACKAGE.md` 5-6).
+                examples:
+                - 1
+              uncompressed_size_bytes:
+                type: integer
+                format: int64
+                minimum: 0
+                description: Size after zstd decompression, for the device's free-space check.
+                examples:
+                - 412090368
     Kanji:
       type: object
       description: A kanji (`ref.kanji`) with the caller's overlay.
@@ -11835,11 +11855,15 @@ components:
           from_release: null
           blob_hash: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
           size_bytes: 96468992
+          format_version: 1
+          uncompressed_size_bytes: 412090368
         - kind: diff
           scope: top60k
           from_release: 2
           blob_hash: 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
           size_bytes: 1048576
+          format_version: 1
+          uncompressed_size_bytes: 6291456
     Kanji:
       value:
         literal: 績
