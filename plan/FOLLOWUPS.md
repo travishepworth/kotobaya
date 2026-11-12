@@ -68,3 +68,4 @@
 - WIRING (after T105a, T106, T109a merge): register dictHandlers(db) (+ auth/jobs handlers) in AppDeps in server Main.kt — T106 handlers exist but are unreachable until wired. One small ticket W-1 owning Main.kt only.
 - T106: romaji→hiragana converter is local to server dict/ — move to core if the device (T302) needs parity. /dict/entries/{seq}/examples stays 501 until example sentences are populated (T102 data + media). note_id overlay untested.
 - T105a → W-1 + T111: wire Auth(db, AuthConfig.fromEnv()) into AppDeps; Helm/compose must pass AUTH_PASSWORD_HASH (required) and AUTH_TOTP_SECRET (optional) from a Secret. Setup command: java -cp server-all.jar kotobaya.auth.HashPasswordKt (→ HUMAN_CHECKS at deploy).
+- T105a → W-1/T111: Traefik externalTrafficPolicy: Local; set AUTH_TRUSTED_PROXIES to the ingress/pod CIDR so login rate limiting is per real client.

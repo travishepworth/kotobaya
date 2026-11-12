@@ -172,7 +172,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
 
 ### T105a — Auth: password, TOTP, session, login rate limit
-- model: opus · risk: high · deps: T104 · status: IN_REVIEW
+- model: opus · risk: high · deps: T104 · status: RUNNING
 - see plan/tickets/T105a.md (split from T105)
 
 ### T105b — Auth: devices, pairing, PATs, scope middleware
