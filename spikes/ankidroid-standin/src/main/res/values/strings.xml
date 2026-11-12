@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AnkiDroid stand-in (spike)</string>
+    <string name="permission_label">Read and write to the AnkiDroid database</string>
+    <string name="permission_description">Lets the app add notes to the AnkiDroid stand-in.</string>
+    <string name="button_clear">Clear</string>
+    <string name="button_share">Share log</string>
+    <string name="log_empty">No calls yet. Add a word in Takoboto, then come back.</string>
+    <string name="share_subject">AnkiDroid stand-in call log</string>
+</resources>
