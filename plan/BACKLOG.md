@@ -228,7 +228,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T109b.md (split from T109)
 
 ### T110 — Generated API clients
-- model: haiku · risk: low · deps: T004 · status: RUNNING
+- model: haiku · risk: low · deps: T004 · status: MERGED
 - paths: `clients/`, `Makefile` (`check MODULE=contracts` target)
 - do: Generate Kotlin (for android), TypeScript (for web), Python (for CLI and worker) clients from `contracts/api`; `make check MODULE=contracts` regenerates and fails on diff.
 - accept: Clients compile; `make check MODULE=contracts` green.
