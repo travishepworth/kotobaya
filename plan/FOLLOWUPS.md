@@ -102,3 +102,7 @@
 - T213b -> T209/T210b: no app module imports the core wrapper yet, so pnpm build doesn't bundle core; first UI consumer must verify the production build.
 - T202a review (minor): no jvm-vs-js pattern parity table existed; added in attempt 3. Worker (Python) and web must also use ECMA pattern semantics once C-5 lands.
 - T202a -> T202b: handle new PushElement.TooDeep exactly like DuplicateKey (per-op schema_invalid).
+- C-5 review -> next contract ticket: SYNC.md:110 says patterns run without `u` flag but :124 says code points; say "per code point (≡ u flag)", require new patterns valid with and without u.
+- C-5 review -> contract tools: validate.py ecma_to_python silently mistranslates `[\s-z]` and `a{,5}`; raise on them (no v1 pattern uses them).
+- C-5 review -> T201b/T207b/T204/T210a (REST + importers): SYNC 2.1 doesn't say what REST/import does with input that would mint a pattern-failing op (tag with U+3000/NBSP). Default: REST → 422 invalid_value; importers split tags on ECMA \s and count dropped tags. Confirm in next contract ticket.
+- C-5 review -> contract: SYNC 2.1 "MAY reject" deeper-than-512 docs; add "(push parse MUST, 5.2)".

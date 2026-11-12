@@ -318,3 +318,5 @@
 2026-11-12T16:01:37Z C-5 HANDOFF DONE (SYNC 2.1 ECMA patterns, depth op 500/doc 512, 7 new examples)
 2026-11-12T16:01:37Z C-5 REVIEW dispatched reviewer(opus)
 2026-11-12T16:01:37Z T202a told: container-count depth definition + new C-5 examples
+2026-11-12T16:03:28Z C-5 REVIEW_APPROVE 4 minors → FOLLOWUPS
+2026-11-12T16:03:28Z C-5 MERGE additive
