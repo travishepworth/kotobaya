@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "note.merged",
+  "description": "Server verdict that two live notes referenced the same entry, kanji or grammar point. Every replica runs the merge procedure. OPS.md#notemerged",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "loser_id",
+    "survivor_id"
+  ],
+  "properties": {
+    "loser_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "The note that is tombstoned and gets merged_into_id = survivor_id. Equals entity_id."
+    },
+    "survivor_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "The note that already held the reference. Never itself merged at the time the op is emitted. Differs from loser_id."
+    }
+  }
+}

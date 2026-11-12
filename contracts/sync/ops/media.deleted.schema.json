@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "media.deleted",
+  "description": "Tombstones a media (permanent); bulk content is hard-deleted and the server tombstones its deck. OPS.md#mediadeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the media. Equals the envelope's entity_id."
+    }
+  }
+}

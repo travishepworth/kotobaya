@@ -1,0 +1,180 @@
+{
+  "id": "deck-item-put-remove",
+  "title": "Concurrent adds and removes in a user deck",
+  "covers": [
+    "deck_item: identity is (deck_id, item_key); whole-row last-writer-wins; removal is reversible"
+  ],
+  "narrative": [
+    "B syncs first, then A.",
+    "食べる: A adds (T+10), B removes (T+20), A adds again (T+30): present, at A's last position. (B's remove reached the server before A's first put; the tombstone it created made that older put lose.)",
+    "持つ: both add it offline (B at T+11, A at T+12): one row; A's later position wins.",
+    "待つ: B removes an item (T+13) the server has never seen: a tombstone row is created so that A's OLDER put (T+5), which arrives afterwards, loses.",
+    "A removed row is canonical (position 0, occurrence_count 0, added_at = deleted_at = wall time of the remove), so replicas agree on it whatever they held before."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000001",
+      "op_type": "deck.created",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0004-7000-8000-000000000001",
+        "name": "Mined",
+        "type": "user"
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000002",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1315720",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00b-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1315720",
+        "position": 512
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000003",
+      "op_type": "deck.item_removed",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1411050",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00d-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1411050"
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000004",
+      "op_type": "deck.item_removed",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1358280",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1358280"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000005",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1411050",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c005-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1411050",
+        "position": 8192
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000006",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1358280",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1358280",
+        "position": 1024
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000007",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1315720",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00c-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1315720",
+        "position": 2048
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7008-8000-000000000008",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1358280",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "e:1358280",
+        "position": 4096
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "deck_item": [
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1358280",
+          "entry_seq": 1358280,
+          "note_id": null,
+          "position": 4096,
+          "deleted_at": null,
+          "added_at": 1733584666654,
+          "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000a1"
+        },
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1315720",
+          "position": 2048,
+          "deleted_at": null,
+          "hlc": "0193a1b2c00c-0000-01931f3e-0000-7000-8000-0000000000a1"
+        },
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1411050",
+          "position": 0,
+          "occurrence_count": 0,
+          "deleted_at": 1733584666637,
+          "added_at": 1733584666637,
+          "hlc": "0193a1b2c00d-0000-01931f3e-0000-7000-8000-0000000000b2"
+        }
+      ]
+    }
+  }
+}

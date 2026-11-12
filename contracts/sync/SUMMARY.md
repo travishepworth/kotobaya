@@ -1,0 +1,96 @@
+# Sync contract — summary for the human
+
+## What was decided
+
+- **45 op types**, with exactly the names the database contract already used (`settings.set`,
+  `grammar.*`, …). Each has a JSON Schema, a conflict rule, and at least one example
+  (`OPS.md`, `ops/`, `examples/ops/`). The check script fails if any of the three is missing.
+- **One op = one row change.** Bulk actions are many ops. An op carries its own id, the device
+  that made it, and a clock; nothing else identifies it.
+- **The op's clock is its timestamp.** There is no separate "created at" in an op: created,
+  updated and deleted times are read from the clock, which is why they come out identical on the
+  phone and the server. Only a review carries a separate "when was this answered" time.
+- **Push** sends up to 500 ops; the server answers per op: accepted, duplicate, or rejected with a
+  reason code. One bad op never blocks the rest. **Pull** returns everything after a sequence
+  number, including the device's own ops (applying them again is harmless by design, so there is
+  no special case for them).
+- **Every replica runs the same apply rules.** The server additionally validates, and decides
+  merges. Rules are written so that applying the same ops in a different order, or twice, gives
+  the same data.
+- **Deletes are permanent and beat every edit, older or newer.** Edits that arrive for a deleted
+  item are still recorded on it, but it stays deleted.
+- **Same word added on two devices:** the server picks the survivor (the one it saw first) and
+  announces it; each device then merges from its own data. Later edits aimed at the duplicate
+  are applied to the survivor too.
+- **Reviews:** all kept. A card's schedule is recomputed from scratch whenever a review arrives
+  that belongs earlier than one already counted, a review is undone, cards are merged, or the
+  card's preset or its settings change.
+- **Rejected ops** (should only happen with a client bug or a too-new client) stay visible on the
+  device with the reason. The user can retry or discard. Discarding rebuilds the phone's learning
+  data from the server's log, because that is the only rollback that is certainly correct.
+- **"Converged" is defined precisely** for the tests: all rows equal, except that a note or card
+  that was merged away is compared only on its id, what it was merged into, and when.
+- **14 machine-readable scenarios** cover every conflict case in the spec and every follow-up
+  from the database review. A small reference model replays each one in 300 random orders with
+  duplicate deliveries and checks the result is always the same.
+
+## Alternatives rejected
+
+- **Rejecting ops whose clock is far in the future.** Protects against a phone with a wrong
+  date, but would strand every review made on that phone while offline. Instead nothing is
+  rejected for its clock, and clients warn when their clock is more than 5 minutes off the server's.
+- **Undo information per op, to roll back a rejected op precisely.** More code on the path that
+  must never be wrong, for an event that should not occur. Rebuilding from the log is slower but
+  obviously right.
+- **Skipping your own ops on pull.** Saves a little work, adds a special case, and breaks the
+  rebuild. Not worth it.
+- **Sending merged values inside the merge op.** The result would depend on what the server
+  happened to hold at that moment; devices that had newer local edits would lose them.
+- **Following the full chain of merges (A into B into C) instead of pointing straight at C.**
+  Would make even merged-away rows identical everywhere, at the cost of chains everywhere a reader
+  looks. Chose flat pointers and a narrower definition of "converged".
+- **Open payloads that tolerate unknown fields.** Friendlier to old clients, but typos pass
+  silently. Payloads are closed; an old client that meets an op it does not know stops pulling
+  and asks for an update.
+- **A wall-clock field in every op next to the clock.** Two sources of truth for the same time.
+
+## Three choices most worth a second look
+
+1. **A wrong phone clock is tolerated, not rejected.** If a phone's date is set a month ahead
+   and it syncs, its edits win conflicts for a month and "last updated" times are a month ahead
+   everywhere until real time catches up. Reviews are unaffected. If you would rather refuse such
+   ops, say so before the server ticket: it changes the rejected-op flow.
+2. **Discarding a rejected op re-downloads everything.** On a phone with years of history that
+   is a long sync, during which reviewing is blocked, and it needs a connection. It should
+   essentially never happen; if it turns out to, a targeted rollback can replace it later without
+   changing the protocol.
+3. **Changing a preset's settings reschedules its cards.** The database contract says a card's
+   due date is a pure function of its reviews and its preset. Followed strictly, changing desired
+   retention or learning steps recomputes every card on that preset from its full history, on
+   every device. That keeps devices in agreement, but it means past intervals are re-derived with
+   the new settings (Anki only applies new settings going forward). The scheduling ticket (T006)
+   must confirm this is wanted.
+
+## Known trade-offs (accepted, not fixed)
+
+- Whether two things get merged can depend on which device syncs first (re-matching a note to a
+  different word, or deleting a word on one phone while adding it on another). All devices end up
+  agreeing with the server either way.
+- If you add a word that already exists, then delete your new copy before syncing, whatever you
+  typed into the copy still lands on the original.
+- If you delete a word on one phone while another phone adds it again, and the add syncs first,
+  the word ends up deleted on both. The reviews are kept.
+- A merge can give the surviving word a card type you had removed from it.
+- A newer value typed into a duplicate replaces the original's value for that field.
+- One op type (media parse status) relies on being delivered in server order. It always is.
+- A brand-new device downloads the whole history; the log is never trimmed in v1.
+
+## Smaller things to know
+
+- REST calls (scripts, AnkiConnect) become ops stamped with the server's own device id, so a
+  review made through the REST API shows the server as its device. The calling token is in the log.
+- A phone restored from a backup must be paired again.
+- The format of the downloadable snapshots (media content, generated deck contents) is not
+  defined here; the ops only announce a version and a file hash.
+- One extra bookkeeping key on the phone (`rebuild_pending`) is defined here, in the existing
+  key/value table.

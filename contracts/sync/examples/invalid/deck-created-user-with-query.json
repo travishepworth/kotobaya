@@ -1,0 +1,24 @@
+{
+  "schema": "op.schema.json",
+  "why": "only smart decks have a query",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000017",
+    "op_type": "deck.created",
+    "op_version": 1,
+    "entity_type": "deck",
+    "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c017-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "id": "0193a1b2-0004-7000-8000-000000000001",
+      "name": "Mined words",
+      "type": "user",
+      "priority": 10,
+      "new_cards_per_day": 5,
+      "settings": {
+        "order": "position"
+      },
+      "query": "is:due"
+    }
+  }
+}

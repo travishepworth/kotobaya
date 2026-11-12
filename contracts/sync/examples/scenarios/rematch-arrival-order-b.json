@@ -1,0 +1,109 @@
+{
+  "id": "rematch-arrival-order-b",
+  "title": "Concurrent re-matches of one note: the colliding one arrives last",
+  "covers": [
+    "ticket follow-up 3: the outcome of a re-match depends on arrival order at the server"
+  ],
+  "narrative": [
+    "Same ops as rematch-arrival-order-a, but B's op (T+20) arrives first: X.entry_seq = 持つ.",
+    "A's op (T+10) arrives second and LOSES the entry_seq register. It did not win, so there is no collision and no merge.",
+    "X stays live, matched to 持つ."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-700d-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700d-8000-000000000002",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "fields": {
+          "expression": "たべる"
+        }
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700d-8000-000000000003",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1315720
+        }
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700d-8000-000000000004",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1358280
+        }
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": null,
+          "deleted_at": null,
+          "entry_seq": 1315720,
+          "clocks": {
+            "entry_seq": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+            "fields.expression": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1"
+          }
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "fields": {},
+          "entry_seq": 1358280
+        }
+      ]
+    }
+  }
+}

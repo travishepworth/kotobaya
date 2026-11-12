@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "word.status_cleared",
+  "description": "Clears the override (same register as word.status_set, value null), so the effective status falls back to the automatic one. OPS.md#wordstatus_cleared",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "entry_seq"
+  ],
+  "properties": {
+    "entry_seq": {
+      "$ref": "../common.schema.json#/$defs/entry_seq",
+      "description": "Entry. entity_id is its decimal text."
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.suspended",
+  "description": "Writes register 'suspended' = true. OPS.md#cardsuspended",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the card. Equals the envelope's entity_id."
+    }
+  }
+}

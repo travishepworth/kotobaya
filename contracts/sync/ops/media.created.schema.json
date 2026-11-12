@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "media.created",
+  "description": "An import job created a media row. parse_status starts 'pending', content_version 0. OPS.md#mediacreated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "kind",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the new media. Equals the envelope's entity_id."
+    },
+    "title": {
+      "type": "string",
+      "description": "Register 'title'.",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "kind": {
+      "enum": [
+        "anime",
+        "novel",
+        "vn",
+        "manga",
+        "web",
+        "other"
+      ],
+      "description": "Register 'kind'."
+    },
+    "cover_blob_hash": {
+      "description": "Register 'cover_blob_hash'; null = no cover.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "enum": [
+        "jpdb",
+        "file",
+        "url",
+        "paste"
+      ],
+      "description": "Immutable."
+    },
+    "jpdb_id": {
+      "description": "jpdb deck id when source = jpdb. Immutable. Default null.",
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

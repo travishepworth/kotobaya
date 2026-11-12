@@ -1,0 +1,21 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000004",
+  "op_type": "grammar.updated",
+  "op_version": 1,
+  "entity_type": "grammar_point",
+  "entity_id": "0193a1b2-0005-7000-8000-000000000001",
+  "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+  "hlc": "0193a1b2c004-0000-01931f3e-0000-7000-8000-0000000000b2",
+  "payload": {
+    "id": "0193a1b2-0005-7000-8000-000000000001",
+    "set": {
+      "explanation": "Attaches to the ない-stem. する becomes せざるを得ない.",
+      "links": [
+        {
+          "title": "DoJG p.606",
+          "url": "https://example.org/dojg/606"
+        }
+      ]
+    }
+  }
+}

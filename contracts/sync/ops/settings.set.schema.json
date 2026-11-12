@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "settings.set",
+  "description": "Writes one settings key (one register per key). OPS.md#settingsset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "key",
+    "value"
+  ],
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Dotted lowercase key, e.g. scheduler.new_per_day. Equals entity_id.",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+      "maxLength": 200
+    },
+    "value": {
+      "description": "Any JSON value. null = reset to default (the row stays so the reset beats older sets)."
+    }
+  }
+}

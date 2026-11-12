@@ -1,0 +1,109 @@
+{
+  "id": "duplicate-deleted-before-push",
+  "title": "A duplicate is created and deleted offline, then pushed",
+  "covers": [
+    "ticket follow-up 8: a duplicate's filled fields reach the survivor even if the duplicate was deleted before push",
+    "ticket follow-up 2: loser deleted_at - merge sets it only if NULL; a delete op writes it by clock"
+  ],
+  "narrative": [
+    "B, offline, adds 食べる (note L, sentence filled, T+20), changes its mind and deletes L (T+22). Then B syncs.",
+    "Ops are pushed in hlc order, so the server sees note.created L first. L collides with W: merged, and L's sentence is forwarded to W.",
+    "note.deleted L arrives next. A delete addressed to a loser affects only the loser, so W stays live - and keeps the sentence. Accepted trade-off.",
+    "L.deleted_at: the merge set it to the merge's wall time (T+100) because it was NULL; the delete op then wins the 'deleted' register (no clock stored yet) and sets it to T+22.",
+    "On phone B the delete was applied first and the merge found deleted_at already set and left it: T+22 as well."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-700a-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280,
+        "fields": {
+          "meaning": "to eat"
+        }
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700a-8000-000000000002",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280,
+        "fields": {
+          "sentence": "パンを食べる"
+        }
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700a-8000-000000000003",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 3,
+      "caused_by_op_id": "0193a1b2-00ff-700a-8000-000000000002"
+    },
+    {
+      "op_id": "0193a1b2-00ff-700a-8000-000000000004",
+      "op_type": "note.deleted",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": null,
+          "fields": {
+            "meaning": "to eat",
+            "sentence": "パンを食べる"
+          }
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666646
+        }
+      ]
+    }
+  }
+}

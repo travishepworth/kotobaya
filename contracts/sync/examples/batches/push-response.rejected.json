@@ -1,0 +1,83 @@
+{
+  "results": [
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000001",
+      "status": "rejected",
+      "error": {
+        "code": "server_only",
+        "message": "media and list decks are created only by the server"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000002",
+      "status": "rejected",
+      "error": {
+        "code": "server_only",
+        "message": "note.merged is a server-emitted op"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000003",
+      "status": "rejected",
+      "error": {
+        "code": "unknown_reference",
+        "message": "card 9 was never created on the server"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000004",
+      "status": "rejected",
+      "error": {
+        "code": "unknown_reference",
+        "message": "review 8 does not exist on the server"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000005",
+      "status": "rejected",
+      "error": {
+        "code": "unknown_reference",
+        "message": "deck 9 does not exist"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000006",
+      "status": "rejected",
+      "error": {
+        "code": "immutable",
+        "message": "the Default preset cannot be deleted"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000007",
+      "status": "rejected",
+      "error": {
+        "code": "schema_invalid",
+        "message": "entry_seq must be >= 1"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000008",
+      "status": "rejected",
+      "error": {
+        "code": "schema_invalid",
+        "message": "device_id differs from the device part of hlc"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-7e00-8000-000000000009",
+      "status": "rejected",
+      "error": {
+        "code": "invalid_value",
+        "message": "entry_seq on a kanji note"
+      }
+    },
+    {
+      "op_id": "0193a1b2-00ff-700e-8000-000000000004",
+      "status": "accepted",
+      "seq": 4
+    }
+  ],
+  "high_water_seq": 4,
+  "server_time": 1733584666729
+}

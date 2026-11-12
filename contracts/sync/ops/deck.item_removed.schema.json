@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deck.item_removed",
+  "description": "Removes an item from a user deck (reversible tombstone). OPS.md#deckitem_removed",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deck_id",
+    "item_key"
+  ],
+  "properties": {
+    "deck_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Deck; must exist and be of type user."
+    },
+    "item_key": {
+      "$ref": "../common.schema.json#/$defs/item_key",
+      "description": "What is (or was) in the deck. entity_id = '<deck_id>|<item_key>'. For 'n:' keys the note must exist."
+    }
+  }
+}

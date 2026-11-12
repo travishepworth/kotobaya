@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "confusable.suggested",
+  "description": "Server suggestion (status 'suggested'). Never overrides a user decision. OPS.md#confusablesuggested",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "note_a_id",
+    "note_b_id",
+    "reason"
+  ],
+  "properties": {
+    "note_a_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "The smaller note id of the pair (lowercase text order). Must exist."
+    },
+    "note_b_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "The larger note id. note_a_id < note_b_id. Must exist."
+    },
+    "reason": {
+      "enum": [
+        "homophone",
+        "look_alike",
+        "meaning"
+      ],
+      "description": "Why they are confused. entity_id = '<note_a_id>|<note_b_id>|<reason>'."
+    }
+  }
+}

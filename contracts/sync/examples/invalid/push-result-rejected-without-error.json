@@ -1,0 +1,14 @@
+{
+  "schema": "batch.schema.json#/$defs/PushResponse",
+  "why": "a rejected result needs an error",
+  "instance": {
+    "results": [
+      {
+        "op_id": "0193a1b2-00ff-7000-8000-000000000011",
+        "status": "rejected"
+      }
+    ],
+    "high_water_seq": 1,
+    "server_time": 1733584666625
+  }
+}

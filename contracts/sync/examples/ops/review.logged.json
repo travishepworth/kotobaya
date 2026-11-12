@@ -1,0 +1,20 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000011",
+  "op_type": "review.logged",
+  "op_version": 1,
+  "entity_type": "review_log",
+  "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+  "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+  "hlc": "0193a1b2c011-0000-01931f3e-0000-7000-8000-0000000000a1",
+  "payload": {
+    "id": "0193a1b2-0003-7000-8000-000000000001",
+    "card_id": "0193a1b2-0002-7000-8000-000000000001",
+    "reviewed_at": 1733584666641,
+    "utc_offset_min": 540,
+    "review_type": "learning",
+    "rating": 3,
+    "button": "good",
+    "duration_ms": 4200,
+    "sentence_id": "0193a1b2-0009-7000-8000-000000000001"
+  }
+}

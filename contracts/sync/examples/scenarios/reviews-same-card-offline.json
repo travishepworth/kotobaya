@@ -1,0 +1,168 @@
+{
+  "id": "reviews-same-card-offline",
+  "title": "Two devices review the same card offline",
+  "covers": [
+    "spec: Reviews never conflict; all kept, replayed in timestamp order",
+    "replay: out-of-order arrival forces a full replay"
+  ],
+  "narrative": [
+    "Card C exists everywhere. Phone A (offline) reviews it at T+10 and T+30. Phone B (offline) reviews it at T+20 and drills it at T+25.",
+    "A syncs first: the server folds A's two reviews into C's cache; last_review_id = A's T+30 review.",
+    "B syncs: its T+20 review sorts BEFORE the cached last review, so the server (and later A, when it pulls) must replay C from scratch.",
+    "Every replica ends with all four rows; the replay set is ordered by (hlc, id): A@10, B@20, A@30. The drill is logged but not in the replay set."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000003",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666634,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000004",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000002",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666654,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000005",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000003",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666644,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 1,
+        "button": "again",
+        "duration_ms": 4200
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7001-8000-000000000006",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000004",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c019-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000004",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666649,
+        "utc_offset_min": 540,
+        "review_type": "drill",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000003",
+          "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+          "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+          "reviewed_at": 1733584666644,
+          "undone_at": null
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000004",
+          "review_type": "drill"
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "deleted_at": null
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000001",
+        "0193a1b2-0003-7000-8000-000000000003",
+        "0193a1b2-0003-7000-8000-000000000002"
+      ]
+    }
+  }
+}

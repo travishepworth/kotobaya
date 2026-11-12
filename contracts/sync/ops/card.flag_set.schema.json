@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.flag_set",
+  "description": "Writes register 'flags'. OPS.md#cardflag_set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "flags"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the card. Equals the envelope's entity_id."
+    },
+    "flags": {
+      "type": "integer",
+      "description": "0 = none, 1-7 = flag colour.",
+      "minimum": 0,
+      "maximum": 7
+    }
+  }
+}

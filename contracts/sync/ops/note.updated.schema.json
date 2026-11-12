@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "note.updated",
+  "description": "Sets a subset of a note's registers, all at the op's hlc. OPS.md#noteupdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "set"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the note. Equals the envelope's entity_id."
+    },
+    "set": {
+      "type": "object",
+      "description": "Registers to write. At least one. The three source_* properties form one register and must be given together.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "fields": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common.schema.json#/$defs/key"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Field values {field key: HTML fragment}. Each key is its own register 'fields.<key>'. Keys need not exist in the note type (unknown keys are kept).",
+          "minProperties": 1
+        },
+        "tags": {
+          "$ref": "../common.schema.json#/$defs/tags"
+        },
+        "mnemonic": {
+          "type": "string",
+          "description": "Register 'mnemonic'."
+        },
+        "source_sentence": {
+          "type": "string",
+          "description": "Sentence the note was mined from, by value; '' if none. Register 'source_sentence' covers this and the two columns below."
+        },
+        "source_sentence_id": {
+          "description": "Soft reference to sentence.id, or null.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_media_id": {
+          "description": "Soft reference to media.id, or null.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entry_seq": {
+          "description": "Register 'entry_seq': match, re-match or un-match (null) a vocab note. May trigger a merge on the server.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/entry_seq"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "dependentRequired": {
+        "source_sentence": [
+          "source_sentence_id",
+          "source_media_id"
+        ],
+        "source_sentence_id": [
+          "source_sentence",
+          "source_media_id"
+        ],
+        "source_media_id": [
+          "source_sentence",
+          "source_sentence_id"
+        ]
+      }
+    }
+  }
+}

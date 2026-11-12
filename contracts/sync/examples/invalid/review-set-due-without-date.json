@@ -1,0 +1,23 @@
+{
+  "schema": "op.schema.json",
+  "why": "manual_action = set_due requires manual_due_at",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000012",
+    "op_type": "review.logged",
+    "op_version": 1,
+    "entity_type": "review_log",
+    "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c012-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "id": "0193a1b2-0003-7000-8000-000000000002",
+      "card_id": "0193a1b2-0002-7000-8000-000000000001",
+      "reviewed_at": 1733584666642,
+      "utc_offset_min": 540,
+      "review_type": "manual",
+      "rating": null,
+      "manual_action": "set_due",
+      "manual_due_at": null
+    }
+  }
+}

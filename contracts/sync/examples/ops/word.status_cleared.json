@@ -1,0 +1,12 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000016",
+  "op_type": "word.status_cleared",
+  "op_version": 1,
+  "entity_type": "word_status",
+  "entity_id": "1411050",
+  "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+  "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+  "payload": {
+    "entry_seq": 1411050
+  }
+}

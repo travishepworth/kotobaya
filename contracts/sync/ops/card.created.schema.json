@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.created",
+  "description": "Creates one card of a note. Schedule (cache) columns are never carried; a new card is state 'new'. OPS.md#cardcreated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "note_id",
+    "kind"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the new card. Equals the envelope's entity_id."
+    },
+    "note_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Parent note; must exist (may be tombstoned or merged). Immutable."
+    },
+    "kind": {
+      "$ref": "../common.schema.json#/$defs/key",
+      "description": "Card kind, a key of the note type's templates (not validated against them). Immutable."
+    },
+    "preset_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Scheduling preset; must exist. Default: the Default preset 00000000-0000-7000-8000-000000000010.",
+      "default": "00000000-0000-7000-8000-000000000010"
+    },
+    "suspended": {
+      "type": "boolean",
+      "description": "Initial value of register 'suspended'. Default false.",
+      "default": false
+    },
+    "buried_until": {
+      "description": "Initial value of register 'buried_until'. Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/instant_ms"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "flags": {
+      "type": "integer",
+      "description": "Initial value of register 'flags', 0-7. Default 0.",
+      "minimum": 0,
+      "maximum": 7,
+      "default": 0
+    }
+  }
+}

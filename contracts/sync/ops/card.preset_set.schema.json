@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.preset_set",
+  "description": "Writes register 'preset_id'. A winning write forces a replay of the card. OPS.md#cardpreset_set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "preset_id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the card. Equals the envelope's entity_id."
+    },
+    "preset_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "fsrs_params.id; must exist (may be tombstoned: the card then schedules with Default)."
+    }
+  }
+}

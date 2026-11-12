@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deck.deleted",
+  "description": "Tombstones a deck (permanent). Clients may not delete a media deck directly (delete the media). OPS.md#deckdeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the deck. Equals the envelope's entity_id."
+    }
+  }
+}

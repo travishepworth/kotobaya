@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "grammar.deleted",
+  "description": "Tombstones a grammar point (permanent). OPS.md#grammardeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the grammar point. Equals the envelope's entity_id."
+    }
+  }
+}

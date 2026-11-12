@@ -1,0 +1,7 @@
+{
+  "schema": "batch.schema.json#/$defs/PushRequest",
+  "why": "at least one op",
+  "instance": {
+    "ops": []
+  }
+}

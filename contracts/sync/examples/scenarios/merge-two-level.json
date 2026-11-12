@@ -1,0 +1,194 @@
+{
+  "id": "merge-two-level",
+  "title": "A survivor is itself merged later (flattening and the convergence projection)",
+  "covers": [
+    "ticket follow-up 1: convergence = live rows + merged_into_id",
+    "merge: merged_into_id is never a chain",
+    "merge: a re-match that lands on an existing note merges"
+  ],
+  "narrative": [
+    "W studies 食べる, M studies 持つ. B's duplicate L1 of 持つ is merged into M (seq 4).",
+    "A re-matches M to 食べる (entry_seq register, T+20). That collides with W, so M is merged into W (seq 6). L1.merged_into_id is re-pointed from M to W: never a chain.",
+    "B, still offline, tags L1 at T+30. On the server this arrives after both merges and is applied to L1 and forwarded to W - not to M.",
+    "On phone B the same edit was applied BEFORE the merges, so there it travelled L1 -> M -> W, and B's copy of M has tags = [late] while the server's copy of M has none.",
+    "That difference is allowed: rows with merged_into_id set are compared only on (id, merged_into_id, deleted_at). W, the live row, is identical everywhere.",
+    "B's last op changes L1.entry_seq (T+31): entry_seq is never forwarded and does not un-merge."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000002",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1315720,
+        "mnemonic": "hold the temple"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000003",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000003",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1315720,
+        "fields": {
+          "sentence": "荷物を持つ"
+        }
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000004",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000003",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000002"
+      },
+      "seq": 4,
+      "caused_by_op_id": "0193a1b2-00ff-7006-8000-000000000003"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000005",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1358280
+        }
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000006",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c065-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 6,
+      "caused_by_op_id": "0193a1b2-00ff-7006-8000-000000000005"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000007",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000003",
+        "set": {
+          "tags": [
+            "late"
+          ]
+        }
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7006-8000-000000000008",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01f-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000003",
+        "set": {
+          "entry_seq": 1411050
+        }
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": null,
+          "entry_seq": 1358280,
+          "mnemonic": "hold the temple",
+          "fields": {
+            "sentence": "荷物を持つ"
+          },
+          "tags": [
+            "late"
+          ],
+          "clocks": {
+            "entry_seq": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "mnemonic": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "fields.sentence": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000b2",
+            "tags": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2"
+          }
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666725
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666724
+        }
+      ]
+    }
+  }
+}

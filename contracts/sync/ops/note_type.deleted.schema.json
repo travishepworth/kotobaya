@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "note_type.deleted",
+  "description": "Tombstones a user-defined note type. Rejected for built-ins. OPS.md#note_typedeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the note type. Equals the envelope's entity_id."
+    }
+  }
+}

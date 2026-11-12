@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "note.deleted",
+  "description": "Tombstones a note (permanent). Hides all its cards. OPS.md#notedeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the note. Equals the envelope's entity_id."
+    }
+  }
+}

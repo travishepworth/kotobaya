@@ -1,0 +1,15 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000025",
+  "op_type": "grammar.span_removed",
+  "op_version": 1,
+  "entity_type": "sentence_grammar_span",
+  "entity_id": "0193a1b2-0009-7000-8000-000000000001|0193a1b2-0005-7000-8000-000000000001|4|10|manual",
+  "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+  "hlc": "0193a1b2c025-0000-01931f3e-0000-7000-8000-0000000000a1",
+  "payload": {
+    "sentence_id": "0193a1b2-0009-7000-8000-000000000001",
+    "grammar_point_id": "0193a1b2-0005-7000-8000-000000000001",
+    "start_offset": 4,
+    "end_offset": 10
+  }
+}

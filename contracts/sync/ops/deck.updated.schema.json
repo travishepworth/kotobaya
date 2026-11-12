@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deck.updated",
+  "description": "Sets a subset of a deck's registers, all at the op's hlc. OPS.md#deckupdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "set"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the deck. Equals the envelope's entity_id."
+    },
+    "set": {
+      "type": "object",
+      "description": "Registers to write. At least one.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Register 'name'.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Register 'priority'.",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Register 'enabled'."
+        },
+        "new_cards_per_day": {
+          "description": "Per-deck daily new-card limit; null = only the global limit applies.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviews_per_day": {
+          "description": "Per-deck daily review limit; null = only the global limit applies.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "query": {
+          "type": "string",
+          "description": "Register 'query'. Only valid for smart decks (server rejects otherwise).",
+          "minLength": 1
+        },
+        "settings": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common.schema.json#/$defs/key"
+          },
+          "description": "Open object; each top-level key is its own register 'settings.<key>'. Known keys: order, add_kanji, card_kinds. A null value removes the key (the register keeps its clock).",
+          "minProperties": 1
+        }
+      }
+    }
+  }
+}

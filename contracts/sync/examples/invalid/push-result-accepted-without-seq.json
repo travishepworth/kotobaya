@@ -1,0 +1,14 @@
+{
+  "schema": "batch.schema.json#/$defs/PushResponse",
+  "why": "an accepted result needs its seq",
+  "instance": {
+    "results": [
+      {
+        "op_id": "0193a1b2-00ff-7000-8000-000000000011",
+        "status": "accepted"
+      }
+    ],
+    "high_water_seq": 1,
+    "server_time": 1733584666625
+  }
+}

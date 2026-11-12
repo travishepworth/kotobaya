@@ -1,0 +1,144 @@
+{
+  "id": "undo-on-two-devices",
+  "title": "The same review is undone on two devices",
+  "covers": [
+    "ticket follow-up 6: earliest undo wins",
+    "replay: an undone review leaves the replay set"
+  ],
+  "narrative": [
+    "A's second review of C is undone on A at T+20 and, independently, on B at T+15.",
+    "A's undo reaches the server first and is recorded. B's undo has a SMALLER hlc, so it replaces it (undone_hlc is lowered, never raised or cleared).",
+    "Had they arrived in the other order, A's undo would have been a no-op. Either way: undone_hlc = B's clock, on every replica.",
+    "Only the first transition (not undone -> undone) changes the replay set and forces a replay of the card."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000003",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666634,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000004",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00c-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000002",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666636,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000005",
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "review_id": "0193a1b2-0003-7000-8000-000000000002"
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7007-8000-000000000006",
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00f-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "review_id": "0193a1b2-0003-7000-8000-000000000002"
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "undone_hlc": "0193a1b2c00f-0000-01931f3e-0000-7000-8000-0000000000b2",
+          "undone_at": 1733584666639
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "undone_at": null
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000001"
+      ]
+    }
+  }
+}

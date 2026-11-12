@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "media.updated",
+  "description": "Sets a subset of a media's user registers. OPS.md#mediaupdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "set"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the media. Equals the envelope's entity_id."
+    },
+    "set": {
+      "type": "object",
+      "description": "Registers to write. At least one.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Register 'title'.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "kind": {
+          "enum": [
+            "anime",
+            "novel",
+            "vn",
+            "manga",
+            "web",
+            "other"
+          ],
+          "description": "Register 'kind'."
+        },
+        "cover_blob_hash": {
+          "description": "Register 'cover_blob_hash'; null = no cover.",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

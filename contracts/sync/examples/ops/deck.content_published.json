@@ -1,0 +1,16 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-00000000002a",
+  "op_type": "deck.content_published",
+  "op_version": 1,
+  "entity_type": "deck",
+  "entity_id": "0193a1b2-0007-7000-8000-000000000001",
+  "device_id": "00000000-0000-7000-8000-000000000001",
+  "hlc": "0193a1b2c02a-0000-00000000-0000-7000-8000-000000000001",
+  "payload": {
+    "deck_id": "0193a1b2-0007-7000-8000-000000000001",
+    "content_version": 1,
+    "content_blob_hash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+  },
+  "seq": 42,
+  "caused_by_op_id": null
+}

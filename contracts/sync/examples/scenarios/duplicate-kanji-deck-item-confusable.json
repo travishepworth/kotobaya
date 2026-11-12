@@ -1,0 +1,205 @@
+{
+  "id": "duplicate-kanji-deck-item-confusable",
+  "title": "A merged note referenced by a deck item and a confusable pair",
+  "covers": [
+    "ticket follow-up 5: deck_item n:<loser id> resolves through merged_into_id",
+    "confusable: readers resolve merged notes",
+    "merge: collision on kanji_literal"
+  ],
+  "narrative": [
+    "A has kanji note W for 待 (keyword 'wait') in deck D. B, offline, creates its own note L for 待 (keyword 'await', T+10), adds L to D and confirms L / 持 as look-alikes.",
+    "The server merges L into W. L's keyword has a clock (T+10) newer than W's creation value (T+1), so W's keyword becomes 'await': a duplicate's filled-in fields compete by clock like any other write.",
+    "B's deck item n:<L> and confusable row keep L's id forever; rows are never rewritten. READERS resolve them through merged_into_id.",
+    "So deck D holds two live rows that both mean W. Readers treat them as one item with the smallest (position, item_key): position 512.",
+    "The confusable pair reads as (W, 持)."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000102",
+        "kanji_literal": "待",
+        "fields": {
+          "keyword": "wait"
+        }
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000002",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000003",
+        "note_type_id": "00000000-0000-7000-8000-000000000102",
+        "kanji_literal": "持",
+        "fields": {
+          "keyword": "hold"
+        }
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000003",
+      "op_type": "deck.created",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c003-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0004-7000-8000-000000000001",
+        "name": "Kanji",
+        "type": "user"
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000004",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|n:0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c004-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "n:0193a1b2-0001-7000-8000-000000000001",
+        "position": 1024
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000005",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000102",
+        "kanji_literal": "待",
+        "fields": {
+          "keyword": "await"
+        },
+        "origin": "auto_kanji"
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000006",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 6,
+      "caused_by_op_id": "0193a1b2-00ff-7009-8000-000000000005"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000007",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-000000000001|n:0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00b-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+        "item_key": "n:0193a1b2-0001-7000-8000-000000000002",
+        "position": 512
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7009-8000-000000000008",
+      "op_type": "confusable.confirmed",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002|0193a1b2-0001-7000-8000-000000000003|look_alike",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c00c-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "note_a_id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_b_id": "0193a1b2-0001-7000-8000-000000000003",
+        "reason": "look_alike"
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "fields": {
+            "keyword": "await"
+          },
+          "clocks": {
+            "fields.keyword": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000b2"
+          },
+          "deleted_at": null
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001"
+        }
+      ],
+      "deck_item": [
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-000000000001",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "position": 1024,
+          "deleted_at": null
+        },
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-000000000002",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "position": 512,
+          "deleted_at": null
+        }
+      ],
+      "confusable": [
+        {
+          "note_a_id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_b_id": "0193a1b2-0001-7000-8000-000000000003",
+          "reason": "look_alike",
+          "status": "confirmed"
+        }
+      ]
+    }
+  }
+}

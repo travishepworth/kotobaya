@@ -1,0 +1,137 @@
+{
+  "id": "note-fields-lww",
+  "title": "Two devices edit one note offline",
+  "covers": [
+    "spec: Note fields, tags - last writer wins per field, by clock"
+  ],
+  "narrative": [
+    "The example of contracts/db/SCHEMA.md section 3.",
+    "A sets fields.meaning at clock ...c3d4; B sets fields.meaning (...c3d9) and tags (...c3d9-0001); A's later edit (...c3d5) of fields.meaning and fields.notes arrives last.",
+    "fields.meaning: A's late arrival is older than B's write and is ignored. fields.notes is a different register and is applied. tags is a different register and is applied.",
+    "The losing op is still accepted and logged (seq 5)."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c3d4-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "set": {
+          "fields": {
+            "meaning": "to eat"
+          }
+        }
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c3d9-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "set": {
+          "fields": {
+            "meaning": "eat"
+          }
+        }
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7002-8000-000000000004",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c3d9-0001-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "set": {
+          "tags": [
+            "anime"
+          ]
+        }
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7002-8000-000000000005",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c3d5-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "set": {
+          "fields": {
+            "meaning": "to eat (food)",
+            "notes": "ichidan"
+          }
+        }
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "fields": {
+            "meaning": "eat",
+            "notes": "ichidan"
+          },
+          "tags": [
+            "anime"
+          ],
+          "updated_at": 1733584667609,
+          "clocks": {
+            "entry_seq": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "fields.meaning": "0193a1b2c3d9-0000-01931f3e-0000-7000-8000-0000000000b2",
+            "fields.notes": "0193a1b2c3d5-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "tags": "0193a1b2c3d9-0001-01931f3e-0000-7000-8000-0000000000b2"
+          }
+        }
+      ]
+    }
+  }
+}

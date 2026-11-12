@@ -1,0 +1,336 @@
+{
+  "id": "same-word-added-twice",
+  "title": "The same word is added on two devices offline",
+  "covers": [
+    "spec: Same word added twice offline - merged on the server by entry ID; cards and reviews combined",
+    "ticket: same word added on two devices (merge)"
+  ],
+  "narrative": [
+    "A has note W for 食べる with a meaning card and the mnemonic 'tabby eats' (T+10).",
+    "B, offline, creates note L for the same entry at T+20 (sentence filled, meaning left empty), with a meaning and a reading card; tags it at T+30; suspends L's meaning card at T+31; reviews it at T+32.",
+    "B pushes. note.created L collides with W: the server applies it, then emits note.merged L->W. Step 1 forwards fields.sentence@20; L's empty meaning has no clock and is not forwarded; W's mnemonic is kept.",
+    "card.created (L, meaning) is applied to L, then merged into W's meaning card. card.created (L, reading): W has no reading card, so the server first creates one (ordinary card.created from the server device), then merges.",
+    "B's later ops still address L and its cards. They are applied to the addressed row AND forwarded to the survivor: W gets the tags, W's meaning card is suspended.",
+    "B's review keeps card_id = L's card; it is in the replay set of W's meaning card together with A's own review.",
+    "B itself reaches the same state when it pulls the server-emitted ops: note.merged forwards L's clocked registers (sentence@20, tags@30), card.merged forwards suspended@31."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c005-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c005-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000003",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "set": {
+          "mnemonic": "tabby eats"
+        }
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280,
+        "fields": {
+          "sentence": "パンを食べる",
+          "meaning": ""
+        },
+        "origin": "takoboto"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000005",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 5,
+      "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000004"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c015-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000002",
+        "note_id": "0193a1b2-0001-7000-8000-000000000002",
+        "kind": "meaning"
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000007",
+      "op_type": "card.merged",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c065-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0002-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0002-7000-8000-000000000001"
+      },
+      "seq": 7,
+      "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000006"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000003",
+        "note_id": "0193a1b2-0001-7000-8000-000000000002",
+        "kind": "reading"
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000009",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000004",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c066-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000004",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "reading"
+      },
+      "seq": 9,
+      "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000008"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000a",
+      "op_type": "card.merged",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000003",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c066-0001-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0002-7000-8000-000000000003",
+        "survivor_id": "0193a1b2-0002-7000-8000-000000000004"
+      },
+      "seq": 10,
+      "caused_by_op_id": "0193a1b2-00ff-7005-8000-000000000008"
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000b",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "tags": [
+            "anime"
+          ]
+        }
+      },
+      "seq": 11,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000c",
+      "op_type": "card.suspended",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01f-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000002"
+      },
+      "seq": 12,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000d",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c020-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000002",
+        "reviewed_at": 1733584666656,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 13,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000e",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c021-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000002",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666657,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 14,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": null,
+          "merged_into_id": null,
+          "entry_seq": 1358280,
+          "mnemonic": "tabby eats",
+          "fields": {
+            "sentence": "パンを食べる"
+          },
+          "tags": [
+            "anime"
+          ],
+          "origin": "manual",
+          "created_by_device_id": "01931f3e-0000-7000-8000-0000000000a1",
+          "clocks": {
+            "entry_seq": "0193a1b2c005-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "mnemonic": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+            "fields.sentence": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+            "tags": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2"
+          },
+          "created_at": 1733584666629,
+          "updated_at": 1733584666654
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "deleted_at": 1733584666724,
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001"
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "suspended": true,
+          "deleted_at": null,
+          "clocks": {
+            "suspended": "0193a1b2c01f-0000-01931f3e-0000-7000-8000-0000000000b2"
+          }
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000002",
+          "deleted_at": 1733584666725,
+          "merged_into_id": "0193a1b2-0002-7000-8000-000000000001"
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000004",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "reading",
+          "deleted_at": null
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000003",
+          "deleted_at": 1733584666726,
+          "merged_into_id": "0193a1b2-0002-7000-8000-000000000004"
+        }
+      ],
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000002"
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000001",
+        "0193a1b2-0003-7000-8000-000000000002"
+      ],
+      "0193a1b2-0002-7000-8000-000000000004": []
+    }
+  }
+}

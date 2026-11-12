@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "parse_override.deleted",
+  "description": "Tombstones a parse override (permanent). Server only: devices skip it. OPS.md#parse_overridedeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the parse override. Equals the envelope's entity_id."
+    }
+  }
+}

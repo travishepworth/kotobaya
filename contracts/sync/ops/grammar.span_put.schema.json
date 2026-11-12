@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "grammar.span_put",
+  "description": "Adds (or re-adds) a manual grammar highlight. Whole-row last-writer-wins on hlc together with grammar.span_removed. OPS.md#grammarspan_put",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sentence_id",
+    "grammar_point_id",
+    "start_offset",
+    "end_offset"
+  ],
+  "properties": {
+    "sentence_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Soft reference to sentence.id; never validated."
+    },
+    "grammar_point_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Grammar point; must exist (may be tombstoned)."
+    },
+    "start_offset": {
+      "type": "integer",
+      "description": "UTF-16 code-unit offset into sentence.text, inclusive.",
+      "minimum": 0,
+      "maximum": 2147483646
+    },
+    "end_offset": {
+      "type": "integer",
+      "description": "Exclusive end; must be > start_offset (server rejects otherwise). entity_id = '<sentence_id>|<grammar_point_id>|<start_offset>|<end_offset>|manual'.",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "media_id": {
+      "description": "Optional hint: the sentence's media. Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

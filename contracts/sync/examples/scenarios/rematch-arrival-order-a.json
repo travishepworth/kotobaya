@@ -1,0 +1,122 @@
+{
+  "id": "rematch-arrival-order-a",
+  "title": "Concurrent re-matches of one note: the colliding one arrives first",
+  "covers": [
+    "ticket follow-up 3: a merge triggered by an entry_seq write that later loses last-writer-wins stays merged"
+  ],
+  "narrative": [
+    "Unmatched note X ('たべる'). Offline, A matches it to 食べる (T+10) - which W already studies - and B matches it to 持つ (T+20).",
+    "A's op arrives first: it wins the entry_seq register (no clock yet), X now collides with W, the server merges X into W.",
+    "B's op arrives: it is newer, so on X the register becomes 持つ. X is already merged; merges are permanent, and entry_seq is never forwarded. X stays a tombstone pointing at W.",
+    "Compare rematch-arrival-order-b: same ops, other arrival order, no merge. Accepted trade-off; all replicas follow the server's log either way."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-700c-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700c-8000-000000000002",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "fields": {
+          "expression": "たべる"
+        }
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700c-8000-000000000003",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1358280
+        }
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700c-8000-000000000004",
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "loser_id": "0193a1b2-0001-7000-8000-000000000002",
+        "survivor_id": "0193a1b2-0001-7000-8000-000000000001"
+      },
+      "seq": 4,
+      "caused_by_op_id": "0193a1b2-00ff-700c-8000-000000000003"
+    },
+    {
+      "op_id": "0193a1b2-00ff-700c-8000-000000000005",
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "set": {
+          "entry_seq": 1315720
+        }
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "merged_into_id": "0193a1b2-0001-7000-8000-000000000001",
+          "deleted_at": 1733584666724
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "fields": {
+            "expression": "たべる"
+          },
+          "entry_seq": 1358280
+        }
+      ]
+    }
+  }
+}

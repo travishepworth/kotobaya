@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "card.buried",
+  "description": "Writes register 'buried_until' (manual bury). OPS.md#cardburied",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "until"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the card. Equals the envelope's entity_id."
+    },
+    "until": {
+      "$ref": "../common.schema.json#/$defs/instant_ms",
+      "description": "The card is hidden while now < until. Clients send the start of the next study day."
+    }
+  }
+}

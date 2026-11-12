@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "review.undone",
+  "description": "Marks a review undone. The EARLIEST undo (smallest hlc) wins. An undo cannot be undone. OPS.md#reviewundone",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "review_id"
+  ],
+  "properties": {
+    "review_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "review_log.id to undo. Equals entity_id. Must exist on the server."
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000003",
+  "op_type": "grammar.created",
+  "op_version": 1,
+  "entity_type": "grammar_point",
+  "entity_id": "0193a1b2-0005-7000-8000-000000000001",
+  "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+  "hlc": "0193a1b2c003-0000-01931f3e-0000-7000-8000-0000000000a1",
+  "payload": {
+    "id": "0193a1b2-0005-7000-8000-000000000001",
+    "title": "ざるを得ない",
+    "pattern": "〜ざるを得ない",
+    "meaning": "cannot help but; have no choice but to",
+    "jlpt": 2,
+    "detection_rules": [
+      {
+        "rule": "[verb:未然形] ざる を 得 ない",
+        "draft": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fsrs_params.published",
+  "description": "The optimizer publishes new FSRS weights for a preset. Applied iff weights_version > the stored one. OPS.md#fsrs_paramspublished",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "weights_version",
+    "fsrs_version",
+    "weights",
+    "optimized_at"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the preset. Equals the envelope's entity_id."
+    },
+    "weights_version": {
+      "type": "integer",
+      "description": "New version, = previous + 1.",
+      "minimum": 1
+    },
+    "fsrs_version": {
+      "type": "string",
+      "description": "FSRS algorithm version the weights belong to, e.g. '6'.",
+      "minLength": 1
+    },
+    "weights": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "number"
+      },
+      "description": "The weights."
+    },
+    "optimized_at": {
+      "$ref": "../common.schema.json#/$defs/instant_ms",
+      "description": "When the optimizer run finished."
+    },
+    "optimizer_stats": {
+      "description": "Metrics of the run; unknown keys preserved. Default null.",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "review_count": {
+              "type": "integer"
+            },
+            "log_loss": {
+              "type": "number"
+            },
+            "rmse_bins": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fsrs_params.deleted",
+  "description": "Tombstones a preset; its cards then schedule with Default. Rejected for the Default preset. OPS.md#fsrs_paramsdeleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the preset. Equals the envelope's entity_id."
+    }
+  }
+}

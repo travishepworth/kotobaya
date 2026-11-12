@@ -1,0 +1,561 @@
+{
+  "description": "Registry of every v1 op type. entity_id = the listed payload properties as text joined with '|' (a quoted part is a literal). emitter: 'client' = any replica may mint it (the server too, on behalf of REST calls); 'server' = only the server may mint it, a pushed one is rejected with server_only. device_applies false = devices advance past the op without touching any table.",
+  "ops": [
+    {
+      "op_type": "note_type.created",
+      "op_version": 1,
+      "entity_type": "note_type",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note_type.created.schema.json",
+      "example": "examples/ops/note_type.created.json"
+    },
+    {
+      "op_type": "note_type.updated",
+      "op_version": 1,
+      "entity_type": "note_type",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note_type.updated.schema.json",
+      "example": "examples/ops/note_type.updated.json"
+    },
+    {
+      "op_type": "note_type.deleted",
+      "op_version": 1,
+      "entity_type": "note_type",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note_type.deleted.schema.json",
+      "example": "examples/ops/note_type.deleted.json"
+    },
+    {
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note.created.schema.json",
+      "example": "examples/ops/note.created.json"
+    },
+    {
+      "op_type": "note.updated",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note.updated.schema.json",
+      "example": "examples/ops/note.updated.json"
+    },
+    {
+      "op_type": "note.deleted",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/note.deleted.schema.json",
+      "example": "examples/ops/note.deleted.json"
+    },
+    {
+      "op_type": "note.merged",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": [
+        "loser_id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/note.merged.schema.json",
+      "example": "examples/ops/note.merged.json"
+    },
+    {
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.created.schema.json",
+      "example": "examples/ops/card.created.json"
+    },
+    {
+      "op_type": "card.suspended",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.suspended.schema.json",
+      "example": "examples/ops/card.suspended.json"
+    },
+    {
+      "op_type": "card.unsuspended",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.unsuspended.schema.json",
+      "example": "examples/ops/card.unsuspended.json"
+    },
+    {
+      "op_type": "card.unburied",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.unburied.schema.json",
+      "example": "examples/ops/card.unburied.json"
+    },
+    {
+      "op_type": "card.deleted",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.deleted.schema.json",
+      "example": "examples/ops/card.deleted.json"
+    },
+    {
+      "op_type": "card.buried",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.buried.schema.json",
+      "example": "examples/ops/card.buried.json"
+    },
+    {
+      "op_type": "card.flag_set",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.flag_set.schema.json",
+      "example": "examples/ops/card.flag_set.json"
+    },
+    {
+      "op_type": "card.preset_set",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/card.preset_set.schema.json",
+      "example": "examples/ops/card.preset_set.json"
+    },
+    {
+      "op_type": "card.merged",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": [
+        "loser_id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/card.merged.schema.json",
+      "example": "examples/ops/card.merged.json"
+    },
+    {
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/review.logged.schema.json",
+      "example": "examples/ops/review.logged.json"
+    },
+    {
+      "op_type": "review.undone",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": [
+        "review_id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/review.undone.schema.json",
+      "example": "examples/ops/review.undone.json"
+    },
+    {
+      "op_type": "word.status_set",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": [
+        "entry_seq"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/word.status_set.schema.json",
+      "example": "examples/ops/word.status_set.json"
+    },
+    {
+      "op_type": "word.status_cleared",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": [
+        "entry_seq"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/word.status_cleared.schema.json",
+      "example": "examples/ops/word.status_cleared.json"
+    },
+    {
+      "op_type": "deck.created",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/deck.created.schema.json",
+      "example": "examples/ops/deck.created.json"
+    },
+    {
+      "op_type": "deck.updated",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/deck.updated.schema.json",
+      "example": "examples/ops/deck.updated.json"
+    },
+    {
+      "op_type": "deck.deleted",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/deck.deleted.schema.json",
+      "example": "examples/ops/deck.deleted.json"
+    },
+    {
+      "op_type": "deck.content_published",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": [
+        "deck_id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/deck.content_published.schema.json",
+      "example": "examples/ops/deck.content_published.json"
+    },
+    {
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": [
+        "deck_id",
+        "item_key"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/deck.item_put.schema.json",
+      "example": "examples/ops/deck.item_put.json"
+    },
+    {
+      "op_type": "deck.item_removed",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": [
+        "deck_id",
+        "item_key"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/deck.item_removed.schema.json",
+      "example": "examples/ops/deck.item_removed.json"
+    },
+    {
+      "op_type": "confusable.suggested",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": [
+        "note_a_id",
+        "note_b_id",
+        "reason"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/confusable.suggested.schema.json",
+      "example": "examples/ops/confusable.suggested.json"
+    },
+    {
+      "op_type": "confusable.confirmed",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": [
+        "note_a_id",
+        "note_b_id",
+        "reason"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/confusable.confirmed.schema.json",
+      "example": "examples/ops/confusable.confirmed.json"
+    },
+    {
+      "op_type": "confusable.rejected",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": [
+        "note_a_id",
+        "note_b_id",
+        "reason"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/confusable.rejected.schema.json",
+      "example": "examples/ops/confusable.rejected.json"
+    },
+    {
+      "op_type": "grammar.created",
+      "op_version": 1,
+      "entity_type": "grammar_point",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/grammar.created.schema.json",
+      "example": "examples/ops/grammar.created.json"
+    },
+    {
+      "op_type": "grammar.updated",
+      "op_version": 1,
+      "entity_type": "grammar_point",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/grammar.updated.schema.json",
+      "example": "examples/ops/grammar.updated.json"
+    },
+    {
+      "op_type": "grammar.deleted",
+      "op_version": 1,
+      "entity_type": "grammar_point",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/grammar.deleted.schema.json",
+      "example": "examples/ops/grammar.deleted.json"
+    },
+    {
+      "op_type": "grammar.span_put",
+      "op_version": 1,
+      "entity_type": "sentence_grammar_span",
+      "entity_id": [
+        "sentence_id",
+        "grammar_point_id",
+        "start_offset",
+        "end_offset",
+        "'manual'"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/grammar.span_put.schema.json",
+      "example": "examples/ops/grammar.span_put.json"
+    },
+    {
+      "op_type": "grammar.span_removed",
+      "op_version": 1,
+      "entity_type": "sentence_grammar_span",
+      "entity_id": [
+        "sentence_id",
+        "grammar_point_id",
+        "start_offset",
+        "end_offset",
+        "'manual'"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/grammar.span_removed.schema.json",
+      "example": "examples/ops/grammar.span_removed.json"
+    },
+    {
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": [
+        "key"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/settings.set.schema.json",
+      "example": "examples/ops/settings.set.json"
+    },
+    {
+      "op_type": "fsrs_params.created",
+      "op_version": 1,
+      "entity_type": "fsrs_params",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/fsrs_params.created.schema.json",
+      "example": "examples/ops/fsrs_params.created.json"
+    },
+    {
+      "op_type": "fsrs_params.updated",
+      "op_version": 1,
+      "entity_type": "fsrs_params",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/fsrs_params.updated.schema.json",
+      "example": "examples/ops/fsrs_params.updated.json"
+    },
+    {
+      "op_type": "fsrs_params.deleted",
+      "op_version": 1,
+      "entity_type": "fsrs_params",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/fsrs_params.deleted.schema.json",
+      "example": "examples/ops/fsrs_params.deleted.json"
+    },
+    {
+      "op_type": "fsrs_params.published",
+      "op_version": 1,
+      "entity_type": "fsrs_params",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/fsrs_params.published.schema.json",
+      "example": "examples/ops/fsrs_params.published.json"
+    },
+    {
+      "op_type": "media.created",
+      "op_version": 1,
+      "entity_type": "media",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/media.created.schema.json",
+      "example": "examples/ops/media.created.json"
+    },
+    {
+      "op_type": "media.updated",
+      "op_version": 1,
+      "entity_type": "media",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/media.updated.schema.json",
+      "example": "examples/ops/media.updated.json"
+    },
+    {
+      "op_type": "media.deleted",
+      "op_version": 1,
+      "entity_type": "media",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": true,
+      "schema": "ops/media.deleted.schema.json",
+      "example": "examples/ops/media.deleted.json"
+    },
+    {
+      "op_type": "media.content_published",
+      "op_version": 1,
+      "entity_type": "media",
+      "entity_id": [
+        "media_id"
+      ],
+      "emitter": "server",
+      "device_applies": true,
+      "schema": "ops/media.content_published.schema.json",
+      "example": "examples/ops/media.content_published.json"
+    },
+    {
+      "op_type": "parse_override.put",
+      "op_version": 1,
+      "entity_type": "parse_override",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": false,
+      "schema": "ops/parse_override.put.schema.json",
+      "example": "examples/ops/parse_override.put.json"
+    },
+    {
+      "op_type": "parse_override.deleted",
+      "op_version": 1,
+      "entity_type": "parse_override",
+      "entity_id": [
+        "id"
+      ],
+      "emitter": "client",
+      "device_applies": false,
+      "schema": "ops/parse_override.deleted.schema.json",
+      "example": "examples/ops/parse_override.deleted.json"
+    }
+  ]
+}

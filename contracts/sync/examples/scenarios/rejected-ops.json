@@ -1,0 +1,293 @@
+{
+  "id": "rejected-ops",
+  "title": "Ops the server refuses",
+  "covers": [
+    "ticket follow-up 7: rejected ops",
+    "push: one rejected op does not block the rest of the batch"
+  ],
+  "narrative": [
+    "B pushes one batch of ten ops. Nine are refused, each for its own reason (see `rejected`); none of them enters the log or changes any row.",
+    "The tenth (card.flag_set, T+29) is accepted: a rejection never blocks later ops.",
+    "On B the nine pending_op rows become state 'rejected' with last_error = '<code>: <message>'; their local effects stay until the user discards them (SYNC.md section 10)."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-700e-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700e-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700e-8000-000000000003",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c00a-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666634,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-700e-8000-000000000004",
+      "op_type": "card.flag_set",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01d-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "flags": 2
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "rejected": [
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000001",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0007-7000-8000-000000000009",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "0193a1b2-0007-7000-8000-000000000009",
+          "name": "Frieren",
+          "type": "media",
+          "media_id": "0193a1b2-0007-7000-8000-000000000009"
+        }
+      },
+      "code": "server_only",
+      "why": "media and list decks are created only by the server"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000002",
+        "op_type": "note.merged",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c015-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "loser_id": "0193a1b2-0001-7000-8000-000000000001",
+          "survivor_id": "0193a1b2-0001-7000-8000-000000000009"
+        }
+      },
+      "code": "server_only",
+      "why": "note.merged is a server-emitted op"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000003",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000009",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c016-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000009",
+          "card_id": "0193a1b2-0002-7000-8000-000000000009",
+          "reviewed_at": 1733584666646,
+          "utc_offset_min": 540,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good",
+          "duration_ms": 4200
+        }
+      },
+      "code": "unknown_reference",
+      "why": "card 9 was never created on the server"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000004",
+        "op_type": "review.undone",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000008",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c017-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "review_id": "0193a1b2-0003-7000-8000-000000000008"
+        }
+      },
+      "code": "unknown_reference",
+      "why": "review 8 does not exist on the server"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000005",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000009|e:1358280",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c018-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000009",
+          "item_key": "e:1358280",
+          "position": 0
+        }
+      },
+      "code": "unknown_reference",
+      "why": "deck 9 does not exist"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000006",
+        "op_type": "fsrs_params.deleted",
+        "op_version": 1,
+        "entity_type": "fsrs_params",
+        "entity_id": "00000000-0000-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c019-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "00000000-0000-7000-8000-000000000010"
+        }
+      },
+      "code": "immutable",
+      "why": "the Default preset cannot be deleted"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000007",
+        "op_type": "note.updated",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c01a-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "set": {
+            "entry_seq": 0
+          }
+        }
+      },
+      "code": "schema_invalid",
+      "why": "entry_seq must be >= 1"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000008",
+        "op_type": "card.suspended",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193a1b2c01b-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000001"
+        }
+      },
+      "code": "schema_invalid",
+      "why": "device_id differs from the device part of hlc"
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7e00-8000-000000000009",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000008",
+        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+        "hlc": "0193a1b2c01c-0000-01931f3e-0000-7000-8000-0000000000b2",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000008",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "entry_seq": 1358280
+        }
+      },
+      "code": "invalid_value",
+      "why": "entry_seq on a kanji note"
+    }
+  ],
+  "expected": {
+    "rows": {
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "flags": 2,
+          "suspended": false
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "entry_seq": 1358280,
+          "merged_into_id": null
+        }
+      ]
+    },
+    "absent": {
+      "deck": [
+        {
+          "id": "0193a1b2-0007-7000-8000-000000000009"
+        }
+      ],
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000009"
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-000000000008"
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000001"
+      ]
+    }
+  }
+}

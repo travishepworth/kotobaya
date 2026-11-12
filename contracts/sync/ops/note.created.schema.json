@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "note.created",
+  "description": "Creates a note. The note's `type` is not carried: every replica copies note_type.base_type. Omitted optional properties take the column default and get no clock. OPS.md#notecreated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "note_type_id"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the new note. Equals the envelope's entity_id."
+    },
+    "note_type_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Note type; must exist (may be tombstoned). Immutable."
+    },
+    "language": {
+      "const": "ja",
+      "description": "BCP 47 tag; always 'ja' in v1. Default 'ja'."
+    },
+    "entry_seq": {
+      "description": "Dictionary entry this vocab note studies; only allowed when the note type's base_type is vocab. Default null. Register 'entry_seq'.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/entry_seq"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kanji_literal": {
+      "description": "The single kanji (one Unicode code point) a kanji note studies; only for base_type kanji. Immutable. Default null.",
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "grammar_point_id": {
+      "description": "Grammar point a grammar note studies; only for base_type grammar; must exist. Immutable. Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fields": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common.schema.json#/$defs/key"
+      },
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Field values {field key: HTML fragment}. Each key is its own register 'fields.<key>'. Keys need not exist in the note type (unknown keys are kept).",
+      "default": {}
+    },
+    "tags": {
+      "$ref": "../common.schema.json#/$defs/tags",
+      "default": []
+    },
+    "source_sentence": {
+      "type": "string",
+      "description": "Sentence the note was mined from, by value; '' if none. Register 'source_sentence' covers this and the two columns below.",
+      "default": ""
+    },
+    "source_sentence_id": {
+      "description": "Soft reference to sentence.id, or null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source_media_id": {
+      "description": "Soft reference to media.id, or null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mnemonic": {
+      "type": "string",
+      "description": "User mnemonic (Markdown). Default ''. Register 'mnemonic'.",
+      "default": ""
+    },
+    "origin": {
+      "type": "string",
+      "description": "How the note was created: manual, takoboto, yomitan, ankiconnect, share, reader, deck, jpdb_import, api, auto_kanji. Open set. Immutable. Default 'manual'.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "default": "manual"
+    }
+  }
+}

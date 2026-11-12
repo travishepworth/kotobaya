@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "word.status_set",
+  "description": "Writes the explicit status override of a dictionary entry (one register: override_status + override_origin at override_hlc). OPS.md#wordstatus_set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "entry_seq",
+    "status"
+  ],
+  "properties": {
+    "entry_seq": {
+      "$ref": "../common.schema.json#/$defs/entry_seq",
+      "description": "Entry. entity_id is its decimal text."
+    },
+    "status": {
+      "enum": [
+        "known",
+        "never_forget",
+        "blacklisted",
+        "ignored"
+      ],
+      "description": "The override."
+    },
+    "origin": {
+      "enum": [
+        "manual",
+        "jpdb_import"
+      ],
+      "default": "manual",
+      "description": "Who set it. Default 'manual'. 'jpdb_import' is only used by the server's import job."
+    }
+  }
+}

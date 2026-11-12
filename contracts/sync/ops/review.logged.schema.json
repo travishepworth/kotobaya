@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "review.logged",
+  "description": "Appends one row to review_log. Never conflicts. OPS.md#reviewlogged",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "card_id",
+    "reviewed_at",
+    "utc_offset_min",
+    "review_type",
+    "rating"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "review_log.id (UUIDv7 from the reviewing client). Equals entity_id. Distinct from op_id."
+    },
+    "card_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Card as it was on the reviewing device; must exist on the server (may be tombstoned or merged). Never rewritten."
+    },
+    "reviewed_at": {
+      "$ref": "../common.schema.json#/$defs/instant_ms",
+      "description": "Wall-clock instant of the answer on the reviewing device."
+    },
+    "utc_offset_min": {
+      "description": "Device UTC offset in minutes at review time (540 = JST); null = unknown. Native clients MUST send a number.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": -1080,
+          "maximum": 1080
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "review_type": {
+      "enum": [
+        "scheduled",
+        "learning",
+        "drill",
+        "cram",
+        "manual"
+      ],
+      "description": "scheduled, learning, manual feed the schedule (replay set); drill, cram are logged only."
+    },
+    "rating": {
+      "description": "FSRS rating 1 Again, 2 Hard, 3 Good, 4 Easy. null iff review_type = manual.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "button": {
+      "description": "Button pressed; must agree with rating (again/nothing/something=1, hard=2, good/okay=3, easy=4). null = unknown, and always null for manual. Default null.",
+      "anyOf": [
+        {
+          "enum": [
+            "again",
+            "hard",
+            "good",
+            "easy",
+            "nothing",
+            "something",
+            "okay"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duration_ms": {
+      "description": "Time from card shown to answer, capped at 600000; null = unknown. Default null.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "manual_action": {
+      "description": "Required (non-null) iff review_type = manual. set_due: keep memory state, due := manual_due_at. reset: card returns to state new.",
+      "anyOf": [
+        {
+          "enum": [
+            "set_due",
+            "reset"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "manual_due_at": {
+      "description": "Non-null iff manual_action = set_due.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/instant_ms"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sentence_id": {
+      "description": "Sentence shown for rotating-example cards (soft reference). Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "import_source": {
+      "description": "Server-emitted import ops only: 'jpdb'. Clients MUST omit it or send null.",
+      "anyOf": [
+        {
+          "const": "jpdb"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "replay_hlc": {
+      "description": "Server-emitted import ops only: the value stored in review_log.hlc (replay position), synthesised as <historical ms>-<running counter>-<server device id>. When absent/null, review_log.hlc = the op's hlc. Requires import_source.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/hlc"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "review_type": {
+            "const": "manual"
+          }
+        },
+        "required": [
+          "review_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "manual_action"
+        ],
+        "properties": {
+          "rating": {
+            "type": "null"
+          },
+          "manual_action": {
+            "enum": [
+              "set_due",
+              "reset"
+            ]
+          },
+          "button": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "rating": {
+            "type": "integer"
+          },
+          "manual_action": {
+            "type": "null"
+          },
+          "manual_due_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "manual_action": {
+            "const": "set_due"
+          }
+        },
+        "required": [
+          "manual_action"
+        ]
+      },
+      "then": {
+        "required": [
+          "manual_due_at"
+        ],
+        "properties": {
+          "manual_due_at": {
+            "type": "integer"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "manual_due_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "button": {
+            "enum": [
+              "again",
+              "nothing",
+              "something"
+            ]
+          }
+        },
+        "required": [
+          "button"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rating": {
+            "const": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "button": {
+            "enum": [
+              "hard"
+            ]
+          }
+        },
+        "required": [
+          "button"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rating": {
+            "const": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "button": {
+            "enum": [
+              "good",
+              "okay"
+            ]
+          }
+        },
+        "required": [
+          "button"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rating": {
+            "const": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "button": {
+            "enum": [
+              "easy"
+            ]
+          }
+        },
+        "required": [
+          "button"
+        ]
+      },
+      "then": {
+        "properties": {
+          "rating": {
+            "const": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "replay_hlc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "replay_hlc"
+        ]
+      },
+      "then": {
+        "required": [
+          "import_source"
+        ],
+        "properties": {
+          "import_source": {
+            "const": "jpdb"
+          }
+        }
+      }
+    }
+  ]
+}

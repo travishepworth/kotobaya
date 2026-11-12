@@ -1,0 +1,1107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Op",
+  "description": "One sync operation: the unit stored in pending_op (device) and change (server). SYNC.md section 2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "op_id",
+    "op_type",
+    "op_version",
+    "entity_type",
+    "entity_id",
+    "device_id",
+    "hlc",
+    "payload"
+  ],
+  "properties": {
+    "op_id": {
+      "$ref": "common.schema.json#/$defs/uuid",
+      "description": "UUIDv7 minted with the op. The idempotency key: the server applies an op_id at most once."
+    },
+    "op_type": {
+      "enum": [
+        "note_type.created",
+        "note_type.updated",
+        "note_type.deleted",
+        "note.created",
+        "note.updated",
+        "note.deleted",
+        "note.merged",
+        "card.created",
+        "card.suspended",
+        "card.unsuspended",
+        "card.unburied",
+        "card.deleted",
+        "card.buried",
+        "card.flag_set",
+        "card.preset_set",
+        "card.merged",
+        "review.logged",
+        "review.undone",
+        "word.status_set",
+        "word.status_cleared",
+        "deck.created",
+        "deck.updated",
+        "deck.deleted",
+        "deck.content_published",
+        "deck.item_put",
+        "deck.item_removed",
+        "confusable.suggested",
+        "confusable.confirmed",
+        "confusable.rejected",
+        "grammar.created",
+        "grammar.updated",
+        "grammar.deleted",
+        "grammar.span_put",
+        "grammar.span_removed",
+        "settings.set",
+        "fsrs_params.created",
+        "fsrs_params.updated",
+        "fsrs_params.deleted",
+        "fsrs_params.published",
+        "media.created",
+        "media.updated",
+        "media.deleted",
+        "media.content_published",
+        "parse_override.put",
+        "parse_override.deleted"
+      ],
+      "description": "Dotted op name. The closed set of v1 op types."
+    },
+    "op_version": {
+      "const": 1,
+      "description": "Version of the payload schema for this op_type. Always 1 in this contract."
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Table the op targets, fixed per op_type (ops/index.json)."
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "description": "Primary key of the targeted row as text, derived from the payload as listed in ops/index.json (parts joined with '|')."
+    },
+    "device_id": {
+      "$ref": "common.schema.json#/$defs/uuid",
+      "description": "Origin device = the device that minted hlc. Must equal the last 36 characters of hlc."
+    },
+    "hlc": {
+      "$ref": "common.schema.json#/$defs/hlc",
+      "description": "Clock of the op. Decides every last-writer-wins comparison and supplies the op's wall time (first 12 hex digits)."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Op-specific body; schema chosen by op_type."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Server sequence number (change.seq). Present on every pulled op; MUST be absent on pushed ops."
+    },
+    "caused_by_op_id": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Pulled ops only: op_id of the op that made the server emit this one (merges, cascades), else null."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note_type.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note_type"
+          },
+          "payload": {
+            "$ref": "ops/note_type.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note_type.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note_type"
+          },
+          "payload": {
+            "$ref": "ops/note_type.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note_type.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note_type"
+          },
+          "payload": {
+            "$ref": "ops/note_type.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note"
+          },
+          "payload": {
+            "$ref": "ops/note.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note"
+          },
+          "payload": {
+            "$ref": "ops/note.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note"
+          },
+          "payload": {
+            "$ref": "ops/note.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "note.merged"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "note"
+          },
+          "payload": {
+            "$ref": "ops/note.merged.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.suspended"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.suspended.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.unsuspended"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.unsuspended.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.unburied"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.unburied.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.buried"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.buried.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.flag_set"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.flag_set.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.preset_set"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.preset_set.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "card.merged"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "card"
+          },
+          "payload": {
+            "$ref": "ops/card.merged.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "review.logged"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "review_log"
+          },
+          "payload": {
+            "$ref": "ops/review.logged.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "review.undone"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "review_log"
+          },
+          "payload": {
+            "$ref": "ops/review.undone.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "word.status_set"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "word_status"
+          },
+          "payload": {
+            "$ref": "ops/word.status_set.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "word.status_cleared"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "word_status"
+          },
+          "payload": {
+            "$ref": "ops/word.status_cleared.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck"
+          },
+          "payload": {
+            "$ref": "ops/deck.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck"
+          },
+          "payload": {
+            "$ref": "ops/deck.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck"
+          },
+          "payload": {
+            "$ref": "ops/deck.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.content_published"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck"
+          },
+          "payload": {
+            "$ref": "ops/deck.content_published.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.item_put"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck_item"
+          },
+          "payload": {
+            "$ref": "ops/deck.item_put.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "deck.item_removed"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "deck_item"
+          },
+          "payload": {
+            "$ref": "ops/deck.item_removed.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "confusable.suggested"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "confusable"
+          },
+          "payload": {
+            "$ref": "ops/confusable.suggested.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "confusable.confirmed"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "confusable"
+          },
+          "payload": {
+            "$ref": "ops/confusable.confirmed.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "confusable.rejected"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "confusable"
+          },
+          "payload": {
+            "$ref": "ops/confusable.rejected.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "grammar.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "grammar_point"
+          },
+          "payload": {
+            "$ref": "ops/grammar.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "grammar.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "grammar_point"
+          },
+          "payload": {
+            "$ref": "ops/grammar.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "grammar.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "grammar_point"
+          },
+          "payload": {
+            "$ref": "ops/grammar.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "grammar.span_put"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "sentence_grammar_span"
+          },
+          "payload": {
+            "$ref": "ops/grammar.span_put.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "grammar.span_removed"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "sentence_grammar_span"
+          },
+          "payload": {
+            "$ref": "ops/grammar.span_removed.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "settings.set"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "settings"
+          },
+          "payload": {
+            "$ref": "ops/settings.set.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "fsrs_params.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "fsrs_params"
+          },
+          "payload": {
+            "$ref": "ops/fsrs_params.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "fsrs_params.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "fsrs_params"
+          },
+          "payload": {
+            "$ref": "ops/fsrs_params.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "fsrs_params.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "fsrs_params"
+          },
+          "payload": {
+            "$ref": "ops/fsrs_params.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "fsrs_params.published"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "fsrs_params"
+          },
+          "payload": {
+            "$ref": "ops/fsrs_params.published.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "media.created"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "media"
+          },
+          "payload": {
+            "$ref": "ops/media.created.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "media.updated"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "media"
+          },
+          "payload": {
+            "$ref": "ops/media.updated.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "media.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "media"
+          },
+          "payload": {
+            "$ref": "ops/media.deleted.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "media.content_published"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "media"
+          },
+          "payload": {
+            "$ref": "ops/media.content_published.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "parse_override.put"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "parse_override"
+          },
+          "payload": {
+            "$ref": "ops/parse_override.put.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "op_type": {
+            "const": "parse_override.deleted"
+          }
+        },
+        "required": [
+          "op_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_type": {
+            "const": "parse_override"
+          },
+          "payload": {
+            "$ref": "ops/parse_override.deleted.schema.json"
+          }
+        }
+      }
+    }
+  ]
+}

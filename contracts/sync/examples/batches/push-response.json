@@ -1,0 +1,36 @@
+{
+  "results": [
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000004",
+      "status": "accepted",
+      "seq": 4
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000006",
+      "status": "accepted",
+      "seq": 6
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-000000000008",
+      "status": "accepted",
+      "seq": 8
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000b",
+      "status": "accepted",
+      "seq": 11
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000c",
+      "status": "accepted",
+      "seq": 12
+    },
+    {
+      "op_id": "0193a1b2-00ff-7005-8000-00000000000d",
+      "status": "accepted",
+      "seq": 13
+    }
+  ],
+  "high_water_seq": 13,
+  "server_time": 1733584666729
+}

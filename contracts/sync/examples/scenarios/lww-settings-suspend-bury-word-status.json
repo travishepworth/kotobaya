@@ -1,0 +1,298 @@
+{
+  "id": "lww-settings-suspend-bury-word-status",
+  "title": "Whole-value last-writer-wins registers",
+  "covers": [
+    "spec: settings - last writer wins per field",
+    "spec: Suspend, bury, word status - last writer wins",
+    "confusable: a user decision beats a suggestion whatever the clocks"
+  ],
+  "narrative": [
+    "settings: A sets new_per_day = 15 (T+40), B sets 25 (T+41): 25 wins. B resets leech_threshold with null: the row stays with value null.",
+    "suspend: A suspends (T+50), B unsuspends (T+51): not suspended.",
+    "bury: A buries (T+52); B's unbury is older (T+49) and loses: still buried.",
+    "word status: A sets known (T+60), B sets blacklisted (T+61), A clears (T+62): the clear wins; the row stays with override_status null so older sets cannot come back.",
+    "confusable: the user rejected the pair at T+63; the server's suggestion has a later clock (T+100) but a suggestion never beats a user decision."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000003",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c002-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000002",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1315720
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000004",
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": "scheduler.new_per_day",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c028-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "key": "scheduler.new_per_day",
+        "value": 15
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000005",
+      "op_type": "card.suspended",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c032-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001"
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000006",
+      "op_type": "card.buried",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c034-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "until": 1733584756624
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000007",
+      "op_type": "word.status_set",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": "1411050",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c03c-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "entry_seq": 1411050,
+        "status": "known"
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000008",
+      "op_type": "word.status_cleared",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": "1411050",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c03e-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "entry_seq": 1411050
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-000000000009",
+      "op_type": "confusable.rejected",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001|0193a1b2-0001-7000-8000-000000000002|look_alike",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c03f-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "note_a_id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_b_id": "0193a1b2-0001-7000-8000-000000000002",
+        "reason": "look_alike"
+      },
+      "seq": 9,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000a",
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": "scheduler.new_per_day",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c029-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "key": "scheduler.new_per_day",
+        "value": 25
+      },
+      "seq": 10,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000b",
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": "scheduler.leech_threshold",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c02a-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "key": "scheduler.leech_threshold",
+        "value": null
+      },
+      "seq": 11,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000c",
+      "op_type": "card.unburied",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c031-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001"
+      },
+      "seq": 12,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000d",
+      "op_type": "card.unsuspended",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c033-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001"
+      },
+      "seq": 13,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000e",
+      "op_type": "word.status_set",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": "1411050",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c03d-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "entry_seq": 1411050,
+        "status": "blacklisted"
+      },
+      "seq": 14,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7003-8000-00000000000f",
+      "op_type": "confusable.suggested",
+      "op_version": 1,
+      "entity_type": "confusable",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001|0193a1b2-0001-7000-8000-000000000002|look_alike",
+      "device_id": "00000000-0000-7000-8000-000000000001",
+      "hlc": "0193a1b2c064-0000-00000000-0000-7000-8000-000000000001",
+      "payload": {
+        "note_a_id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_b_id": "0193a1b2-0001-7000-8000-000000000002",
+        "reason": "look_alike"
+      },
+      "seq": 15,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "settings": [
+        {
+          "key": "scheduler.new_per_day",
+          "value": 25,
+          "hlc": "0193a1b2c029-0000-01931f3e-0000-7000-8000-0000000000b2"
+        },
+        {
+          "key": "scheduler.leech_threshold",
+          "value": null,
+          "hlc": "0193a1b2c02a-0000-01931f3e-0000-7000-8000-0000000000b2"
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "suspended": false,
+          "buried_until": 1733584756624,
+          "clocks": {
+            "suspended": "0193a1b2c033-0000-01931f3e-0000-7000-8000-0000000000b2",
+            "buried_until": "0193a1b2c034-0000-01931f3e-0000-7000-8000-0000000000a1"
+          },
+          "updated_at": 1733584666676
+        }
+      ],
+      "word_status": [
+        {
+          "entry_seq": 1411050,
+          "override_status": null,
+          "override_origin": null,
+          "override_hlc": "0193a1b2c03e-0000-01931f3e-0000-7000-8000-0000000000a1",
+          "status": "new"
+        }
+      ],
+      "confusable": [
+        {
+          "note_a_id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_b_id": "0193a1b2-0001-7000-8000-000000000002",
+          "reason": "look_alike",
+          "status": "rejected",
+          "hlc": "0193a1b2c03f-0000-01931f3e-0000-7000-8000-0000000000a1",
+          "created_at": 1733584666687,
+          "updated_at": 1733584666687
+        }
+      ]
+    }
+  }
+}

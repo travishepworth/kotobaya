@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sync scenario",
+  "description": "A machine-readable worked example: a complete server log and the state every replica must reach. Consumed by tools/model.py and by the convergence tests of T006/T107/server. SYNC.md section 13.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "covers",
+    "devices",
+    "log",
+    "order_free",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Equals the file name without .json."
+    },
+    "title": {
+      "type": "string"
+    },
+    "covers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Spec conflict cases and ticket items this scenario demonstrates."
+    },
+    "narrative": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human explanation, one step per line."
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "common.schema.json#/$defs/uuid"
+      },
+      "description": "Label -> device id. 'S' is the server."
+    },
+    "log": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The server's change log for this scenario in seq order, server-emitted ops included. Applying it in order to an empty replica (built-in seeds only) must give `expected`.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "op.schema.json"
+          },
+          {
+            "required": [
+              "seq",
+              "caused_by_op_id"
+            ]
+          }
+        ]
+      }
+    },
+    "rejected": {
+      "type": "array",
+      "description": "Ops a device pushed that the server must reject (never in the log), with the expected error code.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "op",
+          "code"
+        ],
+        "properties": {
+          "op": {
+            "type": "object"
+          },
+          "code": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "order_free": {
+      "type": "boolean",
+      "description": "true: ANY interleaving of the per-device op streams (each device's ops kept in log order; an op applied only once every row it references exists) must reach the same state under the convergence projection (SYNC.md section 11). false: only log order and real device orders are guaranteed."
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "State after the whole log, in device representation (instants as epoch ms, arrays as JSON arrays).",
+      "properties": {
+        "rows": {
+          "type": "object",
+          "description": "table -> list of partial rows. Each must match exactly one row: the row whose primary-key columns equal the given ones; every other listed column must be equal.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "absent": {
+          "type": "object",
+          "description": "table -> list of primary keys (objects) that must NOT exist.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "replay_sets": {
+          "type": "object",
+          "description": "card id -> review_log ids of its replay set, in replay order.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/uuid"
+            }
+          }
+        }
+      }
+    }
+  }
+}

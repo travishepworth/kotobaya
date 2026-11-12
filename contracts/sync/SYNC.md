@@ -1,0 +1,927 @@
+# Sync contract (T005)
+
+Frozen interface between every replica of the learning data: the server (Postgres), the phone
+(SQLite), the web app and scripts. Replicas exchange **operations**, never rows.
+
+| File | What |
+|---|---|
+| `SYNC.md` | This document: protocol, clocks, apply rules, merging, replay, rejected ops, convergence, worked examples. |
+| [`OPS.md`](OPS.md) | One section per op type: emitter, entity, server-side rejections, conflict rule, apply, replay, example. |
+| `batch.schema.json` | **Entry point for the HTTP bodies** of `POST /sync/push` and `GET /sync/pull` (T004 references it). |
+| `op.schema.json` | The op envelope; selects the payload schema by `op_type`. |
+| `ops/<op_type>.schema.json` | Payload schema per op type (JSON Schema 2020-12). Every property has its definition there. |
+| `ops/index.json` | Machine-readable registry: op type → entity type, `entity_id` derivation, emitter, whether devices apply it. |
+| `common.schema.json` | Shared scalar types (uuid, hlc, instant, item key, …). |
+| `scenario.schema.json`, `examples/scenarios/` | Machine-readable worked examples (section 13) for the convergence tests. |
+| `examples/ops/`, `examples/batches/`, `examples/invalid/` | One or more examples per op, example HTTP bodies, and instances that must be rejected. |
+| `tools/model.py`, `tools/validate.py`, `check.sh` | Reference model of a replica and the contract's self-check (section 16). Not normative. |
+| `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
+
+Depends on `contracts/db` (tables, registers, clocks, merge columns). Where this document and
+`contracts/db/SCHEMA.md` describe the same thing, they agree; this document is the more detailed one
+for everything that happens to an op. Implementers: if something you need is missing or wrong, do
+not work around it — return `CONTRACT_CHANGE_REQUEST`.
+
+The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
+
+---
+
+## 1. Model
+
+- A **replica** holds the learning tables: the server, each paired phone, each web session that
+  keeps local state. A client that only calls REST endpoints is not a replica; the server mints ops
+  on its behalf.
+- Every change to learning data is an **op** (section 2). A replica that makes a change *mints* an
+  op, applies it to its own tables, and queues it. The server keeps every accepted op in the log
+  (`app.change`) with a sequence number `seq`.
+- Every replica applies ops with **the same apply function** (sections 7–9). Only the server
+  additionally (a) validates and may reject pushed ops (section 5), and (b) detects duplicates and
+  emits merge ops (section 8.1).
+- The apply function is designed so that replicas which have applied the same set of ops hold the
+  same data (section 11), in whatever order the ops reached them, with two documented exceptions
+  that rely on the server's order (8.1 verdicts, 7.6).
+
+Terms: **register** — one independently merged value (`contracts/db/SCHEMA.md` section 3).
+**Live** — a row whose `deleted_at` is NULL (for a card as a queue item: also its note's).
+**Tombstone** — a row with `deleted_at` set. **Loser / survivor** — the two rows of a merge.
+**wall(h)** — the wall-clock part of HLC `h` as epoch milliseconds: `parseInt(h[0..12], 16)`.
+
+## 2. The op envelope
+
+Schema: [`op.schema.json`](op.schema.json). The same eight properties are the columns of
+`pending_op` (device) and `change` (server).
+
+| Property | Definition | Constraints | Example |
+|---|---|---|---|
+| `op_id` | Identity of the op; the idempotency key. | UUIDv7, lowercase, minted with the op. Unique forever. | `0193a1b2-00ff-7005-8000-000000000004` |
+| `op_type` | What the op does. | One of the 45 names in `ops/index.json`. | `note.created` |
+| `op_version` | Version of the payload schema for this `op_type`. | `1` for every op in this contract. | `1` |
+| `entity_type` | Table the op targets. | Fixed per `op_type` (`ops/index.json`). | `note` |
+| `entity_id` | Primary key of the targeted row, as text. | Derived from the payload: the properties listed in `ops/index.json` joined with `\|`. Must match the payload. | `0193a1b2-0001-7000-8000-000000000002` |
+| `device_id` | The replica that minted the op. | Must equal the device part of `hlc`. | `01931f3e-0000-7000-8000-0000000000b2` |
+| `hlc` | The op's clock (section 3). | 54 characters. | `0193a1b2c014-0000-01931f3e-0000-7000-8000-0000000000b2` |
+| `payload` | Op-specific body. | Validates against `ops/<op_type>.schema.json`. Closed: unknown properties are invalid. | `{"id": "…", "note_type_id": "…"}` |
+| `seq` | Server sequence number. | Only on ops that come *from* the server (pull). Absent on pushed ops. | `4` |
+| `caused_by_op_id` | The op that made the server emit this one. | Only on pulled ops; `null` unless server-emitted as a consequence (merge, cascade). | `null` |
+
+Rules for every payload:
+
+- **Instants** are integers: milliseconds since the Unix epoch, UTC (`common.schema.json#/$defs/instant_ms`).
+- **Ids** are canonical lowercase UUIDs. New rows get a UUIDv7 from whoever creates them.
+- **Omitted optional properties** mean "the column default" in `*.created` ops. In `*.updated`
+  ops only the registers named in `set` are written.
+- **Nested JSON shapes** stored in a JSON column (field definitions, templates, deck settings,
+  detection rules, links, tokens) are open: unknown keys inside them MUST be preserved.
+- An op has **no wall-time property of its own**: its wall time is `wall(hlc)`. `created_at`,
+  `updated_at`, `deleted_at`, `added_at`, `undone_at` are all derived from HLCs, which is why they
+  are equal on every replica. Only `review.logged` carries a separate instant (`reviewed_at`).
+
+Full example ([`examples/ops/note.created.json`](examples/ops/note.created.json)):
+
+```json
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000008",
+  "op_type": "note.created",
+  "op_version": 1,
+  "entity_type": "note",
+  "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+  "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+  "hlc": "0193a1b2c008-0000-01931f3e-0000-7000-8000-0000000000a1",
+  "payload": {
+    "id": "0193a1b2-0001-7000-8000-000000000001",
+    "note_type_id": "00000000-0000-7000-8000-000000000101",
+    "entry_seq": 1358280,
+    "fields": { "sentence": "パンを食べる" },
+    "tags": ["anime", "frieren"],
+    "source_sentence": "パンを食べる",
+    "source_sentence_id": "0193a1b2-0009-7000-8000-000000000001",
+    "source_media_id": "0193a1b2-0007-7000-8000-000000000001",
+    "origin": "reader"
+  }
+}
+```
+
+## 3. Hybrid logical clock
+
+### 3.1 Format and comparison
+
+```
+0193a1b2c3d4-0001-01931f3e-0000-7000-8000-0000000000a1
+└── ms ────┘ └ctr┘ └──────────── device uuid ─────────┘
+ 12 hex       4 hex   36 chars
+```
+
+- `ms`: milliseconds since the Unix epoch, 12 lowercase hex digits, zero-padded.
+- `ctr`: counter, 4 lowercase hex digits (`0000`–`ffff`).
+- device: the id of the replica that minted the value.
+
+**Comparison is byte-wise string comparison** (`COLLATE "C"` in Postgres, `BINARY` in SQLite,
+ordinary `<` on strings in Kotlin, JS and Python). It orders by `ms`, then `ctr`, then device id, and
+is a total order. Two different ops never have equal HLCs (3.3), so "equal clock" always means
+"the same op again".
+
+### 3.2 Minting and observing
+
+Each replica keeps `last = (ms, ctr)`, durably (`sync_state.hlc_last` holds the last full HLC string;
+the server keeps its own in a place T-server chooses). `pt` is the physical clock in ms.
+
+```
+mint():                                   observe(h):            # h = any HLC seen in an op envelope
+  if pt > last.ms:  last = (pt, 0)          if (h.ms, h.ctr) > (last.ms, last.ctr):
+  else if last.ctr < 0xffff:                    last = (h.ms, h.ctr)
+        last = (last.ms, last.ctr + 1)
+  else: last = (last.ms + 1, 0)
+  return format(last, own device id)
+```
+
+- A replica MUST call `observe` for the envelope `hlc` of **every op it applies** that it did not
+  mint (device: every pulled op; server: every accepted pushed op), before it mints again. So a
+  replica's next HLC is greater than everything it has seen, and a change made *after* seeing
+  another change always wins against it.
+- `replay_hlc` inside a `review.logged` payload is data, not a clock event: it is never observed.
+- `last` MUST be persisted in the same transaction as the op that was minted or applied.
+- The first HLC of a new replica: `last = (0, 0)` before the first mint.
+
+### 3.3 Uniqueness invariants
+
+- An HLC with device part `D` is only ever minted by replica `D` from its own `last`. The server
+  never mints on behalf of another device id: ops it creates for REST callers carry the server
+  device id `00000000-0000-7000-8000-000000000001` (and the caller's token in `change.token_id`).
+- A device id MUST NOT be reused after its local database is lost or restored from a backup
+  (`last` would go backwards and HLCs could repeat). Re-pair to get a new device id.
+- Per device, HLCs are strictly increasing in mint order, so "ascending hlc" = "the order in
+  which the device made its changes".
+
+### 3.4 Clock skew
+
+- A replica whose physical clock is behind still mints increasing HLCs (it keeps counting on `last`).
+- A replica whose physical clock is **ahead** mints HLCs in the future. Its writes win
+  last-writer-wins comparisons against writes other replicas make before they have seen them.
+  Once an op with a future HLC has been observed, every replica mints above it, so writes made
+  *after* syncing still win. Wall times derived from HLCs (`created_at`, `updated_at`) are then
+  ahead of real time until real time catches up.
+- **The server does not reject ops for clock skew** (rejecting would strand reviews made
+  offline). Instead `PushResponse.server_time` and `PullResponse.server_time` let a client compare:
+  if `|server_time − pt| > 5 minutes` the client MUST show a clock warning in its sync status.
+- Review timing never depends on HLC wall time: `reviewed_at` is carried separately, and replay
+  clamps negative elapsed time to 0 (section 9.3).
+
+## 4. Making a change on a device
+
+In **one local transaction**:
+
+1. `h = mint()`; build the op (`device_id` = own id, new UUIDv7 `op_id`).
+2. Apply it with the local apply function (sections 7–9) — exactly the code path used for pulled ops.
+3. Insert the `pending_op` row (`state = 'pending'`, `created_at` = now).
+4. Persist `hlc_last`.
+
+Client duties before minting (the server will reject otherwise, section 5.3):
+
+- Mint the ops for a new row before any op that references it (they then sort first by HLC).
+- A client MUST NOT knowingly create a duplicate: before creating a vocab / kanji / grammar note
+  it looks for a live local note with the same `entry_seq` / `kanji_literal` /
+  `grammar_point_id` and uses that; before creating a card it looks for a live card of that
+  `(note, kind)`. Duplicates therefore only arise between replicas that had not yet synced, and
+  those are merged by the server (section 8).
+- A new note's cards are separate `card.created` ops minted by the client right after
+  `note.created`: one per template with `default = true`, unless the deck setting `card_kinds`
+  says otherwise. A note with no cards is legal.
+- One row per op: bulk actions mint one op per card.
+
+A device works on **survivors**: once it has applied a merge, its UI addresses the survivor. Ops
+still in its outbox that address the loser are pushed unchanged.
+
+## 5. Push
+
+`POST /sync/push` — body [`batch.schema.json#/$defs/PushRequest`](batch.schema.json), response
+`#/$defs/PushResponse`. HTTP status codes, auth and scopes are T004's.
+
+### 5.1 Request
+
+- `ops`: 1–500 ops, all minted by the pushing device, in strictly ascending `hlc`.
+- A device pushes its `pending_op` rows with `state = 'pending'` in ascending `hlc`, 500 at a
+  time, until none are left. It never pushes ops minted by anyone else.
+- Example: [`examples/batches/push-request.json`](examples/batches/push-request.json).
+
+### 5.2 Server procedure
+
+The server may fail the **whole request** (HTTP 400, T004) only if the body does not match
+`#/$defs/PushRequestLenient` (a JSON object with `ops`: 1–500 objects each having a UUID `op_id`).
+Everything else is decided **per op**, in array order, so one bad op never blocks the outbox:
+
+1. **Duplicate?** If `op_id` is already in `change`: result `duplicate` with the original `seq`.
+   Nothing else is looked at (not even whether the content is the same).
+2. **Validate** (section 5.3). On failure: result `rejected`; no table is touched, no `change` row.
+3. **Apply**, in one transaction holding advisory lock `7033001`:
+   `observe(op.hlc)`; apply the op (sections 7–9); insert the `change` row; then run collision
+   detection (section 8.1), which may mint, apply and log further ops with
+   `caused_by_op_id = op.op_id` — in the same transaction, with consecutive `seq`.
+4. Result `accepted` with the op's `seq`.
+
+An accepted op may have **no effect** (it lost a clock comparison, or the row/review id already
+existed). It is still logged, still gets a `seq`, and is still delivered to every replica.
+
+A rejected op does not stop the batch. Ops that depended on it are validated on their own and
+will usually be rejected too (`unknown_reference`).
+
+The server MAY process a batch in one transaction with a savepoint per op, or one transaction per
+op; the results must be the same. If the response is lost the client pushes the same ops again and
+gets `duplicate` for those that were committed.
+
+### 5.3 Validation and rejection codes
+
+Checked in this order; the first failure decides the code.
+
+| Code | Meaning | Checked for |
+|---|---|---|
+| `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
+| `schema_invalid` | The op does not match `op.schema.json`; or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
+| `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
+| `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
+| `unknown_reference` | A row the op needs does not exist on the server (the target of an update/delete, a card's note, a review's card, …). Tombstoned rows *do* exist. | per op, OPS.md |
+| `invalid_value` | A cross-field or cross-row rule is violated (e.g. `entry_seq` on a kanji note). | per op, OPS.md |
+| `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck). | per op, OPS.md |
+| `immutable` | Attempt to delete or cripple a built-in (note types, the Default preset). | per op, OPS.md |
+
+- The set is open: a client MUST treat an unknown code as a permanent rejection.
+- `error.message` is an English diagnostic; clients show it but never parse it.
+- Soft references (`entry_seq`, `sentence_id`, `source_*_id`, `media_id` on spans and overrides,
+  `related_ids`) are **never** validated.
+- The server never rejects because of what a clock says: old HLCs, future HLCs and ops addressed
+  to tombstones are all accepted.
+- Example with every code: [`examples/batches/push-response.rejected.json`](examples/batches/push-response.rejected.json),
+  scenario [`rejected-ops`](examples/scenarios/rejected-ops.json).
+
+### 5.4 Response and what the client does with it
+
+`results` has exactly one entry per pushed op, in request order.
+
+| `status` | Client action on the `pending_op` row |
+|---|---|
+| `accepted`, `duplicate` | `state = 'acked'`, `acked_seq = seq`. |
+| `rejected` | `state = 'rejected'`, `last_error = "<code>: <message>"`. The local effect stays. See section 10. |
+
+- No response, a 5xx or a 429: rows stay `pending`, `attempts += 1`, retry with exponential
+  backoff (5 s doubling to a cap of 15 min, reset on success).
+- A 400 for the whole request means a client bug: rows stay `pending`, the error is shown in the
+  sync status, retried with the same backoff.
+- A 401/403: stop syncing and ask the user to re-pair / log in. Rows stay `pending`.
+- `acked` rows may be deleted once `pull_seq >= acked_seq`.
+- `high_water_seq` is informational ("n changes to download").
+
+## 6. Pull
+
+`GET /sync/pull?since=<seq>` — response [`batch.schema.json#/$defs/PullResponse`](batch.schema.json).
+
+- The server returns `change` rows with `seq > since` in ascending `seq`, at most 1000 (the page
+  size and a `limit` parameter are T004's; recommended default 500), from **every** origin,
+  including ops the requester pushed itself and ops that had no effect.
+- `next_since` = `seq` of the last op returned, or `since` if none. `has_more` = more rows exist.
+- Because of the advisory lock, no row with a smaller `seq` can appear after a row was returned.
+  `seq` may have gaps.
+- A new device starts at `since = 0` and receives the whole history (the log is never pruned in v1).
+- Examples: [`pull-response.json`](examples/batches/pull-response.json),
+  [`pull-response.empty.json`](examples/batches/pull-response.empty.json).
+
+**Client procedure**, one local transaction per page:
+
+1. For each op in order: `observe(op.hlc)`; apply it (sections 7–9). Ops with
+   `device_applies = false` in `ops/index.json` are skipped (cursor still advances).
+2. Set `sync_state.pull_seq = next_since`; persist `hlc_last`.
+3. Commit; if `has_more`, pull again.
+
+- **Own ops come back** in the pull. The device applies them like any other op; they are no-ops
+  because of the idempotency rules (7.8). There is deliberately no "skip my own ops" rule.
+- **Unknown `op_type`, or `op_version` higher than the client supports:** apply the ops before
+  it, set `pull_seq` to the `seq` just before it, commit, and stop pulling. The client is in state
+  *upgrade required*: it MUST say so in its sync status, MUST NOT skip the op, keeps working
+  offline and keeps pushing. After an app update the pull resumes at the same op.
+- **An op whose target row is missing** (cannot happen in `seq` order): no-op, logged as a
+  diagnostic; the cursor advances.
+- A device never validates or rejects pulled ops.
+
+**Sync cycle:** push until the outbox has no `pending` rows, then pull until `has_more` is false,
+then set `last_sync_at`. Run on app open, after a review session, and in the background while the
+server is reachable.
+
+## 7. Applying an op
+
+The rules of this section are the same on every replica. Per-op details are in OPS.md.
+
+### 7.1 The clock rule (registers)
+
+To write value `v` to register `r` of a row at clock `h`:
+
+> if `r` has no stored clock, or `h` > the stored clock: store `v`, store `h` as the clock of `r`,
+> and set `updated_at = max(updated_at, wall(h))`. Otherwise do nothing.
+
+- Tables with a `clocks` column store `{register: hlc}`; register names are listed in each
+  table's `clocks` column comment in `V1__init.sql` and in OPS.md. `fields.<key>`,
+  `settings.<key>` and `templates.<kind>` address one key of a JSON object column.
+- A `*.updated` op writes each register named in its `set`, all at the op's `hlc`, each compared
+  on its own. Part of an op may win while another part loses.
+- A register that has **no clock** holds its creation default and loses to every op.
+- Removing a key (`settings.<key>` or `templates.<kind>` set to `null`) removes it from the object
+  but keeps the register's clock, so an older write cannot bring it back.
+- Example and proof by enumeration: scenario [`note-fields-lww`](examples/scenarios/note-fields-lww.json).
+
+### 7.2 The creation rule
+
+A `*.created` op with clock `h`:
+
+- If a row with that id exists: **no-op** (whatever the row holds).
+- Otherwise insert the row with `created_at = updated_at = wall(h)`, `deleted_at = NULL`, and
+  stamp `clocks[r] = h` for every register whose initial value **differs from the column
+  default** (JSON equality; a property omitted from the payload *is* the default). Columns without
+  a default (`name`, `title`, `kind`, `fields` of a note type) are always stamped.
+- For JSON-object columns (`note.fields`, `deck.settings`, `note_type.templates`): a key whose
+  value is `null`, `""`, `[]` or `{}` is **dropped** (not stored, no clock); every other key is
+  stored and stamped `clocks["<column>.<key>"] = h`.
+
+So a creation value competes like any other write, and an untouched default never overwrites
+anything. The exact stamping per op is listed in OPS.md.
+
+### 7.3 Tombstones
+
+- `*.deleted` writes the register `deleted` by the clock rule; the row's `deleted_at` is
+  `wall` of the winning (highest) delete clock.
+- **Deletion is permanent.** No op clears `deleted_at`. Ops addressed to a tombstone are accepted
+  and their register writes are applied by the clock rule (so all replicas hold the same row);
+  the row stays deleted. Consequently a delete beats every edit, **older or newer**
+  (scenario [`edit-vs-delete`](examples/scenarios/edit-vs-delete.json)).
+- Exceptions, where removal is an ordinary reversible value: `deck_item` and manual
+  `sentence_grammar_span` rows (7.4).
+- Children are not tombstoned with their parent: a deleted note's cards, a deleted deck's items
+  and a deleted card's reviews keep their rows. Readers hide them by filtering on the parent.
+- Ops that reference a tombstoned **parent** are accepted: `card.created` for a deleted note,
+  `review.logged` for a deleted card, `deck.item_put` into a deleted deck, `note.created` with a
+  deleted note type. The new rows exist and are hidden.
+
+### 7.4 Whole-row values
+
+`settings`, `word_status` (override columns), `deck_item`, manual `sentence_grammar_span`,
+`confusable` and `parse_override` have one clock column for the whole row. The op is applied iff
+no row exists or its `hlc` is greater than the stored one (`confusable` compares rank first, see
+OPS.md); when it is applied **it determines every op-written column of the row**, including
+`added_at` / `created_at` / `deleted_at`, exactly as listed in OPS.md. A `*_removed` op for a row
+that does not exist inserts the tombstone row, so an older `*_put` arriving later loses
+(scenario [`deck-item-put-remove`](examples/scenarios/deck-item-put-remove.json)).
+
+### 7.5 Timestamps
+
+| Column | Value |
+|---|---|
+| `created_at` (tables with `clocks`) | `wall(h)` of the creating op. Built-in rows: epoch 0. |
+| `updated_at` (tables with `clocks`) | max of `created_at`, `wall` of every register write that won on the row (for a forwarded write: the original op's clock), and `wall` of a merge op that tombstoned it or a `*.published` op applied to it. |
+| `deleted_at` | `wall` of the winning delete; for a merge loser with no delete op: `wall` of the merge op (8.2). |
+| whole-row tables | see OPS.md per op. |
+| `word_status.updated_at` | `max(updated_at, wall(h))` when an override op wins; local "now" when `auto_status` is re-derived. **Not** comparable between replicas. |
+
+### 7.6 Values only the server writes
+
+`deck.content_published`, `media.content_published` and `fsrs_params.published` carry a version
+number assigned by the server; the higher version wins (OPS.md). They are emitted by one
+replica and delivered to all others in `seq` order.
+
+`media.content_published` may repeat a `content_version` with a different `parse_status`
+(parsed → parsing → failed). It is applied iff its version is **>=** the stored one, so it is the
+one op that relies on being applied in `seq` order; replicas always receive it that way.
+
+Snapshots (the `deck_item` rows of media/list decks; a media's segments, sentences, occurrences
+and detected spans) are not ops. A `*.content_published` op only announces a version and a blob
+hash; a device installs the blob whenever it likes, replacing the rows in one transaction and
+recording `installed_content_version`. The blob formats are not part of this contract.
+
+### 7.7 Missing targets
+
+On the **server**, an op whose target or required parent does not exist is rejected
+(`unknown_reference`) and never enters the log. On a **device**, a pulled op whose target is
+missing is a no-op (it cannot happen in `seq` order; it can happen during the re-apply step of a
+rebuild, section 10.3).
+
+### 7.8 Idempotency
+
+- The server applies each `op_id` at most once (`change.op_id` is unique).
+- Independently of that, **applying an op to a replica that has already applied it changes
+  nothing**: creation of an existing id is a no-op; a register write with an equal clock is not
+  greater; a review with an existing id is not inserted again; an undo with an equal clock is not
+  smaller; a merge whose loser is already merged is a no-op; a version that is not higher is
+  ignored. (Exception: `media.content_published`, 7.6, is idempotent only in `seq` order.)
+- Replaying the entire log from `seq` 0 onto an up-to-date replica changes nothing.
+- A device therefore needs no "have I seen this op" table.
+
+### 7.9 `review_log` is append-only — the device rules
+
+Postgres enforces this with a trigger; on a device the apply code MUST enforce exactly:
+
+1. `review.logged`: `INSERT` if no row with that `id` exists; otherwise do nothing, even if the
+   payload differs from the stored row.
+2. No statement ever changes any column of an existing row other than `undone_at` and `undone_hlc`.
+3. `review.undone` with clock `h`: apply **iff `undone_hlc IS NULL OR h < undone_hlc`**; then set
+   `undone_hlc = h`, `undone_at = wall(h)` in one statement. Otherwise do nothing. So the
+   *earliest* undo is recorded whatever the arrival order
+   (scenario [`undo-on-two-devices`](examples/scenarios/undo-on-two-devices.json)).
+4. `undone_at` / `undone_hlc` are never set back to NULL and never raised.
+5. No `DELETE`, with one exception: the full wipe at the start of a rebuild (section 10.3).
+6. A review is undone by minting `review.undone`, never by deleting. An undo cannot be undone:
+   the client logs a new review instead.
+
+Tests for T006/T107: duplicate insert with different content keeps the first; undo A(h=20) then
+B(h=15) → 15; B then A → 15; same undo twice → unchanged; undo for an unknown id → no row, no error.
+
+## 8. Duplicates and merging
+
+"Words are learned once": at most one live note per `entry_seq`, per `kanji_literal`, per
+`grammar_point_id`; at most one live card per `(note_id, kind)`. Two replicas can each create one
+while offline. **The server decides** which row survives and says so with `note.merged` /
+`card.merged`; **every replica then performs the merge itself** from its own rows. No merged
+values travel in the op.
+
+### 8.1 Trigger (server only)
+
+After applying any accepted op, in the same transaction:
+
+**Note collision.** The op was `note.created`, or a `note.updated` that **won** the `entry_seq`
+register, its note N is live, and another live note W holds the same non-null `entry_seq` /
+`kanji_literal` / `grammar_point_id`. Then N is the **loser** and W the **survivor** — always the
+note that already held the reference, regardless of ids and clocks. The server emits, in this order:
+
+1. `note.merged {loser_id: N, survivor_id: W}`;
+2. for each card c of N with `deleted_at IS NULL` and `merged_into_id IS NULL`, ordered by
+   `(kind, id)`: if W has no live card of `c.kind`, a `card.created {id: <new UUIDv7>, note_id: W,
+   kind: c.kind}` (no other properties, so no clocks); then `card.merged {loser_id: c,
+   survivor_id: W's live card of that kind}`. Cards of N that are already tombstoned are left alone.
+
+**Card created on a merged note.** The op was `card.created` for a note N with `merged_into_id = W`:
+the new card is applied to N as usual, then merged as in step 2.
+
+**Card collision.** The op was `card.created` for a note that already has another live card of
+the same `kind`: the new card is the loser; the server emits `card.merged {loser_id: new,
+survivor_id: existing}`.
+
+For cards, "live" means the card's own `deleted_at IS NULL` (the note may be tombstoned).
+
+- Emitted ops are minted with the server's clock *after* observing the triggering op (so their
+  HLC is greater), carry `device_id` = the server device and `caused_by_op_id` = the triggering
+  op, are applied by the same apply function, and get the next `seq` values.
+- The triggering op itself is **applied to N in full first** and is `accepted`. The unique
+  indexes are a safety net and must never reject an op (on Postgres the write that creates the
+  collision and the tombstoning of the loser must be one statement; see `contracts/db/test/smoke.sql`).
+- No collision, no merge: if N is already tombstoned, or the `entry_seq` write lost the register,
+  or W is tombstoned, nothing is emitted.
+- `media` and `list` decks have natural keys but no merge rule; they are created only by the
+  server (OPS.md, `deck.created`).
+
+### 8.2 Applying `note.merged` / `card.merged` (every replica)
+
+Given loser L and survivor W (if W itself has `merged_into_id`, use that row instead; if L
+already has `merged_into_id`, the op is a no-op):
+
+1. **Forward registers.** For every register `r` that has a clock in `L.clocks`, except
+   `deleted` (and, for notes, `entry_seq`): write `(L's current value of r, L.clocks[r])` to W by
+   the clock rule. Registers of L without a clock are not forwarded.
+2. **Tombstone L.** If `L.deleted_at IS NULL`, set it to `wall(merge op hlc)`. If it is already
+   set, **leave it**. Never write `clocks.deleted` here. Set `L.merged_into_id = W`,
+   `L.updated_at = max(L.updated_at, wall(merge op hlc))`.
+3. **Flatten.** Every row whose `merged_into_id` is L gets `merged_into_id = W`. A
+   `merged_into_id` never points at a row that itself has one.
+4. `card.merged` only: replay W (section 9); L's cache columns are no longer maintained.
+
+`L.deleted_at` is order-independent: a `note.deleted` / `card.deleted` addressed to L writes the
+`deleted` register by the clock rule whenever it arrives (before the merge: the merge then leaves
+`deleted_at` alone; after the merge: the register has no clock yet, so the delete wins and
+overwrites the merge's value). Result on every replica: `wall` of the highest delete clock if any
+delete op exists for L, else `wall` of the merge op
+(scenario [`duplicate-deleted-before-push`](examples/scenarios/duplicate-deleted-before-push.json)).
+
+### 8.3 After the merge (every replica)
+
+Any op that writes a register of a row whose `merged_into_id` is set is applied **twice**: to the
+addressed row, and — except `deleted` and `entry_seq` — to the row `merged_into_id` points at,
+each by the clock rule with the op's own value and clock. This covers `note.updated`,
+`card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`,
+`card.preset_set`.
+
+- `note.deleted` / `card.deleted` addressed to a loser affect only the loser.
+- `review.logged` for a loser card is inserted with the loser's `card_id`; it belongs to the
+  survivor's replay set (9.1).
+- Merges are permanent. Changing a loser's `entry_seq` afterwards does not un-merge it and is not
+  forwarded.
+
+*Why this converges.* The survivor's register `r` ends up holding the write with the highest
+clock among all writes ever addressed to the survivor or any of its losers: a replica that
+applied a loser's write before the merge forwards it in step 1; one that applies it after the
+merge forwards it by 8.3; the clock rule makes both orders and any repetition give the same result.
+
+### 8.4 Accepted trade-offs (stated, not fixed)
+
+1. **A merge triggered by an `entry_seq` write stays, even if that write later loses.** If A
+   re-matches note X onto W's entry at clock 10 and B re-matches X elsewhere at clock 20, the
+   outcome depends on which op the server sees first: A first → X is merged into W, permanently,
+   and B's newer value only changes the tombstone; B first → A's write loses the register, there is
+   no collision and X stays live. Scenarios
+   [`rematch-arrival-order-a`](examples/scenarios/rematch-arrival-order-a.json) and
+   [`-b`](examples/scenarios/rematch-arrival-order-b.json). All replicas converge either way,
+   because the verdict is in the log.
+2. **A delete racing a duplicate depends on arrival order too.** If A deletes W while B creates
+   a duplicate L: A's delete first → W is not live, L does not collide and lives on; B's create
+   first → L is merged into W, then W is deleted, and the word is gone on both.
+3. **A concurrent `note.deleted` on the survivor hides the duplicate's cards.** In the second
+   case above, the cards B just created (now merged into W's cards) disappear from B's queue. B's
+   reviews stay in `review_log`. Scenario
+   [`survivor-deleted-concurrently`](examples/scenarios/survivor-deleted-concurrently.json).
+4. **A duplicate's filled-in values reach the survivor even if the duplicate was deleted before
+   it was ever pushed.** Ops arrive in HLC order: `note.created L` (merged, values forwarded),
+   then `note.deleted L` (affects only L). Scenario
+   [`duplicate-deleted-before-push`](examples/scenarios/duplicate-deleted-before-push.json).
+5. **A duplicate's value can replace the survivor's** if its clock is newer (it is an ordinary
+   write). Values left empty in the duplicate never do.
+6. **A merge can add a card kind to the survivor** that the user had deleted there (8.1 step 2
+   creates a missing live card).
+
+### 8.5 References to a loser are resolved by readers, never rewritten
+
+Rows that reference a note or card keep the id they were written with: `card.note_id`,
+`review_log.card_id`, `deck_item.item_key` / `note_id`, `confusable.note_a_id` / `note_b_id`.
+Readers resolve through `merged_into_id` (one hop; it is never a chain):
+
+- **Reviews:** section 9.1.
+- **Deck items:** an item `n:<id>` whose note has `merged_into_id = W` means W. The *effective
+  identity* of an item is `e:<seq>` if its key is `e:<seq>` or its resolved note has a non-null
+  `entry_seq`, else `n:<resolved note id>`. If several live items of one deck have the same
+  effective identity they are **one** item: the one with the smallest `(position, item_key)`;
+  the others are ignored. An item whose resolved note is tombstoned is hidden.
+- **Confusables:** both ids are resolved. Rows that resolve to the same unordered pair and
+  reason are one pair whose status is that of the row with the highest `(rank, hlc)`; a row whose
+  two ids resolve to the same note is ignored; a pair with a tombstoned resolved note is hidden.
+- Scenario [`duplicate-kanji-deck-item-confusable`](examples/scenarios/duplicate-kanji-deck-item-confusable.json).
+
+### 8.6 On the device that created the duplicate
+
+Between applying `note.merged` and receiving the `card.merged` ops, the loser's cards are hidden
+(their note is a tombstone) and not yet part of any survivor. This window is normally a single
+pull page. Nothing is lost: the reviews are in `review_log` and join the survivor's replay set
+when `card.merged` is applied.
+
+## 9. Replay
+
+`card.state`, `step`, `stability`, `difficulty`, `due_at`, `interval_days`, `last_review_at`,
+`last_review_id`, `reps`, `lapses`, `weights_version` are a **cache**. They never travel in ops.
+
+### 9.1 Replay set
+
+The reviews that determine card C's cache are all `review_log` rows with
+
+- `card_id = C` **or** `card_id` = a card whose `merged_into_id = C`,
+- `undone_at IS NULL`,
+- `review_type IN ('scheduled', 'learning', 'manual')`,
+
+ordered by `(review_log.hlc, review_log.id)`. `drill` and `cram` rows are never in a replay set.
+The **effective preset** of C is the row `C.preset_id` points at, or the Default preset if that
+row is tombstoned.
+
+### 9.2 What forces a replay
+
+"Target" = the card the op addresses, or its survivor if it has `merged_into_id`.
+
+| Event (the op was applied, not merely received) | Cards | Kind |
+|---|---|---|
+| `review.logged` (schedule-feeding type) that sorts **after** the target's last folded review, or the target has none | target | incremental fold |
+| `review.logged` (schedule-feeding type) that sorts **before** the target's `last_review_id` row in `(hlc, id)` order — out-of-order arrival | target | full replay |
+| `review.undone` that changes a schedule-feeding review from not-undone to undone | target | full replay |
+| `card.merged` | survivor | full replay |
+| `card.preset_set` that wins (directly or forwarded) | the card it won on | full replay |
+| `fsrs_params.updated` that wins any register except `name` | every card with that effective preset | full replay |
+| `fsrs_params.deleted`, first transition to tombstoned | every card with that `preset_id` | full replay |
+| `fsrs_params.published` that is applied | every card with that effective preset (`weights_version` mismatch) | full replay |
+| core scheduler version changed (app/server upgrade; local, not an op) | all | full replay |
+
+Nothing else touches a cache: not suspend/bury/flag, not note edits, not settings, not word status.
+
+### 9.3 Rules
+
+- The cache is a pure function of (replay set in order, effective preset row, core version). The
+  function is T006's; it MUST be deterministic (fuzz seeded from stored data only), and folding
+  one more review into a cache MUST give the same result as a full replay.
+- Elapsed time between consecutive reviews is `reviewed_at` difference, **clamped to ≥ 0**
+  (clock skew can make `reviewed_at` disagree with HLC order).
+- An empty replay set (or one ending in `manual`/`reset`) gives `state = 'new'`, `due_at = NULL`.
+- A replay is done **in the transaction that applied the triggering op**. The only event that
+  may be handled lazily is the `weights_version` mismatch, because the mismatch itself is the
+  durable marker; such a card MUST be replayed before its cache is next read.
+- Caches of cards that are tombstoned or merged losers need not be maintained.
+- A device answering a card computes the new cache itself (it is the "incremental fold" of the
+  `review.logged` it mints, section 4).
+
+## 10. Rejected ops
+
+A rejected op is one the server permanently refused (5.3). On the device its **local effect is
+still applied**, so the device knowingly differs from the server until the user decides.
+
+### 10.1 What the device does on rejection
+
+- `pending_op.state = 'rejected'`, `last_error = "<code>: <message>"`. The row is never purged,
+  retried or rolled back automatically.
+- Syncing continues: later ops are pushed, pulls are applied.
+- The sync status MUST show the number of rejected ops, and a list with, per op: what it was
+  (`op_type`, a human label of the entity), when (`created_at`), and why (`last_error`; the code
+  is mapped to an i18n string, unknown codes to a generic one).
+- With a correct client, rejections do not happen. They indicate a client bug, a client newer
+  than the server (`unsupported_op`), or tampering.
+
+### 10.2 The two user actions
+
+| Action | Effect |
+|---|---|
+| **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. |
+| **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
+
+The UI SHOULD offer "discard all". There is no automatic cascade: if a rejected `note.created`
+is discarded while a rejected `card.created` for it is kept, the kept op simply has no effect
+after the rebuild (7.7) and stays listed.
+
+### 10.3 Rebuild: how a local effect is rolled back
+
+Replicas keep no undo information, so the effect of a discarded op is removed by rebuilding the
+learning tables from the server's log. Requires connectivity; while `rebuild_pending` is set
+the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
+
+1. In one transaction: delete every row of every table in `Learning.sq` and `Media.sq`
+   (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"`. Keep
+   `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`).
+2. Pull from 0 until `has_more` is false (section 6).
+3. In one transaction: re-apply, in ascending `hlc`, every `pending_op` row in state `pending`
+   or `rejected` with the local apply function (their effects are not in the log); then delete
+   the `rebuild_pending` key.
+4. Snapshots are re-installed by the normal mechanism (`installed_content_version` is 0 again;
+   the blobs are usually still in `blob_cache`).
+
+The procedure is restartable: if the app dies, `rebuild_pending` is still set and it starts
+again from step 1. `sync_state.rebuild_pending` is a key defined by this contract (absent =
+no rebuild in progress).
+
+REST callers never see rejected ops: a REST request that would produce an invalid op fails with
+an HTTP error (T004) and nothing is minted.
+
+## 11. Convergence — the definition tests use
+
+Two replicas that have applied the same set of ops (the server's log up to some `seq`, with no
+un-pushed local ops) **converge**: the following are equal, after mapping Postgres types to the
+device representation (`contracts/db/SCHEMA.md` 5.1):
+
+1. **Every row of every op-written table, all op-written columns** — including tombstones and
+   `clocks` — for `note_type`, `note`, `card`, `review_log`, `word_status`, `deck`, `deck_item`
+   (rows with non-NULL `hlc`), `confusable`, `grammar_point`, `sentence_grammar_span` (manual
+   rows), `settings`, `fsrs_params`, `media`; with these exceptions:
+2. **Rows with `merged_into_id` set (merge losers) are compared only on `id`, `merged_into_id`
+   and `deleted_at`.** Their registers and clocks may differ: after a two-level merge
+   (L1 → M → W) a late write addressed to L1 is forwarded to W but not to the tombstone M, while a
+   replica that applied the write before the merges has it on M too. Live rows are unaffected.
+   Scenario [`merge-two-level`](examples/scenarios/merge-two-level.json).
+3. **Card cache columns** are compared only for cards that are live and not losers, and only
+   between replicas running the same core version, after all pending replays (9.3).
+4. Not compared: `word_status.updated_at` and `auto_status` (derived locally),
+   `installed_content_version`, snapshot-delivered rows, `note.search_text`, server-only tables
+   (`parse_override`, `change`, …), device-only tables.
+
+What is guaranteed about order:
+
+- Any replica that applies the log in `seq` order converges with the server.
+- A device that interleaves its own ops (applied at mint time) with the pulled log converges.
+- More generally, **any** interleaving of the per-device op streams converges, provided each
+  device's ops stay in their own order and an op is applied only after the rows it references
+  exist — also with ops delivered more than once (except `media.content_published`, 7.6).
+  `tools/validate.py` checks this on every scenario marked `order_free`.
+- What is **not** order-independent is the server's *verdict* (8.4 items 1–2): a different
+  arrival order at the server can produce a different log. Given the log, everything converges.
+
+## 12. Worked examples
+
+Each example exists as a scenario file with the complete ops and the expected rows; the diagrams
+show the message flow. A = phone, B = second phone, S = server. `T+n` = clock `n` ms after a base.
+
+### 12.1 Two devices review the same card offline
+
+[`examples/scenarios/reviews-same-card-offline.json`](examples/scenarios/reviews-same-card-offline.json)
+
+```mermaid
+sequenceDiagram
+    participant A as Phone A
+    participant S as Server
+    participant B as Phone B
+    Note over A,B: card C exists everywhere, both phones offline
+    A->>A: review C at T+10 (learning, good), T+30 (good)
+    B->>B: review C at T+20 (again), drill C at T+25
+    A->>S: push [review@10, review@30]
+    S-->>A: accepted seq 3, 4
+    Note over S: C cache folded: last review = A@30
+    B->>S: push [review@20, drill@25]
+    S-->>B: accepted seq 5, 6
+    Note over S: review@20 sorts before last review, full replay of C
+    B->>S: pull since=2
+    S-->>B: seq 3..6
+    Note over B: A@10 and A@30 are new here, A@10 sorts before B@20, full replay
+    A->>S: pull since=4
+    S-->>A: seq 5, 6
+    Note over A: B@20 sorts before A@30, full replay
+```
+
+| Replay position | Review | Device | Type | In replay set |
+|---|---|---|---|---|
+| T+10 | r1 | A | learning | yes |
+| T+20 | r3 | B | scheduled | yes |
+| T+25 | r4 | B | drill | no (logged only) |
+| T+30 | r2 | A | scheduled | yes |
+
+Nothing is overwritten or dropped; all three replicas compute C's schedule from r1, r3, r2 in
+that order.
+
+### 12.2 Edit versus delete
+
+[`examples/scenarios/edit-vs-delete.json`](examples/scenarios/edit-vs-delete.json)
+
+```mermaid
+sequenceDiagram
+    participant A as Phone A
+    participant S as Server
+    participant B as Phone B
+    A->>A: T+10 set tags, T+30 set fields.meaning, T+31 review card, T+32 suspend card
+    B->>B: T+20 delete note N
+    B->>S: push [note.deleted N @20]
+    S-->>B: accepted
+    Note over S: N.deleted_at = T+20
+    A->>S: push [tags@10, meaning@30, review@31, suspend@32]
+    S-->>A: all accepted
+    Note over S: registers of the tombstone updated, N stays deleted
+    A->>S: pull
+    S-->>A: note.deleted N
+    Note over A: N disappears, its card is hidden with it
+```
+
+| Op | Clock | Effect on every replica |
+|---|---|---|
+| `note.updated` tags | T+10 | applied to the tombstone's `tags` |
+| `note.deleted` | T+20 | `deleted_at = T+20`; permanent |
+| `note.updated` fields.meaning | T+30 | applied to the tombstone's field; does **not** undelete |
+| `review.logged` | T+31 | inserted; inert (card hidden by its note) |
+| `card.suspended` | T+32 | applied to the card row |
+
+The spec's rule "a delete beats an older edit" holds, and a delete also beats a newer edit.
+
+### 12.3 The same word added on two devices
+
+[`examples/scenarios/same-word-added-twice.json`](examples/scenarios/same-word-added-twice.json)
+
+```mermaid
+sequenceDiagram
+    participant A as Phone A
+    participant S as Server
+    participant B as Phone B
+    Note over A,S: W = note for 食べる with meaning card (mnemonic "tabby eats" @10)
+    B->>B: offline: create L for 食べる @20 (sentence), cards meaning @21, reading @22
+    B->>B: tag L @30, suspend L meaning card @31, review it @32
+    B->>S: push [note.created L, card.created x2, note.updated, card.suspended, review.logged]
+    Note over S: note.created L collides with W
+    S->>S: emit note.merged L to W, forwards sentence@20
+    S->>S: card.created L meaning, emit card.merged into W meaning
+    S->>S: card.created L reading, emit card.created W reading, emit card.merged
+    Note over S: tags@30 and suspended@31 address L, applied to L and forwarded to W
+    S-->>B: all accepted
+    B->>S: pull
+    S-->>B: note.merged, card.merged, card.created, card.merged (and own ops)
+    Note over B: B merges locally, forwards L sentence@20, tags@30, suspended@31
+    A->>S: pull
+    S-->>A: everything
+    Note over A: same result
+```
+
+| Value on W | Before | After | Why |
+|---|---|---|---|
+| `mnemonic` | "tabby eats" @10 | unchanged | L's mnemonic was empty: no clock, not forwarded |
+| `fields.sentence` | (none) | "パンを食べる" @20 | forwarded from L |
+| `fields.meaning` | (none) | (none) | L's `""` was dropped at creation |
+| `tags` | [] | ["anime"] @30 | addressed to L after the merge, forwarded |
+| meaning card `suspended` | false | true @31 | addressed to L's card, forwarded |
+| reading card | missing | created by the server | so L's reading card has a survivor |
+| replay set of meaning card | A's review | B's review @32, A's review @33 | `review_log.card_id` stays L's card |
+
+### 12.4 Every conflict case and where it is shown
+
+| Case | Rule | Scenario |
+|---|---|---|
+| Spec: reviews never conflict | 9, 7.9 | `reviews-same-card-offline` |
+| Spec: note fields, tags — LWW per field | 7.1 | `note-fields-lww` |
+| Spec: settings — LWW per key | 7.4 | `lww-settings-suspend-bury-word-status` |
+| Spec: suspend, bury, word status — LWW | 7.1, 7.4 | `lww-settings-suspend-bury-word-status` |
+| Spec: deletes — tombstones beat edits | 7.3 | `edit-vs-delete` |
+| Spec: same word added twice | 8 | `same-word-added-twice` |
+| Undo on two devices | 7.9 | `undo-on-two-devices` |
+| Deck item add/remove races | 7.4 | `deck-item-put-remove` |
+| Confusable: decision vs suggestion | OPS.md | `lww-settings-suspend-bury-word-status` |
+| Two-level merge, convergence projection | 8.2, 11 | `merge-two-level` |
+| Loser referenced by deck item / confusable | 8.5 | `duplicate-kanji-deck-item-confusable` |
+| Duplicate deleted before push; loser `deleted_at` | 8.2, 8.4 | `duplicate-deleted-before-push` |
+| Survivor deleted concurrently | 8.4 | `survivor-deleted-concurrently` |
+| Re-match races (arrival-order dependence) | 8.4 | `rematch-arrival-order-a`, `-b` |
+| Rejected ops | 5.3, 10 | `rejected-ops` |
+| Retried push | 5.2 | `examples/batches/push-response.retry.json` |
+
+## 13. Scenario files (for the convergence and fuzz tests)
+
+`examples/scenarios/*.json`, schema [`scenario.schema.json`](scenario.schema.json):
+
+- `log`: the server's complete log for the scenario, in `seq` order, in pulled form —
+  server-emitted ops included, with the ids and clocks the server "happened" to mint.
+- `expected.rows`: partial rows per table in device representation; `expected.absent`: keys that
+  must not exist; `expected.replay_sets`: card id → review ids in replay order.
+- `rejected`: pushed ops the server must refuse, with the expected code.
+- `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
+  `tools/validate.py` with 300 random interleavings and re-deliveries each).
+
+How implementations use them:
+
+- **Apply function (core, device):** start from an empty replica (built-ins seeded), apply `log`
+  in order, compare with `expected`; then apply random interleavings as described and compare
+  under the section 11 projection. The fuzz test generalises this with generated logs.
+- **Server:** push each device's ops (those whose `device_id` is not the server's) in `log`
+  order; the server must emit ops equal to the log's server-emitted ones **except for `op_id`,
+  `hlc`, `seq` and the `id` of a server-created card**; then compare tables with `expected`.
+  Push every `rejected[].op` and expect `rejected[].code`.
+
+## 14. Cross-check: table ↔ op ↔ API
+
+Every learning-data table has at least one op; every op has a schema, a conflict rule and an
+example (enforced by `check.sh`). API operations are T004's; the names below follow
+`contracts/db/SCHEMA.md` section 7. Every mutating API operation is implemented by minting the
+listed op(s) on the server and passing them through the op-apply path.
+
+| Table | Ops | API operations |
+|---|---|---|
+| `note_type` | `note_type.created` / `updated` / `deleted` | `GET/POST /note-types`, `PATCH/DELETE /note-types/{id}` |
+| `note` | `note.created` / `updated` / `deleted` / `merged` | `GET/POST /notes`, `PATCH/DELETE /notes/{id}`, `POST /ankiconnect` (`addNote`) |
+| `card` | `card.created` / `suspended` / `unsuspended` / `buried` / `unburied` / `flag_set` / `preset_set` / `deleted` / `merged` | `GET /cards`, `POST /cards/bulk`, `GET /review/queue` |
+| `review_log` | `review.logged`, `review.undone` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`, `POST /cards/bulk` (reschedule/reset → `manual`), `POST /media/import/jpdb` (history) |
+| `word_status` | `word.status_set`, `word.status_cleared` | `PUT/DELETE /words/{seq}/status` |
+| `deck` | `deck.created` / `updated` / `deleted` / `content_published` | `GET/POST /decks`, `PATCH/DELETE /decks/{id}` |
+| `deck_item` | `deck.item_put`, `deck.item_removed` (+ snapshot via `deck.content_published`) | `GET /decks/{id}/items`, `PUT/DELETE /decks/{id}/items/{key}` |
+| `confusable` | `confusable.suggested` / `confirmed` / `rejected` | `GET /words/{seq}/confusables`, confirm/reject endpoints |
+| `grammar_point` | `grammar.created` / `updated` / `deleted` | `GET/POST /grammar`, `PATCH/DELETE /grammar/{id}` |
+| `sentence_grammar_span` (manual) | `grammar.span_put`, `grammar.span_removed` | `GET /grammar/{id}/examples`, span create/remove endpoints |
+| `settings` | `settings.set` | `GET/PUT /settings` |
+| `fsrs_params` | `fsrs_params.created` / `updated` / `deleted` / `published` | `GET/POST/PATCH/DELETE /presets`; `fsrs-optimize` job |
+| `media` | `media.created` / `updated` / `deleted` / `content_published` | `POST /media/import`, `POST /media/import/jpdb`, `PATCH/DELETE /media/{id}` |
+| `parse_override` (server only) | `parse_override.put`, `parse_override.deleted` | `PUT/DELETE /parse-overrides/{id}` |
+
+All 45 ops also flow through `POST /sync/push` (client-emittable ones) and `GET /sync/pull` (all).
+
+## 15. Versioning
+
+- Payloads are closed, so **every payload change is a new `op_version`** of that op type, with
+  its own schema file (`ops/<op_type>.v2.schema.json`). A replica that does not know the version
+  cannot apply the op and stops pulling at it (section 6, *upgrade required*). Therefore: upgrade
+  the server first, then clients; and a server keeps accepting and serving every older
+  `op_version` forever (the log contains them).
+- New op types follow the same rule: old clients stop pulling at the first one they do not know.
+- New `settings` keys, new keys inside open JSON shapes, new `origin` values and new rejection
+  codes need no version change.
+- The HTTP body shapes (`batch.schema.json`) are closed; changing them is an API version matter (T004).
+
+## 16. Verifying
+
+```
+contracts/sync/check.sh
+```
+
+Needs `python3` with the `jsonschema` package (≥ 4.18), or `uv` (the script then runs
+`uv run --with jsonschema`). It checks that every schema is valid, every op type has a schema, an
+example and an OPS.md section with a conflict rule, every example validates and every
+`examples/invalid` instance is rejected, and that every scenario's expected state follows from the
+rules (reference model) including the idempotency and interleaving claims.
+
+## 17. Edge cases — index
+
+| Situation | Behaviour | Where |
+|---|---|---|
+| Empty push | Not allowed (`minItems: 1`); a client with nothing to push does not call. | 5.1 |
+| Empty pull | `ops: []`, `next_since = since`, `has_more = false`. | 6 |
+| `set` with no registers | `schema_invalid`. | op schemas |
+| Same op pushed twice | Second is `duplicate`; no effect, no new `change` row. | 5.2 |
+| Same row created twice (same id) | Second `*.created` is a no-op. | 7.2 |
+| Same review id in two ops | Second is accepted, no effect. | OPS.md |
+| Same thing created twice (different ids) | Notes/cards: server merge. Deck items, spans, confusables, word status, settings: natural key, one row. Grammar points, user decks, presets, note types: two rows (no natural key). | 8, 7.4 |
+| Op arrives out of order | Clock rule / replay; never rejected for being old. | 7.1, 9.2 |
+| Clock ahead or behind | No rejection; warning; reviews use `reviewed_at`. | 3.4 |
+| Op for a deleted row | Applied to the tombstone; row stays deleted. | 7.3 |
+| Child created under a deleted parent | Accepted; hidden. | 7.3 |
+| Op for a merged row | Applied to it and forwarded. | 8.3 |
+| Op for a row the server never saw | `unknown_reference`. | 5.3 |
+| Row created offline | Client-generated UUIDv7; ops pushed in HLC order, parents first. | 4 |
+| Review for a deleted / merged card | Inserted; inert / counts for the survivor. | 9.1 |
+| Undo twice | Earliest wins. | 7.9 |
+| Undo for an unknown review | Server: `unknown_reference`. Device: no-op. | OPS.md |
+| Delete the Default preset or a built-in note type | `immutable`. | OPS.md |
+| Client newer than server | `unsupported_op`; Retry after the server upgrade. | 5.3, 10.2 |
+| Client older than server | Stops pulling at the unknown op; *upgrade required*. | 6 |
+| Lost push response | Push again; `duplicate`. | 5.2 |
+| App killed mid-pull | The page is one transaction with the cursor: all or nothing. | 6 |
+| Device restored from backup | Must re-pair (new device id). | 3.3 |

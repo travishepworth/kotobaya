@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "media.content_published",
+  "description": "Server publishes parse progress and, when parsed, a new content snapshot. OPS.md#mediacontent_published",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "media_id",
+    "parse_status",
+    "content_version",
+    "content_blob_hash"
+  ],
+  "properties": {
+    "media_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Media. Equals entity_id."
+    },
+    "parse_status": {
+      "enum": [
+        "pending",
+        "parsing",
+        "parsed",
+        "failed"
+      ],
+      "description": "New parse_status."
+    },
+    "parse_error": {
+      "description": "Error text when parse_status = failed, else null. Default null.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "content_version": {
+      "type": "integer",
+      "description": "content_version after this op; 0 = nothing published yet. Applied iff >= the stored one.",
+      "minimum": 0
+    },
+    "content_blob_hash": {
+      "description": "Snapshot blob for content_version; null iff content_version = 0.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "if": {
+    "properties": {
+      "content_version": {
+        "const": 0
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "content_blob_hash": {
+        "type": "null"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "content_blob_hash": {
+        "type": "string"
+      }
+    }
+  }
+}

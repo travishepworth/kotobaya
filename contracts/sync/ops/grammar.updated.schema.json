@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "grammar.updated",
+  "description": "Sets a subset of a grammar point's registers, all at the op's hlc. OPS.md#grammarupdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "set"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the grammar point. Equals the envelope's entity_id."
+    },
+    "set": {
+      "type": "object",
+      "description": "Registers to write. At least one.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Register 'title'.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Register 'pattern': display pattern, e.g. 〜ざるを得ない."
+        },
+        "meaning": {
+          "type": "string",
+          "description": "Register 'meaning'."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Register 'explanation' (Markdown)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Register 'notes' (Markdown)."
+        },
+        "jlpt": {
+          "description": "Register 'jlpt': N-level 1-5, or null.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detection_rules": {
+          "type": "array",
+          "description": "Register 'detection_rules' (whole array). [] = not auto-detected.",
+          "items": {
+            "type": "object",
+            "required": [
+              "rule"
+            ],
+            "description": "Unknown keys are preserved.",
+            "properties": {
+              "rule": {
+                "type": "string",
+                "description": "Token-pattern rule."
+              },
+              "draft": {
+                "type": "boolean",
+                "description": "true = not yet used for detection."
+              }
+            }
+          }
+        },
+        "related_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "../common.schema.json#/$defs/uuid"
+          },
+          "description": "Register 'related_ids': soft references to other grammar points."
+        },
+        "links": {
+          "type": "array",
+          "description": "Register 'links' (whole array).",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "url"
+            ],
+            "description": "Unknown keys are preserved.",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Link text."
+              },
+              "url": {
+                "type": "string",
+                "description": "URL."
+              }
+            }
+          }
+        },
+        "is_stub": {
+          "type": "boolean",
+          "description": "Register 'is_stub': true for seeded title-and-pattern-only points."
+        }
+      }
+    }
+  }
+}

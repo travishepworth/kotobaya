@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "parse_override.put",
+  "description": "Creates or replaces a tokenisation correction (whole row, last-writer-wins on hlc). Server only: devices skip it. OPS.md#parse_overrideput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "match_text",
+    "tokens"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the parse override. Equals the envelope's entity_id."
+    },
+    "media_id": {
+      "description": "Scope: null = all media. Soft reference. Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sentence_id": {
+      "description": "Narrowest scope: one sentence; requires media_id. Soft reference. Default null.",
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "match_text": {
+      "type": "string",
+      "description": "Exact surface substring this override re-tokenises.",
+      "minLength": 1
+    },
+    "tokens": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Replacement tokens; surfaces must concatenate to match_text (server rejects otherwise).",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface"
+        ],
+        "description": "Unknown keys are preserved.",
+        "properties": {
+          "surface": {
+            "type": "string",
+            "description": "Token surface.",
+            "minLength": 1
+          },
+          "lemma": {
+            "type": "string",
+            "description": "Dictionary form."
+          },
+          "seq": {
+            "description": "Entry; null = force 'no entry'.",
+            "anyOf": [
+              {
+                "$ref": "../common.schema.json#/$defs/entry_seq"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "note": {
+      "type": "string",
+      "description": "Free-text remark. Default ''.",
+      "default": ""
+    }
+  },
+  "if": {
+    "properties": {
+      "sentence_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "sentence_id"
+    ]
+  },
+  "then": {
+    "required": [
+      "media_id"
+    ],
+    "properties": {
+      "media_id": {
+        "type": "string"
+      }
+    }
+  }
+}

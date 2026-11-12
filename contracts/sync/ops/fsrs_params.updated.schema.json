@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fsrs_params.updated",
+  "description": "Sets a subset of a preset's registers. A winning write to any register except 'name' forces a replay of every card on the preset. OPS.md#fsrs_paramsupdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "set"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the preset. Equals the envelope's entity_id."
+    },
+    "set": {
+      "type": "object",
+      "description": "Registers to write. At least one.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Register 'name'.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "desired_retention": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "description": "Register 'desired_retention'. Column default 0.9."
+        },
+        "maximum_interval_days": {
+          "type": "integer",
+          "description": "Register 'maximum_interval_days'. Column default 36500.",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "learning_steps_s": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Register 'learning_steps_s': steps in seconds, in order; [] = none."
+        },
+        "relearning_steps_s": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Register 'relearning_steps_s': steps in seconds, in order; [] = none."
+        },
+        "fuzz": {
+          "type": "boolean",
+          "description": "Register 'fuzz'. Column default true."
+        },
+        "easy_days": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "Register 'easy_days': load multiplier per ISO weekday, Monday first. Column default [1,1,1,1,1,1,1]."
+        }
+      }
+    }
+  }
+}

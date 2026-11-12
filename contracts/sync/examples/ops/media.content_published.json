@@ -1,0 +1,18 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000029",
+  "op_type": "media.content_published",
+  "op_version": 1,
+  "entity_type": "media",
+  "entity_id": "0193a1b2-0007-7000-8000-000000000001",
+  "device_id": "00000000-0000-7000-8000-000000000001",
+  "hlc": "0193a1b2c029-0000-00000000-0000-7000-8000-000000000001",
+  "payload": {
+    "media_id": "0193a1b2-0007-7000-8000-000000000001",
+    "parse_status": "parsed",
+    "parse_error": null,
+    "content_version": 1,
+    "content_blob_hash": "abababababababababababababababababababababababababababababababab"
+  },
+  "seq": 41,
+  "caused_by_op_id": null
+}

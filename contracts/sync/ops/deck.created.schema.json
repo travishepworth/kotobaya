@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deck.created",
+  "description": "Creates a deck. Clients may create type user and smart only; media and list decks are created by the server. OPS.md#deckcreated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "type"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Id of the new deck (for a media deck: equal to media_id). Equals the envelope's entity_id."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name; not unique.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "type": {
+      "enum": [
+        "user",
+        "media",
+        "list",
+        "smart"
+      ],
+      "description": "Immutable. media and list: server-emitted only."
+    },
+    "language": {
+      "const": "ja",
+      "description": "Default 'ja'."
+    },
+    "priority": {
+      "type": "integer",
+      "description": "New cards are drawn from enabled decks in ascending (priority, id). Default 0.",
+      "default": 0,
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "false = supplies no new cards. Default true.",
+      "default": true
+    },
+    "new_cards_per_day": {
+      "description": "Per-deck daily new-card limit; null = only the global limit applies.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reviews_per_day": {
+      "description": "Per-deck daily review limit; null = only the global limit applies.",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "settings": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common.schema.json#/$defs/key"
+      },
+      "description": "Open object; each top-level key is its own register 'settings.<key>'. Known keys: order, add_kanji, card_kinds. Keys whose value is null, '', [] or {} are dropped at creation.",
+      "default": {}
+    },
+    "query": {
+      "type": "string",
+      "description": "Card search-language string. Required iff type = smart."
+    },
+    "media_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Required iff type = media; equals id."
+    },
+    "list_key": {
+      "type": "string",
+      "description": "Required iff type = list. Slug, e.g. jlpt-n3.",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "smart"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "query"
+        ]
+      },
+      "else": {
+        "properties": {
+          "query": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "media"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "media_id"
+        ]
+      },
+      "else": {
+        "properties": {
+          "media_id": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "list"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "list_key"
+        ]
+      },
+      "else": {
+        "properties": {
+          "list_key": false
+        }
+      }
+    }
+  ]
+}

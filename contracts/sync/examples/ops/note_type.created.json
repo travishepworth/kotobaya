@@ -1,0 +1,39 @@
+{
+  "op_id": "0193a1b2-00ff-7000-8000-000000000001",
+  "op_type": "note_type.created",
+  "op_version": 1,
+  "entity_type": "note_type",
+  "entity_id": "0193a1b2-0008-7000-8000-000000000001",
+  "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+  "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+  "payload": {
+    "id": "0193a1b2-0008-7000-8000-000000000001",
+    "name": "Sentence (mined)",
+    "base_type": "sentence",
+    "fields": [
+      {
+        "key": "sentence",
+        "label": "Sentence",
+        "kind": "text"
+      },
+      {
+        "key": "translation",
+        "label": "Translation",
+        "kind": "text"
+      },
+      {
+        "key": "audio",
+        "label": "Audio",
+        "kind": "audio"
+      }
+    ],
+    "templates": {
+      "comprehension": {
+        "default": true,
+        "front": "<div class=cloze>{{sentence}}</div>",
+        "back": null
+      }
+    },
+    "css": ".cloze { font-size: 1.4em; }"
+  }
+}

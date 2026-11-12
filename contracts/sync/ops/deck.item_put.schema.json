@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deck.item_put",
+  "description": "Adds an item to a user deck or moves it. Whole-row last-writer-wins on hlc together with deck.item_removed. OPS.md#deckitem_put",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deck_id",
+    "item_key",
+    "position"
+  ],
+  "properties": {
+    "deck_id": {
+      "$ref": "../common.schema.json#/$defs/uuid",
+      "description": "Deck; must exist and be of type user."
+    },
+    "item_key": {
+      "$ref": "../common.schema.json#/$defs/item_key",
+      "description": "What is (or was) in the deck. entity_id = '<deck_id>|<item_key>'. For 'n:' keys the note must exist."
+    },
+    "position": {
+      "type": "integer",
+      "description": "Ascending new-card order within the deck; sparse (clients space by 1024).",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    }
+  }
+}

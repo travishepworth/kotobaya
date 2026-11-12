@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sync batch",
+  "description": "Entry point for the sync HTTP bodies. A document is exactly one of the three shapes; reference a specific one as batch.schema.json#/$defs/PushRequest, #/$defs/PushResponse or #/$defs/PullResponse. SYNC.md sections 5 and 6.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/PushRequest"
+    },
+    {
+      "$ref": "#/$defs/PushResponse"
+    },
+    {
+      "$ref": "#/$defs/PullResponse"
+    }
+  ],
+  "$defs": {
+    "PushRequest": {
+      "title": "PushRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ops"
+      ],
+      "description": "Body of POST /sync/push.",
+      "properties": {
+        "ops": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "description": "Ops minted by ONE device (all device_id equal), in strictly ascending hlc. The server processes them in array order.",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "op.schema.json"
+              },
+              {
+                "properties": {
+                  "seq": false,
+                  "caused_by_op_id": false
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "PushRequestLenient": {
+      "title": "PushRequestLenient",
+      "type": "object",
+      "required": [
+        "ops"
+      ],
+      "description": "The only whole-body check a server may fail a push request on (HTTP 400). Everything stricter is checked per op and reported as a 'rejected' result, so one bad op never blocks the rest of the outbox.",
+      "properties": {
+        "ops": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "required": [
+              "op_id"
+            ],
+            "properties": {
+              "op_id": {
+                "$ref": "common.schema.json#/$defs/uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "PushResult": {
+      "title": "PushResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op_id",
+        "status"
+      ],
+      "description": "Outcome of one pushed op.",
+      "properties": {
+        "op_id": {
+          "$ref": "common.schema.json#/$defs/uuid",
+          "description": "The op this result is for."
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "duplicate",
+            "rejected"
+          ],
+          "description": "accepted: applied and logged now. duplicate: this op_id was already in the log; nothing was done. rejected: permanently refused; nothing was done."
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "change.seq of the op. Present iff status is accepted or duplicate."
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message"
+          ],
+          "description": "Present iff status = rejected.",
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "examples": [
+                "schema_invalid",
+                "unsupported_op",
+                "device_mismatch",
+                "server_only",
+                "unknown_reference",
+                "invalid_value",
+                "invalid_target",
+                "immutable"
+              ],
+              "description": "Machine-readable reason (SYNC.md section 5.3). Open set: clients treat an unknown code as a generic permanent rejection."
+            },
+            "message": {
+              "type": "string",
+              "description": "English diagnostic for logs and the sync-status screen; not for parsing."
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "rejected"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "seq": false
+            }
+          },
+          "else": {
+            "required": [
+              "seq"
+            ],
+            "properties": {
+              "error": false
+            }
+          }
+        }
+      ]
+    },
+    "PushResponse": {
+      "title": "PushResponse",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "results",
+        "high_water_seq",
+        "server_time"
+      ],
+      "description": "Body of a successful POST /sync/push response.",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PushResult"
+          },
+          "description": "Exactly one result per pushed op, in request order."
+        },
+        "high_water_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest change.seq committed when the response was built; >= every seq in results. Informational (pending pull count)."
+        },
+        "server_time": {
+          "$ref": "common.schema.json#/$defs/instant_ms",
+          "description": "Server wall clock when the response was built; clients use it only to warn about clock skew."
+        }
+      }
+    },
+    "PullResponse": {
+      "title": "PullResponse",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ops",
+        "next_since",
+        "has_more",
+        "high_water_seq",
+        "server_time"
+      ],
+      "description": "Body of GET /sync/pull?since=<seq>.",
+      "properties": {
+        "ops": {
+          "type": "array",
+          "maxItems": 1000,
+          "description": "Log entries with seq > since, in strictly ascending seq, from every origin including the requester itself.",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "op.schema.json"
+              },
+              {
+                "required": [
+                  "seq",
+                  "caused_by_op_id"
+                ]
+              }
+            ]
+          }
+        },
+        "next_since": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cursor for the next pull: seq of the last op returned, or the request's since when ops is empty."
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "true = more ops exist after next_since; pull again immediately."
+        },
+        "high_water_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest change.seq committed when the response was built."
+        },
+        "server_time": {
+          "$ref": "common.schema.json#/$defs/instant_ms",
+          "description": "As in PushResponse."
+        }
+      }
+    }
+  }
+}
