@@ -35,8 +35,8 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 sys.path.insert(0, str(Path(__file__).parent))
-from model import (CHECKED_CODES, DAY_MS, SERVER, VERDICT_OPS, Device, MissingRow, Replica,  # noqa: E402
-                   Server, remint_times, wall)
+from model import (CHECKED_CODES, DAY_MS, FLOOR_MS, SERVER, VERDICT_OPS, Device, MissingRow,  # noqa: E402
+                   Replica, Server, remint_select, remint_times, wall)
 
 VOCAB = "00000000-0000-7000-8000-000000000101"
 
@@ -476,12 +476,18 @@ def check_server(sc: dict, where: str) -> None:
     now = wall(log[-1]["hlc"])
     for r in sc.get("rejected", []):
         if r["code"] in CHECKED_CODES:
-            got = srv.validate(r["op"], r.get("received_at", now))
+            judge = srv
+            if "after_seq" in r:  # the server state at the time of the push (scenario.schema.json)
+                judge = Server(schema_problems=srv.schema_problems)
+                judge.r = run(log[: r["after_seq"]], False)
+            got = judge.validate(r["op"], r.get("received_at", now))
             if got != r["code"]:
                 fail(f"{where}: rejected op {r['op']['op_id']}: expected {r['code']}, model says {got}")
 
 
-for p in sorted((ROOT / "examples/scenarios").glob("*.json")):
+SCENARIO_FILES = sorted((ROOT / "examples/scenarios").glob("*.json")) + \
+    sorted((ROOT / "examples/remint-scenarios").glob("*.json"))
+for p in SCENARIO_FILES:
     where, sc = str(p.relative_to(ROOT)), load(p)
     must_validate("scenario.schema.json", sc, where)
     if sc["id"] != p.stem:
@@ -551,16 +557,40 @@ for p in sorted((ROOT / "examples/scenarios").glob("*.json")):
                 break
 
     check_server(sc, where)
-    if "remint" in sc:  # SYNC.md 10.4: the re-minted reviewed_at values follow from the originals
+    if "remint" in sc:  # SYNC.md 10.4: the selection and the re-minted times follow from the originals
         rm = sc["remint"]
-        rejected = {r["op"]["op_id"]: r["op"]["payload"] for r in sc.get("rejected", [])}
-        logged = {o["op_id"]: o["payload"] for o in log}
-        old = [rejected[i] for i in rm["from"]]
-        _, times = remint_times([(q["reviewed_at"], server.t["card"][q["card_id"]]["created_at"]) for q in old],
-                                rm["offset_ms"], rm["now"])
-        if [logged[i]["reviewed_at"] for i in rm["to"]] != times:
-            fail(f"{where}: re-minted reviewed_at values do not follow SYNC.md 10.4: expected {times}")
-        if any(logged[i]["id"] == q["id"] for i, q in zip(rm["to"], old)):
+        rej = {r["op"]["op_id"]: r for r in sc.get("rejected", [])}
+        logged = {o["op_id"]: o for o in log}
+        E: list = []
+        W: set = set()
+        if "creations_from" in rm:  # step 1, recomputed from the rejected rows and their codes
+            C, E, R, U, D, W = remint_select([{"op": r["op"], "last_error": r["code"]} for r in rej.values()])
+            ids = lambda rows: [r["op"]["op_id"] for r in rows]  # noqa: E731
+            if ids(E) != rm["creations_from"]:
+                fail(f"{where}: re-mint E is {ids(E)}, the scenario says {rm['creations_from']}")
+            if not set(rm["from"]) <= set(ids(R)):
+                fail(f"{where}: remint.from names an op that step 1 does not put into R")
+            deleted = sorted(C + D + U + E + R, key=lambda r: r["op"]["hlc"])
+            gone = [i for i in dict.fromkeys(ids(deleted)) if i not in set(ids(E)) | set(rm["from"])]
+            if gone != rm["discarded"]:
+                fail(f"{where}: Re-mint discards {gone}, the scenario says {rm['discarded']}")
+            if len(rm["creations_to"]) != len(E):
+                fail(f"{where}: creations_to must pair with creations_from")
+                E = []
+            for i, j in zip(rm["creations_from"], rm["creations_to"]):
+                if logged[j]["op_type"] != rej[i]["op"]["op_type"] or logged[j]["payload"] != rej[i]["op"]["payload"]:
+                    fail(f"{where}: re-minted {j} must repeat the op type and payload of {i} (step 6a)")
+        old = [rej[i]["op"]["payload"] for i in rm["from"]]
+        items = [(wall(r["op"]["hlc"]), FLOOR_MS) for r in E] + \
+            [(q["reviewed_at"], FLOOR_MS if q["card_id"] in W else server.t["card"][q["card_id"]]["created_at"])
+             for q in old]
+        if items:
+            _, times = remint_times(items, rm["offset_ms"], rm["now"])
+            got = [wall(logged[j]["hlc"]) for j in rm.get("creations_to", [])] + \
+                [logged[i]["payload"]["reviewed_at"] for i in rm["to"]]
+            if got != times:
+                fail(f"{where}: re-minted times do not follow SYNC.md 10.4 step 5: expected {times}, log has {got}")
+        if any(logged[i]["payload"]["id"] == q["id"] for i, q in zip(rm["to"], old)):
             fail(f"{where}: a re-minted review must have a new id")
 
 
@@ -843,12 +873,57 @@ if times != sorted(times) or len(times) != 7 + 6:
 if any(rid in srv.r.t["review_log"] for rid in truth):
     fail("clock-ahead story: an original (rejected) review id reached the server")
 
+
+# ------------------------------------------------------------------ backups toggled off and on (SYNC.md 6.2, C-8)
+def backups_toggle_story():
+    """durable_seq never decreases within an epoch when backups are disabled and enabled again; a
+    restore of a backup older than durable_seq starts a new epoch and is the only way ops get lost."""
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op))
+    a = Device("01931f3e-0000-7000-8000-0000000000a1")
+    srv.pt = a.pt = 0x0193a1b2c000
+    seen = []
+
+    def add(k):
+        srv.pt += 1000
+        a.pt = srv.pt
+        n = a.new_id(1)
+        a.make("note.created", {"id": n, "note_type_id": VOCAB, "entry_seq": 4000000 + k})
+        a.sync(srv)
+        seen.append(srv._meta()["durable_seq"])
+
+    add(0)
+    old = srv.backup()  # verified backup at seq 1
+    add(1)
+    srv.start(backups_disabled=True)  # restart with backups disabled: durable_seq = high_water
+    if srv.durable_seq != srv.seq:
+        fail("backups toggle: disabling backups must raise durable_seq to high_water_seq at startup")
+    add(2)
+    add(3)
+    if srv.durable_seq != srv.seq or any(r["state"] == "acked" for r in a.outbox):
+        fail("backups toggle: with backups disabled every commit is durable and the device purges")
+    srv.start(backups_disabled=False)  # enabled again: nothing is lowered
+    add(4)
+    if seen != sorted(seen) or srv.durable_seq != 4:
+        fail(f"backups toggle: durable_seq must never decrease within an epoch ({seen})")
+    srv.backup()
+    if srv.durable_seq != 5:
+        fail("backups toggle: the first verified backup after re-enabling raises durable_seq again")
+    if srv.durable_seq <= old[3]:
+        fail("backups toggle: the old backup must count as older than durable_seq (restore must warn)")
+    epoch = srv.log_epoch
+    srv.restore(old)  # the operator confirmed the warning (6.3 restore script step 1)
+    if srv.log_epoch == epoch:
+        fail("backups toggle: every restore starts a new log_epoch")
+
+
+backups_toggle_story()
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     print(f"\nFAILED: {len(errors)} problem(s)", file=sys.stderr)
     sys.exit(1)
 n_inv = len(list((ROOT / "examples/invalid").glob("*.json")))
-n_sc = len(list((ROOT / "examples/scenarios").glob("*.json")))
+n_sc = len(SCENARIO_FILES)
 n_raw = len(list((ROOT / "examples/raw-push").glob("*.body.txt")))
 print(f"ok: {len(schemas)} schemas, {len(index)} op types, {len(example_ops)} op examples, "
       f"{n_inv} invalid examples rejected (+{len(list((ROOT / 'examples/invalid-codec').glob('*.json')))} beyond the schema), {n_raw} raw push bodies (duplicate keys, depth), "

@@ -142,7 +142,11 @@ public interface ReplayEngine {
      *   rows the engine filters out are not checked), or if such a row violates the `review_log` CHECKs: a rated row (SCHEDULED/LEARNING) without
      *   [ReplayReview.rating], a MANUAL row without [ReplayReview.manualAction], or a SET_DUE row
      *   without [ReplayReview.manualDueAt]. Such rows cannot come from a database that enforces
-     *   `V1__init.sql`; the exception signals a caller bug, never a data condition to recover from.
+     *   `V1__init.sql`; the exception signals a caller bug. **Caller duty on refusal (SYNC.md 9.4,
+     *   C-8; server and devices alike):** write the refused cache
+     *   `CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)` in the same
+     *   transaction, log the card at ERROR, and let the triggering op / page / startup replay commit.
+     *   Never keep the previous cache, never fail the push.
      */
     public fun replay(reviews: List<ReplayReview>, params: SchedulerParams): CardCache
 
@@ -153,7 +157,10 @@ public interface ReplayEngine {
      *
      * @throws IllegalArgumentException if the row is not schedule-feeding or is undone, or if
      *   `cache.weightsVersion != params.weightsVersion` (folding into a stale cache would make it
-     *   permanently differ from a replica that replayed first, SYNC.md 9.3).
+     *   permanently differ from a replica that replayed first, SYNC.md 9.3). A refusal for a row that
+     *   violates the `review_log` CHECKs is handled like a refused [replay] (SYNC.md 9.4: write the
+     *   refused cache). Calling it against a refused cache ([CardCache.lastReviewId] =
+     *   `Reserved.REPLAY_REFUSED_ID`) is a precondition violation: [decide] never answers FOLD for one.
      */
     public fun fold(cache: CardCache, review: ReplayReview, params: SchedulerParams): CardCache
 
@@ -161,6 +168,9 @@ public interface ReplayEngine {
      * Decision for a `review.logged` row just inserted for target card T (the row's card, or its
      * survivor), in this order:
      * 1. not schedule-feeding, or undone → [ReplayDecision.NONE];
+     * 1b. `cache.lastReviewId == Reserved.REPLAY_REFUSED_ID` (a refused cache, SYNC.md 9.4; C-8) →
+     *    [ReplayDecision.FULL_REPLAY], before any lookup, so not even a row whose id equals the marker
+     *    can be folded into it;
      * 2. `cache.weightsVersion != params.weightsVersion` → [ReplayDecision.FULL_REPLAY];
      * 3. `cache.lastReviewId == null` → [ReplayDecision.FOLD];
      * 4. [lastFolded] is null (the row named by `lastReviewId` is not present locally, e.g. mid-rebuild)

@@ -266,14 +266,21 @@ public data class ReviewQueue(
  *    (counting 1 against the budgets) unless their `wordOverride` is KNOWN, NEVER_FORGET,
  *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
  *    Per-deck limit: `deck.newPerDay` − today's `introducedNew` reviews whose card's home
- *    new-source is that deck. **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the
+ *    new-source is that deck (computed from [TodayReview.deckIds] and the decks now; how the card
+ *    was drawn, by its own deck or by another deck's add_kanji, does not matter), minus the cards
+ *    taken in this build whose home new-source is that deck. **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the
  *    deckless source [QueueInput.decklessAddKanji]): BEFORE — before a vocab card,
  *    draw the eligible NEW cards of kanji notes whose `kanjiLiteral` is in its `expressionKanji`
  *    (expression order, then `kindOrder`) that are not yet taken **and have a home new-source** (any
  *    source, not necessarily the drawing one; per ADR-006 a kanji card whose decks are all disabled
  *    is never introduced, not even this way); ALONGSIDE — the same cards right
- *    after the word's card. They count against the drawing source and the budget; if the budget ends
- *    in the middle, the cards already drawn stay.
+ *    after the word's card. **Attribution (C-8):** an add_kanji card counts against the budget and
+ *    against the per-deck limit of **its own home new-source**, never the drawing source's — the
+ *    same attribution that [QueueInput.today] gets after it is answered (per-deck counts use the
+ *    card's home new-source), so a rebuild neither frees nor double-counts any deck's limit. A
+ *    kanji card whose home new-source is a deck with no remaining per-deck limit is **not drawn**
+ *    (skipped, not taken; the deckless source has no limit). If the budget ends in the middle,
+ *    the cards already drawn stay.
  * 5. **Order**: learning items first; then reviews `R` and new `N` interleaved: if either is empty
  *    the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and position
  *    `i` (0-based within the interleaved part) holds a new card iff `(i + 1) % k == 0` and new

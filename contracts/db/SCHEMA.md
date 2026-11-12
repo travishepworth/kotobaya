@@ -230,7 +230,11 @@ preset row, core version). Any replica may recompute them at any time and must d
 a review is applied whose `(reviewed_at, hlc, id)` sorts before the card's `last_review_id` row
 (out-of-order arrival); a review in the replay set is undone; a card is merged into it;
 `weights_version` differs from the preset's; `preset_id` changes; the core scheduler version
-changed (SYNC.md 9.2, 10.5). A fresh card has `state = 'new'`, `due_at NULL`.
+changed (SYNC.md 9.2, 10.5). A fresh card has `state = 'new'`, `due_at NULL`. A card whose replay
+set the core refuses holds the **refused cache**: the fresh-card values with `last_review_id` =
+the nil UUID `00000000-0000-0000-0000-000000000000` (never a review id), which forces a full replay
+on every later touch (SYNC.md 9.4, C-8). `last_review_id` has no foreign key, so the value is legal
+on both platforms.
 
 **`last_review_id` and `last_review_at` (C-1).** Walking the replay set in order:
 - `last_review_id` = `id` of the last row folded, of any type (`scheduled`, `learning` or
@@ -324,7 +328,7 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
 | `job` | S | API enqueues, worker updates; internal kinds: worker enqueues, server updates | `kind` is a public `JobKind` (openapi) or a **server-internal kind** (C-9; list below). The `V1__init.sql` comment on `job.kind` predates C-9 and is left unchanged so the applied migration's checksum stays valid; the `CHECK` (`^[a-z][a-z0-9_-]*$`) already admits internal kinds, so no DDL changed. This row is authoritative. |
-| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
+| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, and so does the server while backups are disabled (C-8, never lowering it); the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
 
 **Server-internal job kinds (C-9).** A `job` row whose `kind` is not a value of the API's
@@ -479,8 +483,14 @@ one exception to `foreign_keys = ON` above.
 - **Only well-known keys are type-checked, and only by `updateSettings`** (`PATCH /settings`): an
   invalid value is `422` with problem `pointer` `/values/<key>` (e.g.
   `/values/scheduler.mined_priority`), and nothing in the request is written. JSON `null` is
-  always accepted (it resets the key to its default). Valid values are stored as sent; the server
-  does not normalise them, so `1.0` stays `1.0`.
+  always accepted (it resets the key to its default). Valid values are stored **in canonical JSON
+  form**, not literally as sent: the `settings.set` op the server mints carries the value as the
+  op's canonical compact JSON (SYNC.md 5.3; `CanonicalJson`: ECMAScript number form, sorted
+  members), so `1.0` and `1e2` are stored as `1` and `100`, and `-0` as `0`. The **meaning** is
+  unchanged (the 6.1 tests give the same result for both forms); the server never rounds, clamps or
+  re-types a value. Pushed `settings.set` ops are stored the same way (the server applies the
+  decoded op). Clients MUST NOT rely on the original spelling of a number coming back from
+  `listSettings` or a pull. (C-8; T212b's `OpApply` already does this.)
 - `POST /sync/push` does **not** type-check `settings.set` values (OPS.md `settings.set`), so a
   replica can still hold an invalid value for a well-known key. Every platform loader (Android,
   web, server) treats an invalid value, a missing row, and JSON `null` alike: **use the key's

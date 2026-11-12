@@ -628,7 +628,29 @@ their acked ops, the ops 101–150 are gone everywhere. Two values in every `Pus
 | Property | Definition |
 |---|---|
 | `log_epoch` | UUID naming the log. Created with the database; replaced by a new UUIDv7 on **every restore** (and on any other event that can make `seq` values repeat or disappear). Never reused. |
-| `durable_seq` | Highest `seq` *s* such that every `change` row with `seq <= s` is in a **verified** backup that any future restore will start from. `0 <= durable_seq <= high_water_seq`; never decreases within an epoch. Set by the backup job after verifying a backup, in `app.server_state` key `durable_seq` (6.3, C-2). A server configured with no backups reports `durable_seq = high_water_seq` (there is nothing it could be restored from). |
+| `durable_seq` | Highest `seq` *s* such that every `change` row with `seq <= s` is in a **verified** backup that any future restore will start from. `0 <= durable_seq <= high_water_seq`; never decreases within an epoch. Set by the backup job after verifying a backup, in `app.server_state` key `durable_seq` (6.3, C-2). A server configured with no backups raises it to `high_water_seq` with every commit (below; there is nothing it could be restored from). |
+
+**Backups disabled (C-8).** The server configuration that says there are no backups (T202c names
+it `BACKUPS_DISABLED`; Helm sets it when `backup.enabled=false`) never changes what `durable_seq`
+*is*: the persisted row `app.server_state.durable_seq`, reported as `min(row, high_water_seq)`. It
+changes who writes the row:
+
+- **While disabled**, the server raises the row to `max(change.seq)` (a) in its startup transaction
+  (6.3 step 2b) and (b) in **every transaction that inserts `change` rows** (push, REST-minted and
+  job-minted ops), under lock 7033001, with the same `greatest()` upsert as the backup job. So the
+  reported value equals `high_water_seq`, as before, and is **persisted**.
+- **Re-enabling backups lowers nothing.** The row keeps its value; the backup job's `greatest()`
+  upsert (6.3) moves it again only when a verified backup passes it. Until then devices keep every
+  op acked after the switch (5.4 purge rule). `durable_seq` therefore never decreases within an
+  epoch, whatever the configuration history, also with several server instances running different
+  configurations during a rolling update.
+- **Ops acked while backups were disabled are durable only in the live database.** Devices purge
+  them. Every backup that exists from before the switch is therefore *older than `durable_seq`*;
+  restoring one (6.3 restore script step 1: warning and explicit confirmation) starts a new
+  `log_epoch` like every restore, devices log-reset and re-push what they still hold, and the ops
+  they purged are lost. This is the stated price of running without backups; the restore tool's
+  warning MUST say so when the live database is readable and its `durable_seq` is above the
+  backup's `S` (6.3 backup job step 2).
 
 **Server, on restore** (T-server implements, T-deploy's restore script triggers; the exact
 handshake — `app.server_state` keys and the `restore_pending` hook — is 6.3):
@@ -675,7 +697,8 @@ lost log and pulls the new one from 0. The procedure is restartable at any point
   rows too); after that it is an ordinary rejected op (section 10) for the user. Re-pushing an op
   whose reference is really missing only gets it rejected again.
 - A device's ops that were in the lost tail and are no longer in its outbox cannot be recovered;
-  with the rule of 5.4 this happens only if an older backup than the newest verified one was restored.
+  with the rule of 5.4 this happens only if a backup older than `durable_seq` was restored (an older
+  backup than the newest verified one, or any backup taken before a period with backups disabled).
 - Worked example: 12.5.
 
 
@@ -687,7 +710,7 @@ The deploy side (T112: backup CronJob, restore script) and the server (T202) mee
 | Key | Value | Written by | Absent means |
 |---|---|---|---|
 | `log_epoch` | The current `log_epoch` (6.2), canonical lowercase UUID. | server only: created at startup if absent; replaced by restore finalization | not yet created (fresh database); the server creates it before serving |
-| `durable_seq` | `durable_seq` (6.2), decimal integer `>= 0`. Never decreases within an epoch. | backup job (after verification); restore finalization | `0` |
+| `durable_seq` | `durable_seq` (6.2), decimal integer `>= 0`. Never decreases within an epoch. | backup job (after verification); the server while backups are disabled (6.2, C-8: startup and every transaction that inserts `change` rows, `greatest()` upsert); restore finalization (the only write that may lower it: it starts a new epoch) | `0` |
 | `restore_pending` | `"1"`. The database was loaded from a backup and has not been finalized. | restore script; deleted by restore finalization | no restore pending |
 | `hlc_last` | The server's HLC `last` (3.2): a full 54-character HLC string whose device part is the server device `00000000-0000-7000-8000-000000000001`. Never lowered. | server only: in the same transaction as every op it mints or observes (3.2, under lock 7033001); raised by restore finalization (6.2 step 3) | `(0, 0)` (a fresh database; 3.2 "first HLC of a new replica") |
 
@@ -715,7 +738,10 @@ The deploy side (T112: backup CronJob, restore script) and the server (T202) mee
 while it is restored):
 
 1. Restore the newest verified backup (an older one only after a warning and an explicit
-   confirmation, 6.2 step 1).
+   confirmation, 6.2 step 1). If the live database is still readable and its `log_epoch` equals
+   the backup's `E` and its `durable_seq` is above the backup's `S`, the backup is older than what
+   devices may have purged (typically: backups were disabled for a while, 6.2): the same warning
+   and confirmation, naming the number of seqs at risk (`durable_seq − S`). (C-8)
 2. In the restored database, before any server instance starts:
    ```sql
    INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())
@@ -734,12 +760,18 @@ re-reading the rows under the lock:
    as in 6.2 step 3 (greatest of the restored `last`, every `change.hlc`, and `(now + 24 h, 0)`)
    and persist it; delete `restore_pending`. Log it at WARN.
 2. Else if `log_epoch` is absent (a fresh database), insert a new UUIDv7.
+   2b. (C-8) If this instance runs with backups disabled (6.2), raise `durable_seq` to
+   `coalesce(max(change.seq), 0)` with the `greatest()` upsert of the backup job. With backups
+   enabled, `durable_seq` is not touched.
 3. Commit. Then the `core_scheduler_version` check of 10.5 runs (its own transaction).
 
 Because of the lock and the re-read, several instances starting together finalize once. Every
 `PushResponse` / `PullResponse` reports the committed `log_epoch` and `durable_seq` rows
-(`durable_seq` absent = `0`; with backups disabled by server configuration, which T202 names,
-`high_water_seq` instead). The server never reports a `durable_seq` above `high_water_seq`.
+(`durable_seq` absent = `0`), whatever the configuration: with backups disabled the row already
+equals `high_water_seq` because every commit raised it (6.2, C-8). The server never reports a
+`durable_seq` above `high_water_seq`. **Breaking for T202c (C-8):** reporting `high_water_seq`
+without persisting it let re-enabling backups lower the reported value; an instance with backups
+disabled MUST write the row as in 6.2.
 
 ## 7. Applying an op
 
@@ -1061,8 +1093,8 @@ row is tombstoned.
 
 | Event (the op was applied, not merely received) | Cards | Kind |
 |---|---|---|
-| `review.logged` (schedule-feeding type) that sorts **after** the target's last folded review in the 9.1 order (or the target has none), **and** the target's cache is current: `card.weights_version` = the effective preset's `weights_version` | target | incremental fold |
-| `review.logged` (schedule-feeding type) that sorts **before** the target's `last_review_id` row in the 9.1 order `(reviewed_at, hlc, id)` — out-of-order arrival, including a review that arrives late with an earlier `reviewed_at` and a re-minted review (10.4); **or** sorts after it but the cache is not current (`weights_version` mismatch, 9.3) | target | full replay |
+| `review.logged` (schedule-feeding type) that sorts **after** the target's last folded review in the 9.1 order (or the target has none), **and** the target's cache is current: `card.weights_version` = the effective preset's `weights_version` and `last_review_id` is not the refused marker (9.4) | target | incremental fold |
+| `review.logged` (schedule-feeding type) that sorts **before** the target's `last_review_id` row in the 9.1 order `(reviewed_at, hlc, id)` — out-of-order arrival, including a review that arrives late with an earlier `reviewed_at` and a re-minted review (10.4); **or** sorts after it but the cache is not current (`weights_version` mismatch, 9.3; refused cache, 9.4) | target | full replay |
 | `review.undone` that changes a schedule-feeding review from not-undone to undone | target | full replay |
 | `card.merged` | survivor | full replay |
 | `card.preset_set` that wins (directly or forwarded) | the card it won on | full replay |
@@ -1096,6 +1128,41 @@ Nothing else touches a cache: not suspend/bury/flag, not note edits, not setting
 - Undo is unaffected by the order: the earliest `review.undone` wins on the row (7.9) and any undo
   of a schedule-feeding review forces a full replay.
 
+### 9.4 A replay set the engine refuses (C-8)
+
+`ReplayEngine.replay` and `ReplayEngine.fold` (core contract) throw `IllegalArgumentException` when
+the schedule-feeding, not-undone rows they are given hold one `id` twice or a row that violates the
+`review_log` CHECKs. A replica whose tables enforce `V1__init.sql` / `Learning.sq` never builds such
+input, so a refusal means a bug in the caller or in a replica's apply code. It is still specified,
+so every replica behaves the same and nothing is left half-current. **Server and devices alike:**
+
+1. **The cache becomes the refused cache**, in the same transaction that asked for the replay or
+   fold: `CardSchedule.NEW` (`state = 'new'`, `due_at`, `step`, `stability`, `difficulty`,
+   `interval_days`, `last_review_at` NULL, `reps = lapses = 0`), `last_review_id` =
+   **`00000000-0000-0000-0000-000000000000`** (the nil UUID, `Reserved.REPLAY_REFUSED_ID`; never a
+   `review_log.id`, which is UUIDv7) and `weights_version` = the effective preset's. It is a
+   deterministic value, so replicas that refuse the same replay set hold the same cache
+   (section 11 item 3). The old cache is **never** kept: it may have been computed by another core
+   version or from another replay set, and keeping it under a new `core_scheduler_version` (10.5)
+   or a new `weights_version` would hide that.
+2. **Never folded into.** A cache whose `last_review_id` is `REPLAY_REFUSED_ID` is not current:
+   `ReplayEngine.decide` answers `FULL_REPLAY` for every schedule-feeding, not-undone row (core
+   contract, step 1b), so the next touch (a review, an undo, a merge, a preset change, a core
+   version change) replays the whole set again. It is a pure function of the replay set: if the
+   offending row is undone, or the caller bug is fixed (a new core version forces the replay of
+   10.5), the next replay succeeds and the card is normal again.
+3. **The triggering work still commits.** A refusal never fails a push (the op is accepted and
+   logged; failing would wedge every device's outbox on the same op), a pull page, a rebuild, the
+   REST call or job that minted the op, or the startup replay of 10.5 (which still stores the new
+   `core_scheduler_version`: the refused card holds the refused cache, not an old-engine cache).
+   The replica logs the card id and the exception at ERROR. A device SHOULD show it in its sync
+   diagnostics.
+4. **Readers:** the refused card has `state = 'new'`, so it is offered as a new card. That is
+   acceptable for a state that a correct replica never reaches; queue builders MAY skip it.
+
+The server's `CoreCardCache` (T202c) logged and skipped, keeping the old cache: it MUST write the
+refused cache instead (breaking for T202c, no data impact: unreachable with the schema's checks).
+
 ## 10. Rejected ops
 
 A rejected op is one the server permanently refused (5.3). On the device its **local effect is
@@ -1125,7 +1192,7 @@ still applied**, so the device knowingly differs from the server until the user 
 |---|---|
 | **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
 | **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
-| **Re-mint** | Only for clock rejections, and the **default** action whenever any row is clock-rejected: rows created with the wrong clock (with everything that depends on them) and reviews are minted again with corrected times; edits of rows the server already has are discarded. Section 10.4. |
+| **Re-mint** | Only for clock rejections, and the **default** action whenever any row is clock-rejected: rows created with the wrong clock (with everything that depends on them and writes one of those rows) and reviews are minted again with corrected times; edits of rows the server already has, or that other replicas can have (window row, 10.4), are discarded. Section 10.4. |
 
 The UI SHOULD offer "discard all". There is no automatic cascade: if a rejected `note.created`
 is discarded while a rejected `card.created` for it is kept, the kept op simply has no effect
@@ -1186,8 +1253,9 @@ What can be re-minted, and why:
 - **Reviews** (`review.logged`) of any card: yes, with corrected `reviewed_at` and a new id
   (steps 4–6b). A review is never overwritten, so a corrected time cannot beat anyone.
 - **Rows created in the window** — every clock-rejected `*.created` op (`note_type`, `note`,
-  `card`, `deck`, `grammar`, `fsrs_params`), every op that depends on one of them (its children,
-  their edits and deletes, their deck items, …) and the reviews and undos of its cards: yes, all of
+  `card`, `deck`, `grammar`, `fsrs_params`), every op that depends on one of them **and writes a
+  window row** (below: its children, their edits and deletes, deck items, confusables and spans
+  whose identity contains a window id, …) and the reviews and undos of its cards: yes, all of
   them, with the same row ids (step 6a). No other replica has ever seen these rows, so no other
   replica's edit can compete with the re-minted ones; the "stale edit wins" problem cannot arise.
   The one place they meet other replicas' data is a server merge (8.1: another device added the
@@ -1197,13 +1265,37 @@ What can be re-minted, and why:
   **estimated real time** (`mint_at`, step 6a), so a forwarded edit wins or loses against the
   survivor's edits by when it was really made — as for any device that was offline with a correct
   clock.
-- **Edits of rows the server already has** (every other op type with a clock code): Discard only.
+- **Edits of rows the server already has** — every other op with a clock code, **and every op
+  that depends on a window row but writes a row that is not one** (list `D` of step 1; C-8):
+  Discard only.
   Other replicas have seen those rows and may have edited them; the edit's HLC alone decides which
   edit wins. Re-minted at the current time it would beat every edit made meanwhile (a stale edit
   wins); re-minted at an estimated time it would decide a real conflict on an estimate that is off
   by days whenever the clock was changed again before syncing (step 5). Either way the error is
   silent. An edit can be redone by hand in seconds; a review cannot, which is why only reviews and
   rows nobody else has are re-minted.
+
+**Window row** (C-8). The row an op writes is named by its `entity_id` (OPS.md, "Entity"). It is a
+*window row* iff that identity contains the id of a row created in the window (set `W` of step 1):
+one of the `|`-separated parts of `entity_id` is in `W`, where a deck item key `n:<id>` counts as
+`<id>`. Such a row cannot exist on any other replica (nobody else knows the id), so its writes
+can be re-minted. Consequences, each with a scenario in
+[`examples/remint-scenarios/`](examples/remint-scenarios/) (13):
+
+| Op (made in the window) | Window row? | Re-mint | Scenario |
+|---|---|---|---|
+| `card.preset_set` of a card in `W` (to any preset) | yes (the card) | re-minted | `remint-preset-set-existing-card` |
+| `card.preset_set` of a card the server had, to a preset in `W` | no: register `preset_id` of a shared card | `unknown_reference`; **discarded** (list `D`) | `remint-preset-set-existing-card` |
+| `deck.item_put` / `_removed` `n:<note in W>` into any deck, or any key into a deck in `W` | yes | re-minted | `remint-deck-items` |
+| `deck.item_put` / `_removed` `e:<seq>` into a deck the server had | no: `(deck, e:<seq>)` is written by every replica that adds the same word | `clock_ahead` itself (its only reference exists); **discarded** | `remint-deck-items` |
+| `word.status_set` / `_cleared`, `settings.set` | no: keyed by `entry_seq` / key, shared; soft or no references | clock code itself; **discarded**, also for the entry of a note created in the window | `remint-word-status` |
+| `confusable.*` with a note in `W`; `grammar.span_*` of a grammar point in `W` | yes | re-minted | — |
+| `note.updated` / `card.*` / `deck.updated` … of a row in `W` | yes (the row itself) | re-minted | 12.7 |
+
+So a word added to an existing deck with the canonical `e:<seq>` key (8.5) during the window is
+not re-added: the user adds it again. The device SHOULD show, before the user confirms Re-mint,
+how many rejected ops it will discard without minting them again (`C`, `D` and `U` minus `E` and
+`R`, plus the undone reviews dropped in step 4), and list them as for Discard.
 
 Rejected ops never got a `change` row, so no other replica has seen them: replacing them is safe.
 
@@ -1240,19 +1332,21 @@ status says "fix your device clock, then sync".
    `preset_id`; `card.preset_set`: the card and `preset_id`; `review.logged`: `card_id`;
    `review.undone`: `review_id`; `deck.item_*`: `deck_id` and the note of an `n:` key;
    `confusable.*`: both notes; `grammar.span_*`: `grammar_point_id`. Start with `W` = {} (rows
-   created in the window), `C`, `E`, `R`, `U` = empty lists. For each row, with code `k`:
+   created in the window), `C`, `D`, `E`, `R`, `U` = empty lists. For each row, with code `k`:
    - `k` is `clock_ahead` or `clock_behind`: add the row to `C`; and if the op is `review.logged`,
      append it to `R`; if it is a `*.created`, append it to `E` and add its row id to `W`.
    - `k` is `unknown_reference` and `refs(op)` meets `W` or the review ids of `R`: if the op is
-     `review.logged`, append it to `R`; if `review.undone`, append it to `U`; otherwise append it to
-     `E` and, if it is a `*.created`, add its row id to `W`.
+     `review.logged`, append it to `R`; if `review.undone`, append it to `U`; else if it is a
+     `*.created` or writes a window row (above), append it to `E` and, if it is a `*.created`, add
+     its row id to `W`; **otherwise append it to `D`** (it depends on a window row but writes a row
+     other replicas can have, e.g. `card.preset_set` of an existing card to a window preset; C-8).
    - otherwise the row is not touched (it stays listed as it is).
 
    Then add to `U` every other `review.undone` row (any state) whose `review_id` is the id of a
    review in `R`. `E` holds the creations and the ops that depend on them, in original order; an op
    of `E` or `R` that also depends on a row missing for another reason is simply rejected again
    after the re-mint and listed.
-2. Delete `C`, `E`, `R` and `U` (discard). Apply the clock repair if any row of `C` is `clock_ahead`.
+2. Delete `C`, `D`, `E`, `R` and `U` (discard). Apply the clock repair if any row of `C` is `clock_ahead`.
 3. Check G1 and G2; if either holds, roll the transaction back (nothing changes).
 4. Drop from `R` every review whose local `review_log` row has `undone_hlc` set (the user undid it;
    it is not re-logged). Let `r_1 … r_n` be the rest, `now` = `pt` (correct by the preconditions),
@@ -1306,7 +1400,9 @@ only on the device and are removed by the rebuild; every replica then holds the 
 Rows of `W` keep their ids: the server never had them, so the re-minted creation is the first one
 anywhere.
 
-What re-mint does not restore: edits of rows the server already had, made with the wrong clock;
+What re-mint does not restore: edits of rows the server already had, made with the wrong clock
+(including those that refer to a window row, list `D`, and deck items `e:<seq>` and word statuses
+of words created in the window);
 and, when `o` was wrong, the absolute dates (the spacing is kept). If only part of an offline
 period was refused (an ahead clock stays inside the 24 h tolerance for ops pushed soon enough), the
 accepted part keeps its ahead `reviewed_at` and the re-minted part is moved back, so the two can
@@ -1314,6 +1410,9 @@ interleave out of their real order in replay. G1 and G2 make clock rejections ra
 clock falls behind is stopped before the first review; only a clock that is ahead, or a client
 without the guards, produces them at all.
 
+The three [`remint-scenarios`](examples/remint-scenarios/) (C-8) fix the selection of step 1 for
+the window-row cases of the table above; `tools/validate.py` recomputes `E`, `R` and the discarded
+ops from their rejected rows and the shift of step 5 for creations and reviews together.
 Scenario [`clock-behind-remint`](examples/scenarios/clock-behind-remint.json) (three reviews, with
 the shift recomputed by `tools/validate.py`), the re-mint story of 12.6 (a week, 700 reviews), and
 the clock-ahead story of 12.7 (a week of offline-created notes, cards, edits and reviews, one of the
@@ -1645,9 +1744,19 @@ ordered by `hlc` (attempt 3), A's reviews all replay after B's.
 - `expected.rows`: partial rows per table in device representation; `expected.absent`: keys that
   must not exist; `expected.replay_sets`: card id → review ids in replay order.
 - `rejected`: pushed ops the server must refuse, with the expected code (and, optionally, the
-  server's receive time for the clock checks).
+  server's receive time for the clock checks, and `after_seq`: the op is judged against the state
+  after the log up to that seq instead of the whole log; C-8).
 - `remint` (optional): the inputs of a re-mint (10.4) whose results are in `log`; the shift is
-  recomputed and checked.
+  recomputed and checked. With `creations_from` / `creations_to` / `discarded` (C-8) the whole
+  selection of step 1 is recomputed from the `rejected` rows and their codes, and the re-minted
+  creations' `wall(hlc)` are checked against step 5.
+
+**Re-mint scenarios** (C-8): `examples/remint-scenarios/*.json`, same schema. They are kept out of
+`examples/scenarios/` so that the server's existing scenario tests, which count that directory and
+judge `rejected` against the whole log, stay valid; a server test that runs them must honour
+`after_seq`. Device implementers (Re-mint, T107/android) MUST run them: feed the `rejected` rows
+with their codes to the step-1 selection and compare `E`, `R` and the discarded ops; apply `log`
+and compare `expected` as for any scenario.
 - `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
   `tools/validate.py` with 300 random interleavings and re-deliveries each).
 
@@ -1735,7 +1844,9 @@ example and an OPS.md section with a conflict rule, every example validates and 
 rules (reference model) including the idempotency and interleaving claims, that the model server
 derives every merge verdict and every checked rejection code of the scenarios, that the
 restore story of 12.5 converges without loss, that the re-mint story of 12.6 loses no review, and
-that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
+that the clock-ahead story of 12.7 loses no offline-created row, edit or review, that the
+re-mint scenarios' selection follows 10.4 step 1, and that toggling backups off and on never
+lowers `durable_seq` within an epoch (6.2, C-8).
 
 ## 17. Edge cases — index
 
@@ -1761,6 +1872,9 @@ that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
 | Rebuild meets an unknown op | Rebuild ends at it; reviewing resumes; *upgrade required*. | 10.3 |
 | Pulled op of a known type fails its schema | Treated like an unknown op: pull stops at it, never skipped; *update required / server sent an invalid op*. | 6.1 |
 | Oversized op that is also unknown or invalid | `op_too_large` (measured on the canonical op tree before decoding). | 5.3 |
+| Replay engine refuses a card's replay set (duplicate id, CHECK-violating row) | Refused cache (`state = 'new'`, `last_review_id` = nil UUID); every later touch replays in full; the op still commits. | 9.4 |
+| Backups disabled, then enabled again | `durable_seq` persisted at `high_water_seq` while disabled; never lowered; a backup from before is older than `durable_seq` (restore warns). | 6.2, 6.3 |
+| Clock-rejected op that refers to a window row but writes a shared row (`card.preset_set` of an old card to a new preset; `e:<seq>` item into an old deck; word status) | Discarded by Re-mint, not re-minted. | 10.4 |
 | App or server runs a new core scheduler version | Full replay of every card cache before anything is folded; then the new version is stored. | 9.2, 10.5 |
 | Review right after a reschedule (manual `set_due`) | `last_review_at` is still the last rated review; FSRS elapsed time counts from it. | 9 |
 | Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews (clock codes: Re-mint keeps them, 10.4). | 10.2 |

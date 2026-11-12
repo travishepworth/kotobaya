@@ -1,0 +1,411 @@
+{
+  "id": "remint-deck-items",
+  "title": "Re-mint: deck items of window rows are re-minted; an e:<seq> item put into an existing deck is discarded",
+  "covers": [
+    "re-mint selection (SYNC.md 10.4 step 1): deck items are re-minted iff their row (deck_id, item_key) names a window row",
+    "deck.item_put e:<seq> on a deck the server had: clock_ahead (its only reference exists), discarded; the key is shared by every replica that adds the same word",
+    "deck.item_put n:<window note> on an existing deck, and any item of a window deck: unknown_reference, re-minted"
+  ],
+  "narrative": [
+    "A creates deck D and syncs (seq 1). A's clock jumps 10 days ahead; offline, A adds word 2000001 (note + card) and puts e:2000001 into D; adds a custom note N (no entry) and puts n:N into D; creates deck D2 and puts e:2000001 into it.",
+    "Meanwhile B puts another word into D (seq 2).",
+    "A pushes with the clock still wrong: the two note.created, deck.created D2 and the e:2000001 put into D are clock_ahead (D exists, so that put has no missing reference); card.created, n:N into D and e:2000001 into D2 are unknown_reference.",
+    "Re-mint: W = {the word's note, its card, N, D2}. n:N in D and e:2000001 in D2 write rows whose identity contains a window id: re-minted. e:2000001 in D writes the row (D, e:2000001), which any replica adding the same word to D writes too: discarded, like any edit of a row the server already has. The user adds the word to D again.",
+    "A also reviewed the new card an hour after creating it (unknown_reference). It is re-minted in step 6b with a new id and reviewed_at shifted by the same delta as the creations, so it stays an hour after its card. `remint` lists the inputs; tools/validate.py recomputes the selection and the shift."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000002",
+      "op_type": "deck.created",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": "0193a1b2-0004-7000-8000-00a100000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c000-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0004-7000-8000-00a100000001",
+        "name": "Mined",
+        "type": "user"
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00b200000001",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-00a100000001|e:2000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193ac383b40-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+        "item_key": "e:2000002",
+        "position": 7
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000010",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-00a100000003",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6d91c00-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-00a100000003",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 2000001
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000011",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000004",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6d91c00-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000004",
+        "note_id": "0193a1b2-0001-7000-8000-00a100000003",
+        "kind": "meaning"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000012",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-00a10000000a",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a710f4e0-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-00a10000000a",
+        "note_type_id": "00000000-0000-7000-8000-000000000106",
+        "fields": {
+          "front": "x",
+          "back": "y"
+        }
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000013",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-00a100000001|n:0193a1b2-0001-7000-8000-00a10000000a",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a710f4e0-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+        "item_key": "n:0193a1b2-0001-7000-8000-00a10000000a",
+        "position": 2
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000014",
+      "op_type": "deck.created",
+      "op_version": 1,
+      "entity_type": "deck",
+      "entity_id": "0193a1b2-0004-7000-8000-00a10000000d",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a711df40-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0004-7000-8000-00a10000000d",
+        "name": "Trip",
+        "type": "user"
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000015",
+      "op_type": "deck.item_put",
+      "op_version": 1,
+      "entity_type": "deck_item",
+      "entity_id": "0193a1b2-0004-7000-8000-00a10000000d|e:2000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a711df40-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "deck_id": "0193a1b2-0004-7000-8000-00a10000000d",
+        "item_key": "e:2000001",
+        "position": 1
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000017",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-00a100000016",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193b15f81a0-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-00a100000016",
+        "card_id": "0193a1b2-0002-7000-8000-00a100000004",
+        "reviewed_at": 1733674666624,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good"
+      },
+      "seq": 9,
+      "caused_by_op_id": null
+    }
+  ],
+  "rejected": [
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-00a100000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-00a100000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 2000001
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-00a100000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-00a100000004",
+          "note_id": "0193a1b2-0001-7000-8000-00a100000003",
+          "kind": "meaning"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000007",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-00a100000001|e:2000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0002-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+          "item_key": "e:2000001",
+          "position": 1
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000009",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-00a100000008",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da8fa280-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-00a100000008",
+          "card_id": "0193a1b2-0002-7000-8000-00a100000004",
+          "reviewed_at": 1734538666624,
+          "utc_offset_min": 540,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000b",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-00a10000000a",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da908ce0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-00a10000000a",
+          "note_type_id": "00000000-0000-7000-8000-000000000106",
+          "fields": {
+            "front": "x",
+            "back": "y"
+          }
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000c",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-00a100000001|n:0193a1b2-0001-7000-8000-00a10000000a",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da908ce0-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-00a10000000a",
+          "position": 2
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000e",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-00a10000000d",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da917740-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-00a10000000d",
+          "name": "Trip",
+          "type": "user"
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000f",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-00a10000000d|e:2000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da917740-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-00a10000000d",
+          "item_key": "e:2000001",
+          "position": 1
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 2,
+      "received_at": 1733847586624
+    }
+  ],
+  "remint": {
+    "offset_ms": -864000000,
+    "now": 1733847646624,
+    "from": [
+      "0193a1b2-00ff-7000-8000-00a100000009"
+    ],
+    "to": [
+      "0193a1b2-00ff-7000-8000-00a100000017"
+    ],
+    "creations_from": [
+      "0193a1b2-00ff-7000-8000-00a100000005",
+      "0193a1b2-00ff-7000-8000-00a100000006",
+      "0193a1b2-00ff-7000-8000-00a10000000b",
+      "0193a1b2-00ff-7000-8000-00a10000000c",
+      "0193a1b2-00ff-7000-8000-00a10000000e",
+      "0193a1b2-00ff-7000-8000-00a10000000f"
+    ],
+    "creations_to": [
+      "0193a1b2-00ff-7000-8000-00a100000010",
+      "0193a1b2-00ff-7000-8000-00a100000011",
+      "0193a1b2-00ff-7000-8000-00a100000012",
+      "0193a1b2-00ff-7000-8000-00a100000013",
+      "0193a1b2-00ff-7000-8000-00a100000014",
+      "0193a1b2-00ff-7000-8000-00a100000015"
+    ],
+    "discarded": [
+      "0193a1b2-00ff-7000-8000-00a100000007"
+    ]
+  },
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "deck_item": [
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-00a10000000a",
+          "note_id": "0193a1b2-0001-7000-8000-00a10000000a",
+          "deleted_at": null
+        },
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-00a10000000d",
+          "item_key": "e:2000001",
+          "entry_seq": 2000001,
+          "deleted_at": null
+        },
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+          "item_key": "e:2000002",
+          "position": 7
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-00a100000003",
+          "entry_seq": 2000001
+        },
+        {
+          "id": "0193a1b2-0001-7000-8000-00a10000000a"
+        }
+      ],
+      "deck": [
+        {
+          "id": "0193a1b2-0004-7000-8000-00a10000000d",
+          "name": "Trip"
+        }
+      ]
+    },
+    "absent": {
+      "deck_item": [
+        {
+          "deck_id": "0193a1b2-0004-7000-8000-00a100000001",
+          "item_key": "e:2000001"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,327 @@
+{
+  "id": "remint-preset-set-existing-card",
+  "title": "Re-mint: a preset created in the window is kept; assigning it to a card the server had is discarded",
+  "covers": [
+    "re-mint selection (SYNC.md 10.4 step 1): an op that depends on a window row is re-minted only if the row it writes is a window row",
+    "card.preset_set of an existing card to a window preset: unknown_reference, discarded by Re-mint (it writes the shared register preset_id)",
+    "card.preset_set of a window card: re-minted with the card"
+  ],
+  "narrative": [
+    "A creates a note and card (seq 1-2) and syncs. Then A's clock jumps 10 days ahead; offline, A creates preset P, assigns P to the existing card, adds a new word (note + card) and assigns P to the new card too.",
+    "Meanwhile B flags the existing card (seq 3).",
+    "A pushes with the clock still wrong: fsrs_params.created and note.created are clock_ahead; both card.preset_set ops and card.created are unknown_reference (P and the new note do not exist on the server).",
+    "The user fixes the clock and runs Re-mint. W = {P, the new note, the new card}. The preset_set of the new card writes a window row (the card is in W): re-minted. The preset_set of the existing card writes the register preset_id of a card every replica has, so its winner would be decided by an estimated time: discarded (SYNC.md 10.4, 'Edits of rows the server already has').",
+    "The re-minted creations carry mint_at(t') = their real times (wall(hlc) - 10 days). The existing card keeps the Default preset.",
+    "A also reviewed the new card an hour after creating it (unknown_reference). It is re-minted in step 6b with a new id and reviewed_at shifted by the same delta as the creations, so it stays an hour after its card. `remint` lists the inputs; tools/validate.py recomputes the selection and the shift."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000003",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-00a100000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c000-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-00a100000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1000001
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000004",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c000-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000002",
+        "note_id": "0193a1b2-0001-7000-8000-00a100000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00b200000001",
+      "op_type": "card.flag_set",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193ac383b40-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000002",
+        "flags": 2
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a10000000f",
+      "op_type": "fsrs_params.created",
+      "op_version": 1,
+      "entity_type": "fsrs_params",
+      "entity_id": "0193a1b2-0006-7000-8000-00a100000005",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6d91c00-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0006-7000-8000-00a100000005",
+        "name": "Slow",
+        "desired_retention": 0.85
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000010",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-00a100000008",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6daf0c0-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-00a100000008",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1000002
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000011",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000009",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6daf0c0-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000009",
+        "note_id": "0193a1b2-0001-7000-8000-00a100000008",
+        "kind": "meaning"
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000012",
+      "op_type": "card.preset_set",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000009",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6daf0c0-0002-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000009",
+        "preset_id": "0193a1b2-0006-7000-8000-00a100000005"
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000014",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-00a100000013",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193b15f81a0-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-00a100000013",
+        "card_id": "0193a1b2-0002-7000-8000-00a100000009",
+        "reviewed_at": 1733674786624,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good"
+      },
+      "seq": 8,
+      "caused_by_op_id": null
+    }
+  ],
+  "rejected": [
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000006",
+        "op_type": "fsrs_params.created",
+        "op_version": 1,
+        "entity_type": "fsrs_params",
+        "entity_id": "0193a1b2-0006-7000-8000-00a100000005",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0006-7000-8000-00a100000005",
+          "name": "Slow",
+          "desired_retention": 0.85
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000007",
+        "op_type": "card.preset_set",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-00a100000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da599e60-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-00a100000002",
+          "preset_id": "0193a1b2-0006-7000-8000-00a100000005"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000a",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-00a100000008",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da5a88c0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-00a100000008",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000002
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000b",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-00a100000009",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da5a88c0-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-00a100000009",
+          "note_id": "0193a1b2-0001-7000-8000-00a100000008",
+          "kind": "meaning"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000c",
+        "op_type": "card.preset_set",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-00a100000009",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da5a88c0-0002-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-00a100000009",
+          "preset_id": "0193a1b2-0006-7000-8000-00a100000005"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a10000000e",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-00a10000000d",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da917740-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-00a10000000d",
+          "card_id": "0193a1b2-0002-7000-8000-00a100000009",
+          "reviewed_at": 1734538786624,
+          "utc_offset_min": 540,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 3,
+      "received_at": 1733847586624
+    }
+  ],
+  "remint": {
+    "offset_ms": -864000000,
+    "now": 1733847646624,
+    "from": [
+      "0193a1b2-00ff-7000-8000-00a10000000e"
+    ],
+    "to": [
+      "0193a1b2-00ff-7000-8000-00a100000014"
+    ],
+    "creations_from": [
+      "0193a1b2-00ff-7000-8000-00a100000006",
+      "0193a1b2-00ff-7000-8000-00a10000000a",
+      "0193a1b2-00ff-7000-8000-00a10000000b",
+      "0193a1b2-00ff-7000-8000-00a10000000c"
+    ],
+    "creations_to": [
+      "0193a1b2-00ff-7000-8000-00a10000000f",
+      "0193a1b2-00ff-7000-8000-00a100000010",
+      "0193a1b2-00ff-7000-8000-00a100000011",
+      "0193a1b2-00ff-7000-8000-00a100000012"
+    ],
+    "discarded": [
+      "0193a1b2-00ff-7000-8000-00a100000007"
+    ]
+  },
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "fsrs_params": [
+        {
+          "id": "0193a1b2-0006-7000-8000-00a100000005",
+          "name": "Slow",
+          "created_at": 1733671066624
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-00a100000002",
+          "preset_id": "00000000-0000-7000-8000-000000000010",
+          "flags": 2
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-00a100000009",
+          "note_id": "0193a1b2-0001-7000-8000-00a100000008",
+          "preset_id": "0193a1b2-0006-7000-8000-00a100000005"
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-00a100000008",
+          "entry_seq": 1000002
+        }
+      ]
+    }
+  }
+}

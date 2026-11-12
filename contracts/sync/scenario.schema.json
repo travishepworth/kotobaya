@@ -84,6 +84,11 @@
           "received_at": {
             "$ref": "common.schema.json#/$defs/instant_ms",
             "description": "Server receive time used for the clock checks (SYNC.md 3.4). Default: wall(hlc) of the last log op."
+          },
+          "after_seq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The op is checked against the server state after the log up to and including this seq (0 = only the built-ins). Default: the whole log. Needed when a later log op creates the row whose absence made the op unknown_reference, e.g. a re-minted creation (SYNC.md 10.4). Added by C-8."
           }
         }
       }
@@ -97,6 +102,18 @@
         "from",
         "to"
       ],
+      "dependentRequired": {
+        "creations_from": [
+          "creations_to",
+          "discarded"
+        ],
+        "creations_to": [
+          "creations_from"
+        ],
+        "discarded": [
+          "creations_from"
+        ]
+      },
       "description": "The Re-mint action of SYNC.md 10.4 that turned clock-rejected reviews into log ops. tools/validate.py recomputes the new reviewed_at values from these inputs.",
       "properties": {
         "offset_ms": {
@@ -122,6 +139,27 @@
             "$ref": "common.schema.json#/$defs/uuid"
           },
           "description": "op_ids of the re-minted ops (in `log`), same order and length as `from`."
+        },
+        "creations_from": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/uuid"
+          },
+          "description": "op_ids (in `rejected`) of the list E of SYNC.md 10.4 step 1 (creations in the window and the ops that write a window row), in original hlc order. When present, tools/validate.py recomputes the whole selection from `rejected` and requires E, R (= `from` plus undone reviews) and `discarded` to match. Added by C-8."
+        },
+        "creations_to": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/uuid"
+          },
+          "description": "op_ids (in `log`) of the re-minted E ops (step 6a): same order, length, op_type and payload as `creations_from`; wall(hlc) = the item's shifted time t' (step 5, one batch with the reviews of `from`). Required with `creations_from`."
+        },
+        "discarded": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/uuid"
+          },
+          "description": "op_ids (in `rejected`) that Re-mint deletes without minting them again (lists C, D and U of SYNC.md 10.4 step 1, minus E and R), in original hlc order. Required with `creations_from`."
         }
       }
     },

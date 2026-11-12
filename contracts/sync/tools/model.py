@@ -117,6 +117,52 @@ def refs(op: dict) -> set:
     return out
 
 
+def row_ids(op: dict) -> set:
+    """Ids in the identity of the row the op writes (SYNC.md 10.4, "window row"): the parts of its
+    `entity_id`, plus the note id of an `n:<id>` deck item key. So a deck item `D|n:N`, a confusable
+    `A|B|reason` and a manual span `S|G|...` name every row id their identity contains."""
+    parts = set(op["entity_id"].split("|"))
+    return parts | {x[2:] for x in parts if x.startswith("n:")}
+
+
+def remint_select(rows: list) -> tuple[list, list, list, list, list, set]:
+    """Step 1 of Re-mint (SYNC.md 10.4). `rows` = the pending_op rows in state `rejected`
+    ({"op", "last_error"}), in any order. Returns (C, E, R, U, D, W):
+    C the clock-rejected rows; E the creations and the ops that write a window row, in original order;
+    R the reviews to re-mint; U the undos among `rows` that undo a review of R (the caller adds the
+    undos of R's reviews in other states); D the unknown_reference ops that depend on a window row but
+    write a row other replicas can have (discarded, never re-minted); W the ids of the rows created in
+    the window."""
+    W: set = set()
+    C: list = []
+    E: list = []
+    R: list = []
+    U: list = []
+    D: list = []
+    for r in sorted(rows, key=lambda r: r["op"]["hlc"]):
+        op, code = r["op"], r["last_error"]
+        t = op["op_type"]
+        if code in CLOCK_CODES:
+            C.append(r)
+            if t == "review.logged":
+                R.append(r)
+            elif t in CREATES:
+                E.append(r)
+                W.add(op["payload"]["id"])
+        elif code == "unknown_reference" and refs(op) & (W | {x["op"]["payload"]["id"] for x in R}):
+            if t == "review.logged":
+                R.append(r)
+            elif t == "review.undone":
+                U.append(r)
+            elif t in CREATES or row_ids(op) & W:
+                E.append(r)
+                if t in CREATES:
+                    W.add(op["payload"]["id"])
+            else:
+                D.append(r)
+    return C, E, R, U, D, W
+
+
 def entity_id(op_type: str, payload: dict) -> str:
     return "|".join(part[1:-1] if part.startswith("'") else str(payload[part])
                     for part in INDEX[op_type]["entity_id"])
@@ -549,6 +595,7 @@ class Server:
         self.epoch_n = 1
         self.log_epoch = self._epoch_id(1)
         self.durable_seq = 0
+        self.backups_disabled = False  # server configuration (SYNC.md 6.2, "Backups disabled")
         self.hlc_last = ""
         self.pt = 0
         self._n = 0
@@ -598,6 +645,8 @@ class Server:
         entry = {**op, "seq": self.seq, "caused_by_op_id": cause}
         self.log.append(entry)
         self.by_op_id[op["op_id"]] = self.seq
+        if self.backups_disabled:  # 6.2: every commit counts as durable, in the same transaction
+            self.durable_seq = max(self.durable_seq, self.seq)
         return entry
 
     def _emit(self, op_type: str, payload: dict, cause: str) -> dict:
@@ -648,8 +697,15 @@ class Server:
     def backup(self):
         """A verified backup of everything committed so far; durable_seq advances to it."""
         snap = copy.deepcopy((self.r, self.log, self.by_op_id, self.seq, self.hlc_last))
-        self.durable_seq = self.seq
+        self.durable_seq = max(self.durable_seq, self.seq)  # 6.3 step 3: greatest(), never lowered
         return snap
+
+    def start(self, backups_disabled: bool):
+        """A (re)start with the given configuration (6.3 server startup step 2b): with backups disabled,
+        durable_seq is raised to high_water_seq; it is never lowered when backups are enabled again."""
+        self.backups_disabled = backups_disabled
+        if backups_disabled:
+            self.durable_seq = max(self.durable_seq, self.seq)
 
     def restore(self, snap):
         """Restore a backup: new epoch, durable_seq = the backup's seq, clock never backwards."""
@@ -838,31 +894,11 @@ class Device:
         assert not any(r["state"] == "pending" for r in self.outbox), "push until nothing is pending"
         assert self.last_skew is not None and abs(self.last_skew) <= WARN_MS, "clock must be correct"
         # 1. Selection, one pass in ascending original hlc.
-        W: set = set()  # ids of rows created in the window
-        C, E, R, U = [], [], [], []
-        for r in sorted((r for r in self.outbox if r["state"] == "rejected"), key=lambda r: r["op"]["hlc"]):
-            op, code = r["op"], r["last_error"]
-            t = op["op_type"]
-            if code in CLOCK_CODES:
-                C.append(r)
-                if t == "review.logged":
-                    R.append(r)
-                elif t in CREATES:
-                    E.append(r)
-                    W.add(op["payload"]["id"])
-            elif code == "unknown_reference" and refs(op) & (W | {x["op"]["payload"]["id"] for x in R}):
-                if t == "review.logged":
-                    R.append(r)
-                elif t == "review.undone":
-                    U.append(r)
-                else:
-                    E.append(r)
-                    if t in CREATES:
-                        W.add(op["payload"]["id"])
+        C, E, R, U, D, W = remint_select([r for r in self.outbox if r["state"] == "rejected"])
         ids = {r["op"]["payload"]["id"] for r in R}
         U += [r for r in self.outbox if r["op"]["op_type"] == "review.undone"
               and r["op"]["payload"]["review_id"] in ids and r not in U]
-        drop = {id(r) for r in C + E + R + U}
+        drop = {id(r) for r in C + D + E + R + U}
         saved = (self.outbox, self.hlc_last)
         self.outbox = [r for r in self.outbox if id(r) not in drop]  # 2. discard
         if any(r["last_error"] == "clock_ahead" for r in C):  # clock repair

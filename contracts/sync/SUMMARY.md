@@ -284,3 +284,39 @@
 - **Worth a second look:** (1) `NO_NUL` is a rule outside JSON Schema (like depth), so a plain
   schema validator misses U+0000 inside open JSON. (2) The 9999 cap is based on the API's text
   format, not on Postgres. (3) The `match_text` cap is new for sync but matches the API.
+
+## C-8 changes (gaps found in the T202c review)
+- **A card the replay engine refuses (new SYNC.md 9.4).** The engine throws on a duplicate review
+  id or a row that breaks the `review_log` checks. A correct replica never sees this. When it does
+  happen, the server and every device now do the same thing: the card gets a fixed "refused" cache
+  (state new, `last_review_id` = the nil UUID `Reserved.REPLAY_REFUSED_ID`), and the op still
+  commits. `ReplayEngine.decide` (new step 1b) always answers full replay for such a cache, so
+  nothing is ever folded into it, and it heals when the bad row is undone or the core is fixed.
+  Previously the server kept the old cache, which could be from an older core.
+- **Backups off, then on again (SYNC.md 6.2, 6.3).** With backups disabled the server now
+  *persists* `durable_seq` at the newest seq on every commit and at startup. Re-enabling backups
+  lowers nothing, so `durable_seq` never goes down within an epoch. Every backup from before the
+  switch now counts as older than `durable_seq`, and the restore tool must warn about it. Ops acked
+  while backups were off are safe only in the live database. That is the price of running without
+  backups.
+- **Re-mint: rules and text now agree (SYNC.md 10.4).** An op that depends on a row created in the
+  window is re-minted only if the row it *writes* is itself a window row: its `entity_id` contains a
+  window id. Otherwise it is discarded, like any edit of a shared row (new list `D`). So:
+  `card.preset_set` of an old card to a new preset is discarded (it was re-minted before); an
+  `e:<seq>` item put into an old deck is discarded; a word status of a new word is discarded.
+  Items `n:<new note>` and anything in a new deck are still re-minted. Three new scenarios are in
+  `examples/remint-scenarios/`. `validate.py` recomputes the whole selection and the shift for
+  them. The scenario schema gained `rejected[].after_seq` and `remint.creations_from/_to/discarded`.
+- **Also:** core `QueueBuilder` rule 4: add_kanji cards count against their own home deck's limit,
+  not the drawing deck's, the same as `today` counts them after a rebuild. SCHEMA.md 6.1: settings
+  values are stored in canonical JSON (`1.0` → `1`).
+- **Alternatives rejected:** `weights_version = -1` as the stale marker. It would need a new
+  migration, because `V1__init.sql` has `CHECK (weights_version >= 0)` and the server includes only
+  V1. Re-minting `e:<seq>` items and word statuses of new words: friendlier, but it decides shared
+  registers on an estimated time, which 10.4 rules out for every other edit.
+  Attributing add_kanji cards to the drawing deck in `today` too: the loaders cannot know which deck
+  drew a card.
+- **Worth a second look:** (1) A new word added offline to an existing deck with the canonical
+  `e:<seq>` key is not re-added after Re-mint. The user sees it in the discard list and adds it
+  again. (2) The refused cache shows as a new card. (3) The re-mint scenarios sit in their own
+  directory so the server's tests, which count `examples/scenarios/`, stay green.

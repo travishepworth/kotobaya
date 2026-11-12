@@ -1,0 +1,217 @@
+{
+  "id": "remint-word-status",
+  "title": "Re-mint: a word status set in the window is discarded, also for a word created in the window",
+  "covers": [
+    "re-mint selection (SYNC.md 10.4 step 1): word.status_set / word.status_cleared have no reference, so they meet a clock code themselves and are discarded",
+    "word_status is keyed by entry_seq, shared by every replica (dictionary browsing, other devices, jpdb import): an estimated time must not decide it"
+  ],
+  "narrative": [
+    "A's clock jumps 10 days ahead; offline, A adds word 3000001 (note + card) and, a minute later, marks it never_forget.",
+    "Meanwhile (in real time, a day later) B marks the same entry ignored from the dictionary (seq 1).",
+    "A pushes with the clock still wrong: note.created and word.status_set are clock_ahead, card.created is unknown_reference.",
+    "Re-mint re-mints the note and the card. The status set is discarded: re-minted at the estimated time it would lose to B's later choice anyway, but in general it would decide a register other replicas write on an estimate. B's status stands; the user sets the status again if wanted.",
+    "A also reviewed the new card an hour after creating it (unknown_reference). It is re-minted in step 6b with a new id and reviewed_at shifted by the same delta as the creations, so it stays an hour after its card. `remint` lists the inputs; tools/validate.py recomputes the selection and the shift."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00b200000001",
+      "op_type": "word.status_set",
+      "op_version": 1,
+      "entity_type": "word_status",
+      "entity_id": "3000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193ac3750e0-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "entry_seq": 3000001,
+        "status": "ignored",
+        "origin": "manual"
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000008",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-00a100000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6d91c00-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-00a100000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 3000001
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a100000009",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-00a100000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a6d91c00-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-00a100000002",
+        "note_id": "0193a1b2-0001-7000-8000-00a100000001",
+        "kind": "meaning"
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7000-8000-00a10000000b",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-00a10000000a",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193b15e9740-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-00a10000000a",
+        "card_id": "0193a1b2-0002-7000-8000-00a100000002",
+        "reviewed_at": 1733674726624,
+        "utc_offset_min": 540,
+        "review_type": "scheduled",
+        "rating": 3,
+        "button": "good"
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    }
+  ],
+  "rejected": [
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-00a100000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-00a100000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 3000001
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 1,
+      "received_at": 1733847526624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-00a100000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da58b400-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-00a100000002",
+          "note_id": "0193a1b2-0001-7000-8000-00a100000001",
+          "kind": "meaning"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 1,
+      "received_at": 1733847526624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000005",
+        "op_type": "word.status_set",
+        "op_version": 1,
+        "entity_type": "word_status",
+        "entity_id": "3000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da599e60-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "entry_seq": 3000001,
+          "status": "never_forget",
+          "origin": "manual"
+        }
+      },
+      "code": "clock_ahead",
+      "after_seq": 1,
+      "received_at": 1733847526624
+    },
+    {
+      "op": {
+        "op_id": "0193a1b2-00ff-7000-8000-00a100000007",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-00a100000006",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "0193da908ce0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-00a100000006",
+          "card_id": "0193a1b2-0002-7000-8000-00a100000002",
+          "reviewed_at": 1734538726624,
+          "utc_offset_min": 540,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good"
+        }
+      },
+      "code": "unknown_reference",
+      "after_seq": 1,
+      "received_at": 1733847526624
+    }
+  ],
+  "remint": {
+    "offset_ms": -864000000,
+    "now": 1733847586624,
+    "from": [
+      "0193a1b2-00ff-7000-8000-00a100000007"
+    ],
+    "to": [
+      "0193a1b2-00ff-7000-8000-00a10000000b"
+    ],
+    "creations_from": [
+      "0193a1b2-00ff-7000-8000-00a100000003",
+      "0193a1b2-00ff-7000-8000-00a100000004"
+    ],
+    "creations_to": [
+      "0193a1b2-00ff-7000-8000-00a100000008",
+      "0193a1b2-00ff-7000-8000-00a100000009"
+    ],
+    "discarded": [
+      "0193a1b2-00ff-7000-8000-00a100000005"
+    ]
+  },
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "word_status": [
+        {
+          "entry_seq": 3000001,
+          "override_status": "ignored",
+          "status": "ignored"
+        }
+      ],
+      "note": [
+        {
+          "id": "0193a1b2-0001-7000-8000-00a100000001",
+          "entry_seq": 3000001
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-00a100000002",
+          "note_id": "0193a1b2-0001-7000-8000-00a100000001"
+        }
+      ]
+    }
+  }
+}

@@ -70,6 +70,13 @@ public object Reserved {
 
     /** One day in milliseconds. Interval arithmetic in the core is always in exact 86 400 000 ms days. */
     public const val DAY_MS: Long = 86_400_000L
+
+    /**
+     * `card.last_review_id` of a **refused cache** (SYNC.md 9.4, C-8): the nil UUID, never a
+     * `review_log.id`. Written by the caller when [kotobaya.contracts.replay.ReplayEngine.replay] or
+     * `fold` throws; makes `ReplayEngine.decide` answer FULL_REPLAY for every later row.
+     */
+    public const val REPLAY_REFUSED_ID: Uuid = "00000000-0000-0000-0000-000000000000"
 }
 
 /** The six note base types (`note_type.base_type`, `note.type`). */
