@@ -239,3 +239,5 @@
 2026-11-12T13:58:14Z T111b SPLIT SeaweedFS preallocation (filled / in drill), BACKUPS_DISABLED env, backup image
 2026-11-12T14:01:02Z T112 REVIEW_CHANGES 3 major: backup can run during restore (partial dump tagged verified); durable_seq.sql lacks lock 7033001 (races finalization → durable_seq covers unbacked E2 seqs); job kills send no alert (needs staleness check). 6 minor (temp-DB restore, restic read-data, drill asserts, envFrom).
 2026-11-12T14:01:02Z T112 DISPATCH attempt 2 (same writer); SeaweedFS preallocation fix moved from T111b into T112
+2026-11-12T14:11:02Z T112 REVIEW_CHANGES verification: 8/9 fixed; new major: suspended CronJobs silence staleness alerts (needs watchdog); must-fix: crash between renames loses live DB name
+2026-11-12T14:11:02Z T112 DISPATCH attempt 3 of 5 (same writer)

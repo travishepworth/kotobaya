@@ -1,11 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T14:01:02Z
+Updated: 2026-11-12T14:11:02Z
 
 
 ## RESUME HERE (written 2026-11-12T13:56:32Z before a planned session restart)
-- Phase 1: 16/19 merged. Remaining: **T112 backups** (attempt 2 RUNNING after review CHANGES: restore/backup race, durable_seq lock, silent job kills; if lost on restart: check branch for an attempt-2 commit, else re-dispatch attempt 2 with the findings in plan/LOG.md + the reviewer report summary below, then a verification review) and **T111b** (haiku, after T112 merges; plan/tickets/T111b.md). Old note: (high risk, sonnet) — was RUNNING in worktree .claude/worktrees/agent-af5ce7b42729bb029 on t/T112-backups (base 0d811c6, no commits at handover). If the agent is gone: if the branch has commits + HANDOFF.md → validate (paths, `make check MODULE=deploy`), then send to a reviewer (opus) — high risk; else re-dispatch T112 attempt 1 from plan/tickets/T112.md with the orchestrator notes in plan/LOG.md (SYNC 6.2–6.3 handshake, blob mirror after dump, "backups disabled" setting, k3d restore drill on cluster `kotobaya-t112`).
+- Phase 1: 16/19 merged. Remaining: **T112 backups** (attempt 3 RUNNING: watchdog CronJob + rename crash-safety; earlier: attempt 2 after review CHANGES: restore/backup race, durable_seq lock, silent job kills; if lost on restart: check branch for an attempt-2 commit, else re-dispatch attempt 2 with the findings in plan/LOG.md + the reviewer report summary below, then a verification review) and **T111b** (haiku, after T112 merges; plan/tickets/T111b.md). Old note: (high risk, sonnet) — was RUNNING in worktree .claude/worktrees/agent-af5ce7b42729bb029 on t/T112-backups (base 0d811c6, no commits at handover). If the agent is gone: if the branch has commits + HANDOFF.md → validate (paths, `make check MODULE=deploy`), then send to a reviewer (opus) — high risk; else re-dispatch T112 attempt 1 from plan/tickets/T112.md with the orchestrator notes in plan/LOG.md (SYNC 6.2–6.3 handshake, blob mirror after dump, "backups disabled" setting, k3d restore drill on cluster `kotobaya-t112`).
 - Then: `make test` (all modules) → GATE-P1 deferred (single-session) → write P1 human checks into plan/HUMAN_CHECKS.md → start Phase 2. Phase 2 needs ticket files first (dispatch a sonnet planner like the P1 one: plan/tickets/T201.md… from BACKLOG + FOLLOWUPS + ADRs 002–009).
 - Before T208 (web shell): fix k3d dev HTTPS (Secure cookie) — see FOLLOWUPS. Before T207: ADR-009 + JPDB_API_KEY live check (S02) + small C-ticket on JobResultJpdbHistory.
 - Stale worktrees (merged): agent-ae408d50204f320d0 (T009), agent-af77a050ea16184ff (T111) are harness-locked; after restart run `git worktree remove -f -f <path>` and `git branch -D t/T009-helm t/T111-helm-workloads`.
@@ -14,7 +14,7 @@ Updated: 2026-11-12T14:01:02Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T112 | writer (gp/sonnet) | 2 | t/T112-backups (existing worktree) | 2026-11-12T14:01:02Z |
+| T112 | writer (gp/sonnet) | 3 | t/T112-backups (existing worktree) | 2026-11-12T14:01:02Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
