@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:08:29Z
+Updated: 2026-11-12T17:09:54Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -15,7 +15,6 @@ Updated: 2026-11-12T17:08:29Z
 |---|---|---|---|---|
 | T211 | writer (sonnet) | 1 | t/T211-web-decks | 2026-11-12T17:08:29Z |
 | C-6 | architect (opus) | 2 | t/C-6-storable-values | 2026-11-12T17:07:11Z |
-| C-7 | architect (opus) | 1 (+core QueueBuilder KDoc) | t/C-7-settings-keys | 2026-11-12T17:03:26Z |
 | T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -24,6 +23,7 @@ Updated: 2026-11-12T17:08:29Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| C-7 (contracts+core green; additive) | reviewer (opus) | 2026-11-12T17:09:54Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

@@ -370,3 +370,6 @@
 2026-11-12T17:08:29Z T204 MERGE
 2026-11-12T17:08:29Z T211 DISPATCH writer(sonnet)
 2026-11-12T17:08:29Z - T205 ready but held for C-7 (QueueInput contract change)
+2026-11-12T17:09:54Z C-7 HANDOFF DONE (SCHEMA §6 keys + QueueInput.decklessAddKanji, key renamed mined_priority)
+2026-11-12T17:09:54Z C-7 CHECK_GREEN contracts + core after rebase
+2026-11-12T17:09:54Z C-7 REVIEW dispatched reviewer(opus)
