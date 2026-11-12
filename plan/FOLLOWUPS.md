@@ -74,3 +74,4 @@
 - T109a → T105b: call `hub.closeToken(id)` on revocation and `bus.publish` for device.* events (credentialValid hook exists).
 - T109a → T309: ntfy forwarding needs a sink on EventHub + a base-URL setting.
 - T109b: worker registry is empty; health/readiness and Dockerfile CMD untouched → W-1.
+- T105a hardening (next auth touch, e.g. T105b or T609): parse XFF hops only from the right up to the first untrusted hop (ignore malformed hops further left); key IPv6 clients on /64; strict IP-literal parsing (no getByName DNS fallback).

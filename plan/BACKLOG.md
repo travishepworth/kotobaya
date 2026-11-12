@@ -172,11 +172,11 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
 
 ### T105a — Auth: password, TOTP, session, login rate limit
-- model: opus · risk: high · deps: T104 · status: RUNNING
+- model: opus · risk: high · deps: T104 · status: MERGED
 - see plan/tickets/T105a.md (split from T105)
 
 ### T105b — Auth: devices, pairing, PATs, scope middleware
-- model: opus · risk: high · deps: T105a · status: TODO
+- model: opus · risk: high · deps: T105a · status: RUNNING
 - see plan/tickets/T105b.md (split from T105)
 
 ### T106 — Dictionary search API
@@ -258,7 +258,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T103b.md
 
 ### W-1 — Wire server modules and worker jobs
-- model: sonnet · risk: med · deps: T105a, T106, T109a, T109b · status: TODO
+- model: sonnet · risk: med · deps: T105a, T106, T109a, T109b · status: RUNNING
 - see plan/tickets/W-1.md
 
 ## Phase 2 — Review loop (web)
