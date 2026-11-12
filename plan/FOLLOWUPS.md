@@ -18,3 +18,5 @@
 - Makefile `check MODULE=contracts` must run contracts/db/check.sh + contracts/sync/check.sh (+ api check from T004).
 - T005 → T004: validate push bodies with `PushRequestLenient`; per-op errors in `PushResult`. Snapshot blob formats undefined (list/media deck snapshots) — needs an owner ticket.
 - T004: undefined — snapshot archive formats (also flagged by T005), `confusable.suggested` trigger, pairing-code storage (in-memory). Web reviews attributed to the server device, not per browser.
+- T005 → contracts/db (C-ticket or T006 batch): SCHEMA.md §5.3 purge wording (acked rows kept until durable_seq) + 4 new sync_state keys.
+- T005: after a server restore, REST- and job-originated ops since the last backup are lost (device ops are re-pushed). Backups ticket (T112) should note it; HUMAN_CHECKS on backup frequency.
