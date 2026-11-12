@@ -464,3 +464,15 @@
 2026-11-12T18:43:02Z - CHECK_GREEN make test (all modules) P2
 2026-11-12T18:43:02Z GATE-P2 GATE_CLOSE deferred to HUMAN_CHECKS (single-session)
 2026-11-12T18:43:02Z RETRO P2: ~2.0 attempts/ticket. Overruns all in contract/sync (C-6 2, C-7 2, C-8 4, T202a 4, T202b 2): root cause = contract allowed values/edge cases that platforms or Postgres treat differently (regex semantics, depth, storable values, re-mint keying). Fixed at contract level (C-5..C-9). Non-sync tickets ~1.1. Keep: architect verification on every sync contract change; require concrete failure scenarios.
+2026-11-12T18:49:57Z - SPLIT P3 (planner): T301a/b, T303a–e, T304a–c, T305a–c; 22 tickets
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-1: Android paths use the real layout android/src/main/kotlin/kotobaya/android/... (the module is :android, no app/ subdir); BACKLOG rows say android/app/..., superseded b
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-2: T303 split into a (core protocol/outbox/mint, pure core, no Android deps so it can start immediately), b (device op apply, replay, rebuild, log reset, refused cache), 
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-3: Refused-cache handling is folded into T303b (device apply writes the nil-UUID cache, diagnostics) and T304a (queue loader excludes refused cards), not a separate ticke
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-4: T305 split into a (flavors + provider layer against an AnkiStore interface), b (NoteCreator: JMdict match, duplicates, ops; shared by T306/T311) and c (Takoboto Vocab 
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-5: T304 split into a (queue loader, study-day, counts/forecast), b (review screen: WebView, grading, undo), c (toolbar actions). Real deps: b/c need T303c (minting + loca
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-6: Shared Android files (nav, DI, build.gradle.kts, manifest) use a FeatureEntry registry in T301a; each ticket adds one registration line in di/FeatureModules.kt and its
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-7: T307 depends on T308 (DueTrigger listener seam) so the widget refresh and notification share one alarm; T307/T308 also depend on T304a for counts.
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-8: T313 adds an `acceptance` Gradle module (settings.gradle.kts include and Makefile MODULES/check-acceptance lines); CLAUDE.md's module table needs a human line. Server 
+2026-11-12T18:49:57Z - DECIDE DECIDE P3-9: T302 may add a new core/.../kotobaya/dict/ package (romaji-to-hiragana parity with server, per FOLLOWUPS T106) rather than leaving it Android-only; server copy untouch
+2026-11-12T18:49:57Z T301a DISPATCH writer(sonnet)
+2026-11-12T18:49:57Z T303a DISPATCH writer-senior(opus)

@@ -1,11 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T18:43:02Z
+Updated: 2026-11-12T18:49:57Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
-- P1 done (18/18, make test green, GATE-P1 deferred). P2 tickets in plan/tickets/ (splits: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4; T214). Per-ticket status: BACKLOG.md "Phase 2 splits" line.
+- P1, P2 done (make test green; GATE-P1/P2 deferred). P3 tickets in plan/tickets/ (22; splits in BACKLOG "Phase 3 splits"). Ready order: T301a + T303a → T301b/T304a/T305a/T303b → ...
 - Next after running ones: T213a (after T201a), T202b (after T202a), T207a (after C-4), T203 (after T202a). High-risk (T202*, T203, T205, T207*) → reviewer (opus) + architect 2nd pass for sync/replay.
 - Web tickets: tell writers SvelteKit 3 = relative imports (no $lib), client via web/src/lib/api/generated.ts (see FOLLOWUPS T208).
 - Conventions: named agent types now registered; architect-role tickets run with model=opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy. Review loop only on real majors with failure scenarios.
@@ -13,6 +13,8 @@ Updated: 2026-11-12T18:43:02Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T301a | writer (sonnet) | 1 | t/T301a-android-shell | 2026-11-12T18:49:57Z |
+| T303a | writer-senior (opus) | 1 | t/T303a-sync-client-core | 2026-11-12T18:49:57Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -38,7 +40,7 @@ Updated: 2026-11-12T18:43:02Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 0/? · attempts 0 · escalations 0
+P3: merged 0/22 · attempts 2 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
