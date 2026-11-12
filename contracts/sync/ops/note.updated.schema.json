@@ -25,7 +25,8 @@
             "$ref": "../common.schema.json#/$defs/key"
           },
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^\\u0000]*$"
           },
           "description": "Field values {field key: HTML fragment}. Each key is its own register 'fields.<key>'. Keys need not exist in the note type (unknown keys are kept).",
           "minProperties": 1
@@ -35,10 +36,12 @@
         },
         "mnemonic": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'mnemonic'."
         },
         "source_sentence": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Sentence the note was mined from, by value; '' if none. Register 'source_sentence' covers this and the two columns below."
         },
         "source_sentence_id": {

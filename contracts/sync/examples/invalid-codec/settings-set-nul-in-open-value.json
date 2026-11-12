@@ -1,0 +1,21 @@
+{
+  "schema": "op.schema.json",
+  "why": "U+0000 in a string inside an open JSON value: no schema pattern reaches it; the op-level no-U+0000 rule (SYNC.md 2.1) rejects it at /payload/value/1",
+  "rule": "nul",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000026",
+    "op_type": "settings.set",
+    "op_version": 1,
+    "entity_type": "settings",
+    "entity_id": "scheduler.new_per_day",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c026-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "key": "scheduler.new_per_day",
+      "value": [
+        "ok",
+        "x\u0000"
+      ]
+    }
+  }
+}

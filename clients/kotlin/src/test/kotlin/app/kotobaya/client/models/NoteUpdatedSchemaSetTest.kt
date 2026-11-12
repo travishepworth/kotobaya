@@ -69,7 +69,7 @@ class NoteUpdatedSchemaSetTest : ShouldSpec() {
             //modelInstance.sourceSentenceId shouldBe ("TODO")
         }
 
-        // to test the property `tags` - The complete tag set: no duplicates, no whitespace inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'.
+        // to test the property `tags` - The complete tag set: no duplicates, no whitespace (ECMA-262 \\s, SYNC.md 2.1) and no U+0000 inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'.
         should("test tags") {
             // uncomment below to test the property
             //modelInstance.tags shouldBe ("TODO")

@@ -28,7 +28,8 @@
       "description": "Error text when parse_status = failed, else null. Default null.",
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[^\\u0000]*$"
         },
         {
           "type": "null"
@@ -38,7 +39,8 @@
     "content_version": {
       "type": "integer",
       "description": "content_version after this op; 0 = nothing published yet. Applied iff >= the stored one.",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "content_blob_hash": {
       "description": "Snapshot blob for content_version; null iff content_version = 0.",

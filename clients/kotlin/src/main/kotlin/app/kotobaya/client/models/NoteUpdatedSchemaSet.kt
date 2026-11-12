@@ -35,7 +35,7 @@ import com.google.gson.annotations.SerializedName
  * @param sourceMediaId Soft reference to media.id, or null.
  * @param sourceSentence Sentence the note was mined from, by value; '' if none. Register 'source_sentence' covers this and the two columns below.
  * @param sourceSentenceId Soft reference to sentence.id, or null.
- * @param tags The complete tag set: no duplicates, no whitespace inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'.
+ * @param tags The complete tag set: no duplicates, no whitespace (ECMA-262 \\s, SYNC.md 2.1) and no U+0000 inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'.
  */
 
 
@@ -47,7 +47,7 @@ data class NoteUpdatedSchemaSet (
 
     /* Field values {field key: HTML fragment}. Each key is its own register 'fields.<key>'. Keys need not exist in the note type (unknown keys are kept). */
     @SerializedName("fields")
-    val fields: kotlin.collections.Map<kotlin.String, kotlin.String?>? = null,
+    val fields: kotlin.collections.Map<kotlin.String, kotlin.String>? = null,
 
     /* Register 'mnemonic'. */
     @SerializedName("mnemonic")
@@ -65,7 +65,7 @@ data class NoteUpdatedSchemaSet (
     @SerializedName("source_sentence_id")
     val sourceSentenceId: kotlin.String? = null,
 
-    /* The complete tag set: no duplicates, no whitespace inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'. */
+    /* The complete tag set: no duplicates, no whitespace (ECMA-262 \\s, SYNC.md 2.1) and no U+0000 inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'. */
     @SerializedName("tags")
     val tags: kotlin.collections.Set<kotlin.String>? = null
 

@@ -21,6 +21,7 @@
       "properties": {
         "title": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'title'.",
           "minLength": 1,
           "maxLength": 500

@@ -124,6 +124,18 @@ class OpCodecTest {
         "review-button-rating-mismatch.json" to Expect.Invalid("/payload/rating"),
         "review-manual-with-rating.json" to Expect.Invalid("/payload"), // required manual_action is checked before then.rating
         "review-set-due-without-date.json" to Expect.Invalid("/payload/manual_due_at"),
+        // C-6: storable values (U+0000, int4 maxima, instants up to year 9999, match_text length)
+        "op-nul-in-field.json" to Expect.Invalid("/payload/fields/sentence"),
+        "note-created-tag-nul.json" to Expect.Invalid("/payload/tags/1"),
+        "deck-created-new-per-day-over-int4.json" to Expect.Invalid("/payload/new_cards_per_day"),
+        "deck-updated-reviews-per-day-over-int4.json" to Expect.Invalid("/payload/set/reviews_per_day"),
+        "fsrs-params-created-step-over-int4.json" to Expect.Invalid("/payload/learning_steps_s/1"),
+        "fsrs-params-updated-relearning-step-over-int4.json" to Expect.Invalid("/payload/set/relearning_steps_s/0"),
+        "fsrs-params-published-weights-version-over-int4.json" to Expect.Invalid("/payload/weights_version"),
+        "deck-content-published-version-over-int4.json" to Expect.Invalid("/payload/content_version"),
+        "media-content-published-version-over-int4.json" to Expect.Invalid("/payload/content_version"),
+        "review-reviewed-at-after-9999.json" to Expect.Invalid("/payload/reviewed_at"),
+        "parse-override-match-text-too-long.json" to Expect.Invalid("/payload/match_text"),
     )
 
     @Test

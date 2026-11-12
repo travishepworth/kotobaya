@@ -22,8 +22,8 @@
     "instant_ms": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 281474976710655,
-      "description": "An instant as integer milliseconds since the Unix epoch, UTC.",
+      "maximum": 253402300799999,
+      "description": "An instant as integer milliseconds since the Unix epoch, UTC. At most 253402300799999 = 9999-12-31T23:59:59.999Z (C-6): the last instant an RFC 3339 date-time (4-digit year; the API's format, SCHEMA.md timestamptz rendering) can express, so every stored instant can be served and parsed on every replica.",
       "examples": [
         1733323211732
       ]
@@ -54,11 +54,11 @@
       "maxItems": 200,
       "items": {
         "type": "string",
-        "pattern": "^\\S+$",
+        "pattern": "^[^\\s\\u0000]+$",
         "minLength": 1,
         "maxLength": 100
       },
-      "description": "The complete tag set: no duplicates, no whitespace inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'."
+      "description": "The complete tag set: no duplicates, no whitespace (ECMA-262 \\s, SYNC.md 2.1) and no U+0000 inside a tag, case-sensitive, sorted ascending by Unicode code point by the op's author. Replicas store it as given. Never contains the virtual tag 'leech'."
     },
     "item_key": {
       "type": "string",
@@ -87,6 +87,7 @@
             "string",
             "null"
           ],
+          "pattern": "^[^\\u0000]*$",
           "description": "Front HTML with {{field_key}} placeholders; null = the core's built-in template."
         },
         "back": {
@@ -94,6 +95,7 @@
             "string",
             "null"
           ],
+          "pattern": "^[^\\u0000]*$",
           "description": "Back HTML; null = the core's built-in template."
         }
       }

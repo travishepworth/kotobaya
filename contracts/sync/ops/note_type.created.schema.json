@@ -18,6 +18,7 @@
     },
     "name": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Display name.",
       "minLength": 1,
       "maxLength": 200
@@ -53,6 +54,7 @@
           },
           "label": {
             "type": "string",
+            "pattern": "^[^\\u0000]*$",
             "description": "Display label.",
             "minLength": 1
           },
@@ -80,6 +82,7 @@
     },
     "css": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Extra CSS appended after assets/card/ CSS. Default ''.",
       "default": ""
     }

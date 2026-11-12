@@ -40,7 +40,7 @@ class ParseOverrideputschemaTest : ShouldSpec() {
             //modelInstance.id shouldBe ("TODO")
         }
 
-        // to test the property `matchText` - Exact surface substring this override re-tokenises.
+        // to test the property `matchText` - Exact surface substring this override re-tokenises. At most 200 code points (C-6): the column has a btree index (parse_override_match_idx), whose entries Postgres caps at about 2.7 kB.
         should("test matchText") {
             // uncomment below to test the property
             //modelInstance.matchText shouldBe ("TODO")

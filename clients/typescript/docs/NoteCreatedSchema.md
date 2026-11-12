@@ -8,7 +8,7 @@ Creates a note. The note\'s `type` is not carried: every replica copies note_typ
 Name | Type
 ------------ | -------------
 `entrySeq` | number
-`fields` | { [key: string]: string | null; }
+`fields` | { [key: string]: string; }
 `grammarPointId` | string
 `id` | string
 `kanjiLiteral` | string

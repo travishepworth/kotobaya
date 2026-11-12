@@ -8,7 +8,7 @@ Registers to write. At least one. The three source_* properties form one registe
 Name | Type
 ------------ | -------------
 `entrySeq` | number
-`fields` | { [key: string]: string | null; }
+`fields` | { [key: string]: string; }
 `mnemonic` | string
 `sourceMediaId` | string
 `sourceSentence` | string

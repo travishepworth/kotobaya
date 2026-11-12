@@ -248,3 +248,33 @@
   New raw push examples `op-too-deep` and `body-too-deep`.
 - Worth a second look: the pattern translator raises on any regex feature it does not know, so a
   future schema using one fails `check.sh` until SYNC.md 2.1 gives it a meaning.
+
+## C-6 changes (breaking, before any deployment)
+- **Every valid value can be stored (new "Storable values" in SYNC.md 2.1).** Some schema-valid
+  ops could not be written to Postgres, so the server could refuse them only after a device had
+  made them. Now the contract rules them out first:
+  - No U+0000 anywhere in an op (Postgres text and jsonb refuse it). Every typed string schema
+    has the pattern `^[^\u0000]*$` (tags: `^[^\s\u0000]+$`). Strings and keys inside open JSON
+    (settings values, unknown kept keys) are covered by a new op-level rule `NO_NUL`, checked by
+    the same walk as the depth limit.
+  - Integers stored in int4 columns have `maximum: 2147483647` (deck daily limits, learning and
+    relearning steps, `content_version`, `weights_version`).
+  - Instants stop at 9999-12-31T23:59:59.999Z (RFC 3339 cannot write a 5-digit year).
+  - `parse_override.put` `match_text` is at most 200 code points (it has a btree index; the API
+    already capped it at 200).
+- **REST and importers never build an invalid op.** REST answers `422 invalid_value`; importers
+  split tags on JavaScript's whitespace set, drop and count the bad ones, and strip U+0000.
+- SYNC.md 3.2/6.3 and SCHEMA.md 4.4 now name the server's clock row: `server_state.hlc_last`.
+- Doc fixes: patterns are matched per code point (as with the `u` flag) and must work with and
+  without it; a reschedule (`set_due`) of a new card changes nothing; `ReplayEngine.replay` lists
+  what it throws on.
+- **Alternative rejected:** one recursive "no NUL anywhere" schema. Simpler to read, but the core
+  validator recurses once per nesting level, and on a legal 500-deep op the test JVM ran out of
+  stack. So the rule went next to the depth walk instead.
+- **Migration:** no real data exists. A development database cannot hold U+0000 at all. It could
+  hold an instant after 9999 or a long `match_text` only in theory: a dev reset clears them.
+  Server: until core implements `NO_NUL` (follow-up), T202b's interim `invalid_value` catches what
+  the schemas miss.
+- **Worth a second look:** (1) `NO_NUL` is a rule outside JSON Schema (like depth), so a plain
+  schema validator misses U+0000 inside open JSON. (2) The 9999 cap is based on the API's text
+  format, not on Postgres. (3) The `match_text` cap is new for sync but matches the API.

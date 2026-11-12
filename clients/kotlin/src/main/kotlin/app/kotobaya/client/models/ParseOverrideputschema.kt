@@ -31,7 +31,7 @@ import com.google.gson.annotations.SerializedName
  * Creates or replaces a tokenisation correction (whole row, last-writer-wins on hlc). Server only: devices skip it. OPS.md#parse_overrideput
  *
  * @param id Id of the parse override. Equals the envelope's entity_id.
- * @param matchText Exact surface substring this override re-tokenises.
+ * @param matchText Exact surface substring this override re-tokenises. At most 200 code points (C-6): the column has a btree index (parse_override_match_idx), whose entries Postgres caps at about 2.7 kB.
  * @param tokens Replacement tokens; surfaces must concatenate to match_text (server rejects otherwise).
  * @param mediaId Scope: null = all media. Soft reference. Default null.
  * @param note Free-text remark. Default ''.
@@ -45,7 +45,7 @@ data class ParseOverrideputschema (
     @SerializedName("id")
     val id: kotlin.String,
 
-    /* Exact surface substring this override re-tokenises. */
+    /* Exact surface substring this override re-tokenises. At most 200 code points (C-6): the column has a btree index (parse_override_match_idx), whose entries Postgres caps at about 2.7 kB. */
     @SerializedName("match_text")
     val matchText: kotlin.String,
 

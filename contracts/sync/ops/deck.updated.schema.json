@@ -21,6 +21,7 @@
       "properties": {
         "name": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'name'.",
           "minLength": 1,
           "maxLength": 200
@@ -40,7 +41,8 @@
           "anyOf": [
             {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 2147483647
             },
             {
               "type": "null"
@@ -52,7 +54,8 @@
           "anyOf": [
             {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 2147483647
             },
             {
               "type": "null"
@@ -61,6 +64,7 @@
         },
         "query": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'query'. Only valid for smart decks (server rejects otherwise).",
           "minLength": 1
         },

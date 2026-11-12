@@ -248,7 +248,11 @@ public sealed interface OpDecodeResult {
      * type/version fails its schemas (including `additionalProperties: false`, `allOf` conditionals,
      * `seq` presence per [OpSource], and an **integer-typed** property — `"type": "integer"` in the
      * schema — whose value is not integral or has magnitude `>= 2^53`), or an op nested deeper than 500
-     * (`MAX_OP_DEPTH`, [CanonicalJson], SYNC.md 2.1). Every `pattern` is evaluated with **ECMA-262** semantics
+     * (`MAX_OP_DEPTH`, [CanonicalJson], SYNC.md 2.1), or (C-6, op-level rule `NO_NUL`, SYNC.md 2.1
+     * "Storable values") an op with U+0000 in any string or object member name anywhere in its tree —
+     * checked iteratively, only for a known type/version (an unknown one stays [Unsupported], as in the
+     * 5.3 order), before its schema; pointer = that string or member (`contracts/sync/examples/invalid-codec/`); [encode] / [encodeTree] throw
+     * IllegalArgumentException for such an op, as for depth. Every `pattern` is evaluated with **ECMA-262** semantics
      * (SYNC.md 2.1, C-5): `$` is end of input only (an id ending in `"\n"` is Invalid), and `\s`/`\S` use the
      * ECMA whitespace set (a tag containing U+3000, U+00A0 or U+FEFF is Invalid); on the JVM this
      * means translating patterns, not handing them to `java.util.regex` unchanged. The server answers

@@ -7,7 +7,7 @@ Creates or replaces a tokenisation correction (whole row, last-writer-wins on hl
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **str** | Id of the parse override. Equals the envelope&#39;s entity_id. | 
-**match_text** | **str** | Exact surface substring this override re-tokenises. | 
+**match_text** | **str** | Exact surface substring this override re-tokenises. At most 200 code points (C-6): the column has a btree index (parse_override_match_idx), whose entries Postgres caps at about 2.7 kB. | 
 **media_id** | **str** | Scope: null &#x3D; all media. Soft reference. Default null. | [optional] 
 **note** | **str** | Free-text remark. Default &#39;&#39;. | [optional] [default to '']
 **sentence_id** | **str** | Narrowest scope: one sentence; requires media_id. Soft reference. Default null. | [optional] 

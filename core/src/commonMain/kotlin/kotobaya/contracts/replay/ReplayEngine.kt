@@ -136,6 +136,13 @@ public interface ReplayEngine {
      * Result: `lastReviewId` = id of the last row (null if the set is empty); `weightsVersion =
      * params.weightsVersion` **always** (a full replay makes the cache current). An empty set, or
      * one ending in a RESET, gives state NEW and `dueAt = null` (SYNC.md 9.3).
+     *
+     * @throws IllegalArgumentException if two schedule-feeding, not-undone rows in [reviews] share an
+     *   `id` (a replay set never holds one review twice; the caller passes each `review_log` row once;
+     *   rows the engine filters out are not checked), or if such a row violates the `review_log` CHECKs: a rated row (SCHEDULED/LEARNING) without
+     *   [ReplayReview.rating], a MANUAL row without [ReplayReview.manualAction], or a SET_DUE row
+     *   without [ReplayReview.manualDueAt]. Such rows cannot come from a database that enforces
+     *   `V1__init.sql`; the exception signals a caller bug, never a data condition to recover from.
      */
     public fun replay(reviews: List<ReplayReview>, params: SchedulerParams): CardCache
 

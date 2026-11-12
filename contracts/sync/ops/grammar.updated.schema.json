@@ -21,24 +21,29 @@
       "properties": {
         "title": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'title'.",
           "minLength": 1,
           "maxLength": 500
         },
         "pattern": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'pattern': display pattern, e.g. 〜ざるを得ない."
         },
         "meaning": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'meaning'."
         },
         "explanation": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'explanation' (Markdown)."
         },
         "notes": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'notes' (Markdown)."
         },
         "jlpt": {
@@ -66,6 +71,7 @@
             "properties": {
               "rule": {
                 "type": "string",
+                "pattern": "^[^\\u0000]*$",
                 "description": "Token-pattern rule."
               },
               "draft": {
@@ -96,10 +102,12 @@
             "properties": {
               "title": {
                 "type": "string",
+                "pattern": "^[^\\u0000]*$",
                 "description": "Link text."
               },
               "url": {
                 "type": "string",
+                "pattern": "^[^\\u0000]*$",
                 "description": "URL."
               }
             }

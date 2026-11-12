@@ -1,0 +1,23 @@
+{
+  "schema": "op.schema.json",
+  "why": "new_cards_per_day 2^31 does not fit the Postgres integer (int4) column; 2147483647 is the maximum (C-6, SYNC.md 2.1 storable values)",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000017",
+    "op_type": "deck.created",
+    "op_version": 1,
+    "entity_type": "deck",
+    "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c017-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "id": "0193a1b2-0004-7000-8000-000000000001",
+      "name": "Mined words",
+      "type": "user",
+      "priority": 10,
+      "new_cards_per_day": 2147483648,
+      "settings": {
+        "order": "position"
+      }
+    }
+  }
+}

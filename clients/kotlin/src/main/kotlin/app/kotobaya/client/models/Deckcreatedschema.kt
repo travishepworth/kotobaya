@@ -39,7 +39,7 @@ import com.google.gson.annotations.SerializedName
  * @param newCardsPerDay Per-deck daily new-card limit; null = only the global limit applies.
  * @param priority New cards are drawn from enabled decks in ascending (priority, id). Default 0.
  * @param query Card search-language string. Required iff type = smart.
- * @param reviewsPerDay Per-deck daily new-card limit; null = only the global limit applies.
+ * @param reviewsPerDay Per-deck daily review limit; null = only the global limit applies.
  * @param settings Open object; each top-level key is its own register 'settings.<key>'. Known keys: order, add_kanji, card_kinds. Keys whose value is null, '', [] or {} are dropped at creation.
  */
 
@@ -86,7 +86,7 @@ data class Deckcreatedschema (
     @SerializedName("query")
     val query: kotlin.String? = null,
 
-    /* Per-deck daily new-card limit; null = only the global limit applies. */
+    /* Per-deck daily review limit; null = only the global limit applies. */
     @SerializedName("reviews_per_day")
     val reviewsPerDay: kotlin.Int? = null,
 

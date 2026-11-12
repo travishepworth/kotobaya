@@ -15,7 +15,7 @@ Name | Type | Description | Notes
 **new_cards_per_day** | **int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. | [optional] 
 **priority** | **int** | New cards are drawn from enabled decks in ascending (priority, id). Default 0. | [optional] [default to 0]
 **query** | **str** | Card search-language string. Required iff type &#x3D; smart. | [optional] 
-**reviews_per_day** | **int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. | [optional] 
+**reviews_per_day** | **int** | Per-deck daily review limit; null &#x3D; only the global limit applies. | [optional] 
 **settings** | **object** | Open object; each top-level key is its own register &#39;settings.&lt;key&gt;&#39;. Known keys: order, add_kanji, card_kinds. Keys whose value is null, &#39;&#39;, [] or {} are dropped at creation. | [optional] 
 **type** | **str** | Immutable. media and list: server-emitted only. | 
 

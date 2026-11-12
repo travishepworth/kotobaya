@@ -21,6 +21,7 @@
       "properties": {
         "name": {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "description": "Register 'name'.",
           "minLength": 1,
           "maxLength": 200
@@ -42,7 +43,8 @@
           "maxItems": 20,
           "items": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 2147483647
           },
           "description": "Register 'learning_steps_s': steps in seconds, in order; [] = none."
         },
@@ -51,7 +53,8 @@
           "maxItems": 20,
           "items": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 2147483647
           },
           "description": "Register 'relearning_steps_s': steps in seconds, in order; [] = none."
         },

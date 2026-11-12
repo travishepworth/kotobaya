@@ -93,7 +93,7 @@ class DeckcreatedschemaTest : ShouldSpec() {
             //modelInstance.query shouldBe ("TODO")
         }
 
-        // to test the property `reviewsPerDay` - Per-deck daily new-card limit; null = only the global limit applies.
+        // to test the property `reviewsPerDay` - Per-deck daily review limit; null = only the global limit applies.
         should("test reviewsPerDay") {
             // uncomment below to test the property
             //modelInstance.reviewsPerDay shouldBe ("TODO")

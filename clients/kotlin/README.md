@@ -100,6 +100,14 @@ For an op the server builds on behalf of a REST call:
   the value the row already has still produces a write (it bumps the register's clock).
 - If a call changes nothing (documented per operation, e.g. deleting an already deleted
   note), no op is emitted and the response is still successful.
+- **Never an invalid op (C-6).** If a request would make the server build an op that fails
+  its schema or an op-level rule in `contracts/sync` - a tag containing ECMA-262 whitespace
+  (e.g. U+3000 or U+00A0), U+0000 in any string (field values and open JSON objects
+  included), an integer above its op maximum (`2147483647` for int4 columns) or an instant
+  after `9999-12-31T23:59:59.999Z` - the call is `422 validation_failed` with a field error
+  at that request property, code `invalid_value` (or `out_of_range` / `too_long` where the
+  operation's own request bound fails first). Nothing is emitted; never a `500`.
+  SYNC.md 2.1 \"Storable values\" and \"Input that would mint an invalid op\".
 - Responses to mutating calls carry the header `Kotobaya-Seq`: the `change.seq` of the last op
   the call emitted. A client holding a local replica knows it has seen the effect once its
   pull cursor is at or past that value. The header is absent when no op was emitted.

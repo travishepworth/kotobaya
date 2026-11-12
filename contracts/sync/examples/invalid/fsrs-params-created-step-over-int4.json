@@ -1,0 +1,22 @@
+{
+  "schema": "op.schema.json",
+  "why": "a learning step of 2^31 s does not fit the integer[] column; Postgres integer (int4) column; 2147483647 is the maximum (C-6, SYNC.md 2.1 storable values)",
+  "instance": {
+    "op_id": "0193a1b2-00ff-7000-8000-000000000005",
+    "op_type": "fsrs_params.created",
+    "op_version": 1,
+    "entity_type": "fsrs_params",
+    "entity_id": "0193a1b2-0006-7000-8000-000000000001",
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "hlc": "0193a1b2c005-0000-01931f3e-0000-7000-8000-0000000000a1",
+    "payload": {
+      "id": "0193a1b2-0006-7000-8000-000000000001",
+      "name": "Kanji (high retention)",
+      "desired_retention": 0.93,
+      "learning_steps_s": [
+        60,
+        2147483648
+      ]
+    }
+  }
+}

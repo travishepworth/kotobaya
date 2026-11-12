@@ -16,6 +16,7 @@
     },
     "name": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Display name; not unique.",
       "minLength": 1,
       "maxLength": 200
@@ -50,7 +51,8 @@
       "anyOf": [
         {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 2147483647
         },
         {
           "type": "null"
@@ -62,7 +64,8 @@
       "anyOf": [
         {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 2147483647
         },
         {
           "type": "null"
@@ -79,6 +82,7 @@
     },
     "query": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Card search-language string. Required iff type = smart."
     },
     "media_id": {

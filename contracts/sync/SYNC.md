@@ -14,6 +14,7 @@ Frozen interface between every replica of the learning data: the server (Postgre
 | `common.schema.json` | Shared scalar types (uuid, hlc, instant, item key, …). |
 | `scenario.schema.json`, `examples/scenarios/` | Machine-readable worked examples (section 13) for the convergence tests. |
 | `examples/ops/`, `examples/batches/`, `examples/invalid/` | One or more examples per op, example HTTP bodies, and instances that must be rejected. |
+| `examples/invalid-codec/`, `examples/raw-push/` | Ops that are schema-valid but break an op-level rule of 2.1 (`NO_NUL`, C-6); raw push bodies and their verdicts (duplicate keys, depth). |
 | `tools/model.py`, `tools/validate.py`, `check.sh` | Reference model of a replica, the server (validation, merge verdicts, restore) and a device's sync procedure; the contract's self-check (section 16). Not normative. |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
 
@@ -66,7 +67,9 @@ Schema: [`op.schema.json`](op.schema.json). The same eight properties are the co
 
 Rules for every payload:
 
-- **Instants** are integers: milliseconds since the Unix epoch, UTC (`common.schema.json#/$defs/instant_ms`).
+- **Instants** are integers: milliseconds since the Unix epoch, UTC (`common.schema.json#/$defs/instant_ms`),
+  from 0 to 253402300799999 (9999-12-31T23:59:59.999Z; C-6, 2.1).
+- **Strings** never contain U+0000, anywhere in the op (C-6, 2.1).
 - **Ids** are canonical lowercase UUIDs. New rows get a UUIDv7 from whoever creates them.
 - **Omitted optional properties** mean "the column default" in `*.created` ops. In `*.updated`
   ops only the registers named in `set` are written.
@@ -101,14 +104,23 @@ Full example ([`examples/ops/note.created.json`](examples/ops/note.created.json)
 }
 ```
 
-### 2.1 Portable validation: patterns and nesting depth (C-5)
+### 2.1 Portable validation: patterns, nesting depth, storable values (C-5, C-6)
 
 Every replica (Kotlin/JVM server, Android, the JS web client, Python tools) validates ops against
 the same schemas and MUST reach the same verdict on every op: if the server accepts an op that a
-client then finds schema-invalid on pull, that client's pull stops at it for good (6.1).
+client then finds schema-invalid on pull, that client's pull stops at it for good (6.1). The
+converse matters as much: a schema-valid op that the server cannot store is refused only after a
+device has minted it, so **every value a schema admits MUST be storable** in the server's columns
+(see "Storable values" below), and a replica decides it from the schema alone, before minting.
 
-**`pattern` uses ECMA-262 semantics**, as JSON Schema 2020-12 requires, with no flags (not `u`,
-not `m`, not `i`), applied as an unanchored search (the anchors are written in the pattern). A
+**`pattern` uses ECMA-262 semantics**, as JSON Schema 2020-12 requires, without `m` and `i`,
+evaluated **per code point (equivalent to the `u` flag)**, and applied as an unanchored search (the
+anchors are written in the pattern). Every pattern in the schemas MUST also be a valid pattern, with
+the same meaning on every string the schemas can reach, both with and without the `u` flag (so no
+`\-` or other identity escape of a non-syntax character outside a class, no `{`/`}` used as a
+literal, no lone surrogate written as `\uD8xx`). `ecma_to_python` in `tools/validate.py` raises on
+every construct it does not translate unambiguously, including `\-` outside a class, a class
+escape next to `-` in a class (`[\s-z]`) and `{,` (C-6). A
 non-JS implementation MUST NOT hand a pattern to its native regex engine unchanged; it translates
 it (or uses an ECMA-262 engine). The differences that matter for the v1 schemas:
 
@@ -125,8 +137,9 @@ it (or uses an ECMA-262 engine). The differences that matter for the v1 schemas:
   contain an unpaired surrogate, `Json.kt`).
 - Consequences for v1: an id, hlc, key or op type with a trailing `"\n"` is invalid; a tag
   (`common.schema.json#/$defs/tags`, `^\S+$`) containing U+3000, U+00A0 or U+FEFF is invalid, while
-  a tag containing U+001C or U+0085 is valid. Clients that build tags from user input split on
-  the ECMA `\s` set (the web client can use `/\s/` directly).
+  a tag containing U+001C or U+0085 is valid. Clients and importers that build tags from user or
+  file input split on the ECMA `\s` set (the web client can use `/\s/` directly); see "Input that
+  would mint an invalid op" below.
 - The reference implementation is `ecma_to_python` in `tools/validate.py` (it raises on any
   construct it does not translate). Examples:
   [`op-id-trailing-newline`](examples/invalid/op-id-trailing-newline.json),
@@ -134,7 +147,8 @@ it (or uses an ECMA-262 engine). The differences that matter for the v1 schemas:
   [`note-created-tag-nbsp`](examples/invalid/note-created-tag-nbsp.json),
   [`note-created-tag-bom`](examples/invalid/note-created-tag-bom.json).
 - A new pattern in any later schema uses only constructs whose meaning is listed above (or
-  extends this table in the same change).
+  extends this table in the same change), and MUST be valid and mean the same both with and
+  without the `u` flag (above).
 
 **Nesting depth: two limits, `MAX_OP_DEPTH = 500` and `MAX_DOCUMENT_DEPTH = 512`.** The *depth*
 of a JSON value is the number of arrays and objects on its deepest path: a scalar has depth 0, `[]`
@@ -146,7 +160,7 @@ depth 2. A **document** is a whole JSON text: an HTTP body, or one op's text (`O
   refuses the change like an oversized one (section 4); the server never emits one.
 - **Document limit, 512.** Every parser of a sync document (`CanonicalJson.decode`, the push-body
   parse of 5.2, the pull-page parser) MUST accept any document up to depth 512, and MAY reject a
-  deeper one as a syntax error (never a stack overflow).
+  deeper one (the push parse MUST, 5.2) as a syntax error (never a stack overflow).
 - **Invariant: any op of depth ≤ 500 fits inside any sync envelope.** The deepest envelope wraps an
   op in 2 levels (`{"ops":[op]}` for push and pull pages), so a body carrying only legal ops has
   depth ≤ 502 ≤ 512. The 10 spare levels are for future envelopes; a new envelope MUST keep
@@ -161,6 +175,66 @@ depth 2. A **document** is a whole JSON text: an HTTP body, or one op's text (`O
   depth 500 is `checked`, one of depth 501 is `schema_invalid`),
   [`examples/raw-push/body-too-deep`](examples/raw-push/body-too-deep.body.txt) (body depth 513:
   HTTP 400).
+
+**Storable values (C-6).** The contract, not the server's columns, decides what is valid, so every
+limit a server column imposes is written into the schemas or, where JSON Schema cannot reach
+cheaply, into the op-level rules next to the depth limit:
+
+| Rule | Where | Column limit it mirrors |
+|---|---|---|
+| **No U+0000** in any string anywhere in an op, nor in any object member name — envelope and payload, open JSON shapes included (`settings` values, deck `settings`, note type `fields`/`templates`, `tokens`, `optimizer_stats`, unknown preserved keys, …). | Two layers, one rule. (1) Every typed string schema carries `"pattern": "^[^\\u0000]*$"` (tags: the regex `^[^\s\u0000]+$`; the other patterns already exclude it). (2) **Op-level rule `NO_NUL`**: an op containing U+0000 anywhere is invalid, checked by the same walk that enforces `MAX_OP_DEPTH` (`OpCodec` decode/encode; `nul_pointer` in `tools/validate.py`), iteratively. Layer 2 alone decides; layer 1 only makes the common case visible in the schemas. A recursive "no NUL anywhere" schema was rejected: it makes schema validation recurse once per nesting level, which overflows a 1 MB thread stack on legal 500-deep ops. | Postgres `text` and `jsonb` reject U+0000. |
+| Integers stored in an `integer` (int4) column are at most `2147483647`. C-6 added the bound to: `deck.created` / `deck.updated` `new_cards_per_day`, `reviews_per_day`; the items of `learning_steps_s` / `relearning_steps_s` in `fsrs_params.created` / `fsrs_params.updated`; `content_version` of `deck.content_published` and `media.content_published`; `weights_version` of `fsrs_params.published`. Already bounded: `priority`, `maximum_interval_days`, grammar span offsets, and the `smallint` ones (`flags`, `rating`, `jlpt`, `utc_offset_min`; `duration_ms` ≤ 600000). | the op schemas | `app.deck`, `app.fsrs_params`, `app.media` (`V1__init.sql`). `entry_seq` and `position` go to `bigint`; `optimizer_stats` and other open shapes go to `jsonb` (any finite number). |
+| An instant is at most `253402300799999` (9999-12-31T23:59:59.999Z). | `common.schema.json#/$defs/instant_ms` | Postgres `timestamptz` would hold more, but the API renders instants as RFC 3339 (4-digit year) and the platform date libraries disagree past year 9999. |
+| `parse_override.put` `match_text` is at most 200 code points. | `ops/parse_override.put.schema.json` | btree index `parse_override_match_idx`: an index entry is capped at about 2.7 kB. |
+
+- Doubles need no extra bound: every schema `number` is finite and `double precision` columns
+  store every finite double. Strings never contain an unpaired surrogate (`Json.kt`), which Postgres
+  could not store either.
+- **Who decides.** A client checks every op against its schema and the op-level rules (depth,
+  `NO_NUL`) before minting it (section 4) and refuses the change, like an oversized one, if it
+  fails; it never mints an op the server would have to refuse for one of these reasons. The
+  server's verdict on such a pushed op is `schema_invalid` (5.3), at the pointer of the offending
+  value, reached from the contract, never from a database error. On pull, an op that breaks
+  `NO_NUL` is treated like any schema-invalid op (6.1; a correct server never serves one).
+- **`NO_NUL` in the codec.** `OpCodec.decode`/`decodeTree` return `Invalid` with the JSON Pointer of
+  a string or member name containing U+0000; `encode`/`encodeTree` throw, as for depth. Checked
+  in the `schema_invalid` step of 5.3 (after `op_too_large` and `unsupported_op`), before the
+  schema. Replicas MUST agree on the verdict; the pointer is a
+  diagnostic only.
+- A new column bound, index or column type that limits values MUST come with the matching schema
+  bound in the same contract change (and is a new `op_version` once a log exists, section 15).
+- Examples: [`op-nul-in-field`](examples/invalid/op-nul-in-field.json),
+  [`note-created-tag-nul`](examples/invalid/note-created-tag-nul.json) (U+0000 is `\S`, so the C-5
+  tag pattern accepted it),
+  and, schema-valid but rejected by `NO_NUL` (directory `examples/invalid-codec/`, field
+  `"rule": "nul"`):
+  [`op-nul-in-member-name`](examples/invalid-codec/op-nul-in-member-name.json),
+  [`settings-set-nul-in-open-value`](examples/invalid-codec/settings-set-nul-in-open-value.json);
+  [`deck-created-new-per-day-over-int4`](examples/invalid/deck-created-new-per-day-over-int4.json),
+  [`deck-updated-reviews-per-day-over-int4`](examples/invalid/deck-updated-reviews-per-day-over-int4.json),
+  [`fsrs-params-created-step-over-int4`](examples/invalid/fsrs-params-created-step-over-int4.json),
+  [`fsrs-params-updated-relearning-step-over-int4`](examples/invalid/fsrs-params-updated-relearning-step-over-int4.json),
+  [`fsrs-params-published-weights-version-over-int4`](examples/invalid/fsrs-params-published-weights-version-over-int4.json),
+  [`deck-content-published-version-over-int4`](examples/invalid/deck-content-published-version-over-int4.json),
+  [`media-content-published-version-over-int4`](examples/invalid/media-content-published-version-over-int4.json),
+  [`review-reviewed-at-after-9999`](examples/invalid/review-reviewed-at-after-9999.json),
+  [`parse-override-match-text-too-long`](examples/invalid/parse-override-match-text-too-long.json).
+
+**Input that would mint an invalid op (C-5, C-6).** A REST call or an import is a mint too (the
+server builds the op, API section 3), and the same rule holds: the op is never built.
+- **REST.** A request value that would put an invalid value into an op (a tag containing ECMA
+  whitespace, e.g. U+3000 or U+00A0; U+0000 in any string; an integer or instant above
+  its maximum) is `422 validation_failed` with a field error at that request property, code
+  `invalid_value` (`out_of_range` / `too_long` where the operation's own, usually narrower, request
+  bound already fails first). Nothing is emitted. The server never answers 500 for such input.
+- **Importers** (jpdb history, media, Anki and later ones). Tags built from file input are split on
+  the ECMA `\s` set (the table above, not the platform's `\s`) and empty pieces dropped; a piece
+  that is still not a valid tag (longer than 100 code points, beyond the 200th, a duplicate, or
+  `leech`) is dropped and **counted** in the job result (a `tags_dropped` counter in that
+  importer's result schema; the importers specified today build no tags). U+0000 is removed from
+  every imported string (it carries no text). A record that would still mint an invalid op (e.g. an
+  instant after 9999) is not imported and is counted in the importer's existing skip counter;
+  nothing is dropped silently.
 
 ## 3. Hybrid logical clock
 
@@ -184,7 +258,8 @@ is a total order. Two different ops never have equal HLCs (3.3), so "equal clock
 ### 3.2 Minting and observing
 
 Each replica keeps `last = (ms, ctr)`, durably (`sync_state.hlc_last` holds the last full HLC string;
-the server keeps its own in a place T-server chooses). `pt` is the physical clock in ms.
+the server's is the `app.server_state` key `hlc_last`, the full HLC string with the server device
+id, 6.3). `pt` is the physical clock in ms.
 
 ```
 mint():                                   observe(h):            # h = any HLC seen in an op envelope
@@ -311,6 +386,11 @@ Client duties before minting (the server will reject otherwise, section 5.3):
 - **Depth and patterns (C-5).** Likewise a client MUST NOT mint an op deeper than 500 (2.1), and
   it validates string values with the ECMA-262 pattern semantics of 2.1 (a tag never contains
   U+3000, U+00A0 or U+FEFF; ids never carry a trailing newline).
+- **Storable values (C-6).** A client checks the whole op against `op.schema.json` and the
+  op-level rules (`NO_NUL`, depth; 2.1) before step 1 commits and refuses the change (an i18n message; nothing minted) if it fails — in
+  particular U+0000 in any string (also in note fields and open JSON shapes), an int4-stored integer
+  above 2147483647, or an instant after 9999-12-31T23:59:59.999Z (2.1, "Storable values"). Text
+  input may instead be cleaned before the op is built (e.g. U+0000 removed from a pasted field).
 
 A device works on **survivors**: once it has applied a merge, its UI addresses the survivor. Ops
 still in its outbox that address the loser are pushed unchanged.
@@ -394,7 +474,7 @@ Checked in this order; the first failure decides the code.
 | `schema_invalid` (duplicate key, C-2; too deep, C-5) | The op element repeats a key in some object, or is nested deeper than 500 (`MAX_OP_DEPTH`, 2.1) (5.2, "Parsing the body"). Checked first, because such an element has no canonical size (resp. is not decodable by `CanonicalJson.decode`). | every op |
 | `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Measured on the raw op tree **before** it is decoded or validated (see below). Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op, including unsupported and schema-invalid ones |
 | `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
-| `schema_invalid` | The op does not match `op.schema.json`; or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
+| `schema_invalid` | The op does not match `op.schema.json` (including the storable-value bounds of 2.1, C-6: U+0000, int4 maxima, instants after 9999); or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
 | `insufficient_scope` | The op needs a scope the caller's credential lacks (T004: a `review.*` op pushed by a token without the `review` scope). Added by the API to the open set (C-2). | every op |
 | `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
@@ -554,7 +634,7 @@ handshake — `app.server_state` keys and the `restore_pending` hook — is 6.3)
    confirmation.
 2. In the restored database, before serving any request: new `log_epoch`; `durable_seq` = the
    highest `seq` in the restored `change` (that backup is verified).
-3. **Clock:** set `last` = the greatest of the restored `last`, every `change.hlc` in the restored
+3. **Clock:** set `last` (`server_state.hlc_last`, 6.3) = the greatest of the restored `last`, every `change.hlc` in the restored
    log, and `(now + 24 h, 0)` — unless T-server keeps a copy of `last` outside the database that
    is known to be at least as new as the lost state, in which case that copy replaces the third
    term. Every op accepted before the loss had `wall(hlc) <= its receive time + 24 h` (3.4) and
@@ -605,6 +685,7 @@ The deploy side (T112: backup CronJob, restore script) and the server (T202) mee
 | `log_epoch` | The current `log_epoch` (6.2), canonical lowercase UUID. | server only: created at startup if absent; replaced by restore finalization | not yet created (fresh database); the server creates it before serving |
 | `durable_seq` | `durable_seq` (6.2), decimal integer `>= 0`. Never decreases within an epoch. | backup job (after verification); restore finalization | `0` |
 | `restore_pending` | `"1"`. The database was loaded from a backup and has not been finalized. | restore script; deleted by restore finalization | no restore pending |
+| `hlc_last` | The server's HLC `last` (3.2): a full 54-character HLC string whose device part is the server device `00000000-0000-7000-8000-000000000001`. Never lowered. | server only: in the same transaction as every op it mints or observes (3.2, under lock 7033001); raised by restore finalization (6.2 step 3) | `(0, 0)` (a fresh database; 3.2 "first HLC of a new replica") |
 
 **Backup job (T112).** For each backup:
 
@@ -941,11 +1022,17 @@ when `card.merged` is applied.
   rated row's time. A `manual` row with `manual_action = 'reset'` sets it to **NULL** (the card is
   new again; the next rated row starts from scratch). NULL also while there is no rated row.
 - FSRS elapsed time for a rated row = its `reviewed_at` − `last_review_at` (clamped ≥ 0); none
-  when `last_review_at` is NULL. In particular, a rated review after a `set_due` on a card that
-  never had a rated row (or none since a reset), so `last_review_at` is NULL, is treated as the
-  card's **first** review (FSRS initial stability/difficulty for its rating), even though the
-  `set_due` gave the card a due date. Why: if a reschedule moved `last_review_at`, a review shortly
-  after it would use FSRS's same-day formula (e.g. S ≈ 26 d instead of ≈ 3.5 d after a lapse).
+  when `last_review_at` is NULL. Why rated rows only: if a reschedule moved `last_review_at`, a
+  review shortly after it would use FSRS's same-day formula (e.g. S ≈ 26 d instead of ≈ 3.5 d
+  after a lapse).
+- A `set_due` on a card whose cache is in state `new` (it never had a rated row, or none since a
+  reset) **leaves the cache unchanged** (`Scheduler.manual`, C-6): the card stays `new` with
+  `due_at = NULL` (the CHECK `state = 'new' ⇔ due_at IS NULL`); only `last_review_id` moves to the
+  manual row. The `review_log` row is still kept. So the next rated review is the card's
+  **first** review (FSRS initial stability/difficulty for its rating). Clients do not offer a
+  reschedule of a new card (`POST /cards/bulk/schedule` already answers `422`), but one can still
+  reach a replay set — e.g. a reschedule made on one device concurrently with a reset on another
+  that sorts before it — so UIs MUST NOT assume a `set_due` gave the card a due date.
 - Both are functions of the ordered replay set, so folding one more row still equals a full
   replay (9.3).
 
@@ -1615,6 +1702,11 @@ All 45 ops also flow through `POST /sync/push` (client-emittable ones) and `GET 
   schema (6.1). A stricter shape is a new `op_version` (the old version's schema stays as it
   was, and the server keeps accepting and serving it as above). Exception, once: C-1 tightened `fsrs_params.published` v1 (`fsrs_version` = "6",
   exactly 21 bounded weights) before any deployment; that is fine only because no log exists yet.
+  Second and last such exception: C-6 (storable values, 2.1) narrowed v1 the same way before any
+  deployment: U+0000 anywhere, int4 maxima, `instant_ms` ≤ 9999-12-31T23:59:59.999Z,
+  `match_text` ≤ 200 code points. No real log exists; a development database holding such a value
+  could not have stored it (Postgres refused it) except an instant after 9999 or a long
+  `match_text` that compressed into the index, which a dev reset clears.
 - New op types follow the same rule: old clients stop pulling at the first one they do not know.
 - New `settings` keys, new keys inside open JSON shapes, new `origin` values and new rejection
   codes need no version change.
@@ -1632,7 +1724,7 @@ Needs `python3` with the `jsonschema` package (≥ 4.18), or `uv` (the script th
 `uv run --with jsonschema`). It checks that every schema is valid, every op type has a schema, an
 example and an OPS.md section with a conflict rule, every example validates and every
 `examples/invalid` instance is rejected (with schema `pattern`s evaluated under ECMA-262 semantics,
-2.1), every `examples/raw-push` body gets its verdict (duplicate keys, depth), that every scenario's expected state follows from the
+2.1), every `examples/invalid-codec` instance is schema-valid and breaks `NO_NUL` (2.1, C-6), every `examples/raw-push` body gets its verdict (duplicate keys, depth), that every scenario's expected state follows from the
 rules (reference model) including the idempotency and interleaving claims, that the model server
 derives every merge verdict and every checked rejection code of the scenarios, that the
 restore story of 12.5 converges without loss, that the re-mint story of 12.6 loses no review, and
@@ -1680,6 +1772,8 @@ that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
 | Duplicate JSON key in a push body | Top level or same `op_id` with different contents: HTTP 400. Inside one op: that op `schema_invalid`, before `op_too_large`. | 5.2, 5.3 |
 | Op nested deeper than 500 | Never minted. In a push: that op `schema_invalid`, before `op_too_large`; a body deeper than 512 is HTTP 400. Any legal op fits in any envelope (≤ 512). | 2.1, 5.2 |
 | Id with a trailing `\n`; tag with U+3000 / U+00A0 / U+FEFF | `schema_invalid`: patterns are ECMA-262 (`$` = end of input, ECMA `\s`) on every replica. | 2.1 |
+| U+0000 in any string or member name; int4-stored integer above 2147483647; instant after year 9999; `match_text` over 200 code points | Never minted (client refuses before step 1, REST `422 invalid_value`, importers clean or skip and count). In a push: `schema_invalid`, decided by the schema, never by a database error. | 2.1, 4 |
+| `set_due` on a card in state `new` | Cache unchanged (stays `new`, `due_at` NULL); the row is kept and is `last_review_id`. | 9 |
 | Server restored from a backup | Restore script sets `restore_pending`; server finalizes at startup (new epoch, `durable_seq`, clock). | 6.2, 6.3 |
 | Client older than server | Stops pulling at the unknown op; *upgrade required*. | 6 |
 | Lost push response | Push again; `duplicate`. | 5.2 |

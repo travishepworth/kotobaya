@@ -64,6 +64,11 @@ Implementers: if something you need is missing or wrong here, do not work around
    code must convert from code points.
 9. **Writes.** Learning-data tables are written only by the op-apply path (server) or the local
    apply function (device). Media bulk tables and `ref.*` are written only by worker jobs.
+10. **Storable values (C-6).** Every limit a column puts on values that ops write (no U+0000 in
+    `text`/`jsonb`, the `integer` range, btree index entry size, RFC 3339-renderable instants) is
+    mirrored by a bound in the op schemas (`contracts/sync/SYNC.md` 2.1, "Storable values"), so
+    the op-apply path never meets a value the database refuses. A change that adds such a limit
+    adds the schema bound in the same contract change.
 
 ## 3. Clocks and last-writer-wins
 
@@ -316,7 +321,7 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
 | `job` | S | API enqueues, worker updates | |
-| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, the restore script writes `restore_pending`, the server does the rest). Added by C-1. |
+| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
 
 **`change` invariants.**

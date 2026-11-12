@@ -73,6 +73,7 @@ _IN_CLASS = {"s": ECMA_WS, "d": "0-9", "w": "A-Za-z0-9_"}
 _OUTSIDE = {"s": f"[{ECMA_WS}]", "S": f"[^{ECMA_WS}]", "d": "[0-9]", "D": "[^0-9]",
             "w": "[A-Za-z0-9_]", "W": "[^A-Za-z0-9_]"}
 _PASS = set(".\\^$|?*+()[]{}/-") | {"n", "r", "t", "f", "v"}
+_QUANTIFIER = re.compile(r"\{[0-9]+(,[0-9]*)?\}")
 
 
 def ecma_to_python(pattern: str) -> str:
@@ -85,6 +86,12 @@ def ecma_to_python(pattern: str) -> str:
                 raise ValueError(f"pattern {pattern!r}: trailing backslash")
             e = pattern[i + 1]
             i += 2
+            if in_class and e in _IN_CLASS and ("-" in (pattern[i - 3], pattern[i:i + 1])):
+                # [\s-z] / [a-\s]: ECMA without u reads '-' as a literal, with u it is a syntax error, and
+                # Python would read the expanded set's last character as a range start (C-6)
+                raise ValueError(f"pattern {pattern!r}: class escape \\{e} next to '-' (SYNC.md 2.1)")
+            if e == "-" and not in_class:
+                raise ValueError(f"pattern {pattern!r}: \\- outside a class is a syntax error with the u flag")
             if in_class and e in _IN_CLASS:
                 out.append(_IN_CLASS[e])
             elif not in_class and e in _OUTSIDE:
@@ -110,6 +117,15 @@ def ecma_to_python(pattern: str) -> str:
                 raise ValueError(f"pattern {pattern!r}: [] / [^] differ between ECMA and Python")
             in_class = True
             out.append(c)
+        elif c in "{}":
+            # `{,5}`, `{x}`, a lone `}`: literals in ECMA without u (Annex B), syntax errors with u, and `{,5}`
+            # is a quantifier (0 to 5) in Python (C-6)
+            q = _QUANTIFIER.match(pattern, i) if c == "{" else None
+            if q is None:
+                raise ValueError(f"pattern {pattern!r}: '{c}' outside a {{n}}, {{n,}} or {{n,m}} quantifier")
+            out.append(q.group())
+            i = q.end()
+            continue
         elif c == "$":
             out.append("\\Z")  # end of input only
         elif c == ".":
@@ -149,6 +165,16 @@ for pat, text, want in [
     ("^\\d+$", "\u0663", False), ("^\\d+$", "12", True), ("^.$", "\r", False), ("^.$", "\x85", True),
     ("^[\\s]$", "\ufeff", True), ("^[\\s]$", "\x1c", False), ("^a\\.b$", "a.b", True), ("^a\\.b$", "axb", False),
 ]:
+    if ecma_search(pat, text) != want:
+        fail(f"ecma_to_python: {pat!r} on {text!r} should give {want}")
+for pat in ["^[\\s-z]$", "^[a-\\s]$", "^[\\d-]$", "^a{,5}$", "^a{x}$", "^a}$", "^a\\-b$"]:  # C-6: ambiguous across u / Python
+    try:
+        ecma_to_python(pat)
+        fail(f"ecma_to_python: {pat!r} must be refused")
+    except ValueError:
+        pass
+for pat, text, want in [("^[^\\u0000]*$", "a\x00b", False), ("^[^\\u0000]*$", "食べ\U0001F600", True),
+                        ("^a{2,}$", "aaa", True), ("^a{2,3}$", "aaaa", False)]:
     if ecma_search(pat, text) != want:
         fail(f"ecma_to_python: {pat!r} on {text!r} should give {want}")
 
@@ -265,6 +291,41 @@ for p in sorted((ROOT / "examples/invalid").glob("*.json")):
     doc = load(p)
     if not problems(doc["schema"], doc["instance"]):
         fail(f"{p.relative_to(ROOT)}: expected to be rejected by {doc['schema']} ({doc['why']})")
+
+
+# ------------------------------------------------------------------ op-level rules beyond JSON Schema (C-6)
+def nul_pointer(v) -> str | None:  # noqa: ANN001
+    """JSON Pointer of the first string or member name containing U+0000 (document order), else None.
+    Iterative, like the depth limit: an op may be 500 deep (SYNC.md 2.1)."""
+    stack = [(v, "")]
+    while stack:
+        node, ptr = stack.pop()
+        if isinstance(node, str):
+            if "\x00" in node:
+                return ptr
+        elif isinstance(node, dict):
+            for k, x in reversed(list(node.items())):
+                kp = ptr + "/" + k.replace("~", "~0").replace("/", "~1")
+                if "\x00" in k:
+                    return kp
+                stack.append((x, kp))
+        elif isinstance(node, list):
+            stack.extend((x, f"{ptr}/{i}") for i, x in reversed(list(enumerate(node))))
+    return None
+
+
+# examples/invalid-codec: schema-VALID ops that an op-level rule of SYNC.md 2.1 rejects ("rule": "nul").
+for p in sorted((ROOT / "examples/invalid-codec").glob("*.json")):
+    doc, where = load(p), str(p.relative_to(ROOT))
+    if doc.get("rule") != "nul":
+        fail(f"{where}: unknown rule {doc.get('rule')!r}")
+    for prob in problems(doc["schema"], doc["instance"]):
+        fail(f"{where}: must be schema-valid (it shows a rule beyond the schema): {prob}")
+    if nul_pointer(doc["instance"]) is None:
+        fail(f"{where}: expected U+0000 somewhere ({doc['why']})")
+for p, op in example_ops.items():
+    if nul_pointer(op) is not None:
+        fail(f"{p.relative_to(ROOT)}: contains U+0000")
 
 # ------------------------------------------------------------------ duplicate keys (C-2)
 # examples/raw-push/<name>.body.txt is a raw push body (may repeat keys, which a JSON file loaded with
@@ -790,5 +851,5 @@ n_inv = len(list((ROOT / "examples/invalid").glob("*.json")))
 n_sc = len(list((ROOT / "examples/scenarios").glob("*.json")))
 n_raw = len(list((ROOT / "examples/raw-push").glob("*.body.txt")))
 print(f"ok: {len(schemas)} schemas, {len(index)} op types, {len(example_ops)} op examples, "
-      f"{n_inv} invalid examples rejected, {n_raw} raw push bodies (duplicate keys, depth), "
+      f"{n_inv} invalid examples rejected (+{len(list((ROOT / 'examples/invalid-codec').glob('*.json')))} beyond the schema), {n_raw} raw push bodies (duplicate keys, depth), "
       f"{len({pat for _, pat in SCHEMA_PATTERNS})} schema patterns (ECMA-262), {n_sc} scenarios")

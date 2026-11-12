@@ -75,10 +75,12 @@
     },
     "entity_type": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Table the op targets, fixed per op_type (ops/index.json)."
     },
     "entity_id": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "minLength": 1,
       "maxLength": 300,
       "description": "Primary key of the targeted row as text, derived from the payload as listed in ops/index.json (parts joined with '|')."

@@ -14,7 +14,7 @@
 | **newCardsPerDay** | **kotlin.Int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. |  [optional] |
 | **priority** | **kotlin.Int** | New cards are drawn from enabled decks in ascending (priority, id). Default 0. |  [optional] |
 | **query** | **kotlin.String** | Card search-language string. Required iff type &#x3D; smart. |  [optional] |
-| **reviewsPerDay** | **kotlin.Int** | Per-deck daily new-card limit; null &#x3D; only the global limit applies. |  [optional] |
+| **reviewsPerDay** | **kotlin.Int** | Per-deck daily review limit; null &#x3D; only the global limit applies. |  [optional] |
 | **settings** | [**kotlin.Any**](.md) | Open object; each top-level key is its own register &#39;settings.&lt;key&gt;&#39;. Known keys: order, add_kanji, card_kinds. Keys whose value is null, &#39;&#39;, [] or {} are dropped at creation. |  [optional] |
 
 

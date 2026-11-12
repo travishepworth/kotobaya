@@ -37,6 +37,7 @@
       "anyOf": [
         {
           "type": "string",
+          "pattern": "^[^\\u0000]*$",
           "minLength": 1,
           "maxLength": 1
         },
@@ -62,7 +63,8 @@
         "$ref": "../common.schema.json#/$defs/key"
       },
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[^\\u0000]*$"
       },
       "description": "Field values {field key: HTML fragment}. Each key is its own register 'fields.<key>'. Keys need not exist in the note type (unknown keys are kept).",
       "default": {}
@@ -73,6 +75,7 @@
     },
     "source_sentence": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "Sentence the note was mined from, by value; '' if none. Register 'source_sentence' covers this and the two columns below.",
       "default": ""
     },
@@ -102,6 +105,7 @@
     },
     "mnemonic": {
       "type": "string",
+      "pattern": "^[^\\u0000]*$",
       "description": "User mnemonic (Markdown). Default ''. Register 'mnemonic'.",
       "default": ""
     },
