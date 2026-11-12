@@ -494,3 +494,5 @@
 2026-11-12T19:12:36Z T305a HANDOFF DONE (both flavors build; make apk both)
 2026-11-12T19:13:25Z T305a CHECK_GREEN android after rebase on T302; reviewer dispatched
 2026-11-12T19:13:25Z T308 DISPATCH writer(sonnet)
+2026-11-12T19:15:31Z T305a REVIEW_CHANGES 1 major: provider silently falls back to in-memory store (cold start before startKoin) → Takoboto words reported saved then lost; 7 minors
+2026-11-12T19:15:31Z T305a DISPATCH attempt 2 (same agent)

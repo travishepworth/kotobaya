@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:13:25Z
+Updated: 2026-11-12T19:15:31Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,6 +13,7 @@ Updated: 2026-11-12T19:13:25Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T305a | writer-senior (opus) | 2 | t/T305a-ankiapi-provider | 2026-11-12T19:15:31Z |
 | T308 | writer (sonnet) | 1 | t/T308-notifications | 2026-11-12T19:13:25Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -21,7 +22,6 @@ Updated: 2026-11-12T19:13:25Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T305a (android green after rebase; both APKs build) | reviewer (opus) | 2026-11-12T19:13:25Z |
 | T303a (core green) | reviewer (opus) + architect 2nd pass | 2026-11-12T19:12:36Z |
 
 ## Blocked
@@ -41,7 +41,7 @@ Updated: 2026-11-12T19:13:25Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 4/22 · attempts 8 · escalations 0
+P3: merged 4/22 · attempts 9 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
