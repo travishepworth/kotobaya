@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T10:52:03Z
+Updated: 2026-11-12T10:55:55Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -11,7 +11,7 @@ Updated: 2026-11-12T10:52:03Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T004 | reviewer (gp/opus); architect pass after T005 merges; sync bodies re-checked after rebase | 2026-11-12T10:52:03Z |
+| T004 | CHANGES (7 major, 3 minor) — attempt 2 (opus, same worktree) queued until T005 merges | 2026-11-12T10:55:55Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

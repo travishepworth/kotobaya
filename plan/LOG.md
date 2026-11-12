@@ -69,3 +69,4 @@
 2026-11-12T10:52:03Z T004 CHECK_GREEN contracts/api/check.sh
 2026-11-12T10:52:03Z T004 REVIEW dispatched reviewer(opus); architect pass deferred (max 2 reviewers; T005 att.2 running)
 2026-11-12T10:55:37Z T005 ESCALATE stopped Fable agent (usage); attempt 2 restarted on Opus in same worktree (no lost work)
+2026-11-12T10:55:55Z T004 REVIEW_CHANGES reviewer: 7 major (undo/answer idempotency, sync envelope vs T005, push/pull semantics, bulk reset scope, auth exceptions), 3 minor; attempt 2 waits for T005
