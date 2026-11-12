@@ -47,3 +47,4 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - ADR-005: no collection-wide load balancing (only deterministic fuzz + Easy Days), because cards' schedules must be identical on every device. Daily counts may be somewhat lumpier than Anki.
 - ADR-006: mined (deckless) new cards share priority 0 with your decks by default; configurable. Disabled decks introduce nothing.
 - T006 queue default to confirm: a word counts as auto-"known" when every started card has an interval of 21 days or more.
+- ADR-006 detail: decks of equal priority take turns one card each (round-robin), not a fixed order. Confirm this matches what you want from "priority order".

@@ -40,3 +40,6 @@
 - C-1: V1 edited in place (server_state table, replay index) — any existing dev Postgres volume needs `make dev-down` + volume wipe (Flyway checksum). Fine pre-deploy.
 - C-1 → T104/T111: put the SYNC 10.5 startup replay behind the readiness probe.
 - C-1 → T303/T107: the device's schema check for pulled ops (SYNC 6.1) needs a JSON Schema 2020-12 validator (prefixItems, items:false); declare the dependency in HANDOFF.
+- T006 → T107: verify py-fsrs 6.3.2 uses only `**` / `math.e ** x` (no math.exp) and mirror exactly; test paramsOf fallback values equal py-fsrs defaults.
+- T006 → T104/server push: an op with a duplicate JSON key makes CanonicalJson.decode reject the whole body (400 for the entire outbox). Decide: per-op `schema_invalid` via a lenient per-op parse. Raise in the freeze review.
+- T006/ADR-006: round-robin within a priority tier — confirm the deck.priority default and that it matches SPEC "priority order" (HUMAN_CHECKS).
