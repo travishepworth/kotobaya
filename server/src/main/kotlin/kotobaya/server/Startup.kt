@@ -3,6 +3,7 @@ package kotobaya.server
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotobaya.sync.restore.CoreSchedulerReplay
 import net.logstash.logback.argument.StructuredArguments.kv
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
@@ -41,12 +42,6 @@ fun interface SchedulerReplay {
     }
 }
 
-/**
- * The version the running core reports. TODO(T203): replace with `ReplayEngine.schedulerVersion` once core
- * ships an implementation (today only the interface exists). Compared by equality only.
- */
-const val PLACEHOLDER_SCHEDULER_VERSION = "unset"
-
 class StartupState {
     @Volatile var done: Boolean = false
     @Volatile var lastError: String? = null
@@ -59,8 +54,8 @@ class StartupState {
  */
 class StartupSequence(
     private val db: Database,
-    private val schedulerVersion: String = PLACEHOLDER_SCHEDULER_VERSION,
-    private val replay: SchedulerReplay = SchedulerReplay.NoOp,
+    private val schedulerVersion: String = DEFAULT_REPLAY.schedulerVersion,
+    private val replay: SchedulerReplay = DEFAULT_REPLAY,
     private val now: () -> Instant = Instant::now,
     val state: StartupState = StartupState(),
 ) {
@@ -149,6 +144,9 @@ class StartupSequence(
     }
 
     companion object {
+        /** The core's version and replay: the defaults, so a caller cannot get a real version with a no-op replay. */
+        private val DEFAULT_REPLAY = CoreSchedulerReplay()
+
         /** `ms`(12 hex) `-` `ctr`(4 hex) `-` server device id (SYNC.md 3.1). */
         fun formatHlc(ms: Long, ctr: Int): String = "%012x-%04x-%s".format(ms, ctr, SERVER_DEVICE_ID)
 

@@ -3,6 +3,7 @@ package kotobaya.sync.restore
 import kotobaya.auth.Principal
 import kotobaya.auth.TokenKind
 import kotobaya.server.Database
+import kotobaya.server.SchedulerReplay
 import kotobaya.server.StartupSequence
 import kotobaya.server.TestPg
 import kotobaya.server.Uuid7
@@ -33,7 +34,7 @@ class StoryServer(startMs: Long, private val backupsDisabled: Boolean = false) :
 
     init {
         kotobaya.server.Migrations.migrate(db.dataSource)
-        StartupSequence(db, now = { now.get() }).runOnce()
+        StartupSequence(db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }).runOnce()
     }
 
     var pt: Long
@@ -83,7 +84,7 @@ class StoryServer(startMs: Long, private val backupsDisabled: Boolean = false) :
                     "on conflict (key) do update set value = '1', updated_at = now()",
             )
         }
-        StartupSequence(db, now = { now.get() }).runOnce()
+        StartupSequence(db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }).runOnce()
         sim.module = module()
     }
 

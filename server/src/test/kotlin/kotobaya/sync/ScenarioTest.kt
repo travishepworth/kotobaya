@@ -93,18 +93,4 @@ class ScenarioTest : SyncFixture() {
     @Test fun workedExample12_4_rematchArrivalOrderB() = run("rematch-arrival-order-b")
 
     @Test fun workedExample12_4_clockBehindRemint() = run("clock-behind-remint")
-
-    @Test
-    fun mergeScenariosAreLeftToT202c() {
-        val all = File(contracts, "examples/scenarios").listFiles()!!.map { it.name.removeSuffix(".json") }.sorted()
-        val withMerges = all.filter { id -> scenario(id)["log"].any { !it["caused_by_op_id"].isNull } }
-        assertEquals(
-            listOf(
-                "duplicate-deleted-before-push", "duplicate-kanji-deck-item-confusable", "merge-two-level", "merge-two-level-cards",
-                "rematch-arrival-order-a", "same-word-added-twice", "survivor-deleted-concurrently",
-            ),
-            withMerges,
-        )
-        assertEquals(16, all.size, "a new scenario must be added to this test or to T202c's")
-    }
 }

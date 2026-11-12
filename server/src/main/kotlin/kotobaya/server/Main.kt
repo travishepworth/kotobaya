@@ -11,7 +11,13 @@ import kotobaya.auth.AuthEvents
 import kotobaya.auth.TokenValidator
 import java.util.UUID
 import kotobaya.dict.dictHandlers
+import kotobaya.decks.DecksModule
 import kotobaya.jobs.JobsModule
+import kotobaya.notes.NotesModule
+import kotobaya.settings.SettingsModule
+import kotobaya.sync.SyncEvents
+import kotobaya.sync.SyncModule
+import kotobaya.sync.restore.SyncWiring
 import io.ktor.server.netty.Netty
 import org.slf4j.LoggerFactory
 import kotlin.system.exitProcess
@@ -43,7 +49,7 @@ fun main(args: Array<String>) {
         exitProcess(2)
     }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val app = composeApp(db, config.databaseUrl, authConfig, startup = StartupSequence(db), bucketInit = S3BucketInit(config))
+    val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config))
     app.jobs.start(scope)
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
@@ -64,7 +70,7 @@ fun composeApp(
     db: Database,
     databaseUrl: String,
     authConfig: AuthConfig,
-    startup: StartupSequence? = null,
+    startup: StartupSequence? = SyncWiring.startup(db),
     bucketInit: BucketInit = BucketInit.Disabled,
     eventsGuardMs: Long = 5_000,
 ): ComposedApp {
@@ -75,10 +81,14 @@ fun composeApp(
         guardIntervalMs = eventsGuardMs,
     )
     val auth = Auth(db, authConfig, validator = validator, events = AuthEvents.of(jobs.bus, jobs.hub))
+    val sync = SyncModule(db, SyncWiring.config(events = SyncEvents { dsl, hw, _ -> jobs.bus.syncChangedInTx(dsl, hw) }))
+    // One OpApply for every writer: they share its advisory lock, HLC and card cache.
+    val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
+        NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,
-        handlers = auth.handlers + dictHandlers(db) + jobs.handlers,
+        handlers = handlers,
         startup = startup,
         bucketInit = bucketInit,
     )
