@@ -283,3 +283,10 @@ attempt 1 is gone). Needs node and python3; network on first run.
   does not deinflect.
 - Adding tags beyond the 200-tag limit gives `422 validation_failed` / `out_of_range`. A vocab note
   type needs `expression`, `reading` and `meaning`.
+
+## C-4 changes
+- **jpdb history import aligned with ADR-009** (additive): one `meaning` card per vocab word,
+  `en_jp` rows ignored but counted, rows repeating a seq merged with exact duplicates dropped
+  (`reviews_duplicate_dropped`), `known` sets a status only for known-only words (never over an
+  existing override), `writing` and known-only kanji cards created suspended
+  (`kanji_cards_suspended`), optional kanji `keyword`, and a fixed deterministic review-id formula.

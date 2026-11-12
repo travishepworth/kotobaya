@@ -35,22 +35,28 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
         // uncomment below to create an instance of JobResultJpdbHistory
         //val modelInstance = JobResultJpdbHistory()
 
-        // to test the property `cardsCreated` - Vocabulary cards created (kanji cards are `kanji_cards_created`).
+        // to test the property `cardsCreated` - Vocabulary `meaning` cards created, at most one per carded group, so about equal to `notes_created` (kanji cards are `kanji_cards_created`).
         should("test cardsCreated") {
             // uncomment below to test the property
             //modelInstance.cardsCreated shouldBe ("TODO")
         }
 
-        // to test the property `kanjiCarded` - Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char).
+        // to test the property `kanjiCarded` - Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char), known-only rows included. `writing` cards and known-only cards are created suspended.
         should("test kanjiCarded") {
             // uncomment below to test the property
             //modelInstance.kanjiCarded shouldBe ("TODO")
         }
 
-        // to test the property `kanjiCardsCreated` - Kanji cards created.
+        // to test the property `kanjiCardsCreated` - Kanji cards created (one per (character, kind) without a live card), suspended ones included.
         should("test kanjiCardsCreated") {
             // uncomment below to test the property
             //modelInstance.kanjiCardsCreated shouldBe ("TODO")
+        }
+
+        // to test the property `kanjiCardsSuspended` - Of `kanji_cards_created`, those created with `suspended = true` - every created `writing` card plus created `keyword` cards of known-only groups. Existing cards are never counted or changed. Added by C-4.
+        should("test kanjiCardsSuspended") {
+            // uncomment below to test the property
+            //modelInstance.kanjiCardsSuspended shouldBe ("TODO")
         }
 
         // to test the property `kanjiNotesCreated` - Kanji notes created (one per character, shared by both arrays).
@@ -77,13 +83,13 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
             //modelInstance.kanjiUnmapped shouldBe ("TODO")
         }
 
-        // to test the property `notesCreated` - Vocabulary notes created (kanji notes are `kanji_notes_created`).
+        // to test the property `notesCreated` - Vocabulary notes created, one per carded group (distinct seq), not per row (kanji notes are `kanji_notes_created`).
         should("test notesCreated") {
             // uncomment below to test the property
             //modelInstance.notesCreated shouldBe ("TODO")
         }
 
-        // to test the property `notesExisting` - Mapped vocabulary that already had a live note (kanji - `kanji_notes_existing`).
+        // to test the property `notesExisting` - Carded vocabulary groups (distinct seqs) that already had a live note (kanji - `kanji_notes_existing`).
         should("test notesExisting") {
             // uncomment below to test the property
             //modelInstance.notesExisting shouldBe ("TODO")
@@ -95,13 +101,19 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
             //modelInstance.reviewsAlreadyImported shouldBe ("TODO")
         }
 
+        // to test the property `reviewsDuplicateDropped` - Events of mapped rows dropped as exact duplicates - same `timestamp` and `grade` as an earlier event of the same group (vocab - rows sharing a seq; kanji - rows sharing character and card kind). Any grade, status events included. Added by C-4.
+        should("test reviewsDuplicateDropped") {
+            // uncomment below to test the property
+            //modelInstance.reviewsDuplicateDropped shouldBe ("TODO")
+        }
+
         // to test the property `reviewsImported` - Reviews logged by this run.
         should("test reviewsImported") {
             // uncomment below to test the property
             //modelInstance.reviewsImported shouldBe ("TODO")
         }
 
-        // to test the property `reviewsSkipped` - Events of unmapped rows (`unmapped`, `kanji_unmapped`), and rating events when `import_reviews` is false.
+        // to test the property `reviewsSkipped` - Events of unmapped rows (`unmapped`, `kanji_unmapped`) and of `cards_vocabulary_en_jp` rows (any grade), and rating events when `import_reviews` is false.
         should("test reviewsSkipped") {
             // uncomment below to test the property
             //modelInstance.reviewsSkipped shouldBe ("TODO")
@@ -113,37 +125,43 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
             //modelInstance.reviewsTotal shouldBe ("TODO")
         }
 
-        // to test the property `reviewsUnknownGrade` - Events of a mapped row whose `grade` is none of the known grades; nothing is written for them.
+        // to test the property `reviewsUnknownGrade` - Events of a mapped row that are malformed (not an object with an integer `timestamp` and a string `grade`) or whose `grade` is none of the known grades; nothing is written for them.
         should("test reviewsUnknownGrade") {
             // uncomment below to test the property
             //modelInstance.reviewsUnknownGrade shouldBe ("TODO")
         }
 
-        // to test the property `statusEventsKnown` - `known` events of mapped rows (vocab - a word status; kanji - nothing beyond the note and card; never a review).
+        // to test the property `statusEventsKnown` - `known` events of mapped rows, duplicates excluded, never a review. All of them count here: those of status-only vocab groups (which may set a word status), those of carded vocab groups (ignored; FSRS schedules from the reviews) and those of kanji groups (a known-only kanji card is created suspended).
         should("test statusEventsKnown") {
             // uncomment below to test the property
             //modelInstance.statusEventsKnown shouldBe ("TODO")
         }
 
-        // to test the property `statusEventsUnknown` - `unknown` events of mapped rows (card creation only, no review).
+        // to test the property `statusEventsUnknown` - `unknown` events of mapped rows, duplicates excluded (card creation only, no review).
         should("test statusEventsUnknown") {
             // uncomment below to test the property
             //modelInstance.statusEventsUnknown shouldBe ("TODO")
         }
 
-        // to test the property `unmapped` - Vocabulary that maps to no JMdict entry.
+        // to test the property `unmapped` - `cards_vocabulary_jp_en` rows that map to no JMdict entry, one element per row.
         should("test unmapped") {
             // uncomment below to test the property
             //modelInstance.unmapped shouldBe ("TODO")
         }
 
-        // to test the property `vocabularyCarded` - Mapped vocabulary rows with at least one event other than `known`; each has a note and a card after the run (unless `import_reviews` is false).
+        // to test the property `vocabularyCarded` - Mapped `cards_vocabulary_jp_en` rows whose group (rows sharing the mapped seq) is carded - it has at least one kept non-`known` event, or no well-formed events; the group's note has a `meaning` card after the run (unless `import_reviews` is false). One note and one card per group, not per row.
         should("test vocabularyCarded") {
             // uncomment below to test the property
             //modelInstance.vocabularyCarded shouldBe ("TODO")
         }
 
-        // to test the property `vocabularyStatusOnly` - Mapped vocabulary rows whose events are all `known`; they get a word status only, no note or card.
+        // to test the property `vocabularyEnJpIgnored` - Rows of `cards_vocabulary_en_jp` (C-4). Never mapped, never listed in `unmapped`; no note, card, status or review; their events count as `reviews_skipped`. Added by C-4.
+        should("test vocabularyEnJpIgnored") {
+            // uncomment below to test the property
+            //modelInstance.vocabularyEnJpIgnored shouldBe ("TODO")
+        }
+
+        // to test the property `vocabularyStatusOnly` - Mapped `cards_vocabulary_jp_en` rows whose group's kept well-formed events are all `known` (at least one); the word gets status `known` (unless it already has an override or `import_word_status` is false), no note or card.
         should("test vocabularyStatusOnly") {
             // uncomment below to test the property
             //modelInstance.vocabularyStatusOnly shouldBe ("TODO")
@@ -155,7 +173,7 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
             //modelInstance.vocabularyTotal shouldBe ("TODO")
         }
 
-        // to test the property `wordStatusesSet` - Overrides written (`word.status_set` ops emitted).
+        // to test the property `wordStatusesSet` - Overrides written (`word.status_set` ops emitted), at most one per status-only vocab group.
         should("test wordStatusesSet") {
             // uncomment below to test the property
             //modelInstance.wordStatusesSet shouldBe ("TODO")

@@ -29,45 +29,52 @@ import app.kotobaya.client.models.JobResultJpdbHistoryUnmappedInner
 import com.google.gson.annotations.SerializedName
 
 /**
- * Result of a jpdb history import. Every input record is counted in exactly one bucket (C-2; mapping rules on `importJpdbHistory`): - rows of the vocab arrays: `vocabulary_total = vocabulary_carded + vocabulary_status_only + len(unmapped)`; - rows of the kanji arrays: `kanji_total = kanji_carded + len(kanji_unmapped)`; - review events of all four arrays: `reviews_total = reviews_imported + reviews_already_imported   + reviews_skipped + reviews_unknown_grade + status_events_unknown + status_events_known`. `notes_*`, `cards_created`, `kanji_notes_*`, `kanji_cards_created` and `word_statuses_set` count what was written, not input records. An export without kanji arrays reports the kanji counts as 0.
+ * Result of a jpdb history import. Every input record is counted in exactly one bucket (C-2, C-4; mapping rules on `importJpdbHistory`): - rows of the vocab arrays: `vocabulary_total = vocabulary_carded + vocabulary_status_only   + vocabulary_en_jp_ignored + len(unmapped)`; - rows of the kanji arrays: `kanji_total = kanji_carded + len(kanji_unmapped)`; - review events of all four arrays: `reviews_total = reviews_imported + reviews_already_imported   + reviews_skipped + reviews_unknown_grade + status_events_unknown + status_events_known   + reviews_duplicate_dropped`. An event's bucket is the first that applies: (1) its row is a `cards_vocabulary_en_jp` row or is unmapped → `reviews_skipped`; (2) malformed → `reviews_unknown_grade`; (3) exact duplicate within its group → `reviews_duplicate_dropped`; (4) grade `unknown` → `status_events_unknown`; (5) grade `known` → `status_events_known` (whether or not it set a word status); (6) any other non-rating grade → `reviews_unknown_grade`; (7) rating with `import_reviews = false` → `reviews_skipped`; (8) rating whose review id already exists → `reviews_already_imported`; (9) else `reviews_imported`. Rows count rows, not distinct words: rows that repeat a vid are each counted in `vocabulary_total` and in their group's bucket (`unmapped` lists each row). `notes_*`, `cards_created`, `kanji_notes_*`, `kanji_cards_*` and `word_statuses_set` count what was written, not input records. With `import_reviews = true`: `notes_created + notes_existing` = distinct seqs of carded vocab groups; `cards_created <= notes_created + notes_existing`; `word_statuses_set <=` distinct seqs of status-only groups; `kanji_notes_created + kanji_notes_existing` = distinct characters of mapped kanji rows; `kanji_cards_suspended <= kanji_cards_created`. An export without kanji arrays reports the kanji counts as 0.
  *
- * @param cardsCreated Vocabulary cards created (kanji cards are `kanji_cards_created`).
- * @param kanjiCarded Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char).
- * @param kanjiCardsCreated Kanji cards created.
+ * @param cardsCreated Vocabulary `meaning` cards created, at most one per carded group, so about equal to `notes_created` (kanji cards are `kanji_cards_created`).
+ * @param kanjiCarded Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char), known-only rows included. `writing` cards and known-only cards are created suspended.
+ * @param kanjiCardsCreated Kanji cards created (one per (character, kind) without a live card), suspended ones included.
+ * @param kanjiCardsSuspended Of `kanji_cards_created`, those created with `suspended = true` - every created `writing` card plus created `keyword` cards of known-only groups. Existing cards are never counted or changed. Added by C-4.
  * @param kanjiNotesCreated Kanji notes created (one per character, shared by both arrays).
  * @param kanjiNotesExisting Distinct characters that already had a live kanji note.
  * @param kanjiTotal Kanji records in the export (rows of `cards_kanji_char_keyword` and `cards_kanji_keyword_char`).
  * @param kanjiUnmapped Kanji rows whose `character` is not exactly one Unicode code point. Their events count as `reviews_skipped`.
- * @param notesCreated Vocabulary notes created (kanji notes are `kanji_notes_created`).
- * @param notesExisting Mapped vocabulary that already had a live note (kanji - `kanji_notes_existing`).
+ * @param notesCreated Vocabulary notes created, one per carded group (distinct seq), not per row (kanji notes are `kanji_notes_created`).
+ * @param notesExisting Carded vocabulary groups (distinct seqs) that already had a live note (kanji - `kanji_notes_existing`).
  * @param reviewsAlreadyImported Reviews skipped because an earlier run imported them.
+ * @param reviewsDuplicateDropped Events of mapped rows dropped as exact duplicates - same `timestamp` and `grade` as an earlier event of the same group (vocab - rows sharing a seq; kanji - rows sharing character and card kind). Any grade, status events included. Added by C-4.
  * @param reviewsImported Reviews logged by this run.
- * @param reviewsSkipped Events of unmapped rows (`unmapped`, `kanji_unmapped`), and rating events when `import_reviews` is false.
+ * @param reviewsSkipped Events of unmapped rows (`unmapped`, `kanji_unmapped`) and of `cards_vocabulary_en_jp` rows (any grade), and rating events when `import_reviews` is false.
  * @param reviewsTotal Review events in the export (every element of every row's `reviews[]`, all four arrays, status events included).
- * @param reviewsUnknownGrade Events of a mapped row whose `grade` is none of the known grades; nothing is written for them.
- * @param statusEventsKnown `known` events of mapped rows (vocab - a word status; kanji - nothing beyond the note and card; never a review).
- * @param statusEventsUnknown `unknown` events of mapped rows (card creation only, no review).
- * @param unmapped Vocabulary that maps to no JMdict entry.
- * @param vocabularyCarded Mapped vocabulary rows with at least one event other than `known`; each has a note and a card after the run (unless `import_reviews` is false).
- * @param vocabularyStatusOnly Mapped vocabulary rows whose events are all `known`; they get a word status only, no note or card.
+ * @param reviewsUnknownGrade Events of a mapped row that are malformed (not an object with an integer `timestamp` and a string `grade`) or whose `grade` is none of the known grades; nothing is written for them.
+ * @param statusEventsKnown `known` events of mapped rows, duplicates excluded, never a review. All of them count here: those of status-only vocab groups (which may set a word status), those of carded vocab groups (ignored; FSRS schedules from the reviews) and those of kanji groups (a known-only kanji card is created suspended).
+ * @param statusEventsUnknown `unknown` events of mapped rows, duplicates excluded (card creation only, no review).
+ * @param unmapped `cards_vocabulary_jp_en` rows that map to no JMdict entry, one element per row.
+ * @param vocabularyCarded Mapped `cards_vocabulary_jp_en` rows whose group (rows sharing the mapped seq) is carded - it has at least one kept non-`known` event, or no well-formed events; the group's note has a `meaning` card after the run (unless `import_reviews` is false). One note and one card per group, not per row.
+ * @param vocabularyEnJpIgnored Rows of `cards_vocabulary_en_jp` (C-4). Never mapped, never listed in `unmapped`; no note, card, status or review; their events count as `reviews_skipped`. Added by C-4.
+ * @param vocabularyStatusOnly Mapped `cards_vocabulary_jp_en` rows whose group's kept well-formed events are all `known` (at least one); the word gets status `known` (unless it already has an override or `import_word_status` is false), no note or card.
  * @param vocabularyTotal Vocabulary records in the export (rows of `cards_vocabulary_jp_en` and `cards_vocabulary_en_jp`).
- * @param wordStatusesSet Overrides written (`word.status_set` ops emitted).
+ * @param wordStatusesSet Overrides written (`word.status_set` ops emitted), at most one per status-only vocab group.
  */
 
 
 data class JobResultJpdbHistory (
 
-    /* Vocabulary cards created (kanji cards are `kanji_cards_created`). */
+    /* Vocabulary `meaning` cards created, at most one per carded group, so about equal to `notes_created` (kanji cards are `kanji_cards_created`). */
     @SerializedName("cards_created")
     val cardsCreated: kotlin.Int,
 
-    /* Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char). */
+    /* Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char), known-only rows included. `writing` cards and known-only cards are created suspended. */
     @SerializedName("kanji_carded")
     val kanjiCarded: kotlin.Int,
 
-    /* Kanji cards created. */
+    /* Kanji cards created (one per (character, kind) without a live card), suspended ones included. */
     @SerializedName("kanji_cards_created")
     val kanjiCardsCreated: kotlin.Int,
+
+    /* Of `kanji_cards_created`, those created with `suspended = true` - every created `writing` card plus created `keyword` cards of known-only groups. Existing cards are never counted or changed. Added by C-4. */
+    @SerializedName("kanji_cards_suspended")
+    val kanjiCardsSuspended: kotlin.Int,
 
     /* Kanji notes created (one per character, shared by both arrays). */
     @SerializedName("kanji_notes_created")
@@ -85,11 +92,11 @@ data class JobResultJpdbHistory (
     @SerializedName("kanji_unmapped")
     val kanjiUnmapped: kotlin.collections.List<JobResultJpdbHistoryKanjiUnmappedInner>,
 
-    /* Vocabulary notes created (kanji notes are `kanji_notes_created`). */
+    /* Vocabulary notes created, one per carded group (distinct seq), not per row (kanji notes are `kanji_notes_created`). */
     @SerializedName("notes_created")
     val notesCreated: kotlin.Int,
 
-    /* Mapped vocabulary that already had a live note (kanji - `kanji_notes_existing`). */
+    /* Carded vocabulary groups (distinct seqs) that already had a live note (kanji - `kanji_notes_existing`). */
     @SerializedName("notes_existing")
     val notesExisting: kotlin.Int,
 
@@ -97,11 +104,15 @@ data class JobResultJpdbHistory (
     @SerializedName("reviews_already_imported")
     val reviewsAlreadyImported: kotlin.Int,
 
+    /* Events of mapped rows dropped as exact duplicates - same `timestamp` and `grade` as an earlier event of the same group (vocab - rows sharing a seq; kanji - rows sharing character and card kind). Any grade, status events included. Added by C-4. */
+    @SerializedName("reviews_duplicate_dropped")
+    val reviewsDuplicateDropped: kotlin.Int,
+
     /* Reviews logged by this run. */
     @SerializedName("reviews_imported")
     val reviewsImported: kotlin.Int,
 
-    /* Events of unmapped rows (`unmapped`, `kanji_unmapped`), and rating events when `import_reviews` is false. */
+    /* Events of unmapped rows (`unmapped`, `kanji_unmapped`) and of `cards_vocabulary_en_jp` rows (any grade), and rating events when `import_reviews` is false. */
     @SerializedName("reviews_skipped")
     val reviewsSkipped: kotlin.Int,
 
@@ -109,27 +120,31 @@ data class JobResultJpdbHistory (
     @SerializedName("reviews_total")
     val reviewsTotal: kotlin.Int,
 
-    /* Events of a mapped row whose `grade` is none of the known grades; nothing is written for them. */
+    /* Events of a mapped row that are malformed (not an object with an integer `timestamp` and a string `grade`) or whose `grade` is none of the known grades; nothing is written for them. */
     @SerializedName("reviews_unknown_grade")
     val reviewsUnknownGrade: kotlin.Int,
 
-    /* `known` events of mapped rows (vocab - a word status; kanji - nothing beyond the note and card; never a review). */
+    /* `known` events of mapped rows, duplicates excluded, never a review. All of them count here: those of status-only vocab groups (which may set a word status), those of carded vocab groups (ignored; FSRS schedules from the reviews) and those of kanji groups (a known-only kanji card is created suspended). */
     @SerializedName("status_events_known")
     val statusEventsKnown: kotlin.Int,
 
-    /* `unknown` events of mapped rows (card creation only, no review). */
+    /* `unknown` events of mapped rows, duplicates excluded (card creation only, no review). */
     @SerializedName("status_events_unknown")
     val statusEventsUnknown: kotlin.Int,
 
-    /* Vocabulary that maps to no JMdict entry. */
+    /* `cards_vocabulary_jp_en` rows that map to no JMdict entry, one element per row. */
     @SerializedName("unmapped")
     val unmapped: kotlin.collections.List<JobResultJpdbHistoryUnmappedInner>,
 
-    /* Mapped vocabulary rows with at least one event other than `known`; each has a note and a card after the run (unless `import_reviews` is false). */
+    /* Mapped `cards_vocabulary_jp_en` rows whose group (rows sharing the mapped seq) is carded - it has at least one kept non-`known` event, or no well-formed events; the group's note has a `meaning` card after the run (unless `import_reviews` is false). One note and one card per group, not per row. */
     @SerializedName("vocabulary_carded")
     val vocabularyCarded: kotlin.Int,
 
-    /* Mapped vocabulary rows whose events are all `known`; they get a word status only, no note or card. */
+    /* Rows of `cards_vocabulary_en_jp` (C-4). Never mapped, never listed in `unmapped`; no note, card, status or review; their events count as `reviews_skipped`. Added by C-4. */
+    @SerializedName("vocabulary_en_jp_ignored")
+    val vocabularyEnJpIgnored: kotlin.Int,
+
+    /* Mapped `cards_vocabulary_jp_en` rows whose group's kept well-formed events are all `known` (at least one); the word gets status `known` (unless it already has an override or `import_word_status` is false), no note or card. */
     @SerializedName("vocabulary_status_only")
     val vocabularyStatusOnly: kotlin.Int,
 
@@ -137,7 +152,7 @@ data class JobResultJpdbHistory (
     @SerializedName("vocabulary_total")
     val vocabularyTotal: kotlin.Int,
 
-    /* Overrides written (`word.status_set` ops emitted). */
+    /* Overrides written (`word.status_set` ops emitted), at most one per status-only vocab group. */
     @SerializedName("word_statuses_set")
     val wordStatusesSet: kotlin.Int
 

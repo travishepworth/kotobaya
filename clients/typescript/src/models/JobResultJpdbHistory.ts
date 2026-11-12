@@ -30,30 +30,48 @@ import {
 
 /**
  * Result of a jpdb history import. Every input record is counted in exactly one bucket
- * (C-2; mapping rules on `importJpdbHistory`):
- * - rows of the vocab arrays: `vocabulary_total = vocabulary_carded + vocabulary_status_only + len(unmapped)`;
+ * (C-2, C-4; mapping rules on `importJpdbHistory`):
+ * - rows of the vocab arrays: `vocabulary_total = vocabulary_carded + vocabulary_status_only
+ *   + vocabulary_en_jp_ignored + len(unmapped)`;
  * - rows of the kanji arrays: `kanji_total = kanji_carded + len(kanji_unmapped)`;
  * - review events of all four arrays: `reviews_total = reviews_imported + reviews_already_imported
- *   + reviews_skipped + reviews_unknown_grade + status_events_unknown + status_events_known`.
- * `notes_*`, `cards_created`, `kanji_notes_*`, `kanji_cards_created` and `word_statuses_set` count
- * what was written, not input records. An export without kanji arrays reports the kanji
- * counts as 0.
+ *   + reviews_skipped + reviews_unknown_grade + status_events_unknown + status_events_known
+ *   + reviews_duplicate_dropped`.
+ * An event's bucket is the first that applies: (1) its row is a `cards_vocabulary_en_jp` row
+ * or is unmapped → `reviews_skipped`; (2) malformed → `reviews_unknown_grade`; (3) exact
+ * duplicate within its group → `reviews_duplicate_dropped`; (4) grade `unknown` →
+ * `status_events_unknown`; (5) grade `known` → `status_events_known` (whether or not it set a
+ * word status); (6) any other non-rating grade → `reviews_unknown_grade`; (7) rating with
+ * `import_reviews = false` → `reviews_skipped`; (8) rating whose review id already exists →
+ * `reviews_already_imported`; (9) else `reviews_imported`.
+ * Rows count rows, not distinct words: rows that repeat a vid are each counted in
+ * `vocabulary_total` and in their group's bucket (`unmapped` lists each row). `notes_*`,
+ * `cards_created`, `kanji_notes_*`, `kanji_cards_*` and `word_statuses_set` count what was
+ * written, not input records. With `import_reviews = true`: `notes_created + notes_existing`
+ * = distinct seqs of carded vocab groups; `cards_created <= notes_created + notes_existing`;
+ * `word_statuses_set <=` distinct seqs of status-only groups; `kanji_notes_created +
+ * kanji_notes_existing` = distinct characters of mapped kanji rows; `kanji_cards_suspended
+ * <= kanji_cards_created`. An export without kanji arrays reports the kanji counts as 0.
  * @export
  * @interface JobResultJpdbHistory
  */
 export interface JobResultJpdbHistory {
     /**
-     * Vocabulary cards created (kanji cards are `kanji_cards_created`).
+     * Vocabulary `meaning` cards created, at most one per carded group, so about equal to `notes_created` (kanji cards are `kanji_cards_created`).
      */
     cardsCreated: number;
     /**
-     * Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char).
+     * Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing` (keyword → char), known-only rows included. `writing` cards and known-only cards are created suspended.
      */
     kanjiCarded: number;
     /**
-     * Kanji cards created.
+     * Kanji cards created (one per (character, kind) without a live card), suspended ones included.
      */
     kanjiCardsCreated: number;
+    /**
+     * Of `kanji_cards_created`, those created with `suspended = true` - every created `writing` card plus created `keyword` cards of known-only groups. Existing cards are never counted or changed. Added by C-4.
+     */
+    kanjiCardsSuspended: number;
     /**
      * Kanji notes created (one per character, shared by both arrays).
      */
@@ -71,11 +89,11 @@ export interface JobResultJpdbHistory {
      */
     kanjiUnmapped: Array<JobResultJpdbHistoryKanjiUnmappedInner>;
     /**
-     * Vocabulary notes created (kanji notes are `kanji_notes_created`).
+     * Vocabulary notes created, one per carded group (distinct seq), not per row (kanji notes are `kanji_notes_created`).
      */
     notesCreated: number;
     /**
-     * Mapped vocabulary that already had a live note (kanji - `kanji_notes_existing`).
+     * Carded vocabulary groups (distinct seqs) that already had a live note (kanji - `kanji_notes_existing`).
      */
     notesExisting: number;
     /**
@@ -83,11 +101,15 @@ export interface JobResultJpdbHistory {
      */
     reviewsAlreadyImported: number;
     /**
+     * Events of mapped rows dropped as exact duplicates - same `timestamp` and `grade` as an earlier event of the same group (vocab - rows sharing a seq; kanji - rows sharing character and card kind). Any grade, status events included. Added by C-4.
+     */
+    reviewsDuplicateDropped: number;
+    /**
      * Reviews logged by this run.
      */
     reviewsImported: number;
     /**
-     * Events of unmapped rows (`unmapped`, `kanji_unmapped`), and rating events when `import_reviews` is false.
+     * Events of unmapped rows (`unmapped`, `kanji_unmapped`) and of `cards_vocabulary_en_jp` rows (any grade), and rating events when `import_reviews` is false.
      */
     reviewsSkipped: number;
     /**
@@ -95,27 +117,31 @@ export interface JobResultJpdbHistory {
      */
     reviewsTotal: number;
     /**
-     * Events of a mapped row whose `grade` is none of the known grades; nothing is written for them.
+     * Events of a mapped row that are malformed (not an object with an integer `timestamp` and a string `grade`) or whose `grade` is none of the known grades; nothing is written for them.
      */
     reviewsUnknownGrade: number;
     /**
-     * `known` events of mapped rows (vocab - a word status; kanji - nothing beyond the note and card; never a review).
+     * `known` events of mapped rows, duplicates excluded, never a review. All of them count here: those of status-only vocab groups (which may set a word status), those of carded vocab groups (ignored; FSRS schedules from the reviews) and those of kanji groups (a known-only kanji card is created suspended).
      */
     statusEventsKnown: number;
     /**
-     * `unknown` events of mapped rows (card creation only, no review).
+     * `unknown` events of mapped rows, duplicates excluded (card creation only, no review).
      */
     statusEventsUnknown: number;
     /**
-     * Vocabulary that maps to no JMdict entry.
+     * `cards_vocabulary_jp_en` rows that map to no JMdict entry, one element per row.
      */
     unmapped: Array<JobResultJpdbHistoryUnmappedInner>;
     /**
-     * Mapped vocabulary rows with at least one event other than `known`; each has a note and a card after the run (unless `import_reviews` is false).
+     * Mapped `cards_vocabulary_jp_en` rows whose group (rows sharing the mapped seq) is carded - it has at least one kept non-`known` event, or no well-formed events; the group's note has a `meaning` card after the run (unless `import_reviews` is false). One note and one card per group, not per row.
      */
     vocabularyCarded: number;
     /**
-     * Mapped vocabulary rows whose events are all `known`; they get a word status only, no note or card.
+     * Rows of `cards_vocabulary_en_jp` (C-4). Never mapped, never listed in `unmapped`; no note, card, status or review; their events count as `reviews_skipped`. Added by C-4.
+     */
+    vocabularyEnJpIgnored: number;
+    /**
+     * Mapped `cards_vocabulary_jp_en` rows whose group's kept well-formed events are all `known` (at least one); the word gets status `known` (unless it already has an override or `import_word_status` is false), no note or card.
      */
     vocabularyStatusOnly: number;
     /**
@@ -123,7 +149,7 @@ export interface JobResultJpdbHistory {
      */
     vocabularyTotal: number;
     /**
-     * Overrides written (`word.status_set` ops emitted).
+     * Overrides written (`word.status_set` ops emitted), at most one per status-only vocab group.
      */
     wordStatusesSet: number;
 }
@@ -135,6 +161,7 @@ export function instanceOfJobResultJpdbHistory(value: object): value is JobResul
     if ((!('cardsCreated' in (value as Record<string, any>)) && !('cards_created' in (value as Record<string, any>))) || ((value as Record<string, any>)['cardsCreated'] === undefined && (value as Record<string, any>)['cards_created'] === undefined)) return false;
     if ((!('kanjiCarded' in (value as Record<string, any>)) && !('kanji_carded' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiCarded'] === undefined && (value as Record<string, any>)['kanji_carded'] === undefined)) return false;
     if ((!('kanjiCardsCreated' in (value as Record<string, any>)) && !('kanji_cards_created' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiCardsCreated'] === undefined && (value as Record<string, any>)['kanji_cards_created'] === undefined)) return false;
+    if ((!('kanjiCardsSuspended' in (value as Record<string, any>)) && !('kanji_cards_suspended' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiCardsSuspended'] === undefined && (value as Record<string, any>)['kanji_cards_suspended'] === undefined)) return false;
     if ((!('kanjiNotesCreated' in (value as Record<string, any>)) && !('kanji_notes_created' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiNotesCreated'] === undefined && (value as Record<string, any>)['kanji_notes_created'] === undefined)) return false;
     if ((!('kanjiNotesExisting' in (value as Record<string, any>)) && !('kanji_notes_existing' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiNotesExisting'] === undefined && (value as Record<string, any>)['kanji_notes_existing'] === undefined)) return false;
     if ((!('kanjiTotal' in (value as Record<string, any>)) && !('kanji_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['kanjiTotal'] === undefined && (value as Record<string, any>)['kanji_total'] === undefined)) return false;
@@ -142,6 +169,7 @@ export function instanceOfJobResultJpdbHistory(value: object): value is JobResul
     if ((!('notesCreated' in (value as Record<string, any>)) && !('notes_created' in (value as Record<string, any>))) || ((value as Record<string, any>)['notesCreated'] === undefined && (value as Record<string, any>)['notes_created'] === undefined)) return false;
     if ((!('notesExisting' in (value as Record<string, any>)) && !('notes_existing' in (value as Record<string, any>))) || ((value as Record<string, any>)['notesExisting'] === undefined && (value as Record<string, any>)['notes_existing'] === undefined)) return false;
     if ((!('reviewsAlreadyImported' in (value as Record<string, any>)) && !('reviews_already_imported' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsAlreadyImported'] === undefined && (value as Record<string, any>)['reviews_already_imported'] === undefined)) return false;
+    if ((!('reviewsDuplicateDropped' in (value as Record<string, any>)) && !('reviews_duplicate_dropped' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsDuplicateDropped'] === undefined && (value as Record<string, any>)['reviews_duplicate_dropped'] === undefined)) return false;
     if ((!('reviewsImported' in (value as Record<string, any>)) && !('reviews_imported' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsImported'] === undefined && (value as Record<string, any>)['reviews_imported'] === undefined)) return false;
     if ((!('reviewsSkipped' in (value as Record<string, any>)) && !('reviews_skipped' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsSkipped'] === undefined && (value as Record<string, any>)['reviews_skipped'] === undefined)) return false;
     if ((!('reviewsTotal' in (value as Record<string, any>)) && !('reviews_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsTotal'] === undefined && (value as Record<string, any>)['reviews_total'] === undefined)) return false;
@@ -150,6 +178,7 @@ export function instanceOfJobResultJpdbHistory(value: object): value is JobResul
     if ((!('statusEventsUnknown' in (value as Record<string, any>)) && !('status_events_unknown' in (value as Record<string, any>))) || ((value as Record<string, any>)['statusEventsUnknown'] === undefined && (value as Record<string, any>)['status_events_unknown'] === undefined)) return false;
     if (!('unmapped' in value) || value['unmapped'] === undefined) return false;
     if ((!('vocabularyCarded' in (value as Record<string, any>)) && !('vocabulary_carded' in (value as Record<string, any>))) || ((value as Record<string, any>)['vocabularyCarded'] === undefined && (value as Record<string, any>)['vocabulary_carded'] === undefined)) return false;
+    if ((!('vocabularyEnJpIgnored' in (value as Record<string, any>)) && !('vocabulary_en_jp_ignored' in (value as Record<string, any>))) || ((value as Record<string, any>)['vocabularyEnJpIgnored'] === undefined && (value as Record<string, any>)['vocabulary_en_jp_ignored'] === undefined)) return false;
     if ((!('vocabularyStatusOnly' in (value as Record<string, any>)) && !('vocabulary_status_only' in (value as Record<string, any>))) || ((value as Record<string, any>)['vocabularyStatusOnly'] === undefined && (value as Record<string, any>)['vocabulary_status_only'] === undefined)) return false;
     if ((!('vocabularyTotal' in (value as Record<string, any>)) && !('vocabulary_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['vocabularyTotal'] === undefined && (value as Record<string, any>)['vocabulary_total'] === undefined)) return false;
     if ((!('wordStatusesSet' in (value as Record<string, any>)) && !('word_statuses_set' in (value as Record<string, any>))) || ((value as Record<string, any>)['wordStatusesSet'] === undefined && (value as Record<string, any>)['word_statuses_set'] === undefined)) return false;
@@ -169,6 +198,7 @@ export function JobResultJpdbHistoryFromJSONTyped(json: any, ignoreDiscriminator
         'cardsCreated': json['cards_created'],
         'kanjiCarded': json['kanji_carded'],
         'kanjiCardsCreated': json['kanji_cards_created'],
+        'kanjiCardsSuspended': json['kanji_cards_suspended'],
         'kanjiNotesCreated': json['kanji_notes_created'],
         'kanjiNotesExisting': json['kanji_notes_existing'],
         'kanjiTotal': json['kanji_total'],
@@ -176,6 +206,7 @@ export function JobResultJpdbHistoryFromJSONTyped(json: any, ignoreDiscriminator
         'notesCreated': json['notes_created'],
         'notesExisting': json['notes_existing'],
         'reviewsAlreadyImported': json['reviews_already_imported'],
+        'reviewsDuplicateDropped': json['reviews_duplicate_dropped'],
         'reviewsImported': json['reviews_imported'],
         'reviewsSkipped': json['reviews_skipped'],
         'reviewsTotal': json['reviews_total'],
@@ -184,6 +215,7 @@ export function JobResultJpdbHistoryFromJSONTyped(json: any, ignoreDiscriminator
         'statusEventsUnknown': json['status_events_unknown'],
         'unmapped': ((json['unmapped'] as Array<any>).map(JobResultJpdbHistoryUnmappedInnerFromJSON)),
         'vocabularyCarded': json['vocabulary_carded'],
+        'vocabularyEnJpIgnored': json['vocabulary_en_jp_ignored'],
         'vocabularyStatusOnly': json['vocabulary_status_only'],
         'vocabularyTotal': json['vocabulary_total'],
         'wordStatusesSet': json['word_statuses_set'],
@@ -204,6 +236,7 @@ export function JobResultJpdbHistoryToJSONTyped(value?: JobResultJpdbHistory | n
         'cards_created': value['cardsCreated'],
         'kanji_carded': value['kanjiCarded'],
         'kanji_cards_created': value['kanjiCardsCreated'],
+        'kanji_cards_suspended': value['kanjiCardsSuspended'],
         'kanji_notes_created': value['kanjiNotesCreated'],
         'kanji_notes_existing': value['kanjiNotesExisting'],
         'kanji_total': value['kanjiTotal'],
@@ -211,6 +244,7 @@ export function JobResultJpdbHistoryToJSONTyped(value?: JobResultJpdbHistory | n
         'notes_created': value['notesCreated'],
         'notes_existing': value['notesExisting'],
         'reviews_already_imported': value['reviewsAlreadyImported'],
+        'reviews_duplicate_dropped': value['reviewsDuplicateDropped'],
         'reviews_imported': value['reviewsImported'],
         'reviews_skipped': value['reviewsSkipped'],
         'reviews_total': value['reviewsTotal'],
@@ -219,6 +253,7 @@ export function JobResultJpdbHistoryToJSONTyped(value?: JobResultJpdbHistory | n
         'status_events_unknown': value['statusEventsUnknown'],
         'unmapped': ((value['unmapped'] as Array<any>).map(JobResultJpdbHistoryUnmappedInnerToJSON)),
         'vocabulary_carded': value['vocabularyCarded'],
+        'vocabulary_en_jp_ignored': value['vocabularyEnJpIgnored'],
         'vocabulary_status_only': value['vocabularyStatusOnly'],
         'vocabulary_total': value['vocabularyTotal'],
         'word_statuses_set': value['wordStatusesSet'],

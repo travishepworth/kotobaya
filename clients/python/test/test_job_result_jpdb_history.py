@@ -38,6 +38,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                 cards_created = 0,
                 kanji_carded = 0,
                 kanji_cards_created = 0,
+                kanji_cards_suspended = 0,
                 kanji_notes_created = 0,
                 kanji_notes_existing = 0,
                 kanji_total = 0,
@@ -50,6 +51,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                 notes_created = 0,
                 notes_existing = 0,
                 reviews_already_imported = 0,
+                reviews_duplicate_dropped = 0,
                 reviews_imported = 0,
                 reviews_skipped = 0,
                 reviews_total = 0,
@@ -64,6 +66,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                         spelling = '', )
                     ],
                 vocabulary_carded = 0,
+                vocabulary_en_jp_ignored = 0,
                 vocabulary_status_only = 0,
                 vocabulary_total = 0,
                 word_statuses_set = 0
@@ -73,6 +76,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                 cards_created = 0,
                 kanji_carded = 0,
                 kanji_cards_created = 0,
+                kanji_cards_suspended = 0,
                 kanji_notes_created = 0,
                 kanji_notes_existing = 0,
                 kanji_total = 0,
@@ -85,6 +89,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                 notes_created = 0,
                 notes_existing = 0,
                 reviews_already_imported = 0,
+                reviews_duplicate_dropped = 0,
                 reviews_imported = 0,
                 reviews_skipped = 0,
                 reviews_total = 0,
@@ -99,6 +104,7 @@ class TestJobResultJpdbHistory(unittest.TestCase):
                         spelling = '', )
                     ],
                 vocabulary_carded = 0,
+                vocabulary_en_jp_ignored = 0,
                 vocabulary_status_only = 0,
                 vocabulary_total = 0,
                 word_statuses_set = 0,
