@@ -513,3 +513,4 @@
 2026-11-12T19:27:01Z T303a REVIEW_APPROVE verification attempt 2; CHECK_GREEN core after rebase on C-10; MERGE
 2026-11-12T19:27:01Z - T303d gets Re-mint Refused-rollback acceptance; T303b gets reset/auto-retry seam notes
 2026-11-12T19:27:01Z T303b DISPATCH writer-senior(opus)
+2026-11-12T19:27:26Z T312 HANDOFF BLOCKED (versionCode/Name in defaultConfig outside paths) → DECIDE approve env-driven version + .gitignore keystores + Makefile comment; attempt 1 continued
