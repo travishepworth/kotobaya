@@ -1,0 +1,258 @@
+{
+ "_doc": "T106: 50 queries against the T101 fixture subset (dict/ref_fixture.sql.gz) with freq_rank = row_number over seq among common entries, and the `retired` entries retired. `expect` is the seq of the first result, null for an empty page.",
+ "retired": [
+  1584660
+ ],
+ "queries": [
+  {
+   "kind": "kana",
+   "q": "たべもの",
+   "expect": 1358340
+  },
+  {
+   "kind": "kana",
+   "q": "みる",
+   "expect": 1259290
+  },
+  {
+   "kind": "kana",
+   "q": "いく",
+   "expect": 1578850
+  },
+  {
+   "kind": "kana",
+   "q": "のむ",
+   "expect": 1169870
+  },
+  {
+   "kind": "kana",
+   "q": "ねこ",
+   "expect": 1467640
+  },
+  {
+   "kind": "kana",
+   "q": "ともだち",
+   "expect": 1540170
+  },
+  {
+   "kind": "kana",
+   "q": "でんしゃ",
+   "expect": 1443530
+  },
+  {
+   "kind": "kana",
+   "q": "てんき",
+   "expect": 1438690
+  },
+  {
+   "kind": "kana",
+   "q": "あした",
+   "expect": 2857350
+  },
+  {
+   "kind": "kana",
+   "q": "むずかしい",
+   "expect": 1460850
+  },
+  {
+   "kind": "katakana",
+   "q": "ネコ",
+   "expect": 1467640
+  },
+  {
+   "kind": "katakana",
+   "q": "ニホンゴ",
+   "expect": 1464530
+  },
+  {
+   "kind": "katakana",
+   "q": "カウ",
+   "expect": 1473740
+  },
+  {
+   "kind": "kanji",
+   "q": "学校",
+   "expect": 1206730
+  },
+  {
+   "kind": "kanji",
+   "q": "日本語",
+   "expect": 1464530
+  },
+  {
+   "kind": "kanji",
+   "q": "先生",
+   "expect": 1387990
+  },
+  {
+   "kind": "kanji",
+   "q": "私",
+   "expect": 1311110
+  },
+  {
+   "kind": "kanji",
+   "q": "猫",
+   "expect": 1467640
+  },
+  {
+   "kind": "kanji",
+   "q": "友達",
+   "expect": 1540170
+  },
+  {
+   "kind": "kanji",
+   "q": "勉強",
+   "expect": 1512670
+  },
+  {
+   "kind": "kanji",
+   "q": "電車",
+   "expect": 1443530
+  },
+  {
+   "kind": "kanji",
+   "q": "好き",
+   "expect": 1277450
+  },
+  {
+   "kind": "kanji",
+   "q": "朝",
+   "expect": 1428280
+  },
+  {
+   "kind": "kanji",
+   "q": "買う",
+   "expect": 1473740
+  },
+  {
+   "kind": "prefix-1char",
+   "q": "日",
+   "expect": 2083110
+  },
+  {
+   "kind": "prefix-1char",
+   "q": "ば",
+   "expect": 1355790
+  },
+  {
+   "kind": "prefix-1char",
+   "q": "く",
+   "expect": 1578150
+  },
+  {
+   "kind": "prefix-1char",
+   "q": "ね",
+   "expect": 1009900
+  },
+  {
+   "kind": "prefix-1char",
+   "q": "し",
+   "expect": 2728300
+  },
+  {
+   "kind": "prefix-2char",
+   "q": "にほん",
+   "expect": 1464530
+  },
+  {
+   "kind": "prefix-2char",
+   "q": "あか",
+   "expect": 1014990
+  },
+  {
+   "kind": "substring",
+   "q": "んきょう",
+   "expect": 1512670
+  },
+  {
+   "kind": "substring",
+   "q": "ょうび",
+   "expect": 1002410
+  },
+  {
+   "kind": "romaji",
+   "q": "neko",
+   "expect": 1467640
+  },
+  {
+   "kind": "romaji",
+   "q": "nomu",
+   "expect": 1169870
+  },
+  {
+   "kind": "romaji",
+   "q": "gakkou",
+   "expect": 1206730
+  },
+  {
+   "kind": "romaji",
+   "q": "benkyou",
+   "expect": 1512670
+  },
+  {
+   "kind": "romaji",
+   "q": "sensei",
+   "expect": 1387990
+  },
+  {
+   "kind": "romaji",
+   "q": "tomodachi",
+   "expect": 1540170
+  },
+  {
+   "kind": "romaji",
+   "q": "nihongo",
+   "expect": 1464530
+  },
+  {
+   "kind": "romaji",
+   "q": "MAINICHI",
+   "expect": 1524720
+  },
+  {
+   "kind": "romaji",
+   "q": "ｙｏｍｕ",
+   "expect": 1456360
+  },
+  {
+   "kind": "english",
+   "q": "teacher",
+   "expect": 1387990
+  },
+  {
+   "kind": "english",
+   "q": "TEACHER",
+   "expect": 1387990
+  },
+  {
+   "kind": "english",
+   "q": "to read",
+   "expect": 1456360
+  },
+  {
+   "kind": "english",
+   "q": "to drink",
+   "expect": 1000730
+  },
+  {
+   "kind": "english",
+   "q": "weather",
+   "expect": 1002470
+  },
+  {
+   "kind": "no-deinflection",
+   "q": "のんだ",
+   "expect": null
+  },
+  {
+   "kind": "retired",
+   "q": "明日",
+   "expect": null
+  },
+  {
+   "kind": "retired",
+   "q": "tomorrow",
+   "expect": null
+  }
+ ]
+}
