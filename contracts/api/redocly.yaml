@@ -1,0 +1,25 @@
+# Lint configuration for contracts/api/openapi.yaml (used by check.sh).
+extends:
+  - recommended
+rules:
+  # Examples must be valid against their schemas: implementers copy them.
+  no-invalid-media-type-examples:
+    severity: error
+    allowAdditionalProperties: true
+  no-invalid-schema-examples: error
+  no-invalid-parameter-examples: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-summary: error
+  operation-description: off
+  security-defined: error
+  no-unresolved-refs: error
+  path-parameters-defined: error
+  no-ambiguous-paths: error
+  # Job payload/result and event payload schemas are referenced from prose tables only.
+  no-unused-components: off
+  # Every operation has `default` -> Problem; specific 4xx are listed only where they carry meaning.
+  operation-4xx-response: off
+  # /health, /auth/login and /devices/pair are deliberately public.
+  no-server-example.com: off
+  info-license-strict: off
