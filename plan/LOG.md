@@ -421,3 +421,5 @@
 2026-11-12T17:55:02Z - W-3 added (web nav links; layout unowned by P2 tickets)
 2026-11-12T17:55:02Z W-3 DISPATCH writer-light(haiku)
 2026-11-12T17:55:02Z T204 SPOT_CHECK reviewer-light (§6 every 10th merged med)
+2026-11-12T17:56:01Z T204 SPOT_CHECK no majors; 7 minors → F-1
+2026-11-12T17:56:01Z F-1 DISPATCH writer(sonnet)
