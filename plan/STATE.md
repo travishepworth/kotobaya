@@ -1,14 +1,14 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T12:42:38Z
+Updated: 2026-11-12T12:43:08Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | C-3 | architect (gp/opus) | 2 | t/C-3-dict-package (existing worktree) | 2026-11-12T12:42:38Z |
 | T104 | writer (gp/sonnet) | 1 | t/T104-server-skeleton | 2026-11-12T12:34:15Z |
-| T108b | writer (gp/sonnet) | 1 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
+| T108b | writer (gp/sonnet) | 2 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
 | T110 | writer (gp/sonnet, escalated) | 2 | t/T110-clients | 2026-11-12T12:34:15Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 

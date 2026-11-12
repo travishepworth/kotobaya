@@ -175,3 +175,5 @@
 2026-11-12T12:41:40Z T107b REVIEW reviewer(opus) dispatched
 2026-11-12T12:42:38Z C-3 REVIEW_CHANGES 1 major (diff base must be the published full of from_release + content digest), 4 minor
 2026-11-12T12:42:38Z C-3 DISPATCH attempt 2 (same opus agent)
+2026-11-12T12:43:08Z T108b HANDOFF DONE but execution test missing (snapshots only)
+2026-11-12T12:43:08Z T108b DISPATCH attempt 2 (same writer): sqlite+postgres execution tests, DST-correct day bounds
