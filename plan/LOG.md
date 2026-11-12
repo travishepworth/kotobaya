@@ -127,3 +127,4 @@
 2026-11-12T12:13:12Z GATE-CONTRACTS GATE_OPEN automated freeze review (split A: cross-check, B: P1–P3 coverage)
 2026-11-12T12:16:12Z - SPLIT T105→a/b, T107→a/b, T108→a/b, T109→a/b (planner; >600 lines each)
 2026-11-12T12:16:12Z - DECIDE ADR-007 provisional: server persistence = jOOQ; T111 may also edit deploy/k3d/ and docker-compose.yml
+2026-11-12T12:17:39Z GATE-CONTRACTS REVIEW_CHANGES freeze B: 3 major (backup handshake keys, jpdb kanji import, kanji render data), 7 minor; waiting for A

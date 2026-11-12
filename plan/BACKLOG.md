@@ -163,7 +163,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ### T105 — Auth, devices, tokens, audit
 - model: opus · risk: high · deps: T104 · status: SPLIT
 - paths: `server/src/main/kotlin/kotobaya/auth/`, `server/src/test/kotlin/kotobaya/auth/`
-- do: Single-user password (argon2id) + optional TOTP; session cookie (HttpOnly, SameSite=Strict); device pairing via short-lived QR code → device token; PATs with scopes and expiry, stored hashed; scope enforcement middleware driven by the OpenAPI scopes; audit log table writes.
+- do: Single-user password (argon2id) + optional TOTP; session cookie (HttpOnly, SameSite=Strict); device pairing via short-lived QR code → device token; PATs with scopes and expiry, stored hashed; scope enforcement middleware driven by the OpenAPI scopes; structured audit log lines plus `change.token_id` (openapi §2: no audit table in v1).
 - accept: Tests for every scope boundary; brute-force rate limit; token revocation takes effect immediately.
 
 ### T105a — Auth: password, TOTP, session, login rate limit
@@ -322,7 +322,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - model: opus · risk: med · deps: T201, T108, T107 · status: TODO
 - paths: `core/src/commonMain/kotlin/kotobaya/render/`, `core/src/jsMain/`, `core/src/commonTest/kotlin/kotobaya/render/`, `assets/card/`, `web/src/lib/core/`
 - spec: Scheduling › Card kinds per note type, Clients (Review screens), Public API › Card search language
-- do: Implement `CardRenderer`: templates → HTML fragment with `<ruby>` furigana, pitch-accent SVG from `entry_pitch`, audio placeholders the host fills, front/back; `assets/card/card.css` (light/dark via CSS variables, Japanese font stack). Implement the `CoreJs` facade (`@JsExport`) and a thin typed wrapper in `web/src/lib/core/` (`renderCard`, `parseQuery`, `completeQuery`, `previewIntervals`). One renderer for web review, template preview, and Android (WebView).
+- do: Implement `CardRenderer`: templates → HTML fragment with `<ruby>` furigana, pitch-accent spans (CardRenderer contract strips svg) from `entry_pitch`, audio placeholders the host fills, front/back; `assets/card/card.css` (light/dark via CSS variables, Japanese font stack). Implement the `CoreJs` facade (`@JsExport`) and a thin typed wrapper in `web/src/lib/core/` (`renderCard`, `parseQuery`, `completeQuery`, `previewIntervals`). One renderer for web review, template preview, and Android (WebView).
 - accept: Golden HTML snapshot per built-in note type × card kind, identical on jvm and js targets; output passes the sanitiser (no script, no inline handlers); wrapper smoke test in vitest.
 
 → `make test`, then **GATE-P2**: human imports jpdb history and reviews in the web app for 3 days; reports issues.
