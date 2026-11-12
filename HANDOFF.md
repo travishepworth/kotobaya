@@ -1,25 +1,28 @@
-# HANDOFF T312 (attempt 1)
+# HANDOFF T312 (attempt 2)
 
-STATUS: BLOCKED
+STATUS: DONE
 BRANCH: t/T312-android-release
-CHECK: `make check MODULE=android` → green (signed and unsigned release builds verified with a throwaway key)
+CHECK: `make check MODULE=android` → green; signed `make apk` (both flavors) verified with a throwaway key
 
 ## Changed (≤ 6 lines)
-- `android/build.gradle.kts`: `signingConfigs.release` + `buildTypes.release` read env (`ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`); unsigned when absent.
-- `.github/workflows/android-release.yml`: on `v*`, `make apk`, verify signatures and versions, publish `kotobaya-<ver>.apk` (default) and `kotobaya-own-id-<ver>.apk`.
-- `android/signing/README.md`: keytool, four secrets, Obtainium regex, lost-key procedure.
+- `android/build.gradle.kts`: release signing from env; `defaultConfig` versionCode/versionName from `VERSION_CODE`/`VERSION_NAME` (approved edit).
+- `.github/workflows/android-release.yml`: on `v*`, tag → `VERSION_NAME`, `VERSION_CODE = major*10000+minor*100+patch`; malformed tags fail first; `make apk`; signature and version checks; publishes `kotobaya-<ver>.apk` (default) and `kotobaya-own-id-<ver>.apk`.
+- `android/signing/README.md`: keytool, secrets, Obtainium regex, lost-key procedure.
+- Approved outside-owned edits: `.gitignore` (`*.jks`, `*.keystore`, `*.p12`); `Makefile` `apk` comment.
 
 ## Acceptance → tests
-- Workflow parses (YAML only; actionlint not installed); secrets are the four documented ones plus GITHUB_TOKEN.
-- Signed build → `apksigner verify` passes for both flavors.
+- Workflow YAML parses; tag derivation checked on 7 tags (valid, malformed, out-of-range).
+- Signed build: `apksigner verify` passes for both flavors; `aapt2` shows versionCode 10203 / 1.2.3 for `VERSION_*=1.2.3`.
 - No env → unsigned build succeeds.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Every tag currently fails the workflow's version check: `defaultConfig` still has versionCode 1 / versionName 0.0.0, and that block is outside my owned paths.
-- Outside owned paths, not edited: `.gitignore` lacks `*.jks`/`*.keystore`; the Makefile `apk` comment still says "unsigned".
+- Minor and patch must stay below 100 (versionCode formula); the workflow fails otherwise.
+- actionlint is not installed here; the workflow was checked by YAML parse only.
 
-## If BLOCKED
-QUESTION: May I edit `defaultConfig` in `android/build.gradle.kts` to set `versionCode = System.getenv("VERSION_CODE")?.toInt() ?: 1` and `versionName = System.getenv("VERSION_NAME") ?: "0.0.0"`? The workflow already exports both. Without this, Obtainium cannot detect updates. Options: approve the edit, or apply it yourself.
+## HUMAN_CHECKS
+- Env: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `VERSION_CODE`, `VERSION_NAME`.
+- Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (plus built-in `GITHUB_TOKEN`).
+- Then push a tag, install via Obtainium, and confirm update detection.
