@@ -150,3 +150,6 @@
 2026-11-12T12:32:29Z C-2 HANDOFF DONE
 2026-11-12T12:32:29Z C-2 CHECK_GREEN all 4 contract checks + core + web after rebase
 2026-11-12T12:32:29Z GATE-CONTRACTS freeze round 2: A + B verification dispatched
+2026-11-12T12:32:59Z T107a REVIEW_APPROVE (4 minor → T107b ticket)
+2026-11-12T12:32:59Z T107a MERGE
+2026-11-12T12:32:59Z T107b DISPATCH writer-senior(opus)

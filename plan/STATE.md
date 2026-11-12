@@ -1,11 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
-Updated: 2026-11-12T12:32:29Z
+Updated: 2026-11-12T12:32:59Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T107b | writer-senior (gp/opus) | 1 | t/T107b-fsrs-scheduler | 2026-11-12T12:32:59Z |
 | T103 | writer (gp/sonnet) | 1 | t/T103-dict-package | 2026-11-12T12:30:14Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
@@ -13,7 +14,6 @@ Updated: 2026-11-12T12:32:29Z
 | Ticket | Reviewer | Started |
 |---|---|---|
 | C-2 | freeze A + B verification (round 2 of 2) | 2026-11-12T12:32:29Z |
-| T107a | reviewer (opus) | 2026-11-12T12:29:52Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -33,6 +33,7 @@ Updated: 2026-11-12T12:32:29Z
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T107a PortableMath (fdlibm 5.3) — reviewer verified digests against StrictMath independently; jsTest on node wired
 - T102 pitch/frequency/Tatoeba loaders — idempotent, coverage floors, CC0 test data
 - T108a search parser/format/complete — examples, round trip, 3000 random trees
 - T101 dictionary pipeline (JMdict/KANJIDIC2/KRADFILE → ref.*) — 13 tests incl. Postgres 17
