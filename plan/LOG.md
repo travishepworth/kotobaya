@@ -441,3 +441,6 @@
 2026-11-12T18:09:08Z C-9 REVIEW_APPROVE (8 minors: 6 → T207c, 2 doc → FOLLOWUPS); MERGE
 2026-11-12T18:09:08Z T207c DISPATCH writer(sonnet)
 2026-11-12T18:09:08Z C-8 HANDOFF DONE attempt 3; CHECK_GREEN contracts+core+server; architect verification dispatched
+2026-11-12T18:10:55Z C-8 REVIEW_CHANGES verification att 3: A/B/minors fixed, no regressions; new major F1 (pre-window e:s + window put + remove → removal re-keyed only to n:, e:s survives)
+2026-11-12T18:10:55Z C-8 DISPATCH attempt 4 of 5 (double removal n:+e:)
+2026-11-12T18:10:55Z RETRO C-8: 4 attempts, each round narrows re-mint deck-item keying edge cases; same root (8.5 effective identity vs per-key removal). Converging; no split.
