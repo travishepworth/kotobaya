@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Cards due today, the next 24 hours and a word to watch.</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_all_done">Nothing due</string>
+    <string name="widget_counts">%1$d due · %2$d new</string>
+    <string name="widget_progress">Today: %1$d of %2$d</string>
+    <string name="widget_forecast">Next 24 hours</string>
+    <string name="widget_no_hot_word">No trouble words right now.</string>
+    <string name="tile_label">Review</string>
+    <string name="tile_subtitle">%1$d due</string>
+</resources>
