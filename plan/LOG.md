@@ -276,3 +276,8 @@
 2026-11-12T14:34:55Z T208 MERGE (web/Dockerfile 1-line out-of-path edit accepted: copies clients/typescript)
 2026-11-12T14:35:11Z T212 DISPATCH writer(sonnet)
 2026-11-12T14:35:23Z - HANDOVER usage limit: stopped T202a, T213a, T207a, T212 mid-work (uncommitted partial work may be in their worktrees); redispatch on resume
+2026-11-12T15:33:37Z - RESUME after usage limit; worktree cleanup denied again by classifier (left in place)
+2026-11-12T15:33:37Z T202a DISPATCH architect(opus) restart, branch -r suffix
+2026-11-12T15:33:37Z T213a DISPATCH writer-senior(opus) restart, branch -r suffix
+2026-11-12T15:33:37Z T207a DISPATCH writer-senior(opus) restart, branch -r suffix
+2026-11-12T15:33:37Z T212 DISPATCH writer(sonnet) restart, branch -r suffix

@@ -1,10 +1,8 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T14:35:23Z (usage-limit handover)
+Updated: 2026-11-12T15:33:37Z (resumed after usage limit)
 
-
-## USAGE-LIMIT STOP 2026-11-12T14:35:23Z: T202a, T213a, T207a, T212 were stopped mid-work (no handoffs). On resume: each → TODO (attempt count kept), re-dispatch fresh; optionally tell the writer its worktree under .claude/worktrees/agent-{a989ca3f3d92c6ee5,a87729ea7e20b320b,a959d373363d18f0a,ac5202ff1adab0451} may hold partial uncommitted work.
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
 - P1 done (18/18, make test green, GATE-P1 deferred). P2 tickets in plan/tickets/ (splits: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4; T214). Per-ticket status: BACKLOG.md "Phase 2 splits" line.
@@ -15,10 +13,10 @@ Updated: 2026-11-12T14:35:23Z (usage-limit handover)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T212 | writer (sonnet) | 1 | t/T212-web-settings | 2026-11-12T14:35:11Z |
-| T207a | writer-senior (opus) | 1 | t/T207a-jpdb-worker | 2026-11-12T14:34:05Z |
-| T213a | writer-senior (opus) | 1 | t/T213a-card-renderer | 2026-11-12T14:29:08Z |
-| T202a | architect (opus) | 1 | t/T202a-sync-core | 2026-11-12T14:26:49Z |
+| T202a | architect (opus) | 1 (restart) | t/T202a-sync-core-r | 2026-11-12T15:33:37Z |
+| T213a | writer-senior (opus) | 1 (restart) | t/T213a-card-renderer-r | 2026-11-12T15:33:37Z |
+| T207a | writer-senior (opus) | 1 (restart) | t/T207a-jpdb-worker-r | 2026-11-12T15:33:37Z |
+| T212 | writer (sonnet) | 1 (restart) | t/T212-web-settings-r | 2026-11-12T15:33:37Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -30,7 +28,7 @@ Updated: 2026-11-12T14:35:23Z (usage-limit handover)
 
 ## Notes
 - Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
-- Stale worktrees (T009/T111/T112, all merged) still present: removal denied by permission classifier → in HUMAN_CHECKS.
+- Stale worktrees (all merged tickets + the 4 stopped runs; old branch names held, hence `-r` branches) still present: removal denied by permission classifier → in HUMAN_CHECKS.
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 - Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.
