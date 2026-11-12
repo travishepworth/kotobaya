@@ -358,11 +358,19 @@ CREATE INDEX job_dequeue_idx ON app.job (run_after, created_at) WHERE status = '
 CREATE INDEX job_created_idx ON app.job (created_at DESC);
 CREATE UNIQUE INDEX job_dedupe_uq ON app.job (dedupe_key) WHERE dedupe_key IS NOT NULL AND status IN ('queued', 'running');
 COMMENT ON TABLE  app.job IS 'Work queue between API and worker (no broker). Not in the spec table list but required by "the API enqueues heavy work in Postgres". Not synced.';
-COMMENT ON COLUMN app.job.kind IS 'Job type slug, e.g. dict-refresh, media-import, media-parse, jpdb-import, fsrs-optimize, tts. Payload shape per kind is owned by the API contract, except core-replay: a row the server inserts itself (status succeeded) in the transaction that fully replayed every card cache after a core scheduler version change; payload {"core_scheduler_version": "<v>"}, result {"cards": n}; the newest such row is the server''s stored core_scheduler_version. contracts/sync/SYNC.md 10.5.';
+COMMENT ON COLUMN app.job.kind IS 'Job type slug, e.g. dict-refresh, media-import, media-parse, jpdb-import, fsrs-optimize, tts. Payload shape per kind is owned by the API contract.';
 COMMENT ON COLUMN app.job.status IS 'queued -> running -> succeeded|failed; queued|running -> cancelled. A failed attempt with attempts < max_attempts goes back to queued with a later run_after.';
 COMMENT ON COLUMN app.job.dedupe_key IS 'Optional: at most one queued/running job per key (e.g. "media-parse:<media id>").';
 COMMENT ON COLUMN app.job.locked_by IS 'Worker instance id holding the job while running. Dequeue: SELECT ... WHERE status=''queued'' AND run_after <= now() ORDER BY run_after, created_at FOR UPDATE SKIP LOCKED LIMIT 1.';
 COMMENT ON COLUMN app.job.heartbeat_at IS 'Updated by the worker at least every 30 s while running; a running job with a heartbeat older than 5 min is considered stuck and may be re-queued.';
+
+CREATE TABLE app.server_state (
+  key         text        PRIMARY KEY CHECK (key ~ '^[a-z][a-z0-9_]*$'),
+  value       text        NOT NULL,
+  updated_at  timestamptz NOT NULL
+);
+COMMENT ON TABLE  app.server_state IS 'Server-only bookkeeping key/value store (the server''s counterpart of the device sync_state). Not synced, no op, not exposed through the API, never cleaned up. Keys are defined by the contracts; unknown keys are preserved. SCHEMA.md 4.4.';
+COMMENT ON COLUMN app.server_state.key IS 'Defined keys: core_scheduler_version = the core scheduler version every card cache was last fully replayed with (opaque string, compared by equality). Absent or different from the running core''s => full replay of every maintained card cache under pg_advisory_xact_lock(7033001) before any push is applied; the key is written in that same transaction. contracts/sync/SYNC.md 10.5.';
 
 CREATE TABLE app.blob (
   hash          text        PRIMARY KEY CHECK (hash ~ '^[0-9a-f]{64}$'),

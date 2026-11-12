@@ -161,7 +161,7 @@
         }
       ],
       "items": false,
-      "description": "The 21 FSRS-6 weights w[0]..w[20]. Each is bounded (inclusive) by py-fsrs 6.3.2's LOWER_BOUNDS_PARAMETERS / UPPER_BOUNDS_PARAMETERS, so every published set keeps stability > 0 and finite; out-of-range weights are rejected (schema_invalid at push, C-1). w[20] is the decay."
+      "description": "The 21 FSRS-6 weights w[0]..w[20]. Each is bounded (inclusive) by py-fsrs 6.3.2's LOWER_BOUNDS_PARAMETERS / UPPER_BOUNDS_PARAMETERS; out-of-range weights are rejected (schema_invalid at push, C-1). The bounds give initial stability > 0 and decay w[20] >= 0.1; finite schedules follow together with the core's clamps (T006: STABILITY_MIN, difficulty in [1,10], maximum interval). w[20] is the decay."
     },
     "optimized_at": {
       "$ref": "../common.schema.json#/$defs/instant_ms",

@@ -203,10 +203,17 @@
   real (rated) review; a reschedule leaves it alone, a reset clears it.
 - **Scheduler upgrades recompute everything first.** When the app or server runs a new scheduler
   version, every card's schedule is rebuilt before any new review is added
-  (`core_scheduler_version` on the phone; a finished `core-replay` job row on the server).
+  (`core_scheduler_version`: on the phone in its bookkeeping table, on the server in the new
+  server-only `app.server_state` table). The server re-checks the marker while holding the sync
+  lock, so two server instances never redo the work.
 - **A broken op from the server stops the pull**, like an unknown op: never skipped, shown as
   "update required / server sent an invalid op".
 - **Op size is measured the same way everywhere:** bytes of the op in the core's `CanonicalJson`
   form, checked first, so an oversized op is `op_too_large` even if it is also unknown or invalid.
 - **Published FSRS weights are range-checked:** exactly 21 FSRS-6 weights, each within py-fsrs
-  6.3.2's bounds; anything else is rejected rather than producing broken schedules.
+  6.3.2's bounds; anything else is rejected. Together with the scheduler's own limits this keeps
+  schedules sane.
+- **Rule for later:** once an op version has shipped, its format is never made stricter; a stricter
+  format needs a new op version. Tightening the published-weights op was fine only because
+  nothing is deployed yet.
+- A review after a manual reschedule of a card that was never reviewed counts as its first review.

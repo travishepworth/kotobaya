@@ -780,7 +780,10 @@ when `card.merged` is applied.
   rated row's time. A `manual` row with `manual_action = 'reset'` sets it to **NULL** (the card is
   new again; the next rated row starts from scratch). NULL also while there is no rated row.
 - FSRS elapsed time for a rated row = its `reviewed_at` − `last_review_at` (clamped ≥ 0); none
-  when `last_review_at` is NULL. Why: if a reschedule moved `last_review_at`, a review shortly
+  when `last_review_at` is NULL. In particular, a rated review after a `set_due` on a card that
+  never had a rated row (or none since a reset), so `last_review_at` is NULL, is treated as the
+  card's **first** review (FSRS initial stability/difficulty for its rating), even though the
+  `set_due` gave the card a due date. Why: if a reschedule moved `last_review_at`, a review shortly
   after it would use FSRS's same-day formula (e.g. S ≈ 26 d instead of ≈ 3.5 d after a lapse).
 - Both are functions of the ordered replay set, so folding one more row still equals a full
   replay (9.3).
@@ -814,7 +817,7 @@ row is tombstoned.
 | `fsrs_params.updated` that wins any register except `name` | every card with that effective preset | full replay |
 | `fsrs_params.deleted`, first transition to tombstoned | every card with that `preset_id` | full replay |
 | `fsrs_params.published` that is applied | every card with that effective preset (`weights_version` mismatch) | full replay |
-| core scheduler version changed (app/server upgrade; local, not an op): stored `core_scheduler_version` absent or different from the running core's (10.5) | all | full replay, before anything is folded |
+| core scheduler version changed (app/server upgrade; local, not an op): stored `core_scheduler_version` (device: `sync_state`; server: `app.server_state`) absent or different from the running core's (10.5) | all | full replay, before anything is folded; the server re-reads the marker under lock 7033001 first |
 
 Nothing else touches a cache: not suspend/bury/flag, not note edits, not settings, not word status.
 
@@ -898,7 +901,10 @@ the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
 1. In one transaction: delete every row of every table in `Learning.sq` and `Media.sq`
    (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"`. Keep
    `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`,
-   `hlc_acked`, `log_epoch`, `durable_seq`, `core_scheduler_version`).
+   `hlc_acked`, `log_epoch`, `durable_seq`, `core_scheduler_version`). Keeping
+   `core_scheduler_version` is correct because every cache rebuilt in step 2 is computed by the
+   running core. (A restored server database carries its own `app.server_state` row, which the
+   server's startup check of 10.5 compares as usual.)
 2. Pull from 0 until `has_more` is false (section 6), **or until the pull stops at an op this
    client does not support or that fails its schema** (*upgrade required*, section 6). In the second case the rebuild
    still continues with step 3: the device then holds a correct prefix of the log, exactly like a
@@ -1085,13 +1091,22 @@ reviews MUST wait until it has committed. The rebuild (10.3) keeps this key: it 
 running core, so every cache it creates is already current. Downgrades are handled the same way
 (different ⇒ replay).
 
-**The server's equivalent** uses an existing table, `app.job` (no schema change): a row with
-`kind = 'core-replay'`, `status = 'succeeded'`, `payload = {"core_scheduler_version": "<v>"}`,
-`result = {"cards": <n replayed>}`. The stored version is the payload of the most recent such row
-(by `finished_at`); none ⇒ different. On startup, if it differs from the running core's, the
-server takes the op-apply lock (`pg_advisory_xact_lock(7033001)`), replays every maintained card's
-cache, inserts that row (with `started_at` / `finished_at`) in the **same transaction**, and only
-then applies pushes (pushes wait on the lock). The server mints no op for it: caches never travel.
+**The server's equivalent** is the row `key = 'core_scheduler_version'` of `app.server_state`
+(server-only key/value table added by C-1; not synced, no op, not exposed through the API, never
+cleaned up; `contracts/db/SCHEMA.md` 4.4). Value and absent-meaning as in the table above. On
+startup, **before the instance applies any op** (push, REST-minted op or job-minted op; it is not
+ready until this has committed):
+
+1. Begin a transaction and take the op-apply lock `pg_advisory_xact_lock(7033001)`.
+2. **Re-read** the row under the lock. If it equals the running core's version, commit and stop:
+   another instance, or an earlier start, already did the replay.
+3. Otherwise full-replay every maintained card's cache (as on the device), upsert the row
+   (`value` = running core's version, `updated_at` = now) and commit — all in this one
+   transaction. A crash before commit leaves the row unchanged; the next start replays again.
+
+Because every op apply holds the same lock, no op is folded into a cache while the replay runs,
+and two instances (or a restart racing a slow replay) replay at most once per version. The server
+mints no op for it: caches never travel.
 
 REST callers never see rejected ops: a REST request that would produce an invalid op fails with
 an HTTP error (T004) and nothing is minted.
@@ -1433,6 +1448,12 @@ All 45 ops also flow through `POST /sync/push` (client-emittable ones) and `GET 
   cannot apply the op and stops pulling at it (section 6, *upgrade required*). Therefore: upgrade
   the server first, then clients; and a server keeps accepting and serving every older
   `op_version` forever (the log contains them).
+- **A released `op_version`'s payload schema is never tightened** (C-1): no new required member,
+  no narrower type, enum, bound or length. Ops already in a log, or minted by older clients and
+  servers, must stay valid forever, and a device stops pulling at a pulled op that fails its
+  schema (6.1). A stricter shape is a new `op_version` (the old version's schema stays as it
+  was, and the server keeps accepting and serving it as above). Exception, once: C-1 tightened `fsrs_params.published` v1 (`fsrs_version` = "6",
+  exactly 21 bounded weights) before any deployment; that is fine only because no log exists yet.
 - New op types follow the same rule: old clients stop pulling at the first one they do not know.
 - New `settings` keys, new keys inside open JSON shapes, new `origin` values and new rejection
   codes need no version change.

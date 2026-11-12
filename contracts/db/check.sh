@@ -87,7 +87,7 @@ def sqlite_columns(path):
 # Tables that exist only on the device.
 DEVICE_ONLY_TABLES = {"pending_op", "sync_state", "blob_cache"}
 # Server tables deliberately absent from the device.
-SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override"}
+SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override", "server_state"}
 # Per-table column differences: (extra on device, missing on device).
 DIFF = {
     "note": (set(), {"search_text"}),

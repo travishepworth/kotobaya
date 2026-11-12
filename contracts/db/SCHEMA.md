@@ -315,6 +315,7 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
 | `job` | S | API enqueues, worker updates | |
+| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5). Added by C-1. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
 
 **`change` invariants.**
@@ -381,7 +382,7 @@ Example: Postgres `tags = '{anime,frieren}'` ⇔ SQLite `tags = '["anime","frier
 | `dict_entry_gloss` | Extra `gloss_lower` | Prefix search without `pg_trgm`. |
 | `freq_list` | No `entry_count`, `source` | |
 
-Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_override`.
+Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_override`, `server_state`.
 `check.sh` fails if the two schemas drift apart in any way not listed in its allow-list.
 
 ### 5.3 Device-only tables (`Local.sq`)

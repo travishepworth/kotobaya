@@ -1,24 +1,22 @@
-# HANDOFF C-1
+# HANDOFF C-1 (attempt 2)
 
 STATUS: DONE
 BRANCH: t/C-1-contract-align
-CHECK: contracts/db/check.sh → green; contracts/sync/check.sh → green (`make check MODULE=contracts` is still a stub)
+CHECK: contracts/db/check.sh → green; contracts/sync/check.sh → green
 
 ## Changed (≤ 6 lines)
-- Replay order `(reviewed_at, hlc, id)` everywhere: SCHEMA.md 4.2, V1 comments, smoke.sql, scenario text. Added index `review_log_replay_idx` (V1 + Learning.sq).
-- `last_review_at` = last rated row; set_due keeps it, reset sets it NULL: SCHEMA 4.2, SYNC 9, V1/.sq comments.
-- `core_scheduler_version`: SYNC 9.2/10.3/10.5 + Local.sq. On the server it is an `app.job` row (`kind='core-replay'`, succeeded), written in the replay transaction under lock 7033001.
-- SYNC 6.1: a pulled op that fails its schema stops the pull, is never skipped, and shows "update required / invalid op".
-- SYNC 5.3/5.4: size = utf8Size(`CanonicalJson`(op tree)), measured before decoding, for every op.
-- fsrs_params.published: `fsrs_version` enum ["6"]; exactly 21 weights, each with per-index `prefixItems` bounds from py-fsrs 6.3.2 (read from the installed package). OPS.md note.
+- Fixes 1–3: I dropped the `app.job` marker and reverted the job.kind comment. Added the server-only table `app.server_state(key, value, updated_at)` to V1, SCHEMA 4.4/5.2 and the check.sh server-only list. SYNC 9.2/10.3/10.5: on startup the server takes lock 7033001, re-reads `core_scheduler_version`, replays if needed and upserts it in the same transaction. It applies no op until that commits.
+- Fix 4: SYNC 15 now says a released op_version's schema is never tightened. The fsrs_params.published tightening is noted as a one-time exception because nothing is deployed yet.
+- Fix 5: OPS.md and the schema description say finite schedules need the bounds "together with the core's clamps (T006)".
+- Fix 6: SYNC 9 says a rated review after `set_due` with `last_review_at` NULL is a first review.
+- Updated the "C-1 changes" sections in both SUMMARY files.
 
 ## Acceptance → tests
 - out-of-range weight → examples/invalid/fsrs-params-published-{weight-out-of-range,wrong-count,zero-decay}.json
-- SUMMARY "C-1 changes" sections appended to both SUMMARY.md files (Edit tool, no refusal)
+- server_state parity → db/check.sh (server-only allow-list)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- The `fsrs_version` enum and the 21-weight length are stricter than before. The ticket asked for this. A future FSRS version must be added additively.
-- Server marker via `app.job` is my choice. The row is visible in job listings.
+- `app.server_state` is a new table, which is additive. No existing key/value table fit: `settings` is synced, and `job` gets cleaned up.

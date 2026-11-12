@@ -115,5 +115,7 @@
   be treated as a same-day review and get a far too long interval.
 - The phone remembers which scheduler version built its card schedules (`core_scheduler_version`);
   after an app update that changes the scheduler it recomputes every card first. The server keeps
-  the same marker as a finished `core-replay` row in the existing job table.
-- No column, table or seed changed.
+  the same marker in a new server-only table, `app.server_state` (key/value, not synced, not in
+  the API, never cleaned up). This is the only new table. It is not in the job table, because jobs
+  are cleaned up and the API's job kinds are a closed list.
+- No existing column, table or seed changed.
