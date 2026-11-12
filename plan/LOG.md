@@ -503,3 +503,4 @@
 2026-11-12T19:18:06Z C-10 DISPATCH architect(opus)
 2026-11-12T19:19:41Z T308 HANDOFF DONE; CHECK_GREEN android after rebase; MERGE
 2026-11-12T19:19:41Z T307+T309 DISPATCH writer(sonnet) batched (low risk, same module)
+2026-11-12T19:20:45Z T305a HANDOFF DONE attempt 2 (no in-memory fallback, AnkiStoreHolder wait 5s → ISE); rebase conflict AndroidManifest (T308) → back to writer

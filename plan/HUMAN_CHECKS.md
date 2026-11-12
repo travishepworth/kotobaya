@@ -36,6 +36,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] Pair a phone: QR pairing uses Google Play services (ML Kit code scanner); on a phone without Play services use manual code entry.
 
 ## Takoboto (spike + production)
+- [ ] Capture Takoboto's real AnkiDroid-API call log with the **debug** APK (release builds hide field values): logcat tag `KotobayaAnkiApi`; send it so the provider fixtures can be replaced. Uninstall AnkiDroid first (only one app can own `com.ichi2.anki`).
 - [ ] **S01/T305:** install the default APK (`com.ichi2.anki` flavor). In Takoboto, add 5 words. Confirm they appear as notes with the right fields.
 - [ ] If the own-app-ID flavor is preferred, try it too and record which works in `docs/DECISIONS.md`.
 
