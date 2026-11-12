@@ -86,7 +86,7 @@ Originally, before any ticket ran, the human would:
 - accept: Each fixture has a README stating origin and licence; FSRS vectors include ≥ 200 sequences incl. lapses and long gaps.
 
 ### T009 — Helm chart skeleton and dev cluster
-- model: sonnet · risk: med · deps: T001 · status: RUNNING
+- model: sonnet · risk: med · deps: T001 · status: MERGED
 - paths: `deploy/helm/`, `deploy/k3d/`
 - spec: Infrastructure
 - do: Chart with values for each workload (enabled flags for postgres/minio so existing services can be used), ingress, secrets references, migrate hook placeholder, NetworkPolicies, non-root securityContexts. `deploy/k3d/up.sh` creates a local cluster and installs the chart.

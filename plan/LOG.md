@@ -27,3 +27,6 @@
 2026-11-12T09:41:43Z T002 CHECK_RED make apk fails; ci-triage dispatched
 2026-11-12T09:42:03Z T002 DISPATCH attempt 2 (same writer); scope +android/build.gradle.kts, +.gitignore
 2026-11-12T09:42:03Z T008b DISPATCH writer-light(gp, haiku)
+2026-11-12T09:42:37Z T009 HANDOFF DONE
+2026-11-12T09:42:37Z T009 CHECK_GREEN deploy/helm/check.sh
+2026-11-12T09:42:37Z T009 MERGE
