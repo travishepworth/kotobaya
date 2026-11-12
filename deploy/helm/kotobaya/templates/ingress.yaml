@@ -1,0 +1,26 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ printf "kotobaya.%s" .Values.domain | quote }}]
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ printf "kotobaya.%s" .Values.domain | quote }}
+      http:
+        paths:
+          - { path: /api, pathType: Prefix, backend: { service: { name: {{ .Release.Name }}-api, port: { name: http } } } }
+          - { path: /healthz, pathType: Exact, backend: { service: { name: {{ .Release.Name }}-api, port: { name: http } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: {{ .Release.Name }}-web, port: { name: http } } } }
+{{- end }}

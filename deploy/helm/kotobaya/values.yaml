@@ -1,0 +1,72 @@
+# Placeholders; override per environment. No secret values live here.
+domain: kotobaya.example.invalid
+imageRegistry: registry.example.invalid/kotobaya
+imagePullPolicy: IfNotPresent
+
+# Secrets are created out-of-band (kubectl / sealed secrets / external-secrets) and referenced by name.
+secrets:
+  # keys: DATABASE_URL, S3_ACCESS_KEY, S3_SECRET_KEY
+  appSecretName: kotobaya-app
+  # keys: POSTGRES_PASSWORD (only read when postgres.enabled)
+  postgresSecretName: kotobaya-postgres
+  # keys: S3_ACCESS_KEY, S3_SECRET_KEY, s3.json (only read when objectStore.enabled)
+  objectStoreSecretName: kotobaya-objectstore
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile: { type: RuntimeDefault }
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities: { drop: [ALL] }
+
+api:
+  image: { repository: api, tag: "0.1.0" }
+  replicas: 1
+  port: 8080
+  env: {}
+  resources: {}
+worker:
+  image: { repository: worker, tag: "0.1.0" }
+  replicas: 1
+  healthPort: 8081
+  env: {}
+  resources: {}
+web:
+  image: { repository: web, tag: "0.1.0" }
+  replicas: 1
+  port: 3000
+  resources: {}
+
+postgres:
+  enabled: true   # false: put your own DATABASE_URL in the app secret
+  image: postgres:17
+  database: kotobaya
+  user: kotobaya
+  storage: 5Gi
+  storageClassName: ""
+  resources: {}
+objectStore:
+  enabled: true   # false: set endpoint/region below to an existing S3-compatible store
+  image: chrislusf/seaweedfs:3.80   # ADR-003
+  bucket: kotobaya
+  storage: 10Gi
+  storageClassName: ""
+  resources: {}
+  endpoint: ""
+  region: us-east-1
+
+migrate:
+  enabled: true
+  # placeholder: replace with the Flyway command once the server ticket lands
+  command: ["true"]
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: kotobaya-tls
+
+networkPolicy:
+  enabled: true

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kotobaya
+description: Kotobaya self-hosted Japanese SRS (api, worker, web, bundled postgres + object store)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

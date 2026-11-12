@@ -1,0 +1,60 @@
+{{- if .Values.objectStore.enabled }}
+{{- $sel := dict "root" . "component" "objectstore" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-objectstore
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-objectstore
+  replicas: 1
+  selector:
+    matchLabels: {{- include "kotobaya.selector" $sel | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "kotobaya.selector" $sel | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: seaweedfs
+          image: {{ .Values.objectStore.image }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          # single process master+volume+filer+S3; S3 identities come from s3.json in the secret
+          args: [server, -dir=/data, -s3, -s3.config=/etc/seaweedfs/s3.json, -s3.port=8333, -ip.bind=0.0.0.0]
+          ports: [{ name: s3, containerPort: 8333 }]
+          readinessProbe:
+            tcpSocket: { port: s3 }
+          resources: {{- toYaml .Values.objectStore.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: s3conf, mountPath: /etc/seaweedfs }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - name: s3conf
+          secret:
+            secretName: {{ .Values.secrets.objectStoreSecretName }}
+            items: [{ key: s3.json, path: s3.json }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.objectStore.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources: { requests: { storage: {{ .Values.objectStore.storage }} } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-objectstore
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "kotobaya.selector" $sel | nindent 4 }}
+  ports: [{ name: s3, port: 8333, targetPort: s3 }]
+{{- end }}

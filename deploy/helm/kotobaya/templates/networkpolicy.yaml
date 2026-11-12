@@ -1,0 +1,55 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- /* Ingress-only: default deny, then explicit allows. Egress is left open. */}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny-ingress
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# api and web receive traffic from the ingress controller (any namespace) and in-namespace pods.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-edge
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app.kubernetes.io/component, operator: In, values: [api, web] }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: {} }]
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-postgres
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "postgres") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }} } } }]
+      ports: [{ port: 5432 }]
+{{- end }}
+{{- if .Values.objectStore.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-objectstore
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }} } } }]
+      ports: [{ port: 8333 }]
+{{- end }}
+{{- end }}
