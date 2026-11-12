@@ -1,17 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T10:45:58Z
+Updated: 2026-11-12T10:51:36Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T005 | architect (gp/fable, in flight) | 2 | t/T005-sync | 2026-11-12T10:51:36Z |
 | T004 | architect (gp/fable) | 1 | t/T004-openapi | 2026-11-12T10:05:04Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T005 | reviewer (gp/opus) + architect 2nd pass (gp/opus) | 2026-11-12T10:45:58Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

@@ -63,3 +63,5 @@
 2026-11-12T10:45:58Z T005 CHECK_GREEN contracts/sync/check.sh
 2026-11-12T10:45:58Z T005 REVIEW dispatched reviewer(opus) + architect(opus, ADR-004)
 2026-11-12T10:51:04Z T005 REVIEW_CHANGES architect: 2 major (backup-restore log epoch/durable_seq; future-clock bound), 4 minor
+2026-11-12T10:51:36Z T005 REVIEW_APPROVE reviewer (3 minor; #2 weights_version fold is a real divergence → fix)
+2026-11-12T10:51:36Z T005 DISPATCH attempt 2 (same architect): 2 major + 2 must-fix minors + 5 cheap
