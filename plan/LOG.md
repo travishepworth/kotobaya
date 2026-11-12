@@ -62,3 +62,4 @@
 2026-11-12T10:45:58Z T005 HANDOFF DONE 45 ops, 14 scenarios
 2026-11-12T10:45:58Z T005 CHECK_GREEN contracts/sync/check.sh
 2026-11-12T10:45:58Z T005 REVIEW dispatched reviewer(opus) + architect(opus, ADR-004)
+2026-11-12T10:51:04Z T005 REVIEW_CHANGES architect: 2 major (backup-restore log epoch/durable_seq; future-clock bound), 4 minor
