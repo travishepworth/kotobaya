@@ -80,7 +80,7 @@ Originally, before any ticket ran, the human would:
 ### T007 — (dropped in lean mode)
 - status: MERGED · Phase "Done when" checks are done by the human at each gate.
 ### T008 — Golden fixtures
-- model: sonnet · risk: med · deps: T001 · status: RUNNING
+- model: sonnet · risk: med · deps: T001 · status: MERGED
 - paths: `fixtures/`
 - do: FSRS reference vectors (review sequences → expected stability/difficulty/interval) generated from the reference implementation pinned in DECISIONS; a 2k-entry JMdict subset + matching KANJIDIC2 subset; 20 sample sentences with expected segmentation; small SRT, EPUB, and Mokuro samples (public-domain or self-written text only); an anonymised jpdb-export shape derived from the private sample (structure only, no personal data).
 - accept: Each fixture has a README stating origin and licence; FSRS vectors include ≥ 200 sequences incl. lapses and long gaps.

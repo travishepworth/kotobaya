@@ -41,3 +41,4 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 <!-- orchestrator appends: ticket, question, options, what's skipped because of it -->
 - ADR-003: SeaweedFS replaces MinIO as the bundled S3 store (MinIO images no longer pullable). Confirm or point at your own S3.
 - T001: `make dev-up` api/web healthchecks were not verified (disk was full at the time). Run `make dev-up` and confirm all services are healthy.
+- T008: `fixtures/jpdb/reviews-sample.json` and the Mokuro sample shapes were written from memory, not a real export. When you have a real jpdb export, compare the structure (T207 depends on it).
