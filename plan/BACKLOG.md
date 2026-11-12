@@ -127,7 +127,7 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - see plan/tickets/C-1.md
 
 ### C-2 — Contract freeze fixes (freeze review A + B)
-- model: opus · risk: high · deps: C-1 · status: RUNNING
+- model: opus · risk: high · deps: C-1 · status: IN_REVIEW
 - see plan/tickets/C-2.md
 
 ### GATE-CONTRACTS — Freeze contracts (human)

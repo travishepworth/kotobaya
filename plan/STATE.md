@@ -1,18 +1,18 @@
 # STATE
 Mode: single-session
 Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
-Updated: 2026-11-12T12:30:14Z
+Updated: 2026-11-12T12:32:29Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T103 | writer (gp/sonnet) | 1 | t/T103-dict-package | 2026-11-12T12:30:14Z |
-| C-2 | architect (gp/opus) | 1 | t/C-2-freeze-fixes | 2026-11-12T12:18:34Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| C-2 | freeze A + B verification (round 2 of 2) | 2026-11-12T12:32:29Z |
 | T107a | reviewer (opus) | 2026-11-12T12:29:52Z |
 
 ## Blocked
