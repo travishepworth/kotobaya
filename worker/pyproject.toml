@@ -3,7 +3,9 @@ name = "kotobaya-worker"
 version = "0.0.0"
 description = "Kotobaya background jobs: dictionary, import, parse, coverage, TTS, optimizer"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.2",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
