@@ -436,3 +436,5 @@
 2026-11-12T18:02:18Z C-8 REVIEW_CHANGES verification: 7/8 fixed; new majors: item_removed e:→n: re-key loses removal; QueueBuilder rule 4 formula contradicts attribution
 2026-11-12T18:02:18Z C-8 DISPATCH attempt 3 of 5 (same agent)
 2026-11-12T18:03:24Z T214 HANDOFF DONE; CHECK_GREEN web; MERGE (nav link + i18n key outside paths accepted)
+2026-11-12T18:06:19Z C-9 HANDOFF DONE; CHECK_GREEN contracts after rebase; reviewer dispatched
+2026-11-12T18:06:19Z - T207c extended: jobs/ internal-kind filtering + worker step 2 / reviews_id_collisions (from C-9)
