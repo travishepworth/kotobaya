@@ -247,7 +247,11 @@ public sealed interface OpDecodeResult {
      * Not a valid op: not JSON, not an object, the lenient envelope shape fails, or a known
      * type/version fails its schemas (including `additionalProperties: false`, `allOf` conditionals,
      * `seq` presence per [OpSource], and an **integer-typed** property — `"type": "integer"` in the
-     * schema — whose value is not integral or has magnitude `>= 2^53`). The server answers
+     * schema — whose value is not integral or has magnitude `>= 2^53`), or an op nested deeper than 500
+     * (`MAX_OP_DEPTH`, [CanonicalJson], SYNC.md 2.1). Every `pattern` is evaluated with **ECMA-262** semantics
+     * (SYNC.md 2.1, C-5): `$` is end of input only (an id ending in `"\n"` is Invalid), and `\s`/`\S` use the
+     * ECMA whitespace set (a tag containing U+3000, U+00A0 or U+FEFF is Invalid); on the JVM this
+     * means translating patterns, not handing them to `java.util.regex` unchanged. The server answers
      * `schema_invalid`. A device that meets one in a pull treats it exactly like [Unsupported]
      * (SYNC.md 6.1 as amended by C-1d): applies the ops before it, sets `pull_seq` to the `seq` before
      * it, stops pulling and surfaces "update required / server sent invalid op"; it never skips it.
@@ -352,7 +356,8 @@ public interface OpCodec {
      *
      * Only defined for a tree free of duplicate keys (a [JsonObject] cannot hold one). A pushed
      * element that repeats a key is rejected `schema_invalid` by the server's own duplicate-tolerant
-     * body parse **before** this is computed (C-2, SYNC.md 5.2/5.3).
+     * body parse **before** this is computed (C-2, SYNC.md 5.2/5.3); so is an element nested deeper
+     * than 500 (`MAX_OP_DEPTH`, [CanonicalJson], SYNC.md 2.1) (C-5).
      */
     public fun rawSizeBytes(raw: JsonValue): Int
 }

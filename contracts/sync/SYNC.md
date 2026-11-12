@@ -101,6 +101,67 @@ Full example ([`examples/ops/note.created.json`](examples/ops/note.created.json)
 }
 ```
 
+### 2.1 Portable validation: patterns and nesting depth (C-5)
+
+Every replica (Kotlin/JVM server, Android, the JS web client, Python tools) validates ops against
+the same schemas and MUST reach the same verdict on every op: if the server accepts an op that a
+client then finds schema-invalid on pull, that client's pull stops at it for good (6.1).
+
+**`pattern` uses ECMA-262 semantics**, as JSON Schema 2020-12 requires, with no flags (not `u`,
+not `m`, not `i`), applied as an unanchored search (the anchors are written in the pattern). A
+non-JS implementation MUST NOT hand a pattern to its native regex engine unchanged; it translates
+it (or uses an ECMA-262 engine). The differences that matter for the v1 schemas:
+
+| ECMA-262 construct | Meaning every replica uses | Native engines that differ |
+|---|---|---|
+| `$` (no `m` flag) | End of input **only**. `"<uuid>\n"` does not match `^…$`. | `java.util.regex` and Python `re` also match before a final line terminator. Use `\z` (Java) / `\Z` (Python). |
+| `^` (no `m` flag) | Start of input only. | Same everywhere without MULTILINE. |
+| `\s` | Exactly the ECMA WhiteSpace + LineTerminator set: U+0009, U+000A, U+000B, U+000C, U+000D, U+0020, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF. | Java (default flags) has only `[ \t\n\x0B\f\r]` (so U+3000 and U+00A0 are "non-space"); Python `re` adds U+001C–U+001F and U+0085 and lacks U+FEFF. |
+| `\S` | Any code point not in that set. | As above. |
+| `\d`, `\w` | ASCII only: `[0-9]`, `[A-Za-z0-9_]`. | Python `re` (str patterns) is Unicode-aware. |
+| `.` | Any code point except U+000A, U+000D, U+2028, U+2029. | Java and Python exclude only some of these. |
+
+- Matching is on the string's code points (a surrogate pair is one code point; strings never
+  contain an unpaired surrogate, `Json.kt`).
+- Consequences for v1: an id, hlc, key or op type with a trailing `"\n"` is invalid; a tag
+  (`common.schema.json#/$defs/tags`, `^\S+$`) containing U+3000, U+00A0 or U+FEFF is invalid, while
+  a tag containing U+001C or U+0085 is valid. Clients that build tags from user input split on
+  the ECMA `\s` set (the web client can use `/\s/` directly).
+- The reference implementation is `ecma_to_python` in `tools/validate.py` (it raises on any
+  construct it does not translate). Examples:
+  [`op-id-trailing-newline`](examples/invalid/op-id-trailing-newline.json),
+  [`note-created-tag-ideographic-space`](examples/invalid/note-created-tag-ideographic-space.json),
+  [`note-created-tag-nbsp`](examples/invalid/note-created-tag-nbsp.json),
+  [`note-created-tag-bom`](examples/invalid/note-created-tag-bom.json).
+- A new pattern in any later schema uses only constructs whose meaning is listed above (or
+  extends this table in the same change).
+
+**Nesting depth: two limits, `MAX_OP_DEPTH = 500` and `MAX_DOCUMENT_DEPTH = 512`.** The *depth*
+of a JSON value is the number of arrays and objects on its deepest path: a scalar has depth 0, `[]`
+and `{}` have 1, `{"a":[1]}` has 2. An **op's** depth is measured from the op object's own root (the
+envelope object counts 1): an op with a flat payload (`{"op_id":"…","payload":{"id":"…"}}`) has
+depth 2. A **document** is a whole JSON text: an HTTP body, or one op's text (`OpCodec.encode`,
+`pending_op`).
+- **Op limit, 500.** A replica (client or server) MUST NOT mint an op deeper than 500. A client
+  refuses the change like an oversized one (section 4); the server never emits one.
+- **Document limit, 512.** Every parser of a sync document (`CanonicalJson.decode`, the push-body
+  parse of 5.2, the pull-page parser) MUST accept any document up to depth 512, and MAY reject a
+  deeper one as a syntax error (never a stack overflow).
+- **Invariant: any op of depth ≤ 500 fits inside any sync envelope.** The deepest envelope wraps an
+  op in 2 levels (`{"ops":[op]}` for push and pull pages), so a body carrying only legal ops has
+  depth ≤ 502 ≤ 512. The 10 spare levels are for future envelopes; a new envelope MUST keep
+  `MAX_OP_DEPTH + wrapping ≤ MAX_DOCUMENT_DEPTH`. A pull therefore never fails on depth for an op
+  the server accepted.
+- **Push.** An element of `ops` of depth 501–510 (body still ≤ 512) is that op's `rejected` /
+  `schema_invalid`, decided at the same point as a duplicate key (5.2, first row of 5.3: before
+  `op_too_large`) — not a whole-request 400. A body deeper than 512 (an element deeper than 510)
+  is a whole-request HTTP 400 (it is not a sync document; a correct client never sends one, since
+  it never mints an op deeper than 500).
+- Examples: [`examples/raw-push/op-too-deep`](examples/raw-push/op-too-deep.body.txt) (an op of
+  depth 500 is `checked`, one of depth 501 is `schema_invalid`),
+  [`examples/raw-push/body-too-deep`](examples/raw-push/body-too-deep.body.txt) (body depth 513:
+  HTTP 400).
+
 ## 3. Hybrid logical clock
 
 ### 3.1 Format and comparison
@@ -247,6 +308,9 @@ Client duties before minting (the server will reject otherwise, section 5.3):
 - **Size.** A client MUST NOT mint an op whose size (5.4) exceeds `max_op_bytes`; it refuses the
   change and tells the user why (an i18n string, e.g. "this note type is too large to sync; move
   embedded fonts or images to media"). Nothing is minted, so nothing blocks the outbox.
+- **Depth and patterns (C-5).** Likewise a client MUST NOT mint an op deeper than 500 (2.1), and
+  it validates string values with the ECMA-262 pattern semantics of 2.1 (a tag never contains
+  U+3000, U+00A0 or U+FEFF; ids never carry a trailing newline).
 
 A device works on **survivors**: once it has applied a merge, its UI addresses the survivor. Ops
 still in its outbox that address the loser are pushed unchanged.
@@ -288,6 +352,11 @@ It does **not** use `CanonicalJson.decode` for this (that rejects duplicates). T
   op `rejected` with `schema_invalid`, decided **before** `op_too_large` (first row of the table in 5.3): an
   object with a repeated key has no canonical form, so its size is undefined. Step 1 (`duplicate`)
   still runs first. The result's `op_id` is the element's (single, valid) `op_id` member.
+- **Too deep (C-5).** A body deeper than 512 (`MAX_DOCUMENT_DEPTH`, 2.1) → HTTP 400. Otherwise an
+  element of `ops` whose depth exceeds 500 (`MAX_OP_DEPTH`) is handled exactly like one with a
+  duplicate key: `rejected` / `schema_invalid`, decided before `op_too_large`, after step 1. For
+  the "different contents" rule above, such an element's contents equal another's only when the source texts are
+  byte-identical.
 - Clients MUST push exactly `CanonicalJson.encode` output for each op (section 4, `OpCodec.encode`),
   which never contains a duplicate key; a correct client therefore never sees any of these results.
 - Examples (checked by `check.sh`): [`examples/raw-push/`](examples/raw-push/) — raw bodies
@@ -322,7 +391,7 @@ Checked in this order; the first failure decides the code.
 
 | Code | Meaning | Checked for |
 |---|---|---|
-| `schema_invalid` (duplicate key, C-2) | The op element repeats a key in some object (5.2, "Parsing the body"). Checked first, because such an element has no canonical size. | every op |
+| `schema_invalid` (duplicate key, C-2; too deep, C-5) | The op element repeats a key in some object, or is nested deeper than 500 (`MAX_OP_DEPTH`, 2.1) (5.2, "Parsing the body"). Checked first, because such an element has no canonical size (resp. is not decodable by `CanonicalJson.decode`). | every op |
 | `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Measured on the raw op tree **before** it is decoded or validated (see below). Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op, including unsupported and schema-invalid ones |
 | `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
 | `schema_invalid` | The op does not match `op.schema.json`; or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
@@ -450,6 +519,10 @@ before the first unknown one.
   offline and keeps pushing; each later sync cycle retries the pull at the same op (an app update
   or a server fix may make it pass). The server never sends such an op on purpose: it validated it
   at push (5.3) or minted it itself.
+- **Pull body limits (C-5).** The page parser MUST accept bodies up to depth 512 (2.1; ops are at
+  most 500 deep, so every accepted op fits)
+  and MUST use the ECMA-262 pattern semantics of 2.1 for the per-op schema check, so it never
+  stops at an op the server accepted.
 - **An op whose target row is missing** (cannot happen in `seq` order): no-op, logged as a
   diagnostic; the cursor advances.
 - A device never *rejects* a pulled op and never reports it to the server; the only validation it
@@ -1558,7 +1631,8 @@ contracts/sync/check.sh
 Needs `python3` with the `jsonschema` package (≥ 4.18), or `uv` (the script then runs
 `uv run --with jsonschema`). It checks that every schema is valid, every op type has a schema, an
 example and an OPS.md section with a conflict rule, every example validates and every
-`examples/invalid` instance is rejected, that every scenario's expected state follows from the
+`examples/invalid` instance is rejected (with schema `pattern`s evaluated under ECMA-262 semantics,
+2.1), every `examples/raw-push` body gets its verdict (duplicate keys, depth), that every scenario's expected state follows from the
 rules (reference model) including the idempotency and interleaving claims, that the model server
 derives every merge verdict and every checked rejection code of the scenarios, that the
 restore story of 12.5 converges without loss, that the re-mint story of 12.6 loses no review, and
@@ -1604,6 +1678,8 @@ that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
 | Delete the Default preset or a built-in note type | `immutable`. | OPS.md |
 | Client newer than server | `unsupported_op`; Retry after the server upgrade. | 5.3, 10.2 |
 | Duplicate JSON key in a push body | Top level or same `op_id` with different contents: HTTP 400. Inside one op: that op `schema_invalid`, before `op_too_large`. | 5.2, 5.3 |
+| Op nested deeper than 500 | Never minted. In a push: that op `schema_invalid`, before `op_too_large`; a body deeper than 512 is HTTP 400. Any legal op fits in any envelope (≤ 512). | 2.1, 5.2 |
+| Id with a trailing `\n`; tag with U+3000 / U+00A0 / U+FEFF | `schema_invalid`: patterns are ECMA-262 (`$` = end of input, ECMA `\s`) on every replica. | 2.1 |
 | Server restored from a backup | Restore script sets `restore_pending`; server finalizes at startup (new epoch, `durable_seq`, clock). | 6.2, 6.3 |
 | Client older than server | Stops pulling at the unknown op; *upgrade required*. | 6 |
 | Lost push response | Push again; `duplicate`. | 5.2 |

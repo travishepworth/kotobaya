@@ -97,6 +97,20 @@ public data class JsonDecodeResult(
  *   JavaScript prints it. JVM code MUST NOT use `Double.toString`, which differs.
  * - `true`, `false`, `null` as literals.
  *
+ * **Nesting depth (SYNC.md 2.1, C-5): two limits.** The depth of a value is the number of arrays
+ * and objects on its deepest path (a scalar is 0, `[]` and `{}` are 1, `{"a":[1]}` is 2).
+ * - `MAX_OP_DEPTH = 500`, measured from the op object's own root (the envelope counts 1). No replica
+ *   mints a deeper op (a client refuses the change, SYNC.md 4). In a push, an element of `ops`
+ *   deeper than 500 is that op's `rejected` / `schema_invalid`, decided with the duplicate-key check
+ *   before `op_too_large` (SYNC.md 5.2/5.3).
+ * - `MAX_DOCUMENT_DEPTH = 512` for a whole JSON text (an op's text, a push or pull body). Every
+ *   parser, [decode] included, accepts any text up to depth 512 and may reject a deeper one as a
+ *   syntax error (never a stack overflow). A push body deeper than 512 is a whole-request HTTP 400.
+ * - Invariant: an op of depth ≤ 500 fits inside any sync envelope (`{"ops":[op]}` adds 2), so a pull
+ *   never fails on depth for an accepted op.
+ * - Example: an op whose payload is `{"fields":{"meaning":[[…["x"]…]]},…}` with 497 arrays has depth
+ *   500 (accepted); with 498 arrays, 501 (rejected): `contracts/sync/examples/raw-push/op-too-deep`.
+ *
  * Example: `{"a":[1,0.9,"食べる\n"],"b":null}` is canonical; `{"b":null, "a": [1.0]}` is not (its
  * canonical form is `{"a":[1],"b":null}`).
  */
@@ -105,7 +119,8 @@ public interface CanonicalJson {
      * Parses any RFC 8259 JSON text (whitespace allowed, any escapes). A number literal becomes the
      * nearest double (as `JSON.parse` does). Rejects: trailing content after the value, duplicate
      * object keys, unpaired surrogates (raw or `\u`-escaped), numbers that overflow a double
-     * (`1e400`). Never throws.
+     * (`1e400`), and (MAY) a text nested deeper than 512 (C-5, "Nesting depth" above). Never throws (a too-deep
+     * text is an error result, never a stack overflow).
      *
      * Duplicate keys (C-2): because this rejects them, the server MUST NOT use it to split a push
      * body. It parses the body with a syntax-only, duplicate-tolerant parse of its own (SYNC.md 5.2

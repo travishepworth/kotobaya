@@ -233,3 +233,18 @@
 - `insufficient_scope` now has a place in the rejection order (right after `device_mismatch`).
 - A vocab note type must have the fields `expression`, `reading` and `meaning`
   (`invalid_value` otherwise). Custom types such as a Takoboto one map their fields onto these.
+
+## C-5 changes
+- **Schema patterns mean the same everywhere (new SYNC.md 2.1).** Patterns are ECMA-262, as JSON
+  Schema says: `$` is the end of the text (an id with a trailing newline is invalid), and "space"
+  is JavaScript's set (so a tag with an ideographic space, a no-break space or U+FEFF is invalid).
+  Java and Python regexes differ here, so the server and the Python tools translate patterns.
+  Without this the server could accept an op that the web client then refuses on pull, which stops
+  that client's pull for good. `check.sh` now validates with these semantics; four new
+  `examples/invalid` cases.
+- **Two depth limits.** An op is at most 500 levels deep; a whole sync document (push or pull
+  body) at most 512. So any legal op fits inside any envelope and a pull never fails on depth. A
+  too-deep op in a push rejects only that op (`schema_invalid`); a body deeper than 512 is a 400.
+  New raw push examples `op-too-deep` and `body-too-deep`.
+- Worth a second look: the pattern translator raises on any regex feature it does not know, so a
+  future schema using one fails `check.sh` until SYNC.md 2.1 gives it a meaning.

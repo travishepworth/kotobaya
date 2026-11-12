@@ -30,7 +30,7 @@ import re
 import sys
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError, validators
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
@@ -64,9 +64,118 @@ for p, s in schemas.items():
         fail(f"{p.relative_to(ROOT)}: not a valid schema: {e}")
 
 
+# ------------------------------------------------------------------ ECMA-262 patterns (SYNC.md 2.1, C-5)
+# JSON Schema `pattern` is ECMA-262. Python `re` differs: `$` also matches before a final "\n", `\s`
+# is a different whitespace set, `\d`/`\w` are Unicode-aware, `.` matches U+000D/U+2028/U+2029.
+# ecma_to_python translates the constructs whose meaning SYNC.md 2.1 fixes and raises on anything else.
+ECMA_WS = "\t\n\x0b\x0c\r \xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+_IN_CLASS = {"s": ECMA_WS, "d": "0-9", "w": "A-Za-z0-9_"}
+_OUTSIDE = {"s": f"[{ECMA_WS}]", "S": f"[^{ECMA_WS}]", "d": "[0-9]", "D": "[^0-9]",
+            "w": "[A-Za-z0-9_]", "W": "[^A-Za-z0-9_]"}
+_PASS = set(".\\^$|?*+()[]{}/-") | {"n", "r", "t", "f", "v"}
+
+
+def ecma_to_python(pattern: str) -> str:
+    out: list[str] = []
+    i, in_class = 0, False
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\":
+            if i + 1 >= len(pattern):
+                raise ValueError(f"pattern {pattern!r}: trailing backslash")
+            e = pattern[i + 1]
+            i += 2
+            if in_class and e in _IN_CLASS:
+                out.append(_IN_CLASS[e])
+            elif not in_class and e in _OUTSIDE:
+                out.append(_OUTSIDE[e])
+            elif e == "u" and len(pattern) >= i + 4 and all(h in "0123456789abcdefABCDEF" for h in pattern[i:i + 4]):
+                out.append("\\u" + pattern[i:i + 4])
+                i += 4
+            elif e in _PASS:
+                out.append("\\" + e if e != "v" else "\\x0b")
+            else:
+                raise ValueError(f"pattern {pattern!r}: escape \\{e} has no agreed meaning (SYNC.md 2.1)")
+            continue
+        if in_class:
+            if c == "[":
+                out.append("\\[")  # literal in ECMA; a nested set in Python
+            else:
+                if c == "]":
+                    in_class = False
+                out.append(c)
+        elif c == "[":
+            rest = pattern[i + 1:]
+            if rest.startswith("]") or rest.startswith("^]"):
+                raise ValueError(f"pattern {pattern!r}: [] / [^] differ between ECMA and Python")
+            in_class = True
+            out.append(c)
+        elif c == "$":
+            out.append("\\Z")  # end of input only
+        elif c == ".":
+            out.append("[^\\n\\r\\u2028\\u2029]")
+        elif c == "(" and pattern[i + 1:i + 2] == "?" and pattern[i + 2:i + 3] not in (":", "=", "!"):
+            raise ValueError(f"pattern {pattern!r}: group syntax not supported")
+        else:
+            out.append(c)
+        i += 1
+    if in_class:
+        raise ValueError(f"pattern {pattern!r}: unterminated class")
+    return "".join(out)
+
+
+_compiled: dict[str, re.Pattern[str]] = {}
+
+
+def ecma_search(pattern: str, text: str) -> bool:
+    if pattern not in _compiled:
+        _compiled[pattern] = re.compile(ecma_to_python(pattern))
+    return _compiled[pattern].search(text) is not None
+
+
+def _ecma_pattern(validator, pattern, instance, schema):  # noqa: ANN001, ANN202
+    if validator.is_type(instance, "string") and not ecma_search(pattern, instance):
+        yield ValidationError(f"{instance!r} does not match {pattern!r} (ECMA-262)")
+
+
+# `version=` registers the class for the 2020-12 meta-schema URI: without it, a $ref into a resource that
+# declares "$schema" (all of ours) is validated by the stock Draft202012Validator, i.e. with Python `re`.
+EcmaValidator = validators.extend(Draft202012Validator, {"pattern": _ecma_pattern}, version="draft2020-12-ecma262")
+
+for pat, text, want in [
+    ("^[0-9a-f]{4}$", "abcd", True), ("^[0-9a-f]{4}$", "abcd\n", False), ("^[0-9a-f]{4}$", "abcd\r", False),
+    ("^\\S+$", "a\u3000b", False), ("^\\S+$", "a\u00a0b", False), ("^\\S+$", "a\ufeff", False),
+    ("^\\S+$", "a\u2028", False), ("^\\S+$", "a\x1cb", True), ("^\\S+$", "a\x85b", True), ("^\\S+$", "食べる", True),
+    ("^\\d+$", "\u0663", False), ("^\\d+$", "12", True), ("^.$", "\r", False), ("^.$", "\x85", True),
+    ("^[\\s]$", "\ufeff", True), ("^[\\s]$", "\x1c", False), ("^a\\.b$", "a.b", True), ("^a\\.b$", "axb", False),
+]:
+    if ecma_search(pat, text) != want:
+        fail(f"ecma_to_python: {pat!r} on {text!r} should give {want}")
+
+
+def _patterns(node, under_properties: bool = False):  # noqa: ANN001, ANN201
+    """Every `pattern` keyword value in a schema tree (not a property that happens to be named so)."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == "pattern" and isinstance(v, str) and not under_properties:
+                yield v
+            yield from _patterns(v, k in ("properties", "$defs", "patternProperties"))
+    elif isinstance(node, list):
+        for v in node:
+            yield from _patterns(v)
+
+
+SCHEMA_PATTERNS = {(p_, pat) for p_, s_ in schemas.items() for pat in _patterns(s_)}
+for p_, pat in sorted(SCHEMA_PATTERNS):
+    try:
+        re.compile(ecma_to_python(pat))
+    except (ValueError, re.error) as e:
+        fail(f"{p_.relative_to(ROOT)}: {e}")
+
+
 def validator(ref: str) -> Draft202012Validator:
     """ref is relative to the contract root, e.g. 'batch.schema.json#/$defs/PushRequest'."""
-    return Draft202012Validator({"$ref": (ROOT / "x").as_uri().rsplit("/", 1)[0] + "/" + ref}, registry=registry)
+    return EcmaValidator({"$ref": (ROOT / "x").as_uri().rsplit("/", 1)[0] + "/" + ref}, registry=registry)
 
 
 def problems(ref: str, instance) -> list[str]:
@@ -187,10 +296,29 @@ def _plain(v):
     return v
 
 
+MAX_OP_DEPTH, MAX_DOCUMENT_DEPTH = 500, 512  # SYNC.md 2.1 (C-5)
+sys.setrecursionlimit(max(sys.getrecursionlimit(), 20 * MAX_DOCUMENT_DEPTH))  # _has_dup / _plain recurse per level
+
+
+def depth(v) -> int:
+    """Arrays and objects on the deepest path: scalar 0, [] 1, {"a":[1]} 2 (SYNC.md 2.1). Iterative."""
+    best, stack = 0, [(v, 0)]
+    while stack:
+        x, d = stack.pop()
+        if isinstance(x, (_Obj, list, dict)):
+            d += 1
+            best = max(best, d)
+            kids = [c for _, c in x] if isinstance(x, _Obj) else list(x.values()) if isinstance(x, dict) else x
+            stack.extend((c, d) for c in kids)
+    return best
+
+
 def push_body_verdict(text: str) -> dict:
     try:
         body = json.loads(text, object_pairs_hook=_pairs)
     except ValueError:
+        return {"http_status": 400}
+    if depth(body) > MAX_DOCUMENT_DEPTH:
         return {"http_status": 400}
     if not isinstance(body, _Obj) or _has_dup(_Obj([(k, None) for k, _ in body])):
         return {"http_status": 400}
@@ -203,7 +331,7 @@ def push_body_verdict(text: str) -> dict:
         ids = [x for k, x in el if k == "op_id"]
         if len(ids) != 1:
             return {"http_status": 400}
-        dup = _has_dup(el)
+        dup = _has_dup(el) or depth(el) > MAX_OP_DEPTH  # both: schema_invalid, before op_too_large
         key = json.dumps(el) if dup else json.dumps(_plain(el), sort_keys=True)
         if ids[0] in seen and seen[ids[0]] != key:
             return {"http_status": 400}
@@ -662,4 +790,5 @@ n_inv = len(list((ROOT / "examples/invalid").glob("*.json")))
 n_sc = len(list((ROOT / "examples/scenarios").glob("*.json")))
 n_raw = len(list((ROOT / "examples/raw-push").glob("*.body.txt")))
 print(f"ok: {len(schemas)} schemas, {len(index)} op types, {len(example_ops)} op examples, "
-      f"{n_inv} invalid examples rejected, {n_raw} raw push bodies (duplicate keys), {n_sc} scenarios")
+      f"{n_inv} invalid examples rejected, {n_raw} raw push bodies (duplicate keys, depth), "
+      f"{len({pat for _, pat in SCHEMA_PATTERNS})} schema patterns (ECMA-262), {n_sc} scenarios")
