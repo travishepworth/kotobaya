@@ -519,7 +519,8 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Emitter:** server only.
 - **Entity:** `fsrs_params`; `entity_id` = `id`.
 - **Payload:** [`ops/fsrs_params.published.schema.json`](ops/fsrs_params.published.schema.json)
-- **Server rejects:** Always `server_only` when pushed.
+- **Server rejects:** Always `server_only` when pushed (a pushed op with out-of-range weights gets `schema_invalid` first, 5.3 order).
+- **Weight bounds (C-1):** `fsrs_version` is `"6"` and `weights` has exactly 21 numbers, each within the inclusive per-index bounds of py-fsrs 6.3.2 (`LOWER_BOUNDS_PARAMETERS` / `UPPER_BOUNDS_PARAMETERS`; the schema's `prefixItems`). The server MUST validate an op it mints (optimizer output) against the schema before inserting it; an optimizer result outside the bounds is not published (the job fails or clamps before minting — T-worker's choice). A device that pulls one that fails anyway stops at it (SYNC.md 6.1). So a stored weight set never makes stability ≤ 0, NaN or infinite.
 - **Conflict rule:** Higher version wins: applied iff `weights_version` > the stored one. The server increments it under the op-apply lock, so versions are unique per preset.
 - **Apply:** Set `weights_version`, `fsrs_version`, `weights`, `optimized_at`, `optimizer_stats`; `updated_at` = max(`updated_at`, wall(hlc)). Applied to tombstoned presets too.
 - **Replay:** **Yes** - every card whose effective preset is this one now has `card.weights_version` <> the preset's and must be replayed before its cache is next read or folded into (may be done lazily; the mismatch is the durable marker; SYNC.md 9.2-9.3).

@@ -13,7 +13,7 @@
     "The server merges L1 into M (seq 6) and, when L1c arrives, L1c into Mc (seq 8): the card was created on a note that is already merged.",
     "A reviews Mc (r2, learning, T+16) and Wc (r3, T+17), then re-matches M to 食べる (T+20). That collides with W: M is merged into W (seq 13) and Mc into Wc (seq 14). L1c.merged_into_id is re-pointed from Mc to Wc (never a chain).",
     "B, still offline, undoes r1 (T+30) and reviews L1c again (r4, T+31). A undoes r2 (T+32); B undoes r2 too, later (T+33): the earliest undo (A's, T+32) is the one recorded.",
-    "Wc's replay set is every non-undone schedule-feeding review addressed to Wc, Mc or L1c: r3, r4, in (hlc, id) order. r1 and r2 are undone."
+    "Wc's replay set is every non-undone schedule-feeding review addressed to Wc, Mc or L1c: r3, r4, in (reviewed_at, hlc, id) order. r1 and r2 are undone."
   ],
   "devices": {
     "A": "01931f3e-0000-7000-8000-0000000000a1",

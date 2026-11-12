@@ -9,7 +9,7 @@
     "Card C exists everywhere. Phone A (offline) reviews it at T+10 and T+30. Phone B (offline) reviews it at T+20 and drills it at T+25.",
     "A syncs first: the server folds A's two reviews into C's cache; last_review_id = A's T+30 review.",
     "B syncs: its T+20 review sorts BEFORE the cached last review, so the server (and later A, when it pulls) must replay C from scratch.",
-    "Every replica ends with all four rows; the replay set is ordered by (hlc, id): A@10, B@20, A@30. The drill is logged but not in the replay set."
+    "Every replica ends with all four rows; the replay set is ordered by (reviewed_at, hlc, id): A@10, B@20, A@30. The drill is logged but not in the replay set."
   ],
   "devices": {
     "A": "01931f3e-0000-7000-8000-0000000000a1",

@@ -128,12 +128,14 @@ INSERT INTO app.review_log (id, card_id, device_id, hlc, reviewed_at, review_typ
 VALUES ('01931f3e-8000-7000-8000-000000000003', '01931f3e-7000-7000-8000-000000000001', '01931f3e-0000-7000-8000-0000000000b2',
         '0193a1b2c3d6-0000-01931f3e-0000-7000-8000-0000000000b2', '2026-11-12T10:30:00Z', 'manual', 'set_due', '2026-12-01T00:00:00Z');
 
--- The replay set of a card = its own rows + rows of cards merged into it, in (hlc, id) order, minus undone.
+-- The replay set of a card = its own rows + rows of cards merged into it, in (reviewed_at, hlc, id) order
+-- (SYNC.md 9.1), minus undone, minus drill/cram.
 DO $$ BEGIN
-  ASSERT (SELECT array_agg(r.id ORDER BY r.hlc, r.id)
+  ASSERT (SELECT array_agg(r.id ORDER BY r.reviewed_at, r.hlc, r.id)
             FROM app.review_log r
             JOIN app.card c ON c.id = r.card_id
-           WHERE '01931f3e-7000-7000-8000-000000000001' IN (c.id, c.merged_into_id) AND r.undone_at IS NULL)
+           WHERE '01931f3e-7000-7000-8000-000000000001' IN (c.id, c.merged_into_id) AND r.undone_at IS NULL
+             AND r.review_type IN ('scheduled', 'learning', 'manual'))
          = ARRAY['01931f3e-8000-7000-8000-000000000001', '01931f3e-8000-7000-8000-000000000002', '01931f3e-8000-7000-8000-000000000003']::uuid[],
          'replay set and order';
 END $$;

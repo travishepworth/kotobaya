@@ -28,6 +28,12 @@ CREATE INDEX pending_op_state_idx ON pending_op (state, hlc);
 --   hlc_last         last HLC issued or observed (for clock monotonicity)
 --   last_sync_at     epoch ms of the last successful push+pull
 --   dict_release_id  ref.dict_release.id of the installed dictionary file
+--   core_scheduler_version  core scheduler version the card caches were last fully replayed with
+--                    (opaque string reported by the core, compared by equality). Absent or
+--                    different from the running core's => full replay of every
+--                    card cache before anything is folded, then store the core's value. Kept by the
+--                    rebuild. Meaning: contracts/sync/SYNC.md 10.5.
+-- Further keys (rebuild_pending, log_epoch, durable_seq, hlc_acked, remint_offset): SYNC.md 10.5.
 CREATE TABLE sync_state (
   key TEXT NOT NULL PRIMARY KEY,
   value TEXT NOT NULL

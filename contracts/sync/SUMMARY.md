@@ -196,3 +196,17 @@
   per-op `op_too_large` (follow-up for `contracts/api`).
 - The server stores `log_epoch` and `durable_seq` where the server and deploy tickets choose; the
   backup job sets `durable_seq` after verifying a backup.
+
+## C-1 changes
+
+- **Rescheduling doesn't reset the review clock.** A card's "last reviewed" time is the last
+  real (rated) review; a reschedule leaves it alone, a reset clears it.
+- **Scheduler upgrades recompute everything first.** When the app or server runs a new scheduler
+  version, every card's schedule is rebuilt before any new review is added
+  (`core_scheduler_version` on the phone; a finished `core-replay` job row on the server).
+- **A broken op from the server stops the pull**, like an unknown op: never skipped, shown as
+  "update required / server sent an invalid op".
+- **Op size is measured the same way everywhere:** bytes of the op in the core's `CanonicalJson`
+  form, checked first, so an oversized op is `op_too_large` even if it is also unknown or invalid.
+- **Published FSRS weights are range-checked:** exactly 21 FSRS-6 weights, each within py-fsrs
+  6.3.2's bounds; anything else is rejected rather than producing broken schedules.

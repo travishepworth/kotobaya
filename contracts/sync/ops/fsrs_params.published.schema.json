@@ -23,17 +23,145 @@
     },
     "fsrs_version": {
       "type": "string",
-      "description": "FSRS algorithm version the weights belong to, e.g. '6'.",
-      "minLength": 1
+      "enum": [
+        "6"
+      ],
+      "description": "FSRS algorithm version the weights belong to. Only '6' (FSRS-6) in op_version 1; a future FSRS version is added additively with its own per-index bounds."
     },
     "weights": {
       "type": "array",
-      "minItems": 1,
-      "maxItems": 64,
-      "items": {
-        "type": "number"
-      },
-      "description": "The weights."
+      "minItems": 21,
+      "maxItems": 21,
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 100.0,
+          "description": "w[0]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 100.0,
+          "description": "w[1]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 100.0,
+          "description": "w[2]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 100.0,
+          "description": "w[3]"
+        },
+        {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 10.0,
+          "description": "w[4]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 4.0,
+          "description": "w[5]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 4.0,
+          "description": "w[6]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.75,
+          "description": "w[7]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 4.5,
+          "description": "w[8]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 0.8,
+          "description": "w[9]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 3.5,
+          "description": "w[10]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 5.0,
+          "description": "w[11]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.25,
+          "description": "w[12]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.9,
+          "description": "w[13]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 4.0,
+          "description": "w[14]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "w[15]"
+        },
+        {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 6.0,
+          "description": "w[16]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "description": "w[17]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "description": "w[18]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 0.8,
+          "description": "w[19]"
+        },
+        {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.8,
+          "description": "w[20]"
+        }
+      ],
+      "items": false,
+      "description": "The 21 FSRS-6 weights w[0]..w[20]. Each is bounded (inclusive) by py-fsrs 6.3.2's LOWER_BOUNDS_PARAMETERS / UPPER_BOUNDS_PARAMETERS, so every published set keeps stability > 0 and finite; out-of-range weights are rejected (schema_invalid at push, C-1). w[20] is the decay."
     },
     "optimized_at": {
       "$ref": "../common.schema.json#/$defs/instant_ms",

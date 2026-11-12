@@ -147,8 +147,8 @@ CREATE TABLE card (
   difficulty REAL,
   due_at INTEGER,
   interval_days INTEGER,
-  last_review_at INTEGER,
-  last_review_id TEXT,
+  last_review_at INTEGER,             -- reviewed_at of the last RATED replay row; manual set_due keeps it, manual reset clears it (SCHEMA.md 4.2)
+  last_review_id TEXT,                -- id of the last replay row of any type, in (reviewed_at, hlc, id) order
   reps INTEGER NOT NULL DEFAULT 0,
   lapses INTEGER NOT NULL DEFAULT 0,
   weights_version INTEGER NOT NULL DEFAULT 0,
@@ -190,6 +190,8 @@ CREATE TABLE review_log (
 );
 
 CREATE INDEX review_log_card_idx ON review_log (card_id, hlc, id);
+-- Replay order (SYNC.md 9.1): (reviewed_at, hlc, id).
+CREATE INDEX review_log_replay_idx ON review_log (card_id, reviewed_at, hlc, id);
 CREATE INDEX review_log_reviewed_idx ON review_log (reviewed_at);
 
 CREATE TABLE word_status (

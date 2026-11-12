@@ -212,14 +212,31 @@ items only exist as server-built snapshots.
 
 **Replay set.** The reviews that determine card C's schedule are all `review_log` rows whose
 `card_id` is C *or any card with `merged_into_id = C`*, with `undone_at IS NULL` and
-`review_type IN ('scheduled','learning','manual')`, ordered by `(hlc, id)`. `review_log.card_id`
+`review_type IN ('scheduled','learning','manual')`, ordered by `(reviewed_at, hlc, id)` — the
+order of `contracts/sync/SYNC.md` 9.1, which is authoritative (C-1). `review_log.card_id`
 is never rewritten. See the query in `test/smoke.sql`.
 
 **Card cache.** `state … weights_version` on `card` are a pure function of (replay set, the
 preset row, core version). Any replica may recompute them at any time and must do so when:
-a review is applied whose `(hlc, id)` sorts before the card's `last_review_id` row (out-of-order
-arrival); a review in the replay set is undone; a card is merged into it; `weights_version`
-differs from the preset's; `preset_id` changes. A fresh card has `state = 'new'`, `due_at NULL`.
+a review is applied whose `(reviewed_at, hlc, id)` sorts before the card's `last_review_id` row
+(out-of-order arrival); a review in the replay set is undone; a card is merged into it;
+`weights_version` differs from the preset's; `preset_id` changes; the core scheduler version
+changed (SYNC.md 9.2, 10.5). A fresh card has `state = 'new'`, `due_at NULL`.
+
+**`last_review_id` and `last_review_at` (C-1).** Walking the replay set in order:
+- `last_review_id` = `id` of the last row folded, of any type (`scheduled`, `learning` or
+  `manual`). It is the out-of-order marker: a new row sorting before it forces a full replay.
+- `last_review_at` = `reviewed_at` of the last **rated** row (`scheduled` or `learning`). A
+  `manual` row with `manual_action = 'set_due'` (reschedule) leaves it unchanged, so
+  `last_review_id` may name a manual row whose `reviewed_at` differs from `last_review_at`. A
+  `manual` row with `manual_action = 'reset'` sets it to NULL (the card is new again; the next
+  rated row sets it afresh). NULL also when the replay set has no rated row.
+- FSRS elapsed time for a rated row is its `reviewed_at` minus `last_review_at` (clamped ≥ 0;
+  none when NULL). This is why a reschedule must not move it: a review shortly after a
+  reschedule would otherwise use the same-day formula (e.g. S ≈ 26 d instead of ≈ 3.5 d after a
+  lapse).
+- The rule is a function of the ordered replay set, so folding one more row into the cache
+  still equals a full replay (SYNC.md 9.3).
 
 **Things deliberately not stored** (derived by the core on each replica): sibling burying (from
 today's reviews of sibling cards), leech status (`lapses >= scheduler.leech_threshold`; the
@@ -231,7 +248,7 @@ search term `tag:leech` is virtual), hot-word and hot-kanji scores, coverage num
   if merged, and simply inert if deleted.
 - Review for a card id the server has never seen: rejected (foreign key). Clients always push the
   creating ops first because push order is ascending HLC.
-- Clock skew: `reviewed_at` earlier than the previous review in replay order ⇒ elapsed time 0.
+- Clock skew: replay order is by `reviewed_at` first, so elapsed time is never negative; implementations still clamp it to ≥ 0.
 - Undo: `review.undone` at clock `h` is applied iff `undone_hlc IS NULL OR h < undone_hlc`
   (the **earliest** undo wins, whatever the arrival order); it then sets `undone_hlc = h` and
   `undone_at` = its wall time. Otherwise it is a no-op. An undo for a review id the replica does
@@ -374,7 +391,8 @@ Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_overri
   `sync_state.pull_seq >= acked_seq`. A `rejected` row means the server permanently refused the
   op while its local effect is still applied: it MUST be shown to the user (sync status) with
   `last_error`, is never purged or retried automatically, and stays until the user dismisses it.
-- `sync_state` — keys listed in the file.
+- `sync_state` — keys listed in the file, plus those of `contracts/sync/SYNC.md` 10.5 (which is
+  authoritative for their meaning, e.g. `core_scheduler_version`, C-1).
 - `blob_cache` — which content-hashed blobs are wanted/cached.
 
 ### 5.4 The dictionary file

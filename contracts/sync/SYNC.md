@@ -300,7 +300,7 @@ Checked in this order; the first failure decides the code.
 
 | Code | Meaning | Checked for |
 |---|---|---|
-| `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op |
+| `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Measured on the raw op tree **before** it is decoded or validated (see below). Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op, including unsupported and schema-invalid ones |
 | `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
 | `schema_invalid` | The op does not match `op.schema.json`; or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
@@ -312,6 +312,19 @@ Checked in this order; the first failure decides the code.
 | `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck). | per op, OPS.md |
 | `immutable` | Attempt to delete or cripple a built-in (note types, the Default preset). | per op, OPS.md |
 
+- **How `op_too_large` is measured (C-1).** The server parses the request body as plain JSON, and
+  for each element of `PushRequest.ops` computes
+  `size = utf8Size(CanonicalJson(op tree))` — the number of UTF-8 bytes of that element's JSON
+  value re-serialized in canonical compact form — **before** decoding it into a typed op and before
+  any other check. So it applies to every op: an unknown `op_type`/`op_version` or a schema-invalid
+  op that is too large gets `op_too_large`, not `unsupported_op`/`schema_invalid`. Canonical
+  compact form: no insignificant whitespace; strings as raw UTF-8 with only the escaping JSON
+  requires (`"`, `\`, control characters below U+0020; never `\uXXXX` for other characters, never
+  an escaped `/`); object members in canonical order; numbers in canonical form. The exact form
+  (member order, number formatting) is the one defined by **`CanonicalJson`** in the shared core
+  (T006, `contracts/core`); server and clients MUST use that function, so a client's pre-mint check
+  (section 4) and the server's measurement agree byte for byte. The byte count of the HTTP body as
+  sent (whitespace, escaping, member order) is irrelevant.
 - The set is open: a client MUST treat an unknown code as a permanent rejection.
 - `error.message` is an English diagnostic; clients show it but never parse it.
 - Soft references (`entry_seq`, `sentence_id`, `source_*_id`, `media_id` on spans and overrides,
@@ -347,8 +360,8 @@ Checked in this order; the first failure decides the code.
 
 **Size limits.** One oversized op must never block the outbox (5.2).
 
-- An op's **size** is the number of UTF-8 bytes of the op envelope serialized as compact JSON, as
-  it appears in `PushRequest.ops`.
+- An op's **size** is `utf8Size(CanonicalJson(op envelope))`: the number of UTF-8 bytes of the op
+  envelope (the element of `PushRequest.ops`) in canonical compact JSON (5.3, C-1).
 - `max_op_bytes`: published by T004 in `GET /meta` as `limits.max_op_bytes`; default **1 MiB**
   (`1048576`). It MUST be at most `max_push_bytes − 4096` (`limits.max_push_bytes`, default 8 MiB),
   so a batch holding one maximal op always fits. A client that has not read `/meta` yet uses the
@@ -403,9 +416,18 @@ before the first unknown one.
   it, set `pull_seq` to the `seq` just before it, commit, and stop pulling. The client is in state
   *upgrade required*: it MUST say so in its sync status, MUST NOT skip the op, keeps working
   offline and keeps pushing. After an app update the pull resumes at the same op.
+- **A pulled op of a supported type and version that fails its own schema** (`op.schema.json`
+  with that type's payload schema; C-1): treated exactly like an unknown op. Apply the ops before
+  it, set `pull_seq` to the `seq` just before it, commit, stop pulling. The device MUST NOT skip it
+  and MUST NOT apply it; its sync status says *update required / server sent an invalid op* (with
+  the op's `seq`, `op_id` and the first validation error, as a diagnostic). It keeps working
+  offline and keeps pushing; each later sync cycle retries the pull at the same op (an app update
+  or a server fix may make it pass). The server never sends such an op on purpose: it validated it
+  at push (5.3) or minted it itself.
 - **An op whose target row is missing** (cannot happen in `seq` order): no-op, logged as a
   diagnostic; the cursor advances.
-- A device never validates or rejects pulled ops.
+- A device never *rejects* a pulled op and never reports it to the server; the only validation it
+  does is the per-op schema check above, whose failure stops the pull, never skips.
 
 **Sync cycle:** push until the outbox has no `pending` rows; if `rebuild_pending` is set, run the
 rebuild (10.3); otherwise pull until `has_more` is false; then delete the `acked` rows allowed by
@@ -748,6 +770,21 @@ when `card.merged` is applied.
 `card.state`, `step`, `stability`, `difficulty`, `due_at`, `interval_days`, `last_review_at`,
 `last_review_id`, `reps`, `lapses`, `weights_version` are a **cache**. They never travel in ops.
 
+**The two "last review" columns (C-1).** Walking C's replay set in the 9.1 order:
+
+- `last_review_id` = `id` of the last row folded, **of any type** (`scheduled`, `learning`,
+  `manual`). It is the out-of-order marker of 9.2.
+- `last_review_at` = `reviewed_at` of the last **rated** row (`scheduled` or `learning`). A
+  `manual` row with `manual_action = 'set_due'` (reschedule) leaves it **unchanged** — so after a
+  reschedule `last_review_id` names the manual row while `last_review_at` still holds the previous
+  rated row's time. A `manual` row with `manual_action = 'reset'` sets it to **NULL** (the card is
+  new again; the next rated row starts from scratch). NULL also while there is no rated row.
+- FSRS elapsed time for a rated row = its `reviewed_at` − `last_review_at` (clamped ≥ 0); none
+  when `last_review_at` is NULL. Why: if a reschedule moved `last_review_at`, a review shortly
+  after it would use FSRS's same-day formula (e.g. S ≈ 26 d instead of ≈ 3.5 d after a lapse).
+- Both are functions of the ordered replay set, so folding one more row still equals a full
+  replay (9.3).
+
 ### 9.1 Replay set
 
 The reviews that determine card C's cache are all `review_log` rows with
@@ -777,7 +814,7 @@ row is tombstoned.
 | `fsrs_params.updated` that wins any register except `name` | every card with that effective preset | full replay |
 | `fsrs_params.deleted`, first transition to tombstoned | every card with that `preset_id` | full replay |
 | `fsrs_params.published` that is applied | every card with that effective preset (`weights_version` mismatch) | full replay |
-| core scheduler version changed (app/server upgrade; local, not an op) | all | full replay |
+| core scheduler version changed (app/server upgrade; local, not an op): stored `core_scheduler_version` absent or different from the running core's (10.5) | all | full replay, before anything is folded |
 
 Nothing else touches a cache: not suspend/bury/flag, not note edits, not settings, not word status.
 
@@ -788,7 +825,8 @@ Nothing else touches a cache: not suspend/bury/flag, not note edits, not setting
   one more review into a cache MUST give the same result as a full replay.
 - Elapsed time between consecutive reviews is the `reviewed_at` difference. The 9.1 order makes
   it ≥ 0; implementations still clamp it to ≥ 0.
-- An empty replay set (or one ending in `manual`/`reset`) gives `state = 'new'`, `due_at = NULL`.
+- An empty replay set (or one ending in `manual`/`reset`) gives `state = 'new'`, `due_at = NULL`,
+  `last_review_at = NULL` (the "last review" rules above).
 - A replay is done **in the transaction that applied the triggering op**. The only event that
   may be handled lazily is the `weights_version` mismatch, because the mismatch itself is the
   durable marker; such a card MUST be replayed before its cache is next read — **and before
@@ -860,9 +898,9 @@ the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
 1. In one transaction: delete every row of every table in `Learning.sq` and `Media.sq`
    (including installed snapshots), re-insert the seeded built-ins, set `pull_seq = "0"`. Keep
    `pending_op`, `blob_cache` and the other `sync_state` keys (`device_id`, `hlc_last`,
-   `hlc_acked`, `log_epoch`, `durable_seq`).
+   `hlc_acked`, `log_epoch`, `durable_seq`, `core_scheduler_version`).
 2. Pull from 0 until `has_more` is false (section 6), **or until the pull stops at an op this
-   client does not support** (*upgrade required*, section 6). In the second case the rebuild
+   client does not support or that fails its schema** (*upgrade required*, section 6). In the second case the rebuild
    still continues with step 3: the device then holds a correct prefix of the log, exactly like a
    device that stopped there in normal operation, and the pull resumes at the same op after the
    app update. If a page shows that the log changed again (6.2), start a new log reset.
@@ -1035,6 +1073,25 @@ Keys of `sync_state` defined by this contract, in addition to those listed in `L
 | `durable_seq` | Latest `durable_seq` (6.2) of that epoch, decimal. | `"0"` |
 | `hlc_acked` | Greatest `hlc` among this device's ops that the server acknowledged (`accepted` or `duplicate`). Only ever increases. | no op acknowledged yet |
 | `remint_offset` | `server_time − pt` (signed decimal ms) of the first response that refused one of this device's ops with a clock code (10.1). Deleted by Re-mint, and when Discard leaves no clock-rejected row. | no clock-rejected row |
+| `core_scheduler_version` | The core scheduler version (an opaque string the shared core reports, T006; compared by equality only, never ordered) that every card cache on this device was last fully replayed with. | treated as different from every version: full replay |
+
+**`core_scheduler_version` (C-1).** At app start, before any sync, review or other read of a
+card cache, the device compares the stored value with the running core's. If it is absent or
+differs: in one local transaction, full replay (9.3) of **every** card's cache that is
+maintained (live cards; tombstoned and merged-loser caches may be skipped), **before anything is
+folded into any cache**; then store the running core's value in the same transaction. If the app
+dies first, the key is unchanged and the replay runs again (it is idempotent). Pulled or minted
+reviews MUST wait until it has committed. The rebuild (10.3) keeps this key: it re-pulls with the
+running core, so every cache it creates is already current. Downgrades are handled the same way
+(different ⇒ replay).
+
+**The server's equivalent** uses an existing table, `app.job` (no schema change): a row with
+`kind = 'core-replay'`, `status = 'succeeded'`, `payload = {"core_scheduler_version": "<v>"}`,
+`result = {"cards": <n replayed>}`. The stored version is the payload of the most recent such row
+(by `finished_at`); none ⇒ different. On startup, if it differs from the running core's, the
+server takes the op-apply lock (`pg_advisory_xact_lock(7033001)`), replays every maintained card's
+cache, inserts that row (with `started_at` / `finished_at`) in the **same transaction**, and only
+then applies pushes (pushes wait on the lock). The server mints no op for it: caches never travel.
 
 REST callers never see rejected ops: a REST request that would produce an invalid op fails with
 an HTTP error (T004) and nothing is minted.
@@ -1420,6 +1477,10 @@ that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
 | Dependency lost in a restore | `unknown_reference`, auto-retried after the log reset. | 6.2 |
 | Server restored from a backup | New `log_epoch`; devices re-push un-backed-up ops and rebuild. | 6.2, 12.5 |
 | Rebuild meets an unknown op | Rebuild ends at it; reviewing resumes; *upgrade required*. | 10.3 |
+| Pulled op of a known type fails its schema | Treated like an unknown op: pull stops at it, never skipped; *update required / server sent an invalid op*. | 6.1 |
+| Oversized op that is also unknown or invalid | `op_too_large` (measured on the canonical op tree before decoding). | 5.3 |
+| App or server runs a new core scheduler version | Full replay of every card cache before anything is folded; then the new version is stored. | 9.2, 10.5 |
+| Review right after a reschedule (manual `set_due`) | `last_review_at` is still the last rated review; FSRS elapsed time counts from it. | 9 |
 | Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews (clock codes: Re-mint keeps them, 10.4). | 10.2 |
 | Removing a deck item shown once for several keys | One `deck.item_removed` per equivalent key. | 8.5 |
 | Same op pushed twice concurrently | Duplicate check under the lock; second gets `duplicate`. | 5.2 |

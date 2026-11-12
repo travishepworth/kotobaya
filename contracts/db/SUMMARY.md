@@ -105,3 +105,15 @@
   Secret), the jpdb "unmapped vocabulary" review queue, a TTS cache index, cached coverage
   numbers. Each can be added by the ticket that needs it as an additive migration.
 - The sync log (`change`) is never pruned in v1.
+
+## C-1 changes
+
+- A card's reviews are replayed in answer-time order (`reviewed_at`, then `hlc`, then `id`), as
+  the sync contract already said; the old "(hlc, id)" wording is gone. A matching index was added.
+- `card.last_review_at` is now the time of the last *rated* review. Rescheduling a card leaves
+  it alone; resetting a card clears it. Without this, the first review after a reschedule would
+  be treated as a same-day review and get a far too long interval.
+- The phone remembers which scheduler version built its card schedules (`core_scheduler_version`);
+  after an app update that changes the scheduler it recomputes every card first. The server keeps
+  the same marker as a finished `core-replay` row in the existing job table.
+- No column, table or seed changed.

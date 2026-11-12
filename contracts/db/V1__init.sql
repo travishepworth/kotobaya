@@ -358,7 +358,7 @@ CREATE INDEX job_dequeue_idx ON app.job (run_after, created_at) WHERE status = '
 CREATE INDEX job_created_idx ON app.job (created_at DESC);
 CREATE UNIQUE INDEX job_dedupe_uq ON app.job (dedupe_key) WHERE dedupe_key IS NOT NULL AND status IN ('queued', 'running');
 COMMENT ON TABLE  app.job IS 'Work queue between API and worker (no broker). Not in the spec table list but required by "the API enqueues heavy work in Postgres". Not synced.';
-COMMENT ON COLUMN app.job.kind IS 'Job type slug, e.g. dict-refresh, media-import, media-parse, jpdb-import, fsrs-optimize, tts. Payload shape per kind is owned by the API contract.';
+COMMENT ON COLUMN app.job.kind IS 'Job type slug, e.g. dict-refresh, media-import, media-parse, jpdb-import, fsrs-optimize, tts. Payload shape per kind is owned by the API contract, except core-replay: a row the server inserts itself (status succeeded) in the transaction that fully replayed every card cache after a core scheduler version change; payload {"core_scheduler_version": "<v>"}, result {"cards": n}; the newest such row is the server''s stored core_scheduler_version. contracts/sync/SYNC.md 10.5.';
 COMMENT ON COLUMN app.job.status IS 'queued -> running -> succeeded|failed; queued|running -> cancelled. A failed attempt with attempts < max_attempts goes back to queued with a later run_after.';
 COMMENT ON COLUMN app.job.dedupe_key IS 'Optional: at most one queued/running job per key (e.g. "media-parse:<media id>").';
 COMMENT ON COLUMN app.job.locked_by IS 'Worker instance id holding the job while running. Dequeue: SELECT ... WHERE status=''queued'' AND run_after <= now() ORDER BY run_after, created_at FOR UPDATE SKIP LOCKED LIMIT 1.';
@@ -575,8 +575,8 @@ COMMENT ON COLUMN app.card.stability IS 'Cache. FSRS stability in days.';
 COMMENT ON COLUMN app.card.difficulty IS 'Cache. FSRS difficulty, 1-10.';
 COMMENT ON COLUMN app.card.due_at IS 'Cache. Instant the card becomes due; NULL iff state = new.';
 COMMENT ON COLUMN app.card.interval_days IS 'Cache. Interval scheduled by the last review (0 during learning steps).';
-COMMENT ON COLUMN app.card.last_review_at IS 'Cache. reviewed_at of the last row folded into the cache.';
-COMMENT ON COLUMN app.card.last_review_id IS 'Cache. review_log.id of the last row folded into this cache (scheduled, learning or manual). Lets a replica detect out-of-order arrivals: a newly applied review ordered before this one forces a full replay of the card.';
+COMMENT ON COLUMN app.card.last_review_at IS 'Cache. reviewed_at of the last RATED (scheduled/learning) row of the replay set, in (reviewed_at, hlc, id) order; the base for FSRS elapsed time. Manual set_due rows leave it unchanged (last_review_id may then name the manual row); a manual reset row sets it to NULL (card is new again). NULL if no rated row. Fold still equals full replay under this rule. SCHEMA.md 4.2.';
+COMMENT ON COLUMN app.card.last_review_id IS 'Cache. review_log.id of the last row folded into this cache (scheduled, learning or manual). Lets a replica detect out-of-order arrivals: a newly applied review ordered before this one in (reviewed_at, hlc, id) order forces a full replay of the card.';
 COMMENT ON COLUMN app.card.reps IS 'Cache. Number of replayed scheduled/learning reviews.';
 COMMENT ON COLUMN app.card.lapses IS 'Cache. Number of Again ratings given while state was review. Leech = lapses >= scheduler.leech_threshold.';
 COMMENT ON COLUMN app.card.weights_version IS 'Cache. fsrs_params.weights_version used for the last replay; a mismatch with the preset means the cache is stale and must be replayed.';
@@ -610,13 +610,14 @@ CREATE TABLE app.review_log (
   CHECK ((undone_at IS NULL) = (undone_hlc IS NULL))
 );
 CREATE INDEX review_log_card_idx     ON app.review_log (card_id, hlc, id);
+CREATE INDEX review_log_replay_idx   ON app.review_log (card_id, reviewed_at, hlc, id);
 CREATE INDEX review_log_reviewed_idx ON app.review_log (reviewed_at);
 CREATE INDEX review_log_device_idx   ON app.review_log (device_id, hlc);
 COMMENT ON TABLE  app.review_log IS 'Source of truth for scheduling. Append-only: a row is inserted once by review.logged and afterwards only undone_at/undone_hlc may change (set, or lowered to an earlier undo; never cleared). Never deleted. Enforced by trigger review_log_append_only.';
 COMMENT ON COLUMN app.review_log.id IS 'UUIDv7 from the reviewing client. Inserting an existing id is a no-op (idempotent).';
 COMMENT ON COLUMN app.review_log.card_id IS 'Card as it was on the reviewing device. Never rewritten, even if that card is later merged or deleted.';
-COMMENT ON COLUMN app.review_log.hlc IS 'Replay position. A card''s reviews are replayed in (hlc, id) order. Equals the HLC of the review.logged op, except imported history, where it is synthesised from the historical time.';
-COMMENT ON COLUMN app.review_log.reviewed_at IS 'Wall-clock instant on the reviewing device; used for elapsed-time maths and stats. May disagree with hlc order under clock skew: replay clamps negative elapsed time to 0.';
+COMMENT ON COLUMN app.review_log.hlc IS 'Replay tie-breaker. A card''s reviews are replayed in (reviewed_at, hlc, id) order (SYNC.md 9.1). Equals the HLC of the review.logged op, except imported history, where it is synthesised from the historical time.';
+COMMENT ON COLUMN app.review_log.reviewed_at IS 'Wall-clock instant on the reviewing device; used for elapsed-time maths and stats. Primary replay order key: a card''s reviews are replayed in (reviewed_at, hlc, id) order (SYNC.md 9.1), so elapsed time is never negative (still clamped to >= 0). May disagree with hlc order under clock skew.';
 COMMENT ON COLUMN app.review_log.utc_offset_min IS 'Device UTC offset in minutes when the review happened (e.g. 540 for JST); for local-day stats only. NULL = unknown (imports, clients that cannot tell): readers fall back to scheduler.timezone. Native clients MUST send it.';
 COMMENT ON COLUMN app.review_log.review_type IS 'scheduled, learning: feed FSRS. drill, cram: logged only, never change the schedule. manual: a reschedule/reset (addition to the spec list; see SUMMARY.md).';
 COMMENT ON COLUMN app.review_log.rating IS 'FSRS rating 1 Again, 2 Hard, 3 Good, 4 Easy. NULL iff review_type = manual.';
