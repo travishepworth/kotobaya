@@ -56,3 +56,5 @@
 2026-11-12T10:05:04Z T003 MERGE
 2026-11-12T10:05:04Z T004 DISPATCH architect(gp, fable)
 2026-11-12T10:05:04Z T005 DISPATCH architect(gp, fable); carries 8 T003 followups
+2026-11-12T10:37:17Z T004 RESUME after 5h rate limit (agent interrupted, work saved)
+2026-11-12T10:37:17Z T005 RESUME after 5h rate limit (agent interrupted, work saved)
