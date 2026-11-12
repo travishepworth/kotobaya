@@ -100,3 +100,4 @@
 - T207a review: B_MALFORMED == B_UNKNOWN_GRADE string coincidence in plan.py:74; use one constant.
 - T213b: web/tests/core.test.ts (pre-existing, outside owned paths) imports @kotobaya/core directly; move to web/tests/core/ or delete. App code must import only web/src/lib/core/index.ts.
 - T213b -> T209/T210b: no app module imports the core wrapper yet, so pnpm build doesn't bundle core; first UI consumer must verify the production build.
+- T202a review (minor): no jvm-vs-js pattern parity table existed; added in attempt 3. Worker (Python) and web must also use ECMA pattern semantics once C-5 lands.

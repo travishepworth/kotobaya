@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T15:47:48Z
+Updated: 2026-11-12T15:51:14Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,11 +13,12 @@ Updated: 2026-11-12T15:47:48Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T202a | architect (opus) | 3 | t/T202a-sync-core-r | 2026-11-12T15:51:14Z |
+| C-5 | architect (opus) | 1 | t/C-5-sync-portable-patterns | 2026-11-12T15:51:14Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T202a (att 2, check green) | reviewer (opus) + architect 2nd pass | 2026-11-12T15:47:48Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -35,7 +36,7 @@ Updated: 2026-11-12T15:47:48Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 7/23 · attempts 12 · escalations 0
+P2: merged 7/24 · attempts 14 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

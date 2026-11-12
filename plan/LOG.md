@@ -305,3 +305,6 @@
 2026-11-12T15:47:48Z T213b MERGE
 2026-11-12T15:49:42Z T202a REVIEW_CHANGES 1 major: schema patterns via kotlin Regex differ jvm vs js (\S vs U+3000, $ before trailing 
 ) → web pull stuck; 3 minors. Awaiting architect pass
+2026-11-12T15:51:14Z T202a REVIEW_CHANGES architect: same major + depth-limit stuck-outbox (treated must-fix) + lenient seq rule; 2 contract minors → C-5
+2026-11-12T15:51:14Z T202a DISPATCH attempt 3 (same architect agent)
+2026-11-12T15:51:14Z C-5 DISPATCH architect(opus): ECMA pattern semantics in SYNC.md/validate.py, invalid examples, depth 512 (additive)
