@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T18:18:29Z
+Updated: 2026-11-12T18:19:26Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,6 +13,9 @@ Updated: 2026-11-12T18:18:29Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| F-2 | writer-senior (opus) | 1 | t/F-2-core-c8 | 2026-11-12T18:19:26Z |
+| F-3 | architect (opus) | 1 | t/F-3-server-c8 | 2026-11-12T18:19:26Z |
+| F-4 | writer (sonnet) | 1 | t/F-4-backup-l | 2026-11-12T18:19:26Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -20,7 +23,6 @@ Updated: 2026-11-12T18:18:29Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| C-8 att 4 of 5 (contracts+core+server green) | architect verification | 2026-11-12T18:17:08Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -38,11 +40,12 @@ Updated: 2026-11-12T18:18:29Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 31/33 · attempts 50 · escalations 0
+P2: merged 32/36 · attempts 53 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- C-8 sync gaps: refused cache (9.4), durable_seq while backups off, re-mint E/D rules (mining kept, double removal), add_kanji attribution — 4 attempts; reviewer + architect APPROVE
 - T207c jpdb import end to end (worker apply_plan/fetch_blob, server ImportsModule live, internal jobs hidden, heartbeat/requeue cap, no resurrection) — live run in HUMAN_CHECKS
 - C-9 internal job kinds (hidden from API/SSE), jpdb-history-apply 4-step protocol, reviews_id_collisions — reviewer APPROVE
 - T214 web jpdb import screen (upload → import → SSE progress → counters + unmapped tables) — usable once T207c wires the server

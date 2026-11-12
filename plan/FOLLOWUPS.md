@@ -158,3 +158,5 @@
 - T214: generated TS client names the model `Blob`, shadowing DOM Blob (putBlob body cast `as never`) — rename in openapi/generator config. No mapping review queue route yet (Phase 4?).
 - C-9 review -> next C-ticket: say that after a retry, counters reflect rows already written as notes_existing/reviews_already_imported (under-reports this job's own writes); say in cancelJob/importJpdbHistory that re-running after cancel completes the import and reports totals.
 - T207c: no-resurrection rule skips a whole group and can't catch known-only kanji cards with no reviews; worker job_result collisions detect intra-plan only (server result authoritative).
+- C-8 -> Phase 3 (Android): device re-mint per SYNC 10.4 (1a/1c, E ordering, n: re-key with live-owner condition, double removal, list D, MUST-show discard list); Android op-apply/rebuild replay writes refused cache; Android queue loader excludes refused cards.
+- C-8 verify (minor): window-only reorder re-put of a pre-window e:s leaves old e:s row live (may keep old position); optional re-put on e:s not done.

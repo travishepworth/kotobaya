@@ -446,3 +446,9 @@
 2026-11-12T18:10:55Z RETRO C-8: 4 attempts, each round narrows re-mint deck-item keying edge cases; same root (8.5 effective identity vs per-key removal). Converging; no split.
 2026-11-12T18:17:08Z C-8 HANDOFF DONE attempt 4 (re-keyed removal minted on n: and e:); CHECK_GREEN contracts+core+server; architect verification dispatched
 2026-11-12T18:18:29Z T207c HANDOFF DONE; CHECK_GREEN worker + server after rebase; MERGE (2 small unowned edits accepted)
+2026-11-12T18:19:26Z C-8 REVIEW_APPROVE architect verification attempt 4 (1 cosmetic minor)
+2026-11-12T18:19:26Z C-8 MERGE 4 attempts
+2026-11-12T18:19:26Z - F-2 (core), F-3 (server), F-4 (deploy) added from C-8 follow-ups; Android parts → Phase 3 FOLLOWUPS
+2026-11-12T18:19:26Z F-2 DISPATCH writer-senior(opus)
+2026-11-12T18:19:26Z F-3 DISPATCH architect(opus)
+2026-11-12T18:19:26Z F-4 DISPATCH writer(sonnet)
