@@ -458,3 +458,6 @@
 2026-11-12T18:29:43Z F-2 MERGE
 2026-11-12T18:29:43Z DECIDE (provisional, P3) add_kanji K of a word introduced today stay drawable today
 2026-11-12T18:38:45Z F-3 HANDOFF DONE (Startup.kt raiseOnStartup added on request); CHECK_GREEN server; reviewer dispatched
+2026-11-12T18:40:58Z F-3 REVIEW_APPROVE (5 minors; architect pass not needed per reviewer)
+2026-11-12T18:40:58Z F-3 MERGE; backups-toggle hazard removed from HUMAN_CHECKS
+2026-11-12T18:40:58Z - PHASE P2 all merged; make test running

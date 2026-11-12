@@ -18,7 +18,6 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - C-8: a word status set offline during a clock-skew window is re-minted at its estimated time and can beat another device's earlier status for the same word.
 - C-8: after a clock-skew Re-mint, offline-mined words keep their deck membership and statuses (re-minted); other edits of rows the server already had that depend on window rows are discarded, and the device MUST show the discard list before you confirm.
 - C-8: kanji drawn via add_kanji count against their own deck (may exceed its newPerDay; a newPerDay=0 kanji deck still feeds via vocab), not the drawing deck; vocab+kanji drawn atomically.
-- HAZARD until the C-8 server follow-up merges: do NOT switch backups from disabled to enabled (durable_seq could drop → data loss on a later restore).
 - ADR-011: turning on an optional card kind does not add cards to existing notes; add per note (T210a createCard).
 - C-6 (breaking contract change, no user data yet): sync schemas forbid U+0000, cap int4 fields at 2147483647, cap instant_ms at year 9999 — values Postgres cannot store. Reviewer + architect approval required.
 - ADR-010: sync JSON nesting limits op 500 / document 512 (T202a, C-5).
