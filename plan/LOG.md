@@ -496,3 +496,4 @@
 2026-11-12T19:13:25Z T308 DISPATCH writer(sonnet)
 2026-11-12T19:15:31Z T305a REVIEW_CHANGES 1 major: provider silently falls back to in-memory store (cold start before startKoin) → Takoboto words reported saved then lost; 7 minors
 2026-11-12T19:15:31Z T305a DISPATCH attempt 2 (same agent)
+2026-11-12T19:15:41Z T303a REVIEW_CHANGES 1 major: >24h clock block lacks §3.4 hysteresis (resumes minting at skew ≤24h instead of <5min) → future HLCs win LWW over later edits; 5 minors. Awaiting architect
