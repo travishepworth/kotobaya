@@ -417,3 +417,7 @@
 2026-11-12T17:48:41Z T209 HANDOFF DONE; CHECK_GREEN web after rebase; MERGE (Editor.svelte import + stand-in CardView removal accepted)
 2026-11-12T17:51:22Z T210a HANDOFF DONE; CHECK_GREEN server after rebase; MERGE (Main.kt registration line allowed)
 2026-11-12T17:51:22Z T210b DISPATCH writer(sonnet)
+2026-11-12T17:55:02Z T210b HANDOFF DONE; CHECK_GREEN web after rebase; MERGE
+2026-11-12T17:55:02Z - W-3 added (web nav links; layout unowned by P2 tickets)
+2026-11-12T17:55:02Z W-3 DISPATCH writer-light(haiku)
+2026-11-12T17:55:02Z T204 SPOT_CHECK reviewer-light (§6 every 10th merged med)
