@@ -274,3 +274,4 @@
 2026-11-12T14:34:55Z T208 HANDOFF DONE (k3d https login/logout verified)
 2026-11-12T14:34:55Z T208 CHECK_GREEN web+deploy after rebase
 2026-11-12T14:34:55Z T208 MERGE (web/Dockerfile 1-line out-of-path edit accepted: copies clients/typescript)
+2026-11-12T14:35:11Z T212 DISPATCH writer(sonnet)

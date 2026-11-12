@@ -13,6 +13,7 @@ Updated: 2026-11-12T14:34:55Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T212 | writer (sonnet) | 1 | t/T212-web-settings | 2026-11-12T14:35:11Z |
 | T207a | writer-senior (opus) | 1 | t/T207a-jpdb-worker | 2026-11-12T14:34:05Z |
 | T213a | writer-senior (opus) | 1 | t/T213a-card-renderer | 2026-11-12T14:29:08Z |
 | T202a | architect (opus) | 1 | t/T202a-sync-core | 2026-11-12T14:26:49Z |
@@ -37,7 +38,7 @@ Updated: 2026-11-12T14:34:55Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 3/22 · attempts 6 · escalations 0
+P2: merged 3/22 · attempts 7 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
