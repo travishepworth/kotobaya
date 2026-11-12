@@ -517,3 +517,4 @@
 2026-11-12T19:29:42Z T312 HANDOFF DONE attempt 2; CHECK_GREEN android; MERGE (approved out-of-path: defaultConfig version, .gitignore, Makefile comment)
 2026-11-12T19:31:41Z T307+T309 HANDOFF DONE (android/server/deploy green); asked writer to wire NtfySink in Main.kt before merge
 2026-11-12T19:31:49Z - HANDOVER usage limit: T303b and T307+T309 (Main.kt wiring) in flight; see STATE.md USAGE-LIMIT STOP
+2026-11-12T19:35:34Z T307+T309 HANDOFF DONE (Main.kt NtfySink wired); CHECK_GREEN android+server+deploy; MERGE

@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:31:49Z (usage-limit handover)
+Updated: 2026-11-12T19:35:34Z (usage-limit handover)
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -12,14 +12,12 @@ Updated: 2026-11-12T19:31:49Z (usage-limit handover)
 
 ## USAGE-LIMIT STOP 2026-11-12T19:31:49Z: in flight, may be cut off mid-work:
 - T303b (writer-senior, branch t/T303b-sync-client-apply) — device apply/rebuild. If no HANDOFF.md on branch → TODO, redispatch (worktree may hold partial work).
-- T307+T309 (writer, branch t/T307+T309-widget-ntfy) — DONE except NtfySink wiring in server Main.kt (requested). If branch has the Main.kt commit + green server/android checks → merge (low risk); else redispatch just the wiring.
 Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused-rollback acceptance), T305b, then T304b/c, T305c, T306, T310, T311, T313.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T303b | writer-senior (opus) | 1 | t/T303b-sync-client-apply | 2026-11-12T19:27:01Z |
-| T307+T309 | writer (sonnet) | 1 | t/T307+T309-widget-ntfy | 2026-11-12T19:19:41Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -45,11 +43,12 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 9/23 · attempts 14 · escalations 0
+P3: merged 11/23 · attempts 14 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T307+T309 widget/QS tile + ntfy/UnifiedPush (server NtfySink wired in Main.kt, SSRF-guarded, off unless NTFY_BASE_URL)
 - T312 Android release: env signing, tag→versionCode, GitHub release workflow publishing both flavors
 - T303a core sync client (outbox, mint incl. mintAt, push/pull/purge, clock_blocked hysteresis, resetLog) — 2 attempts; reviewer + architect APPROVE
 - C-10 SYNC 6.2: log reset sets pull_seq=0 (fixes restore livelock); model.py guard + 12.5.1
