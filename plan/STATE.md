@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T12:40:23Z
+Updated: 2026-11-12T12:41:40Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -9,12 +9,12 @@ Updated: 2026-11-12T12:40:23Z
 | T104 | writer (gp/sonnet) | 1 | t/T104-server-skeleton | 2026-11-12T12:34:15Z |
 | T108b | writer (gp/sonnet) | 1 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
 | T110 | writer (gp/sonnet, escalated) | 2 | t/T110-clients | 2026-11-12T12:34:15Z |
-| T107b | writer-senior (gp/opus) | 1 | t/T107b-fsrs-scheduler | 2026-11-12T12:32:59Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T107b | reviewer (opus) | 2026-11-12T12:41:40Z |
 | C-3 | combined reviewer + architect (opus) | 2026-11-12T12:40:23Z |
 
 ## Blocked

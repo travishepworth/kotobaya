@@ -170,3 +170,6 @@
 2026-11-12T12:40:23Z T110 BLOCK kotlin/python generators fail on 3.1 shapes; TS ok
 2026-11-12T12:40:23Z - DECIDE T110: ship TS; try other generators for kotlin/python, else tested post-gen patch; never change frozen contract for tooling
 2026-11-12T12:40:23Z T110 ESCALATE haiku→sonnet attempt 2 (same worktree)
+2026-11-12T12:41:40Z T107b HANDOFF DONE 26 scheduler tests jvm+js
+2026-11-12T12:41:40Z T107b CHECK_GREEN core+web after rebase
+2026-11-12T12:41:40Z T107b REVIEW reviewer(opus) dispatched
