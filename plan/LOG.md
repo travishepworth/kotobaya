@@ -409,3 +409,4 @@
 2026-11-12T17:44:11Z T207b DISPATCH writer-senior(opus)
 2026-11-12T17:44:11Z T209 DISPATCH writer(sonnet)
 2026-11-12T17:44:11Z T210a DISPATCH writer(sonnet)
+2026-11-12T17:47:03Z C-8 REVIEW_CHANGES 1 major: re-mint discards e:<seq> deck.item_put + word.status of window notes → week of offline mining silently leaves its deck; 6 minors (discard list MUST, refused-card MUST skip, 6.3 step 2b, kanji deck newPerDay=0). Awaiting architect
