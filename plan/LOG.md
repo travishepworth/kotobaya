@@ -76,3 +76,6 @@
 2026-11-12T11:10:45Z T005 REVIEW_CHANGES architect verification: 5/6 fixed; clock-reject discard-only = major (re-mint converges)
 2026-11-12T11:10:45Z T005 DISPATCH attempt 3 (opus): re-mint + device guard + card-age check
 2026-11-12T11:10:45Z T004 DISPATCH attempt 2 (opus) on branch rebased onto t/T005-sync
+2026-11-12T11:17:57Z T004 HANDOFF DONE attempt 2 (opus), 117 ops
+2026-11-12T11:17:57Z T004 CHECK_GREEN against real batch.schema.json
+2026-11-12T11:17:57Z T004 REVIEW reviewer verification + architect 2nd pass dispatched
