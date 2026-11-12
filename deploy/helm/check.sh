@@ -49,4 +49,5 @@ lacks traefik.yaml 'proxy-buffering'
 render off.yaml --set networkPolicy.enabled=false,migrate.enabled=false,ingress.enabled=false
 lacks off.yaml 'kind: Ingress'
 lacks off.yaml 'name: migrate'
+bash ../backup/check.sh
 echo "helm check OK"

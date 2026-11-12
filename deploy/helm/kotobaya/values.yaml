@@ -112,3 +112,28 @@ ingress:
 
 networkPolicy:
   enabled: true
+
+# Backups (T112). Off by default: the target is a placeholder (docs/DECISIONS.md). See deploy/backup/README.md.
+# enabled=true renders the nightly `backup` and weekly `backup-verify` CronJobs and a suspended
+# `backup-restore` CronJob (used by deploy/backup/restore-k8s.sh).
+# enabled=false: no backups exist, so durable_seq stays 0 and devices never purge acked ops. To let
+# devices purge (nothing to restore from), the server must report durable_seq = high_water_seq: set
+# api.env.BACKUPS_DISABLED="true" (the server does not read it yet; see README "Backups disabled").
+backup:
+  enabled: false
+  image: { repository: backup, tag: "0.1.0" }   # built from deploy/backup/Dockerfile
+  # Secret (never in values): RESTIC_REPOSITORY, RESTIC_PASSWORD, plus the repo's credentials as env
+  # (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY for an s3: repo, ...); optional NOTIFY_URL.
+  secretName: kotobaya-backup
+  schedule: "17 3 * * *"        # nightly (frequency is a HUMAN_CHECKS item)
+  verifySchedule: "47 4 * * 0"  # weekly, Sunday
+  keepLast: 14                  # verified snapshots kept; the newest verified one is always kept
+  # Failure notification target, an ntfy topic URL (e.g. https://ntfy.example.invalid/kotobaya-alerts).
+  # Treat a real topic URL as secret: put NOTIFY_URL in the backup Secret instead and leave this empty.
+  notify: { url: "" }
+  workSize: 10Gi                # scratch space: dump + full blob mirror
+  activeDeadlineSeconds: 7200
+  env: {}
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 1Gi }
