@@ -1,11 +1,14 @@
 # STATE
 Mode: single-session
-Phase: P0→P1   Gate: GATE-CONTRACTS round 1 fixes (C-2); P1 tickets with no gate dep running
-Updated: 2026-11-12T12:32:59Z
+Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
+Updated: 2026-11-12T12:34:15Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T104 | writer (gp/sonnet) | 1 | t/T104-server-skeleton | 2026-11-12T12:34:15Z |
+| T108b | writer (gp/sonnet) | 1 | t/T108b-search-sql | 2026-11-12T12:34:15Z |
+| T110 | writer-light (gp/haiku) | 1 | t/T110-clients | 2026-11-12T12:34:15Z |
 | T107b | writer-senior (gp/opus) | 1 | t/T107b-fsrs-scheduler | 2026-11-12T12:32:59Z |
 | T103 | writer (gp/sonnet) | 1 | t/T103-dict-package | 2026-11-12T12:30:14Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
@@ -13,7 +16,6 @@ Updated: 2026-11-12T12:32:59Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| C-2 | freeze A + B verification (round 2 of 2) | 2026-11-12T12:32:29Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -30,9 +32,11 @@ Updated: 2026-11-12T12:32:59Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- C-2 freeze fixes — freeze A + B APPROVE; GATE-CONTRACTS auto-closed
 - T107a PortableMath (fdlibm 5.3) — reviewer verified digests against StrictMath independently; jsTest on node wired
 - T102 pitch/frequency/Tatoeba loaders — idempotent, coverage floors, CC0 test data
 - T108a search parser/format/complete — examples, round trip, 3000 random trees

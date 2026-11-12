@@ -127,10 +127,11 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - see plan/tickets/C-1.md
 
 ### C-2 — Contract freeze fixes (freeze review A + B)
-- model: opus · risk: high · deps: C-1 · status: IN_REVIEW
+- model: opus · risk: high · deps: C-1 · status: MERGED
 - see plan/tickets/C-2.md
 
 ### GATE-CONTRACTS — Freeze contracts (human)
+**Status: AUTO-CLOSED 2026-11-12** after freeze review A + B (2 rounds, C-1/C-2). Human review deferred to plan/HUMAN_CHECKS.md.
 Single-session: auto-closed after the automated cross-contract review (ORCHESTRATOR.md §8a); the human
 reviews `contracts/SUMMARY.md` later from `plan/HUMAN_CHECKS.md`. Gated: human reviews `contracts/`
 (T003–T006) with the architect's summary and approves or requests changes.
@@ -159,7 +160,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Package for top-60k < budget in DECISIONS; diff between two fixture releases applies correctly.
 
 ### T104 — Server skeleton
-- model: sonnet · risk: med · deps: GATE-CONTRACTS · status: TODO
+- model: sonnet · risk: med · deps: GATE-CONTRACTS · status: RUNNING
 - paths: `server/`
 - do: Ktor app: config, Hikari + Exposed or jOOQ (per DECISIONS), Flyway from `contracts/db`, problem+json errors, request ids, structured logs, `/healthz` `/readyz` `/metrics`, OpenAPI conformance test (every implemented route matches `contracts/api`), stub routes return 501.
 - accept: Conformance test green.
@@ -209,7 +210,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T108a.md (split from T108)
 
 ### T108b — Search: SQL compiler
-- model: sonnet · risk: med · deps: T108a · status: TODO
+- model: sonnet · risk: med · deps: T108a · status: RUNNING
 - see plan/tickets/T108b.md (split from T108)
 
 ### T109 — Job queue and events
@@ -227,7 +228,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T109b.md (split from T109)
 
 ### T110 — Generated API clients
-- model: haiku · risk: low · deps: T004 · status: TODO
+- model: haiku · risk: low · deps: T004 · status: RUNNING
 - paths: `clients/`, `Makefile` (`check MODULE=contracts` target)
 - do: Generate Kotlin (for android), TypeScript (for web), Python (for CLI and worker) clients from `contracts/api`; `make check MODULE=contracts` regenerates and fails on diff.
 - accept: Clients compile; `make check MODULE=contracts` green.
