@@ -53,7 +53,7 @@ internal object CoreJsImpl : CoreJs {
         }.toTypedArray()
     }
 
-    override fun renderCard(input: JsRenderInput): JsRenderedCard = throw NotImplementedError("renderCard (T213)")
+    override fun renderCard(input: JsRenderInput): JsRenderedCard = kotobaya.render.renderJs(input)
 
     override fun previewIntervals(
         schedule: JsCardSchedule,
