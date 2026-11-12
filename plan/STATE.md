@@ -1,12 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T09:43:05Z
+Updated: 2026-11-12T09:43:52Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T001b+T002 | writer-light (gp/haiku) | 2 | t/T001b+T002-images-compose | 2026-11-12T09:33:27Z |
+| T009b | writer-light (gp/haiku) | 1 | t/T009b-deploy-check | 2026-11-12T09:43:52Z |
 | T003 | architect (gp/fable) | 1 | t/T003-db-schema | 2026-11-12T09:33:27Z |
 
 ## Ready for review / In review
@@ -26,9 +26,10 @@ Updated: 2026-11-12T09:43:05Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 6/13 (S02, T008b added) (T007 dropped, T001b added) · attempts 6 · escalations 0
+Merged 8/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 6 · escalations 0
 
 ## Recently merged (last 10)
+- T001b+T002 SeaweedFS compose (dev-up all healthy), images/push/apk targets; apk fixed on attempt 2
 - T008b jpdb fixture aligned to real export shape (invented values)
 - T009 Helm chart + k3d — lint/template clean; k3d /healthz ok
 - S02 jpdb map spike — 99.93% hit rate (GATE-S02 not triggered); jpdb vid == JMdict seq

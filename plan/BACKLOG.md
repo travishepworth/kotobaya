@@ -40,12 +40,12 @@ Originally, before any ticket ran, the human would:
 - accept: `make test` green from a clean clone; `make dev-up` starts all services with health checks passing; a web smoke test imports a trivial `@JsExport` function from `@kotobaya/core`.
 
 ### T001b — Compose: SeaweedFS instead of MinIO (ADR-003)
-- model: haiku · risk: low · deps: T001 · status: RUNNING (batched with T002)
+- model: haiku · risk: low · deps: T001 · status: MERGED (batched with T002)
 - paths: `docker-compose.yml`
 - accept: `make dev-up` all healthy.
 
 ### T002 — Image build and release script
-- model: haiku · risk: low · deps: T001 · status: RUNNING
+- model: haiku · risk: low · deps: T001 · status: MERGED
 - paths: `deploy/build/`, `Makefile` (`images`, `push`, `apk` targets only)
 - do: `make images` builds api, worker, web for the cluster arch in DECISIONS (buildx); `make push` pushes to the registry; `make apk` builds a release APK. One optional workflow file that runs `make images push` on tag — no per-PR CI.
 - accept: `make images push` publishes 3 images.
@@ -115,6 +115,11 @@ Record in DECISIONS: works with own applicationId, or needs the `com.ichi2.anki`
 - paths: `fixtures/jpdb/`
 - do: Rewrite `fixtures/jpdb/reviews-sample.json` (invented values) to the real export structure in `spikes/jpdb-map/REPORT.md`.
 - accept: fixtures/tools pytest green; README cites REPORT.md.
+
+### T009b — Wire `make check MODULE=deploy` to the Helm check
+- model: haiku · risk: low · deps: T002, T009 · status: RUNNING
+- paths: `Makefile` (check-deploy target only)
+- accept: `make check MODULE=deploy` runs `deploy/helm/check.sh` and is green; fails if the chart breaks.
 
 ### GATE-CONTRACTS — Freeze contracts (human)
 Single-session: auto-closed after the automated cross-contract review (ORCHESTRATOR.md §8a); the human
