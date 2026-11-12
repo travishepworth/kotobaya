@@ -34,8 +34,8 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 sys.path.insert(0, str(Path(__file__).parent))
-from model import (CHECKED_CODES, SERVER, VERDICT_OPS, Device, MissingRow, Replica,  # noqa: E402
-                   Server, wall)
+from model import (CHECKED_CODES, DAY_MS, SERVER, VERDICT_OPS, Device, MissingRow, Replica,  # noqa: E402
+                   Server, remint_times, wall)
 
 ROOT = Path(__file__).resolve().parent.parent
 PERMUTATIONS = 300
@@ -294,6 +294,17 @@ for p in sorted((ROOT / "examples/scenarios").glob("*.json")):
                 break
 
     check_server(sc, where)
+    if "remint" in sc:  # SYNC.md 10.4: the re-minted reviewed_at values follow from the originals
+        rm = sc["remint"]
+        rejected = {r["op"]["op_id"]: r["op"]["payload"] for r in sc.get("rejected", [])}
+        logged = {o["op_id"]: o["payload"] for o in log}
+        old = [rejected[i] for i in rm["from"]]
+        _, times = remint_times([(q["reviewed_at"], server.t["card"][q["card_id"]]["created_at"]) for q in old],
+                                rm["offset_ms"], rm["now"])
+        if [logged[i]["reviewed_at"] for i in rm["to"]] != times:
+            fail(f"{where}: re-minted reviewed_at values do not follow SYNC.md 10.4: expected {times}")
+        if any(logged[i]["id"] == q["id"] for i, q in zip(rm["to"], old)):
+            fail(f"{where}: a re-minted review must have a new id")
 
 
 # ------------------------------------------------------------------ restore story (SYNC.md 12.5)
@@ -355,6 +366,106 @@ for d in (a, b):
         fail(f"restore story: device {d.id[-2:]} has unfinished work")
 if srv.r.t["card"][next(iter(srv.r.t["card"]))]["suspended"] is not True:
     fail("restore story: B's edit after the restore is missing")
+
+
+# ------------------------------------------------------------------ re-mint story (SYNC.md 10.4, 12.6)
+Y2K = 946_684_800_000  # the phone's RTC resets to 2000-01-01
+
+
+def remint_story():
+    A, B = "01931f3e-0000-7000-8000-0000000000a1", "01931f3e-0000-7000-8000-0000000000b2"
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op))
+    a, b = Device(A, guard=False), Device(B)  # A: a client without the 3.4 guard
+    real = [0x0193a1b2c000]
+
+    def tick(ms, skew_a=0):
+        real[0] += ms
+        srv.pt, b.pt, a.pt = real[0], real[0], real[0] + skew_a
+
+    tick(1000)
+    cards = []
+    for k in range(20):
+        note, card = a.new_id(1), a.new_id(2)
+        a.make("note.created", {"id": note, "note_type_id": "00000000-0000-7000-8000-000000000101",
+                                "entry_seq": 1358280 + k})
+        a.make("card.created", {"id": card, "note_id": note, "kind": "meaning"})
+        cards.append(card)
+    a.sync(srv)
+    b.sync(srv)
+    skew = Y2K - (real[0] + 1000)  # from here A's clock reads 2000-01-01 and runs on from there
+    probe = copy.deepcopy(a)
+    probe.guard, probe.pt = True, Y2K
+    try:
+        probe.make("review.logged", {"id": probe.new_id(3), "card_id": cards[0], "reviewed_at": Y2K,
+                                     "utc_offset_min": 540, "review_type": "scheduled", "rating": 3, "button": "good"})
+        fail("re-mint story: the 3.4 guard must refuse to mint at a clock before 2020")
+    except RuntimeError:
+        pass
+    truth, undone = {}, None  # original review id -> real time
+    for day in range(7):  # a week offline, 100 reviews a day
+        for k in range(100):
+            tick(600_000, skew)
+            rid = a.new_id(3)
+            a.make("review.logged", {"id": rid, "card_id": cards[k % 19], "reviewed_at": a.pt, "utc_offset_min": 540,
+                                     "review_type": "scheduled", "rating": 3, "button": "good"})
+            truth[rid] = real[0]
+            if day == 2 and k == 5:
+                a.make("review.undone", {"review_id": rid})
+                undone = rid
+        tick(1000, skew)
+        b.make("review.logged", {"id": b.new_id(3), "card_id": cards[19], "reviewed_at": b.pt, "utc_offset_min": 0,
+                                 "review_type": "scheduled", "rating": 3, "button": "good"})
+        b.make("card.suspended", {"id": cards[day]})
+        b.sync(srv)
+        tick(DAY_MS - 100 * 600_000 - 1000, skew)
+    a.sync(srv)  # online, clock still wrong: every review is refused
+    codes = {r["last_error"] for r in a.outbox if r["op"]["op_type"] == "review.logged" and r["state"] == "rejected"}
+    if codes != {"clock_behind"} or a.remint_offset is None:
+        fail(f"re-mint story: expected 700 clock_behind rejections and a recorded offset, got {codes}")
+    tick(1000)  # the user fixes the clock
+    a.sync(srv)
+    a.remint()
+    tick(1000)
+    a.sync(srv)
+    b.sync(srv)
+    return srv, a, b, cards, truth, undone
+
+
+srv, a, b, cards, truth, undone = remint_story()
+sp = srv.r.projection()
+sp["parse_override"] = {}
+for d in (a, b):
+    if d.r.projection() != sp:
+        fail(f"re-mint story: device {d.id[-2:]} does not converge with the server")
+    if d.rebuild_pending or any(r["state"] != "acked" for r in d.outbox):
+        fail(f"re-mint story: device {d.id[-2:]} has unfinished work")
+if any(rid in srv.r.t["review_log"] or rid in a.r.t["review_log"] for rid in truth):
+    fail("re-mint story: an original (clock-rejected) review id reached a replica")
+want = sorted(t for rid, t in truth.items() if rid != undone)
+got = sorted(t for c in cards[:19] for _, t in srv.r.replay_inputs(c))
+if got != want:
+    fail(f"re-mint story: replay does not use the re-minted times ({len(got)} reviews, {len(want)} expected)")
+for c in cards[:19]:
+    times = [t for _, t in a.r.replay_inputs(c)]
+    if times != sorted(times):
+        fail("re-mint story: re-minted reviews are not in their original order")
+if sum(len(srv.r.replay_set(c)) for c in cards[:19]) != 699:
+    fail("re-mint story: expected 699 re-minted reviews (700 minus the undone one)")
+# The second path of the review: a review dated 25 h before its card (creator ahead, reviewer behind) is accepted.
+late = copy.deepcopy(b)
+late.guard, late.pt = False, srv.r.t["card"][cards[0]]["created_at"] - 25 * 3_600_000
+op = late.make("review.logged", {"id": late.new_id(3), "card_id": cards[0], "reviewed_at": late.pt,
+                                 "utc_offset_min": 0, "review_type": "scheduled", "rating": 3, "button": "good"})
+if srv.validate(op, srv.pt) is not None:
+    fail("re-mint story: a review dated before its card must be accepted (no card-age check, SYNC.md 3.4)")
+# The shift itself: one delta per batch; spacing kept unless the batch does not fit.
+T26 = 1_780_000_000_000  # a 2026 instant
+if remint_times([(Y2K, T26), (Y2K + 5, T26)], 0, T26 + 100) != (T26 - Y2K, [T26, T26 + 5]):
+    fail("remint_times: an offset of 0 must shift the batch up to the card, keeping the spacing")
+if remint_times([(0, 50), (200, 50)], 0, 100)[1] != [50, 100]:
+    fail("remint_times: a batch wider than the window is clamped per review")
+if remint_times([(500, 400), (510, 400)], -10_000, 300)[1] != [300, 300]:
+    fail("remint_times: a card created ahead of now bounds the review at now")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

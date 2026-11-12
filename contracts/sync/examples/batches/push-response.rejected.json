@@ -97,14 +97,6 @@
       }
     },
     {
-      "op_id": "0193a1b2-00ff-7e00-8000-00000000000d",
-      "status": "rejected",
-      "error": {
-        "code": "clock_behind",
-        "message": "reviewed_at is more than 24 h before the card was created"
-      }
-    },
-    {
       "op_id": "0193a1b2-00ff-700e-8000-000000000004",
       "status": "accepted",
       "seq": 4

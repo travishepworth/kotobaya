@@ -52,6 +52,9 @@ INDEX = {m["op_type"]: m for m in json.loads(
     (Path(__file__).resolve().parent.parent / "ops/index.json").read_text(encoding="utf-8"))["ops"]}
 DAY_MS = 86_400_000
 FLOOR_MS = 1_577_836_800_000  # 2020-01-01T00:00:00Z, SYNC.md 3.4
+EPSILON_MS = 60_000  # slack on the clock_ahead hlc comparison, SYNC.md 3.4
+WARN_MS = 300_000  # 5 minutes: clock warning; re-mint needs the clock within this, SYNC.md 3.4, 10.4
+CLOCK_CODES = ("clock_ahead", "clock_behind")
 # Rejection codes the model's Server decides. Others (device_mismatch, invalid_value, invalid_target,
 # immutable) need auth or per-op rules the model does not implement; the model accepts those ops.
 CHECKED_CODES = ("unsupported_op", "schema_invalid", "server_only", "unknown_reference", "clock_ahead",
@@ -83,6 +86,17 @@ def hlc_mint(last: str, pt: int, device: str) -> str:
 def hlc_observe(last: str, h: str) -> str:
     """observe() of SYNC.md 3.2."""
     return h if not last or h[:17] > last[:17] else last
+
+
+def remint_times(reviews: list, offset: int, now: int) -> tuple[int, list]:
+    """The re-mint shift of SYNC.md 10.4. `reviews` = [(reviewed_at, card_created_at)] in original hlc
+    order; returns (delta, new reviewed_at values). One shift for the whole batch keeps the spacing;
+    the per-review clamp only bites when the batch does not fit between its cards and now."""
+    low = [min(created, now) for _, created in reviews]
+    d_hi = now - max(t for t, _ in reviews)
+    d_lo = max(lo - t for (t, _), lo in zip(reviews, low))
+    delta = min(max(offset, d_lo), d_hi)
+    return delta, [min(max(t + delta, lo), now) for (t, _), lo in zip(reviews, low)]
 
 
 def entity_id(op_type: str, payload: dict) -> str:
@@ -469,6 +483,10 @@ class Replica:
             row.update(hlc=h, updated_at=wall(h))
 
     # ------------------------------------------------------------ reading
+    def replay_inputs(self, card_id) -> list:
+        """(id, reviewed_at) of the replay set, in replay order: what FSRS replay reads (SYNC.md 9.3)."""
+        return [(rid, self.t["review_log"][rid]["reviewed_at"]) for rid in self.replay_set(card_id)]
+
     def replay_set(self, card_id) -> list:
         """Ids of the reviews that determine the card's schedule, in replay order (SYNC.md 9.1)."""
         rows = [r for r in self.t["review_log"].values()
@@ -550,11 +568,9 @@ class Server:
         except MissingRow:
             return "unknown_reference"
         w = wall(op["hlc"])
-        if w > now + DAY_MS or (t == "review.logged" and p["reviewed_at"] > now + DAY_MS):
+        if w > now + DAY_MS + EPSILON_MS or (t == "review.logged" and p["reviewed_at"] > now + DAY_MS):
             return "clock_ahead"
-        if w < FLOOR_MS or (t == "review.logged" and (
-                p["reviewed_at"] < FLOOR_MS
-                or p["reviewed_at"] < self.r.t["card"][p["card_id"]]["created_at"] - DAY_MS)):
+        if w < FLOOR_MS or (t == "review.logged" and p["reviewed_at"] < FLOOR_MS):
             return "clock_behind"
         return None
 
@@ -680,8 +696,8 @@ class Device:
     legacy=True reproduces attempt-1 behaviour (purge acked rows once pulled; no log identity),
     to show the restore failure that log_epoch / durable_seq fix."""
 
-    def __init__(self, device_id: str, legacy: bool = False):
-        self.id, self.legacy = device_id, legacy
+    def __init__(self, device_id: str, legacy: bool = False, guard: bool = True):
+        self.id, self.legacy, self.guard = device_id, legacy, guard  # guard=False: a client without 3.4 G1/G2
         self.r = Replica(device=True)
         self.outbox: list[dict] = []  # pending_op rows: op, state, acked_seq, last_error
         self.pull_seq = 0
@@ -690,6 +706,8 @@ class Device:
         self.hlc_last = ""
         self.hlc_acked = ""
         self.rebuild_pending = False
+        self.remint_offset = None  # sync_state.remint_offset (10.5)
+        self.last_skew = None  # server_time - pt at the last response
         self.pt = 0
         self._n = 0
 
@@ -697,9 +715,15 @@ class Device:
         self._n += 1
         return f"0193a1b2-{kind:04x}-7000-8000-{self.id[-4:]}{self._n:08x}"
 
+    def clock_guard_ok(self) -> bool:
+        """The device-local guard of SYNC.md 3.4 (G1, G2)."""
+        return self.pt >= FLOOR_MS and (not self.hlc_last or self.pt >= wall(self.hlc_last) - DAY_MS)
+
     def make(self, op_type: str, payload: dict) -> dict:
         """SYNC.md 4: mint, apply locally, queue."""
         assert not self.rebuild_pending, "no minting while a rebuild is pending"
+        if self.guard and not self.clock_guard_ok():
+            raise RuntimeError("fix your clock: minting refused (SYNC.md 3.4 G1/G2)")
         self.hlc_last = hlc_mint(self.hlc_last, self.pt, self.id)
         op = {"op_id": self.new_id(0xff), "op_type": op_type, "op_version": 1,
               "entity_type": INDEX[op_type]["entity_type"], "entity_id": entity_id(op_type, payload),
@@ -736,9 +760,13 @@ class Device:
             if not batch:
                 return
             resp = server.push([copy.deepcopy(r["op"]) for r in batch])
+            self.last_skew = resp["server_time"] - self.pt
             for row, res in zip(batch, resp["results"]):
                 if res["status"] == "rejected":
                     row.update(state="rejected", last_error=res["error"]["code"])
+                    if (res["error"]["code"] in CLOCK_CODES and row["op"]["op_type"] == "review.logged"
+                            and self.remint_offset is None):
+                        self.remint_offset = self.last_skew  # 10.5: first clock rejection of a review
                 else:
                     row.update(state="acked", acked_seq=res["seq"])
                     self.hlc_acked = max(self.hlc_acked, row["op"]["hlc"])
@@ -752,6 +780,7 @@ class Device:
         """Returns False if the pull stopped because the log changed identity."""
         while True:
             resp = server.pull(self.pull_seq)
+            self.last_skew = resp["server_time"] - self.pt
             if self._log_changed(resp):
                 self._start_log_reset(resp)
                 return False
@@ -785,6 +814,38 @@ class Device:
             except MissingRow:
                 pass
         self.rebuild_pending = False
+
+    # ---------------------------------------------------------------- re-mint (10.4)
+    def remint(self):
+        """The Re-mint action of SYNC.md 10.4, one local transaction. The rebuild runs in the next sync."""
+        assert not any(r["state"] == "pending" for r in self.outbox), "push until nothing is pending"
+        assert self.last_skew is not None and abs(self.last_skew) <= WARN_MS, "clock must be correct"
+        clock_rows = [r for r in self.outbox if r["state"] == "rejected" and r["last_error"] in CLOCK_CODES]
+        reviews = sorted((r for r in clock_rows if r["op"]["op_type"] == "review.logged"),
+                         key=lambda r: r["op"]["hlc"])
+        ids = {r["op"]["payload"]["id"] for r in reviews}
+        undos = [r for r in self.outbox if r["op"]["op_type"] == "review.undone"
+                 and r["op"]["payload"]["review_id"] in ids]
+        keep_out = {id(r) for r in clock_rows + undos}
+        saved = (self.outbox, self.hlc_last)
+        self.outbox = [r for r in self.outbox if id(r) not in keep_out]  # 1. discard
+        if any(r["last_error"] == "clock_ahead" for r in clock_rows):  # 2. clock repair
+            self.hlc_last = max([self.hlc_acked] + [r["op"]["hlc"] for r in self.outbox])
+        if not self.clock_guard_ok():  # 3. abort: nothing changes
+            self.outbox, self.hlc_last = saved
+            raise RuntimeError("fix your clock")
+        todo = [r["op"]["payload"] for r in reviews
+                if self.r.t["review_log"][r["op"]["payload"]["id"]]["undone_hlc"] is None]
+        if todo:
+            delta, times = remint_times([(p["reviewed_at"], self.r.t["card"][p["card_id"]]["created_at"])
+                                         for p in todo], self.remint_offset or 0, self.pt)
+            for p, t in zip(todo, times):  # 4. mint, in the original hlc order
+                q = {**p, "id": self.new_id(3), "reviewed_at": t}
+                if q.get("manual_due_at") is not None:
+                    q["manual_due_at"] += delta
+                self.make("review.logged", q)
+        self.remint_offset = None  # 5.
+        self.rebuild_pending = True
 
     def sync(self, server: Server):
         """Sync cycle (SYNC.md 6): push, then pull; a pending rebuild runs first."""

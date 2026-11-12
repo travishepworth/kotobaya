@@ -167,14 +167,25 @@ mint():                                   observe(h):            # h = any HLC s
 
   | Code | Condition |
   |---|---|
-  | `clock_ahead` | `wall(hlc) > now + 24 h`; or, for `review.logged`, `reviewed_at > now + 24 h`. |
-  | `clock_behind` | `wall(hlc) < FLOOR`; or, for `review.logged`, `reviewed_at < FLOOR` or `reviewed_at < card.created_at − 24 h` (the addressed card row, as stored on the server). |
+  | `clock_ahead` | `wall(hlc) > now + 24 h + ε`; or, for `review.logged`, `reviewed_at > now + 24 h`. |
+  | `clock_behind` | `wall(hlc) < FLOOR`; or, for `review.logged`, `reviewed_at < FLOOR`. |
 
   `FLOOR` = `1577836800000` (2020-01-01T00:00:00Z). The 24 h tolerance is `86400000` ms; it
-  absorbs ordinary skew and time-zone mistakes, so a correct phone never meets these codes. Ops
-  the server mints itself (REST, jobs, imports with `import_source`) are not checked: imported
-  history is legitimately older than its card.
-- Consequences: no op in the log has an HLC more than 24 h ahead of the server's clock at the
+  absorbs ordinary skew and time-zone mistakes, so a correct phone never meets these codes.
+  `ε` = `60000` ms (60 s) applies to the HLC comparison only: after a restore (6.2) the server's
+  clock sits at `now + 24 h`, a device that pulled a server op minted then mints just above it
+  (counter overflow can add milliseconds), and without the slack its next push could be refused
+  by a few milliseconds. Ops the server mints itself (REST, jobs, imports with `import_source`)
+  are not checked: imported history is legitimately older than its card.
+- **There is no card-age check.** Attempt 2 also refused a review dated more than 24 h before its
+  card's `created_at`. That was not robust: `created_at` comes from the creating device's clock,
+  which may itself be up to 24 h ahead, so a phone 2 h behind could be refused for reviewing a card
+  made by a phone 23 h ahead — both within tolerance. The same bound is now kept on the device,
+  where it is exact (guard G2 below: a device has observed the card's `card.created` HLC before it
+  can review the card, so G2 implies `reviewed_at >= card.created_at − 24 h`), and re-mint (10.4)
+  clamps re-minted reviews to the card's creation. The server accepts a review dated before its
+  card; replay is unaffected beyond the clamp of 9.3.
+- Consequences: no op in the log has an HLC more than 24 h + ε ahead of the server's clock at the
   time it was accepted, so a wrong date can make edits win for at most a day; and replay never sees
   a `reviewed_at` decades off (a phone reset to 1970 would otherwise produce a 56-year interval).
 - Everything else is still tolerated: old HLCs, ops addressed to tombstones, `reviewed_at`
@@ -184,6 +195,21 @@ mint():                                   observe(h):            # h = any HLC s
   `|server_time − pt| > 24 h` it MUST also stop minting (reviewing and editing are blocked with a
   "your device clock is wrong" status) until a later response shows the difference below 5 minutes.
   A rejection with a clock code is handled as in 10.4.
+- **Device-local guard (no protocol change).** Before every mint (section 4) — and on app start and
+  before a review session begins, so the user is told before answering anything — a device checks
+  its physical clock against what it already knows, offline:
+
+  | Guard | Refuse to mint when |
+  |---|---|
+  | G1 | `pt < FLOOR` (a clock reset to 1970 or 2000) |
+  | G2 | `pt < wall(hlc_last) − 24 h` (the clock is far behind a time this device has already minted or observed) |
+
+  While either holds, reviewing and editing are blocked with a "fix your device clock" status (an
+  i18n string); nothing is minted, so nothing can be lost. The block lifts as soon as neither
+  holds; no server contact is needed. G2 can also block a device that is only slightly behind if
+  it has observed an op from a device near the +24 h limit (the two skews add up to more than a
+  day); that device is behind and is told so, which is right. A clock that is *ahead* is not
+  detectable offline; it is caught by the server (`clock_ahead`) and handled by re-mint (10.4).
 
 ## 4. Making a change on a device
 
@@ -194,8 +220,8 @@ In **one local transaction**:
 3. Insert the `pending_op` row (`state = 'pending'`, `created_at` = now).
 4. Persist `hlc_last`.
 
-A device MUST NOT mint while `sync_state.rebuild_pending` is set (10.3) or while its clock is
-known to be more than 24 h off the server's (3.4).
+A device MUST NOT mint while `sync_state.rebuild_pending` is set (10.3), while its clock is
+known to be more than 24 h off the server's, or while guard G1 or G2 holds (3.4).
 
 Client duties before minting (the server will reject otherwise, section 5.3):
 
@@ -267,8 +293,8 @@ Checked in this order; the first failure decides the code.
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
 | `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
 | `unknown_reference` | A row the op needs does not exist on the server (the target of an update/delete, a card's note, a review's card, …). Tombstoned rows *do* exist. | per op, OPS.md |
-| `clock_ahead` | `wall(hlc)`, or a review's `reviewed_at`, is more than 24 h after the server's clock. | every op; `review.logged` (3.4) |
-| `clock_behind` | `wall(hlc)` before 2020-01-01; or a review's `reviewed_at` before 2020-01-01 or more than 24 h before its card was created. | every op; `review.logged` (3.4) |
+| `clock_ahead` | `wall(hlc)` is more than 24 h + 60 s, or a review's `reviewed_at` more than 24 h, after the server's clock. | every op; `review.logged` (3.4) |
+| `clock_behind` | `wall(hlc)`, or a review's `reviewed_at`, before 2020-01-01. | every op; `review.logged` (3.4) |
 | `invalid_value` | A cross-field or cross-row rule is violated (e.g. `entry_seq` on a kanji note). | per op, OPS.md |
 | `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck). | per op, OPS.md |
 | `immutable` | Attempt to delete or cripple a built-in (note types, the Default preset). | per op, OPS.md |
@@ -376,7 +402,9 @@ their acked ops, the ops 101–150 are gone everywhere. Two values in every `Pus
    term. Every op accepted before the loss had `wall(hlc) <= its receive time + 24 h` (3.4) and
    every op the server minted was at most one tick above those or its own clock, so this bound is
    above every HLC the lost log contained: the server's clock never goes backwards and never
-   reissues a lost server HLC.
+   reissues a lost server HLC. Side effect: until real time catches up (at most 24 h), rows the
+   server creates or updates get `created_at` / `updated_at` (= `wall(hlc)`, 7.5) up to 24 h ahead
+   of real time, and so do rows devices write after observing those ops.
 4. Server-emitted ops that were lost are re-derived where possible: merges are re-emitted when
    the devices push their ops again (8.1). Ops minted for REST callers or jobs since the backup
    (REST edits, `media.created`, `*.published`, suggestions) are lost; jobs SHOULD be re-run.
@@ -398,7 +426,12 @@ lost log and pulls the new one from 0. The procedure is restartable at any point
 
 - Ops re-pushed by one device can be rejected with `unknown_reference` if they depend on a lost
   op of another device that has not re-pushed yet (a review of a card another phone created).
-  They are ordinary rejected ops (section 10): the user can Retry once the other device has synced.
+  **Auto-retry:** after a log reset the device sets every row in state `rejected` with code
+  `unknown_reference` back to `pending` at the end of each later sync cycle whose pull advanced
+  `pull_seq` (the other device's re-pushed ops arrived), until it is accepted or has been
+  auto-retried 10 times since the reset (counted in `attempts`, which the reset sets to 0 for these
+  rows too); after that it is an ordinary rejected op (section 10) for the user. Re-pushing an op
+  whose reference is really missing only gets it rejected again.
 - A device's ops that were in the lost tail and are no longer in its outbox cannot be recovered;
   with the rule of 5.4 this happens only if an older backup than the newest verified one was restored.
 - Worked example: 12.5.
@@ -730,7 +763,11 @@ still applied**, so the device knowingly differs from the server until the user 
 ### 10.1 What the device does on rejection
 
 - `pending_op.state = 'rejected'`, `last_error = "<code>: <message>"`. The row is never purged,
-  retried or rolled back automatically.
+  retried or rolled back automatically (one exception: the `unknown_reference` auto-retry after a
+  log reset, 6.2).
+- If the op is a `review.logged` refused with `clock_ahead` or `clock_behind` and
+  `sync_state.remint_offset` is absent, set it to `server_time − pt` of this response, in the same
+  transaction (10.4, 10.5).
 - Syncing continues: later ops are pushed, pulls are applied.
 - The sync status MUST show the number of rejected ops, and a list with, per op: what it was
   (`op_type`, a human label of the entity), when (`created_at`), and why (`last_error`; the code
@@ -740,12 +777,13 @@ still applied**, so the device knowingly differs from the server until the user 
   (`clock_ahead`, `clock_behind`, 10.4), a dependency on an op lost in a server restore (6.2), or
   tampering.
 
-### 10.2 The two user actions
+### 10.2 The user actions
 
 | Action | Effect |
 |---|---|
 | **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
 | **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
+| **Re-mint** | Only for clock rejections, and the **default** action when any clock-rejected row is a review: the reviews are logged again with corrected times, the other clock-rejected rows are discarded. Section 10.4. |
 
 The UI SHOULD offer "discard all". There is no automatic cascade: if a rejected `note.created`
 is discarded while a rejected `card.created` for it is kept, the kept op simply has no effect
@@ -793,24 +831,90 @@ again from step 0.
 ### 10.4 Clock rejections
 
 `clock_ahead` and `clock_behind` mean the device's clock was wrong when it minted the op. They are
-listed like every rejected op (10.1), with **Discard** as the only action.
+listed like every rejected op (10.1). Their actions:
 
-- After a `clock_ahead`, the device's `hlc_last` is itself far in the future, so every op it mints
-  from now on would be rejected too. Discarding the `clock_ahead` rows therefore also repairs the
-  clock, in the same transaction as the discard (10.2):
-  `hlc_last` = the greatest of `hlc_acked` and the `hlc` of every `pending_op` row that is kept
-  (states `pending`, `acked`, `rejected`). This is safe: every HLC of this device that is in the
-  log is ≤ `hlc_acked` or belongs to a kept row (an op whose push response was lost is still
-  `pending`), and the discarded HLCs never left the device, so no HLC can repeat and the device's
-  logged ops stay in mint order. The rebuild that follows removes the future clocks from the local
-  registers and observes the log again.
-- Discard of `clock_ahead` rows is possible only while the device's clock is correct
-  (`|server_time − pt| <= 5 min` at the last response) and no `pending` row has
-  `wall(hlc) > server_time + 24 h` (such rows are pushed, rejected and discarded with the others).
-- `clock_behind` needs no clock repair (the device's `hlc_last` is fine; only `reviewed_at` or a
-  fresh replica's first HLCs were wrong). Discard as usual.
-- What is lost: the reviews and edits made while the clock was wrong. That is the price of the
-  bound in 3.4; the warning of 3.4 is shown long before a clock is 24 h off.
+- **Reviews** (`review.logged`): **Re-mint** (the default; the list offers it as one action for all
+  clock-rejected rows, e.g. "Fix the dates of 700 reviews") or Discard.
+- **Edits** (every other op type): Discard only. An edit carries no separate time that could be
+  corrected, its HLC is what makes it win or lose, and re-minting it now would let a stale edit
+  win against newer ones; it is given up. Re-mint discards them along with the reviews it replaces.
+
+Rejected ops never got a `change` row, so no other replica has seen them: replacing them is safe.
+
+**Clock repair** (part of Discard and of Re-mint, in the same transaction, whenever a discarded
+row was rejected with `clock_ahead`). After a `clock_ahead`, the device's `hlc_last` is itself far
+in the future, so every op it mints from now on would be rejected too. Set
+`hlc_last` = the greatest of `hlc_acked` and the `hlc` of every `pending_op` row that is kept
+(states `pending`, `acked`, `rejected`). This is safe: every HLC of this device that is in the log
+is ≤ `hlc_acked` or belongs to a kept row (an op whose push response was lost is still `pending`),
+and the discarded HLCs never left the device, so no HLC can repeat and the device's logged ops stay
+in mint order. The rebuild that follows removes the future clocks from the local registers and
+observes the log again. (Until it has, `hlc_last` may be below an HLC the device observed; the
+only ops minted in that window are re-minted reviews, which write no registers, so this only
+affects where they sort in replay, see below.) `clock_behind` needs no repair: `hlc_last` is fine;
+only `reviewed_at` or a fresh replica's first HLCs were wrong.
+
+**Preconditions** for Discard of `clock_ahead` rows and for Re-mint: no `pending_op` row is in
+state `pending` (push first, so every op minted with the wrong clock has been answered); the last
+response showed `|server_time − pt| <= 5 min` (the clock is correct now); and, for Re-mint, guards
+G1 and G2 (3.4) pass after the clock repair. Otherwise the action is unavailable and the sync
+status says "fix your device clock, then sync".
+
+**Re-mint**, in **one local transaction**:
+
+1. Let `C` = every `pending_op` row in state `rejected` with code `clock_ahead` or `clock_behind`.
+   Let `R` = the `review.logged` rows of `C`, in ascending original `hlc`. Let `U` = every
+   `review.undone` row (any state) whose `review_id` is the id of a review in `R`; on the server it
+   was or will be `unknown_reference`.
+2. Delete `C` and `U` (discard). Apply the clock repair if any row of `C` is `clock_ahead`.
+3. Check G1 and G2; if either holds, roll the transaction back (nothing changes).
+4. Drop from `R` every review whose local `review_log` row has `undone_hlc` set (the user undid it;
+   it is not re-logged). Let `r_1 … r_n` be the rest, `t_i` their `reviewed_at`, `now` = `pt`
+   (correct by the preconditions), `o` = `sync_state.remint_offset` (`0` if absent), and
+   `L_i = min(c_i.created_at, now)` where `c_i` is the card row `r_i.card_id` names on the device
+   (merge losers keep their own `created_at`). `min` with `now` handles a card whose `created_at`
+   came from a device up to 24 h ahead: the review is never pushed into the future. A card created
+   by a device that was behind has an early `created_at`; that only loosens the bound. (Clock codes
+   are checked after `unknown_reference`, 5.3, so every card of `R` exists on the server.)
+5. Compute **one shift for the whole batch**:
+
+   ```
+   d_hi  = now − max_i t_i                 # largest shift that keeps every review ≤ now
+   d_lo  = max_i (L_i − t_i)               # smallest shift that keeps every review ≥ its card
+   delta = min(max(o, d_lo), d_hi)
+   reviewed_at'_i = clamp(t_i + delta, L_i, now)
+   ```
+
+   When the shifted batch fits (`d_lo <= o <= d_hi`, the normal case) `delta = o` and every
+   review moves by exactly the measured skew. If `o` is wrong (the clock was changed again between
+   the reviews and that response, e.g. fixed before syncing, so `o ≈ 0`), the batch is moved as a
+   whole just far enough to fit. Either way the **spacing between the reviews is kept**, so FSRS
+   elapsed times (9.3) are the real ones. Only when the batch is wider than the window
+   (`d_lo > d_hi`) does the per-review clamp bite: `delta = d_hi` and reviews that would fall
+   before their card are raised to `L_i`. The results satisfy the server's checks:
+   `FLOOR <= L_i <= reviewed_at' <= now` (every card the server knows has `created_at >= FLOOR`).
+6. For each `r_i` in order, mint a new `review.logged` exactly as in section 4 (new `op_id`, new
+   `hlc` from `mint()`, apply locally, insert `pending`): the payload is `r_i`'s with a **new
+   `id`** (UUIDv7), `reviewed_at = reviewed_at'_i`, and `manual_due_at + delta` if non-null; every
+   other property unchanged. Consecutive mints keep the original order.
+7. Delete `remint_offset`; set `rebuild_pending = "1"`. Then the rebuild runs (10.3): step 0
+   pushes the new ops, step 1 wipes the old rows (including the `R` rows' `review_log` entries),
+   step 2 pulls the log with the new reviews.
+
+Why a new id and not a server-side clamp: the server could store a corrected `reviewed_at`, but the
+device's own `review.logged` comes back in the pull as a no-op (first write of a review id wins,
+7.9), so the device would keep its wrong row and diverge. With new ids the old rows exist only on
+the device and are removed by the rebuild; every replica then holds the same new rows.
+
+What re-mint does not restore: the re-minted ops sort in replay (`hlc` order, 9.1) after every
+review another device logged for the same card before the re-mint, even if that review was
+answered later; replay clamps the resulting negative elapsed time to 0 (9.3). And the edits made
+with the wrong clock are lost. G1 and G2 make both rare: a device whose clock falls behind is
+stopped before the first review; only a clock that is ahead, or a client without the guards,
+produces clock rejections at all.
+
+Scenario [`clock-behind-remint`](examples/scenarios/clock-behind-remint.json) (three reviews, with
+the shift recomputed by `tools/validate.py`) and the re-mint story of 12.6 (a week, 700 reviews).
 
 ### 10.5 Device bookkeeping keys
 
@@ -823,6 +927,7 @@ Keys of `sync_state` defined by this contract, in addition to those listed in `L
 | `log_epoch` | The `log_epoch` (6.2) the device's `pull_seq` and `acked_seq` values belong to. | not yet known; the next response sets it |
 | `durable_seq` | Latest `durable_seq` (6.2) of that epoch, decimal. | `"0"` |
 | `hlc_acked` | Greatest `hlc` among this device's ops that the server acknowledged (`accepted` or `duplicate`). Only ever increases. | no op acknowledged yet |
+| `remint_offset` | `server_time − pt` (signed decimal ms) of the first response that refused one of this device's `review.logged` ops with a clock code (10.1). Deleted by Re-mint, and when Discard leaves no clock-rejected review. | no clock-rejected review |
 
 REST callers never see rejected ops: a REST request that would produce an invalid op fails with
 an HTTP error (T004) and nothing is minted.
@@ -990,6 +1095,7 @@ sequenceDiagram
 | Rejected ops, clock bounds | 5.3, 3.4, 10 | `rejected-ops` |
 | Card merged twice, undos on both losers | 8.2, 9.1, 7.9 | `merge-two-level-cards` |
 | Server restored from a backup | 6.2 | 12.5 (protocol simulation in `tools/validate.py`) |
+| A week of reviews with a reset clock, re-minted | 10.4 | `clock-behind-remint`; 12.6 (protocol simulation in `tools/validate.py`) |
 | Retried push | 5.2 | `examples/batches/push-response.retry.json` |
 
 ### 12.5 The server is restored from a backup
@@ -1035,6 +1141,37 @@ sequenceDiagram
 | End state | A's reviews exist only on A (until A is rebuilt: then nowhere) | server, A and B identical, all 5 reviews present |
 | Server clock | restored `last` (behind ops already minted) | raised past every HLC the lost log could hold |
 
+### 12.6 A week of reviews with a reset clock
+
+Checked by `tools/validate.py` (`remint_story`) with the model's `Server` and `Device`.
+
+```mermaid
+sequenceDiagram
+    participant A as Phone A
+    participant S as Server
+    participant B as Phone B
+    A->>S: push 20 notes, 20 cards
+    Note over A: RTC resets to 2000-01-01 (A runs a client without guards G1/G2)
+    Note over A: offline for 7 days: 700 reviews, reviewed_at in January 2000; one undone
+    B->>S: daily: review card 20, suspend a card
+    A->>S: push 700 reviews + 1 undo (clock still wrong)
+    S-->>A: 700 x clock_behind, undo unknown_reference
+    Note over A: remint_offset = server_time - pt (about 25 years)
+    Note over A: user fixes the clock; next response shows it correct
+    Note over A: Re-mint: discard 701 rows, mint 699 reviews (new ids, times + offset), rebuild_pending
+    A->>S: push 699 reviews
+    S-->>A: accepted
+    A->>S: pull since=0 (rebuild)
+    B->>S: pull
+```
+
+Checked: a client *with* the guards refuses the first review (G1); after the re-mint the server,
+A and B converge; no original review id exists on any replica; the 699 replayed `reviewed_at`
+values are exactly the real answer times (so the spacing, and FSRS's elapsed times, are right);
+the undone review is not re-logged. Also checked there: a review dated 25 h before its card is
+accepted, and `remint_times` (the shift of 10.4 step 5) keeps the spacing when the offset is 0 and
+clamps per review when the batch does not fit.
+
 ## 13. Scenario files (for the convergence and fuzz tests)
 
 `examples/scenarios/*.json`, schema [`scenario.schema.json`](scenario.schema.json):
@@ -1045,6 +1182,8 @@ sequenceDiagram
   must not exist; `expected.replay_sets`: card id → review ids in replay order.
 - `rejected`: pushed ops the server must refuse, with the expected code (and, optionally, the
   server's receive time for the clock checks).
+- `remint` (optional): the inputs of a re-mint (10.4) whose results are in `log`; the shift is
+  recomputed and checked.
 - `order_free`: the interleaving guarantee of section 11 is claimed (and checked by
   `tools/validate.py` with 300 random interleavings and re-deliveries each).
 
@@ -1112,8 +1251,8 @@ Needs `python3` with the `jsonschema` package (≥ 4.18), or `uv` (the script th
 example and an OPS.md section with a conflict rule, every example validates and every
 `examples/invalid` instance is rejected, that every scenario's expected state follows from the
 rules (reference model) including the idempotency and interleaving claims, that the model server
-derives every merge verdict and every checked rejection code of the scenarios, and that the
-restore story of 12.5 converges without loss.
+derives every merge verdict and every checked rejection code of the scenarios, that the
+restore story of 12.5 converges without loss, and that the re-mint story of 12.6 loses no review.
 
 ## 17. Edge cases — index
 
@@ -1128,7 +1267,10 @@ restore story of 12.5 converges without loss.
 | Same thing created twice (different ids) | Notes/cards: server merge. Deck items, spans, confusables, word status, settings: natural key, one row. Grammar points, user decks, presets, note types: two rows (no natural key). | 8, 7.4 |
 | Op arrives out of order | Clock rule / replay; never rejected for being old. | 7.1, 9.2 |
 | Clock ahead or behind by less than 24 h | Accepted; warning above 5 min; reviews use `reviewed_at`. | 3.4 |
-| Clock ahead by more than 24 h, or a review before 2020 / before its card | `clock_ahead` / `clock_behind`; Discard only; clock repaired. | 3.4, 10.4 |
+| Clock ahead by more than 24 h, or a review before 2020 | `clock_ahead` / `clock_behind`; reviews re-minted with corrected times (default), edits discarded; clock repaired. | 3.4, 10.4 |
+| Device clock reset to 1970/2000, or far behind what it has seen | Guards G1/G2: no minting, "fix your device clock", before any review. | 3.4 |
+| Review dated before its card was created | Accepted (no card-age check); the device guard keeps it within 24 h. | 3.4 |
+| Dependency lost in a restore | `unknown_reference`, auto-retried after the log reset. | 6.2 |
 | Server restored from a backup | New `log_epoch`; devices re-push un-backed-up ops and rebuild. | 6.2, 12.5 |
 | Rebuild meets an unknown op | Rebuild ends at it; reviewing resumes; *upgrade required*. | 10.3 |
 | Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews. | 10.2 |

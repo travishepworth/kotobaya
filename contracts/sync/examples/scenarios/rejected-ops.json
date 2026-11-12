@@ -7,10 +7,10 @@
     "clock: ops more than 24 h ahead of the server, or implausibly old reviews, are rejected"
   ],
   "narrative": [
-    "B pushes ten ops in one batch and four more later. Thirteen are refused, each for its own reason (see `rejected`); none of them enters the log or changes any row.",
+    "B pushes ten ops in one batch and three more later. Twelve are refused, each for its own reason (see `rejected`); none of them enters the log or changes any row.",
     "The tenth (card.flag_set, T+29) is accepted: a rejection never blocks later ops.",
-    "The four clock rejections (SYNC.md 3.4) come from a phone whose date was wrong: two ahead (clock_ahead), one reset to 1970 and one before the card existed (clock_behind). They can only be discarded (SYNC.md 10.4).",
-    "On B the thirteen pending_op rows become state 'rejected' with last_error = '<code>: <message>'; their local effects stay until the user discards them (SYNC.md section 10)."
+    "The three clock rejections (SYNC.md 3.4) come from a phone whose date was wrong: two ahead (clock_ahead), one reset to 1970 (clock_behind). The two reviews among them are re-minted with corrected times; the edit can only be discarded (SYNC.md 10.4).",
+    "On B the twelve pending_op rows become state 'rejected' with last_error = '<code>: <message>'; their local effects stay until the user discards them (SYNC.md section 10)."
   ],
   "devices": {
     "A": "01931f3e-0000-7000-8000-0000000000a1",
@@ -311,28 +311,6 @@
       },
       "code": "clock_behind",
       "why": "reviewed_at = 1970-01-01: before the 2020-01-01 floor (clock reset)"
-    },
-    {
-      "op": {
-        "op_id": "0193a1b2-00ff-7e00-8000-00000000000d",
-        "op_type": "review.logged",
-        "op_version": 1,
-        "entity_type": "review_log",
-        "entity_id": "0193a1b2-0003-7000-8000-00000000000d",
-        "device_id": "01931f3e-0000-7000-8000-0000000000b2",
-        "hlc": "0193a1b2c020-0000-01931f3e-0000-7000-8000-0000000000b2",
-        "payload": {
-          "id": "0193a1b2-0003-7000-8000-00000000000d",
-          "card_id": "0193a1b2-0002-7000-8000-000000000001",
-          "reviewed_at": 1733325466625,
-          "utc_offset_min": 540,
-          "review_type": "scheduled",
-          "rating": 3,
-          "button": "good"
-        }
-      },
-      "code": "clock_behind",
-      "why": "reviewed_at is 3 days before the card was created (tolerance 24 h)"
     }
   ],
   "expected": {

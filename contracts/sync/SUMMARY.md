@@ -25,10 +25,15 @@
 - **Reviews:** all kept. A card's schedule is recomputed from scratch whenever a review arrives
   that belongs earlier than one already counted, a review is undone, cards are merged, or the
   card's preset or its settings change.
-- **A wrong phone clock is bounded.** The server refuses an op stamped more than a day ahead of its
-  own clock, and a review dated before 2020 or before its card existed. The phone warns at 5
-  minutes off and stops recording reviews at a day off. A refused op can only be discarded, which
-  also puts the phone's clock state right.
+- **A wrong phone clock is bounded, and reviews made with one are not lost.** The server refuses
+  an op stamped more than a day ahead of its own clock (plus a minute of slack), and a review dated
+  before 2020. The phone checks its own clock before every review, offline: if it reads before
+  2020, or more than a day before a time it has already seen, it says "fix your clock" and records
+  nothing. If reviews are refused anyway (a clock that was ahead, or an old app), the default action
+  re-logs them: same answers, new ids, times shifted by the measured clock error as one block, so
+  the gaps between reviews (what the scheduler uses) stay right; times are kept between the card's
+  creation and now. Refused edits can only be discarded. Either action also puts the phone's clock
+  state right.
 - **A restored server is detected.** Every sync answer names the log (`log_epoch`, new after every
   restore) and says how far the last verified backup reaches (`durable_seq`). A phone keeps its
   own synced changes until a backup covers them; when it sees a new log it sends them again and
@@ -38,17 +43,38 @@
   data from the server's log, because that is the only rollback that is certainly correct.
 - **"Converged" is defined precisely** for the tests: all rows equal, except that a note or card
   that was merged away is compared only on its id, what it was merged into, and when.
-- **15 machine-readable scenarios** cover every conflict case in the spec and every follow-up
+- **16 machine-readable scenarios** cover every conflict case in the spec and every follow-up
   from the database review. A small reference model replays each one in 300 random orders with
   duplicate deliveries and checks the result is always the same. The model also plays the server:
   every merge decision in the scenarios is computed from the phones' ops, not written by hand, and
-  a simulated backup-restore shows the old rules losing reviews and the new ones losing none.
+  a simulated backup-restore shows the old rules losing reviews and the new ones losing none, and a
+  simulated week of 700 reviews on a phone reset to 2000 is re-logged with the right times and
+  converges.
+- **After a server restore**, a phone's changes that were refused only because another phone had
+  not yet re-sent its lost changes are retried automatically (up to 10 times).
 
 ## Alternatives rejected
 
+- **Correcting a wrong review time on the server.** The phone's own review comes back to it in the
+  next download and is ignored there (a review id is written once), so the phone would keep the
+  wrong time and disagree with everyone else. Re-logging under a new id avoids that.
+- **Clamping each review on its own to "not before its card, not after now".** With a badly wrong
+  estimate of the clock error every review would land on the same instant and the scheduler would
+  see a week of reviews as zero time apart. The whole batch moves together instead.
 - **Accepting any clock (attempt 1).** A phone set a year ahead would have hidden cards for a year
   on every device and won every edit conflict; one reset to 1970 would have produced a 56-year
-  interval. Rejected in review: the reviews made with a badly wrong clock are lost instead.
+  interval.
+- **Refuse-and-discard only (attempt 2).** A phone whose clock reset to 2000 lost a whole offline
+  week of reviews.
+- **The server refusing a review dated more than a day before its card (attempt 2), now dropped.**
+  The card's creation time comes from another phone's clock, which may itself be up to a day
+  ahead, so two phones that were each within the tolerance (one 23 h ahead, one 2 h behind) got a
+  correct review refused. Comparing with when the server received the card does not work either:
+  a phone that created the card offline legitimately reviews it before the server has it. The
+  phone's own check is exact instead: it has always seen the card's creation time before it can
+  review the card, so "not more than a day before anything you have seen" covers it, and re-logged
+  reviews are kept after their card's creation. Without the server check, a review from a broken
+  app can be dated up to the 2020 floor before its card; the scheduler only sees a longer first gap.
 - **Re-pairing a phone to fix a clock that ran ahead.** Correct, but it would strand the phone's
   other unsynced changes under the old device id. Lowering the clock to the last value the server
   acknowledged is just as safe.
@@ -71,10 +97,13 @@
 
 ## Three choices most worth a second look
 
-1. **Reviews made with a clock more than a day off are lost.** The server refuses them; the phone
-   blocks reviewing once it notices, but anything recorded before the first sync is discarded.
-   Below a day, edits from a fast clock can win conflicts for up to that day.
-2. **Discarding a rejected op re-downloads everything.** On a phone with years of history that
+1. **Re-logged reviews keep their gaps but not always their exact times.** The clock error is
+   measured at the first sync after the reviews. If the clock was changed again in between (the
+   user fixed it before syncing), the block of reviews is moved just far enough to sit after its
+   cards' creation, so gaps are right but absolute dates can be off. They are also ordered after
+   reviews other phones logged meanwhile for the same card. Edits made with the wrong clock are
+   still lost, and below a day, edits from a fast clock can win conflicts for up to that day.
+2. **Discarding a rejected op (or re-logging reviews) re-downloads everything.** On a phone with years of history that
    is a long sync, during which reviewing is blocked, and it needs a connection. It should
    essentially never happen; if it turns out to, a targeted rollback can replace it later without
    changing the protocol.
@@ -98,6 +127,10 @@
 - A newer value typed into a duplicate replaces the original's value for that field.
 - One op type (media parse status) relies on being delivered in server order. It always is.
 - A brand-new device downloads the whole history; the log is never trimmed in v1.
+- A phone a little behind can be stopped by its clock check if another phone was nearly a day
+  ahead (together more than a day); it is told to fix its clock.
+- After a restore, items created or changed on the server for up to a day show times up to a day
+  ahead (the server's clock is moved forward so it never repeats itself).
 - If a new note is refused by the server, the reviews of its cards are refused too and can only
   be discarded (a client bug is the only cause; the client checks notes before creating them).
 - After a server restore, changes made through the REST API or by server jobs since the last
@@ -117,8 +150,8 @@
 - A phone restored from a backup must be paired again.
 - The format of the downloadable snapshots (media content, generated deck contents) is not
   defined here; the ops only announce a version and a file hash.
-- Four extra bookkeeping keys on the phone (`rebuild_pending`, `log_epoch`, `durable_seq`,
-  `hlc_acked`) are defined here, in the existing key/value table. The database contract's wording
+- Five extra bookkeeping keys on the phone (`rebuild_pending`, `log_epoch`, `durable_seq`,
+  `hlc_acked`, `remint_offset`) are defined here, in the existing key/value table. The database contract's wording
   "acked rows may be purged once pulled" is narrowed here to "once pulled and backed up"; the
   database contract should say the same and list the keys (follow-up for `contracts/db`).
 - The server stores `log_epoch` and `durable_seq` where the server and deploy tickets choose; the
