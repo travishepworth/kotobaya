@@ -14,7 +14,7 @@ Updated: 2026-11-12T15:44:18Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T213b | writer-senior (opus) | 1 | t/T213b-core-js-facade | 2026-11-12T15:44:18Z |
-| T202a | architect (opus) | 1 (restart) | t/T202a-sync-core-r | 2026-11-12T15:33:37Z |
+| T202a | ci-triage (check red after rebase) | 1 | t/T202a-sync-core-r | 2026-11-12T15:45:19Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
