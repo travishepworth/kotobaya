@@ -130,3 +130,7 @@
 - T201b -> T210a: per-note card additions for optional kinds go through createCard (ADR-011).
 - T204 -> wiring (W-2): Main.kt `handlers += DecksModule(db, sync.opApply).handlers`.
 - T204: JLPT list decks report item_count 0 (no vocab source in DB yet); getDeckCoverage stays 501 until Phase 4. decks reuse internal helpers from kotobaya.notes (Errors, Reply) — consider a shared http-support package.
+- T211 -> T209: note-types/CardView.svelte is a stand-in; swap to T209's CardView (one import in Editor.svelte).
+- T211: core renderer gives no warning for unknown placeholder {{nope}} (renders empty) → core render warnings follow-up. No nav link to /note-types (layout); deck settings (order, add_kanji, card_kinds) not editable in UI.
+- T202c: ScenarioTest.mergeScenariosAreLeftToT202c (T202b file) now stale; remove in wiring ticket.
+- T202c -> wiring (W-2): Main.kt uses SyncWiring.startup(db) and SyncModule(db, SyncWiring.config(events)); replaces PLACEHOLDER_SCHEDULER_VERSION.

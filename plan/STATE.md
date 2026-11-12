@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T17:11:36Z
+Updated: 2026-11-12T17:17:07Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,10 +13,6 @@ Updated: 2026-11-12T17:11:36Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-7 | architect (opus) | 2 | t/C-7-settings-keys | 2026-11-12T17:11:36Z |
-| T211 | writer (sonnet) | 1 | t/T211-web-decks | 2026-11-12T17:08:29Z |
-| C-6 | architect (opus) | 2 | t/C-6-storable-values | 2026-11-12T17:07:11Z |
-| T202c | architect (opus) | 1 | t/T202c-sync-merge-restore | 2026-11-12T16:50:43Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - T202d core NO_NUL (after C-6 merges) · T205 queue builder (after C-7: QueueInput/mined_priority)
@@ -24,6 +20,9 @@ Updated: 2026-11-12T17:11:36Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T202c (server green, 210 tests) | reviewer (opus) + architect 2nd pass | 2026-11-12T17:17:07Z |
+| C-6 att 2 (contracts+core+server green; BREAKING) | architect verify running; reviewer verify queued | 2026-11-12T17:17:07Z |
+| C-7 att 2 (contracts+core green) | reviewer re-review queued (reviewer cap 3) | 2026-11-12T17:17:07Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -42,11 +41,12 @@ Updated: 2026-11-12T17:11:36Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 13/27 · attempts 27 · escalations 0
+P2: merged 14/27 · attempts 30 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T211 web decks + note-types screens (core parseQuery/completeQuery/renderCard; prod build bundles core verified)
 - T204 decks API (10 ops, smart decks via SearchSqlCompiler, list decks enqueue deck-build; coverage stays 501) — not wired in Main.kt
 - T201b notes + note-types API (10 ops via OpApply, CardGenerator cards, U+3000 tags → 422) — not wired in Main.kt
 - T202b server sync: push/pull, OpApply (45 op types), hlc_last, reserveHlc merge seam, pg-safe instants — 2 attempts; reviewer + architect APPROVE. NOT wired in Main.kt until T202c (gate)

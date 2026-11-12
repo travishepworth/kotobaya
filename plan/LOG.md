@@ -376,3 +376,7 @@
 2026-11-12T17:11:36Z C-7 REVIEW_CHANGES 2 major: settings int validity undefined (1.0 web=1, android=default); invalid deck add_kanji present-vs-absent ambiguous → queue divergence
 2026-11-12T17:11:36Z DECIDE settings int = mathematical integer in range (1.0 valid), else default; add_kanji only exact off/before/alongside else absent; kanji drawn only with a home new-source (ADR-006)
 2026-11-12T17:11:36Z C-7 DISPATCH attempt 2 (same agent)
+2026-11-12T17:17:07Z C-6 HANDOFF DONE attempt 2; CHECK_GREEN contracts+core+server; architect verify dispatched
+2026-11-12T17:17:07Z T202c HANDOFF DONE; CHECK_GREEN server after rebase; reviewer + architect dispatched
+2026-11-12T17:17:07Z C-7 HANDOFF DONE attempt 2 (int = binary64 integer in range; add_kanji exact strings); re-review queued
+2026-11-12T17:17:07Z T211 HANDOFF DONE; sent back once (stray web/tests/tmp file); CHECK_GREEN web; MERGE
