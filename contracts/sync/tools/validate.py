@@ -6,7 +6,8 @@
    a branch in op.schema.json and a section in OPS.md; nothing extra exists.
 3. Every example validates: examples/ops (op.schema.json), examples/batches
    (batch.schema.json and the specific shape named by the file), examples/scenarios
-   (scenario.schema.json). Every examples/invalid instance is REJECTED.
+   (scenario.schema.json). Every examples/invalid instance is REJECTED. Every
+   examples/raw-push body gets the verdict of SYNC.md 5.2 "Parsing the body" (C-2).
 4. Example ops are well formed beyond what JSON Schema can say (entity_id
    derivation, hlc/device agreement) and form one applicable story.
 5. Every scenario is self-consistent under the reference model (tools/model.py):
@@ -155,6 +156,71 @@ for p in sorted((ROOT / "examples/invalid").glob("*.json")):
     doc = load(p)
     if not problems(doc["schema"], doc["instance"]):
         fail(f"{p.relative_to(ROOT)}: expected to be rejected by {doc['schema']} ({doc['why']})")
+
+# ------------------------------------------------------------------ duplicate keys (C-2)
+# examples/raw-push/<name>.body.txt is a raw push body (may repeat keys, which a JSON file loaded with
+# json.load would silently collapse); <name>.expected.json says what SYNC.md 5.2 "Parsing the body"
+# decides: {"http_status": 400} or {"http_status": 200, "per_op": ["schema_invalid" | "checked", ...]}
+# where "checked" means the element goes on to the ordinary per-op checks of 5.3.
+class _Obj(list):
+    """An object as its member list, in document order, duplicates kept."""
+
+
+def _pairs(pairs):
+    return _Obj(pairs)
+
+
+def _has_dup(v) -> bool:
+    if isinstance(v, _Obj):
+        keys = [k for k, _ in v]
+        return len(keys) != len(set(keys)) or any(_has_dup(x) for _, x in v)
+    if isinstance(v, list):
+        return any(_has_dup(x) for x in v)
+    return False
+
+
+def _plain(v):
+    if isinstance(v, _Obj):
+        return {k: _plain(x) for k, x in v}
+    if isinstance(v, list):
+        return [_plain(x) for x in v]
+    return v
+
+
+def push_body_verdict(text: str) -> dict:
+    try:
+        body = json.loads(text, object_pairs_hook=_pairs)
+    except ValueError:
+        return {"http_status": 400}
+    if not isinstance(body, _Obj) or _has_dup(_Obj([(k, None) for k, _ in body])):
+        return {"http_status": 400}
+    if problems("batch.schema.json#/$defs/PushRequestLenient", _plain(body)):
+        return {"http_status": 400}
+    ops = dict(body)["ops"]
+    seen: dict[str, object] = {}
+    per_op = []
+    for el in ops:
+        ids = [x for k, x in el if k == "op_id"]
+        if len(ids) != 1:
+            return {"http_status": 400}
+        dup = _has_dup(el)
+        key = json.dumps(el) if dup else json.dumps(_plain(el), sort_keys=True)
+        if ids[0] in seen and seen[ids[0]] != key:
+            return {"http_status": 400}
+        seen[ids[0]] = key
+        per_op.append("schema_invalid" if dup else "checked")
+    return {"http_status": 200, "per_op": per_op}
+
+
+for p in sorted((ROOT / "examples/raw-push").glob("*.body.txt")):
+    exp_path = p.with_name(p.name.removesuffix(".body.txt") + ".expected.json")
+    if not exp_path.exists():
+        fail(f"{p.relative_to(ROOT)}: missing {exp_path.name}")
+        continue
+    got = push_body_verdict(p.read_text(encoding="utf-8"))
+    if got != load(exp_path):
+        fail(f"{p.relative_to(ROOT)}: SYNC.md 5.2 duplicate-key rules give {got}, expected {load(exp_path)}")
+
 
 # ------------------------------------------------------------------ scenarios
 def run(ops, device: bool) -> Replica:
@@ -594,5 +660,6 @@ if errors:
     sys.exit(1)
 n_inv = len(list((ROOT / "examples/invalid").glob("*.json")))
 n_sc = len(list((ROOT / "examples/scenarios").glob("*.json")))
+n_raw = len(list((ROOT / "examples/raw-push").glob("*.body.txt")))
 print(f"ok: {len(schemas)} schemas, {len(index)} op types, {len(example_ops)} op examples, "
-      f"{n_inv} invalid examples rejected, {n_sc} scenarios")
+      f"{n_inv} invalid examples rejected, {n_raw} raw push bodies (duplicate keys), {n_sc} scenarios")

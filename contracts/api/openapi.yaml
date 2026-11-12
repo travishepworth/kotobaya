@@ -944,7 +944,10 @@ paths:
       description: |
         Server emits `note_type.created`. `base_type` is immutable. `fields` must be non-empty with
         unique keys; `templates` must contain at least one card kind. `builtin` is always `false`
-        for created types.
+        for created types. A `vocab` type MUST have field keys `expression`, `reading` and
+        `meaning` (custom types such as a Takoboto one map their fields onto them); otherwise
+        `422 validation_failed`, error `invalid_value` at `/fields`. The same holds for a
+        `PATCH` that replaces a vocab type's `fields` (C-2, OPS.md `note_type.created`).
       x-emits-ops: [note_type.created]
       security:
         - bearerAuth: [write]
@@ -1081,9 +1084,13 @@ paths:
         `q` is trimmed and NFKC-normalised. Interpretation, in order:
         1. Contains kanji or kana: katakana is folded to hiragana and matched against
            `dict_entry_form.norm` - 1 or 2 characters: exact or prefix; 3 or more: substring.
-        2. Otherwise (Latin letters): the core's romaji-to-kana conversion is tried and, if the
-           whole string converts, matched as in 1; the string is also matched case-insensitively
-           as a substring of English glosses. Both result sets are merged.
+        2. Otherwise (Latin letters): the server's romaji-to-kana conversion (wanakana-equivalent:
+           Hepburn and common IME spellings, `nn`/`n'` for ん, doubled consonant for っ) is tried
+           and, if the whole string converts, matched as in 1; the string is also matched
+           case-insensitively as a substring of English glosses. Both result sets are merged.
+        No deinflection: the input is matched as given (`たべた` does not find `食べる` unless a
+        form of that entry contains `たべた`). Deinflection is the parser's job (`POST /parse`),
+        not this search's (C-2).
         Retired entries are never returned. Order: exact form match first, then prefix, then
         the rest; inside each group `freq_rank` ascending with NULLs last, then `seq`.
         An empty or whitespace-only `q` is `422`. No match is an empty page.
@@ -1470,6 +1477,10 @@ paths:
         | `entry_seq` | `entry_seq` (vocab notes only; `null` un-matches) |
 
         `tags` together with `add_tags`/`remove_tags` is `422`. An empty body is `422`.
+        If the merged set (current tags plus `add_tags`, minus `remove_tags`) would exceed 200
+        tags (the op limit, `contracts/sync/common.schema.json#/$defs/tags`), the response is
+        `422 validation_failed` with an error `{pointer: /add_tags, code: out_of_range}` and
+        nothing is emitted (C-2).
         `note_type_id`, `kanji_literal`, `grammar_point_id` and `origin` are immutable (sending
         them is `422`).
 
@@ -1633,7 +1644,9 @@ paths:
 
         Cards already in the target state still get an op (it bumps the clock) except: `delete`
         on a deleted card, and tag actions that would not change a note's tag set - those are
-        counted in `skipped`. Params not listed for the action type are `422`.
+        counted in `skipped`. An `add_tags` that would give any matched note more than 200 tags
+        is `422 validation_failed` (error `out_of_range` at `/action/tags`); nothing is applied
+        (C-2). Params not listed for the action type are `422`.
         A `to_deck_id`/`from_deck_id` that is not a live `user` deck is `409 deck_read_only`.
         With `dry_run: true` nothing is emitted and the counts say what would happen.
         Repeating a call is safe: register actions converge.
@@ -2535,6 +2548,54 @@ paths:
         `word.status_set` (payload `origin = jpdb_import`, stored as `override_origin`) for known, never-forget and
         blacklisted words. Records that cannot be mapped are counted and listed in the job
         result. An equivalent queued or running job is returned with `200`.
+
+        **Export arrays (C-2; spikes/jpdb-map/REPORT.md "Export structure").** The export is one
+        object whose array members are read as follows; any other member is ignored, a missing
+        array counts as empty, and `from_anki` is ignored.
+        | Array | Row | Becomes |
+        |---|---|---|
+        | `cards_vocabulary_jp_en`, `cards_vocabulary_en_jp` | `vid`, `spelling`, `reading`, `reviews[]` | vocab note (built-in Vocab type, `entry_seq` = the mapped JMdict seq, `origin = jpdb_import`) |
+        | `cards_kanji_char_keyword` | `character`, `reviews[]` | kanji note, card kind `keyword` (kanji → keyword) |
+        | `cards_kanji_keyword_char` | `character`, `reviews[]` | kanji note, card kind `writing` (keyword → kanji) |
+
+        **Kanji rows.** A row whose `character` is exactly one Unicode code point maps to the
+        live note with that `kanji_literal` if one exists (counted `kanji_notes_existing`, once
+        per note), else to a new note: `note.created` with `note_type_id` = the built-in Kanji
+        type (`00000000-0000-7000-8000-000000000102`, base type `kanji`), `kanji_literal` =
+        `character`, `fields` = `{"literal": character}` (no `keyword`, `readings`, `notes`: the
+        renderer fills them from `ref.kanji`, `RenderInput.kanji`), `origin = jpdb_import`. Both
+        arrays naming the same character share one note. The job then ensures a live card of the
+        row's kind (`keyword` or `writing`) - only that kind, never the note type's other default
+        kinds. Any other `character` is listed under `kanji_unmapped`. A character missing from
+        `ref.kanji` is still imported.
+
+        **Grades** (each element of `reviews[]`; `timestamp` is Unix seconds UTC → `reviewed_at`
+        = timestamp × 1000, `utc_offset_min = null`, `duration_ms = null`, `review_type =
+        scheduled`, `import_source = jpdb`):
+        | `grade` | Effect |
+        |---|---|
+        | `nothing` | `review.logged` rating 1, button `nothing` |
+        | `something` | rating 1, button `something` |
+        | `hard` | rating 2, button `hard` (FSRS Hard; ADR-008) |
+        | `okay` | rating 3, button `okay` |
+        | `easy` | rating 4, button `easy` |
+        | `pass` | rating 3, button `null` |
+        | `fail` | rating 1, button `null` |
+        | `unknown` | no review: the row's note and card are created (as for any mapped row), nothing else |
+        | `known` | no review. Vocab: `word.status_set` status `known`, `origin = jpdb_import` (if `import_word_status`). Kanji: nothing beyond the note and card |
+        | anything else | nothing; counted `reviews_unknown_grade` |
+
+        A mapped vocab row gets its note and card iff it has at least one event other than
+        `known` (`vocabulary_carded`); one whose events are all `known` gets only the word
+        status (`vocabulary_status_only`). Every mapped kanji row gets its note and card
+        (`kanji_carded`), even if its only events are `known` (kanji have no word status). With `import_reviews = false` nothing but
+        word statuses is written: rows are bucketed by the same rules (`*_carded` then means
+        "would get a note and card"), rating events count as `reviews_skipped`, status events
+        as usual.
+
+        **Counting.** Every input record - each row of the four arrays and each element of its
+        `reviews[]` - is counted in exactly one bucket of `JobResultJpdbHistory` (its description
+        gives the three sums that must hold).
       x-emits-ops: []
       security:
         - bearerAuth: [import]
@@ -3865,6 +3926,15 @@ paths:
         applied (`errors[]` points at the offending part). The schema `PushRequest` is what a
         correct client sends; the server never rejects a whole request because an op fails it.
 
+        **Duplicate keys (C-2, SYNC.md 5.2 "Parsing the body").** The server parses the body with
+        a syntax-only, duplicate-tolerant JSON parse. A key repeated in the top-level body
+        object, an element whose `op_id` member is repeated, or two elements with the same
+        `op_id` and different contents fail `PushRequestLenient` (`400 invalid_request`). A key
+        repeated anywhere inside one element of `ops` is NOT a 400: that op is `rejected` with
+        `schema_invalid`, decided before `op_too_large` (its canonical size is undefined).
+        Clients MUST send each op exactly as `CanonicalJson.encode` / `OpCodec.encode` produce
+        it, which never contains a duplicate key.
+
         **Everything else is per op** (SYNC.md 5.2, 5.3), in array order, and reported as a
         `rejected` result while the remaining ops are still processed: an op over
         `limits.max_op_bytes` (`op_too_large`, checked first; SYNC.md 5.4), unknown op type or
@@ -3874,7 +3944,7 @@ paths:
         (`clock_ahead`, `clock_behind`; SYNC.md 3.4 and 10.4), `invalid_value`,
         `invalid_target`, `immutable`. This API adds one code to SYNC.md's open set:
         `insufficient_scope` - an op of type `review.*` pushed by a token without the `review`
-        scope. Clients treat unknown codes as permanent rejections (SYNC.md 5.3).
+        scope; checked right after `device_mismatch` (SYNC.md 5.3 order). Clients treat unknown codes as permanent rejections (SYNC.md 5.3).
 
         **Request-level errors** (nothing applied, rows stay `pending`, SYNC.md 5.4):
         - `401 unauthenticated`; `403 insufficient_scope` (no `write`); `403 device_required`
@@ -7379,7 +7449,8 @@ components:
           items:
             type: string
             pattern: ^\S{1,64}$
-          description: Tags to add to the current set.
+          description: Tags to add to the current set. If the merged set would exceed 200 tags the request is
+            `422 validation_failed`, error code `out_of_range` at `/add_tags` (C-2).
         remove_tags:
           type: array
           minItems: 1
@@ -7909,6 +7980,15 @@ components:
           - $ref: '#/components/schemas/DictEntry'
           - type: 'null'
           description: The note's dictionary entry, or null (no reference, or entry missing).
+        kanji:
+          oneOf:
+          - $ref: '#/components/schemas/Kanji'
+          - type: 'null'
+          description: For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for
+            other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`,
+            `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as
+            `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`,
+            `jpdb_import`) renders from it identically on every host. Absent is treated as null.
         sentence:
           oneOf:
           - $ref: '#/components/schemas/Sentence'
@@ -10695,7 +10775,16 @@ components:
                 description: Occurrences in the deck.
     JobResultJpdbHistory:
       type: object
-      description: Result of a jpdb history import. Every input record is counted in exactly one bucket.
+      description: |-
+        Result of a jpdb history import. Every input record is counted in exactly one bucket
+        (C-2; mapping rules on `importJpdbHistory`):
+        - rows of the vocab arrays: `vocabulary_total = vocabulary_carded + vocabulary_status_only + len(unmapped)`;
+        - rows of the kanji arrays: `kanji_total = kanji_carded + len(kanji_unmapped)`;
+        - review events of all four arrays: `reviews_total = reviews_imported + reviews_already_imported
+          + reviews_skipped + reviews_unknown_grade + status_events_unknown + status_events_known`.
+        `notes_*`, `cards_created`, `kanji_notes_*`, `kanji_cards_created` and `word_statuses_set` count
+        what was written, not input records. An export without kanji arrays reports the kanji
+        counts as 0.
       required:
       - vocabulary_total
       - notes_created
@@ -10707,27 +10796,106 @@ components:
       - reviews_skipped
       - word_statuses_set
       - unmapped
+      - vocabulary_carded
+      - vocabulary_status_only
+      - kanji_total
+      - kanji_carded
+      - kanji_notes_created
+      - kanji_notes_existing
+      - kanji_cards_created
+      - kanji_unmapped
+      - reviews_unknown_grade
+      - status_events_unknown
+      - status_events_known
       properties:
         vocabulary_total:
           type: integer
           minimum: 0
-          description: Vocabulary records in the export.
+          description: Vocabulary records in the export (rows of `cards_vocabulary_jp_en` and `cards_vocabulary_en_jp`).
+        vocabulary_carded:
+          type: integer
+          minimum: 0
+          description: Mapped vocabulary rows with at least one event other than `known`; each has a note and a card
+            after the run (unless `import_reviews` is false).
+        vocabulary_status_only:
+          type: integer
+          minimum: 0
+          description: Mapped vocabulary rows whose events are all `known`; they get a word status only, no note or
+            card.
+        kanji_total:
+          type: integer
+          minimum: 0
+          description: Kanji records in the export (rows of `cards_kanji_char_keyword` and `cards_kanji_keyword_char`).
+        kanji_carded:
+          type: integer
+          minimum: 0
+          description: Kanji rows mapped to a kanji note and a card of kind `keyword` (char → keyword) or `writing`
+            (keyword → char).
+        kanji_notes_created:
+          type: integer
+          minimum: 0
+          description: Kanji notes created (one per character, shared by both arrays).
+        kanji_notes_existing:
+          type: integer
+          minimum: 0
+          description: Distinct characters that already had a live kanji note.
+        kanji_cards_created:
+          type: integer
+          minimum: 0
+          description: Kanji cards created.
+        kanji_unmapped:
+          type: array
+          description: Kanji rows whose `character` is not exactly one Unicode code point. Their events count as
+            `reviews_skipped`.
+          items:
+            type: object
+            required:
+            - character
+            - card_kind
+            - review_count
+            properties:
+              character:
+                type: string
+                description: The `character` value as given.
+              card_kind:
+                type: string
+                enum:
+                - keyword
+                - writing
+                description: '`keyword` for `cards_kanji_char_keyword`, `writing` for `cards_kanji_keyword_char`.'
+              review_count:
+                type: integer
+                minimum: 0
+                description: Events this record had.
+        reviews_unknown_grade:
+          type: integer
+          minimum: 0
+          description: Events of a mapped row whose `grade` is none of the known grades; nothing is written for them.
+        status_events_unknown:
+          type: integer
+          minimum: 0
+          description: '`unknown` events of mapped rows (card creation only, no review).'
+        status_events_known:
+          type: integer
+          minimum: 0
+          description: '`known` events of mapped rows (vocab - a word status; kanji - nothing beyond the note and card; never a review).'
         notes_created:
           type: integer
           minimum: 0
-          description: Notes created.
+          description: Vocabulary notes created (kanji notes are `kanji_notes_created`).
         notes_existing:
           type: integer
           minimum: 0
-          description: Vocabulary that already had a live note.
+          description: Mapped vocabulary that already had a live note (kanji - `kanji_notes_existing`).
         cards_created:
           type: integer
           minimum: 0
-          description: Cards created.
+          description: Vocabulary cards created (kanji cards are `kanji_cards_created`).
         reviews_total:
           type: integer
           minimum: 0
-          description: Review records in the export.
+          description: Review events in the export (every element of every row's `reviews[]`, all four arrays,
+            status events included).
         reviews_imported:
           type: integer
           minimum: 0
@@ -10739,11 +10907,12 @@ components:
         reviews_skipped:
           type: integer
           minimum: 0
-          description: Reviews of unmapped vocabulary (listed under `unmapped`).
+          description: Events of unmapped rows (`unmapped`, `kanji_unmapped`), and rating events when `import_reviews`
+            is false.
         word_statuses_set:
           type: integer
           minimum: 0
-          description: Overrides written.
+          description: Overrides written (`word.status_set` ops emitted).
         unmapped:
           type: array
           description: Vocabulary that maps to no JMdict entry.
@@ -13287,14 +13456,25 @@ components:
           import_word_status: true
         result:
           vocabulary_total: 4210
-          notes_created: 4188
+          vocabulary_carded: 4144
+          vocabulary_status_only: 65
+          notes_created: 4134
           notes_existing: 10
-          cards_created: 8376
-          reviews_total: 61250
-          reviews_imported: 61102
+          cards_created: 8268
+          kanji_total: 2939
+          kanji_carded: 2939
+          kanji_notes_created: 2185
+          kanji_notes_existing: 0
+          kanji_cards_created: 2939
+          kanji_unmapped: []
+          reviews_total: 87290
+          reviews_imported: 79192
           reviews_already_imported: 0
           reviews_skipped: 148
-          word_statuses_set: 930
+          reviews_unknown_grade: 0
+          status_events_unknown: 7000
+          status_events_known: 950
+          word_statuses_set: 900
           unmapped:
           - jpdb_vid: 9000123
             spelling: フリーレン

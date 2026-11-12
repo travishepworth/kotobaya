@@ -25,7 +25,12 @@ public data class TemplateInfo(
 public data class NoteTypeInfo(
     /** `note_type.base_type`. */
     public val baseType: NoteBaseType,
-    /** Field keys in `note_type.fields` order. */
+    /**
+     * Field keys in `note_type.fields` order. For [NoteBaseType] vocab they always include
+     * `expression`, `reading` and `meaning` (OPS.md `note_type.created`, C-2): the core relies on these
+     * keys for built-in templates and dictionary fill-in; custom vocab types (e.g. Takoboto's) map
+     * their fields onto them.
+     */
     public val fieldKeys: List<String>,
     /** `note_type.templates` in the object's key order (the order the JSON stores; insertion order). */
     public val templates: List<TemplateInfo>,

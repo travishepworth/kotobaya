@@ -47,7 +47,9 @@ public data class JsonArray(
 /**
  * A JSON object. [members] keeps insertion/document order (use `LinkedHashMap` / `mapOf`), but that
  * order carries no meaning: equality ignores it and [CanonicalJson.encode] sorts members (canonical
- * member order). A decoder rejects an object with a duplicate key.
+ * member order). A decoder rejects an object with a duplicate key, so a [JsonObject] never has
+ * one. (The server's push-body parse is different: it tolerates duplicates in order to report them
+ * per op; SYNC.md 5.2 "Parsing the body", C-2.)
  */
 public data class JsonObject(
     /** The members, in document order. */
@@ -104,6 +106,14 @@ public interface CanonicalJson {
      * nearest double (as `JSON.parse` does). Rejects: trailing content after the value, duplicate
      * object keys, unpaired surrogates (raw or `\u`-escaped), numbers that overflow a double
      * (`1e400`). Never throws.
+     *
+     * Duplicate keys (C-2): because this rejects them, the server MUST NOT use it to split a push
+     * body. It parses the body with a syntax-only, duplicate-tolerant parse of its own (SYNC.md 5.2
+     * "Parsing the body"): a duplicate at the top level of the body, or the same `op_id` twice with
+     * different contents, is HTTP 400; a duplicate anywhere inside `ops[i]` is a per-op `rejected` /
+     * `schema_invalid`, decided before `op_too_large` (such an element has no canonical size). Only
+     * elements free of duplicates are handed to [sizeOf] / `OpCodec.decodeTree`. Clients push exactly
+     * [encode] output, which never contains a duplicate key.
      */
     public fun decode(text: String): JsonDecodeResult
 

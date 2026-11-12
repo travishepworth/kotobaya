@@ -119,3 +119,14 @@
   the API, never cleaned up). This is the only new table. It is not in the job table, because jobs
   are cleaned up and the API's job kinds are a closed list.
 - No existing column, table or seed changed.
+
+## C-2 changes
+- **Device outbox text brought up to date.** SCHEMA.md 5.3 and the `Local.sq` comments now say
+  what SYNC.md already said: an acked op may be deleted only once a verified server backup covers
+  it, and a refused op leaves that state only by Retry, Discard or Re-mint. All `sync_state` keys
+  are listed. Where SCHEMA.md and SYNC.md overlap, SYNC.md wins.
+- **Backup/restore handshake.** `app.server_state` gets three more keys: `log_epoch`, `durable_seq`
+  (written by the backup job once a backup is verified, never lowered) and `restore_pending` (the
+  restore script sets it, and the server finishes the restore at startup). Only comments changed.
+- The old table↔op↔API cross-check in §7 was stale. It is replaced by a pointer to SYNC.md §14 and
+  the API summary. The `job.kind` comment now lists the API's job kinds.

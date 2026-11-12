@@ -179,6 +179,21 @@ public class JsDictionary(
     public val pitchDrops: Array<Int>,
 )
 
+/** `KanjiData` (C-2). */
+@JsExport
+public class JsKanji(
+    /** The kanji (one code point). */
+    public val literal: String,
+    /** English meanings. */
+    public val meanings: Array<String>,
+    /** On readings (katakana). */
+    public val onyomi: Array<String>,
+    /** Kun readings (hiragana, okurigana dots). */
+    public val kunyomi: Array<String>,
+    /** Stroke count or null. */
+    public val strokeCount: Int?,
+)
+
 /** `ClozeSentence`. */
 @JsExport
 public class JsCloze(
@@ -217,8 +232,10 @@ public class JsRenderInput(
     public val pitch: Boolean,
     /** Show the mnemonic. */
     public val showMnemonic: Boolean,
-    /** `RenderOptions.mediaUrlTemplate`, e.g. `/api/v1/media/{sha256}`. */
+    /** `RenderOptions.mediaUrlTemplate`, e.g. `/api/v1/blobs/{sha256}`. */
     public val mediaUrlTemplate: String,
+    /** `RenderInput.kanji` or null (C-2); the web fills it from `QueueItem.kanji`. */
+    public val kanji: JsKanji? = null,
 )
 
 /** `RenderedCard`. */

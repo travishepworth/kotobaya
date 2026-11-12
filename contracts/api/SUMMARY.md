@@ -267,3 +267,19 @@ every example marked `x-example-source` equals its file under `contracts/sync/ex
 every endpoint in SYNC.md §14 exists with a matching emitted op.
 `check.sh` fails if `contracts/sync/batch.schema.json` is missing (the permissive stand-in of
 attempt 1 is gone). Needs node and python3; network on first run.
+
+## C-2 changes
+- **jpdb history import covers kanji.** The two kanji arrays become kanji notes (built-in Kanji
+  type, only the literal filled in) with a `keyword` card (kanji → keyword) or a `writing` card
+  (keyword → kanji). Every grade has a fixed mapping: `hard` is FSRS Hard (ADR-008), `pass`/`fail`
+  become Good/Again with no button, `unknown` only creates the card, and `known` sets a word status
+  (vocab only). The job result gains kanji counts and status-event counts. Three sums prove that no
+  record was dropped.
+- `QueueItem.kanji` (optional) carries the `ref.kanji` row, so kanji notes with empty fields render
+  the same on every host.
+- Push: duplicate-key rules (400 vs per-op `schema_invalid`). `insufficient_scope` is checked
+  right after `device_mismatch`.
+- Dictionary search: the romaji conversion is the server's (wanakana-equivalent), and the search
+  does not deinflect.
+- Adding tags beyond the 200-tag limit gives `422 validation_failed` / `out_of_range`. A vocab note
+  type needs `expression`, `reading` and `meaning`.

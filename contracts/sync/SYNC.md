@@ -271,6 +271,28 @@ only if that fails. It never validates the body against `#/$defs/PushRequest`: t
 op of an unknown type or a malformed op into a 400 for the whole outbox. Everything else is decided
 **per op**, in array order, so one bad op never blocks the outbox.
 
+**Parsing the body; duplicate keys (C-2).** The server parses the body with a **syntax-only,
+duplicate-tolerant** JSON parse (any RFC 8259 text; an object may repeat a key) and records, for
+the top-level object and for each element of `ops`, whether a key is repeated in it at any depth.
+It does **not** use `CanonicalJson.decode` for this (that rejects duplicates). Then:
+- A duplicate key in the **top-level** body object (e.g. two `ops` members) fails
+  `PushRequestLenient` → whole request HTTP 400. Nothing is applied.
+- An element of `ops` whose `op_id` member is repeated, or is not a UUID string, fails
+  `PushRequestLenient` → HTTP 400.
+- Two elements of `ops` with the same `op_id` but **different contents** fail `PushRequestLenient`
+  → HTTP 400. Contents are equal when both elements are free of duplicate keys and equal as JSON
+  values (member order ignored, numbers compared as doubles), or when their source texts are
+  byte-identical. Two elements with equal contents are not an error: the second gets `duplicate`
+  (step 1) like any retry.
+- A duplicate key **anywhere inside `ops[i]`** (envelope, payload, any nested object) makes that
+  op `rejected` with `schema_invalid`, decided **before** `op_too_large` (first row of the table in 5.3): an
+  object with a repeated key has no canonical form, so its size is undefined. Step 1 (`duplicate`)
+  still runs first. The result's `op_id` is the element's (single, valid) `op_id` member.
+- Clients MUST push exactly `CanonicalJson.encode` output for each op (section 4, `OpCodec.encode`),
+  which never contains a duplicate key; a correct client therefore never sees any of these results.
+- Examples (checked by `check.sh`): [`examples/raw-push/`](examples/raw-push/) — raw bodies
+  (`*.body.txt`) with the verdict each must get (`*.expected.json`).
+
 For each op, **in one transaction that takes advisory lock `7033001` before step 1** (the lock is
 held until commit):
 
@@ -300,10 +322,12 @@ Checked in this order; the first failure decides the code.
 
 | Code | Meaning | Checked for |
 |---|---|---|
+| `schema_invalid` (duplicate key, C-2) | The op element repeats a key in some object (5.2, "Parsing the body"). Checked first, because such an element has no canonical size. | every op |
 | `op_too_large` | The op's size (5.4) exceeds `max_op_bytes`. Measured on the raw op tree **before** it is decoded or validated (see below). Also assigned **by the client** to an op that still gets HTTP 413 when pushed alone (5.4). | every op, including unsupported and schema-invalid ones |
 | `unsupported_op` | `op_type` or `op_version` unknown to this server. | every op |
 | `schema_invalid` | The op does not match `op.schema.json`; or `entity_type` / `entity_id` do not match the payload (`ops/index.json`); or `device_id` is not the device part of `hlc`. | every op |
 | `device_mismatch` | `device_id` is not the device the caller is authenticated as. | every op |
+| `insufficient_scope` | The op needs a scope the caller's credential lacks (T004: a `review.*` op pushed by a token without the `review` scope). Added by the API to the open set (C-2). | every op |
 | `server_only` | A server-emitted op type, or a server-only variant (`deck.created` with type media/list; `review.logged` with `import_source`/`replay_hlc`; `word.status_set` with origin `jpdb_import`; `device_id` = the server device). | see `ops/index.json` and OPS.md |
 | `unknown_reference` | A row the op needs does not exist on the server (the target of an update/delete, a card's note, a review's card, …). Tombstoned rows *do* exist. | per op, OPS.md |
 | `clock_ahead` | `wall(hlc)` is more than 24 h + 60 s, or a review's `reviewed_at` more than 24 h, after the server's clock. | every op; `review.logged` (3.4) |
@@ -317,7 +341,9 @@ Checked in this order; the first failure decides the code.
   `size = utf8Size(CanonicalJson(op tree))` — the number of UTF-8 bytes of that element's JSON
   value re-serialized in canonical compact form — **before** decoding it into a typed op and before
   any other check. So it applies to every op: an unknown `op_type`/`op_version` or a schema-invalid
-  op that is too large gets `op_too_large`, not `unsupported_op`/`schema_invalid`. Canonical
+  op that is too large gets `op_too_large`, not `unsupported_op`/`schema_invalid`. The one
+  exception is an element with a duplicate key (first row, C-2): it gets `schema_invalid`
+  whatever its size. Canonical
   compact form: no insignificant whitespace; strings as raw UTF-8 with only the escaping JSON
   requires (`"`, `\`, control characters below U+0020; never `\uXXXX` for other characters, never
   an escaped `/`); object members in canonical order; numbers in canonical form. The exact form
@@ -351,8 +377,8 @@ Checked in this order; the first failure decides the code.
 - An `acked` row may be deleted only once **`acked_seq <= pull_seq` and `acked_seq <= durable_seq`**
   (the latest `durable_seq` of the current `log_epoch`, 6.2). Until a verified backup covers it, the
   device's copy is the only one that survives a restore of the server.
-  (This narrows `contracts/db/SCHEMA.md` 5.3, which only says "may be purged once
-  `pull_seq >= acked_seq`".)
+  (`contracts/db/SCHEMA.md` 5.3 states the same rule since C-2; where the two overlap, this
+  document wins.)
 - Before acting on the results, compare `log_epoch` and `high_water_seq` with the stored state as
   in 6.2. If the log changed, the results are still recorded (they are valid in the new log), and
   then the log reset of 6.2 starts.
@@ -445,9 +471,10 @@ their acked ops, the ops 101–150 are gone everywhere. Two values in every `Pus
 | Property | Definition |
 |---|---|
 | `log_epoch` | UUID naming the log. Created with the database; replaced by a new UUIDv7 on **every restore** (and on any other event that can make `seq` values repeat or disappear). Never reused. |
-| `durable_seq` | Highest `seq` *s* such that every `change` row with `seq <= s` is in a **verified** backup that any future restore will start from. `0 <= durable_seq <= high_water_seq`; never decreases within an epoch. Set by the backup job after verifying a backup (T-deploy/T-server choose where it is stored). A server configured with no backups reports `durable_seq = high_water_seq` (there is nothing it could be restored from). |
+| `durable_seq` | Highest `seq` *s* such that every `change` row with `seq <= s` is in a **verified** backup that any future restore will start from. `0 <= durable_seq <= high_water_seq`; never decreases within an epoch. Set by the backup job after verifying a backup, in `app.server_state` key `durable_seq` (6.3, C-2). A server configured with no backups reports `durable_seq = high_water_seq` (there is nothing it could be restored from). |
 
-**Server, on restore** (T-server implements, T-deploy's restore script triggers):
+**Server, on restore** (T-server implements, T-deploy's restore script triggers; the exact
+handshake — `app.server_state` keys and the `restore_pending` hook — is 6.3):
 
 1. Restore the newest verified backup. Restoring an older one loses ops that devices have
    already purged (they trusted the newer `durable_seq`); the restore tool MUST warn and require
@@ -494,6 +521,67 @@ lost log and pulls the new one from 0. The procedure is restartable at any point
   with the rule of 5.4 this happens only if an older backup than the newest verified one was restored.
 - Worked example: 12.5.
 
+
+### 6.3 Backup and restore handshake (C-2)
+
+The deploy side (T112: backup CronJob, restore script) and the server (T202) meet only in the
+`app.server_state` table (`contracts/db/SCHEMA.md` 4.4). Values are text. Keys:
+
+| Key | Value | Written by | Absent means |
+|---|---|---|---|
+| `log_epoch` | The current `log_epoch` (6.2), canonical lowercase UUID. | server only: created at startup if absent; replaced by restore finalization | not yet created (fresh database); the server creates it before serving |
+| `durable_seq` | `durable_seq` (6.2), decimal integer `>= 0`. Never decreases within an epoch. | backup job (after verification); restore finalization | `0` |
+| `restore_pending` | `"1"`. The database was loaded from a backup and has not been finalized. | restore script; deleted by restore finalization | no restore pending |
+
+**Backup job (T112).** For each backup:
+
+1. Dump the database from one consistent snapshot (`pg_dump` does this).
+2. Verify the dump (T112 defines how; at least: it restores cleanly into a scratch database) and
+   store it where the restore reads from. From **the dump itself** (e.g. the verification copy, or
+   queries run in the dump's own snapshot, `pg_dump --snapshot`) read `E` = its
+   `server_state.log_epoch` and `S` = `coalesce(max(seq), 0)` of its `app.change`. Never read `S`
+   from the live database after the dump: rows committed after the snapshot are not in the dump.
+3. Only if steps 1–2 succeeded, in the **live** database, in one transaction: if the live
+   `log_epoch` equals `E`, write `durable_seq` monotonically; otherwise (a restore happened in
+   between) write nothing.
+   ```sql
+   INSERT INTO app.server_state (key, value, updated_at) VALUES ('durable_seq', :S, now())
+   ON CONFLICT (key) DO UPDATE
+     SET value = greatest(app.server_state.value::bigint, excluded.value::bigint)::text,
+         updated_at = now();
+   ```
+   A failed, partial or unverified backup writes nothing. Retention MUST keep the newest verified
+   backup (the one `durable_seq` was taken from) until a newer one has been verified.
+
+**Restore script (T112).** With the server and worker stopped (no instance may serve the database
+while it is restored):
+
+1. Restore the newest verified backup (an older one only after a warning and an explicit
+   confirmation, 6.2 step 1).
+2. In the restored database, before any server instance starts:
+   ```sql
+   INSERT INTO app.server_state (key, value, updated_at) VALUES ('restore_pending', '1', now())
+   ON CONFLICT (key) DO UPDATE SET value = '1', updated_at = now();
+   ```
+   If the script dies between steps 1 and 2, it is re-run from step 1. It does nothing else to
+   `server_state`: finalization is the server's.
+3. Start the server.
+
+**Server startup (T202).** Before serving any request and before applying any op (the instance is
+not ready until this has committed), in one transaction holding `pg_advisory_xact_lock(7033001)`,
+re-reading the rows under the lock:
+
+1. If `restore_pending` is present, **finalize the restore** (6.2 step 2–3): set `log_epoch` to a
+   new UUIDv7; set `durable_seq` to `coalesce(max(change.seq), 0)`; raise the server's HLC `last`
+   as in 6.2 step 3 (greatest of the restored `last`, every `change.hlc`, and `(now + 24 h, 0)`)
+   and persist it; delete `restore_pending`. Log it at WARN.
+2. Else if `log_epoch` is absent (a fresh database), insert a new UUIDv7.
+3. Commit. Then the `core_scheduler_version` check of 10.5 runs (its own transaction).
+
+Because of the lock and the re-read, several instances starting together finalize once. Every
+`PushResponse` / `PullResponse` reports the committed `log_epoch` and `durable_seq` rows
+(`durable_seq` absent = `0`; with backups disabled by server configuration, which T202 names,
+`high_water_seq` instead). The server never reports a `durable_seq` above `high_water_seq`.
 
 ## 7. Applying an op
 
@@ -1415,8 +1503,8 @@ How implementations use them:
 ## 14. Cross-check: table ↔ op ↔ API
 
 Every learning-data table has at least one op; every op has a schema, a conflict rule and an
-example (enforced by `check.sh`). API operations are T004's; the names below follow
-`contracts/db/SCHEMA.md` section 7. Every mutating API operation is implemented by minting the
+example (enforced by `check.sh`). API operations are T004's (`contracts/api/openapi.yaml`); this table
+is the authoritative mapping (`contracts/db/SCHEMA.md` section 7 points here since C-2). Every mutating API operation is implemented by minting the
 listed op(s) on the server and passing them through the op-apply path.
 
 | Table | Ops | API operations |
@@ -1515,6 +1603,8 @@ that the clock-ahead story of 12.7 loses no offline-created row, edit or review.
 | Undo for an unknown review | Server: `unknown_reference`. Device: no-op. | OPS.md |
 | Delete the Default preset or a built-in note type | `immutable`. | OPS.md |
 | Client newer than server | `unsupported_op`; Retry after the server upgrade. | 5.3, 10.2 |
+| Duplicate JSON key in a push body | Top level or same `op_id` with different contents: HTTP 400. Inside one op: that op `schema_invalid`, before `op_too_large`. | 5.2, 5.3 |
+| Server restored from a backup | Restore script sets `restore_pending`; server finalizes at startup (new epoch, `durable_seq`, clock). | 6.2, 6.3 |
 | Client older than server | Stops pulling at the unknown op; *upgrade required*. | 6 |
 | Lost push response | Push again; `duplicate`. | 5.2 |
 | App killed mid-pull | The page is one transaction with the cursor: all or nothing. | 6 |

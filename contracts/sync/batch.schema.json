@@ -50,7 +50,7 @@
       "required": [
         "ops"
       ],
-      "description": "What the server validates a push body against; the only whole-body check it may fail a push request on (HTTP 400). Everything stricter (op.schema.json, the envelope rules, the per-op checks of SYNC.md 5.3) is checked per op and reported as a 'rejected' result with unsupported_op, schema_invalid, ..., so one bad op never blocks the rest of the outbox.",
+      "description": "What the server validates a push body against; the only whole-body check it may fail a push request on (HTTP 400). Everything stricter (op.schema.json, the envelope rules, the per-op checks of SYNC.md 5.3) is checked per op and reported as a 'rejected' result with unsupported_op, schema_invalid, ..., so one bad op never blocks the rest of the outbox. Duplicate keys (C-2, SYNC.md 5.2 'Parsing the body'): the server parses the body with a syntax-only, duplicate-tolerant parse. The body ALSO fails this shape (HTTP 400) if the top-level object repeats a key, if an element's op_id member is repeated, or if two elements have the same op_id with different contents. A duplicate key anywhere inside ops[i] is NOT a 400: that op is rejected with schema_invalid, decided before op_too_large. JSON Schema cannot express duplicate keys; these rules are normative text.",
       "properties": {
         "ops": {
           "type": "array",

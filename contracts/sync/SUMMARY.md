@@ -217,3 +217,19 @@
   format needs a new op version. Tightening the published-weights op was fine only because
   nothing is deployed yet.
 - A review after a manual reschedule of a card that was never reviewed counts as its first review.
+
+## C-2 changes
+- **Duplicate JSON keys in a push.** The server reads the body with a parser that tolerates
+  duplicate keys. A duplicate at the top level, or one `op_id` used twice with different
+  contents, rejects the whole request (400). A duplicate inside one op rejects only that op
+  (`schema_invalid`), before the size check, because such an op has no defined size. Clients
+  always send the canonical encoder's output, which never has duplicates. Six raw example bodies
+  in `examples/raw-push/` are checked by `check.sh`.
+- **Backup and restore spelled out (new 6.3).** The backup job records how far a verified backup
+  reaches (`durable_seq`), only if the log is still the same one. The restore script only sets a
+  `restore_pending` flag. The server then does the rest at startup, under the op lock: a new log
+  epoch, a new `durable_seq`, and a raised clock. Deploy and server can each build their part from
+  this text alone.
+- `insufficient_scope` now has a place in the rejection order (right after `device_mismatch`).
+- A vocab note type must have the fields `expression`, `reading` and `meaning`
+  (`invalid_value` otherwise). Custom types such as a Takoboto one map their fields onto these.

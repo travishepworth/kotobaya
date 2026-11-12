@@ -23,6 +23,27 @@ import kotobaya.contracts.WordStatus
  * ≡ `a`–`z`); no other folding (kana/width/NFKC are distinct). A [SearchPattern] is a sequence of
  * literal [SearchPattern.segments] separated by wildcards (`*` = any run of characters, possibly
  * empty).
+ *
+ * **Evaluation (C-2).** This file defines *which* cards match, not how a host finds them. Whatever
+ * compiles a tree into a query (server: Postgres SQL; device: SQLite; T108/T2xx own the compilers)
+ * takes exactly these inputs besides the tree, and its result MUST equal the meaning given here:
+ * - the current [kotobaya.contracts.queue.StudyDay] (`start`, `end`, zone) for day-based terms;
+ * - `now`, the evaluation instant (UTC ms), for `is:buried` / `is:due` and other instant checks;
+ * - `scheduler.leech_threshold` (settings) for `is:leech` and the virtual tag `leech`;
+ * - the set of hot note ids ([kotobaya.contracts.hot.HotScorer], computed by the caller at `now`)
+ *   for `is:hot`;
+ * - merge resolution (`merged_into_id` chains, followed to the survivor) for `nid:`, `cid:`,
+ *   `entry:`, `rated:` and "only live cards".
+ *
+ * A compiler MAY split a tree into a **SQL prefilter plus a residual Kotlin predicate**, evaluated
+ * on the rows the prefilter returns, provided the prefilter never excludes a matching card (it may
+ * over-select) and the residual is applied to every returned row. This is the expected shape on
+ * the device's SQLite, which has no JSON functions guaranteed (SQLite 3.18, SCHEMA.md 5) and no
+ * `note.search_text` (SCHEMA.md 5.2): `tag:` (whole-tag match on the JSON `tags` array), `field:`
+ * (one key of the JSON `fields` object), text terms (over field values, mnemonic and source
+ * sentence), `kanji:` and `is:hot` are then residual (a `LIKE` on the JSON text MAY prefilter
+ * them, never decide them). The server can decide every term in SQL (`search_text`, `jsonb`).
+ * A `not` over a residual term makes its whole subtree residual (the prefilter for it is `TRUE`).
  */
 public sealed interface SearchNode {
     /** UTF-16 offsets `[start, end)` of this node in the query string. */

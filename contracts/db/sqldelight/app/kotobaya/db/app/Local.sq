@@ -13,7 +13,11 @@ CREATE TABLE pending_op (
   payload TEXT NOT NULL,              -- JSON object
   created_at INTEGER NOT NULL,
   -- pending: not yet accepted. acked: server accepted (or reported duplicate). rejected: server refused permanently.
-  -- rejected rows MUST be surfaced to the user and are never purged automatically (SCHEMA.md 5.3).
+  -- acked rows may be deleted only once acked_seq <= pull_seq AND acked_seq <= durable_seq
+  -- (SYNC.md 5.4); a log reset turns them back into pending (SYNC.md 6.2).
+  -- rejected rows MUST be surfaced to the user, are never purged automatically, and leave that
+  -- state only by a user action of SYNC.md 10.2: Retry (-> pending), Discard (delete + set
+  -- rebuild_pending, then rebuild 10.3) or Re-mint (clock codes, 10.4). SYNC.md wins over this comment.
   state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'acked', 'rejected')),
   attempts INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,
@@ -33,7 +37,12 @@ CREATE INDEX pending_op_state_idx ON pending_op (state, hlc);
 --                    different from the running core's => full replay of every
 --                    card cache before anything is folded, then store the core's value. Kept by the
 --                    rebuild. Meaning: contracts/sync/SYNC.md 10.5.
--- Further keys (rebuild_pending, log_epoch, durable_seq, hlc_acked, remint_offset): SYNC.md 10.5.
+-- Further keys, defined in contracts/sync/SYNC.md 10.5 (authoritative):
+--   rebuild_pending  "1" while a rebuild (SYNC.md 10.3) is in progress
+--   log_epoch        server log_epoch that pull_seq / acked_seq belong to
+--   durable_seq      latest durable_seq of that epoch (decimal; absent = "0")
+--   hlc_acked        greatest hlc of this device's acknowledged ops
+--   remint_offset    server_time - pt of the first clock rejection (signed decimal ms)
 CREATE TABLE sync_state (
   key TEXT NOT NULL PRIMARY KEY,
   value TEXT NOT NULL

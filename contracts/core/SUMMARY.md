@@ -32,3 +32,15 @@
 - In replay, a cache whose weights version doesn't match is never folded into. It is always fully replayed first.
 - A device that pulls an op that fails its schema treats it like an unknown op: it stops pulling and never skips it.
 - Search terms are lowercase only; ASCII is case-insensitive in matching, with no kana or width folding.
+
+## C-2 changes
+- **Kanji render data.** New `KanjiData` (literal, meanings, on/kun readings, stroke count) is an
+  optional last field of `RenderInput`, and `JsKanji` is the same for `JsRenderInput`. Empty kanji
+  fields are filled from it the way dictionary data fills vocab fields. Both default to null, so
+  existing callers still compile.
+- **Search evaluation.** The KDoc lists what a search compiler needs: the study day, now, the leech
+  threshold, the hot note ids and merge resolution. On the phone's SQLite it may use an SQL
+  prefilter plus a Kotlin check on the rows that come back (for tags, fields, text, `kanji:`, `is:hot`).
+- KDoc only: duplicate JSON keys (the decoder rejects them; the server's push parse is separate),
+  the media URL example is now `/api/v1/blobs/{sha256}`, and vocab note types always have
+  `expression`/`reading`/`meaning`.

@@ -78,7 +78,8 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Emitter:** client (any replica).
 - **Entity:** `note_type`; `entity_id` = `id`.
 - **Payload:** [`ops/note_type.created.schema.json`](ops/note_type.created.schema.json)
-- **Server rejects:** `invalid_value`: duplicate `key` in `fields`.
+- **Server rejects:** `invalid_value`: duplicate `key` in `fields`; or `base_type` is `vocab` and `fields` lacks any of the keys `expression`, `reading`, `meaning` (C-2, see below).
+- **Required keys (C-2).** A note type with `base_type = vocab` MUST have field keys `expression`, `reading` and `meaning` (any labels, any order, any field `kind`, more fields allowed). The core relies on them: built-in vocab templates, dictionary fill-in of empty fields (`CardRenderer`), duplicate detection and search. A custom vocab type (e.g. one created for Takoboto or AnkiConnect) maps its source fields onto these keys (e.g. Takoboto "Expression"/"Kana"/"Meaning" → `expression`/`reading`/`meaning`) and may add others. Clients MUST check this before minting.
 - **Conflict rule:** Creation rule (SYNC.md 7.2): if the id already exists the op is a no-op, whatever the existing row holds. Never conflicts otherwise.
 - **Apply:** Insert with `builtin = false`. Clocks: `name`, `fields`, one `templates.<kind>` per kind, and `css` iff non-empty.
 - **Replay:** None.
@@ -89,7 +90,7 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Emitter:** client (any replica).
 - **Entity:** `note_type`; `entity_id` = `id`.
 - **Payload:** [`ops/note_type.updated.schema.json`](ops/note_type.updated.schema.json)
-- **Server rejects:** `unknown_reference`: note type does not exist. `invalid_value`: duplicate `key` in `fields`. `immutable`: the type is built-in and the op removes a seeded field key from `fields` or sets a seeded `templates.<kind>` to null.
+- **Server rejects:** `unknown_reference`: note type does not exist. `invalid_value`: duplicate `key` in `fields`; or the type's `base_type` is `vocab` and `set.fields` lacks any of `expression`, `reading`, `meaning` (C-2, `note_type.created`). `immutable`: the type is built-in and the op removes a seeded field key from `fields` or sets a seeded `templates.<kind>` to null.
 - **Conflict rule:** Register write by the clock rule (SYNC.md 7.1): applied iff the op's hlc is greater than the register's stored clock; forwarded to the survivor if the row is a merge loser (8.3). Registers: `name`, `fields` (whole array), `css`, `templates.<kind>` (one per key of `set.templates`).
 - **Apply:** For each register in `set`: clock rule. `templates.<kind>` = null removes the key from the object and keeps the clock.
 - **Replay:** None.

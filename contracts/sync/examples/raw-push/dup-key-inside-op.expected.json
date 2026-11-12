@@ -1,0 +1,8 @@
+{
+  "http_status": 200,
+  "per_op": [
+    "schema_invalid",
+    "checked",
+    "checked"
+  ]
+}

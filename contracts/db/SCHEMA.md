@@ -315,7 +315,7 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
 | `job` | S | API enqueues, worker updates | |
-| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5). Added by C-1. |
+| `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, the restore script writes `restore_pending`, the server does the rest). Added by C-1. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
 
 **`change` invariants.**
@@ -387,13 +387,25 @@ Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_overri
 
 ### 5.3 Device-only tables (`Local.sq`)
 
+Where this section and `contracts/sync/SYNC.md` overlap, **SYNC.md wins** (C-2).
+
 - `pending_op` — outbox. The op row is written in the same SQLite transaction as its local effect.
-  Push sends `state = 'pending'` rows in ascending `hlc`. Acked rows may be purged once
-  `sync_state.pull_seq >= acked_seq`. A `rejected` row means the server permanently refused the
-  op while its local effect is still applied: it MUST be shown to the user (sync status) with
-  `last_error`, is never purged or retried automatically, and stays until the user dismisses it.
-- `sync_state` — keys listed in the file, plus those of `contracts/sync/SYNC.md` 10.5 (which is
-  authoritative for their meaning, e.g. `core_scheduler_version`, C-1).
+  Push sends `state = 'pending'` rows in ascending `hlc` (SYNC.md 5.1).
+  - `acked` rows may be purged only once **`acked_seq <= pull_seq` and `acked_seq <= durable_seq`**
+    (`sync_state` values of the current `log_epoch`; SYNC.md 5.4). Until a verified backup covers
+    an op, the device's row is the only copy that survives a server restore. A log reset (SYNC.md
+    6.2) turns every `acked` row back into `pending` (`acked_seq = NULL`, `attempts = 0`).
+  - A `rejected` row means the server permanently refused the op while its local effect is still
+    applied. It MUST be shown to the user (sync status) with `last_error` (`"<code>: <message>"`),
+    is never purged automatically, and leaves that state only through a user action of SYNC.md
+    10.2: **Retry** (`state = 'pending'`, same `op_id` and `hlc`), **Discard** (delete the rows and
+    set `sync_state.rebuild_pending = "1"` in one transaction, then the rebuild of SYNC.md 10.3),
+    or **Re-mint** (clock rejections only, the default for them; SYNC.md 10.4). The one automatic
+    transition is the bounded `unknown_reference` auto-retry after a log reset (SYNC.md 6.2).
+- `sync_state` — text key/value. Keys listed in `Local.sq` (`device_id`, `pull_seq`, `hlc_last`,
+  `last_sync_at`, `dict_release_id`) plus those of SYNC.md 10.5: `rebuild_pending`, `log_epoch`,
+  `durable_seq`, `hlc_acked`, `remint_offset`, `core_scheduler_version` (C-1). SYNC.md 10.5 is
+  authoritative for their meaning and their "absent means" value.
 - `blob_cache` — which content-hashed blobs are wanted/cached.
 
 ### 5.4 The dictionary file
@@ -418,27 +430,11 @@ The learning database must work with no dictionary file at all (all `entry_seq` 
 
 ## 7. Cross-check: table ↔ op ↔ API
 
-API operations are from the spec's abridged resource table; T004 finalises them. Every mutating
-API operation is implemented by submitting the listed op(s) through the op-apply path.
-
-| Learning-data table | Ops | API operations |
-|---|---|---|
-| `note_type` | `note_type.created/updated/deleted` | *missing from the spec's table*: `GET/POST /note-types`, `PATCH/DELETE /note-types/{id}` (T004 to add); `POST /ankiconnect` (`modelNames`) |
-| `note` | `note.created/updated/deleted/merged` | `GET/POST /notes`, `PATCH/DELETE /notes/{id}`, `POST /ankiconnect` (`addNote`). `GET /notes/{id}` for a merged id should answer with the survivor (T004). |
-| `card` | `card.created/suspended/unsuspended/buried/unburied/flag_set/preset_set/deleted/merged` | `GET /cards?query=`, `POST /cards/bulk`, `GET /review/queue` |
-| `review_log` | `review.logged`, `review.undone` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`, `POST /cards/bulk` (reschedule → `review_type = manual`), `GET /stats/*` |
-| `word_status` | `word.status_set`, `word.status_cleared` | `PUT /words/{seq}/status` (and `DELETE` to clear — T004 to add), `GET /stats/known-words` |
-| `deck` | `deck.created/updated/deleted/content_published` | `GET/POST /decks`, `PATCH /decks/{id}` (`DELETE` — T004 to add) |
-| `deck_item` | `deck.item_put`, `deck.item_removed`, `deck.content_published` | `GET /decks/{id}/items` (`PUT/DELETE /decks/{id}/items/{key}` — T004 to add), `POST /media/import` |
-| `confusable` | `confusable.suggested/confirmed/rejected` | `GET /words/{seq}/confusables` (confirm/reject — T004 to add) |
-| `grammar_point` | `grammar.created/updated/deleted` | `GET/POST /grammar` (`PATCH/DELETE /grammar/{id}` — T004 to add) |
-| `sentence_grammar_span` | `grammar.span_put/removed` | `GET /grammar/{id}/examples` (create span — T004 to add) |
-| `settings` | `settings.set` | *missing from the spec's table*: `GET/PUT /settings` (T004 to add) |
-| `fsrs_params` | `fsrs_params.created/updated/deleted/published` | *missing from the spec's table*: `GET/POST/PATCH /presets` (T004 to add); `fsrs-optimize` job |
-| `media` | `media.created/updated/deleted/content_published` | `POST /media/import`, `POST /media/import/jpdb` (`PATCH/DELETE /media/{id}` — T004 to add) |
-| `parse_override` | `parse_override.put/deleted` | *missing from the spec's table*: `PUT/DELETE /parse-overrides/{id}` (T004 to add); `POST /parse` reads them |
-
-All ops additionally flow through `POST /sync/push` and `GET /sync/pull`.
+Not maintained here (C-2: the table that stood here predated T004 and was stale). The
+authoritative mapping of every learning-data table to its ops and API operations is
+`contracts/sync/SYNC.md` section 14; the per-`operationId` view is the "Cross-check: table ↔ ops ↔
+API operations" table in `contracts/api/SUMMARY.md`. Every mutating API operation is implemented by
+submitting the listed op(s) through the op-apply path.
 
 ## 8. Verifying
 

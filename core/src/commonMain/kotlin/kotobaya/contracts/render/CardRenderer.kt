@@ -32,6 +32,25 @@ public data class DictionaryData(
     public val pitchDrops: List<Int>,
 )
 
+/**
+ * Kanji data for a kanji note (C-2), supplied by the caller from `ref.kanji` of `note.kanji_literal`
+ * (server: `ref.kanji`; phone: the dictionary file; web: `QueueItem.kanji` / `GET /kanji/{literal}`).
+ * Used for fields that are empty in the note, exactly like [DictionaryData] for vocab: notes created
+ * with only `literal` (`origin` `auto_kanji` or `jpdb_import`) render the same on every host.
+ */
+public data class KanjiData(
+    /** The kanji, exactly one Unicode code point (`ref.kanji.literal`). */
+    public val literal: String,
+    /** English meanings, KANJIDIC2 order (`ref.kanji.meanings`). */
+    public val meanings: List<String>,
+    /** On readings in katakana, KANJIDIC2 order (`ref.kanji.on_readings`). */
+    public val onyomi: List<String>,
+    /** Kun readings in hiragana with okurigana dots, e.g. `た.べる` (`ref.kanji.kun_readings`). */
+    public val kunyomi: List<String>,
+    /** Stroke count, or null if unknown (`ref.kanji.stroke_count`). Not shown by the v1 built-in templates. */
+    public val strokeCount: Int? = null,
+)
+
 /** A grammar cloze: the sentence shown and the span to blank (rotating example, SPEC "Grammar review"). */
 public data class ClozeSentence(
     /** `sentence.id` (logged as `review_log.sentence_id`). */
@@ -67,7 +86,7 @@ public data class RenderOptions(
      * How the host serves media blobs: a URL template containing `{sha256}` exactly once, replaced
      * by the 64-hex blob hash in every emitted `img src`. Browsers and WebViews cannot load the stored
      * notation `blob:<sha256>`, so each host maps it to a URL it serves, e.g. web
-     * `/api/v1/media/{sha256}`, Android WebView (WebViewAssetLoader)
+     * `/api/v1/blobs/{sha256}` (`GET /blobs/{hash}`), Android WebView (WebViewAssetLoader)
      * `https://appassets.androidplatform.net/media/{sha256}`. Only this substitution differs between
      * hosts; the rest of the HTML is identical for identical input.
      */
@@ -92,6 +111,11 @@ public data class RenderInput(
     public val side: CardSide,
     /** Options. */
     public val options: RenderOptions,
+    /**
+     * Kanji data for a note of base type `kanji` whose `kanji_literal` is in `ref.kanji`, else null
+     * (C-2). Ignored for other base types.
+     */
+    public val kanji: KanjiData? = null,
 )
 
 /** A rendered side. */
@@ -116,8 +140,11 @@ public data class RenderedCard(
  * (base text only); `{{text:key}}` (HTML stripped); `{{#key}}…{{/key}}` (only if the field is
  * non-empty after trimming), `{{^key}}…{{/key}}` (only if empty); `{{FrontSide}}` on the back. An
  * empty field of a note with [DictionaryData] is filled from it: `expression`, `reading`
- * (`furigana` alignment), `meaning` (glosses joined with `; `). Unknown placeholders render as
- * `""` with warning `unknown_placeholder`.
+ * (`furigana` alignment), `meaning` (glosses joined with `; `). Likewise an empty field of a kanji
+ * note with [RenderInput.kanji] is filled from [KanjiData] (C-2): `literal` ← `literal`; `keyword`
+ * ← `meanings` joined with `; `; `readings` ← `onyomi` followed by `kunyomi`, joined with `、`
+ * (kun readings as given, dots included). A non-empty field always wins. Unknown placeholders render
+ * as `""` with warning `unknown_placeholder`.
  *
  * **Built-in templates** (front → back): vocab meaning: expression → reading, meaning ·
  * reading: expression (no furigana) → reading · listening: audio → expression, reading, meaning ·

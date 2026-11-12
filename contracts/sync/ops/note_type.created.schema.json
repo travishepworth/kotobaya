@@ -37,7 +37,7 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 100,
-      "description": "Ordered field definitions; the whole array is ONE register ('fields'). Keys must be unique within the array (server rejects duplicates with invalid_value). Keys are never renamed.",
+      "description": "Ordered field definitions; the whole array is ONE register ('fields'). Keys must be unique within the array (server rejects duplicates with invalid_value). Keys are never renamed. For base_type vocab the keys MUST include expression, reading and meaning (server rejects otherwise with invalid_value; OPS.md, C-2).",
       "items": {
         "type": "object",
         "required": [

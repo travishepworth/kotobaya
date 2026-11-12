@@ -292,7 +292,9 @@ public interface OpCodec {
      * if [Op.seq] is non-null — `seq` and `caused_by_op_id` (JSON `null` when [Op.causedByOpId] is
      * null). No other members. Members are written in canonical (sorted) order at every depth:
      * `caused_by_op_id`, `device_id`, `entity_id`, `entity_type`, `hlc`, `op_id`, `op_type`,
-     * `op_version`, `payload`, `seq`. This exact string is what a client pushes.
+     * `op_version`, `payload`, `seq`. This exact string is what a client pushes: clients MUST push
+     * `encode` output (never a hand-built or re-serialized form), which never contains a duplicate
+     * key (C-2, SYNC.md 5.2).
      */
     public fun encode(op: Op): String
 
@@ -347,6 +349,10 @@ public interface OpCodec {
      * `PushRequest.ops` first, so an op that would decode as [OpDecodeResult.Unsupported] or
      * [OpDecodeResult.Invalid] is measured the same way. For an op that decodes as
      * [OpDecodeResult.Known] from `raw`, `rawSizeBytes(raw) == sizeBytes(op)`.
+     *
+     * Only defined for a tree free of duplicate keys (a [JsonObject] cannot hold one). A pushed
+     * element that repeats a key is rejected `schema_invalid` by the server's own duplicate-tolerant
+     * body parse **before** this is computed (C-2, SYNC.md 5.2/5.3).
      */
     public fun rawSizeBytes(raw: JsonValue): Int
 }
