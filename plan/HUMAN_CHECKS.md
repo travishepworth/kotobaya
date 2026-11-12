@@ -32,6 +32,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] **Backups:** confirm the first nightly backup landed off-cluster; run the restore drill once.
 
 ## Android
+- [ ] Install the offline dictionary on a real phone (Settings > Offline storage); confirm download resumes after toggling airplane mode mid-download, and offline search works.
 - [ ] Pair a phone: QR pairing uses Google Play services (ML Kit code scanner); on a phone without Play services use manual code entry.
 
 ## Takoboto (spike + production)

@@ -489,3 +489,6 @@
 2026-11-12T19:01:10Z T304a HANDOFF DONE after rebase; CHECK_GREEN android; MERGE
 2026-11-12T19:01:26Z T302 DISPATCH writer(sonnet)
 2026-11-12T19:01:26Z - T308 ready, queued (Gradle cap)
+2026-11-12T19:12:36Z T302 HANDOFF DONE (deps zstd-jni, work-runtime justified); CHECK_GREEN android + core; MERGE
+2026-11-12T19:12:36Z T303a HANDOFF DONE; CHECK_GREEN core; reviewer + architect dispatched
+2026-11-12T19:12:36Z T305a HANDOFF DONE (both flavors build; make apk both)

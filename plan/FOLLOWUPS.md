@@ -165,3 +165,4 @@
 - T301b: Settings screen still a placeholder — Devices section registered but not shown; wire when Settings renders settingsSections. hlc_regressed retry mints a new device id; replica/outbox reset is T303c's job.
 - T304a -> P3 follow-up: Android SmartDeckResolver seam empty (smart decks not resolved on device; wire core/T108b SQLite search compiler) and headwordOf seam empty (dictionary headword when note has no expression; needs T302). Parity test vs hand-built fixture + core builder, not literal server replay.
 - Android FeatureModules.kt: every Android ticket adds one line → rebase conflicts; resolve by keeping all entries.
+- T302 -> app wiring: app start should call DictWork.ensurePeriodic + installer.startup(); db.DictionaryProvider seam superseded by InstalledDictionary (remove). core/dict/Romaji.kt DUPLICATES server dict/Romaji.kt — server should depend on core's. Unverified on device: zstd-jni, HTTP Range resume → HUMAN_CHECKS.
