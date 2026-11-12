@@ -176,7 +176,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T105a.md (split from T105)
 
 ### T105b — Auth: devices, pairing, PATs, scope middleware
-- model: opus · risk: high · deps: T105a · status: RUNNING
+- model: opus · risk: high · deps: T105a · status: MERGED
 - see plan/tickets/T105b.md (split from T105)
 
 ### T106 — Dictionary search API

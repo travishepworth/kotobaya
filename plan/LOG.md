@@ -230,3 +230,5 @@
 2026-11-12T13:29:07Z T112 DISPATCH writer(sonnet)
 2026-11-12T13:29:43Z T105b REVIEW_CHANGES 2 major (revocation not wired into event streams in prod; pairing URI http behind TLS), 4 minor
 2026-11-12T13:29:43Z T105b DISPATCH attempt 2 (same writer; paths +Main.kt composeApp, chart api.publicUrl)
+2026-11-12T13:38:55Z T105b REVIEW_APPROVE verification (Main.kt + chart edits sanctioned by orchestrator for attempt 2)
+2026-11-12T13:38:55Z T105b MERGE

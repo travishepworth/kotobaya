@@ -1,12 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T13:29:43Z
+Updated: 2026-11-12T13:38:55Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T105b | writer-senior (gp/opus) | 2 | t/T105b-auth-devices | 2026-11-12T13:11:28Z |
 | T112 | writer (gp/sonnet) | 1 | t/T112-backups | 2026-11-12T13:29:07Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
@@ -33,6 +32,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T105b devices, pairing, PATs, scope enforcement — 2 attempts, reviewer APPROVE; revocation ends live streams (real wiring test)
 - T111 Helm real workloads — k3d e2e: health, 401, login verified; dev needs HTTPS for Secure cookie
 - W-1 wiring: auth + dict + jobs live in server (end-to-end WiringTest); worker dict-refresh job
 - T105a auth: login, TOTP, sessions, proxy-aware rate limit — 2 attempts, reviewer APPROVE
