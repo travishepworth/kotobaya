@@ -9,7 +9,7 @@ import kotlin.test.fail
  * cannot read files).
  * - `commonMain/.../sync/SyncSchemaTexts.kt`: the canonical compact JSON of every schema
  *   (`common`, `op`, `batch`, `ops/<op_type>`), used by [SyncSchemas] on every platform.
- * - `commonTest/.../sync/SyncExamples.kt`: the verbatim texts of `examples/{ops,invalid,batches,raw-push}`.
+ * - `commonTest/.../sync/SyncExamples.kt`: the verbatim texts of `examples/{ops,invalid,invalid-codec,batches,raw-push}`.
  *
  * On drift this writes the regenerated file under `core/build/sync-drift/` and fails; copy it over
  * the checked-in one and commit. Never hand-edit the generated files.
@@ -58,6 +58,7 @@ class SyncContractDriftTest {
             "internal object SyncExamples {\n" +
             group("`examples/ops/`.", "ops", "examples/ops", ".json") + "\n" +
             group("`examples/invalid/`.", "invalid", "examples/invalid", ".json") + "\n" +
+            group("`examples/invalid-codec/` (schema-valid; an op-level rule of SYNC.md 2.1 rejects them).", "invalidCodec", "examples/invalid-codec", ".json") + "\n" +
             group("`examples/batches/`.", "batches", "examples/batches", ".json") + "\n" +
             group("`examples/raw-push/<name>.body.txt`.", "rawPushBodies", "examples/raw-push", ".body.txt") + "\n" +
             group("`examples/raw-push/<name>.expected.json`.", "rawPushExpected", "examples/raw-push", ".expected.json") +

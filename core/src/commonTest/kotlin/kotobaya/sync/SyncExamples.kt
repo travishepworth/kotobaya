@@ -195,6 +195,14 @@ internal object SyncExamples {
             "{\n  \"schema\": \"op.schema.json\",\n  \"why\": \"manual_action = set_due requires manual_due_at\",\n  \"instance\": {\n    \"op_id\": \"0193a1b2-00ff-7000-8000-000000000012\",\n    \"op_type\": \"review.logged\",\n    \"op_version\": 1,\n    \"entity_type\": \"review_log\",\n    \"entity_id\": \"0193a1b2-0003-7000-8000-000000000002\",\n    \"device_id\": \"01931f3e-0000-7000-8000-0000000000a1\",\n    \"hlc\": \"0193a1b2c012-0000-01931f3e-0000-7000-8000-0000000000a1\",\n    \"payload\": {\n      \"id\": \"0193a1b2-0003-7000-8000-000000000002\",\n      \"card_id\": \"0193a1b2-0002-7000-8000-000000000001\",\n      \"reviewed_at\": 1733584666642,\n      \"utc_offset_min\": 540,\n      \"review_type\": \"manual\",\n      \"rating\": null,\n      \"manual_action\": \"set_due\",\n      \"manual_due_at\": null\n    }\n  }\n}\n",
     )
 
+    /** `examples/invalid-codec/` (schema-valid; an op-level rule of SYNC.md 2.1 rejects them). */
+    val invalidCodec: Map<String, String> = mapOf(
+        "op-nul-in-member-name.json" to
+            "{\n  \"schema\": \"op.schema.json\",\n  \"why\": \"U+0000 in an object member name inside an open JSON value (the settings value): schema-valid, but jsonb cannot store it; the op-level no-U+0000 rule (SYNC.md 2.1, checked with the depth limit) rejects it at /payload/value/a\\\\u0000b\",\n  \"rule\": \"nul\",\n  \"instance\": {\n    \"op_id\": \"0193a1b2-00ff-7000-8000-000000000026\",\n    \"op_type\": \"settings.set\",\n    \"op_version\": 1,\n    \"entity_type\": \"settings\",\n    \"entity_id\": \"scheduler.new_per_day\",\n    \"device_id\": \"01931f3e-0000-7000-8000-0000000000a1\",\n    \"hlc\": \"0193a1b2c026-0000-01931f3e-0000-7000-8000-0000000000a1\",\n    \"payload\": {\n      \"key\": \"scheduler.new_per_day\",\n      \"value\": {\n        \"a\\u0000b\": 1\n      }\n    }\n  }\n}\n",
+        "settings-set-nul-in-open-value.json" to
+            "{\n  \"schema\": \"op.schema.json\",\n  \"why\": \"U+0000 in a string inside an open JSON value: no schema pattern reaches it; the op-level no-U+0000 rule (SYNC.md 2.1) rejects it at /payload/value/1\",\n  \"rule\": \"nul\",\n  \"instance\": {\n    \"op_id\": \"0193a1b2-00ff-7000-8000-000000000026\",\n    \"op_type\": \"settings.set\",\n    \"op_version\": 1,\n    \"entity_type\": \"settings\",\n    \"entity_id\": \"scheduler.new_per_day\",\n    \"device_id\": \"01931f3e-0000-7000-8000-0000000000a1\",\n    \"hlc\": \"0193a1b2c026-0000-01931f3e-0000-7000-8000-0000000000a1\",\n    \"payload\": {\n      \"key\": \"scheduler.new_per_day\",\n      \"value\": [\n        \"ok\",\n        \"x\\u0000\"\n      ]\n    }\n  }\n}\n",
+    )
+
     /** `examples/batches/`. */
     val batches: Map<String, String> = mapOf(
         "pull-response.empty.json" to

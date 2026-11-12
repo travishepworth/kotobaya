@@ -32,6 +32,14 @@ import kotobaya.contracts.sync.OpType
  * is [OpDecodeResult.Invalid] at `""`, and [encode] / [encodeTree] / [sizeBytes] of such an op throw
  * IllegalArgumentException. So no replica mints or accepts an op that would not fit a push or pull
  * body (document limit [DefaultCanonicalJson.MAX_DOCUMENT_DEPTH] = 512).
+ *
+ * Op-level rule `NO_NUL` (SYNC.md 2.1 "Storable values", C-6): an op with U+0000 in any string or
+ * object member name anywhere in its tree is [OpDecodeResult.Invalid] at the JSON Pointer of that
+ * string or member ([nulPointer]; diagnostic only, replicas agree on the verdict). Decode checks it
+ * after the depth limit, the lenient shape and the known-type/version test (an unknown type stays
+ * [OpDecodeResult.Unsupported]: 5.3 puts `unsupported_op` first), and before the op's schema.
+ * [encode] / [encodeTree] / [sizeBytes] of such an op throw IllegalArgumentException, as for depth.
+ * [rawSizeBytes] never checks it (`op_too_large` comes first in 5.3).
  */
 public object DefaultOpCodec : OpCodec {
     private const val TWO_POW_53 = 9007199254740992.0
@@ -72,6 +80,8 @@ public object DefaultOpCodec : OpCodec {
         require(!DefaultCanonicalJson.exceedsDepth(tree, DefaultCanonicalJson.MAX_OP_DEPTH)) {
             "op nests deeper than ${DefaultCanonicalJson.MAX_OP_DEPTH}"
         }
+        val nul = nulPointer(tree)
+        require(nul == null) { "op contains U+0000 at '$nul' (SYNC.md 2.1 NO_NUL)" }
         return tree
     }
 
@@ -101,6 +111,7 @@ public object DefaultOpCodec : OpCodec {
             val v = if (version > Int.MAX_VALUE) Int.MAX_VALUE else version.toInt()
             return OpDecodeResult.Unsupported(wire, v, seq, json)
         }
+        nulPointer(json)?.let { return OpDecodeResult.Invalid("U+0000 in a string or member name (SYNC.md 2.1 NO_NUL)", it, seq) }
         if (source == OpSource.PUSHED) {
             for (name in listOf("seq", "caused_by_op_id")) {
                 if (name in m) return OpDecodeResult.Invalid("a pushed op carries no $name", "/$name", seq)
@@ -156,6 +167,51 @@ public object DefaultOpCodec : OpCodec {
     override fun sizeBytes(op: Op): Int = DefaultCanonicalJson.utf8Size(encode(op))
 
     override fun rawSizeBytes(raw: JsonValue): Int = DefaultCanonicalJson.sizeOf(raw)
+
+    /** One node of the [nulPointer] walk; the pointer is built from the parent chain only on a hit. */
+    private class NulFrame(val value: JsonValue, val parent: NulFrame?, val token: String)
+
+    /**
+     * JSON Pointer (RFC 6901) of the first string or object member name containing U+0000 in
+     * document order (pre-order; an object's member names are checked when the object is entered),
+     * or null if there is none. Iterative (an explicit stack), so it never recurses whatever the
+     * depth of [value]; identical on every platform (compares UTF-16 code units with 0, no regex).
+     */
+    internal fun nulPointer(value: JsonValue): String? {
+        val stack = ArrayList<NulFrame>()
+        stack.add(NulFrame(value, null, ""))
+        while (stack.isNotEmpty()) {
+            val f = stack.removeAt(stack.size - 1)
+            when (val v = f.value) {
+                is JsonString -> if (hasNul(v.value)) return pointerOf(f)
+                is JsonObject -> {
+                    for (name in v.members.keys) {
+                        if (hasNul(name)) return pointerOf(NulFrame(JsonNull, f, name))
+                    }
+                    val entries = v.members.entries.toList()
+                    for (i in entries.indices.reversed()) stack.add(NulFrame(entries[i].value, f, entries[i].key))
+                }
+                is JsonArray -> for (i in v.items.indices.reversed()) stack.add(NulFrame(v.items[i], f, i.toString()))
+                else -> Unit
+            }
+        }
+        return null
+    }
+
+    private fun hasNul(s: String): Boolean {
+        for (i in s.indices) if (s[i].code == 0) return true
+        return false
+    }
+
+    private fun pointerOf(frame: NulFrame): String {
+        val tokens = ArrayList<String>()
+        var f: NulFrame? = frame
+        while (f?.parent != null) {
+            tokens.add(f.token.replace("~", "~0").replace("/", "~1"))
+            f = f.parent
+        }
+        return tokens.asReversed().joinToString("") { "/$it" }
+    }
 
     /** The value of an integer-typed JSON number (integral, magnitude < 2^53), else null. */
     private fun asLong(v: JsonValue): Long? {
