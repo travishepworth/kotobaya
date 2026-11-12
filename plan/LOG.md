@@ -382,3 +382,8 @@
 2026-11-12T17:17:07Z T211 HANDOFF DONE; sent back once (stray web/tests/tmp file); CHECK_GREEN web; MERGE
 2026-11-12T17:18:57Z T202c REVIEW_APPROVE reviewer (6 minors); awaiting architect
 2026-11-12T17:18:57Z C-6 REVIEW_APPROVE architect verification; reviewer verify (combined with C-7) running
+2026-11-12T17:20:46Z C-6 REVIEW_APPROVE reviewer verification; MERGE (breaking; HUMAN_CHECKS line exists)
+2026-11-12T17:20:46Z C-7 REVIEW_APPROVE verification; CHECK_GREEN contracts+core after rebase on C-6; MERGE
+2026-11-12T17:20:46Z T202d DISPATCH architect(opus)
+2026-11-12T17:20:46Z T205 DISPATCH writer-senior(opus)
+2026-11-12T17:20:46Z T212b DISPATCH attempt 2 writer(sonnet)

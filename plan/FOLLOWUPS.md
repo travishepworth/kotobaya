@@ -140,3 +140,4 @@
 - T202c review: fuzz covers only Default preset; add preset update/publish, card.preset_set, restore/re-mint actions.
 - T202c review -> Phase 3 (device re-mint): T005 re-mint gaps (deck.item_put e:<seq>, word.status_set in window, card.preset_set) untested.
 - C-6 verify: wording "≤ about 10102" for derived due_at; ReplayEngine @throws KDoc change not in HANDOFF; T202d/web: check TS/JS readers parse 5-digit unsigned years (10099-…).
+- C-7 verify -> T212b/server loaders: convert jsonb settings numbers to binary64 before the integer test; never test BigDecimal scale (1.0000000000000001 must be valid = 1). Also guard Infinity (1e309) with the range check.
