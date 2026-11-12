@@ -1,13 +1,17 @@
 package kotobaya.android
 
-import android.app.Activity
 import android.os.Bundle
-import android.widget.TextView
-import kotobaya.core.coreVersion
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import kotobaya.android.di.FeatureRegistry
+import kotobaya.android.nav.AppNav
+import kotobaya.android.ui.KotobayaTheme
+import org.koin.android.ext.android.get
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(TextView(this).apply { text = getString(R.string.app_name) + " " + coreVersion() })
+        val registry: FeatureRegistry = get()
+        setContent { KotobayaTheme { AppNav(registry) } }
     }
 }

@@ -1,0 +1,13 @@
+-- Android-side queries over the contract tables (the tables themselves come from contracts/db).
+insertPendingOp:
+INSERT INTO pending_op (op_id, op_type, op_version, entity_type, entity_id, hlc, payload, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+pendingOpsByState:
+SELECT * FROM pending_op WHERE state = ? ORDER BY hlc;
+
+putSyncState:
+INSERT OR REPLACE INTO sync_state (key, value) VALUES (?, ?);
+
+getSyncState:
+SELECT value FROM sync_state WHERE key = ?;

@@ -1,9 +1,29 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin { jvmToolchain(17) }
+
+// The contract .sq files are compiled in place (never copied) so drift is impossible.
+// Extra queries live in android/src/main/sqldelight/ and share the contract's package.
+sqldelight {
+    databases {
+        create("AppDatabase") {
+            packageName.set("kotobaya.db.app")
+            srcDirs.setFrom(
+                rootProject.layout.projectDirectory.dir("contracts/db/sqldelight/app"),
+                layout.projectDirectory.dir("src/main/sqldelight/app"),
+            )
+        }
+        create("RefDatabase") {
+            packageName.set("kotobaya.db.ref")
+            srcDirs.setFrom(rootProject.layout.projectDirectory.dir("contracts/db/sqldelight/ref"))
+        }
+    }
+}
 
 android {
     namespace = "kotobaya.android"
@@ -15,6 +35,8 @@ android {
         versionCode = 1
         versionName = "0.0.0"
     }
+    buildFeatures { compose = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -52,5 +74,19 @@ dependencies {
     implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose)
+    implementation(libs.sqldelight.android.driver)
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.sqldelight.sqlite.driver)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

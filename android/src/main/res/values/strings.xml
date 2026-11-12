@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kotobaya</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_review">Review</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_decks">Decks</string>
+    <string name="nav_settings">Settings</string>
+    <string name="placeholder_coming_soon">%1$s is not built yet.</string>
+    <string name="home_title">Welcome to Kotobaya</string>
 </resources>
