@@ -1,17 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T12:05:39Z
+Updated: 2026-11-12T12:07:54Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| C-1 | architect (gp/opus) | 2 | t/C-1-contract-align (existing worktree) | 2026-11-12T12:07:54Z |
 | T006 | architect (gp/opus) | 2 | t/T006-core-interfaces (existing worktree) | 2026-11-12T11:59:59Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| C-1 | combined reviewer + architect pass (opus) | 2026-11-12T12:05:39Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

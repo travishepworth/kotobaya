@@ -111,3 +111,5 @@
 2026-11-12T12:05:39Z C-1 HANDOFF DONE
 2026-11-12T12:05:39Z C-1 CHECK_GREEN db + sync checks (22 invalid rejected)
 2026-11-12T12:05:39Z C-1 REVIEW combined reviewer+architect (opus) dispatched (small non-breaking change)
+2026-11-12T12:07:54Z C-1 REVIEW_CHANGES 2 major (app.job marker vs closed JobKind enum + retention), 4 minor
+2026-11-12T12:07:54Z C-1 DISPATCH attempt 2 (same opus agent): server-only state table instead of app.job
