@@ -303,3 +303,5 @@
 2026-11-12T15:47:48Z T213b HANDOFF DONE
 2026-11-12T15:47:48Z T213b CHECK_GREEN web after rebase
 2026-11-12T15:47:48Z T213b MERGE
+2026-11-12T15:49:42Z T202a REVIEW_CHANGES 1 major: schema patterns via kotlin Regex differ jvm vs js (\S vs U+3000, $ before trailing 
+) → web pull stuck; 3 minors. Awaiting architect pass
