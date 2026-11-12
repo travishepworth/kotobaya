@@ -325,3 +325,5 @@
 2026-11-12T16:08:28Z T202a REVIEW dispatched verification re-review (attempt 4)
 2026-11-12T16:09:23Z T202a REVIEW_APPROVE verification attempt 4 (all prior fixed, drift test byte-identical)
 2026-11-12T16:09:23Z T202a MERGE 4 attempts
+2026-11-12T16:09:43Z T202b DISPATCH architect(opus)
+2026-11-12T16:09:43Z T203 DISPATCH architect(opus)
