@@ -52,3 +52,7 @@
 2026-11-12T10:02:47Z T003 CHECK_GREEN contracts/db/check.sh
 2026-11-12T10:02:47Z T003 REVIEW verification pass dispatched (both)
 2026-11-12T10:04:05Z T003 REVIEW_APPROVE reviewer verification: all fixed/tradeoff, no new majors; 6 followups
+2026-11-12T10:05:04Z T003 REVIEW_APPROVE architect verification: all 6 fixed, no new majors
+2026-11-12T10:05:04Z T003 MERGE
+2026-11-12T10:05:04Z T004 DISPATCH architect(gp, fable)
+2026-11-12T10:05:04Z T005 DISPATCH architect(gp, fable); carries 8 T003 followups

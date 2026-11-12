@@ -14,3 +14,4 @@
 - T003 → worker parse ticket: detected grammar span PK excludes rule_index; dedupe and keep lowest rule_index.
 - T003 (doc): a duplicate's filled fields are copied to the survivor even if the duplicate was deleted before push. Mention in SUMMARY.md.
 - T003 → core/android apply: append-only for review_log/change is enforced by Postgres triggers only; device apply code needs a test.
+- T003 architect followups (two-level merge convergence, loser deleted_at, rejected-op rollback, etc.) moved into plan/tickets/T005.md § Must also resolve.

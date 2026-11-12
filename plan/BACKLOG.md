@@ -50,21 +50,21 @@ Originally, before any ticket ran, the human would:
 - do: `make images` builds api, worker, web for the cluster arch in DECISIONS (buildx); `make push` pushes to the registry; `make apk` builds a release APK. One optional workflow file that runs `make images push` on tag — no per-PR CI.
 - accept: `make images push` publishes 3 images.
 ### T003 — Contract: database schema
-- model: fable · risk: high · deps: T001 · status: IN_REVIEW
+- model: fable · risk: high · deps: T001 · status: MERGED
 - paths: `contracts/db/`
 - spec: Data model, Sync and offline, Scheduling
 - do: Postgres DDL as Flyway `V1__init.sql` covering every table in the spec, with constraints, indexes (incl. pg_trgm for search), and comments. Separate reference-data schema (`ref.*`) from learning data (`app.*`). Matching SQLDelight `.sq` files for the on-device subset. A `SCHEMA.md` explaining each table, which side(s) hold it, and which sync op mutates it.
 - accept: DDL applies cleanly to Postgres 17; SQLDelight files compile; every learning-data table maps to at least one op in T005 (cross-check listed in SCHEMA.md).
 
 ### T004 — Contract: OpenAPI 3.1
-- model: fable · risk: high · deps: T003 · status: TODO
+- model: fable · risk: high · deps: T003 · status: RUNNING
 - paths: `contracts/api/`
 - spec: Public API and scripting, Sync and offline
 - do: Full `openapi.yaml` for `/api/v1`: every endpoint in the spec's Resources table plus auth, devices, tokens, settings, events (SSE documented), errors (RFC 9457 problem+json), pagination (cursor), scopes per operation. Examples for each request/response.
 - accept: Every spec endpoint present; every operation declares a scope.
 
 ### T005 — Contract: sync operations and conflict rules
-- model: fable · risk: high · deps: T003 · status: TODO
+- model: fable · risk: high · deps: T003 · status: RUNNING
 - paths: `contracts/sync/`
 - spec: Sync and offline, Data model
 - do: JSON Schema per op type (`review.logged`, `note.created`, `note.updated`, `note.deleted`, `card.suspended`, `card.buried`, `card.rescheduled`, `word.status_set`, `deck.*`, `deck_item.*`, `settings.updated`, `confusable.*`, `grammar_point.*`, `parse_override.*`, `media.*` metadata). HLC format and comparison. Conflict rule per op. Replay semantics (what triggers FSRS re-replay). Idempotency rules. Push/pull batch formats. `SYNC.md` with sequence diagrams and worked examples for: two devices reviewing the same card offline; edit vs delete; same word added on two devices.

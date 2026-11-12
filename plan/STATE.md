@@ -1,16 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T10:02:47Z
+Updated: 2026-11-12T10:05:04Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T004 | architect (gp/fable) | 1 | t/T004-openapi | 2026-11-12T10:05:04Z |
+| T005 | architect (gp/fable) | 1 | t/T005-sync | 2026-11-12T10:05:04Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T003 (att. 2) | reviewer + architect verification pass | 2026-11-12T10:02:47Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -26,9 +27,10 @@ Updated: 2026-11-12T10:02:47Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Merged 9/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 6 · escalations 0
+Merged 10/14 (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T003 DB schema contract — 2 attempts; reviewer + architect APPROVE; 13 followups (T005 carries 8)
 - T009b make check MODULE=deploy → helm check.sh (verified fails on broken chart)
 - T001b+T002 SeaweedFS compose (dev-up all healthy), images/push/apk targets; apk fixed on attempt 2
 - T008b jpdb fixture aligned to real export shape (invented values)
