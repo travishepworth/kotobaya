@@ -191,13 +191,26 @@ def remint_select(rows: list) -> tuple[list, list, list, list, list, set, dict]:
             E.append(r)
     note_hlc = lambda r: owner[window_seq(r["op"])]["hlc"] if window_seq(r["op"]) in owner else ""  # noqa: E731
     E.sort(key=lambda r: (max(r["op"]["hlc"], note_hlc(r)), r["op"]["hlc"] < note_hlc(r), r["op"]["hlc"]))  # after its note
+    # 6a payloads. An e:<seq> item_put into a deck not in W is re-keyed n:<owner> iff the owner note is
+    # live at re-mint time (no note.deleted of it in E: a window note is known to nobody else, so only
+    # this device can have deleted it). An item_removed e:<seq> is re-keyed only if E holds a re-keyed
+    # item_put of the same (deck, e:<seq>); otherwise it keeps e:<seq> and removes the shared row.
+    deleted = {r["op"]["payload"]["id"] for r in E if r["op"]["op_type"] == "note.deleted"}
+    rekeyed: set = set()
     payloads = {}
     for r in E:
-        p = copy.deepcopy(r["op"]["payload"])
-        if r["op"]["op_type"].startswith("deck.item_") and p["item_key"].startswith("e:") \
-                and window_seq(r["op"]) in owner and p["deck_id"] not in W:
-            p["item_key"] = "n:" + owner[window_seq(r["op"])]["payload"]["id"]
-        payloads[r["op"]["op_id"]] = p
+        o = r["op"]
+        p = copy.deepcopy(o["payload"])
+        seq = window_seq(o)
+        if o["op_type"].startswith("deck.item_") and p["item_key"].startswith("e:") and seq in owner \
+                and p["deck_id"] not in W:
+            note = owner[seq]["payload"]["id"]
+            if o["op_type"] == "deck.item_put" and note not in deleted:
+                rekeyed.add((p["deck_id"], seq))
+                p["item_key"] = "n:" + note
+            elif o["op_type"] == "deck.item_removed" and (p["deck_id"], seq) in rekeyed:
+                p["item_key"] = "n:" + note
+        payloads[o["op_id"]] = p
     return C, E, R, U, D, W, payloads
 
 

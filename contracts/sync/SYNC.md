@@ -1296,12 +1296,33 @@ row id — `deck.item_put` / `deck.item_removed` with key `e:<seq>`, `word.statu
 (a note created in the window; the first such note in `hlc` order if several). It writes a shared
 row, but it is part of making that word, so it is **re-minted** (step 1c) rather than lost. A
 week of offline mining into an existing deck, or words marked known as they were added, must
-survive a clock rejection. A window-derived **deck item** is re-minted with key `n:<that note's
-id>` (step 6a) instead of `e:<seq>`: a window row, and by the effective identity of 8.5 (`n:` of a
-note whose `entry_seq` is the seq means `e:<seq>`) the same item, also after the note is merged
-into another device's note of the same word. A window-derived **word status** keeps its payload;
-it is re-minted with `mint_at`, so its estimated real time decides it against other replicas'
-statuses of the entry, like a forwarded edit after a merge.
+survive a clock rejection. How each is re-minted (step 6a, C-8 attempt 3):
+
+- **`deck.item_put e:<seq>`** into a deck not in `W`: re-keyed `n:<owner note id>` iff the owner
+  note is **live** at re-mint time (no `note.deleted` of it in `E`; nobody else knows the note, so
+  only this device can have deleted it). `n:<owner>` is a window row and, by the effective
+  identity of 8.5 (`n:` of a note whose `entry_seq` is the seq means `e:<seq>`), the same item,
+  also after the note is merged into another device's note of the word. If the owner is
+  tombstoned the put keeps `e:<seq>` (re-keyed it would point at a hidden note) and is re-minted
+  as a shared-row edit at its estimated time.
+- **`deck.item_removed e:<seq>`**: re-keyed `n:<owner>` **only if `E` holds a re-keyed
+  `item_put` of the same `(deck, e:<seq>)`** (the item was added in the window: the removal must
+  hit the row the put creates). Otherwise it keeps `e:<seq>` and is re-minted as a shared-row
+  edit at its estimated time: the item existed before the window (e.g. a pending entry
+  `e:<seq>` the user materialised and then removed), and re-keyed the removal would leave the
+  live `e:<seq>` row and the word would reappear.
+- **`word.status_*`**: same payload, re-minted with `mint_at`, so its estimated real time decides
+  it against other replicas' statuses of the entry, like a forwarded edit after a merge.
+
+So Re-mint does write some shared registers (word statuses, `e:<seq>` items kept un-re-keyed),
+always at the estimated real time. With `clock_ahead` the clock repair puts `hlc_last` back, and
+the estimate is right unless the clock changed again before syncing. With **`clock_behind`**
+there is no clock repair: `hlc_last` is already above everything the device pulled, so
+`mint_at(t')` lands just above it, and the re-minted op beats every status (or item) of that entry
+the device had pulled, including another device's status set later in real time than the window.
+Accepted: it needs a clock far behind, a status or item of a window word, and a competing edit of
+the same entry by another device in between. The effect is a single word status or deck item, and
+the user can correct it.
 
 Consequences, each with a scenario in
 [`examples/remint-scenarios/`](examples/remint-scenarios/) (13):
@@ -1311,7 +1332,10 @@ Consequences, each with a scenario in
 | `card.preset_set` of a card in `W` (to any preset) | yes (the card) | re-minted | `remint-preset-set-existing-card` |
 | `card.preset_set` of a card the server had, to a preset in `W` | no: register `preset_id` of a shared card | `unknown_reference`; **discarded** (list `D`) | `remint-preset-set-existing-card` |
 | `deck.item_put` / `_removed` `n:<note in W>` into any deck, or any key into a deck in `W` | yes | re-minted | `remint-deck-items` |
-| `deck.item_put` / `_removed` `e:<seq>` into a deck the server had, `seq` = entry of a note in `W` | window-derived | `clock_ahead` itself; **re-minted with key `n:<note>`**, after the note | `remint-deck-items` |
+| `deck.item_put` `e:<seq>` into a deck the server had, `seq` = entry of a live note in `W` | window-derived | `clock_ahead` itself; **re-minted with key `n:<note>`**, after the note | `remint-deck-items` |
+| the same, but the note was deleted in the window | window-derived | re-minted, **keeps `e:<seq>`** | `remint-deck-items` |
+| `deck.item_removed` `e:<seq>`, `seq` = entry of a note in `W`, `E` re-keys a put of the same `(deck, e:<seq>)` | window-derived | re-minted with key `n:<note>` | `remint-deck-items` |
+| `deck.item_removed` `e:<seq>`, `seq` = entry of a note in `W`, no such put (the item predates the window) | window-derived | re-minted, **keeps `e:<seq>`** (removes the shared row) | `remint-deck-items` |
 | `deck.item_put` / `_removed` `e:<seq>` into a deck the server had, no window note for `seq` | no: `(deck, e:<seq>)` is written by every replica that adds the word | `clock_ahead` itself; **discarded** | `remint-deck-items` |
 | `word.status_set` / `_cleared` of the entry of a note in `W` | window-derived | clock code itself; **re-minted**, same payload | `remint-word-status` |
 | `word.status_set` / `_cleared` of any other entry, `settings.set` | no: keyed by `entry_seq` / key, shared | clock code itself; **discarded** | `remint-word-status` |
@@ -1341,7 +1365,9 @@ Re-mint mints below observed HLCs on purpose (`mint_at`, step 6a). This is harml
 only ops minted in that window are the re-minted ones (minting is otherwise blocked while
 `rebuild_pending` is set, 10.3): creations and edits of rows only this device has (no register
 they write is shared with another replica, except through a merge, where the estimated time is
-intended), and reviews (no registers; ordered by `reviewed_at`, 9.1). Every one of them is above
+intended), the window-derived word statuses and `e:<seq>` deck items (shared registers, decided
+by the estimated time on purpose; the `clock_behind` caveat is above), and reviews (no
+registers; ordered by `reviewed_at`, 9.1). Every one of them is above
 every HLC of this device in the log, so HLCs stay unique and in mint order. `clock_behind` needs no
 repair: `hlc_last` is fine; only `reviewed_at` or a fresh replica's first HLCs were wrong.
 
@@ -1419,9 +1445,10 @@ status says "fix your device clock, then sync".
    checks: `FLOOR <= t' <= now`.
 6. Mint, exactly as in section 4 (new `op_id`, apply locally, insert `pending`):
    - **6a.** For each op of `E`, in the order of step 1: the **same** `op_type` and payload (same row
-     ids, same values) — except a window-derived `deck.item_put` / `deck.item_removed` into a deck
-     not in `W`, whose `item_key` `e:<seq>` becomes `n:<owner note id>` (and `entity_id` with it);
-     every other property unchanged — new `hlc` = `mint_at(t')` (3.2). `t` stays `wall` of the op's
+     ids, same values) — except the window-derived deck items into a deck not in `W` that the
+     rules above re-key (a put whose owner is live; a removal whose `(deck, e:<seq>)` put `E`
+     re-keys, deciding in `E` order): their `item_key` `e:<seq>` becomes `n:<owner note id>`
+     (and `entity_id` with it); every other property unchanged — new `hlc` = `mint_at(t')` (3.2). `t` stays `wall` of the op's
      own original `hlc`. Its rows' `created_at` / `updated_at`
      (from `wall(hlc)`, 7.5) become the estimated real times. (`mint_at` never returns a value at
      or below `hlc_last`; when `t'` is not above it, the HLC lands just above `hlc_last` instead.)
@@ -1801,8 +1828,9 @@ ordered by `hlc` (attempt 3), A's reviews all replay after B's.
 `examples/scenarios/` so that the server's existing scenario tests, which count that directory and
 judge `rejected` against the whole log, stay valid; a server test that runs them must honour
 `after_seq`. Device implementers (Re-mint, T107/android) MUST run them: feed the `rejected` rows
-with their codes to the step-1 selection and compare `E` (with the step-6a payloads: window-derived items re-keyed `n:<note>`), `R` and the discarded ops; apply `log`
-and compare `expected` as for any scenario.
+with their codes to the step-1 selection and compare `E` (with the step-6a payloads:
+window-derived items re-keyed `n:<note>` where 10.4 says so), `R` and the discarded ops; apply
+`log` and compare `expected` as for any scenario.
 
 How implementations use them:
 

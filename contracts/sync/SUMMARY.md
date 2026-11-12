@@ -306,6 +306,11 @@
   - New, after review: deck items `e:<seq>` and word statuses whose seq belongs to a word created in
     the window are *window-derived* and re-minted. The deck items are re-keyed `n:<note>`, which
     8.5 already treats as the same item. So a week of offline mining into "Mining" survives.
+  - Attempt 3: a removal is re-keyed only when the window also re-keys a put of the same item;
+    otherwise it removes the shared `e:<seq>` row. A put whose note was deleted in the window keeps
+    `e:<seq>`. Word statuses and un-re-keyed items are shared registers decided by the estimated
+    time. With `clock_behind`, a re-minted status can beat a later status from another device.
+    That is accepted.
   - Before the user confirms Re-mint, the device must show the list of ops it will discard.
   - Three scenarios in `examples/remint-scenarios/`; `validate.py` recomputes the selection, the
     re-keyed payloads and the shift.

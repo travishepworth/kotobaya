@@ -271,8 +271,9 @@ public data class ReviewQueue(
  *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
  *    Per-deck limit (remaining, clamped to `>= 0`): `deck.newPerDay` − today's `introducedNew`
  *    reviews whose card's home new-source is that deck (from [TodayReview.deckIds] and the decks
- *    now) − the cards taken in this build **from** that deck (not counting add_kanji cards drawn by
- *    another source; see below).
+ *    now) − the cards taken in this build whose home new-source is that deck, **including add_kanji
+ *    cards whose home new-source is that deck, whichever source drew them; excluding K cards this
+ *    deck drew whose home is elsewhere** (C-8 attempt 3: the same count before and after a rebuild).
  *    **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the deckless source
  *    [QueueInput.decklessAddKanji]; C-8 attempt 2):
  *    - **Group.** With BEFORE or ALONGSIDE, drawing a vocab card V means drawing the **group** of V

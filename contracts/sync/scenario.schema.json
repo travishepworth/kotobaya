@@ -152,7 +152,7 @@
           "items": {
             "$ref": "common.schema.json#/$defs/uuid"
           },
-          "description": "op_ids (in `log`) of the re-minted E ops (step 6a): same order, length and op_type as `creations_from`, and the step-6a payload (the original one; a window-derived e:<seq> deck item re-keyed n:<owner note id>); wall(hlc) = mint_at of the item's shifted time t' (step 5, one batch with the reviews of `from`). Required with `creations_from`."
+          "description": "op_ids (in `log`) of the re-minted E ops (step 6a): same order, length and op_type as `creations_from`, and the step-6a payload (the original one; a window-derived e:<seq> deck item re-keyed n:<owner note id> where SYNC.md 10.4 step 6a says so); wall(hlc) = mint_at of the item's shifted time t' (step 5, one batch with the reviews of `from`). Required with `creations_from`."
         },
         "discarded": {
           "type": "array",
