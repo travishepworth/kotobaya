@@ -308,3 +308,7 @@
 2026-11-12T15:51:14Z T202a REVIEW_CHANGES architect: same major + depth-limit stuck-outbox (treated must-fix) + lenient seq rule; 2 contract minors → C-5
 2026-11-12T15:51:14Z T202a DISPATCH attempt 3 (same architect agent)
 2026-11-12T15:51:14Z C-5 DISPATCH architect(opus): ECMA pattern semantics in SYNC.md/validate.py, invalid examples, depth 512 (additive)
+2026-11-12T15:56:50Z T202a HANDOFF DONE attempt 3 (PortableRegex, TooDeep per-op, encode depth limit)
+2026-11-12T15:56:50Z T202a CHECK_GREEN core after rebase
+2026-11-12T15:56:50Z T202a REVIEW dispatched verification re-review (reviewer opus)
+2026-11-12T15:56:50Z - NOTE merge order: C-5 first, then T202a re-embeds new invalid examples (drift test)

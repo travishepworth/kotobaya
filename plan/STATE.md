@@ -13,7 +13,7 @@ Updated: 2026-11-12T15:51:14Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T202a | architect (opus) | 3 | t/T202a-sync-core-r | 2026-11-12T15:51:14Z |
+| T202a | re-review (opus), att 3 check green | 3 | t/T202a-sync-core-r | 2026-11-12T15:56:50Z |
 | C-5 | architect (opus) | 1 | t/C-5-sync-portable-patterns | 2026-11-12T15:51:14Z |
 
 ## Ready for review / In review
