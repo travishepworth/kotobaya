@@ -50,7 +50,7 @@ Originally, before any ticket ran, the human would:
 - do: `make images` builds api, worker, web for the cluster arch in DECISIONS (buildx); `make push` pushes to the registry; `make apk` builds a release APK. One optional workflow file that runs `make images push` on tag — no per-PR CI.
 - accept: `make images push` publishes 3 images.
 ### T003 — Contract: database schema
-- model: fable · risk: high · deps: T001 · status: IN_REVIEW
+- model: fable · risk: high · deps: T001 · status: RUNNING
 - paths: `contracts/db/`
 - spec: Data model, Sync and offline, Scheduling
 - do: Postgres DDL as Flyway `V1__init.sql` covering every table in the spec, with constraints, indexes (incl. pg_trgm for search), and comments. Separate reference-data schema (`ref.*`) from learning data (`app.*`). Matching SQLDelight `.sq` files for the on-device subset. A `SCHEMA.md` explaining each table, which side(s) hold it, and which sync op mutates it.

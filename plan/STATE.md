@@ -1,16 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T09:55:03Z
+Updated: 2026-11-12T09:57:21Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T003 | architect (gp/fable) | 2 | t/T003-db-schema | 2026-11-12T09:57:21Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T003 | reviewer (gp/opus) + architect 2nd pass (gp/fable) | 2026-11-12T09:55:03Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

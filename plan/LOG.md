@@ -44,3 +44,5 @@
 2026-11-12T09:55:03Z T003 CHECK_GREEN contracts/db/check.sh (pg17 apply, sqlite parity, sqldelight)
 2026-11-12T09:55:03Z T003 REVIEW dispatched reviewer(opus) + architect(fable)
 2026-11-12T09:56:34Z T003 REVIEW_CHANGES reviewer: 4 major (entry_seq LWW vs live uq; merge register rule; list deck uq; grammar span cascade), 4 minor
+2026-11-12T09:57:21Z T003 REVIEW_CHANGES architect 2nd pass: 5 major (merge rules, entry_seq, spans cascade+uq, deck uq), 1 minor
+2026-11-12T09:57:21Z T003 DISPATCH attempt 2 (same architect) with merged findings (5 major, 5 minor)
