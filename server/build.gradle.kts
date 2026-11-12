@@ -32,6 +32,10 @@ dependencies {
     implementation("io.minio:minio:8.5.14")
     implementation(libs.logback.classic)
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")
+    // --- T105a (auth): Argon2id password hashing. Already on the runtime classpath via minio; declared so
+    // auth does not depend on minio's transitive graph. Same version, no new artifact.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    // --- end T105a
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
