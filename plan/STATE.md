@@ -1,12 +1,13 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T14:33:53Z
+Updated: 2026-11-12T14:34:55Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
 - P1 done (18/18, make test green, GATE-P1 deferred). P2 tickets in plan/tickets/ (splits: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4; T214). Per-ticket status: BACKLOG.md "Phase 2 splits" line.
 - Next after running ones: T213a (after T201a), T202b (after T202a), T207a (after C-4), T203 (after T202a). High-risk (T202*, T203, T205, T207*) → reviewer (opus) + architect 2nd pass for sync/replay.
+- Web tickets: tell writers SvelteKit 3 = relative imports (no $lib), client via web/src/lib/api/generated.ts (see FOLLOWUPS T208).
 - Conventions: named agent types now registered; architect-role tickets run with model=opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy. Review loop only on real majors with failure scenarios.
 
 ## Running
@@ -15,7 +16,6 @@ Updated: 2026-11-12T14:33:53Z
 | T207a | writer-senior (opus) | 1 | t/T207a-jpdb-worker | 2026-11-12T14:34:05Z |
 | T213a | writer-senior (opus) | 1 | t/T213a-card-renderer | 2026-11-12T14:29:08Z |
 | T202a | architect (opus) | 1 | t/T202a-sync-core | 2026-11-12T14:26:49Z |
-| T208 | writer (sonnet) | 1 | t/T208-web-shell | 2026-11-12T14:26:49Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -37,11 +37,12 @@ Updated: 2026-11-12T14:33:53Z
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P2: merged 2/22 · attempts 6 · escalations 0
+P2: merged 3/22 · attempts 6 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T208 web shell: login/session/nav/tokens/toasts/SSE; k3d dev HTTPS on :8443 (login verified)
 - C-4 jpdb import contract aligned with ADR-009 (additive counters, bucket arithmetic for T207a)
 - T201a note types + CardGenerator + template substitution (drift test vs V1 seeds)
 - T111b deploy fixes: BACKUPS_DISABLED env, backup image, restore follow-ups (stamped pre-restore DB, DRILL-gated kill hook)

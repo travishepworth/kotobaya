@@ -271,3 +271,6 @@
 2026-11-12T14:33:53Z C-4 CHECK_GREEN contracts after rebase
 2026-11-12T14:33:53Z C-4 MERGE additive: 3 new JobResultJpdbHistory counters, ADR-009 import rules
 2026-11-12T14:34:05Z T207a DISPATCH writer-senior(opus)
+2026-11-12T14:34:55Z T208 HANDOFF DONE (k3d https login/logout verified)
+2026-11-12T14:34:55Z T208 CHECK_GREEN web+deploy after rebase
+2026-11-12T14:34:55Z T208 MERGE (web/Dockerfile 1-line out-of-path edit accepted: copies clients/typescript)
