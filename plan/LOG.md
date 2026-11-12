@@ -353,3 +353,8 @@
 2026-11-12T16:59:32Z T201b MERGE
 2026-11-12T16:59:32Z DECIDE ADR-011 provisional: no card backfill on optional-kind toggle
 2026-11-12T16:59:32Z T204 DISPATCH writer(sonnet)
+2026-11-12T17:02:56Z C-6 HANDOFF DONE (breaking; NO_NUL moved to codec check → core follow-up)
+2026-11-12T17:02:56Z C-6 CHECK_GREEN contracts + core after rebase
+2026-11-12T17:02:56Z C-6 REVIEW dispatched reviewer + architect (breaking §10)
+2026-11-12T17:02:56Z - T202d added: core NO_NUL codec check + invalid-codec embedding (dep C-6; core sync paths, not T202c)
+2026-11-12T17:02:56Z T212b DISPATCH writer(sonnet)
