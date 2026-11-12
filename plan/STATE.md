@@ -21,6 +21,7 @@ Updated: 2026-11-12T10:05:04Z
 - Project agent types not registered; dispatch = general-purpose + model override + inlined role (human OK'd).
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
+- Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. T004/T005 stay on Fable (in flight); if rate-limited again, restart on Opus from their worktree files.
 - Review rounds (human, 2026-11-12): loop while findings are REAL — blocker/major with a concrete failure scenario (inputs → wrong result/data loss/divergence). Minors and style never block (→ FOLLOWUPS). Re-reviews verify prior findings + only genuinely new majors. Safety cap: §9 (5 attempts → BLOCKED_HUMAN).
 
 ## Pending human questions

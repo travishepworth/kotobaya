@@ -58,3 +58,4 @@
 2026-11-12T10:05:04Z T005 DISPATCH architect(gp, fable); carries 8 T003 followups
 2026-11-12T10:37:17Z T004 RESUME after 5h rate limit (agent interrupted, work saved)
 2026-11-12T10:37:17Z T005 RESUME after 5h rate limit (agent interrupted, work saved)
+2026-11-12T10:40:09Z - DECIDE ADR-004 (human): fable-tier tickets run on Opus; escalation tops at Opus
