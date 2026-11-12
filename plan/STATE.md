@@ -1,16 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P0 (Bootstrap, contracts, spikes)   Gate: none open (GATE-0 satisfied)
-Updated: 2026-11-12T11:38:35Z
+Updated: 2026-11-12T11:54:43Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T006 | architect (gp/opus) | 1 | t/T006-core-interfaces | 2026-11-12T11:33:34Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T006 | reviewer (opus) + architect 2nd pass (opus) | 2026-11-12T11:54:43Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

@@ -34,3 +34,6 @@
 - T004: `Kotobaya-Seq` is only meaningful within one log_epoch; include the epoch in the header or document "ignore after log reset".
 - T004 → T303: pull page bound by max_push_bytes is only a SHOULD; clients must accept pages up to max_push_bytes + max_op_bytes.
 - Makefile `check MODULE=contracts`: wire contracts/db/check.sh + contracts/sync/check.sh + contracts/api/check.sh (plus contracts/core once T006 lands).
+- T006 → T213: assets/card/card.css must define CardClasses.ALL.
+- T006/T005 drift: SCHEMA.md §4.2 replay order (hlc,id) vs SYNC.md §9.1 (reviewed_at,hlc,id); add sync_state key `core_scheduler_version` to SYNC.md §10.5. Fix in a C-ticket at the freeze.
+- Harness: the Write tool refuses SUMMARY.md for subagents. Future contract tickets: name it DESIGN-NOTES.md, or the orchestrator commits it.

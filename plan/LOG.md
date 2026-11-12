@@ -98,3 +98,6 @@
 2026-11-12T11:38:07Z T004 REVIEW architect verification dispatched
 2026-11-12T11:38:35Z T004 REVIEW_APPROVE architect verification: 6/6 fixed, no new majors; 3 followups
 2026-11-12T11:38:35Z T004 MERGE
+2026-11-12T11:54:43Z T006 HANDOFF BLOCKED only on Write-tool refusal of SUMMARY.md; orchestrator committed the architect's text verbatim
+2026-11-12T11:54:43Z T006 CHECK_GREEN core, web, contracts/core/check.sh
+2026-11-12T11:54:43Z T006 REVIEW reviewer + architect dispatched
