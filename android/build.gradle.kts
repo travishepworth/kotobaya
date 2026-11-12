@@ -51,6 +51,24 @@ android {
             applicationId = "kotobaya.android"
         }
     }
+    // T312: release signing comes only from env (CLAUDE.md rule 7); see android/signing/README.md.
+    // Without ANDROID_KEYSTORE_PATH the release build stays unsigned, so local builds need no secrets.
+    val releaseKeystore: String? = System.getenv("ANDROID_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
+        }
+    }
     buildFeatures { compose = true }
     testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
