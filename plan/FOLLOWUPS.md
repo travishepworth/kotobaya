@@ -124,3 +124,5 @@
 - T202b review: ADR-007 deviation — sync uses to_jsonb/jsonb_populate_record, no jOOQ codegen. Record in DECISIONS when next touching ADR-007.
 - T202b review: AppendOnlyGuard misses CTE `with … delete` (DB trigger still blocks); match anywhere.
 - T202b review: `!!` in main code (PushService.kt:99, OpApplier) → requireNotNull/checkNotNull.
+- T202b verify: SyncJson.kt:67 iso() uses default-locale String.format → use Locale.ROOT (non-Latin digits under e.g. ar-EG).
+- T202b verify: OpApplier.kt:523 media deck.created silently skipped if a user deck already has the media id (deliberate UUID reuse only).
