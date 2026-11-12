@@ -13,6 +13,7 @@ kotoba-kit.zip
 
 # Build outputs
 build/
+!deploy/build/
 .gradle/
 .kotlin/
 local.properties
