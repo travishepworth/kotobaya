@@ -33,6 +33,15 @@ class Scenario(val name: String) {
 
     fun bySeq(seq: Long): Op = log.single { it.seq == seq }
 
+    /** `remint.offset_ms`, if the scenario has a re-mint. */
+    val remintOffsetMs: Long? = ((doc.members["remint"] as? JsonObject)?.members?.get("offset_ms") as? JsonNumber)?.value?.toLong()
+
+    /** `received_at` of the first clock-rejected op (the response that set `remint_offset`), if any. */
+    val clockRejectionReceivedAt: Long? = (doc.members["rejected"] as? JsonArray)?.items.orEmpty()
+        .map { (it as JsonObject).members }
+        .firstOrNull { (it["code"] as? JsonString)?.value in setOf("clock_ahead", "clock_behind") }
+        ?.let { (it["received_at"] as? JsonNumber)?.value?.toLong() }
+
     val maxWall: Long get() = log.maxOf { DefaultHlcRules.wall(it.hlc) }
 }
 

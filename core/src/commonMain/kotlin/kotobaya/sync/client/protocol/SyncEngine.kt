@@ -50,7 +50,33 @@ public class SyncEngine<L>(
         val purged = purge()
         if (pull is CycleResult.UpgradeRequired) return pull
         store.transaction { it.bookkeeping.lastSyncAt = clock.nowMs() }
-        return CycleResult.Completed(push.pushedOps, (pull as CycleResult.Completed).pulledOps, purged)
+        val done = pull as CycleResult.Completed
+        return CycleResult.Completed(push.pushedOps, done.pulledOps, purged, done.pullAdvanced)
+    }
+
+    /**
+     * The log reset of SYNC.md 6.2 for a [CycleResult.LogChanged], in one transaction: every `acked`
+     * row becomes `pending` (`acked_seq = NULL`, `attempts = 0`); `rejected` rows with code
+     * `unknown_reference` get `attempts = 0` (the auto-retry count, 6.2; the retry itself is T303b's);
+     * store the new `log_epoch` and `durable_seq`; set `rebuild_pending = "1"`; set `pull_seq = "0"`
+     * (decided for C-10: with the old `pull_seq` the rebuild's step-0 push would see
+     * `high_water_seq < pull_seq` and report the change again forever; nothing is pulled or purged
+     * while `rebuild_pending` is set, and rebuild step 1 sets it to 0 anyway); record
+     * [kotobaya.sync.client.store.SyncStateKeys.LOG_RESET_EPOCH]. Restartable: running it twice for
+     * the same change gives the same state. The rebuild (10.3) is T303b's.
+     */
+    public fun resetLog(changed: CycleResult.LogChanged): Unit = store.transaction { tx ->
+        val bk = tx.bookkeeping
+        for (row in tx.outbox.inState(PendingState.ACKED)) tx.outbox.markPending(row.opId, 0)
+        for (row in tx.outbox.inState(PendingState.REJECTED)) {
+            if (row.lastError?.startsWith("$UNKNOWN_REFERENCE:") == true) tx.outbox.setAttempts(row.opId, 0)
+        }
+        bk.logEpoch = changed.newEpoch
+        bk.durableSeq = changed.durableSeq
+        bk.pullSeq = 0
+        bk.rebuildPending = true
+        bk.logResetEpoch = changed.newEpoch
+        bk.upgradeRequired = null
     }
 
     /**
@@ -83,6 +109,7 @@ public class SyncEngine<L>(
                     if (recorded.missing > 0) {
                         return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PUSH, "${recorded.missing} pushed ops got no result", 200)
                     }
+                    cap = SyncLimits.MAX_PUSH_OPS // a 413 halving lasts until a batch gets through
                 }
                 is TransportResponse.HttpError -> when {
                     r.status == HTTP_TOO_LARGE && batch.size > 1 -> cap = (batch.size + 1) / 2
@@ -117,6 +144,7 @@ public class SyncEngine<L>(
      */
     public suspend fun pullAll(): CycleResult {
         var pulled = 0
+        val initial = store.transaction { it.bookkeeping.pullSeq }
         while (true) {
             val since = store.transaction { it.bookkeeping.pullSeq }
             val page = when (val r = transport.pull(since)) {
@@ -142,7 +170,7 @@ public class SyncEngine<L>(
                 is PageOutcome.Stop -> return outcome.result
                 is PageOutcome.Applied -> {
                     pulled += outcome.count
-                    if (!page.hasMore) return CycleResult.Completed(0, pulled, 0)
+                    if (!page.hasMore) return CycleResult.Completed(0, pulled, 0, outcome.cursor > initial)
                     if (outcome.cursor <= since) {
                         return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, "has_more without progress at since=$since", 200)
                     }
@@ -216,7 +244,7 @@ public class SyncEngine<L>(
             }
         }
         if (noResult.isNotEmpty()) tx.outbox.incrementAttempts(noResult)
-        bk.serverSkewMs = resp.log.serverTime - pt
+        bk.recordServerSkew(resp.log.serverTime - pt)
         if (changed == null) storeLogInfo(bk, resp.log)
         return Recorded(changed, missing)
     }
@@ -266,9 +294,14 @@ public class SyncEngine<L>(
         if (stop == null && page.nextSince > cursor) cursor = page.nextSince
         if (cursor > start) bk.pullSeq = cursor
         if (last != bk.hlcLast) bk.hlcLast = last
-        bk.serverSkewMs = page.log.serverTime - clock.nowMs()
+        bk.recordServerSkew(page.log.serverTime - clock.nowMs())
         storeLogInfo(bk, page.log)
-        return if (stop != null) PageOutcome.Stop(stop) else PageOutcome.Applied(count, cursor)
+        if (stop != null) {
+            bk.upgradeRequired = UpgradeRequiredState.of(stop).encode()
+            return PageOutcome.Stop(stop)
+        }
+        if (!page.hasMore) bk.upgradeRequired = null // the pull got past every op it had stopped at
+        return PageOutcome.Applied(count, cursor)
     }
 
     /** SYNC.md 6.2 "Device, on every response": null = same log (or none stored yet). */
@@ -294,5 +327,6 @@ public class SyncEngine<L>(
         const val STATUS_REJECTED = "rejected"
         const val CLOCK_AHEAD = "clock_ahead"
         const val CLOCK_BEHIND = "clock_behind"
+        const val UNKNOWN_REFERENCE = "unknown_reference"
     }
 }

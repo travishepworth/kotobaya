@@ -87,6 +87,10 @@ public class InMemoryDeviceStore<L>(
                 update(opId) { it.copy(state = PendingState.PENDING, ackedSeq = null, attempts = attempts) }
             }
 
+            override fun setAttempts(opId: Uuid, attempts: Int) {
+                update(opId) { it.copy(attempts = attempts) }
+            }
+
             override fun incrementAttempts(opIds: Collection<Uuid>) {
                 for (id in opIds) update(id) { it.copy(attempts = it.attempts + 1) }
             }

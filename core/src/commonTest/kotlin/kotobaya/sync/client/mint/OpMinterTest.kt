@@ -24,6 +24,7 @@ import kotobaya.sync.client.store.PendingOpRow
 import kotobaya.sync.client.store.PendingState
 import kotobaya.sync.client.store.StoreTransaction
 import kotobaya.sync.client.store.SyncStateKeys
+import kotobaya.sync.client.store.bookkeeping
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -204,9 +205,11 @@ class OpMinterTest {
         assertEquals(MintRefusal.ClockGuard(ClockGuardResult.G2_BEHIND_LAST), assertIs<MintResult.Refused>(minter.mint(OpType.SETTINGS_SET, p)).reason)
         clock.now = T0
 
-        store.transaction { it.syncState.put(SyncStateKeys.SERVER_SKEW_MS, (86_400_001L).toString()) }
+        store.transaction { it.bookkeeping.recordServerSkew(86_400_001L) }
         assertIs<MintRefusal.ClockFarFromServer>(assertIs<MintResult.Refused>(minter.mint(OpType.SETTINGS_SET, p)).reason)
-        store.transaction { it.syncState.put(SyncStateKeys.SERVER_SKEW_MS, "-120000") }
+        store.transaction { it.bookkeeping.recordServerSkew(-3_600_000L) } // under 24 h is not enough
+        assertIs<MintRefusal.ClockFarFromServer>(assertIs<MintResult.Refused>(minter.mint(OpType.SETTINGS_SET, p)).reason)
+        store.transaction { it.bookkeeping.recordServerSkew(-120_000L) }
         assertIs<MintResult.Minted>(minter.mint(OpType.SETTINGS_SET, p))
 
         store.transaction { it.syncState.remove(SyncStateKeys.DEVICE_ID) }

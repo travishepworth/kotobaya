@@ -5,6 +5,13 @@ import kotobaya.contracts.InstantMs
 import kotobaya.contracts.Uuid
 import kotobaya.contracts.sync.ClockGuardResult
 import kotobaya.contracts.sync.HlcRules
+import kotobaya.contracts.sync.JsonBool
+import kotobaya.contracts.sync.JsonNull
+import kotobaya.contracts.sync.JsonNumber
+import kotobaya.contracts.sync.JsonObject
+import kotobaya.contracts.sync.JsonString
+import kotobaya.contracts.sync.JsonValue
+import kotobaya.sync.DefaultCanonicalJson
 import kotobaya.sync.DefaultHlcRules
 import kotobaya.sync.client.store.PendingState
 import kotobaya.sync.client.store.StoreTransaction
@@ -80,11 +87,20 @@ public data class SyncSnapshot(
     public val hlcLast: HlcString?,
     /** Last `server_time − pt`. */
     public val serverSkewMs: Long?,
+    /** `client.clock_blocked` (SYNC.md 3.4 hysteresis: set above 24 h, cleared only under 5 min). */
+    public val clockBlocked: Boolean = false,
+    /** The persisted *upgrade required* stop, if the last pull stopped at an op (survives restarts). */
+    public val upgradeRequired: UpgradeRequiredState? = null,
+    /** Cards whose cache is the refused cache (SYNC.md 9.4), as reported by the learning layer. */
+    public val refusedCacheCards: Int = 0,
 ) {
     /** Reader. */
     public companion object {
-        /** Reads the snapshot inside [tx]. */
-        public fun read(tx: StoreTransaction<*>): SyncSnapshot {
+        /**
+         * Reads the snapshot inside [tx]. [refusedCacheCards] counts refused caches in the learning
+         * tables (T303b's diagnostics); the default reports none.
+         */
+        public fun <L> read(tx: StoreTransaction<L>, refusedCacheCards: (L) -> Int = { 0 }): SyncSnapshot {
             val bk = tx.bookkeeping
             return SyncSnapshot(
                 pending = tx.outbox.count(PendingState.PENDING),
@@ -94,6 +110,50 @@ public data class SyncSnapshot(
                 rebuildPending = bk.rebuildPending,
                 hlcLast = bk.hlcLast,
                 serverSkewMs = bk.serverSkewMs,
+                clockBlocked = bk.clockBlocked,
+                upgradeRequired = bk.upgradeRequired?.let { UpgradeRequiredState.decode(it) },
+                refusedCacheCards = refusedCacheCards(tx.learning),
+            )
+        }
+    }
+}
+
+/** The *upgrade required* stop as persisted in `client.upgrade_required` (SYNC.md 6.1). */
+public data class UpgradeRequiredState(
+    /** `seq` of the op, if readable. */
+    public val seq: Long?,
+    /** `op_id` of the op, if readable. */
+    public val opId: Uuid?,
+    /** `true` = unknown type/version; `false` = the server sent an invalid op. */
+    public val unsupported: Boolean,
+    /** The first validation error (diagnostic). */
+    public val error: String,
+) {
+    /** Canonical JSON text for the key. */
+    public fun encode(): String {
+        val m = LinkedHashMap<String, JsonValue>()
+        m["seq"] = seq?.let { JsonNumber(it.toDouble()) } ?: JsonNull
+        m["op_id"] = opId?.let { JsonString(it) } ?: JsonNull
+        m["unsupported"] = JsonBool(unsupported)
+        m["error"] = JsonString(error)
+        return DefaultCanonicalJson.encode(JsonObject(m))
+    }
+
+    /** Conversions. */
+    public companion object {
+        /** From a pull stop. */
+        public fun of(r: CycleResult.UpgradeRequired): UpgradeRequiredState =
+            UpgradeRequiredState(r.seq, r.opId, r.unsupported, r.error)
+
+        /** Parses [encode] output; null for anything else (an unreadable key is ignored). */
+        public fun decode(text: String): UpgradeRequiredState? {
+            val m = (DefaultCanonicalJson.decode(text).value as? JsonObject)?.members ?: return null
+            val error = (m["error"] as? JsonString)?.value ?: return null
+            return UpgradeRequiredState(
+                seq = (m["seq"] as? JsonNumber)?.value?.toLong(),
+                opId = (m["op_id"] as? JsonString)?.value,
+                unsupported = (m["unsupported"] as? JsonBool)?.value ?: false,
+                error = error,
             )
         }
     }
@@ -117,6 +177,8 @@ public data class SyncStatus(
     public val clockWarning: Boolean,
     /** Reviewing and editing are blocked (clock wrong or rebuilding). */
     public val mintingBlocked: Boolean,
+    /** Cards with the refused cache (SYNC.md 9.4 SHOULD surface them), from [SyncSnapshot.refusedCacheCards]. */
+    public val refusedCacheCards: Int = 0,
 ) {
     /** The derivation. */
     public companion object {
@@ -139,7 +201,8 @@ public data class SyncStatus(
         ): SyncStatus {
             val skew = snapshot.serverSkewMs
             val guard = hlcRules.guard(nowMs, snapshot.hlcLast)
-            val clockBlocked = guard != ClockGuardResult.OK || (skew != null && abs(skew) > CLOCK_BLOCK_MS)
+            val clockBlocked = guard != ClockGuardResult.OK || snapshot.clockBlocked || (skew != null && abs(skew) > CLOCK_BLOCK_MS)
+            val persisted = snapshot.upgradeRequired?.let { SyncPhase.UpgradeRequired(it.seq, it.opId, it.unsupported, it.error) }
             val fromLast: SyncPhase? = when (last) {
                 is CycleResult.UpgradeRequired -> SyncPhase.UpgradeRequired(last.seq, last.opId, last.unsupported, last.error)
                 is CycleResult.Failed -> when (last.kind) {
@@ -155,12 +218,13 @@ public data class SyncStatus(
                 clockBlocked -> SyncPhase.ClockWrong(guard.takeIf { it != ClockGuardResult.OK }, skew)
                 snapshot.rebuildPending -> SyncPhase.Rebuilding
                 fromLast != null -> fromLast
+                persisted != null -> persisted
                 else -> SyncPhase.Idle
             }
             val lastError = when (last) {
                 is CycleResult.Failed -> last.message
                 is CycleResult.UpgradeRequired -> last.error
-                else -> null
+                else -> snapshot.upgradeRequired?.error
             }
             return SyncStatus(
                 phase = phase,
@@ -171,6 +235,7 @@ public data class SyncStatus(
                 lastError = lastError,
                 clockWarning = skew != null && abs(skew) > CLOCK_WARN_MS,
                 mintingBlocked = clockBlocked || snapshot.rebuildPending,
+                refusedCacheCards = snapshot.refusedCacheCards,
             )
         }
     }

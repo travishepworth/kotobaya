@@ -1,6 +1,7 @@
 package kotobaya.sync.client.mint
 
 import kotobaya.contracts.HlcString
+import kotobaya.contracts.InstantMs
 import kotobaya.contracts.sync.ClockGuardResult
 import kotobaya.contracts.sync.Emitter
 import kotobaya.contracts.sync.HlcRules
@@ -24,7 +25,6 @@ import kotobaya.sync.client.store.OpApplier
 import kotobaya.sync.client.store.OpIdSource
 import kotobaya.sync.client.store.PendingOpRow
 import kotobaya.sync.client.store.bookkeeping
-import kotlin.math.abs
 
 /** One change to mint: an op type and its payload. Envelope fields are filled in by [OpMinter]. */
 public data class MintRequest(
@@ -63,10 +63,13 @@ public sealed interface MintRefusal {
         public val guard: ClockGuardResult,
     ) : MintRefusal
 
-    /** The last response showed the clock more than 24 h off the server's (SYNC.md 3.4 client duties). */
+    /**
+     * A response showed the clock more than 24 h off the server's, and no later response has shown
+     * it within 5 minutes (SYNC.md 3.4 client duties; `client.clock_blocked`).
+     */
     public data class ClockFarFromServer(
-        /** `server_time − pt` of that response, ms. */
-        public val skewMs: Long,
+        /** The latest `server_time − pt`, ms (may already be under 24 h: the block lifts only under 5 min). */
+        public val skewMs: Long?,
     ) : MintRefusal
 
     /** A server-emitted op type (`emitter = server`): a client never mints it. */
@@ -110,7 +113,7 @@ public sealed interface MintRefusal {
  *
  * Before anything is written, every requested op is checked exactly as the server would (refused,
  * nothing minted): device paired; not `rebuild_pending`; clock guards G1/G2 and the stored server
- * skew (> 24 h blocks); client emitter; the op decodes as `Known` with [OpCodec.decodeTree] (schema
+ * skew flag (`client.clock_blocked`: set above 24 h, cleared only under 5 min); client emitter; the op decodes as `Known` with [OpCodec.decodeTree] (schema
  * with ECMA patterns, storable values, `NO_NUL`, depth 500) and has no [OpCodec.envelopeErrors]; its
  * size is within the durable `max_op_bytes` (`meta.max_op_bytes`, default 1 MiB).
  *
@@ -130,9 +133,16 @@ public class OpMinter<L>(
 
     /**
      * Mints [requests] in order, in one transaction (e.g. a note and its cards): all of them or
-     * none. Ops for a new row must come before ops that reference it (SYNC.md 4).
+     * none. Ops for a new row must come before ops that reference it (SYNC.md 4). Called inside an
+     * outer [DeviceStore.transaction] it joins it (Re-mint discards rows and mints in one transaction).
+     *
+     * [at] is for **Re-mint only** (SYNC.md 10.4 step 6a): when non-null every HLC is minted with
+     * `mint_at(at)` ([HlcRules.mintAt]) instead of `mint()`, so a re-minted creation gets the time
+     * it really had; values still increase strictly above `hlc_last`. Every other check (guards
+     * against the device's current clock, rebuild, clock block, schema, size) is unchanged. Never
+     * pass [at] for an ordinary change.
      */
-    public fun mintAll(requests: List<MintRequest>): MintResult {
+    public fun mintAll(requests: List<MintRequest>, at: InstantMs? = null): MintResult {
         require(requests.isNotEmpty()) { "nothing to mint" }
         return store.transaction { tx ->
             val bk = tx.bookkeeping
@@ -141,16 +151,13 @@ public class OpMinter<L>(
             val now = clock.nowMs()
             val guard = hlcRules.guard(now, bk.hlcLast)
             if (guard != ClockGuardResult.OK) return@transaction MintResult.Refused(MintRefusal.ClockGuard(guard))
-            val skew = bk.serverSkewMs
-            if (skew != null && abs(skew) > CLOCK_BLOCK_MS) {
-                return@transaction MintResult.Refused(MintRefusal.ClockFarFromServer(skew))
-            }
+            if (bk.clockBlocked) return@transaction MintResult.Refused(MintRefusal.ClockFarFromServer(bk.serverSkewMs))
             val limits = SyncLimits.read(bk)
             var state = hlcRules.stateOf(bk.hlcLast)
             val ops = ArrayList<Op>(requests.size)
             for ((i, r) in requests.withIndex()) {
                 if (r.type.emitter != Emitter.CLIENT) return@transaction MintResult.Refused(MintRefusal.ServerOnly(i, r.type))
-                val minted = hlcRules.mint(state, now, deviceId)
+                val minted = if (at == null) hlcRules.mint(state, now, deviceId) else hlcRules.mintAt(state, at, deviceId)
                 state = minted.state
                 val built = build(i, r, minted.hlc, deviceId, ids.newOpId(now), limits)
                 when (built) {
@@ -211,11 +218,5 @@ public class OpMinter<L>(
         val size = codec.sizeBytes(op)
         if (size > limits.maxOpBytes) return Built.No(MintRefusal.TooLarge(i, size, limits.maxOpBytes))
         return Built.Ok(op)
-    }
-
-    /** Constants. */
-    public companion object {
-        /** `|server_time − pt|` above which minting is blocked (SYNC.md 3.4): 24 h. */
-        public const val CLOCK_BLOCK_MS: Long = 86_400_000L
     }
 }

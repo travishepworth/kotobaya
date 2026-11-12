@@ -48,6 +48,25 @@ public object SyncStateKeys {
      * client duties). Absent = never measured.
      */
     public const val SERVER_SKEW_MS: String = "client.server_skew_ms"
+
+    /**
+     * Device-local: `"1"` once a response showed `|server_time − pt| > 24 h`; deleted only when a
+     * later response shows it below 5 minutes (SYNC.md 3.4 hysteresis). Minting is blocked while set.
+     */
+    public const val CLOCK_BLOCKED: String = "client.clock_blocked"
+
+    /**
+     * Device-local: the pull stopped in *upgrade required* (SYNC.md 6.1); canonical JSON
+     * `{"error":…,"op_id":…,"seq":…,"unsupported":…}`. Deleted when a pull completes.
+     */
+    public const val UPGRADE_REQUIRED: String = "client.upgrade_required"
+
+    /**
+     * Device-local: the `log_epoch` stored by the last log reset (SYNC.md 6.2). Its presence means
+     * "a log reset happened in the current epoch", which scopes the `unknown_reference` auto-retry
+     * (T303b). Absent = no reset since the device first learned its epoch.
+     */
+    public const val LOG_RESET_EPOCH: String = "client.log_reset_epoch"
 }
 
 /** Typed view of [SyncStateTable] with the defaults of SYNC.md 10.5 ("absent means"). */
@@ -73,8 +92,25 @@ public class SyncBookkeeping(
         get() = long(SyncStateKeys.LAST_SYNC_AT)
         set(v) = putOrRemove(SyncStateKeys.LAST_SYNC_AT, v?.toString())
 
-    /** `rebuild_pending` is set. */
-    public val rebuildPending: Boolean get() = table.get(SyncStateKeys.REBUILD_PENDING) != null
+    /** `rebuild_pending` is set; setting `false` deletes the key, `true` writes `"1"`. */
+    public var rebuildPending: Boolean
+        get() = table.get(SyncStateKeys.REBUILD_PENDING) != null
+        set(v) = putOrRemove(SyncStateKeys.REBUILD_PENDING, if (v) "1" else null)
+
+    /** The 3.4 hysteresis flag ([SyncStateKeys.CLOCK_BLOCKED]). */
+    public var clockBlocked: Boolean
+        get() = table.get(SyncStateKeys.CLOCK_BLOCKED) != null
+        set(v) = putOrRemove(SyncStateKeys.CLOCK_BLOCKED, if (v) "1" else null)
+
+    /** [SyncStateKeys.UPGRADE_REQUIRED] raw value, or null. */
+    public var upgradeRequired: String?
+        get() = table.get(SyncStateKeys.UPGRADE_REQUIRED)
+        set(v) = putOrRemove(SyncStateKeys.UPGRADE_REQUIRED, v)
+
+    /** [SyncStateKeys.LOG_RESET_EPOCH], or null. */
+    public var logResetEpoch: String?
+        get() = table.get(SyncStateKeys.LOG_RESET_EPOCH)
+        set(v) = putOrRemove(SyncStateKeys.LOG_RESET_EPOCH, v)
 
     /** `log_epoch`, or null when not yet known. */
     public var logEpoch: Uuid?
@@ -110,6 +146,27 @@ public class SyncBookkeeping(
     public var serverSkewMs: Long?
         get() = long(SyncStateKeys.SERVER_SKEW_MS)
         set(v) = putOrRemove(SyncStateKeys.SERVER_SKEW_MS, v?.toString())
+
+    /**
+     * Records `server_time − pt` of a push or pull response (SYNC.md 3.4 client duties) with
+     * hysteresis: `|skew| > 24 h` sets [clockBlocked]; only `|skew| < 5 min` clears it. A skew in
+     * between leaves the flag as it was, so a clock fixed only partly (e.g. still 3 h off) stays
+     * blocked.
+     */
+    public fun recordServerSkew(skewMs: Long) {
+        serverSkewMs = skewMs
+        val magnitude = if (skewMs < 0) -skewMs else skewMs
+        if (magnitude > CLOCK_BLOCK_MS) clockBlocked = true else if (magnitude < CLOCK_WARN_MS) clockBlocked = false
+    }
+
+    /** Thresholds of SYNC.md 3.4. */
+    public companion object {
+        /** Above this `|server_time − pt|` minting is blocked: 24 h. */
+        public const val CLOCK_BLOCK_MS: Long = 86_400_000L
+
+        /** Above this the status warns; below it the block lifts: 5 minutes. */
+        public const val CLOCK_WARN_MS: Long = 300_000L
+    }
 
     private fun long(key: String): Long? = table.get(key)?.toLongOrNull()
 

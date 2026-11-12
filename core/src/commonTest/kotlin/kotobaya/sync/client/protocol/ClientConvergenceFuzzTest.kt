@@ -22,8 +22,12 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /** Learning tables of the fuzz: whole-row last-writer-wins registers (SYNC.md 7.4) keyed by entity. */
-class LwwRows(val rows: MutableMap<String, Pair<String, String>> = HashMap()) {
-    fun copy(): LwwRows = LwwRows(HashMap(rows))
+class LwwRows(
+    val rows: MutableMap<String, Pair<String, String>> = HashMap(),
+    /** How often each op id was applied from a pull (rolled back with its transaction). */
+    val pulledApplies: MutableMap<String, Int> = HashMap(),
+) {
+    fun copy(): LwwRows = LwwRows(HashMap(rows), HashMap(pulledApplies))
 }
 
 /**
@@ -33,6 +37,7 @@ class LwwRows(val rows: MutableMap<String, Pair<String, String>> = HashMap()) {
  */
 object LwwApplier : OpApplier<LwwRows> {
     override fun apply(tx: StoreTransaction<LwwRows>, op: Op, origin: ApplyOrigin) {
+        if (origin == ApplyOrigin.PULLED) tx.learning.pulledApplies[op.opId] = (tx.learning.pulledApplies[op.opId] ?: 0) + 1
         apply(tx.learning, op)
     }
 
@@ -103,6 +108,12 @@ class ClientConvergenceFuzzTest {
         val devices = (0 until n).map { i ->
             FuzzDevice("01931f3e-0000-7000-8000-0000000000${(0xa0 + i).toString(16)}", server, rnd, seed * 31 + i)
         }
+        // some seeds have a skewed device (within the server's 24 h tolerance): 2 h ahead or 3 h behind
+        when (seed % 3) {
+            0 -> devices[0].clock.now += 2 * HOUR
+            1 -> devices[0].clock.now -= 3 * HOUR
+            else -> Unit
+        }
         repeat(STEPS) {
             val d = devices[rnd.nextInt(n)]
             when (rnd.nextInt(20)) {
@@ -136,6 +147,9 @@ class ClientConvergenceFuzzTest {
             assertEquals(serverRows.rows, d.store.learning().rows, "seed $seed: ${d.id} diverged")
             assertEquals(emptyList(), d.store.rows(), "seed $seed: ${d.id} outbox not purged")
             assertEquals(server.highWaterSeq.toString(), d.store.syncState()[SyncStateKeys.PULL_SEQ] ?: "0", "seed $seed")
+            val applies = d.store.learning().pulledApplies
+            assertEquals(logged.toSet(), applies.keys, "seed $seed: ${d.id} missed a pulled op")
+            assertTrue(applies.values.all { it == 1 }, "seed $seed: ${d.id} applied a pulled op twice: ${applies.filterValues { it != 1 }}")
         }
         assertTrue(devices.none { d -> d.store.rows().any { it.state == PendingState.REJECTED } })
     }
@@ -143,5 +157,6 @@ class ClientConvergenceFuzzTest {
     private companion object {
         const val SEEDS = 120
         const val STEPS = 90
+        const val HOUR = 3_600_000L
     }
 }

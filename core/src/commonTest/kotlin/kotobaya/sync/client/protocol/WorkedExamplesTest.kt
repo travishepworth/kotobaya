@@ -119,7 +119,18 @@ class WorkedExamplesTest {
             h.playLogInOrder()
             h.assertServerLogIsTheScenarioLog()
             h.seedRejected()
+            val offset = h.scenario.remintOffsetMs
+            val receivedAt = h.scenario.clockRejectionReceivedAt
+            if (offset != null && receivedAt != null) {
+                // the refusing response: server at received_at, the device clock still wrong by offset
+                h.server.nowMs = receivedAt
+                for (d in h.allDevices()) d.clock.now = receivedAt - offset
+            }
             for (d in h.allDevices().toList()) assertIs<CycleResult.Completed>(d.cycle(), name)
+            if (offset != null) {
+                val holder = h.allDevices().single { d -> d.rows().any { h.code(it.opId) == "clock_behind" || h.code(it.opId) == "clock_ahead" } }
+                assertEquals(offset.toString(), holder.state(SyncStateKeys.REMINT_OFFSET), "$name remint.offset_ms")
+            }
             for (d in h.allDevices().toList()) assertIs<CycleResult.Completed>(d.cycle(), name)
             h.assertServerLogIsTheScenarioLog() // no rejected op entered the log
             val expectedPulled = h.scenario.log.filter { it.opType.deviceApplies }.map { it.opId }

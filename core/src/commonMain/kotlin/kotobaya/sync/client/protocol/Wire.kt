@@ -10,6 +10,7 @@ import kotobaya.contracts.sync.JsonValue
 import kotobaya.sync.DefaultCanonicalJson
 import kotobaya.sync.SyncSchemas
 import kotobaya.sync.client.store.PendingOpRow
+import kotobaya.sync.client.store.toTree
 
 /** The log identity every push and pull response carries (SYNC.md 6.2). */
 internal data class LogInfo(
@@ -52,20 +53,7 @@ internal object Wire {
      * The push element of [row]: exactly `CanonicalJson.encode` of the envelope (= `OpCodec.encode`
      * of the op, SYNC.md 5.2); `device_id` is the device part of the hlc.
      */
-    fun element(row: PendingOpRow): String {
-        val payload = DefaultCanonicalJson.decode(row.payload).value
-        check(payload is JsonObject) { "pending_op ${row.opId} payload is not a JSON object" }
-        val m = LinkedHashMap<String, JsonValue>()
-        m["op_id"] = JsonString(row.opId)
-        m["op_type"] = JsonString(row.opType)
-        m["op_version"] = JsonNumber(row.opVersion.toDouble())
-        m["entity_type"] = JsonString(row.entityType)
-        m["entity_id"] = JsonString(row.entityId)
-        m["device_id"] = JsonString(row.hlc.takeLast(36))
-        m["hlc"] = JsonString(row.hlc)
-        m["payload"] = payload
-        return DefaultCanonicalJson.encode(JsonObject(m))
-    }
+    fun element(row: PendingOpRow): String = DefaultCanonicalJson.encode(row.toTree())
 
     fun body(elements: List<String>): String = elements.joinToString(",", prefix = "{\"ops\":[", postfix = "]}")
 

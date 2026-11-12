@@ -42,6 +42,11 @@ public sealed interface CycleResult {
         public val pulledOps: Int,
         /** `acked` rows deleted by the purge rule (SYNC.md 5.4). */
         public val purgedRows: Int,
+        /**
+         * The pull raised `pull_seq` (new ops arrived). After a log reset, T303b's `unknown_reference`
+         * auto-retry runs at the end of each cycle where this is true (SYNC.md 6.2).
+         */
+        public val pullAdvanced: Boolean = false,
     ) : CycleResult
 
     /**

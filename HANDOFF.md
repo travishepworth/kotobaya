@@ -1,27 +1,26 @@
-# HANDOFF T303a
+# HANDOFF T303a (attempt 2)
 
 STATUS: DONE
-BRANCH: t/T303a-sync-client-protocol
+BRANCH: t/T303a-sync-client-protocol (rebased on main)
 CHECK: `make check MODULE=core` → green (jvmTest + jsTest)
 
 ## Changed (≤ 6 lines)
-- `sync/client/store/`: `DeviceStore<L>`/`StoreTransaction` (outbox, sync_state, learning `L`), `InMemoryDeviceStore`, `OpApplier`, `Clock`, `OpIdSource`/`UuidV7Source`, `SyncStateKeys` + `SyncBookkeeping`
-- `sync/client/mint/OpMinter`: guards, server skew, rebuild, emitter, `decodeTree`+`envelopeErrors`, `max_op_bytes`; apply+insert+`hlc_last` in one tx; `mintAll` is all-or-nothing
-- `sync/client/protocol/`: `SyncEngine` (`cycle`/`pushAll`/`pullAll`/`purge`), `SyncTransport`, `SyncLimits`, `CycleResult`, `SyncStatus`, `SyncBackoff`
-- Tests: embedded scenarios `ClientScenarios.kt`, kept current by the jvm `ClientScenariosDriftTest`
+- Clock block: the `client.clock_blocked` flag is set when |skew| > 24 h and cleared only when it is < 5 min (`SyncBookkeeping.recordServerSkew`). Used by `OpMinter` and `SyncStatus`.
+- `SyncEngine.resetLog` (6.2) also sets `pull_seq = 0` (C-10). It zeroes attempts on `unknown_reference` rows and sets `client.log_reset_epoch`.
+- `mintAll(requests, at)`: `mintAt` (Re-mint only), same checks, joins an outer transaction.
+- The 413 cap resets after a successful batch. New: `rebuildPending` setter, `PendingOpRow.toOp/toTree`, `OutboxTable.setAttempts`, `Completed.pullAdvanced`.
+- *Upgrade required* is stored in `client.upgrade_required`. `SyncStatus` gets `refusedCacheCards`, supplied through `SyncSnapshot.read(tx) { … }`.
 
 ## Acceptance → tests
-- 12.1–12.4, raw-push → `WorkedExamplesTest.s12_1…s12_4`, `RawPushTest`
-- Idempotency → `idempotencyPushingTheSameOutbox…`, `aReplayedPullPageAppliesNothingTwice`
-- Crash → `crashBetweenApplying…LeavesNeither`, `killMidPush`
-- Purge → `ackedRowSurvivesUntil…`, `durableSeq…NotMixedWithTheOld`
-- Limits/upgrade → `maxOpBytesBelowOneMiB…`, `unknownPulledOp…`, `invalidPulledOp…`, `aPullPageLargerThanMaxPushBytesIsAccepted`
-- Fuzz → `ClientConvergenceFuzzTest` (120 seeds, 3–4 devices, faults)
+- Clock → `clockBlockLiftsOnly…_25h_3h_4min`, `exactlyFiveMinutes…`
+- Livelock → `logResetSetsPullSeqToZero…`; attempt zeroing → `logResetZeroesAttempts…`
+- `mintAt` → `mintAtIsForRemint…`; 413 cap → `the413CapIsReset…`
+- Upgrade persisted → `upgradeRequiredIsPersisted…`
+- `s12_4` checks remint_offset = `remint.offset_ms`. Fuzz checks per-op apply counts and has skewed devices.
 
 ## New dependencies
-- none. Tests use a stdlib `startCoroutine` runner instead of kotlinx-coroutines.
+- none
 
 ## For the reviewer (≤ 3 lines)
-- Device-local keys `meta.max_op_bytes`/`meta.max_push_bytes`/`client.server_skew_ms` are not contract keys. T301b's `MetaLimitsStore` must use the same `meta.*` names.
-- Results are matched by `op_id`, not by position. Rows with no result stay pending (+1 attempt). A `LogChanged` on push keeps the recorded acks; T303b's reset stores the new epoch.
-- Kotobaya-Seq follow-ups don't apply to sync endpoints, so nothing was done for them.
+- `resetLog` is here, not in T303b, because it was needed for the livelock fix. T303b calls it, then runs the rebuild and the auto-retry.
+- The status shows a stored *upgrade required* only when the last result has no failure of its own. The stored value is cleared when a pull completes, or by a reset.

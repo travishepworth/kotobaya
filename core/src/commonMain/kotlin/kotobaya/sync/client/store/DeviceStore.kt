@@ -108,6 +108,9 @@ public interface OutboxTable {
      */
     public fun markPending(opId: Uuid, attempts: Int)
 
+    /** `attempts = attempts`, nothing else (the log reset zeroes it on `unknown_reference` rows, SYNC.md 6.2). */
+    public fun setAttempts(opId: Uuid, attempts: Int)
+
     /** `attempts = attempts + 1` for each of [opIds] (a transient push failure, SYNC.md 5.4). */
     public fun incrementAttempts(opIds: Collection<Uuid>)
 
