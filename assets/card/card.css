@@ -1,0 +1,5 @@
+/* Shared card stylesheet: used by web review/preview and the Android review WebView. Placeholder classes. */
+.kb-card { font-family: var(--kb-font, "Noto Sans JP", sans-serif); font-size: 1.25rem; line-height: 1.6; text-align: center; }
+.kb-card ruby rt { font-size: 0.5em; }
+.kb-card .kb-front { font-size: 2rem; }
+.kb-card .kb-back { margin-top: 1rem; }

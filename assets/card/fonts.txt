@@ -1,0 +1,3 @@
+# Fonts used by card rendering (one family per line; bundled by later tickets)
+Noto Sans JP
+Noto Serif JP

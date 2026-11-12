@@ -1,0 +1,27 @@
+[project]
+name = "kotobaya-worker"
+version = "0.0.0"
+description = "Kotobaya background jobs: dictionary, import, parse, coverage, TTS, optimizer"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kotobaya_worker"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

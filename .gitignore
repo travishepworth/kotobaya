@@ -10,3 +10,17 @@ kotoba-kit.zip
 /tmp/
 .claude/worktrees/
 .claude/settings.local.json
+
+# Build outputs
+build/
+.gradle/
+.kotlin/
+local.properties
+node_modules/
+.svelte-kit/
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
