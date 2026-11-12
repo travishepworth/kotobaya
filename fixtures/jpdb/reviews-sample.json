@@ -1,55 +1,78 @@
 {
-  "_note": "Derived from public format docs, unverified against a real export. All vids, timestamps and histories are invented.",
   "cards_vocabulary_jp_en": [
     {
-      "vid": 1000001, "spelling": "学校", "reading": "がっこう",
+      "vid": 1199000, "spelling": "学校", "reading": "がっこう",
       "reviews": [
-        {"timestamp": 1700000000, "grade": "okay", "from_anki": false},
-        {"timestamp": 1700086400, "grade": "okay", "from_anki": false},
-        {"timestamp": 1700345600, "grade": "easy", "from_anki": false},
-        {"timestamp": 1701900000, "grade": "okay", "from_anki": false}
+        {"timestamp": 1770100000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1770186400, "grade": "okay", "from_anki": false},
+        {"timestamp": 1770450000, "grade": "easy", "from_anki": false},
+        {"timestamp": 1771000000, "grade": "okay", "from_anki": false}
       ]
     },
     {
-      "vid": 1000002, "spelling": "猫", "reading": "ねこ",
+      "vid": 1500010, "spelling": "猫", "reading": "ねこ",
       "reviews": [
-        {"timestamp": 1700000100, "grade": "something", "from_anki": false},
-        {"timestamp": 1700000700, "grade": "okay", "from_anki": false},
-        {"timestamp": 1700172800, "grade": "nothing", "from_anki": false},
-        {"timestamp": 1700176400, "grade": "okay", "from_anki": false},
-        {"timestamp": 1700600000, "grade": "hard", "from_anki": false}
+        {"timestamp": 1770200000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1770200600, "grade": "something", "from_anki": false},
+        {"timestamp": 1770287000, "grade": "okay", "from_anki": false},
+        {"timestamp": 1770400000, "grade": "nothing", "from_anki": false},
+        {"timestamp": 1770900000, "grade": "hard", "from_anki": false}
       ]
     },
     {
-      "vid": 1000003, "spelling": "間に合う", "reading": "まにあう",
+      "vid": 1500011, "spelling": "間に合う", "reading": "まにあう",
       "reviews": [
-        {"timestamp": 1699000000, "grade": "okay", "from_anki": true},
-        {"timestamp": 1699500000, "grade": "okay", "from_anki": true},
-        {"timestamp": 1702000000, "grade": "nothing", "from_anki": false}
+        {"timestamp": 1770500000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1771500000, "grade": "okay", "from_anki": false},
+        {"timestamp": 1792000000, "grade": "nothing", "from_anki": false}
       ]
     },
     {
-      "vid": 1000004, "spelling": "静か", "reading": "しずか",
+      "vid": 1200300, "spelling": "静か", "reading": "しずか",
       "reviews": [
-        {"timestamp": 1701000000, "grade": "easy", "from_anki": false}
+        {"timestamp": 1781000000, "grade": "known", "from_anki": false}
       ]
     },
     {
-      "vid": 1000005, "spelling": "寿司", "reading": "すし",
-      "reviews": []
+      "vid": 1200301, "spelling": "寿司", "reading": "すし",
+      "reviews": [
+        {"timestamp": 1785000000, "grade": "unknown", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 1199000, "spelling": "がっこう", "reading": "がっこう",
+      "reviews": [
+        {"timestamp": 1772000000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1772500000, "grade": "pass", "from_anki": false}
+      ]
+    },
+    {
+      "vid": 2147656918, "spelling": "山田太郎", "reading": "やまだたろう",
+      "reviews": [
+        {"timestamp": 1773000000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1773500000, "grade": "fail", "from_anki": false},
+        {"timestamp": 1774000000, "grade": "okay", "from_anki": false}
+      ]
     }
   ],
-  "cards_vocabulary_en_jp": [
+  "cards_vocabulary_en_jp": [],
+  "cards_kanji_char_keyword": [
     {
-      "vid": 1000001, "spelling": "学校", "reading": "がっこう",
+      "character": "猫",
       "reviews": [
-        {"timestamp": 1700010000, "grade": "okay", "from_anki": false},
-        {"timestamp": 1700400000, "grade": "something", "from_anki": false}
+        {"timestamp": 1770210000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1770310000, "grade": "okay", "from_anki": false},
+        {"timestamp": 1770600000, "grade": "easy", "from_anki": false}
       ]
     }
   ],
-  "vocabulary_status": [
-    {"vid": 1000006, "spelling": "私", "reading": "わたし", "status": "never-forget"},
-    {"vid": 1000007, "spelling": "食べ物", "reading": "たべもの", "status": "blacklisted"}
+  "cards_kanji_keyword_char": [
+    {
+      "character": "学",
+      "reviews": [
+        {"timestamp": 1770110000, "grade": "unknown", "from_anki": false},
+        {"timestamp": 1770300000, "grade": "hard", "from_anki": false}
+      ]
+    }
   ]
 }
