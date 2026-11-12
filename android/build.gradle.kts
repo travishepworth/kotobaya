@@ -19,16 +19,33 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/cardAssets"))
 }
 
-// Shared card stylesheet from assets/card/ is bundled into the app's assets (used by the review WebView).
-val copyCardAssets by tasks.registering(Copy::class) {
-    from(rootProject.layout.projectDirectory.dir("assets/card"))
-    into(layout.buildDirectory.dir("generated/cardAssets/card"))
+// Copies the shared card stylesheet from assets/card/ into build/generated/cardAssets/card/.
+abstract class CopyCardAssets : DefaultTask() {
+    @get:InputDirectory
+    abstract val source: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val dest = outputDir.get().dir("card").asFile
+        dest.deleteRecursively()
+        source.get().asFile.copyRecursively(dest, overwrite = true)
+    }
 }
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
-    dependsOn(copyCardAssets)
+
+// Registered as a generated assets source so every consumer (merge, lint, bundle) depends on it.
+val copyCardAssets = tasks.register<CopyCardAssets>("copyCardAssets") {
+    source.set(rootProject.layout.projectDirectory.dir("assets/card"))
+    outputDir.set(layout.buildDirectory.dir("generated/cardAssets"))
+}
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(copyCardAssets) { it.outputDir }
+    }
 }
 
 dependencies {
