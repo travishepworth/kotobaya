@@ -91,3 +91,4 @@
 - T212: token scope text says `write` covers bulk scheduling (pending bulkScheduleCards scope CCR).
 - T213a: CardCssDriftTest lives in core/src/jvmTest/…/render/ (outside owned paths; accepted, same pattern as BuiltInNoteTypesDriftTest).
 - T213a: {{pitch:}}/{{cloze:}} work only in built-in templates; frontIsEmpty ignores sentence/image extras; cloze hint = ClozeSentence.translation.
+- T207a -> T207b: register handler in worker runner/__main__.py: reg.register("jpdb-history-import", make_jpdb_history_import(DATABASE_URL, fetch_blob, apply_plan)); PostgresRefLookup has no DB test; ImportPlan JSON schema v1 in plan.py docstring.
