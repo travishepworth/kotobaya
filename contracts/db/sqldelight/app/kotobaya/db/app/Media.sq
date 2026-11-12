@@ -1,0 +1,87 @@
+-- Media, on-device subset. Contract: contracts/db/SCHEMA.md section 5. Type mapping as in Learning.sq.
+--
+-- The media row arrives through ops (media.created / media.updated / media.deleted /
+-- media.content_published). media_segment, sentence, occurrence and detected
+-- sentence_grammar_span rows are installed from the media snapshot named by
+-- media.content_blob_hash, replacing the previous version of that media in one
+-- transaction. A device may skip snapshots entirely (storage budget): all four
+-- tables are then simply empty for that media.
+
+CREATE TABLE media (
+  id TEXT NOT NULL PRIMARY KEY,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('anime', 'novel', 'vn', 'manga', 'web', 'other')),
+  language TEXT NOT NULL DEFAULT 'ja',
+  source TEXT NOT NULL,
+  jpdb_id TEXT,
+  cover_blob_hash TEXT,
+  parse_status TEXT NOT NULL DEFAULT 'pending',
+  parse_error TEXT,
+  content_version INTEGER NOT NULL DEFAULT 0,
+  content_blob_hash TEXT,
+  -- DEVICE: version of the snapshot installed locally; 0 = none.
+  installed_content_version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  clocks TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE media_segment (
+  id TEXT NOT NULL PRIMARY KEY,
+  media_id TEXT NOT NULL REFERENCES media (id),
+  ordinal INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  sentence_count INTEGER NOT NULL DEFAULT 0,
+  token_count INTEGER NOT NULL DEFAULT 0,
+  unmapped_token_count INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (media_id, ordinal)
+);
+
+CREATE TABLE sentence (
+  id TEXT NOT NULL PRIMARY KEY,
+  media_id TEXT NOT NULL REFERENCES media (id),
+  segment_id TEXT NOT NULL REFERENCES media_segment (id),
+  ordinal INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  tokens TEXT NOT NULL DEFAULT '[]',
+  origin TEXT NOT NULL DEFAULT 'media',
+  start_ms INTEGER,
+  end_ms INTEGER,
+  audio_blob_hash TEXT,
+  image_blob_hash TEXT,
+  location TEXT,
+  UNIQUE (segment_id, ordinal)
+);
+
+CREATE INDEX sentence_media_idx ON sentence (media_id);
+
+CREATE TABLE sentence_grammar_span (
+  id TEXT NOT NULL PRIMARY KEY,
+  sentence_id TEXT NOT NULL,          -- DEVICE: soft reference; the sentence may not be installed
+  grammar_point_id TEXT NOT NULL,
+  start_offset INTEGER NOT NULL,
+  end_offset INTEGER NOT NULL,
+  origin TEXT NOT NULL CHECK (origin IN ('detected', 'manual')),
+  rule_index INTEGER,
+  created_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  hlc TEXT,
+  UNIQUE (sentence_id, grammar_point_id, start_offset, end_offset, origin)
+);
+
+CREATE INDEX sentence_grammar_span_point_idx ON sentence_grammar_span (grammar_point_id);
+
+CREATE TABLE occurrence (
+  segment_id TEXT NOT NULL REFERENCES media_segment (id),
+  entry_seq INTEGER NOT NULL,
+  media_id TEXT NOT NULL REFERENCES media (id),
+  count INTEGER NOT NULL,
+  pos_class TEXT NOT NULL DEFAULT 'content',
+  sentence_ids TEXT NOT NULL DEFAULT '[]',
+  PRIMARY KEY (segment_id, entry_seq)
+);
+
+CREATE INDEX occurrence_entry_idx ON occurrence (entry_seq, media_id);
+CREATE INDEX occurrence_media_idx ON occurrence (media_id, entry_seq);

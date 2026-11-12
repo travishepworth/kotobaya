@@ -1,0 +1,271 @@
+-- Learning data, on-device subset ("AppDatabase"). Contract: contracts/db/SCHEMA.md section 5.
+--
+-- Mirrors app.* in V1__init.sql. Type mapping (binding):
+--   uuid        -> TEXT, canonical lowercase 8-4-4-4-12
+--   timestamptz -> INTEGER, epoch milliseconds UTC
+--   boolean     -> INTEGER 0/1
+--   jsonb, arrays -> TEXT holding JSON (arrays as JSON arrays)
+--   app.hlc     -> TEXT (SQLite's default BINARY collation is the required byte order)
+-- Column meanings, register names and invariants are those of the Postgres
+-- comments. Differences from the server are marked "DEVICE:".
+-- Must stay within SQLite 3.18 (Android API 26): no generated columns, no UPSERT,
+-- no JSON functions in DDL.
+
+CREATE TABLE grammar_point (
+  id TEXT NOT NULL PRIMARY KEY,
+  language TEXT NOT NULL DEFAULT 'ja',
+  title TEXT NOT NULL,
+  pattern TEXT NOT NULL DEFAULT '',
+  meaning TEXT NOT NULL DEFAULT '',
+  explanation TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  jlpt INTEGER,
+  detection_rules TEXT NOT NULL DEFAULT '[]',
+  related_ids TEXT NOT NULL DEFAULT '[]',
+  links TEXT NOT NULL DEFAULT '[]',
+  is_stub INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  clocks TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE note_type (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  base_type TEXT NOT NULL CHECK (base_type IN ('vocab', 'kanji', 'phrase', 'grammar', 'sentence', 'custom')),
+  builtin INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+  fields TEXT NOT NULL,
+  templates TEXT NOT NULL,
+  css TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  clocks TEXT NOT NULL DEFAULT '{}'
+);
+
+-- Built-in note types. MUST stay identical to the seed rows in V1__init.sql (check.sh compares them).
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000101', 'Vocab', 'vocab', 1,
+   '[{"key":"expression","label":"Expression","kind":"text"},{"key":"reading","label":"Reading","kind":"text"},{"key":"meaning","label":"Meaning","kind":"text"},{"key":"sentence","label":"Sentence","kind":"text"},{"key":"sentence_translation","label":"Sentence translation","kind":"text"},{"key":"audio","label":"Audio","kind":"audio"},{"key":"sentence_audio","label":"Sentence audio","kind":"audio"},{"key":"image","label":"Image","kind":"image"},{"key":"notes","label":"Notes","kind":"text"}]',
+   '{"meaning":{"default":true,"front":null,"back":null},"reading":{"default":true,"front":null,"back":null},"listening":{"default":false,"front":null,"back":null},"production":{"default":false,"front":null,"back":null},"pitch":{"default":false,"front":null,"back":null}}',
+   0, 0);
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000102', 'Kanji', 'kanji', 1,
+   '[{"key":"literal","label":"Kanji","kind":"text"},{"key":"keyword","label":"Keyword","kind":"text"},{"key":"readings","label":"Readings","kind":"text"},{"key":"notes","label":"Notes","kind":"text"}]',
+   '{"keyword":{"default":true,"front":null,"back":null},"writing":{"default":false,"front":null,"back":null},"components":{"default":false,"front":null,"back":null}}',
+   0, 0);
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000103', 'Phrase', 'phrase', 1,
+   '[{"key":"expression","label":"Expression","kind":"text"},{"key":"reading","label":"Reading","kind":"text"},{"key":"meaning","label":"Meaning","kind":"text"},{"key":"audio","label":"Audio","kind":"audio"},{"key":"notes","label":"Notes","kind":"text"}]',
+   '{"meaning":{"default":true,"front":null,"back":null},"production":{"default":false,"front":null,"back":null},"listening":{"default":false,"front":null,"back":null}}',
+   0, 0);
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000104', 'Grammar', 'grammar', 1,
+   '[{"key":"pattern","label":"Pattern","kind":"text"},{"key":"meaning","label":"Meaning","kind":"text"},{"key":"notes","label":"Notes","kind":"text"}]',
+   '{"cloze":{"default":true,"front":null,"back":null},"recognition":{"default":false,"front":null,"back":null},"spot":{"default":false,"front":null,"back":null},"production":{"default":false,"front":null,"back":null}}',
+   0, 0);
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000105', 'Sentence', 'sentence', 1,
+   '[{"key":"sentence","label":"Sentence","kind":"text"},{"key":"reading","label":"Reading","kind":"text"},{"key":"translation","label":"Translation","kind":"text"},{"key":"audio","label":"Audio","kind":"audio"},{"key":"image","label":"Image","kind":"image"},{"key":"notes","label":"Notes","kind":"text"}]',
+   '{"comprehension":{"default":true,"front":null,"back":null},"listening":{"default":false,"front":null,"back":null}}',
+   0, 0);
+INSERT INTO note_type (id, name, base_type, builtin, fields, templates, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000106', 'Custom', 'custom', 1,
+   '[{"key":"front","label":"Front","kind":"text"},{"key":"back","label":"Back","kind":"text"}]',
+   '{"basic":{"default":true,"front":null,"back":null}}',
+   0, 0);
+
+CREATE TABLE note (
+  id TEXT NOT NULL PRIMARY KEY,
+  note_type_id TEXT NOT NULL REFERENCES note_type (id),
+  type TEXT NOT NULL CHECK (type IN ('vocab', 'kanji', 'phrase', 'grammar', 'sentence', 'custom')),
+  language TEXT NOT NULL DEFAULT 'ja',
+  entry_seq INTEGER,
+  kanji_literal TEXT,
+  grammar_point_id TEXT REFERENCES grammar_point (id),
+  fields TEXT NOT NULL DEFAULT '{}',
+  tags TEXT NOT NULL DEFAULT '[]',
+  mnemonic TEXT NOT NULL DEFAULT '',
+  source_sentence TEXT NOT NULL DEFAULT '',
+  source_sentence_id TEXT,
+  source_media_id TEXT,
+  origin TEXT NOT NULL DEFAULT 'manual',
+  created_by_device_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  merged_into_id TEXT,
+  clocks TEXT NOT NULL DEFAULT '{}',
+  CHECK (entry_seq IS NULL OR type = 'vocab'),
+  CHECK (kanji_literal IS NULL OR type = 'kanji'),
+  CHECK (grammar_point_id IS NULL OR type = 'grammar'),
+  CHECK (merged_into_id IS NULL OR deleted_at IS NOT NULL)
+);
+
+-- DEVICE: not unique. Two live notes for one entry can coexist here until the server's note.merged arrives.
+CREATE INDEX note_entry_idx ON note (entry_seq);
+CREATE INDEX note_kanji_idx ON note (kanji_literal);
+CREATE INDEX note_grammar_idx ON note (grammar_point_id);
+CREATE INDEX note_type_idx ON note (note_type_id);
+
+CREATE TABLE fsrs_params (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  desired_retention REAL NOT NULL DEFAULT 0.9,
+  maximum_interval_days INTEGER NOT NULL DEFAULT 36500,
+  learning_steps_s TEXT NOT NULL DEFAULT '[60,600]',
+  relearning_steps_s TEXT NOT NULL DEFAULT '[600]',
+  fuzz INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
+  easy_days TEXT NOT NULL DEFAULT '[1,1,1,1,1,1,1]',
+  fsrs_version TEXT,
+  weights TEXT,
+  weights_version INTEGER NOT NULL DEFAULT 0,
+  optimized_at INTEGER,
+  optimizer_stats TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  clocks TEXT NOT NULL DEFAULT '{}'
+);
+
+-- Built-in Default preset. MUST stay identical to the seed row in V1__init.sql.
+INSERT INTO fsrs_params (id, name, created_at, updated_at) VALUES
+  ('00000000-0000-7000-8000-000000000010', 'Default', 0, 0);
+
+CREATE TABLE card (
+  id TEXT NOT NULL PRIMARY KEY,
+  note_id TEXT NOT NULL REFERENCES note (id),
+  kind TEXT NOT NULL,
+  preset_id TEXT NOT NULL DEFAULT '00000000-0000-7000-8000-000000000010',
+  suspended INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+  buried_until INTEGER,
+  flags INTEGER NOT NULL DEFAULT 0 CHECK (flags BETWEEN 0 AND 7),
+  state TEXT NOT NULL DEFAULT 'new' CHECK (state IN ('new', 'learning', 'review', 'relearning')),
+  step INTEGER,
+  stability REAL,
+  difficulty REAL,
+  due_at INTEGER,
+  interval_days INTEGER,
+  last_review_at INTEGER,
+  last_review_id TEXT,
+  reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0,
+  weights_version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  merged_into_id TEXT,
+  clocks TEXT NOT NULL DEFAULT '{}',
+  CHECK ((state = 'new') = (due_at IS NULL)),
+  CHECK (merged_into_id IS NULL OR deleted_at IS NOT NULL)
+);
+
+-- DEVICE: not unique (see note_entry_idx).
+CREATE INDEX card_note_kind_idx ON card (note_id, kind);
+CREATE INDEX card_due_idx ON card (due_at);
+CREATE INDEX card_state_idx ON card (state, created_at);
+CREATE INDEX card_merged_into_idx ON card (merged_into_id);
+
+CREATE TABLE review_log (
+  id TEXT NOT NULL PRIMARY KEY,
+  card_id TEXT NOT NULL REFERENCES card (id),
+  device_id TEXT NOT NULL,
+  hlc TEXT NOT NULL,
+  reviewed_at INTEGER NOT NULL,
+  utc_offset_min INTEGER NOT NULL DEFAULT 0,
+  review_type TEXT NOT NULL CHECK (review_type IN ('scheduled', 'learning', 'drill', 'cram', 'manual')),
+  rating INTEGER CHECK (rating BETWEEN 1 AND 4),
+  button TEXT CHECK (button IN ('again', 'hard', 'good', 'easy', 'nothing', 'something', 'okay')),
+  duration_ms INTEGER,
+  manual_action TEXT CHECK (manual_action IN ('set_due', 'reset')),
+  manual_due_at INTEGER,
+  sentence_id TEXT,
+  import_source TEXT,
+  undone_at INTEGER,
+  undone_hlc TEXT,
+  CHECK ((review_type = 'manual') = (rating IS NULL)),
+  CHECK ((review_type = 'manual') = (manual_action IS NOT NULL)),
+  CHECK ((undone_at IS NULL) = (undone_hlc IS NULL))
+);
+
+CREATE INDEX review_log_card_idx ON review_log (card_id, hlc, id);
+CREATE INDEX review_log_reviewed_idx ON review_log (reviewed_at);
+
+CREATE TABLE word_status (
+  entry_seq INTEGER NOT NULL PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('new', 'learning', 'known', 'never_forget', 'blacklisted', 'ignored')),
+  auto_status TEXT CHECK (auto_status IN ('new', 'learning', 'known')),
+  override_status TEXT CHECK (override_status IN ('known', 'never_forget', 'blacklisted', 'ignored')),
+  override_hlc TEXT,
+  override_origin TEXT,
+  updated_at INTEGER NOT NULL,
+  CHECK (status = coalesce(override_status, auto_status, 'new')),
+  CHECK (override_status IS NULL OR override_hlc IS NOT NULL)
+);
+
+CREATE INDEX word_status_status_idx ON word_status (status);
+
+CREATE TABLE deck (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('user', 'media', 'list', 'smart')),
+  language TEXT NOT NULL DEFAULT 'ja',
+  priority INTEGER NOT NULL DEFAULT 0,
+  enabled INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
+  new_cards_per_day INTEGER,
+  reviews_per_day INTEGER,
+  settings TEXT NOT NULL DEFAULT '{}',
+  media_id TEXT,
+  list_key TEXT,
+  query TEXT,
+  content_version INTEGER NOT NULL DEFAULT 0,
+  content_blob_hash TEXT,
+  -- DEVICE: version of the deck_item snapshot installed locally; < content_version means a download is pending.
+  installed_content_version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  clocks TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX deck_priority_idx ON deck (priority, id);
+
+CREATE TABLE deck_item (
+  deck_id TEXT NOT NULL REFERENCES deck (id),
+  item_key TEXT NOT NULL,
+  entry_seq INTEGER,
+  note_id TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  occurrence_count INTEGER NOT NULL DEFAULT 0,
+  added_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  hlc TEXT,
+  PRIMARY KEY (deck_id, item_key),
+  CHECK ((entry_seq IS NULL) <> (note_id IS NULL))
+);
+
+CREATE INDEX deck_item_order_idx ON deck_item (deck_id, position, item_key);
+CREATE INDEX deck_item_entry_idx ON deck_item (entry_seq);
+CREATE INDEX deck_item_note_idx ON deck_item (note_id);
+
+CREATE TABLE confusable (
+  note_a_id TEXT NOT NULL,
+  note_b_id TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('homophone', 'look_alike', 'meaning')),
+  status TEXT NOT NULL DEFAULT 'suggested' CHECK (status IN ('suggested', 'confirmed', 'rejected')),
+  hlc TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (note_a_id, note_b_id, reason),
+  CHECK (note_a_id < note_b_id)
+);
+
+CREATE INDEX confusable_b_idx ON confusable (note_b_id);
+
+CREATE TABLE settings (
+  key TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL,
+  hlc TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);

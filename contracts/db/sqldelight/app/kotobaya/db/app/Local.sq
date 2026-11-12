@@ -1,0 +1,48 @@
+-- Device-only tables: they have no server counterpart and are never synced.
+-- Contract: contracts/db/SCHEMA.md section 5.3. Type mapping as in Learning.sq.
+
+-- Outbox of ops created on this device. An op is written here in the SAME
+-- transaction as its local effect, so a crash can never lose or half-apply it.
+CREATE TABLE pending_op (
+  op_id TEXT NOT NULL PRIMARY KEY,    -- UUIDv7; becomes change.op_id on the server
+  op_type TEXT NOT NULL,              -- e.g. review.logged
+  op_version INTEGER NOT NULL DEFAULT 1,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  hlc TEXT NOT NULL,                  -- push order is ascending hlc
+  payload TEXT NOT NULL,              -- JSON object
+  created_at INTEGER NOT NULL,
+  -- pending: not yet accepted. acked: server accepted (or reported duplicate). rejected: server refused permanently.
+  state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'acked', 'rejected')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  acked_seq INTEGER                   -- change.seq the server assigned, once acked
+);
+
+CREATE INDEX pending_op_state_idx ON pending_op (state, hlc);
+
+-- Small key/value store for sync bookkeeping. Keys used by the contract:
+--   device_id        this device's uuid (set at pairing)
+--   pull_seq         highest change.seq fully applied locally (decimal string; "0" before first pull)
+--   hlc_last         last HLC issued or observed (for clock monotonicity)
+--   last_sync_at     epoch ms of the last successful push+pull
+--   dict_release_id  ref.dict_release.id of the installed dictionary file
+CREATE TABLE sync_state (
+  key TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Which blobs this device wants or has. The bytes live in app-private storage
+-- under a path derived from the hash.
+CREATE TABLE blob_cache (
+  hash TEXT NOT NULL PRIMARY KEY,     -- sha256 hex, = app.blob.hash
+  size_bytes INTEGER,                 -- NULL until known
+  content_type TEXT,
+  -- wanted: should be downloaded (prefetch). cached: bytes present. missing: server returned 404.
+  state TEXT NOT NULL DEFAULT 'wanted' CHECK (state IN ('wanted', 'cached', 'missing')),
+  reason TEXT NOT NULL DEFAULT 'card',-- 'card' | 'media' | 'cover' : storage-budget breakdown
+  requested_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+
+CREATE INDEX blob_cache_state_idx ON blob_cache (state, requested_at);
