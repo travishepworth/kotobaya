@@ -110,6 +110,7 @@
               "type": "string",
               "pattern": "^[a-z][a-z0-9_]*$",
               "examples": [
+                "op_too_large",
                 "unsupported_op",
                 "schema_invalid",
                 "device_mismatch",

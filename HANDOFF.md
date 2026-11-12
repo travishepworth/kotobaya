@@ -1,23 +1,21 @@
-# HANDOFF T005 (attempt 3)
+# HANDOFF T005 (attempt 4)
 
 STATUS: DONE
 BRANCH: t/T005-sync
-CHECK: `contracts/sync/check.sh` → green (`make check MODULE=contracts` is still a stub)
+CHECK: `contracts/sync/check.sh` → green
 
 ## Changed (≤ 6 lines)
-- Re-mint (SYNC §10.4): clock-rejected reviews are discarded and re-logged under new ids with one batch shift `delta = min(max(offset, d_lo), d_hi)`, then a per-review clamp to `[min(card.created_at, now), now]`. Spacing is kept. Default action; edits discard-only.
-- Device guard G1/G2 (§3.4): no minting when `pt < FLOOR` or `pt < wall(hlc_last) − 24 h`.
-- Card-age server check dropped (§3.4 justifies it; SUMMARY lists it).
-- `clock_ahead` HLC slack ε = 60 s. §6.2: auto-retry `unknown_reference` after a log reset; a sentence on the clock being 24 h ahead after a restore.
-- New `sync_state.remint_offset`; optional scenario `remint` property. Batch $defs untouched.
+- §10.4 Re-mint now carries rows created in the window: clock-rejected `*.created` plus every `unknown_reference` op/review/undo that depends on them (one hlc-ordered pass, `refs()` per OPS.md). Same row ids, re-minted first via new `mint_at(t')` (§3.2) at the batch-shifted time, then reviews. Edits of existing rows stay discard-only (reason stated). The `hlc_last`-below-observed text is rewritten.
+- §9.1/9.2/OPS: replay order `(reviewed_at, hlc, id)`; a late earlier review triggers a full replay.
+- §4/5.3/5.4/6.1: `max_op_bytes` (default 1 MiB), `op_too_large`, 413 halving, a lone oversized op is marked rejected.
+- §7.3: notes of a deleted note type stay usable. §14 matches openapi. Card-age server check: known issue.
 
 ## Acceptance → tests
-- A week of 700 reviews is re-minted, the replicas converge and replay uses the re-minted times → `validate.py remint_story`.
-- Re-mint formula → scenario `clock-behind-remint` and the `remint_times` unit checks.
+- Offline-created notes/cards/edits/reviews survive a 10-day-ahead clock; a merge into B's survivor; convergence → `validate.py ahead_story` (§12.7).
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Re-minted reviews sort after reviews other devices logged meanwhile; re-mint triggers a rebuild.
-- Follow-up for `contracts/db`: the purge wording, plus five `sync_state` keys.
+- `mint_at` deliberately mints below observed HLCs until the rebuild.
+- Follow-up T004: `limits.max_op_bytes` in `/meta`, `op_too_large`.

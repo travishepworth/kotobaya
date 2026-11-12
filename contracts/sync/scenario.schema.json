@@ -101,7 +101,7 @@
       "properties": {
         "offset_ms": {
           "type": "integer",
-          "description": "sync_state.remint_offset: server_time - pt of the first response that refused one of the reviews."
+          "description": "sync_state.remint_offset: server_time - pt of the first response that refused one of the device's ops with a clock code."
         },
         "now": {
           "$ref": "common.schema.json#/$defs/instant_ms",

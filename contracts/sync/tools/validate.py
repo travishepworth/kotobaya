@@ -37,6 +37,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from model import (CHECKED_CODES, DAY_MS, SERVER, VERDICT_OPS, Device, MissingRow, Replica,  # noqa: E402
                    Server, remint_times, wall)
 
+VOCAB = "00000000-0000-7000-8000-000000000101"
+
 ROOT = Path(__file__).resolve().parent.parent
 PERMUTATIONS = 300
 errors: list[str] = []
@@ -451,6 +453,10 @@ for c in cards[:19]:
         fail("re-mint story: re-minted reviews are not in their original order")
 if sum(len(srv.r.replay_set(c)) for c in cards[:19]) != 699:
     fail("re-mint story: expected 699 re-minted reviews (700 minus the undone one)")
+for c in cards[:19]:
+    times = [t for _, t in srv.r.replay_inputs(c)]
+    if times != sorted(times):
+        fail("re-mint story: a replay set is not in reviewed_at order (SYNC.md 9.1)")
 # The second path of the review: a review dated 25 h before its card (creator ahead, reviewer behind) is accepted.
 late = copy.deepcopy(b)
 late.guard, late.pt = False, srv.r.t["card"][cards[0]]["created_at"] - 25 * 3_600_000
@@ -466,6 +472,121 @@ if remint_times([(0, 50), (200, 50)], 0, 100)[1] != [50, 100]:
     fail("remint_times: a batch wider than the window is clamped per review")
 if remint_times([(500, 400), (510, 400)], -10_000, 300)[1] != [300, 300]:
     fail("remint_times: a card created ahead of now bounds the review at now")
+
+# ------------------------------------------------------------------ clock-ahead re-mint story (SYNC.md 10.4, 12.7)
+def ahead_story():
+    """Phone A runs 10 days ahead (undetectable offline) and is offline for a week. It adds 100 words
+    (note.created, card.created, note.updated), reviews their cards daily, undoes one review and
+    suspends a card the server already has. Phone B meanwhile adds one of the same words, edits it
+    later than A did, and reviews it. Re-mint must keep A's notes, cards, edits and reviews."""
+    A, B = "01931f3e-0000-7000-8000-0000000000a1", "01931f3e-0000-7000-8000-0000000000b2"
+    srv = Server(schema_problems=lambda op: problems("op.schema.json", op))
+    a, b = Device(A), Device(B)
+    real = [0x0193a1b2c000]
+    skew = 10 * DAY_MS  # more than the week offline + 24 h, so every op of the week is refused
+
+    def tick(ms, skew_a=0):
+        real[0] += ms
+        srv.pt, b.pt, a.pt = real[0], real[0], real[0] + skew_a
+
+    tick(1000)
+    old_note, old_card = a.new_id(1), a.new_id(2)
+    a.make("note.created", {"id": old_note, "note_type_id": VOCAB, "entry_seq": 1000000})
+    a.make("card.created", {"id": old_card, "note_id": old_note, "kind": "meaning"})
+    a.sync(srv)
+    b.sync(srv)
+    tick(1000, skew)  # A's clock jumps 10 days ahead; G1/G2 cannot see it
+    notes, cards, born = [], [], {}
+    shared = 2000000 + 42  # B adds this word too
+    for k in range(100):
+        tick(1000, skew)
+        note, card = a.new_id(1), a.new_id(2)
+        a.make("note.created", {"id": note, "note_type_id": VOCAB, "entry_seq": 2000000 + k})
+        a.make("card.created", {"id": card, "note_id": note, "kind": "meaning"})
+        a.make("note.updated", {"id": note, "set": {"fields": {"meaning": f"a{k}", "reading": f"r{k}"}}})
+        notes.append(note)
+        cards.append(card)
+        born[note] = real[0]
+    a.make("card.suspended", {"id": old_card})  # an edit of a row the server has: discard only
+    truth, undone, b_note, b_card = {}, None, b.new_id(1), b.new_id(2)
+    for day in range(7):
+        for k in range(100):
+            tick(600_000, skew)
+            rid = a.new_id(3)
+            a.make("review.logged", {"id": rid, "card_id": cards[k], "reviewed_at": a.pt, "utc_offset_min": 540,
+                                     "review_type": "scheduled", "rating": 3, "button": "good"})
+            truth[rid] = real[0]
+            if day == 4 and k == 7:
+                a.make("review.undone", {"review_id": rid})
+                undone = rid
+        tick(1000, skew)
+        if day == 1:
+            b.make("note.created", {"id": b_note, "note_type_id": VOCAB, "entry_seq": shared})
+            b.make("card.created", {"id": b_card, "note_id": b_note, "kind": "meaning"})
+        if day == 2:
+            b.make("note.updated", {"id": b_note, "set": {"fields": {"meaning": "from B"}}})
+        if day >= 1:
+            b.make("review.logged", {"id": b.new_id(3), "card_id": b_card, "reviewed_at": b.pt, "utc_offset_min": 0,
+                                     "review_type": "scheduled", "rating": 3, "button": "good"})
+        b.sync(srv)
+        tick(DAY_MS - 100 * 600_000 - 1000, skew)
+    a.sync(srv)  # online, clock still 10 days ahead
+    codes: dict = {}
+    for r in a.outbox:
+        if r["state"] == "rejected":
+            codes.setdefault((r["op"]["op_type"], r["last_error"]), 0)
+            codes[(r["op"]["op_type"], r["last_error"])] += 1
+    want = {("note.created", "clock_ahead"): 100, ("card.created", "unknown_reference"): 100,
+            ("note.updated", "unknown_reference"): 100, ("card.suspended", "clock_ahead"): 1,
+            ("review.logged", "unknown_reference"): 700, ("review.undone", "unknown_reference"): 1}
+    if codes != want or a.remint_offset != -skew:
+        fail(f"clock-ahead story: unexpected rejections {codes} / offset {a.remint_offset}")
+    tick(1000)  # the user fixes the clock
+    a.sync(srv)
+    a.remint()
+    tick(1000)
+    a.sync(srv)
+    b.sync(srv)
+    return srv, a, b, notes, cards, born, truth, undone, (old_card, shared, b_note, b_card)
+
+
+srv, a, b, notes, cards, born, truth, undone, (old_card, shared, b_note, b_card) = ahead_story()
+sp = srv.r.projection()
+sp["parse_override"] = {}
+for d in (a, b):
+    if d.r.projection() != sp:
+        fail(f"clock-ahead story: device {d.id[-2:]} does not converge with the server")
+    if d.rebuild_pending or any(r["state"] != "acked" for r in d.outbox):
+        fail(f"clock-ahead story: device {d.id[-2:]} has unfinished work")
+N, K = srv.r.t["note"], srv.r.t["card"]
+for k, (n, c) in enumerate(zip(notes, cards)):
+    if n not in N or c not in K:
+        fail(f"clock-ahead story: offline-created note/card {k} was lost")
+        break
+    if N[n]["entry_seq"] == shared:
+        if N[n]["merged_into_id"] != b_note or K[c]["merged_into_id"] != b_card:
+            fail("clock-ahead story: the re-minted duplicate must merge into B's note and card (SYNC.md 8)")
+        continue
+    if N[n]["fields"] != {"meaning": f"a{k}", "reading": f"r{k}"} or N[n]["deleted_at"] is not None:
+        fail(f"clock-ahead story: the edit of offline-created note {k} was lost")
+        break
+    if N[n]["created_at"] != born[n]:
+        fail(f"clock-ahead story: note {k} created_at {N[n]['created_at']} should be the real time {born[n]}")
+        break
+if N[b_note]["fields"] != {"meaning": "from B", "reading": "r42"}:
+    fail(f"clock-ahead story: survivor fields {N[b_note]['fields']}: B's later edit must win, A's other field forwarded")
+if K[old_card]["suspended"]:
+    fail("clock-ahead story: the clock_ahead edit of an existing card must be discarded")
+want = sorted(t for rid, t in truth.items() if rid != undone)
+got = sorted(t for c in cards if not K[c]["merged_into_id"] for _, t in srv.r.replay_inputs(c)) + \
+    [t for rid, t in srv.r.replay_inputs(b_card) if srv.r.t["review_log"][rid]["device_id"] == a.id]
+if sorted(got) != want:
+    fail(f"clock-ahead story: replay does not use the real review times ({len(got)} reviews, {len(want)} expected)")
+times = [t for _, t in srv.r.replay_inputs(b_card)]
+if times != sorted(times) or len(times) != 7 + 6:
+    fail("clock-ahead story: the survivor's replay set must interleave A's and B's reviews by reviewed_at")
+if any(rid in srv.r.t["review_log"] for rid in truth):
+    fail("clock-ahead story: an original (rejected) review id reached the server")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

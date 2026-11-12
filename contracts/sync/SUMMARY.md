@@ -22,6 +22,15 @@
 - **Same word added on two devices:** the server picks the survivor (the one it saw first) and
   announces it; each device then merges from its own data. Later edits aimed at the duplicate
   are applied to the survivor too.
+- **Reviews are replayed in the order they were answered** (`reviewed_at`, then clock, then id),
+  not in clock order. Every device stores those values identically, so the order is the same
+  everywhere; a review that arrives late with an earlier answer time forces a full recompute.
+  This keeps re-sent reviews from landing after other phones' later ones.
+- **Op size is capped** (default 1 MiB per op, published by the server). The app refuses to make a
+  bigger change and tells the user (embed fonts and images as media, not in a note type's CSS).
+  If a push is still too big the app halves it, down to one op; one op that never fits is marked
+  refused like any refused op, so it never blocks the rest.
+- **Notes of a deleted note type stay usable** (they are not hidden), as the API says.
 - **Reviews:** all kept. A card's schedule is recomputed from scratch whenever a review arrives
   that belongs earlier than one already counted, a review is undone, cards are merged, or the
   card's preset or its settings change.
@@ -32,8 +41,12 @@
   nothing. If reviews are refused anyway (a clock that was ahead, or an old app), the default action
   re-logs them: same answers, new ids, times shifted by the measured clock error as one block, so
   the gaps between reviews (what the scheduler uses) stay right; times are kept between the card's
-  creation and now. Refused edits can only be discarded. Either action also puts the phone's clock
-  state right.
+  creation and now. Words added offline with the wrong clock are kept too: the default action
+  re-sends them (same ids) with everything that depends on them — their cards, later edits to
+  them, and the reviews of those cards — dated by the same measured error, before the reviews. If
+  another phone added the same word meanwhile, it is merged as usual. Only edits to things the
+  server already had are discarded (they could wrongly beat other phones' edits; they are easy to
+  redo, reviews are not). Either action also puts the phone's clock state right.
 - **A restored server is detected.** Every sync answer names the log (`log_epoch`, new after every
   restore) and says how far the last verified backup reaches (`durable_seq`). A phone keeps its
   own synced changes until a backup covers them; when it sees a new log it sends them again and
@@ -49,7 +62,9 @@
   every merge decision in the scenarios is computed from the phones' ops, not written by hand, and
   a simulated backup-restore shows the old rules losing reviews and the new ones losing none, and a
   simulated week of 700 reviews on a phone reset to 2000 is re-logged with the right times and
-  converges.
+  converges; and a simulated week on a phone 10 days ahead (100 new words with cards, edits and
+  700 reviews, one word also added by another phone) keeps every word, edit and review, with the
+  real dates, and converges.
 - **After a server restore**, a phone's changes that were refused only because another phone had
   not yet re-sent its lost changes are retried automatically (up to 10 times).
 
@@ -66,6 +81,21 @@
   interval.
 - **Refuse-and-discard only (attempt 2).** A phone whose clock reset to 2000 lost a whole offline
   week of reviews.
+- **Re-sending only reviews (attempt 3).** A phone whose clock was ahead lost every word it added
+  offline, and every review of those words: the server refuses the new word for the clock and
+  everything under it as "unknown", which re-sending reviews alone did not cover.
+- **Re-sending offline-created words stamped "now".** Simpler, but their creation dates would be
+  the sync day, and when the word is merged with another phone's copy, the re-sent edits would
+  beat edits that phone made later in the week. They are stamped with the corrected original time
+  instead.
+- **Re-sending edits of existing items with a corrected time too.** It would decide real conflicts
+  with other phones on an estimated time that can be days off; edits are cheap to redo.
+- **A server-side "review not long before its card" check using the server's own receive time of
+  the card.** A card created offline is legitimately reviewed days before the server receives it,
+  and re-sent cards arrive later still. Kept as a known issue instead (below).
+- **Size limits in the op schemas** (max lengths on fields or CSS). Tightening a published op
+  version could make ops already in the log invalid, and a byte limit per op cannot be written in
+  JSON Schema anyway; the limit is a number the server publishes and both sides check.
 - **The server refusing a review dated more than a day before its card (attempt 2), now dropped.**
   The card's creation time comes from another phone's clock, which may itself be up to a day
   ahead, so two phones that were each within the tolerance (one 23 h ahead, one 2 h behind) got a
@@ -97,12 +127,13 @@
 
 ## Three choices most worth a second look
 
-1. **Re-logged reviews keep their gaps but not always their exact times.** The clock error is
-   measured at the first sync after the reviews. If the clock was changed again in between (the
-   user fixed it before syncing), the block of reviews is moved just far enough to sit after its
-   cards' creation, so gaps are right but absolute dates can be off. They are also ordered after
-   reviews other phones logged meanwhile for the same card. Edits made with the wrong clock are
-   still lost, and below a day, edits from a fast clock can win conflicts for up to that day.
+1. **Re-logged reviews and re-sent words keep their gaps but not always their exact times.** The
+   clock error is measured at the first refusal. If the clock was changed again in between (the
+   user fixed it before syncing), the whole block is moved just far enough to sit after its cards'
+   creation and before now, so gaps are right but absolute dates can be off — and for a re-sent
+   word that another phone also added, that estimated date decides which phone's edit wins. Edits
+   of existing items made with the wrong clock are still lost, and below a day, edits from a fast
+   clock can win conflicts for up to that day.
 2. **Discarding a rejected op (or re-logging reviews) re-downloads everything.** On a phone with years of history that
    is a long sync, during which reviewing is blocked, and it needs a connection. It should
    essentially never happen; if it turns out to, a targeted rollback can replace it later without
@@ -131,8 +162,14 @@
   ahead (together more than a day); it is told to fix its clock.
 - After a restore, items created or changed on the server for up to a day show times up to a day
   ahead (the server's clock is moved forward so it never repeats itself).
-- If a new note is refused by the server, the reviews of its cards are refused too and can only
-  be discarded (a client bug is the only cause; the client checks notes before creating them).
+- If a new note is refused by the server for anything but the clock, the reviews of its cards are
+  refused too and can only be discarded (a client bug is the only cause; the client checks notes
+  before creating them).
+- If only part of an offline period with a fast clock is refused (ops pushed within a day of
+  being made pass the 24 h tolerance), the accepted part keeps its too-late times and the re-sent
+  part is moved back, so the two can replay slightly out of their real order.
+- A review from a broken app can be dated up to the 2020 floor before its card (no server check;
+  the phone's own clock guard prevents it in a correct app).
 - After a server restore, changes made through the REST API or by server jobs since the last
   backup are lost (jobs should be re-run); phones' changes are not. Restoring anything but the
   newest verified backup can lose changes phones have already cleared.
@@ -154,5 +191,8 @@
   `hlc_acked`, `remint_offset`) are defined here, in the existing key/value table. The database contract's wording
   "acked rows may be purged once pulled" is narrowed here to "once pulled and backed up"; the
   database contract should say the same and list the keys (follow-up for `contracts/db`).
+- `max_op_bytes` must be published by T004 in `GET /meta` as `limits.max_op_bytes` (default
+  1 MiB, at most `max_push_bytes` − 4 KiB), and the server must answer an oversized single op with
+  per-op `op_too_large` (follow-up for `contracts/api`).
 - The server stores `log_epoch` and `durable_seq` where the server and deploy tickets choose; the
   backup job sets `durable_seq` after verifying a backup.

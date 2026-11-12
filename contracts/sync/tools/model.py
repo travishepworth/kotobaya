@@ -60,6 +60,9 @@ CLOCK_CODES = ("clock_ahead", "clock_behind")
 CHECKED_CODES = ("unsupported_op", "schema_invalid", "server_only", "unknown_reference", "clock_ahead",
                  "clock_behind")
 VERDICT_OPS = {"note.merged", "card.merged", "card.created"}  # what 8.1 may emit
+# Client creation ops and the table of the row they create (re-mint, SYNC.md 10.4).
+CREATES = {"note_type.created": "note_type", "note.created": "note", "card.created": "card", "deck.created": "deck",
+           "grammar.created": "grammar_point", "fsrs_params.created": "fsrs_params"}
 
 
 class MissingRow(Exception):
@@ -97,6 +100,21 @@ def remint_times(reviews: list, offset: int, now: int) -> tuple[int, list]:
     d_lo = max(lo - t for (t, _), lo in zip(reviews, low))
     delta = min(max(offset, d_lo), d_hi)
     return delta, [min(max(t + delta, lo), now) for (t, _), lo in zip(reviews, low)]
+
+
+def refs(op: dict) -> set:
+    """Ids of the rows whose absence makes the op unknown_reference (OPS.md "Server rejects"; SYNC.md 10.4)."""
+    t, p = op["op_type"], op["payload"]
+    named = {"note.created": ("note_type_id", "grammar_point_id"), "card.created": ("note_id", "preset_id"),
+             "card.preset_set": ("id", "preset_id"), "review.logged": ("card_id",), "review.undone": ("review_id",),
+             "deck.item_put": ("deck_id",), "deck.item_removed": ("deck_id",),
+             "confusable.confirmed": ("note_a_id", "note_b_id"), "confusable.rejected": ("note_a_id", "note_b_id"),
+             "grammar.span_put": ("grammar_point_id",), "grammar.span_removed": ("grammar_point_id",)}
+    keys = named.get(t, () if t in CREATES or "id" not in p else ("id",))
+    out = {p[k] for k in keys if p.get(k)}
+    if t.startswith("deck.item_") and p["item_key"].startswith("n:"):
+        out.add(p["item_key"][2:])
+    return out
 
 
 def entity_id(op_type: str, payload: dict) -> str:
@@ -492,7 +510,7 @@ class Replica:
         rows = [r for r in self.t["review_log"].values()
                 if (r["card_id"] == card_id or self.t["card"][r["card_id"]]["merged_into_id"] == card_id)
                 and r["undone_at"] is None and r["review_type"] in FEEDS_SCHEDULE]
-        return [r["id"] for r in sorted(rows, key=lambda r: (r["hlc"], r["id"]))]
+        return [r["id"] for r in sorted(rows, key=lambda r: (r["reviewed_at"], r["hlc"], r["id"]))]
 
     def projection(self) -> dict:
         """What must be equal on converged replicas (SYNC.md section 11)."""
@@ -719,12 +737,12 @@ class Device:
         """The device-local guard of SYNC.md 3.4 (G1, G2)."""
         return self.pt >= FLOOR_MS and (not self.hlc_last or self.pt >= wall(self.hlc_last) - DAY_MS)
 
-    def make(self, op_type: str, payload: dict) -> dict:
-        """SYNC.md 4: mint, apply locally, queue."""
+    def make(self, op_type: str, payload: dict, at=None) -> dict:
+        """SYNC.md 4: mint, apply locally, queue. at = the virtual pt of mint_at (re-mint only, SYNC.md 10.4)."""
         assert not self.rebuild_pending, "no minting while a rebuild is pending"
         if self.guard and not self.clock_guard_ok():
             raise RuntimeError("fix your clock: minting refused (SYNC.md 3.4 G1/G2)")
-        self.hlc_last = hlc_mint(self.hlc_last, self.pt, self.id)
+        self.hlc_last = hlc_mint(self.hlc_last, self.pt if at is None else at, self.id)
         op = {"op_id": self.new_id(0xff), "op_type": op_type, "op_version": 1,
               "entity_type": INDEX[op_type]["entity_type"], "entity_id": entity_id(op_type, payload),
               "device_id": self.id, "hlc": self.hlc_last, "payload": payload}
@@ -764,9 +782,8 @@ class Device:
             for row, res in zip(batch, resp["results"]):
                 if res["status"] == "rejected":
                     row.update(state="rejected", last_error=res["error"]["code"])
-                    if (res["error"]["code"] in CLOCK_CODES and row["op"]["op_type"] == "review.logged"
-                            and self.remint_offset is None):
-                        self.remint_offset = self.last_skew  # 10.5: first clock rejection of a review
+                    if res["error"]["code"] in CLOCK_CODES and self.remint_offset is None:
+                        self.remint_offset = self.last_skew  # 10.1, 10.5: first clock rejection
                 else:
                     row.update(state="acked", acked_seq=res["seq"])
                     self.hlc_acked = max(self.hlc_acked, row["op"]["hlc"])
@@ -820,31 +837,54 @@ class Device:
         """The Re-mint action of SYNC.md 10.4, one local transaction. The rebuild runs in the next sync."""
         assert not any(r["state"] == "pending" for r in self.outbox), "push until nothing is pending"
         assert self.last_skew is not None and abs(self.last_skew) <= WARN_MS, "clock must be correct"
-        clock_rows = [r for r in self.outbox if r["state"] == "rejected" and r["last_error"] in CLOCK_CODES]
-        reviews = sorted((r for r in clock_rows if r["op"]["op_type"] == "review.logged"),
-                         key=lambda r: r["op"]["hlc"])
-        ids = {r["op"]["payload"]["id"] for r in reviews}
-        undos = [r for r in self.outbox if r["op"]["op_type"] == "review.undone"
-                 and r["op"]["payload"]["review_id"] in ids]
-        keep_out = {id(r) for r in clock_rows + undos}
+        # 1. Selection, one pass in ascending original hlc.
+        W: set = set()  # ids of rows created in the window
+        C, E, R, U = [], [], [], []
+        for r in sorted((r for r in self.outbox if r["state"] == "rejected"), key=lambda r: r["op"]["hlc"]):
+            op, code = r["op"], r["last_error"]
+            t = op["op_type"]
+            if code in CLOCK_CODES:
+                C.append(r)
+                if t == "review.logged":
+                    R.append(r)
+                elif t in CREATES:
+                    E.append(r)
+                    W.add(op["payload"]["id"])
+            elif code == "unknown_reference" and refs(op) & (W | {x["op"]["payload"]["id"] for x in R}):
+                if t == "review.logged":
+                    R.append(r)
+                elif t == "review.undone":
+                    U.append(r)
+                else:
+                    E.append(r)
+                    if t in CREATES:
+                        W.add(op["payload"]["id"])
+        ids = {r["op"]["payload"]["id"] for r in R}
+        U += [r for r in self.outbox if r["op"]["op_type"] == "review.undone"
+              and r["op"]["payload"]["review_id"] in ids and r not in U]
+        drop = {id(r) for r in C + E + R + U}
         saved = (self.outbox, self.hlc_last)
-        self.outbox = [r for r in self.outbox if id(r) not in keep_out]  # 1. discard
-        if any(r["last_error"] == "clock_ahead" for r in clock_rows):  # 2. clock repair
+        self.outbox = [r for r in self.outbox if id(r) not in drop]  # 2. discard
+        if any(r["last_error"] == "clock_ahead" for r in C):  # clock repair
             self.hlc_last = max([self.hlc_acked] + [r["op"]["hlc"] for r in self.outbox])
         if not self.clock_guard_ok():  # 3. abort: nothing changes
             self.outbox, self.hlc_last = saved
             raise RuntimeError("fix your clock")
-        todo = [r["op"]["payload"] for r in reviews
+        todo = [r["op"]["payload"] for r in R
                 if self.r.t["review_log"][r["op"]["payload"]["id"]]["undone_hlc"] is None]
-        if todo:
-            delta, times = remint_times([(p["reviewed_at"], self.r.t["card"][p["card_id"]]["created_at"])
-                                         for p in todo], self.remint_offset or 0, self.pt)
-            for p, t in zip(todo, times):  # 4. mint, in the original hlc order
+        items = [(wall(r["op"]["hlc"]), FLOOR_MS) for r in E] + \
+                [(p["reviewed_at"], FLOOR_MS if p["card_id"] in W else self.r.t["card"][p["card_id"]]["created_at"])
+                 for p in todo]
+        if items:  # 4-5. one shift for the whole batch
+            delta, times = remint_times(items, self.remint_offset or 0, self.pt)
+            for r, v in zip(E, times):  # 6a. rows created in the window and their edits, mint_at(v)
+                self.make(r["op"]["op_type"], copy.deepcopy(r["op"]["payload"]), at=v)
+            for p, t in zip(todo, times[len(E):]):  # 6b. reviews, in the original hlc order
                 q = {**p, "id": self.new_id(3), "reviewed_at": t}
                 if q.get("manual_due_at") is not None:
                     q["manual_due_at"] += delta
                 self.make("review.logged", q)
-        self.remint_offset = None  # 5.
+        self.remint_offset = None  # 7.
         self.rebuild_pending = True
 
     def sync(self, server: Server):
