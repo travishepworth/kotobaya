@@ -1,0 +1,143 @@
+{{- /* api env for forwarding events to ntfy (T309). NTFY_BASE_URL = the public base URL that device push topics start with;
+       NTFY_POST_BASE_URL = where the api actually posts (the in-cluster Service). Renders nothing when forwarding is off. */ -}}
+{{- define "kotobaya.ntfyEnv" -}}
+{{- $public := .Values.ntfy.baseUrl | default (printf "https://kotobaya.%s/ntfy" .Values.domain) -}}
+{{- if .Values.ntfy.enabled }}
+- { name: NTFY_BASE_URL, value: {{ $public | quote }} }
+- { name: NTFY_POST_BASE_URL, value: {{ printf "http://%s-ntfy:%v" .Release.Name .Values.ntfy.port | quote }} }
+- name: NTFY_TOKEN
+  valueFrom: { secretKeyRef: { name: {{ .Values.ntfy.secretName }}, key: NTFY_TOKEN, optional: true } }
+{{- else if .Values.ntfy.externalBaseUrl }}
+- { name: NTFY_BASE_URL, value: {{ .Values.ntfy.externalBaseUrl | quote }} }
+- name: NTFY_TOKEN
+  valueFrom: { secretKeyRef: { name: {{ .Values.ntfy.secretName }}, key: NTFY_TOKEN, optional: true } }
+{{- end -}}
+{{- end -}}
+{{- if .Values.ntfy.enabled }}
+{{- $sel := dict "root" . "component" "ntfy" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-ntfy
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # one writer on the RWO volume
+  selector:
+    matchLabels: {{- include "kotobaya.selector" $sel | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "kotobaya.selector" $sel | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: ntfy
+          image: {{ .Values.ntfy.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          args: [serve]
+          ports: [{ name: http, containerPort: {{ .Values.ntfy.port }} }]
+          env:
+            - { name: NTFY_LISTEN_HTTP, value: {{ printf ":%v" .Values.ntfy.port | quote }} }
+            - { name: NTFY_BASE_URL, value: {{ .Values.ntfy.baseUrl | default (printf "https://kotobaya.%s/ntfy" .Values.domain) | quote }} }
+            - { name: NTFY_BEHIND_PROXY, value: "true" }
+            - { name: NTFY_CACHE_FILE, value: /var/lib/ntfy/cache.db }
+            - { name: NTFY_AUTH_FILE, value: /var/lib/ntfy/user.db }
+            # auth is required: nobody reads or writes a topic without a user or token
+            - { name: NTFY_AUTH_DEFAULT_ACCESS, value: {{ .Values.ntfy.defaultAccess | quote }} }
+            # optional provisioning from the Secret (ntfy format, e.g. "user:bcrypt-hash:user"); never in values
+            - name: NTFY_AUTH_USERS
+              valueFrom: { secretKeyRef: { name: {{ .Values.ntfy.secretName }}, key: NTFY_AUTH_USERS, optional: true } }
+            - name: NTFY_AUTH_ACCESS
+              valueFrom: { secretKeyRef: { name: {{ .Values.ntfy.secretName }}, key: NTFY_AUTH_ACCESS, optional: true } }
+            - name: NTFY_AUTH_TOKENS
+              valueFrom: { secretKeyRef: { name: {{ .Values.ntfy.secretName }}, key: NTFY_AUTH_TOKENS, optional: true } }
+          readinessProbe:
+            httpGet: { path: /v1/health, port: http }
+          livenessProbe:
+            httpGet: { path: /v1/health, port: http }
+            periodSeconds: 30
+          resources: {{- toYaml .Values.ntfy.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/ntfy }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: {{ .Release.Name }}-ntfy }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-ntfy
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.ntfy.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources: { requests: { storage: {{ .Values.ntfy.storage }} } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-ntfy
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "kotobaya.selector" $sel | nindent 4 }}
+  ports: [{ name: http, port: {{ .Values.ntfy.port }}, targetPort: http }]
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-ntfy
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" $sel | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: {} }]
+      ports: [{ port: {{ .Values.ntfy.port }} }]
+{{- end }}
+{{- if and .Values.ingress.enabled .Values.ntfy.ingress.enabled }}
+---
+# /ntfy on the one host. The prefix is stripped for nginx; other controllers need their own strip-prefix
+# (set ntfy.ingress.annotations, e.g. a Traefik Middleware).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ntfy
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+  annotations:
+    {{- if contains "nginx" .Values.ingress.className }}
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    {{- end }}
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.sse.readTimeoutSeconds | quote }}
+    {{- with .Values.ntfy.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ printf "kotobaya.%s" .Values.domain | quote }}]
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ printf "kotobaya.%s" .Values.domain | quote }}
+      http:
+        paths:
+          {{- if contains "nginx" .Values.ingress.className }}
+          - { path: /ntfy(/|$)(.*), pathType: ImplementationSpecific, backend: { service: { name: {{ .Release.Name }}-ntfy, port: { name: http } } } }
+          {{- else }}
+          - { path: /ntfy, pathType: Prefix, backend: { service: { name: {{ .Release.Name }}-ntfy, port: { name: http } } } }
+          {{- end }}
+{{- end }}
+{{- end }}

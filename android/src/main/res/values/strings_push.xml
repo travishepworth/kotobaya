@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="push_section_title">Server notifications</string>
+    <string name="push_explainer">Get a notification when an import or other server job finishes, and a nudge to sync. Needs a UnifiedPush app such as ntfy on this phone.</string>
+    <string name="push_state_off">Off.</string>
+    <string name="push_state_no_distributor">No UnifiedPush app found. Install ntfy and try again.</string>
+    <string name="push_state_waiting">Waiting for the push app and the server.</string>
+    <string name="push_state_on">On. The server knows this phone\'s push address.</string>
+    <string name="push_enable">Turn on</string>
+    <string name="push_disable">Turn off</string>
+    <string name="push_retry">Tell the server again</string>
+    <string name="push_job_succeeded">%1$s finished</string>
+    <string name="push_job_failed">%1$s failed</string>
+</resources>

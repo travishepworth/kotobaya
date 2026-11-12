@@ -214,6 +214,8 @@ dependencies {
     // T307: Glance home-screen widget (and its composition-test helper)
     implementation("androidx.glance:glance-appwidget:1.1.1")
     testImplementation("androidx.glance:glance-appwidget-testing:1.1.1")
+    // T309: UnifiedPush connector (ntfy app as distributor)
+    implementation("org.unifiedpush.android:connector:3.0.10")
     testImplementation("com.github.luben:zstd-jni:1.5.6-4")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(libs.kotlin.test)

@@ -113,6 +113,30 @@ ingress:
 networkPolicy:
   enabled: true
 
+# ntfy / UnifiedPush (T309). Off by default. With enabled=true the chart runs ntfy (auth required, default access
+# deny-all) and the api posts server events to each device's push_topic (NTFY_BASE_URL, NTFY_POST_BASE_URL, NTFY_TOKEN).
+# Secret `ntfy.secretName` (never in values), all keys optional: NTFY_TOKEN (api -> ntfy publish token),
+# NTFY_AUTH_USERS / NTFY_AUTH_ACCESS / NTFY_AUTH_TOKENS (ntfy provisioning format; the token must be allowed to
+# write the devices' topics, the phone's user to read its own). Topics outside the public base URL are never posted to.
+ntfy:
+  enabled: false
+  image: binwiederhall/ntfy:v2.14.0
+  port: 8080
+  secretName: kotobaya-ntfy
+  # Public base URL ntfy advertises; empty = https://kotobaya.<domain>/ntfy
+  baseUrl: ""
+  # Forward to an external ntfy (ntfy.enabled=false): its public base URL, the prefix of device push topics.
+  externalBaseUrl: ""
+  defaultAccess: deny-all
+  storage: 1Gi
+  storageClassName: ""
+  ingress:
+    enabled: true
+    annotations: {}
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
 # Backups (T112). Off by default: the target is a placeholder (docs/DECISIONS.md). See deploy/backup/README.md.
 # enabled=true renders the nightly `backup` and weekly `backup-verify` CronJobs and a suspended
 # `backup-restore` CronJob (used by deploy/backup/restore-k8s.sh).

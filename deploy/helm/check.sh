@@ -49,5 +49,17 @@ lacks traefik.yaml 'proxy-buffering'
 render off.yaml --set networkPolicy.enabled=false,migrate.enabled=false,ingress.enabled=false
 lacks off.yaml 'kind: Ingress'
 lacks off.yaml 'name: migrate'
+# ntfy (T309): off by default; on renders Deployment/Service/Ingress, auth deny-all, api forwarding env
+lacks default.yaml 'binwiederhall/ntfy'
+lacks default.yaml 'NTFY_BASE_URL'
+render ntfy.yaml --set ntfy.enabled=true,ingress.className=nginx
+has ntfy.yaml 'binwiederhall/ntfy'
+has ntfy.yaml 'name: NTFY_AUTH_DEFAULT_ACCESS, value: "deny-all"'
+has ntfy.yaml 'name: NTFY_POST_BASE_URL, value: "http://t-ntfy:8080"'
+has ntfy.yaml 'key: NTFY_TOKEN'
+has ntfy.yaml 'path: /ntfy'
+render ntfy-ext.yaml --set ntfy.externalBaseUrl=https://ntfy.example.invalid
+lacks ntfy-ext.yaml 'binwiederhall/ntfy'
+has ntfy-ext.yaml 'name: NTFY_BASE_URL, value: "https://ntfy.example.invalid"'
 bash ../backup/check.sh
 echo "helm check OK"
