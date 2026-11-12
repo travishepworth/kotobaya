@@ -82,3 +82,4 @@
 - T105b → T609: parse X-Forwarded-Proto/Host from the right like XFF.
 - T112 → T202: server must read BACKUPS_DISABLED=true and report durable_seq = high_water_seq (else 0 → devices never purge acked rows).
 - T201a → T213a/T201b: CardGenerator (contract signature has no note fields) doesn't skip a card kind whose front template renders empty; the caller (T201b note create, using T213a rendering) must apply the 'skip empty front' rule.
+- C-4 → C-ticket later: `JpdbHistoryImportRequest.import_word_status` description still mentions never-forget/blacklist; align with ADR-009 (doc-only).
