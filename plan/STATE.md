@@ -1,6 +1,6 @@
 # STATE
 Mode: single-session
-Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
+Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
 Updated: 2026-11-12T14:23:50Z
 
 
