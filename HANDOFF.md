@@ -17,6 +17,6 @@ CHECK: `make check MODULE=contracts` → green (clients regenerated; no server/c
 - none
 
 ## For the reviewer (≤ 3 lines)
-- T207b already matches. T207a/worker must add: step 2 (adopt a child that already `succeeded`) and the `reviews_id_collisions` count inside bucket 8. The worker should also stop counting the second colliding event as plain already-imported only.
+- T207b already matches. Worker follow-up: add step 2 (adopt a child that already `succeeded`). Also, `job_result` must report `reviews_id_collisions`; today it folds collisions into already-imported without counting them.
 - Server JobRepo/SSE relay must filter internal kinds (T207b's runner pg_notifies the child id).
 - Second look: "not in JobKind" vs a prefix; collisions as a subset; no partial counts when cancelled.
