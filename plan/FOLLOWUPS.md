@@ -51,3 +51,5 @@
 - T108a: SearchExamples.kt is a snapshot of search-examples.tsv (commonTest can't read files) — regenerate when the tsv changes (C-2 may add examples). JS tests for search run once T107a wires :core:jsTest.
 - T108a: CoreJsImpl.renderCard/previewIntervals throw NotImplementedError until T213/T107b.
 - T102: Tatoeba→entry linking is substring-based (over-links). Re-link with the parser once the parse ticket lands (Phase 4 parser). No default frequency lists or Tatoeba URL: sources are config (ExtraSources) — pick lists in DECISIONS (HUMAN_CHECKS).
+- Freeze A → T202/T104: server's persisted HLC `last` location is "T-server chooses"; use a server_state key `hlc_last` (restore finalization raises it in the same tx).
+- Freeze A → T202 tests: raw-push `same-op-id-equal-contents` — assert the second element gets `duplicate`; jpdb-import kanji dedupe vs a concurrent offline phone add goes through SYNC 8 merge (test it).
