@@ -1,6 +1,6 @@
 # JobKind
 
-Job type slug. Payload and result schema per kind are listed on `Job`.
+Job type slug. Payload and result schema per kind are listed on `Job`. Only public kinds; server-internal kinds (C-9, see `Job`) are never values of this enum and never appear in the API.
 
 ## Enum
 

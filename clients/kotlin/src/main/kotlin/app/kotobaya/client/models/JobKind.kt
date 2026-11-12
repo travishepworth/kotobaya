@@ -27,7 +27,7 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Job type slug. Payload and result schema per kind are listed on `Job`.
+ * Job type slug. Payload and result schema per kind are listed on `Job`. Only public kinds; server-internal kinds (C-9, see `Job`) are never values of this enum and never appear in the API.
  *
  * Values: DICT_REFRESH,MEDIA_IMPORT,MEDIA_PARSE,JPDB_DECK_IMPORT,JPDB_HISTORY_IMPORT,FSRS_OPTIMIZE,TTS,DECK_BUILD
  */

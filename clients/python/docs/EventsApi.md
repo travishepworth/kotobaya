@@ -36,7 +36,7 @@ data: <one line of JSON: the Event object>
 | `hello` | `EventHello` | Once, first, on every connection. |
 | `sync.changed` | `EventSyncChanged` | One or more ops were logged (any origin). Coalesced to at most one per second; carries the new `high_water_seq`. Clients with a replica pull; others refetch. |
 | `note.created` | `EventNoteCreated` | A `note.created` op was applied (once per note). |
-| `job.updated` | `Job` | A job was created, changed status, or its progress changed (at most one per job per second while running; the terminal state is always sent). |
+| `job.updated` | `Job` | A job was created, changed status, or its progress changed (at most one per job per second while running; the terminal state is always sent). Never sent for a server-internal job (C-9, see `Job`); its progress shows up as `job.updated` of its parent. |
 | `device.paired` | `EventDevice` | `POST /devices/pair` succeeded. |
 | `device.revoked` | `EventDevice` | A device was revoked. |
 

@@ -597,6 +597,53 @@ events count as `reviews_skipped`; status, duplicate and unknown-grade events as
 gives the three sums that must hold and the order in which an event's bucket is
 decided).
 
+**Review id collisions (C-9).** The id formula can give two rating events of different
+cards the same id: one `vid` in two rows mapped by text to two different seqs (or two
+rows without a `vid`, both keyed `"v0"`), with equal `timestamp`, `grade` and `occ`.
+Only one review can hold an id. The event that finds its id already held by a review
+of a *different live card* (in `review_log`, or emitted earlier in this run; vocab
+groups are applied in order of their first row in the export, kanji groups after
+them; the holder's card is resolved through `merged_into_id` first) is not emitted,
+is counted `reviews_already_imported` (bucket 8), and is also counted
+`reviews_id_collisions`. A holder whose card or note is deleted is not a collision (the event is
+simply already imported). On a re-run the original holder keeps the id, so the count
+is stable. Expected 0 on real exports.
+
+**Execution (C-9).** The job runs in two halves joined by the server-internal job kind
+`jpdb-history-apply` (rules for internal jobs: `Job`). Only the parent
+(`jpdb-history-import`) is ever visible in the API.
+1. The worker claims the parent, reads the blob and plans (mapping, groups, buckets,
+   review ids; nothing written). It reports parent `progress` in [0, 0.2].
+2. If a `jpdb-history-apply` row with `payload.parent_job_id` = the parent's id has
+   already `succeeded` (an earlier attempt of this parent got that far), the worker
+   ends the parent `succeeded` with that row's `result` and stops. Otherwise it
+   inserts the child in one statement: `id` = new UUIDv7, `kind =
+   'jpdb-history-apply'`, `payload = {"parent_job_id": "<parent id>", "plan": <plan>}`
+   (`plan` = the worker's `ImportPlan.to_json()`, version 1, defined in
+   `worker/.../jpdb_history/plan.py`; an internal format shared only by worker and
+   server, which must reject an unknown `version` by failing the child), `dedupe_key
+   = 'jpdb-history-apply:<parent id>'`, `max_attempts = 1`, `ON CONFLICT DO
+   NOTHING`; then it reads the queued or running row holding that dedupe key (a child
+   left by an earlier attempt of the parent is reused, not duplicated).
+3. The server's runner (the only claimer of the kind) claims the child with `SKIP
+   LOCKED`. Before the first batch and between batches it checks that the parent is
+   still `running`; if not, it stops and ends the child `cancelled`. It applies the
+   plan through OpApply as server ops (idempotent: a re-run writes only what is
+   missing), heartbeats the child, and writes the parent's `progress` (in [0.2,
+   0.99)) and `progress_message` with `WHERE status = 'running'`, sending the
+   parent's `job.updated`. It ends the child `succeeded` with the full
+   `JobResultJpdbHistory` as `result`, `failed` with `error`, or `cancelled`; in
+   every case it removes `plan` from the child's payload.
+4. The worker waits for the child (polling, heartbeating the parent, honouring parent
+   cancellation) and ends the parent: child `succeeded` → parent `succeeded`, `result`
+   = the child's `result`, `progress = 1`; child `failed` → the parent attempt fails
+   with the child's `error` (retried per `max_attempts`; a retry plans again and makes
+   a new child); child `cancelled` → the parent is already `cancelled`, nothing to do.
+A child that is `running` with a `heartbeat_at` older than 5 minutes (server restart)
+is re-queued by the server runner whatever its `attempts`. A parent whose worker died
+is re-queued by the usual stale rule and, at step 2, reuses the child. The parent's
+`result` is null until it ends (partial counts are not reported on cancel).
+
 
 ### Example
 

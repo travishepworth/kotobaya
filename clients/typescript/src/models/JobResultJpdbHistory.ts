@@ -44,6 +44,10 @@ import {
  * word status); (6) any other non-rating grade → `reviews_unknown_grade`; (7) rating with
  * `import_reviews = false` → `reviews_skipped`; (8) rating whose review id already exists →
  * `reviews_already_imported`; (9) else `reviews_imported`.
+ * `reviews_id_collisions` (C-9) is not a bucket: it counts the subset of bucket (8) whose id is
+ * held by a review of a different live card (see "Review id collisions" on
+ * `importJpdbHistory`), so `reviews_id_collisions <= reviews_already_imported` and the sums
+ * above are unchanged.
  * Rows count rows, not distinct words: rows that repeat a vid are each counted in
  * `vocabulary_total` and in their group's bucket (`unmapped` lists each row). `notes_*`,
  * `cards_created`, `kanji_notes_*`, `kanji_cards_*` and `word_statuses_set` count what was
@@ -104,6 +108,10 @@ export interface JobResultJpdbHistory {
      * Events of mapped rows dropped as exact duplicates - same `timestamp` and `grade` as an earlier event of the same group (vocab - rows sharing a seq; kanji - rows sharing character and card kind). Any grade, status events included. Added by C-4.
      */
     reviewsDuplicateDropped: number;
+    /**
+     * Of `reviews_already_imported`, the rating events not emitted because their review id is held by a review of a different live card (one vid text-mapped to two seqs, or two vid-less rows, with identical `timestamp`, `grade` and `occ`; see "Review id collisions" on `importJpdbHistory`). Counted so they are not silently dropped; not a separate bucket, the sums are unchanged. Expected 0. Added by C-9.
+     */
+    reviewsIdCollisions: number;
     /**
      * Reviews logged by this run.
      */
@@ -170,6 +178,7 @@ export function instanceOfJobResultJpdbHistory(value: object): value is JobResul
     if ((!('notesExisting' in (value as Record<string, any>)) && !('notes_existing' in (value as Record<string, any>))) || ((value as Record<string, any>)['notesExisting'] === undefined && (value as Record<string, any>)['notes_existing'] === undefined)) return false;
     if ((!('reviewsAlreadyImported' in (value as Record<string, any>)) && !('reviews_already_imported' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsAlreadyImported'] === undefined && (value as Record<string, any>)['reviews_already_imported'] === undefined)) return false;
     if ((!('reviewsDuplicateDropped' in (value as Record<string, any>)) && !('reviews_duplicate_dropped' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsDuplicateDropped'] === undefined && (value as Record<string, any>)['reviews_duplicate_dropped'] === undefined)) return false;
+    if ((!('reviewsIdCollisions' in (value as Record<string, any>)) && !('reviews_id_collisions' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsIdCollisions'] === undefined && (value as Record<string, any>)['reviews_id_collisions'] === undefined)) return false;
     if ((!('reviewsImported' in (value as Record<string, any>)) && !('reviews_imported' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsImported'] === undefined && (value as Record<string, any>)['reviews_imported'] === undefined)) return false;
     if ((!('reviewsSkipped' in (value as Record<string, any>)) && !('reviews_skipped' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsSkipped'] === undefined && (value as Record<string, any>)['reviews_skipped'] === undefined)) return false;
     if ((!('reviewsTotal' in (value as Record<string, any>)) && !('reviews_total' in (value as Record<string, any>))) || ((value as Record<string, any>)['reviewsTotal'] === undefined && (value as Record<string, any>)['reviews_total'] === undefined)) return false;
@@ -207,6 +216,7 @@ export function JobResultJpdbHistoryFromJSONTyped(json: any, ignoreDiscriminator
         'notesExisting': json['notes_existing'],
         'reviewsAlreadyImported': json['reviews_already_imported'],
         'reviewsDuplicateDropped': json['reviews_duplicate_dropped'],
+        'reviewsIdCollisions': json['reviews_id_collisions'],
         'reviewsImported': json['reviews_imported'],
         'reviewsSkipped': json['reviews_skipped'],
         'reviewsTotal': json['reviews_total'],
@@ -245,6 +255,7 @@ export function JobResultJpdbHistoryToJSONTyped(value?: JobResultJpdbHistory | n
         'notes_existing': value['notesExisting'],
         'reviews_already_imported': value['reviewsAlreadyImported'],
         'reviews_duplicate_dropped': value['reviewsDuplicateDropped'],
+        'reviews_id_collisions': value['reviewsIdCollisions'],
         'reviews_imported': value['reviewsImported'],
         'reviews_skipped': value['reviewsSkipped'],
         'reviews_total': value['reviewsTotal'],

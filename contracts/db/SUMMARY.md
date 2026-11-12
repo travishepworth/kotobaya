@@ -159,3 +159,11 @@
   ordering for mined cards.
 - Worth a second look: whether kanji-before-vocab should override a deck's explicit `add_kanji`,
   instead of only filling in where the deck has none.
+
+## C-9 changes (internal job kinds; additive, no DDL)
+- `app.job` may hold **server-internal kinds**: any `kind` that is not an API `JobKind`. The
+  existing `CHECK` (a slug regex) already allows them, so `V1__init.sql` is unchanged (its
+  `job.kind` comment is stale; SCHEMA.md 4.4 is authoritative). The only one is
+  `jpdb-history-apply` (worker plans, server applies through OpApply).
+- Alternative rejected: a `parent_job_id` column or an `internal` flag. Both need DDL in an
+  applied migration; a payload member and the "not in `JobKind`" rule need none.

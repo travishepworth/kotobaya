@@ -18,6 +18,8 @@ Cancel a queued or running job.
 Sets `status = cancelled`, `finished_at = now`. A running job's worker notices at its
 next heartbeat (within 30 s) and stops; content it already published stays published.
 Already cancelled: `200`, unchanged. Succeeded or failed: `409 job_not_cancellable`.
+A server-internal job's id (C-9, see `Job`) answers `404 not_found`; cancel its parent
+instead, which also stops the child.
 
 
 ### Example
@@ -106,6 +108,8 @@ Name | Type | Description  | Notes
 
 One job with progress, result or error.
 
+The id of a server-internal job (kind not in `JobKind`, C-9, see `Job`) answers `404 not_found`, as if it did not exist.
+
 ### Example
 
 * Api Key Authentication (sessionCookie):
@@ -191,7 +195,7 @@ Name | Type | Description  | Notes
 
 List background jobs (imports, parses, optimizer runs, ...).
 
-Ordered by `created_at` descending, then `id` descending. Jobs are kept for at least 30 days after finishing.
+Ordered by `created_at` descending, then `id` descending. Jobs are kept for at least 30 days after finishing. Server-internal jobs (kind not in `JobKind`, C-9, see `Job`) are never listed.
 
 ### Example
 

@@ -42,6 +42,24 @@ import {
  * | `tts` | `TtsRequest` | `JobResultTts` |
  * | `deck-build` | `JobPayloadDeckBuild` | `JobResultDeckBuild` |
  * 
+ * **Server-internal jobs (C-9).** An `app.job` row whose `kind` is not a `JobKind` value
+ * is *server-internal*: a hand-off between the worker and the server inside one public
+ * job (its *parent*). The registered internal kinds are listed in
+ * `contracts/db/SCHEMA.md` ("Jobs"); today only `jpdb-history-apply` (see
+ * `importJpdbHistory`, "Execution"). Rules:
+ * - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
+ *   cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
+ *   answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`
+ *   (nor an ntfy push) whose job is internal. It is visible only through its parent:
+ *   the parent's `status`, `progress`, `progress_message`, `result` and `error`
+ *   reflect it as the parent kind documents.
+ * - An internal kind is never added to `JobKind` and never named like one; a new one is
+ *   added to the SCHEMA.md list by a contract ticket (additive: no column or `CHECK`
+ *   changes, `app.job.kind` already accepts any slug).
+ * - The worker never claims an internal kind (it claims only kinds it registered); the
+ *   server's runner for that kind is the only claimer. Cancelling the parent cancels
+ *   the child (the child's runner checks the parent before work and between batches).
+ * 
  * @export
  * @interface Job
  */

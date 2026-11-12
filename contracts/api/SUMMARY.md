@@ -290,3 +290,17 @@ attempt 1 is gone). Needs node and python3; network on first run.
   (`reviews_duplicate_dropped`), `known` sets a status only for known-only words (never over an
   existing override), `writing` and known-only kanji cards created suspended
   (`kanji_cards_suspended`), optional kanji `keyword`, and a fixed deterministic review-id formula.
+
+## C-9 changes (additive)
+- **Server-internal jobs.** An `app.job` row whose kind is not a `JobKind` value is internal.
+  `listJobs`, `getJob`, `cancelJob` (404) and `streamEvents` never expose it; it shows only
+  through its parent job. First use: `jpdb-history-apply`, which carries the worker's import
+  plan to the server's OpApply. `importJpdbHistory` "Execution" gives the four-step protocol and
+  how the parent's status, progress and result follow the child.
+- **`JobResultJpdbHistory.reviews_id_collisions`** (required, ≥ 0): rating events whose review
+  id is already held by a review of a different live card. It is a subset of
+  `reviews_already_imported`, not a new bucket, so the three sums are unchanged.
+- Worth a second look: (1) internal is decided by "kind not in `JobKind`" and not by a prefix.
+  This matches the T207b code, but adding a kind to `JobKind` later exposes it. (2) Collisions
+  count inside bucket 8 instead of getting their own bucket. (3) The parent reports no partial
+  counts on cancel.

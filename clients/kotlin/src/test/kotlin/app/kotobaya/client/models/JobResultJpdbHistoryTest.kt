@@ -107,6 +107,12 @@ class JobResultJpdbHistoryTest : ShouldSpec() {
             //modelInstance.reviewsDuplicateDropped shouldBe ("TODO")
         }
 
+        // to test the property `reviewsIdCollisions` - Of `reviews_already_imported`, the rating events not emitted because their review id is held by a review of a different live card (one vid text-mapped to two seqs, or two vid-less rows, with identical `timestamp`, `grade` and `occ`; see \"Review id collisions\" on `importJpdbHistory`). Counted so they are not silently dropped; not a separate bucket, the sums are unchanged. Expected 0. Added by C-9.
+        should("test reviewsIdCollisions") {
+            // uncomment below to test the property
+            //modelInstance.reviewsIdCollisions shouldBe ("TODO")
+        }
+
         // to test the property `reviewsImported` - Reviews logged by this run.
         should("test reviewsImported") {
             // uncomment below to test the property

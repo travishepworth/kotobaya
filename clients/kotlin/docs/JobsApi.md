@@ -16,7 +16,7 @@ All URIs are relative to */api/v1*
 
 Cancel a queued or running job.
 
-Sets &#x60;status &#x3D; cancelled&#x60;, &#x60;finished_at &#x3D; now&#x60;. A running job&#39;s worker notices at its next heartbeat (within 30 s) and stops; content it already published stays published. Already cancelled: &#x60;200&#x60;, unchanged. Succeeded or failed: &#x60;409 job_not_cancellable&#x60;. 
+Sets &#x60;status &#x3D; cancelled&#x60;, &#x60;finished_at &#x3D; now&#x60;. A running job&#39;s worker notices at its next heartbeat (within 30 s) and stops; content it already published stays published. Already cancelled: &#x60;200&#x60;, unchanged. Succeeded or failed: &#x60;409 job_not_cancellable&#x60;. A server-internal job&#39;s id (C-9, see &#x60;Job&#x60;) answers &#x60;404 not_found&#x60;; cancel its parent instead, which also stops the child. 
 
 ### Example
 ```kotlin
@@ -69,6 +69,8 @@ ApiClient.accessToken = ""
 
 One job with progress, result or error.
 
+The id of a server-internal job (kind not in &#x60;JobKind&#x60;, C-9, see &#x60;Job&#x60;) answers &#x60;404 not_found&#x60;, as if it did not exist.
+
 ### Example
 ```kotlin
 // Import classes:
@@ -120,7 +122,7 @@ ApiClient.accessToken = ""
 
 List background jobs (imports, parses, optimizer runs, ...).
 
-Ordered by &#x60;created_at&#x60; descending, then &#x60;id&#x60; descending. Jobs are kept for at least 30 days after finishing.
+Ordered by &#x60;created_at&#x60; descending, then &#x60;id&#x60; descending. Jobs are kept for at least 30 days after finishing. Server-internal jobs (kind not in &#x60;JobKind&#x60;, C-9, see &#x60;Job&#x60;) are never listed.
 
 ### Example
 ```kotlin

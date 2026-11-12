@@ -323,9 +323,21 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `device` | S | pairing / auth endpoints | The device knows its own id via `sync_state`. |
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
-| `job` | S | API enqueues, worker updates | |
+| `job` | S | API enqueues, worker updates; internal kinds: worker enqueues, server updates | `kind` is a public `JobKind` (openapi) or a **server-internal kind** (C-9; list below). The `V1__init.sql` comment on `job.kind` predates C-9 and is left unchanged so the applied migration's checksum stays valid; the `CHECK` (`^[a-z][a-z0-9_-]*$`) already admits internal kinds, so no DDL changed. This row is authoritative. |
 | `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
+
+**Server-internal job kinds (C-9).** A `job` row whose `kind` is not a value of the API's
+`JobKind` is internal: a worker→server hand-off inside one public *parent* job. The API never
+lists, returns, cancels or streams it (`Job` in `contracts/api/openapi.yaml`); it shows only
+through its parent. The worker never claims it; the named server runner is the only claimer.
+Its payload carries `parent_job_id`; its `dedupe_key` is `<kind>:<parent id>`. Registered kinds:
+
+| Kind | Parent kind | Enqueued by | Claimed by | Payload | Result | Protocol |
+|---|---|---|---|---|---|---|
+| `jpdb-history-apply` | `jpdb-history-import` | worker | server (`JpdbHistoryApplyRunner`) | `{"parent_job_id": uuid, "plan": <ImportPlan v1>}`; `plan` removed when the row ends | `JobResultJpdbHistory` | `importJpdbHistory` "Execution" |
+
+A new internal kind is added here by a contract ticket; it must not equal a `JobKind` value.
 
 **`change` invariants.**
 - One row per accepted op, including ops that lose a last-writer-wins comparison (they are still
