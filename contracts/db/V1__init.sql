@@ -323,6 +323,16 @@ COMMENT ON COLUMN app.change.hlc IS 'HLC assigned by the origin when the op was 
 COMMENT ON COLUMN app.change.caused_by_op_id IS 'For ops the server emits as a consequence of another op (e.g. note.merged): the op_id that triggered it.';
 COMMENT ON COLUMN app.change.token_id IS 'api_token.id that pushed the op (audit; no FK so tokens can be purged).';
 
+CREATE FUNCTION app.reject_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'kotobaya: % on %.% is not allowed (append-only)', TG_OP, TG_TABLE_SCHEMA, TG_TABLE_NAME
+    USING ERRCODE = 'restrict_violation';
+END $$;
+COMMENT ON FUNCTION app.reject_mutation() IS 'Trigger function enforcing append-only tables.';
+
+CREATE TRIGGER change_append_only BEFORE UPDATE OR DELETE ON app.change
+  FOR EACH ROW EXECUTE FUNCTION app.reject_mutation();
+
 CREATE TABLE app.job (
   id                   uuid        PRIMARY KEY,
   kind                 text        NOT NULL CHECK (kind ~ '^[a-z][a-z0-9_-]*$'),
@@ -486,6 +496,8 @@ CREATE TABLE app.note (
 );
 -- "Words are learned once, globally": at most one live note per referenced thing.
 -- Server-only uniqueness; the device schema has plain indexes (SCHEMA.md 4.2).
+-- Op-apply must never let these indexes reject an op: an op that would create a
+-- second live row runs the merge procedure instead (SCHEMA.md 4.2).
 CREATE UNIQUE INDEX note_live_entry_uq   ON app.note (entry_seq)        WHERE entry_seq IS NOT NULL        AND deleted_at IS NULL;
 CREATE UNIQUE INDEX note_live_kanji_uq   ON app.note (kanji_literal)    WHERE kanji_literal IS NOT NULL    AND deleted_at IS NULL;
 CREATE UNIQUE INDEX note_live_grammar_uq ON app.note (grammar_point_id) WHERE grammar_point_id IS NOT NULL AND deleted_at IS NULL;
@@ -498,19 +510,19 @@ COMMENT ON TABLE  app.note IS 'One thing being learned. Cards hang off a note.';
 COMMENT ON COLUMN app.note.type IS 'vocab|kanji|phrase|grammar|sentence|custom. Always equals note_type.base_type (composite FK). Immutable.';
 COMMENT ON COLUMN app.note.note_type_id IS 'Immutable after creation in v1.';
 COMMENT ON COLUMN app.note.language IS 'BCP 47; always ja in v1.';
-COMMENT ON COLUMN app.note.entry_seq IS 'Soft reference to ref.dict_entry.seq; only for type=vocab. NULL for a vocab note that matched no JMdict entry. LWW register; may go NULL -> value (late match), never value -> other value.';
+COMMENT ON COLUMN app.note.entry_seq IS 'Soft reference to ref.dict_entry.seq; only for type=vocab. NULL for a vocab note that matched no JMdict entry. Plain LWW register "entry_seq" (NULL -> value on a late match, value -> other value on a re-match, value -> NULL). Any op that makes it equal to another live note''s entry_seq triggers the merge procedure with this note as the loser (SCHEMA.md 4.2). A JMdict expression is a vocab note; type=phrase is for free-form phrases without an entry.';
 COMMENT ON COLUMN app.note.kanji_literal IS 'Soft reference to ref.kanji.literal; only for type=kanji. Immutable.';
 COMMENT ON COLUMN app.note.grammar_point_id IS 'Grammar point this note studies; only for type=grammar. Immutable.';
 COMMENT ON COLUMN app.note.fields IS 'Object {field key -> string}. Keys come from note_type.fields; unknown keys are preserved, missing keys mean "". Values are HTML fragments; media as [sound:<sha256>] and <img src="blob:<sha256>">. For referenced notes an empty field means "render from the dictionary". Each key is its own LWW register.';
-COMMENT ON COLUMN app.note.tags IS 'Set of tags (no duplicates, no whitespace, case-sensitive), sorted ascending. One LWW register for the whole set. "leech" is NOT stored here; it is derived from card.lapses.';
+COMMENT ON COLUMN app.note.tags IS 'Set of tags (no duplicates, no whitespace, case-sensitive), sorted ascending. One LWW register for the whole set (concurrent edits on two devices: the later set wins whole; known trade-off, SUMMARY.md). "leech" is NOT stored here; it is derived from card.lapses.';
 COMMENT ON COLUMN app.note.mnemonic IS 'User mnemonic (Markdown); shown on the card while the word is hot.';
 COMMENT ON COLUMN app.note.source_sentence IS 'Sentence the note was mined from, copied by value so it survives media deletion and works on devices without the media. "" if none.';
 COMMENT ON COLUMN app.note.source_sentence_id IS 'Soft reference to app.sentence.id when mined from imported media; may dangle.';
 COMMENT ON COLUMN app.note.source_media_id IS 'Soft reference to app.media.id; may dangle.';
 COMMENT ON COLUMN app.note.origin IS 'How the note was created: manual, takoboto, yomitan, ankiconnect, share, reader, deck, jpdb_import, api, auto_kanji. Open set. Immutable.';
 COMMENT ON COLUMN app.note.deleted_at IS 'Tombstone. Deletion is permanent: later or concurrent edits still merge into the row but never clear deleted_at. A deleted note hides all its cards.';
-COMMENT ON COLUMN app.note.merged_into_id IS 'Set only by the server''s note.merged op when two live notes referenced the same entry/kanji/grammar point: this (losing) note is tombstoned and points at the surviving note. Never a chain: always the final survivor.';
-COMMENT ON COLUMN app.note.clocks IS 'LWW registers: fields.<key> (one per field key), tags, mnemonic, source_sentence (covers source_sentence_id and source_media_id too), entry_seq, deleted.';
+COMMENT ON COLUMN app.note.merged_into_id IS 'Set only by the server''s note.merged op when two live notes referenced the same entry/kanji/grammar point: this (losing) note is tombstoned and points at the surviving note. Never a chain: always the final survivor. Permanent. Register ops addressed to this row are also applied to the survivor (SCHEMA.md 4.2).';
+COMMENT ON COLUMN app.note.clocks IS 'LWW registers: fields.<key> (one per field key), tags, mnemonic, source_sentence (covers source_sentence_id and source_media_id too), entry_seq, deleted. Forwarded to the survivor on merge: all except entry_seq and deleted.';
 COMMENT ON COLUMN app.note.search_text IS 'Generated. Substring search target (pg_trgm).';
 
 CREATE TABLE app.card (
@@ -569,8 +581,8 @@ COMMENT ON COLUMN app.card.reps IS 'Cache. Number of replayed scheduled/learning
 COMMENT ON COLUMN app.card.lapses IS 'Cache. Number of Again ratings given while state was review. Leech = lapses >= scheduler.leech_threshold.';
 COMMENT ON COLUMN app.card.weights_version IS 'Cache. fsrs_params.weights_version used for the last replay; a mismatch with the preset means the cache is stale and must be replayed.';
 COMMENT ON COLUMN app.card.deleted_at IS 'Tombstone (permanent). Reviews of a deleted card stay in review_log.';
-COMMENT ON COLUMN app.card.merged_into_id IS 'Set only by the server''s card.merged op: this card lost a (note, kind) collision; its reviews replay as part of the surviving card. Never a chain.';
-COMMENT ON COLUMN app.card.clocks IS 'LWW registers: suspended, buried_until, flags, preset_id, deleted.';
+COMMENT ON COLUMN app.card.merged_into_id IS 'Set only by the server''s card.merged op: this card lost a (note, kind) collision; its reviews replay as part of the surviving card. Never a chain. Permanent. Register ops addressed to this row are also applied to the survivor.';
+COMMENT ON COLUMN app.card.clocks IS 'LWW registers: suspended, buried_until, flags, preset_id, deleted. Forwarded to the survivor on merge: all except deleted.';
 
 CREATE TABLE app.review_log (
   id              uuid        PRIMARY KEY,
@@ -578,7 +590,7 @@ CREATE TABLE app.review_log (
   device_id       uuid        NOT NULL REFERENCES app.device (id),
   hlc             app.hlc     NOT NULL,
   reviewed_at     timestamptz NOT NULL,
-  utc_offset_min  smallint    NOT NULL DEFAULT 0 CHECK (utc_offset_min BETWEEN -1080 AND 1080),
+  utc_offset_min  smallint    CHECK (utc_offset_min BETWEEN -1080 AND 1080),
   review_type     text        NOT NULL CHECK (review_type IN ('scheduled', 'learning', 'drill', 'cram', 'manual')),
   rating          smallint    CHECK (rating BETWEEN 1 AND 4),
   button          text        CHECK (button IN ('again', 'hard', 'good', 'easy', 'nothing', 'something', 'okay')),
@@ -600,12 +612,12 @@ CREATE TABLE app.review_log (
 CREATE INDEX review_log_card_idx     ON app.review_log (card_id, hlc, id);
 CREATE INDEX review_log_reviewed_idx ON app.review_log (reviewed_at);
 CREATE INDEX review_log_device_idx   ON app.review_log (device_id, hlc);
-COMMENT ON TABLE  app.review_log IS 'Source of truth for scheduling. Append-only: a row is inserted once by review.logged and afterwards only undone_at/undone_hlc may be set (once, never cleared). Never deleted.';
+COMMENT ON TABLE  app.review_log IS 'Source of truth for scheduling. Append-only: a row is inserted once by review.logged and afterwards only undone_at/undone_hlc may change (set, or lowered to an earlier undo; never cleared). Never deleted. Enforced by trigger review_log_append_only.';
 COMMENT ON COLUMN app.review_log.id IS 'UUIDv7 from the reviewing client. Inserting an existing id is a no-op (idempotent).';
 COMMENT ON COLUMN app.review_log.card_id IS 'Card as it was on the reviewing device. Never rewritten, even if that card is later merged or deleted.';
 COMMENT ON COLUMN app.review_log.hlc IS 'Replay position. A card''s reviews are replayed in (hlc, id) order. Equals the HLC of the review.logged op, except imported history, where it is synthesised from the historical time.';
 COMMENT ON COLUMN app.review_log.reviewed_at IS 'Wall-clock instant on the reviewing device; used for elapsed-time maths and stats. May disagree with hlc order under clock skew: replay clamps negative elapsed time to 0.';
-COMMENT ON COLUMN app.review_log.utc_offset_min IS 'Device UTC offset in minutes when the review happened (e.g. 540 for JST); for local-day stats only.';
+COMMENT ON COLUMN app.review_log.utc_offset_min IS 'Device UTC offset in minutes when the review happened (e.g. 540 for JST); for local-day stats only. NULL = unknown (imports, clients that cannot tell): readers fall back to scheduler.timezone. Native clients MUST send it.';
 COMMENT ON COLUMN app.review_log.review_type IS 'scheduled, learning: feed FSRS. drill, cram: logged only, never change the schedule. manual: a reschedule/reset (addition to the spec list; see SUMMARY.md).';
 COMMENT ON COLUMN app.review_log.rating IS 'FSRS rating 1 Again, 2 Hard, 3 Good, 4 Easy. NULL iff review_type = manual.';
 COMMENT ON COLUMN app.review_log.button IS 'Button actually pressed. Five-button mode: nothing, something (both rating 1), hard, okay (rating 3), easy. NULL when unknown (imports) or manual.';
@@ -613,7 +625,26 @@ COMMENT ON COLUMN app.review_log.duration_ms IS 'Time from card shown to answer;
 COMMENT ON COLUMN app.review_log.manual_action IS 'For review_type = manual: set_due = keep memory state, set due_at := manual_due_at; reset = card returns to state new.';
 COMMENT ON COLUMN app.review_log.sentence_id IS 'Sentence shown for rotating-example cards (soft reference to app.sentence.id or NULL).';
 COMMENT ON COLUMN app.review_log.import_source IS 'NULL for native reviews; "jpdb" for imported history.';
-COMMENT ON COLUMN app.review_log.undone_at IS 'Set by review.undone. Undone rows are skipped by replay and stats. An undo cannot be undone.';
+COMMENT ON COLUMN app.review_log.undone_at IS 'Wall-clock time of the winning review.undone op. Undone rows are skipped by replay and stats. An undo cannot be undone.';
+COMMENT ON COLUMN app.review_log.undone_hlc IS 'HLC of the winning review.undone op. If several undo ops target one review, the SMALLEST hlc wins on every replica (apply iff undone_hlc IS NULL OR op.hlc < undone_hlc), so the result does not depend on arrival order.';
+
+CREATE FUNCTION app.review_log_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'kotobaya: review_log is append-only (DELETE)' USING ERRCODE = 'restrict_violation';
+  END IF;
+  IF (to_jsonb(NEW) - 'undone_at' - 'undone_hlc') IS DISTINCT FROM (to_jsonb(OLD) - 'undone_at' - 'undone_hlc') THEN
+    RAISE EXCEPTION 'kotobaya: review_log is append-only (only undone_at/undone_hlc may change)' USING ERRCODE = 'restrict_violation';
+  END IF;
+  IF NEW.undone_hlc IS NULL OR (OLD.undone_hlc IS NOT NULL AND NEW.undone_hlc >= OLD.undone_hlc) THEN
+    RAISE EXCEPTION 'kotobaya: review_log undo may only be set or lowered' USING ERRCODE = 'restrict_violation';
+  END IF;
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION app.review_log_guard() IS 'Trigger function: review_log rows are immutable except for a first or earlier undo.';
+
+CREATE TRIGGER review_log_append_only BEFORE UPDATE OR DELETE ON app.review_log
+  FOR EACH ROW EXECUTE FUNCTION app.review_log_guard();
 
 CREATE TABLE app.word_status (
   entry_seq        bigint      PRIMARY KEY CHECK (entry_seq > 0),
@@ -655,6 +686,7 @@ CREATE TABLE app.deck (
   deleted_at         timestamptz,
   clocks             jsonb       NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(clocks) = 'object'),
   CHECK ((type = 'media') = (media_id IS NOT NULL)),
+  CHECK (media_id IS NULL OR id = media_id),
   CHECK ((type = 'list')  = (list_key IS NOT NULL)),
   CHECK ((type = 'smart') = (query IS NOT NULL))
 );
@@ -663,14 +695,15 @@ CREATE UNIQUE INDEX deck_live_list_uq  ON app.deck (list_key) WHERE list_key IS 
 CREATE INDEX deck_priority_idx ON app.deck (priority, id) WHERE deleted_at IS NULL;
 COMMENT ON TABLE  app.deck IS 'A source of new cards and a coverage target. Cards are not "in" decks: words are learned once, globally.';
 COMMENT ON COLUMN app.deck.name IS 'Not unique.';
-COMMENT ON COLUMN app.deck.type IS 'user = hand-built; media = generated 1:1 from app.media; list = generated list (JLPT, frequency); smart = saved card-search query. Immutable.';
+COMMENT ON COLUMN app.deck.type IS 'user = hand-built; media = generated 1:1 from app.media; list = generated list (JLPT, frequency); smart = saved card-search query. Immutable. deck.created for media and list decks is emitted ONLY by the server (their content is server-built anyway); a client-originated one is rejected. Clients create user and smart decks, which have no natural key and so cannot collide.';
+COMMENT ON COLUMN app.deck.id IS 'UUIDv7 for user/smart/list decks. A media deck reuses its media''s id (id = media_id), so retried import jobs are idempotent.';
 COMMENT ON COLUMN app.deck.priority IS 'New cards are drawn from enabled decks in ascending (priority, id) order. Duplicates allowed; id breaks ties.';
 COMMENT ON COLUMN app.deck.enabled IS 'false = deck supplies no new cards (still shows coverage).';
 COMMENT ON COLUMN app.deck.new_cards_per_day IS 'Per-deck daily new-card limit; NULL = only the global limit applies.';
 COMMENT ON COLUMN app.deck.reviews_per_day IS 'Per-deck daily review limit; NULL = only the global limit applies.';
 COMMENT ON COLUMN app.deck.settings IS 'Open object, each top-level key its own LWW register "settings.<key>". Known keys: order ("deck_frequency"|"global_frequency"|"position"|"chronological"; default deck_frequency for media, position otherwise), add_kanji ("off"|"before"|"alongside"), card_kinds (array of card kinds to create, overriding note-type defaults).';
-COMMENT ON COLUMN app.deck.media_id IS 'Soft reference to app.media.id; set iff type = media. Immutable.';
-COMMENT ON COLUMN app.deck.list_key IS 'Set iff type = list. Slug of the generated list, e.g. jlpt-n3, freq-jpdb-5000. Immutable.';
+COMMENT ON COLUMN app.deck.media_id IS 'Soft reference to app.media.id; set iff type = media, and then equal to deck.id. Immutable.';
+COMMENT ON COLUMN app.deck.list_key IS 'Set iff type = list. Slug of the generated list, e.g. jlpt-n3, freq-jpdb-5000. Immutable. The server creates at most one live deck per list_key: enabling a list that already has a live deck returns that deck and emits nothing.';
 COMMENT ON COLUMN app.deck.query IS 'Set iff type = smart. Card search-language string. LWW register "query".';
 COMMENT ON COLUMN app.deck.content_version IS 'For media/list decks: version of the server-generated deck_item set, bumped by deck.content_published. Clients holding a lower version download the deck snapshot. Always 0 for user/smart decks.';
 COMMENT ON COLUMN app.deck.content_blob_hash IS 'Blob holding the deck_item snapshot for content_version; NULL when content_version = 0.';
@@ -747,7 +780,7 @@ COMMENT ON COLUMN app.media.jpdb_id IS 'jpdb deck id when source = jpdb; re-impo
 COMMENT ON COLUMN app.media.parse_status IS 'Server-owned (not a user register): pending -> parsing -> parsed|failed; parsed -> parsing on re-parse. Published to clients by media.content_published.';
 COMMENT ON COLUMN app.media.content_version IS 'Bumped each time a (re-)parse publishes new segments/sentences/occurrences. 0 = nothing published yet.';
 COMMENT ON COLUMN app.media.content_blob_hash IS 'Snapshot archive for content_version (segments, sentences, occurrences); NULL when content_version = 0.';
-COMMENT ON COLUMN app.media.deleted_at IS 'Tombstone (permanent). After it is set the server hard-deletes the media''s segments, sentences, occurrences and grammar spans, and tombstones its deck.';
+COMMENT ON COLUMN app.media.deleted_at IS 'Tombstone (permanent). After it is set the server hard-deletes the media''s segments, sentences, occurrences and DETECTED grammar spans (manual spans stay), and tombstones its deck.';
 COMMENT ON COLUMN app.media.clocks IS 'LWW registers: title, kind, cover_blob_hash, deleted.';
 
 CREATE TABLE app.media_segment (
@@ -789,7 +822,7 @@ CREATE TABLE app.sentence (
 CREATE INDEX sentence_media_idx     ON app.sentence (media_id);
 CREATE INDEX sentence_text_trgm_idx ON app.sentence USING gin (text public.gin_trgm_ops);
 COMMENT ON TABLE  app.sentence IS 'One sentence (or subtitle line) of a media segment, with its tokenisation.';
-COMMENT ON COLUMN app.sentence.id IS 'Generated by the worker. A re-parse MUST keep the id of every sentence whose (segment_id, ordinal, text) is unchanged, because notes, review_log and manual grammar spans point at it.';
+COMMENT ON COLUMN app.sentence.id IS 'Generated by the worker. A re-parse MUST keep the id of every sentence whose (segment_id, ordinal, text) is unchanged, because notes, review_log and manual grammar spans point at it (all soft references).';
 COMMENT ON COLUMN app.sentence.media_id IS 'Denormalised from the segment; always equals media_segment.media_id.';
 COMMENT ON COLUMN app.sentence.text IS 'Original text (not normalised).';
 COMMENT ON COLUMN app.sentence.tokens IS 'Parser output: [{"s":0,"e":2,"surface":"食べ","lemma":"食べる","reading":"たべ","pos":["動詞","一般"],"cform":"連用形","seq":1358280,"class":"content","override":false}]. s/e are UTF-16 code-unit offsets into text, half-open, ascending, non-overlapping; gaps are untokenised text (punctuation). seq null = unmapped. class as occurrence.pos_class. Shape is finalised by the parser contract.';
@@ -799,28 +832,32 @@ COMMENT ON COLUMN app.sentence.location IS 'Source position for non-timed media,
 COMMENT ON COLUMN app.sentence.unknown_count IS 'Reserved cache for i+1 queries (number of distinct not-known entries); NULL = not computed. Server-only; not part of snapshots.';
 
 CREATE TABLE app.sentence_grammar_span (
-  id                uuid        PRIMARY KEY,
-  sentence_id       uuid        NOT NULL REFERENCES app.sentence (id) ON DELETE CASCADE,
+  sentence_id       uuid        NOT NULL,
   grammar_point_id  uuid        NOT NULL REFERENCES app.grammar_point (id),
   start_offset      integer     NOT NULL CHECK (start_offset >= 0),
   end_offset        integer     NOT NULL,
   origin            text        NOT NULL CHECK (origin IN ('detected', 'manual')),
+  media_id          uuid,
   rule_index        smallint    CHECK (rule_index >= 0),
   created_at        timestamptz NOT NULL DEFAULT now(),
   deleted_at        timestamptz,
   hlc               app.hlc,
-  UNIQUE (sentence_id, grammar_point_id, start_offset, end_offset, origin),
+  PRIMARY KEY (sentence_id, grammar_point_id, start_offset, end_offset, origin),
   CHECK (end_offset > start_offset),
   CHECK ((origin = 'manual') = (hlc IS NOT NULL)),
-  CHECK (origin = 'manual' OR deleted_at IS NULL)
+  CHECK (origin = 'manual' OR deleted_at IS NULL),
+  CHECK (origin = 'manual' OR media_id IS NOT NULL)
 );
 CREATE INDEX sentence_grammar_span_point_idx ON app.sentence_grammar_span (grammar_point_id) WHERE deleted_at IS NULL;
-COMMENT ON TABLE  app.sentence_grammar_span IS 'Where a grammar point occurs in a sentence ("tagged spans on sentence"). detected rows are rebuilt by every (re-)parse and rule change; manual rows are the user''s "I saw something weird" highlights and survive re-parses.';
-COMMENT ON COLUMN app.sentence_grammar_span.id IS 'manual: UUIDv7 from the client. detected: generated by the worker (not stable across re-parses).';
+CREATE INDEX sentence_grammar_span_media_idx ON app.sentence_grammar_span (media_id) WHERE origin = 'detected';
+COMMENT ON TABLE  app.sentence_grammar_span IS 'Where a grammar point occurs in a sentence ("tagged spans on sentence"). The primary key is the natural identity, so two devices highlighting the same span converge on one row. detected rows are media content: the worker replaces them on every (re-)parse and rule change. manual rows are op-synced user data ("I saw something weird"): never hard-deleted, not even when the sentence or media disappears.';
+COMMENT ON COLUMN app.sentence_grammar_span.sentence_id IS 'Soft reference to app.sentence.id (no foreign key on either side): a manual span may outlive its sentence, and an offline grammar.span_put for a sentence the server has since purged is still accepted. Readers hide spans whose sentence is missing.';
 COMMENT ON COLUMN app.sentence_grammar_span.start_offset IS 'UTF-16 code-unit offset into sentence.text, inclusive; end_offset exclusive.';
+COMMENT ON COLUMN app.sentence_grammar_span.origin IS 'detected | manual. Part of the key: a manual and a detected row may cover the same span.';
+COMMENT ON COLUMN app.sentence_grammar_span.media_id IS 'detected: the sentence''s media, so the worker can delete by media (DELETE ... WHERE media_id = $1 AND origin = ''detected''). manual: optional hint, may be NULL.';
 COMMENT ON COLUMN app.sentence_grammar_span.rule_index IS 'detected: index into grammar_point.detection_rules that matched. NULL for manual.';
-COMMENT ON COLUMN app.sentence_grammar_span.deleted_at IS 'manual only: tombstone set by grammar.span_removed (permanent). Detected rows are hard-deleted on rebuild.';
-COMMENT ON COLUMN app.sentence_grammar_span.hlc IS 'manual only: HLC of the creating op.';
+COMMENT ON COLUMN app.sentence_grammar_span.deleted_at IS 'manual only: reversible tombstone, like deck_item (the whole row is one LWW register; grammar.span_put with a newer hlc clears it). Detected rows are hard-deleted on rebuild.';
+COMMENT ON COLUMN app.sentence_grammar_span.hlc IS 'manual only: HLC of the last winning grammar.span_put / grammar.span_removed op.';
 
 CREATE TABLE app.occurrence (
   segment_id    uuid    NOT NULL REFERENCES app.media_segment (id) ON DELETE CASCADE,

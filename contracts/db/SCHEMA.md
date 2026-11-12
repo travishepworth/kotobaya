@@ -51,10 +51,12 @@ Implementers: if something you need is missing or wrong here, do not work around
    "soft reference" have no foreign key at all. Readers must tolerate a missing target (entry not
    in the phone's dictionary subset, deleted media, sentence not installed).
 5. **Tombstones.** Learning-data rows are never hard-deleted. `deleted_at IS NOT NULL` means
-   deleted. Deletion is **permanent** (no undelete op) except `deck_item`, whose presence is a
-   normal last-writer-wins value. Ops that arrive for a deleted row are still applied to its
-   registers (so replicas converge) but never clear `deleted_at`. Queries for live data must
-   filter `deleted_at IS NULL` — and for cards also the parent note's `deleted_at`.
+   deleted. Deletion is **permanent** (no undelete op) except `deck_item` and manual
+   `sentence_grammar_span` rows, whose presence is a normal last-writer-wins value. Ops that
+   arrive for a deleted row are still applied to its registers (so replicas converge) but never
+   clear `deleted_at`; if the row is a merge loser they are additionally forwarded to the survivor
+   (section 4.2). Queries for live data must filter `deleted_at IS NULL` — and for cards also the
+   parent note's `deleted_at`.
 6. **Language.** `language` columns hold a BCP 47 tag and are always `ja` in v1.
 7. **JSON shapes** are given in the column comments. Unknown keys must be preserved on rewrite.
 8. **Text offsets** into sentence text are UTF-16 code units, half-open `[start, end)`. Python
@@ -79,6 +81,15 @@ A **register** is one independently merged value. An op that sets register `r` t
 `h` is applied as: *if `h` > stored clock of `r` (or none stored): write `v`, store `h`; else
 ignore*. Equal clocks cannot occur for different ops; an equal clock means the same op, so
 ignoring is idempotent.
+
+**Creation.** A `*.created` op carries the row's initial values and its HLC `h`. It stamps
+`clocks[r] = h` for every register whose initial value is **not the column default** (non-empty
+string, non-empty set/array/object, non-NULL, or a boolean/number different from the default),
+and for each key present with a non-empty value in a JSON-object column (`fields.<key>`,
+`settings.<key>`, `templates.<kind>`). Registers left at their default get **no** clock. So a
+creation value competes like any other write, while an untouched default never overwrites
+anything (it loses to every op and is never forwarded in a merge). Applying a `*.created` whose
+id already exists is a no-op.
 
 Where clocks are stored:
 
@@ -112,15 +123,15 @@ emitted by the server (origin device = the server device).
 | Table | Sides | Mutated by op(s) | Notes |
 |---|---|---|---|
 | `note_type` | S D | `note_type.created`, `note_type.updated`, `note_type.deleted` | Built-ins are seeded on both sides, not created by ops. |
-| `note` | S D | `note.created`, `note.updated`, `note.deleted`, `note.merged` *(server)* | |
+| `note` | S D | `note.created`, `note.updated`, `note.deleted`, `note.merged` *(server)* | `note.updated` sets any subset of registers, including `entry_seq`. |
 | `card` | S D | `card.created`, `card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`, `card.preset_set`, `card.deleted`, `card.merged` *(server)*; cache columns: indirectly by `review.logged`, `review.undone`, `fsrs_params.published` | Cache columns are recomputed locally, never transmitted. |
 | `review_log` | S D | `review.logged` (insert), `review.undone` (sets `undone_*`) | Append-only. |
 | `word_status` | S D | `word.status_set`, `word.status_cleared`; `auto_status`: derived locally after any op that changes a vocab card | |
-| `deck` | S D | `deck.created`, `deck.updated`, `deck.deleted`, `deck.content_published` *(server)* | |
+| `deck` | S D | `deck.created` (clients: `user`/`smart` only; `media`/`list` decks are created *(server)* only), `deck.updated`, `deck.deleted`, `deck.content_published` *(server)* | |
 | `deck_item` | S D | user decks: `deck.item_put`, `deck.item_removed`; media/list decks: replaced wholesale when `deck.content_published` announces a new snapshot | |
 | `confusable` | S D | `confusable.suggested` *(server)*, `confusable.confirmed`, `confusable.rejected` | |
 | `grammar_point` | S D | `grammar.created`, `grammar.updated`, `grammar.deleted` | Seed stubs are created by the server as ordinary `grammar.created` ops. |
-| `sentence_grammar_span` | S D | manual rows: `grammar.span_added`, `grammar.span_removed`; detected rows: media snapshot | |
+| `sentence_grammar_span` | S D | manual rows: `grammar.span_put`, `grammar.span_removed`; detected rows: media snapshot | Natural key; no row id. |
 | `settings` | S D | `settings.set` | |
 | `fsrs_params` | S D | `fsrs_params.created`, `fsrs_params.updated`, `fsrs_params.deleted`, `fsrs_params.published` *(server, optimizer)* | Default preset is seeded. |
 
@@ -129,22 +140,75 @@ emitted by the server (origin device = the server device).
 **Note identity and merging ("same word added twice offline").** At most one live note may
 reference a given `entry_seq`, `kanji_literal` or `grammar_point_id`. The server enforces this
 with partial unique indexes; the device has ordinary indexes because it can legitimately hold two
-such notes until it hears the server's verdict. Server op-apply for `note.created` whose
-reference collides with a live note W:
+such notes until it hears the server's verdict. The indexes are a safety net, never a reason to
+reject an op: the server detects the collision first and merges.
 
-1. Insert the incoming note L already tombstoned: `deleted_at` = op time, `merged_into_id = W`.
-2. Merge L's registers into W by the normal clock rule (per field, tags, mnemonic…).
-3. For each card of L (already present, or arriving in a later `card.created` op for L): find W's
-   live card of the same `kind`; if W has none, the server first creates one on W (server-generated
-   UUIDv7, emitted as a normal `card.created`). Then store L's card tombstoned with
-   `merged_into_id` = that card. Cards are never re-parented (`card.note_id` is immutable).
-4. Emit `note.merged {loser, survivor}` and one `card.merged {loser, survivor}` per card, with
-   `change.caused_by_op_id` = the triggering op. Devices apply these by setting the same columns.
+*Trigger (server only).* While applying **any** op — `note.created`, or a `note.updated` that
+wins the `entry_seq` register — the note N it targets would become a second live note for a
+reference already held by live note W. Then N is the **loser** and W (the note already holding
+the reference) the **survivor**, regardless of ids or clocks. The op itself is applied to N in
+full first (values and clocks, exactly as on any replica; on the server the write that creates
+the collision and the tombstoning of N must be one statement, or the unique index fires — see
+`test/smoke.sql`); then, in the same transaction, the
+server emits `note.merged {loser: N, survivor: W}` with `change.caused_by_op_id` = that op, and
+applies it. `kanji_literal` and `grammar_point_id` are immutable, so they can only collide at
+creation; `entry_seq` can collide at any time. Likewise a `card.created` colliding on live
+`(note_id, kind)` yields `card.merged`.
 
-The survivor is always the note already live on the server. `merged_into_id` never points at a
-row that itself has `merged_into_id` set; when a survivor is later merged away, the server
-re-points earlier losers in the same transaction (and emits the corresponding ops).
-The same procedure applies to `card.created` colliding on `(note_id, kind)`.
+*Applying `note.merged {loser L, survivor W}` — identical on every replica, server included:*
+
+1. **Forward registers.** For every register `r` in `L.clocks` except `entry_seq` and `deleted`:
+   apply `(L's value of r, L.clocks[r])` to W by the normal clock rule. Registers of L without a
+   clock (defaults) are not forwarded.
+2. Set `L.deleted_at` = wall time of the `note.merged` op (do **not** write `clocks.deleted`) and
+   `L.merged_into_id = W`. Re-point any note whose `merged_into_id` is L to W.
+3. **Cards.** For each card of L, live or not yet merged: find W's live card of the same `kind`.
+   The server creates a missing one first (server-generated UUIDv7, emitted as an ordinary
+   `card.created` op before the `card.merged`), then emits `card.merged {loser, survivor}` per
+   card. Replicas do not pair cards themselves; they apply the `card.merged` ops they receive.
+   A `card.created` for L arriving after the merge is applied to L, then merged the same way.
+
+*Applying `card.merged {loser, survivor}`:* forward every register in the loser's `clocks` except
+`deleted` to the survivor by the clock rule; set the loser's `deleted_at` and `merged_into_id`;
+re-point cards merged into the loser; recompute the survivor's cache (its replay set grew).
+
+*After the merge — on every replica.* Any op that writes registers of a row whose
+`merged_into_id` is set (`note.updated` from a device that was still offline, `card.suspended`,
+`card.flag_set`, `card.preset_set`, …) is applied **twice**: to the addressed row, and — except
+for the `entry_seq` and `deleted` registers — to the survivor, each by the normal clock rule.
+`note.deleted`/`card.deleted` addressed to a loser affect only the loser (deleting a duplicate
+never deletes the survivor). Merges are permanent: changing a loser's `entry_seq` later does not
+un-merge it.
+
+*Why this converges.* The survivor's register `r` ends up holding the write with the highest
+clock among all writes ever addressed to the survivor or to any of its losers. A replica that
+saw a loser's write before the merge forwards it in step 1; a replica that sees it after the
+merge forwards it by the rule above; the clock rule makes both orders, and repeats, give the same
+result. No merged values travel in the op, so nothing depends on what the server happened to
+hold when it merged.
+
+Worked example. Phone A has note W for 食べる (`mnemonic = "tabby eats"` at clock 10). Phone B,
+offline, creates note L for the same entry at clock 20 (`fields.sentence = "パンを食べる"`,
+mnemonic left empty), then sets `tags = ["anime"]` at clock 30 and suspends L's meaning card at
+clock 31.
+
+| Step | Server / other replicas | Result on W |
+|---|---|---|
+| B pushes `note.created L` | collision → L applied, `note.merged L→W` emitted; step 1 forwards `fields.sentence`@20 | sentence filled; mnemonic kept (L's empty mnemonic has no clock) |
+| B pushes `card.created` (L, meaning) | applied to L; `card.merged` → W's meaning card | — |
+| B pushes `note.updated L tags`@30 | applied to L and forwarded | `tags = {anime}` |
+| B pushes `card.suspended`@31 on L's card | applied to it and forwarded | W's meaning card suspended |
+| B pulls `note.merged`, `card.merged` | B forwards L's clocked registers (sentence@20, tags@30) and the card's `suspended`@31 itself | same as everyone else |
+
+`merged_into_id` never points at a row that itself has `merged_into_id` set (step 2 flattens).
+
+**Deck natural keys.** `media` and `list` decks have a natural key (`media_id`, `list_key`) with
+a server-side unique index, and no merge rule. They therefore must only ever be created by the
+server (a media deck in the import job, with `deck.id = media_id`; a list deck when the user
+enables a list through the API, under the op-apply lock, returning the existing live deck if
+there is one). A client-originated `deck.created` with `type` `media` or `list` is rejected at
+validation, before any table is touched. Clients need the server for these decks anyway: their
+items only exist as server-built snapshots.
 
 **Replay set.** The reviews that determine card C's schedule are all `review_log` rows whose
 `card_id` is C *or any card with `merged_into_id = C`*, with `undone_at IS NULL` and
@@ -168,8 +232,13 @@ search term `tag:leech` is virtual), hot-word and hot-kanji scores, coverage num
 - Review for a card id the server has never seen: rejected (foreign key). Clients always push the
   creating ops first because push order is ascending HLC.
 - Clock skew: `reviewed_at` earlier than the previous review in replay order ⇒ elapsed time 0.
-- Undo: `review.undone` sets `undone_at`/`undone_hlc` once. Undoing twice, or undoing an unknown
-  review id, is a no-op.
+- Undo: `review.undone` at clock `h` is applied iff `undone_hlc IS NULL OR h < undone_hlc`
+  (the **earliest** undo wins, whatever the arrival order); it then sets `undone_hlc = h` and
+  `undone_at` = its wall time. Otherwise it is a no-op. An undo for a review id the replica does
+  not have is a no-op on a device and rejected by the server (cannot happen in HLC push order).
+- `review_log` and `change` are append-only by trigger on the server: any other `UPDATE`, and any
+  `DELETE`, raises `restrict_violation`.
+- `utc_offset_min` NULL = unknown; stats fall back to `scheduler.timezone`.
 - Imported jpdb history: `import_source = 'jpdb'`, `device_id` = server device, `button` as
   mapped or NULL, `duration_ms` NULL, `hlc` built from the historical timestamp
   (`<historical ms>-<running counter>-<server device id>`).
@@ -200,13 +269,23 @@ deleted the row stays and is hidden by readers; if either note is merged, reader
 | `media_segment` | S D* | worker (parse/import job) → snapshot | D* = optional on device, installed from the media snapshot. |
 | `sentence` | S D* | worker → snapshot | Ids stable across re-parses (see column comment). |
 | `occurrence` | S D* | worker → snapshot | |
+| `sentence_grammar_span` (detected rows) | S D* | worker → snapshot | Replaced per media: `DELETE … WHERE media_id = ? AND origin = 'detected'`, then insert. Manual rows are learning data (4.1) and are never touched by the worker. |
 | `parse_override` | S | `parse_override.put`, `parse_override.deleted` | Server only; devices ignore these ops. |
 | `blob` | S | API/worker after storing the object | Device tracks its own copies in `blob_cache`. |
 
 Deleting a media (`media.deleted`): server tombstones the `media` row, tombstones its deck
-(emitting `deck.deleted`), then hard-deletes segments, sentences, occurrences and spans
-(`ON DELETE CASCADE` exists for the final purge but the `media` row itself is kept). Devices
-delete the installed bulk rows for that media. Notes keep `source_sentence` by value.
+(emitting `deck.deleted`), then hard-deletes that media's segments, sentences, occurrences and
+**detected** spans with explicit `DELETE`s (the `media` row itself is kept, so the
+`ON DELETE CASCADE` clauses never fire in normal operation). Devices delete the same installed
+rows. Manual spans, notes (`source_sentence` is held by value) and `review_log.sentence_id` are
+untouched and may now dangle; `sentence_grammar_span.sentence_id` has no foreign key on either
+side for exactly this reason.
+
+**Manual spans.** Identity is `(sentence_id, grammar_point_id, start_offset, end_offset,
+'manual')`. `grammar.span_put` and `grammar.span_removed` are whole-row last-writer-wins on `hlc`
+(put → `deleted_at = NULL`, removed → `deleted_at` set), exactly like `deck_item`: two devices
+highlighting the same span converge on one row, and a removed span can be added again.
+`grammar.span_put` for an unknown or purged sentence is accepted and stored.
 
 A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`), occurrences with
 `sentence_ids = {}`, and no sentences.
@@ -276,9 +355,9 @@ Example: Postgres `tags = '{anime,frieren}'` ⇔ SQLite `tags = '["anime","frier
 | `note`, `card` | No "one live row" unique indexes | Device may hold a not-yet-merged duplicate. |
 | `note` | No `search_text` | Device searches `fields` with `LIKE`. |
 | `note` | FK only on `note_type_id` (no composite FK on `type`) | SQLite parity kept simple; apply code must set `type = note_type.base_type`. |
+| `review_log` | No append-only trigger | Enforced by the apply code on the device; `change` does not exist there. |
 | `deck`, `media` | Extra `installed_content_version` | Local snapshot bookkeeping. |
 | `sentence` | No `unknown_count` | Server-only cache. |
-| `sentence_grammar_span.sentence_id` | Soft reference | Sentence may not be installed. |
 | `review_log.device_id`, `note.created_by_device_id` | Soft references | No `device` table on device. |
 | `dict_release` | One row only, with `scope`; no `is_current`, `loaded_at`, `artifacts` | The file is one release. |
 | `dict_entry` | `retired` flag instead of release ids | |
@@ -292,7 +371,9 @@ Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_overri
 
 - `pending_op` — outbox. The op row is written in the same SQLite transaction as its local effect.
   Push sends `state = 'pending'` rows in ascending `hlc`. Acked rows may be purged once
-  `sync_state.pull_seq >= acked_seq`.
+  `sync_state.pull_seq >= acked_seq`. A `rejected` row means the server permanently refused the
+  op while its local effect is still applied: it MUST be shown to the user (sync status) with
+  `last_error`, is never purged or retried automatically, and stays until the user dismisses it.
 - `sync_state` — keys listed in the file.
 - `blob_cache` — which content-hashed blobs are wanted/cached.
 
@@ -324,7 +405,7 @@ API operation is implemented by submitting the listed op(s) through the op-apply
 | Learning-data table | Ops | API operations |
 |---|---|---|
 | `note_type` | `note_type.created/updated/deleted` | *missing from the spec's table*: `GET/POST /note-types`, `PATCH/DELETE /note-types/{id}` (T004 to add); `POST /ankiconnect` (`modelNames`) |
-| `note` | `note.created/updated/deleted/merged` | `GET/POST /notes`, `PATCH/DELETE /notes/{id}`, `POST /ankiconnect` (`addNote`) |
+| `note` | `note.created/updated/deleted/merged` | `GET/POST /notes`, `PATCH/DELETE /notes/{id}`, `POST /ankiconnect` (`addNote`). `GET /notes/{id}` for a merged id should answer with the survivor (T004). |
 | `card` | `card.created/suspended/unsuspended/buried/unburied/flag_set/preset_set/deleted/merged` | `GET /cards?query=`, `POST /cards/bulk`, `GET /review/queue` |
 | `review_log` | `review.logged`, `review.undone` | `POST /review/answer`, `POST /review/undo`, `POST /drill/session`, `POST /cards/bulk` (reschedule → `review_type = manual`), `GET /stats/*` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `PUT /words/{seq}/status` (and `DELETE` to clear — T004 to add), `GET /stats/known-words` |
@@ -332,7 +413,7 @@ API operation is implemented by submitting the listed op(s) through the op-apply
 | `deck_item` | `deck.item_put`, `deck.item_removed`, `deck.content_published` | `GET /decks/{id}/items` (`PUT/DELETE /decks/{id}/items/{key}` — T004 to add), `POST /media/import` |
 | `confusable` | `confusable.suggested/confirmed/rejected` | `GET /words/{seq}/confusables` (confirm/reject — T004 to add) |
 | `grammar_point` | `grammar.created/updated/deleted` | `GET/POST /grammar` (`PATCH/DELETE /grammar/{id}` — T004 to add) |
-| `sentence_grammar_span` | `grammar.span_added/removed` | `GET /grammar/{id}/examples` (create span — T004 to add) |
+| `sentence_grammar_span` | `grammar.span_put/removed` | `GET /grammar/{id}/examples` (create span — T004 to add) |
 | `settings` | `settings.set` | *missing from the spec's table*: `GET/PUT /settings` (T004 to add) |
 | `fsrs_params` | `fsrs_params.created/updated/deleted/published` | *missing from the spec's table*: `GET/POST/PATCH /presets` (T004 to add); `fsrs-optimize` job |
 | `media` | `media.created/updated/deleted/content_published` | `POST /media/import`, `POST /media/import/jpdb` (`PATCH/DELETE /media/{id}` — T004 to add) |

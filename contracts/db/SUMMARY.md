@@ -18,7 +18,16 @@
   for undo. `review_log.card_id` is never rewritten.
 - **"Same word added twice offline"** is resolved by the server: partial unique indexes allow one
   live note per entry/kanji/grammar point and one live card per (note, kind); the loser is kept
-  as a tombstone with `merged_into_id`, and its reviews replay as part of the survivor.
+  as a tombstone with `merged_into_id`, and its reviews replay as part of the survivor. The
+  server only *decides* the merge; every replica then performs it the same way (the loser's
+  clocked values are forwarded to the survivor, and so is every later edit addressed to the
+  loser), so nothing a still-offline device does to its duplicate is lost. A note's entry can be
+  re-matched at any time; a re-match that lands on an existing note merges instead of failing.
+- **Manual grammar highlights are keyed by what they highlight** (sentence, grammar point, span),
+  not by a random id, and have no hard link to the sentence: they survive re-parses and media
+  deletion and two devices highlighting the same span get one row.
+- **Media and list decks are created only by the server**, so two devices cannot create the same
+  one twice. The review log and the sync log are append-only by database trigger.
 - **Word status** keeps the automatic value and the explicit override in separate columns, so
   clearing an override falls back to the automatic status without losing either.
 - **Media**: the small `media` and `deck` rows go through ops; segments, sentences, occurrences
@@ -65,12 +74,33 @@
    want weights to affect only future reviews, the scheduling contract (T006) must say so and the
    cache rule here changes.
 
+## Known trade-offs (accepted, not fixed)
+
+- **Tags are one value per note.** If two devices change a note's tags while both are offline, the
+  later change wins as a whole and the other device's added tag is lost. This matches the spec
+  ("last writer wins per field") and tags are cheap to re-add; per-tag merging can be added later
+  without changing the table (extra `tag.<name>` registers in `clocks`).
+- **A dictionary entry is always a vocab note.** `entry_seq` is allowed only on `vocab` notes, so
+  a JMdict expression (e.g. 気を付ける) is carded as vocab and takes part in word status, coverage
+  and de-duplication. The `phrase` type is for free-form phrases with no dictionary entry; those
+  do not count towards coverage.
+- **A note created as a duplicate does not overwrite with blanks.** Values left empty at creation
+  carry no clock, so only what the duplicate actually filled in reaches the survivor.
+- **Deleting a duplicate never deletes the survivor**, even if the delete was made before the
+  device learned about the merge.
+- **If one review is undone on two devices, the earlier undo is recorded.** Either way the review
+  is undone.
+- **The append-only triggers exist only in Postgres.** On the phone the same rule is the apply
+  code's job.
+
 ## Smaller things to know
 
 - The migration **refuses to run on a database whose `LC_CTYPE` is `C`**, because trigram search
   would silently return nothing for Japanese. CloudNativePG defaults to `C`; the Helm chart must
   set a UTF-8 ctype (`C.UTF-8` works).
-- Deletes are permanent (no undelete), except removing an item from a user deck.
+- Deletes are permanent (no undelete), except removing an item from a user deck or a manual
+  grammar highlight.
+- `review_log.utc_offset_min` is empty when unknown (imports) rather than pretending UTC.
 - No table yet for: the web password hash / TOTP secret (assumed to come from a Kubernetes
   Secret), the jpdb "unmapped vocabulary" review queue, a TTS cache index, cached coverage
   numbers. Each can be added by the ticket that needs it as an additive migration.

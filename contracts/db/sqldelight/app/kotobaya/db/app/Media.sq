@@ -4,7 +4,8 @@
 -- media.content_published). media_segment, sentence, occurrence and detected
 -- sentence_grammar_span rows are installed from the media snapshot named by
 -- media.content_blob_hash, replacing the previous version of that media in one
--- transaction. A device may skip snapshots entirely (storage budget): all four
+-- transaction. Snapshot install and media deletion remove only origin = 'detected'
+-- spans; manual spans are op-synced user data and are never deleted locally. A device may skip snapshots entirely (storage budget): all four
 -- tables are then simply empty for that media.
 
 CREATE TABLE media (
@@ -58,20 +59,21 @@ CREATE TABLE sentence (
 CREATE INDEX sentence_media_idx ON sentence (media_id);
 
 CREATE TABLE sentence_grammar_span (
-  id TEXT NOT NULL PRIMARY KEY,
-  sentence_id TEXT NOT NULL,          -- DEVICE: soft reference; the sentence may not be installed
+  sentence_id TEXT NOT NULL,          -- soft reference on both sides; the sentence may be absent
   grammar_point_id TEXT NOT NULL,
   start_offset INTEGER NOT NULL,
   end_offset INTEGER NOT NULL,
   origin TEXT NOT NULL CHECK (origin IN ('detected', 'manual')),
+  media_id TEXT,                      -- detected: owning media (delete-by-media on snapshot install)
   rule_index INTEGER,
   created_at INTEGER NOT NULL,
-  deleted_at INTEGER,
+  deleted_at INTEGER,                 -- manual only: reversible tombstone (whole-row LWW with hlc)
   hlc TEXT,
-  UNIQUE (sentence_id, grammar_point_id, start_offset, end_offset, origin)
+  PRIMARY KEY (sentence_id, grammar_point_id, start_offset, end_offset, origin)
 );
 
 CREATE INDEX sentence_grammar_span_point_idx ON sentence_grammar_span (grammar_point_id);
+CREATE INDEX sentence_grammar_span_media_idx ON sentence_grammar_span (media_id);
 
 CREATE TABLE occurrence (
   segment_id TEXT NOT NULL REFERENCES media_segment (id),

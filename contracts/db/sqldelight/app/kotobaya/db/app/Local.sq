@@ -13,6 +13,7 @@ CREATE TABLE pending_op (
   payload TEXT NOT NULL,              -- JSON object
   created_at INTEGER NOT NULL,
   -- pending: not yet accepted. acked: server accepted (or reported duplicate). rejected: server refused permanently.
+  -- rejected rows MUST be surfaced to the user and are never purged automatically (SCHEMA.md 5.3).
   state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'acked', 'rejected')),
   attempts INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,

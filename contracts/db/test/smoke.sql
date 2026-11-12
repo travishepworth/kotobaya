@@ -9,7 +9,7 @@ CREATE FUNCTION pg_temp.must_fail(stmt text, label text) RETURNS void LANGUAGE p
 BEGIN
   BEGIN
     EXECUTE stmt;
-  EXCEPTION WHEN check_violation OR unique_violation OR foreign_key_violation OR not_null_violation THEN
+  EXCEPTION WHEN check_violation OR unique_violation OR foreign_key_violation OR not_null_violation OR restrict_violation THEN
     RETURN;
   END;
   RAISE EXCEPTION 'expected constraint violation: %', label;
@@ -73,6 +73,8 @@ VALUES ('01931f3e-2000-7000-8000-000000000001', 'word.status_set', 'word_status'
         '01931f3e-0000-7000-8000-0000000000a1', '0193a1b2c3d4-0000-01931f3e-0000-7000-8000-0000000000a1', '{"entry_seq":1358280,"status":"known"}');
 SELECT pg_temp.must_fail($$INSERT INTO app.change (op_id, op_type, entity_type, entity_id, device_id, hlc, payload)
   VALUES ('01931f3e-2000-7000-8000-000000000001', 'word.status_set', 'word_status', '1358280', '01931f3e-0000-7000-8000-0000000000a1', '0193a1b2c3d4-0000-01931f3e-0000-7000-8000-0000000000a1', '{}')$$, 'duplicate op_id');
+SELECT pg_temp.must_fail($$UPDATE app.change SET payload = '{}'$$, 'change is append-only (update)');
+SELECT pg_temp.must_fail($$DELETE FROM app.change$$, 'change is append-only (delete)');
 
 INSERT INTO app.job (id, kind, payload, dedupe_key) VALUES ('01931f3e-3000-7000-8000-000000000001', 'media-parse', '{"media_id":"01931f3e-5000-7000-8000-000000000001"}', 'media-parse:01931f3e-5000-7000-8000-000000000001');
 SELECT pg_temp.must_fail($$INSERT INTO app.job (id, kind, dedupe_key) VALUES ('01931f3e-3000-7000-8000-000000000002', 'media-parse', 'media-parse:01931f3e-5000-7000-8000-000000000001')$$, 'job dedupe');
@@ -144,7 +146,20 @@ SELECT pg_temp.must_fail($$INSERT INTO app.review_log (id, card_id, device_id, h
   VALUES ('01931f3e-8000-7000-8000-0000000000f3', '01931f3e-7000-7000-8000-000000000001', '01931f3e-0000-7000-8000-0000000000a1', '0193a1b2c3d7-0000-01931f3e-0000-7000-8000-0000000000a1', now(), 'manual', 'set_due')$$, 'set_due needs manual_due_at');
 SELECT pg_temp.must_fail($$INSERT INTO app.review_log (id, card_id, device_id, hlc, reviewed_at, review_type, rating)
   VALUES ('01931f3e-8000-7000-8000-0000000000f4', '01931f3e-7000-7000-8000-0000000000aa', '01931f3e-0000-7000-8000-0000000000a1', '0193a1b2c3d7-0000-01931f3e-0000-7000-8000-0000000000a1', now(), 'scheduled', 3)$$, 'review for unknown card');
+-- Undo: two devices undo the same review; the smallest undo clock wins whatever the arrival order.
+UPDATE app.review_log SET undone_at = '2026-11-12T10:12:00Z', undone_hlc = '0193a1b2c3d9-0000-01931f3e-0000-7000-8000-0000000000b2' WHERE id = '01931f3e-8000-7000-8000-000000000001';
 UPDATE app.review_log SET undone_at = '2026-11-12T10:11:00Z', undone_hlc = '0193a1b2c3d8-0000-01931f3e-0000-7000-8000-0000000000a1' WHERE id = '01931f3e-8000-7000-8000-000000000001';
+SELECT pg_temp.must_fail($$UPDATE app.review_log SET undone_at = now(), undone_hlc = '0193a1b2c3d9-0000-01931f3e-0000-7000-8000-0000000000b2' WHERE id = '01931f3e-8000-7000-8000-000000000001'$$, 'later undo must not replace earlier undo');
+SELECT pg_temp.must_fail($$UPDATE app.review_log SET undone_at = NULL, undone_hlc = NULL WHERE id = '01931f3e-8000-7000-8000-000000000001'$$, 'undo cannot be cleared');
+SELECT pg_temp.must_fail($$UPDATE app.review_log SET rating = 4, button = 'easy' WHERE id = '01931f3e-8000-7000-8000-000000000002'$$, 'review_log rows are immutable');
+SELECT pg_temp.must_fail($$DELETE FROM app.review_log WHERE id = '01931f3e-8000-7000-8000-000000000002'$$, 'review_log rows cannot be deleted');
+-- Imported history: no button, no duration, unknown UTC offset.
+INSERT INTO app.review_log (id, card_id, device_id, hlc, reviewed_at, review_type, rating, import_source)
+VALUES ('01931f3e-8000-7000-8000-000000000004', '01931f3e-7000-7000-8000-000000000002', '00000000-0000-7000-8000-000000000001',
+        '018b00000000-0000-00000000-0000-7000-8000-000000000001', '2023-10-06T00:00:00Z', 'scheduled', 3, 'jpdb');
+DO $$ BEGIN
+  ASSERT (SELECT utc_offset_min IS NULL FROM app.review_log WHERE id = '01931f3e-8000-7000-8000-000000000004'), 'utc offset unknown by default';
+END $$;
 
 -- Card cache after a review.
 UPDATE app.card SET state = 'review', stability = 3.17, difficulty = 5.28, due_at = '2026-11-15T10:10:00Z', interval_days = 3,
@@ -170,29 +185,56 @@ VALUES ('01931f3e-5200-7000-8000-000000000001', '01931f3e-5000-7000-8000-0000000
         '[{"s":0,"e":2,"surface":"毎朝","lemma":"毎朝","reading":"まいあさ","pos":["名詞"],"cform":null,"seq":1524660,"class":"content","override":false},{"s":2,"e":4,"surface":"パン","lemma":"パン","reading":"ぱん","pos":["名詞"],"cform":null,"seq":1103090,"class":"content","override":false},{"s":4,"e":5,"surface":"を","lemma":"を","reading":"を","pos":["助詞"],"cform":null,"seq":2029010,"class":"particle","override":false},{"s":5,"e":8,"surface":"食べる","lemma":"食べる","reading":"たべる","pos":["動詞"],"cform":"終止形","seq":1358280,"class":"content","override":false}]',
         61000, 63500);
 INSERT INTO app.occurrence VALUES ('01931f3e-5100-7000-8000-000000000001', 1358280, '01931f3e-5000-7000-8000-000000000001', 1, 'content', '{01931f3e-5200-7000-8000-000000000001}');
-INSERT INTO app.sentence_grammar_span (id, sentence_id, grammar_point_id, start_offset, end_offset, origin, hlc)
-VALUES ('01931f3e-5300-7000-8000-000000000001', '01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 5, 8, 'manual', '0193a1b2c3db-0000-01931f3e-0000-7000-8000-0000000000b2');
-SELECT pg_temp.must_fail($$INSERT INTO app.sentence_grammar_span (id, sentence_id, grammar_point_id, start_offset, end_offset, origin)
-  VALUES ('01931f3e-5300-7000-8000-000000000002', '01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 5, 8, 'manual')$$, 'manual span needs hlc');
+-- Manual span: natural key, soft sentence reference, reversible tombstone.
+INSERT INTO app.sentence_grammar_span (sentence_id, grammar_point_id, start_offset, end_offset, origin, hlc)
+VALUES ('01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 5, 8, 'manual', '0193a1b2c3db-0000-01931f3e-0000-7000-8000-0000000000b2');
+INSERT INTO app.sentence_grammar_span (sentence_id, grammar_point_id, start_offset, end_offset, origin, media_id, rule_index)
+VALUES ('01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 5, 8, 'detected', '01931f3e-5000-7000-8000-000000000001', 0);
+SELECT pg_temp.must_fail($$INSERT INTO app.sentence_grammar_span (sentence_id, grammar_point_id, start_offset, end_offset, origin)
+  VALUES ('01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 0, 2, 'manual')$$, 'manual span needs hlc');
+SELECT pg_temp.must_fail($$INSERT INTO app.sentence_grammar_span (sentence_id, grammar_point_id, start_offset, end_offset, origin, hlc)
+  VALUES ('01931f3e-5200-7000-8000-000000000001', '01931f3e-4000-7000-8000-000000000001', 5, 8, 'manual', '0193a1b2c3df-0000-01931f3e-0000-7000-8000-0000000000a1')$$, 'same manual span from a second device is the same row (apply as LWW update)');
+-- span_removed then span_put again: the same row flips back.
+UPDATE app.sentence_grammar_span SET deleted_at = '2026-11-12T13:00:00Z', hlc = '0193a1b2c3e0-0000-01931f3e-0000-7000-8000-0000000000a1' WHERE origin = 'manual';
+UPDATE app.sentence_grammar_span SET deleted_at = NULL, hlc = '0193a1b2c3e1-0000-01931f3e-0000-7000-8000-0000000000b2' WHERE origin = 'manual';
+-- A span for a sentence the server no longer (or never) has is accepted.
+INSERT INTO app.sentence_grammar_span (sentence_id, grammar_point_id, start_offset, end_offset, origin, hlc)
+VALUES ('01931f3e-5200-7000-8000-0000000000ee', '01931f3e-4000-7000-8000-000000000001', 0, 3, 'manual', '0193a1b2c3e2-0000-01931f3e-0000-7000-8000-0000000000b2');
+-- Purging a media's content removes detected spans only.
+DO $$ BEGIN
+  DELETE FROM app.sentence_grammar_span WHERE media_id = '01931f3e-5000-7000-8000-000000000001' AND origin = 'detected';
+  ASSERT (SELECT count(*) FROM app.sentence_grammar_span) = 2, 'manual spans survive a purge';
+END $$;
 INSERT INTO app.parse_override (id, media_id, match_text, tokens, created_at, updated_at, hlc)
 VALUES ('01931f3e-5400-7000-8000-000000000001', NULL, 'フリーレン', '[{"surface":"フリーレン","lemma":"フリーレン","seq":null}]', '2026-11-12T09:40:00Z', '2026-11-12T09:40:00Z', '0193a1b2c3dc-0000-01931f3e-0000-7000-8000-0000000000b2');
 
 -- ---------------------------------------------------------------- decks
 INSERT INTO app.deck (id, name, type, priority, media_id, content_version, created_at, updated_at)
-VALUES ('01931f3e-9000-7000-8000-000000000001', '葬送のフリーレン', 'media', 10, '01931f3e-5000-7000-8000-000000000001', 1, '2026-11-12T09:30:00Z', '2026-11-12T09:30:00Z');
+VALUES ('01931f3e-5000-7000-8000-000000000001', '葬送のフリーレン', 'media', 10, '01931f3e-5000-7000-8000-000000000001', 1, '2026-11-12T09:30:00Z', '2026-11-12T09:30:00Z');
 INSERT INTO app.deck (id, name, type, priority, created_at, updated_at)
 VALUES ('01931f3e-9000-7000-8000-000000000002', 'Mined', 'user', 0, '2026-11-12T09:30:00Z', '2026-11-12T09:30:00Z');
 INSERT INTO app.deck (id, name, type, query, created_at, updated_at)
 VALUES ('01931f3e-9000-7000-8000-000000000003', 'Leeches', 'smart', 'tag:leech lapses>3', '2026-11-12T09:30:00Z', '2026-11-12T09:30:00Z');
 SELECT pg_temp.must_fail($$INSERT INTO app.deck (id, name, type, created_at, updated_at) VALUES ('01931f3e-9000-7000-8000-0000000000ff', 'x', 'media', now(), now())$$, 'media deck needs media_id');
-SELECT pg_temp.must_fail($$INSERT INTO app.deck (id, name, type, media_id, created_at, updated_at) VALUES ('01931f3e-9000-7000-8000-0000000000fe', 'x', 'media', '01931f3e-5000-7000-8000-000000000001', now(), now())$$, 'one live deck per media');
+SELECT pg_temp.must_fail($$INSERT INTO app.deck (id, name, type, media_id, created_at, updated_at) VALUES ('01931f3e-9000-7000-8000-0000000000fe', 'x', 'media', '01931f3e-5000-7000-8000-000000000001', now(), now())$$, 'media deck id must equal media id');
+INSERT INTO app.deck (id, name, type, list_key, created_at, updated_at) VALUES ('01931f3e-9000-7000-8000-000000000004', 'JLPT N3', 'list', 'jlpt-n3', '2026-11-12T09:30:00Z', '2026-11-12T09:30:00Z');
+SELECT pg_temp.must_fail($$INSERT INTO app.deck (id, name, type, list_key, created_at, updated_at) VALUES ('01931f3e-9000-7000-8000-000000000005', 'JLPT N3', 'list', 'jlpt-n3', now(), now())$$, 'one live deck per list_key');
 
 INSERT INTO app.deck_item (deck_id, item_key, entry_seq, position, occurrence_count, added_at)
-VALUES ('01931f3e-9000-7000-8000-000000000001', 'e:1358280', 1358280, 1, 1, '2026-11-12T09:30:00Z');
+VALUES ('01931f3e-5000-7000-8000-000000000001', 'e:1358280', 1358280, 1, 1, '2026-11-12T09:30:00Z');
 INSERT INTO app.deck_item (deck_id, item_key, note_id, position, added_at, hlc)
 VALUES ('01931f3e-9000-7000-8000-000000000002', 'n:01931f3e-6000-7000-8000-000000000001', '01931f3e-6000-7000-8000-000000000001', 1024, '2026-11-12T10:00:00Z', '0193a1b2c3d4-0002-01931f3e-0000-7000-8000-0000000000a1');
 SELECT pg_temp.must_fail($$INSERT INTO app.deck_item (deck_id, item_key, entry_seq, added_at) VALUES ('01931f3e-9000-7000-8000-000000000002', 'e:1', 1358280, now())$$, 'item_key must match target');
-SELECT pg_temp.must_fail($$INSERT INTO app.deck_item (deck_id, item_key, entry_seq, added_at) VALUES ('01931f3e-9000-7000-8000-000000000001', 'e:1358280', 1358280, now())$$, 'same entry twice in a deck');
+SELECT pg_temp.must_fail($$INSERT INTO app.deck_item (deck_id, item_key, entry_seq, added_at) VALUES ('01931f3e-5000-7000-8000-000000000001', 'e:1358280', 1358280, now())$$, 'same entry twice in a deck');
+
+-- Late match: a vocab note without an entry gets one (plain LWW register). If the value collided
+-- with a live note, op-apply would merge instead of letting the unique index reject the op.
+INSERT INTO app.note (id, note_type_id, type, created_by_device_id, created_at, updated_at)
+VALUES ('01931f3e-6000-7000-8000-000000000004', '00000000-0000-7000-8000-000000000101', 'vocab', '01931f3e-0000-7000-8000-0000000000a1', '2026-11-12T10:00:00Z', '2026-11-12T10:00:00Z');
+UPDATE app.note SET entry_seq = 1000220 WHERE id = '01931f3e-6000-7000-8000-000000000004';
+UPDATE app.note SET entry_seq = 1000230 WHERE id = '01931f3e-6000-7000-8000-000000000004';
+SELECT pg_temp.must_fail($$UPDATE app.note SET entry_seq = 1358280 WHERE id = '01931f3e-6000-7000-8000-000000000004'$$, 'collision must be handled by merge, not by a plain update');
+UPDATE app.note SET entry_seq = 1358280, deleted_at = '2026-11-12T11:30:00Z', merged_into_id = '01931f3e-6000-7000-8000-000000000001' WHERE id = '01931f3e-6000-7000-8000-000000000004';
 
 -- Confusable: needs a second live note.
 INSERT INTO app.note (id, note_type_id, type, entry_seq, created_by_device_id, created_at, updated_at)
