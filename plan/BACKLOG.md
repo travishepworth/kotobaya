@@ -210,7 +210,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - see plan/tickets/T108a.md (split from T108)
 
 ### T108b — Search: SQL compiler
-- model: sonnet · risk: med · deps: T108a · status: RUNNING
+- model: sonnet · risk: med · deps: T108a · status: MERGED
 - see plan/tickets/T108b.md (split from T108)
 
 ### T109 — Job queue and events
