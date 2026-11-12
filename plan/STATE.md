@@ -1,12 +1,11 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T12:49:11Z
+Updated: 2026-11-12T12:51:11Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T103b | writer (gp/sonnet) | 1 | t/T103b-dict-package-c3 | 2026-11-12T12:45:12Z |
 | T104 | writer (gp/sonnet) | 1 | t/T104-server-skeleton | 2026-11-12T12:34:15Z |
 | T110 | writer (gp/sonnet, escalated) | 2 | t/T110-clients | 2026-11-12T12:34:15Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
@@ -34,6 +33,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T103b worker matches DICT_PACKAGE.md — wrong-base/digest/missing-base rejections tested (60 worker tests)
 - T108b search→SQL (Postgres + SQLite prefilter/residual) — 80 executed queries both dialects, DST day bounds
 - C-3 dictionary package/diff contract (DICT_PACKAGE.md) — 2 attempts; content digests, published-base rule
 - T107b FSRS scheduler — reviewer verified line-by-line vs py-fsrs 6.3.2; jvm+js identical
