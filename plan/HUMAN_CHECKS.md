@@ -48,3 +48,4 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - ADR-006: mined (deckless) new cards share priority 0 with your decks by default; configurable. Disabled decks introduce nothing.
 - T006 queue default to confirm: a word counts as auto-"known" when every started card has an interval of 21 days or more.
 - ADR-006 detail: decks of equal priority take turns one card each (round-robin), not a fixed order. Confirm this matches what you want from "priority order".
+- T101: run the dictionary pipeline once for real (downloads JMdict/KANJIDIC2/KRADFILE from EDRDG) and confirm counts; URLs and KRAD parsing were only tested offline.

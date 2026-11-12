@@ -141,13 +141,13 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ## Phase 1 — Foundations
 
 ### T101 — Dictionary pipeline: JMdict, KANJIDIC2, KRADFILE
-- model: sonnet · risk: med · deps: GATE-CONTRACTS, T008 · status: RUNNING
+- model: sonnet · risk: med · deps: GATE-CONTRACTS, T008 · status: MERGED
 - paths: `worker/kotobaya_worker/dict/`, `worker/tests/dict/`
 - do: Download (with checksums and caching), parse, normalise into `ref.*` tables for a release id.
 - accept: Fixture subset loads exactly; idempotent re-run.
 
 ### T102 — Dictionary pipeline: pitch, frequency, Tatoeba
-- model: sonnet · risk: low · deps: T101 · status: TODO
+- model: sonnet · risk: low · deps: T101 · status: RUNNING
 - paths: `worker/kotobaya_worker/dict/extra/`, `worker/tests/dict/extra/`
 - do: Kanjium pitch; frequency lists in Yomitan format (list configurable in DECISIONS); Tatoeba JP-EN pairs linked to entries.
 - accept: Coverage report (entries with pitch / with freq rank / with examples) printed and asserted above floors set in the test.

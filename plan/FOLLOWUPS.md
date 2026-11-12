@@ -47,3 +47,4 @@
 - Planner: Helm migrate hook is pre-upgrade only, so a first `helm install` never migrates. T111 must cover install too (pre-install,pre-upgrade).
 - Planner: health routes differ (compose/chart probe /healthz, backlog /healthz /readyz /metrics, openapi /health). T104 serves all; T111 aligns probes (readiness = /readyz incl. the SYNC 10.5 startup replay).
 - Planner: worker package path is worker/src/kotobaya_worker/ (backlog said worker/kotobaya_worker/); tickets corrected.
+- T101: KRAD tested only on a synthetic zip (no KRAD fixture); EDRDG URLs unverified offline; `ref.kanji.radical` = KANJIDIC2 classical radical number as text (contract silent). First real run → HUMAN_CHECKS.
