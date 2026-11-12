@@ -1,12 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T13:29:07Z
+Updated: 2026-11-12T13:29:43Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T105b | writer-senior (gp/opus) | 1 | t/T105b-auth-devices | 2026-11-12T13:11:28Z |
+| T105b | writer-senior (gp/opus) | 2 | t/T105b-auth-devices | 2026-11-12T13:11:28Z |
 | T112 | writer (gp/sonnet) | 1 | t/T112-backups | 2026-11-12T13:29:07Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 

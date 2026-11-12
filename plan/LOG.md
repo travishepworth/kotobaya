@@ -228,3 +228,5 @@
 2026-11-12T13:29:07Z T111 CHECK_GREEN deploy after rebase; orchestrator k3d e2e: health ok, unauth 401, login 200 (Secure cookie over http not resent → followup)
 2026-11-12T13:29:07Z T111 MERGE
 2026-11-12T13:29:07Z T112 DISPATCH writer(sonnet)
+2026-11-12T13:29:43Z T105b REVIEW_CHANGES 2 major (revocation not wired into event streams in prod; pairing URI http behind TLS), 4 minor
+2026-11-12T13:29:43Z T105b DISPATCH attempt 2 (same writer; paths +Main.kt composeApp, chart api.publicUrl)
