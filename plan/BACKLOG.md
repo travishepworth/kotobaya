@@ -34,10 +34,10 @@ Originally, before any ticket ran, the human would:
 
 ### T001 — Monorepo scaffold
 - model: sonnet · risk: med · deps: GATE-0 · status: TODO
-- paths: `/` (root files), `core/`, `server/`, `android/`, `web/`, `worker/`, `deploy/`, `Makefile`, `docker-compose.yml`, `.editorconfig`, `.gitignore`
+- paths: `/` (root files), `core/`, `server/`, `android/`, `web/`, `worker/`, `deploy/`, `assets/`, `Makefile`, `docker-compose.yml`, `.editorconfig`, `.gitignore`
 - spec: Architecture, Infrastructure › Build and release
-- do: Gradle (Kotlin DSL, version catalog) with modules `core` (KMP: jvm, android, js), `server` (Ktor), `android` (app). `worker/` Python 3.12 with uv + pyproject, ruff, mypy, pytest. `web/` SvelteKit static adapter, TypeScript strict, vitest, eslint. `docker-compose.yml` for postgres, minio, api, worker, web. Makefile targets: `check MODULE=x`, `test`, `fmt`, `dev-up`, `dev-down`. One smoke test per module. No lint gates.
-- accept: `make test` green from a clean clone; `make dev-up` starts all services with health checks passing.
+- do: Gradle (Kotlin DSL, version catalog) with modules `core` (KMP: jvm, android, js), `server` (Ktor), `android` (app). `worker/` Python 3.12 with uv + pyproject, ruff, mypy, pytest. `web/` SvelteKit static adapter, TypeScript strict, vitest, eslint. `core`'s js target (IR, ES modules, `generateTypeScriptDefinitions()`) is built as the local package `@kotobaya/core` and consumed by `web/` as a workspace/file dependency; `make check MODULE=web` builds it first. `assets/card/` holds the shared card stylesheet and fonts list, consumed by `web/` and copied into Android assets by Gradle. `docker-compose.yml` for postgres, minio, api, worker, web. Makefile targets: `check MODULE=x`, `test`, `fmt`, `dev-up`, `dev-down`. One smoke test per module. No lint gates.
+- accept: `make test` green from a clean clone; `make dev-up` starts all services with health checks passing; a web smoke test imports a trivial `@JsExport` function from `@kotobaya/core`.
 
 ### T002 — Image build and release script
 - model: haiku · risk: low · deps: T001 · status: TODO
@@ -69,7 +69,7 @@ Originally, before any ticket ran, the human would:
 - model: fable · risk: high · deps: T003, T005 · status: TODO
 - paths: `contracts/core/`, `core/src/commonMain/kotlin/kotobaya/contracts/`
 - spec: Scheduling, Public API › Card search language
-- do: Kotlin interfaces + data classes (no implementations) for: `Scheduler` (FSRS), `QueueBuilder`, `CardGenerator`, `ReplayEngine`, `HotScorer`, `SearchQueryParser` (with the AST), `Hlc`, `OpCodec`. KDoc with exact semantics, edge cases, and invariants. Grammar for the search language in EBNF.
+- do: Kotlin interfaces + data classes (no implementations) for: `Scheduler` (FSRS), `QueueBuilder`, `CardGenerator`, `ReplayEngine`, `HotScorer`, `SearchQueryParser` (with the AST, plus `complete(prefix)` for autocomplete), `CardRenderer` (note + card kind + render options such as furigana on/off and pitch on/off → sanitised HTML fragment using only classes from `assets/card/`), `Hlc`, `OpCodec`. A `CoreJs` facade listing exactly what is `@JsExport`ed to the web app (search parse/complete, card render, FSRS interval preview), with JS-friendly types (no Long/collections in signatures). KDoc with exact semantics, edge cases, and invariants. Grammar for the search language in EBNF.
 - accept: Compiles for jvm, android, js; KDoc covers every public member; EBNF parses every example in the spec.
 
 ### T007 — (dropped in lean mode)
@@ -196,7 +196,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ### T201 — Notes, note types, card generation
 - model: sonnet · risk: med · deps: GATE-P1 · status: TODO
 - paths: `core/src/commonMain/kotlin/kotobaya/cards/`, `server/src/main/kotlin/kotobaya/notes/`, tests
-- do: Built-in note types (vocab, kanji, phrase, grammar, sentence, custom) with templates; `CardGenerator`; notes CRUD writing ops; template rendering (sanitised HTML).
+- do: Built-in note types (vocab, kanji, phrase, grammar, sentence, custom) with templates; `CardGenerator`; notes CRUD writing ops; template field substitution (sanitised HTML). Full card rendering is T213.
 - accept: Creating each note type yields the spec's default cards; optional kinds toggle correctly.
 
 ### T202 — Op log, sync push/pull (server)
@@ -242,20 +242,21 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Login/logout works against the dev stack (manual).
 
 ### T209 — Web review screen
-- model: sonnet · risk: med · deps: T206, T208 · status: TODO
+- model: sonnet · risk: med · deps: T206, T208, T213 · status: TODO
 - paths: `web/src/routes/review/`, `web/src/lib/review/`
-- do: Card rendering (templates), furigana toggle, keyboard-first (1–4 / 1–5, space, u), undo, edit note inline, bury/suspend/never-forget.
+- do: Card display via `renderCard` from `web/src/lib/core/` (no TS re-implementation), furigana toggle, keyboard-first (1–4 / 1–5, space, u), undo, edit note inline, bury/suspend/never-forget.
 - accept: A full session works keyboard-only (manual).
 
 ### T210 — Web card browser and bulk ops
-- model: sonnet · risk: med · deps: T108, T208 · status: TODO
+- model: sonnet · risk: med · deps: T108, T208, T213 · status: TODO
 - paths: `web/src/routes/cards/`, `server/src/main/kotlin/kotobaya/cards/bulk/`
-- do: Search box (query language with autocomplete), virtualised table, bulk tag/move/suspend/reschedule.
+- do: Search box (query language; validation and autocomplete via `parseQuery`/`completeQuery` from core, client-side), virtualised table, bulk tag/move/suspend/reschedule.
 - accept: Bulk op runs as one job with progress.
 
 ### T211 — Web decks, note types, templates
-- model: sonnet · risk: low · deps: T204, T208 · status: TODO
+- model: sonnet · risk: low · deps: T204, T208, T213 · status: TODO
 - paths: `web/src/routes/decks/`, `web/src/routes/note-types/`
+- do: Template editor live preview renders client-side with `renderCard`.
 - accept: Preview and review use the same rendering component.
 
 ### T212 — Web settings, devices, tokens
@@ -263,6 +264,13 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - paths: `web/src/routes/settings/`
 - do: Settings, device list + QR pairing, PAT create/revoke with scopes, backup status, attribution page.
 - accept: Token shown once; revoke works.
+
+### T213 — Shared card renderer and core JS facade
+- model: opus · risk: med · deps: T201, T108, T107 · status: TODO
+- paths: `core/src/commonMain/kotlin/kotobaya/render/`, `core/src/jsMain/`, `core/src/commonTest/kotlin/kotobaya/render/`, `assets/card/`, `web/src/lib/core/`
+- spec: Scheduling › Card kinds per note type, Clients (Review screens), Public API › Card search language
+- do: Implement `CardRenderer`: templates → HTML fragment with `<ruby>` furigana, pitch-accent SVG from `entry_pitch`, audio placeholders the host fills, front/back; `assets/card/card.css` (light/dark via CSS variables, Japanese font stack). Implement the `CoreJs` facade (`@JsExport`) and a thin typed wrapper in `web/src/lib/core/` (`renderCard`, `parseQuery`, `completeQuery`, `previewIntervals`). One renderer for web review, template preview, and Android (WebView).
+- accept: Golden HTML snapshot per built-in note type × card kind, identical on jvm and js targets; output passes the sanitiser (no script, no inline handlers); wrapper smoke test in vitest.
 
 → `make test`, then **GATE-P2**: human imports jpdb history and reviews in the web app for 3 days; reports issues.
 
@@ -288,9 +296,9 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Shares the T202 convergence fuzz harness (client side); kill-app-mid-push test loses nothing.
 
 ### T304 — Android review UI
-- model: sonnet · risk: med · deps: T205, T301 · status: TODO
+- model: sonnet · risk: med · deps: T205, T301, T213 · status: TODO
 - paths: `android/app/src/main/kotlin/kotobaya/android/review/`
-- do: Card rendering, furigana, pitch graph, audio, swipe/tap grading (4/5), undo, edit, bury/suspend/never-forget.
+- do: Card display = `CardRenderer` (JVM) output in a WebView loading `assets/card/` locally (no network; one reused WebView, JS off unless needed for audio); native Compose for the grading bar, toolbar, and gestures. Furigana toggle, pitch graph (from the renderer), audio, swipe/tap grading (4/5), undo, edit, bury/suspend/never-forget.
 - accept: Grading and undo work (manual on device).
 
 ### T305 — AnkiDroid stand-in (production)
@@ -454,7 +462,8 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 
 ### T602 — Pitch accent display and cards
 - model: sonnet · risk: low · deps: GATE-P5 · status: TODO
-- paths: `web/src/lib/pitch/`, `android/app/src/main/kotlin/kotobaya/android/pitch/`, `core/src/commonMain/kotlin/kotobaya/cards/pitch/`
+- paths: `core/src/commonMain/kotlin/kotobaya/cards/pitch/`, `core/src/commonMain/kotlin/kotobaya/render/pitch/`, `assets/card/`
+- do: Pitch card kind and any pitch display beyond T213, inside the shared renderer only; no per-client pitch code.
 
 ### T603 — Server AnkiConnect endpoint
 - model: sonnet · risk: med · deps: GATE-P5 · status: TODO

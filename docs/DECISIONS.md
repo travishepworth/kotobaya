@@ -5,7 +5,8 @@ are decided provisionally by the orchestrator (ORCHESTRATOR.md §0a) and listed 
 Delete and replace a default to change it; the orchestrator appends ADRs below the line.
 
 ## Stack
-- Shared core: [Kotlin Multiplatform everywhere]  — or TypeScript web with its own FSRS port
+- Shared core: **Kotlin Multiplatform everywhere** (settled, ADR-002)
+- Web app: **SvelteKit + core's JS build + shared card renderer** (settled, ADR-002)
 - Server DB access: [jOOQ] | Exposed
 - Android DI: [Koin] | Hilt
 - FSRS version and reference implementation for golden vectors: [latest FSRS; py-fsrs pinned to a specific version]
@@ -39,3 +40,4 @@ Delete and replace a default to change it; the orchestrator appends ADRs below t
 ## ADRs
 <!-- ADR-<n>[ (PROVISIONAL)]: <title> — <date> — <decision> — <why>[ — <how to reverse>] -->
 - ADR-001: Name — 2026-11-12 — Kotobaya (言葉屋, "word shop") — settled by the human; replaces the "Kotoba" placeholder.
+- ADR-002: Web stack and code sharing — 2026-11-12 — Keep SvelteKit; web consumes the KMP core's JS build (`@kotobaya/core`) for card rendering, search parsing/autocomplete and FSRS previews; one `CardRenderer` (HTML + `assets/card/` CSS) is used by web review, template preview, and the Android review screen via WebView; app chrome stays native per platform (Svelte / Compose). — Maximises shared logic and the most-used UI (the card) while keeping real DOM text for Yomitan, selection, IME and `<ruby>` furigana. Rejected: Compose Multiplatform web (canvas text breaks Yomitan and the reader; large CJK font bundles); TypeScript FSRS port (two schedulers to keep in agreement).

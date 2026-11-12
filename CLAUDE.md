@@ -15,7 +15,8 @@ instead. Never read `fixtures/private/` unless your ticket says so.
 | `core/` | Kotlin Multiplatform shared logic (jvm, android, js) | Kotlin, kotlin.test |
 | `server/` | Ktor API | Kotlin, JUnit 5, Testcontainers |
 | `worker/` | Python jobs: dictionary, import, parse, coverage, TTS, optimizer | Python 3.12, uv, pytest, ruff, mypy --strict |
-| `web/` | SvelteKit static SPA | TypeScript strict, vitest |
+| `web/` | SvelteKit static SPA; uses `@kotobaya/core` (core's JS build) for rendering, search parsing, previews | TypeScript strict, vitest |
+| `assets/card/` | Shared card CSS used by web and the Android review WebView | CSS |
 | `android/` | Android app | Kotlin, Compose, SQLDelight, Robolectric, instrumented tests |
 | `clients/` | Generated API clients — never hand-edit | — |
 | `deploy/` | Helm chart, k3d scripts, backup | Helm, bash |
@@ -59,7 +60,9 @@ UI code needs no tests unless the ticket says so.
 ## Style
 - Kotlin: official style, explicit API mode in `core`, no `!!` outside tests, coroutines over threads.
 - Python: typed, dataclasses or pydantic for records, no global state, pure functions where possible.
-- TypeScript: strict, no `any`, components small, data via the generated client only.
+- TypeScript: strict, no `any`, components small, data via the generated client only. Domain logic
+  (card rendering, search parsing, scheduling previews) comes from `web/src/lib/core/` (the shared
+  Kotlin core); never re-implement it in TypeScript. If core lacks it, return CONTRACT_CHANGE_REQUEST.
 - Commits: `<ID>: <imperative summary>`; one logical change per commit.
 
 ## Handoff
