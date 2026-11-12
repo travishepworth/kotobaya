@@ -1,18 +1,18 @@
 # STATE
 Mode: single-session
 Phase: P1 (Foundations)   Gate: GATE-CONTRACTS AUTO-CLOSED; contracts frozen
-Updated: 2026-11-12T13:02:24Z
+Updated: 2026-11-12T13:04:29Z
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T105a | writer-senior (gp/opus) | 1 | t/T105a-auth-core | 2026-11-12T12:54:21Z |
 | T109a | writer (gp/sonnet) | 1 | t/T109a-jobs-api | 2026-11-12T12:54:21Z |
 | P1 tickets | planner (gp/sonnet) | 1 | plan/p1-tickets | 2026-11-12T12:11:12Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T105a | reviewer (opus) | 2026-11-12T13:04:29Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

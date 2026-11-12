@@ -203,3 +203,6 @@
 2026-11-12T13:02:24Z T106 HANDOFF DONE
 2026-11-12T13:02:24Z T106 CHECK_GREEN server after rebase
 2026-11-12T13:02:24Z T106 MERGE (wiring deferred to W-1)
+2026-11-12T13:04:29Z T105a HANDOFF DONE
+2026-11-12T13:04:29Z T105a CHECK_GREEN server after rebase
+2026-11-12T13:04:29Z T105a REVIEW reviewer(opus) dispatched (flag: rate limiter behind ingress)
