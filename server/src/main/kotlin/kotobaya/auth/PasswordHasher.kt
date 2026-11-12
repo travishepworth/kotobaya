@@ -22,7 +22,7 @@ object PasswordHasher {
     private const val HASH_BYTES = 32
 
     /** Refuse hashes that would let a misconfigured secret exhaust memory or CPU on every login. */
-    private const val MAX_MEMORY_KiB = 1_048_576
+    const val MAX_MEMORY_KiB = 262_144 // 256 MiB
     private const val MAX_ITERATIONS = 64
     private const val MAX_PARALLELISM = 16
 

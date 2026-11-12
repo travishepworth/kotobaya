@@ -11,12 +11,18 @@ import javax.crypto.spec.SecretKeySpec
  * accepted for the current and the previous step, and only once.
  *
  * "Only once" is enforced by remembering the last accepted step in memory: a code for a step at or
- * before it is refused. A restart forgets it, so a code observed in the 60 s before a restart could be
- * replayed once after it (it still needs the password). Documented in HANDOFF; acceptable for v1.
+ * before it is refused. With [startedAt] (the server passes its start time) the step current at start counts
+ * as used, so a code used just before a restart cannot be replayed after it; the cost is that the first
+ * login after a restart may have to wait for the next code (at most 30 s).
  */
-class Totp(private val key: ByteArray, private val digits: Int = 6, private val stepSeconds: Long = 30) {
+class Totp(
+    private val key: ByteArray,
+    private val digits: Int = 6,
+    private val stepSeconds: Long = 30,
+    startedAt: Instant? = null,
+) {
     private val lock = Any()
-    private var lastAcceptedStep = Long.MIN_VALUE
+    private var lastAcceptedStep = startedAt?.let { step(it) } ?: Long.MIN_VALUE
 
     fun step(at: Instant): Long = Math.floorDiv(at.epochSecond, stepSeconds)
 

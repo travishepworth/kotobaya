@@ -1,24 +1,24 @@
-# HANDOFF T105a
+# HANDOFF T105a (attempt 2)
 
 STATUS: DONE
 BRANCH: t/T105a-auth-login
 CHECK: `make check MODULE=server` → green
 
 ## Changed (≤ 6 lines)
-- `kotobaya/auth/`: `Auth` (login/logout/getPrincipal handlers + `authenticator`), `TokenAuthenticator` (header wins over cookie, CSRF, `ScopeCheck` hook for T105b), `TokenValidator` (≤5 s cache, generation-guarded invalidation, `revoke`/`invalidateDevice`).
-- `PasswordHasher` (argon2id PHC, default m=64 MiB t=3 p=4), `Totp` (RFC 6238, current+previous step, single use), `LoginRateLimiter` (5/address + 100 global per 15 min, in memory).
-- Secrets: env `AUTH_PASSWORD_HASH` (required), `AUTH_TOTP_SECRET` (base32, optional). Setup: `java -cp server-all.jar kotobaya.auth.HashPasswordKt`.
+- Attempt 1: `kotobaya/auth/` login/logout/getPrincipal, `TokenAuthenticator`, `TokenValidator` (≤5 s cache), argon2id, TOTP, rate limiter.
+- [major] `ClientAddressResolver` + env `AUTH_TRUSTED_PROXIES` (CIDRs, default empty): XFF believed only from a trusted peer; client = rightmost untrusted hop; malformed hop falls back to the peer. Global cap stays 100/15 min; a success clears only that client's failures.
+- [minor] TOTP: the step current at startup counts as used, so no replay after a restart.
+- [minor] Argon2 m capped at 256 MiB; the semaphore keeps concurrent hashing at 256 MiB or less.
 
 ## Acceptance → tests
-- Login matrix → AuthApiTest.wrongPassword…, missingTotpIsTotpRequired…, wrongTotpGivesTheSame…, expiredTotpStep…, previousStepCode…, totpCodeIsAcceptedOnlyOnce
-- Brute force → bruteForceLimitTriggersAndRecovers; CryptoTest.rateLimiter*
-- Revocation → logoutTakesEffect…, revocationThroughTheValidator…, tokenOfARevokedDevice…, cacheLivesAtMostFiveSeconds
-- Cookie/format/hash → loginSetsSessionCookie…, CryptoTest.tokenStrings…
+- Attempt-1 matrix unchanged → AuthApiTest, CryptoTest
+- Proxy fixes → ClientAddressTest (spoofed…, trustedProxyChains…, malformed…, twoClientsBehindTheProxy…, defaultResolverIgnores…)
+- Restart replay and memory cap → ClientAddressTest.aCodeUsedJustBefore…, argon2MemoryIsCapped…
 
 ## New dependencies
-- bcprov-jdk18on 1.78.1 — already transitive via minio; declared explicitly for Argon2.
+- bcprov-jdk18on 1.78.1 (approved)
 
 ## For the reviewer (≤ 3 lines)
-- NOT WIRED: Main.kt (not my path) still uses AllowAll. Needs `Auth(db, AuthConfig.fromEnv())` → `AppDeps(authenticator=, handlers=)`; Helm must pass the two AUTH_* keys.
-- Rate limit keys on TCP peer (no XFF trust); TOTP replay state and limiter reset on restart.
-- No scheme filter (logout must 422 bearer device tokens); T105b owns it.
+- Wiring ticket: Main.kt still uses AllowAll; pass AUTH_PASSWORD_HASH, AUTH_TOTP_SECRET, AUTH_TRUSTED_PROXIES via Helm.
+- Set Traefik `externalTrafficPolicy: Local`, and set AUTH_TRUSTED_PROXIES to the ingress/pod CIDR.
+- First login after a restart may wait ≤30 s for the next TOTP code.

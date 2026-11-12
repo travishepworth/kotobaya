@@ -42,7 +42,7 @@ class AuthApiTest {
     private val totpSecret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" // RFC 6238 key "12345678901234567890"
     private val totpGen = Totp(Totp.decodeBase32(totpSecret))
     private val cheapHash = PasswordHasher.hash(password, PasswordHasher.Params(1024, 1, 1))
-    private val now = AtomicReference(Instant.parse("2026-11-12T09:30:15Z"))
+    private val now = AtomicReference(Instant.parse("2026-11-12T09:29:15Z"))
     private val nanos = AtomicLong(0)
     private val db: Database = TestPg.migratedDb()
     private lateinit var auth: Auth
@@ -61,6 +61,8 @@ class AuthApiTest {
             validator = TokenValidator(db, clock, nanoTime = { nanos.get() }),
             clientAddress = { it.request.headers["X-Test-Client"] ?: "client-a" },
         )
+        // The TOTP step current at start counts as used (restart replay guard); start the tests two steps later.
+        now.set(now.get().plusSeconds(60))
         application { kotobayaModule(AppDeps(db, authenticator = auth.authenticator, handlers = auth.handlers)) }
         block()
     }

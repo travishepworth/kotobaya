@@ -36,8 +36,8 @@ import java.time.ZoneOffset
  * T105a: password + optional TOTP login, session tokens, logout, `getPrincipal`, and the request
  * [authenticator]. Wire it with `AppDeps(authenticator = auth.authenticator, handlers = auth.handlers + ...)`.
  *
- * [clientAddress] keys the login rate limit; the default is the TCP peer. Behind an ingress that is the
- * ingress pod, so the per-address limit then acts like a second global limit (X-Forwarded-For is not trusted).
+ * [clientAddress] keys the login rate limit; the default is [ClientAddressResolver] over the TCP peer and
+ * `X-Forwarded-For`, trusting the header only from `AUTH_TRUSTED_PROXIES`.
  */
 class Auth(
     private val db: Database,
@@ -46,13 +46,15 @@ class Auth(
     val validator: TokenValidator = TokenValidator(db, clock),
     private val limiter: LoginRateLimiter = LoginRateLimiter(),
     scopeCheck: ScopeCheck = ScopeCheck.None,
-    private val clientAddress: (ApplicationCall) -> String = { it.request.local.remoteAddress },
+    private val clientAddress: (ApplicationCall) -> String = ClientAddressResolver(config.trustedProxies).let { r ->
+        { call -> r.resolve(call.request.local.remoteAddress, call.request.headers.getAll("X-Forwarded-For").orEmpty()) }
+    },
 ) {
     private val log = LoggerFactory.getLogger("kotobaya.auth")
-    private val totp = config.totpKey?.let { Totp(it) }
+    private val totp = config.totpKey?.let { Totp(it, startedAt = clock()) }
 
-    /** Argon2 at 64 MiB per hash: bound concurrent verifications so a login flood cannot exhaust the heap. */
-    private val hashing = Semaphore(2)
+    /** Bound concurrent Argon2 verifications to 256 MiB in total (2 at the default 64 MiB) so a login flood cannot exhaust the heap. */
+    private val hashing = Semaphore((PasswordHasher.MAX_MEMORY_KiB / config.passwordHash.params.memoryKiB).coerceIn(1, 2))
 
     val authenticator = TokenAuthenticator(validator, scopeCheck)
 

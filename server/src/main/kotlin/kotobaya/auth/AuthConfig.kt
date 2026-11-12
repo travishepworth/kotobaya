@@ -8,13 +8,20 @@ import kotobaya.server.ConfigException
  * - `AUTH_PASSWORD_HASH` (required): Argon2id PHC string. Create it with
  *   `java -cp server-all.jar kotobaya.auth.HashPasswordKt` (see [PasswordHasher]).
  * - `AUTH_TOTP_SECRET` (optional): RFC 4648 base32 TOTP key, at least 128 bits. Absent or blank = TOTP off.
+ * - `AUTH_TRUSTED_PROXIES` (optional): comma-separated CIDRs of reverse proxies (the ingress) whose
+ *   `X-Forwarded-For` is believed for the login rate limit. Default empty: the TCP peer is the client.
  */
-class AuthConfig(val passwordHash: PasswordHasher.Parsed, val totpKey: ByteArray?) {
+class AuthConfig(
+    val passwordHash: PasswordHasher.Parsed,
+    val totpKey: ByteArray?,
+    val trustedProxies: List<Cidr> = emptyList(),
+) {
     val totpEnabled: Boolean get() = totpKey != null
 
     companion object {
         const val PASSWORD_HASH_ENV = "AUTH_PASSWORD_HASH"
         const val TOTP_SECRET_ENV = "AUTH_TOTP_SECRET"
+        const val TRUSTED_PROXIES_ENV = "AUTH_TRUSTED_PROXIES"
 
         fun fromEnv(env: Map<String, String> = System.getenv()): AuthConfig {
             val raw = env[PASSWORD_HASH_ENV]?.takeIf { it.isNotBlank() }
@@ -33,7 +40,12 @@ class AuthConfig(val passwordHash: PasswordHasher.Parsed, val totpKey: ByteArray
                 if (key.size < 16) throw ConfigException("$TOTP_SECRET_ENV must be at least 128 bits (26 base32 characters)")
                 key
             }
-            return AuthConfig(hash, totp)
+            val proxies = try {
+                ClientAddressResolver.parseList(env[TRUSTED_PROXIES_ENV])
+            } catch (e: IllegalArgumentException) {
+                throw ConfigException("$TRUSTED_PROXIES_ENV: ${e.message}")
+            }
+            return AuthConfig(hash, totp, proxies)
         }
     }
 }
