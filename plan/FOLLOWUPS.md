@@ -134,3 +134,9 @@
 - T211: core renderer gives no warning for unknown placeholder {{nope}} (renders empty) → core render warnings follow-up. No nav link to /note-types (layout); deck settings (order, add_kanji, card_kinds) not editable in UI.
 - T202c: ScenarioTest.mergeScenariosAreLeftToT202c (T202b file) now stale; remove in wiring ticket.
 - T202c -> wiring (W-2): Main.kt uses SyncWiring.startup(db) and SyncModule(db, SyncWiring.config(events)); replaces PLACEHOLDER_SCHEDULER_VERSION.
+- T202c review: CoreCardCache refusals only logged; no durable marker so card never retried (no known trigger). Write sentinel weights_version on refusal → next touch full replay.
+- T202c review -> wiring (W-2): Startup.kt StartupSequence default "unset" scheduler version; drop default / use core SCHEDULER_VERSION so forgetting SyncWiring.startup can't silently skip replay.
+- T202c review: DuplicateMerge.kt:107 survivor-card lookup add `and merged_into_id is null` guard.
+- T202c review: fuzz covers only Default preset; add preset update/publish, card.preset_set, restore/re-mint actions.
+- T202c review -> Phase 3 (device re-mint): T005 re-mint gaps (deck.item_put e:<seq>, word.status_set in window, card.preset_set) untested.
+- C-6 verify: wording "≤ about 10102" for derived due_at; ReplayEngine @throws KDoc change not in HANDOFF; T202d/web: check TS/JS readers parse 5-digit unsigned years (10099-…).
