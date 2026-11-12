@@ -143,8 +143,9 @@ def remint_select(rows: list) -> tuple[list, list, list, list, list, set, dict]:
     window-derived ops, in step-1 order; R the reviews to re-mint; U the undos among `rows` that undo
     a review of R (the caller adds the undos of R's reviews in other states); D the unknown_reference
     ops that depend on a window row but write a row other replicas can have (discarded, never
-    re-minted); W the ids of the rows created in the window; payloads: op_id -> the payload step 6a
-    mints for each op of E (the original one, except `e:<seq>` deck items, re-keyed `n:<note>`)."""
+    re-minted); W the ids of the rows created in the window; payloads: op_id -> the list of payloads step 6a
+    mints for each op of E, in order (the original one; `e:<seq>` deck items re-keyed `n:<note>` per
+    10.4; a re-keyed removal mints two: `n:<note>`, then the original `e:<seq>`)."""
     W: set = set()
     C: list = []
     E: list = []
@@ -209,8 +210,11 @@ def remint_select(rows: list) -> tuple[list, list, list, list, list, set, dict]:
                 rekeyed.add((p["deck_id"], seq))
                 p["item_key"] = "n:" + note
             elif o["op_type"] == "deck.item_removed" and (p["deck_id"], seq) in rekeyed:
-                p["item_key"] = "n:" + note
-        payloads[o["op_id"]] = p
+                # remove every key of the effective identity (OPS.md deck.item_removed): the re-keyed
+                # n:<note> row AND the original e:<seq>, which may be live from before the window
+                payloads[o["op_id"]] = [{**p, "item_key": "n:" + note}, p]
+                continue
+        payloads[o["op_id"]] = [p]
     return C, E, R, U, D, W, payloads
 
 
@@ -965,7 +969,8 @@ class Device:
         if items:  # 4-5. one shift for the whole batch
             delta, times = remint_times(items, self.remint_offset or 0, self.pt)
             for r, v in zip(E, times):  # 6a. rows created in the window and their edits, mint_at(v)
-                self.make(r["op"]["op_type"], payloads[r["op"]["op_id"]], at=v)
+                for q in payloads[r["op"]["op_id"]]:
+                    self.make(r["op"]["op_type"], q, at=v)
             for p, t in zip(todo, times[len(E):]):  # 6b. reviews, in the original hlc order
                 q = {**p, "id": self.new_id(3), "reviewed_at": t}
                 if q.get("manual_due_at") is not None:

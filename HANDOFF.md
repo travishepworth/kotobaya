@@ -1,10 +1,16 @@
-# HANDOFF C-8 (attempt 3)
+# HANDOFF C-8 (attempt 4)
 
 STATUS: DONE
 BRANCH: t/C-8-sync-gaps (rebased on main)
 CHECK: `make check MODULE=contracts` → green; `core` → green; `server` → green
 
 ## Changed (≤ 6 lines)
+- Attempt 4 (F1):
+  - A re-keyed removal is minted twice, on `n:<note>` and on the original `e:<seq>`. SYNC.md 10.4 removal rule, table row and 6a updated.
+  - In `model.py`, payloads become lists; `validate.py` checks the minted ops in order.
+  - New `remint-deck-items` case: pre-window `e:2000008` → note in the window → re-put → remove. I traced the effective live items after the log and they match intent: 2000005, 2000006 and 2000008 are removed; 2000001, 2000002, 2000003, 2000007 and the custom note stay.
+  - Mutation checks (one per rule) fail as expected.
+  - The optional reorder re-put is not done (not trivially safe; recorded in SUMMARY).
 - SYNC.md 10.4 step 6a:
   - An `e:<seq>` put is re-keyed `n:<note>` only if its owner note is live.
   - A removal is re-keyed only if E also re-keys a put of the same `(deck, e:<seq>)`. Otherwise it keeps `e:<seq>` and removes the shared row.
@@ -26,8 +32,8 @@ CHECK: `make check MODULE=contracts` → green; `core` → green; `server` → g
 - T205 (breaking):
   - Rewrite `QueueBuilderTest.kt:345` per decision 6.
   - Update `DefaultQueueBuilder`.
-- Device re-mint: implement the new E rules (1a/1c, ordering, the `n:` re-key with the removal and live-owner conditions), the `D` list, and the MUST-show discard list.
-- Port the new step 1 (1a/1c, `D`, the `n:` re-key and removal rule) into `server/src/test/kotlin/kotobaya/sync/fuzz/SimDevice.kt`.
+- Device re-mint: implement the new E rules (1a/1c, ordering, the `n:` re-key with the removal and live-owner conditions, a re-keyed removal minted twice), the `D` list, and the MUST-show discard list.
+- Port the new step 1 (1a/1c, `D`, the `n:` re-key and the two-removal rule) into `server/src/test/kotlin/kotobaya/sync/fuzz/SimDevice.kt`.
 - Server:
   - `CoreCardCache` writes the refused cache.
   - With backups disabled, persist `durable_seq` (startup step 3 and every `change` transaction).

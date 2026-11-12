@@ -563,6 +563,7 @@ for p in SCENARIO_FILES:
         logged = {o["op_id"]: o for o in log}
         E: list = []
         W: set = set()
+        flat: list = []  # (E op id, minted payload) in mint order: a re-keyed removal mints two (6a)
         if "creations_from" in rm:  # step 1, recomputed from the rejected rows and their codes
             C, E, R, U, D, W, payloads = remint_select([{"op": r["op"], "last_error": r["code"]} for r in rej.values()])
             ids = lambda rows: [r["op"]["op_id"] for r in rows]  # noqa: E731
@@ -574,19 +575,22 @@ for p in SCENARIO_FILES:
             gone = [i for i in dict.fromkeys(ids(deleted)) if i not in set(ids(E)) | set(rm["from"])]
             if gone != rm["discarded"]:
                 fail(f"{where}: Re-mint discards {gone}, the scenario says {rm['discarded']}")
-            if len(rm["creations_to"]) != len(E):
-                fail(f"{where}: creations_to must pair with creations_from")
-                E = []
-            for i, j in zip(rm["creations_from"], rm["creations_to"]):
-                if logged[j]["op_type"] != rej[i]["op"]["op_type"] or logged[j]["payload"] != payloads.get(i):
-                    fail(f"{where}: re-minted {j} must repeat the op type and payload of {i}, an e:<seq> item of a "
-                         f"window note re-keyed n:<note> (step 6a)")
+            flat = [(i, q) for i in rm["creations_from"] for q in payloads.get(i, [])]
+            if len(rm["creations_to"]) != len(flat):
+                fail(f"{where}: creations_to must list the {len(flat)} ops step 6a mints for creations_from")
+                E, flat = [], []
+            for (i, q), j in zip(flat, rm["creations_to"]):
+                if logged[j]["op_type"] != rej[i]["op"]["op_type"] or logged[j]["payload"] != q:
+                    fail(f"{where}: re-minted {j} must be the step-6a op for {i} (same type; payload as sent, or the "
+                         f"e:<seq> item of a window note re-keyed n:<note>, a re-keyed removal also on e:<seq>)")
         old = [rej[i]["op"]["payload"] for i in rm["from"]]
         items = [(wall(r["op"]["hlc"]), FLOOR_MS) for r in E] + \
             [(q["reviewed_at"], FLOOR_MS if q["card_id"] in W else server.t["card"][q["card_id"]]["created_at"])
              for q in old]
         if items:
             _, times = remint_times(items, rm["offset_ms"], rm["now"])
+            t_of = dict(zip([r["op"]["op_id"] for r in E], times))
+            times = [t_of[i] for i, _ in flat] + times[len(E):]  # one t' per minted op
             minted = [wall(logged[j]["hlc"]) for j in rm.get("creations_to", [])]
             # mint_at(t') (3.2): t', or just above the previous HLC when t' is not above it
             want = [max([t] + minted[:k]) for k, t in enumerate(times[:len(minted)])] + times[len(minted):]

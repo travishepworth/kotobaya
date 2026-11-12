@@ -311,6 +311,11 @@
     `e:<seq>`. Word statuses and un-re-keyed items are shared registers decided by the estimated
     time. With `clock_behind`, a re-minted status can beat a later status from another device.
     That is accepted.
+  - Attempt 4: a removal that is re-keyed is minted twice, on `n:<note>` and on the original
+    `e:<seq>`. This covers an item that existed before the window and was re-put and then removed
+    in it. Not done (optional): also re-minting a re-keyed put on `e:<seq>` to keep a reorder
+    visible. It would re-add an item another device may have removed, so it is not trivially
+    safe; a reorder of a pre-window item can be hidden by the old row's smaller position.
   - Before the user confirms Re-mint, the device must show the list of ops it will discard.
   - Three scenarios in `examples/remint-scenarios/`; `validate.py` recomputes the selection, the
     re-keyed payloads and the shift.

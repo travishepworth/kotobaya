@@ -1305,12 +1305,17 @@ survive a clock rejection. How each is re-minted (step 6a, C-8 attempt 3):
   also after the note is merged into another device's note of the word. If the owner is
   tombstoned the put keeps `e:<seq>` (re-keyed it would point at a hidden note) and is re-minted
   as a shared-row edit at its estimated time.
-- **`deck.item_removed e:<seq>`**: re-keyed `n:<owner>` **only if `E` holds a re-keyed
-  `item_put` of the same `(deck, e:<seq>)`** (the item was added in the window: the removal must
-  hit the row the put creates). Otherwise it keeps `e:<seq>` and is re-minted as a shared-row
-  edit at its estimated time: the item existed before the window (e.g. a pending entry
-  `e:<seq>` the user materialised and then removed), and re-keyed the removal would leave the
-  live `e:<seq>` row and the word would reappear.
+- **`deck.item_removed e:<seq>`**: if `E` holds a re-keyed `item_put` of the same
+  `(deck, e:<seq>)` (the window put the item; decided in `E` order), it is re-minted as **two
+  removals** in the same transaction, `n:<owner>` and then the original `e:<seq>`. The first hits
+  the row the re-keyed put creates; the second removes an `e:<seq>` row that may be live from
+  before the window (a pending entry the user materialised, re-put, e.g. to reorder it, and then
+  removed). That is the client duty of OPS.md `deck.item_removed`: remove every live key with the
+  same effective identity. The `e:<seq>` removal is a shared-row edit at the estimated time, as
+  below; if no such row exists it leaves a tombstone row, which only makes older puts lose.
+  Without a re-keyed put it is re-minted **once, keeping `e:<seq>`**, also as a shared-row edit:
+  the item existed before the window (a pending entry the user materialised and then removed).
+  Re-keyed, the removal would leave the live `e:<seq>` row and the word would reappear.
 - **`word.status_*`**: same payload, re-minted with `mint_at`, so its estimated real time decides
   it against other replicas' statuses of the entry, like a forwarded edit after a merge.
 
@@ -1334,7 +1339,7 @@ Consequences, each with a scenario in
 | `deck.item_put` / `_removed` `n:<note in W>` into any deck, or any key into a deck in `W` | yes | re-minted | `remint-deck-items` |
 | `deck.item_put` `e:<seq>` into a deck the server had, `seq` = entry of a live note in `W` | window-derived | `clock_ahead` itself; **re-minted with key `n:<note>`**, after the note | `remint-deck-items` |
 | the same, but the note was deleted in the window | window-derived | re-minted, **keeps `e:<seq>`** | `remint-deck-items` |
-| `deck.item_removed` `e:<seq>`, `seq` = entry of a note in `W`, `E` re-keys a put of the same `(deck, e:<seq>)` | window-derived | re-minted with key `n:<note>` | `remint-deck-items` |
+| `deck.item_removed` `e:<seq>`, `seq` = entry of a note in `W`, `E` re-keys a put of the same `(deck, e:<seq>)` | window-derived | re-minted **twice**: key `n:<note>`, then `e:<seq>` (removes a pre-window `e:<seq>` row too) | `remint-deck-items` |
 | `deck.item_removed` `e:<seq>`, `seq` = entry of a note in `W`, no such put (the item predates the window) | window-derived | re-minted, **keeps `e:<seq>`** (removes the shared row) | `remint-deck-items` |
 | `deck.item_put` / `_removed` `e:<seq>` into a deck the server had, no window note for `seq` | no: `(deck, e:<seq>)` is written by every replica that adds the word | `clock_ahead` itself; **discarded** | `remint-deck-items` |
 | `word.status_set` / `_cleared` of the entry of a note in `W` | window-derived | clock code itself; **re-minted**, same payload | `remint-word-status` |
@@ -1446,11 +1451,12 @@ status says "fix your device clock, then sync".
 6. Mint, exactly as in section 4 (new `op_id`, apply locally, insert `pending`):
    - **6a.** For each op of `E`, in the order of step 1: the **same** `op_type` and payload (same row
      ids, same values) — except the window-derived deck items into a deck not in `W` that the
-     rules above re-key (a put whose owner is live; a removal whose `(deck, e:<seq>)` put `E`
-     re-keys, deciding in `E` order): their `item_key` `e:<seq>` becomes `n:<owner note id>`
-     (and `entity_id` with it); every other property unchanged — new `hlc` = `mint_at(t')` (3.2). `t` stays `wall` of the op's
-     own original `hlc`. Its rows' `created_at` / `updated_at`
-     (from `wall(hlc)`, 7.5) become the estimated real times. (`mint_at` never returns a value at
+     rules above re-key. A put whose owner is live is minted once with `item_key` `n:<owner note
+     id>` (and `entity_id` with it). A removal whose `(deck, e:<seq>)` put `E` re-keys (decided
+     in `E` order) is minted **twice**, first with `n:<owner note id>` and then unchanged with
+     `e:<seq>`, both at `mint_at(t')` of the same `t'`. Every other property is unchanged. New
+     `hlc` = `mint_at(t')` (3.2). `t` stays `wall` of the op's own original `hlc`. Its rows'
+     `created_at` / `updated_at` (from `wall(hlc)`, 7.5) become the estimated real times. (`mint_at` never returns a value at
      or below `hlc_last`; when `t'` is not above it, the HLC lands just above `hlc_last` instead.)
    - **6b.** Then for each `r_i` in order: a new `review.logged` with `hlc` = `mint()`: the
      payload is `r_i`'s with a **new `id`** (UUIDv7), `reviewed_at = t'_i`, and
