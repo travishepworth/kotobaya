@@ -42,13 +42,15 @@ import java.util.UUID
  * Tombstoned cards and merge losers are skipped (deletion and merges are permanent, and SYNC.md 11
  * item 3 compares caches only for live non-loser cards).
  *
- * **A card the engine refuses** ([ReplayEngine.replay] / [ReplayEngine.fold] throw
+ * **A card the engine refuses** (SYNC.md 9.4, C-8: [ReplayEngine.replay] / [ReplayEngine.fold] throw
  * [IllegalArgumentException] on duplicate ids or rows violating the `review_log` CHECKs, which the
- * server's primary key and CHECKs make impossible): the card is logged at ERROR and its cache is left
- * as it was; the op, or the startup replay, still commits. Failing instead would wedge every
- * device's outbox (a 500 on every push) or keep the server unready forever because of one card,
- * while the stale cache is only a derived value that the next successful replay rebuilds. Every
- * replica runs the same engine on the same rows, so they agree on refusing it.
+ * server's primary key and CHECKs make impossible): the card gets the **refused cache**
+ * `CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)` in the same
+ * transaction (never the old cache) and is logged at ERROR; the op, or the startup replay, still
+ * commits. Failing instead would wedge every device's outbox (a 500 on every push) or keep the server
+ * unready forever because of one card. A refused cache is never folded into: the next
+ * `review.logged` of the card replays in full (9.4 item 2, core `decide` step 1b; checked here too).
+ * Every replica runs the same engine on the same rows, so they agree on the refused cache.
  */
 class CoreCardCache(
     private val engine: ReplayEngine = DefaultReplayEngine,
@@ -66,8 +68,14 @@ class CoreCardCache(
         val lastFolded = card.cache.lastReviewId?.let { id ->
             loadReviews(tx, "r.id = ?::uuid", id).firstOrNull()?.second?.key
         }
-        guarded(targetCardId) {
-            when (engine.decide(card.cache, lastFolded, review, params)) {
+        guarded(tx, targetCardId, params) {
+            // 9.4 item 2: a refused cache is never folded into (core decide step 1b; enforced here as well).
+            val decision = if (card.cache.lastReviewId == Reserved.REPLAY_REFUSED_ID) {
+                ReplayDecision.FULL_REPLAY
+            } else {
+                engine.decide(card.cache, lastFolded, review, params)
+            }
+            when (decision) {
                 ReplayDecision.NONE -> Unit
                 ReplayDecision.FOLD -> write(tx, targetCardId, engine.fold(card.cache, review, params))
                 ReplayDecision.FULL_REPLAY -> replay(tx, setOf(targetCardId))
@@ -124,19 +132,23 @@ class CoreCardCache(
         }
         var written = 0
         for ((id, presetId) in cards) {
-            guarded(id) {
-                write(tx, id, engine.replay(byTarget[id].orEmpty(), paramsFor(presetId, presets)))
-                written++
-            }
+            val params = paramsFor(presetId, presets)
+            guarded(tx, id, params) { write(tx, id, engine.replay(byTarget[id].orEmpty(), params)) }
+            written++
         }
         return written
     }
 
-    private inline fun guarded(cardId: UUID, block: () -> Unit) {
+    /**
+     * Runs [block]; if the engine refuses (SYNC.md 9.4), writes the refused cache for [cardId] instead
+     * (never keeps the old one) and logs at ERROR. The caller's transaction still commits.
+     */
+    private inline fun guarded(tx: DSLContext, cardId: UUID, params: SchedulerParams, block: () -> Unit) {
         try {
             block()
         } catch (e: IllegalArgumentException) {
-            log.error("card {}: the replay engine refused its replay set; cache left unchanged", cardId, e)
+            log.error("card {}: the replay engine refused its replay set; refused cache written (SYNC.md 9.4)", cardId, e)
+            write(tx, cardId, refusedCache(params))
         }
     }
 
@@ -227,7 +239,11 @@ class CoreCardCache(
         return scheduler.paramsOf(effective)
     }
 
-    private companion object {
+    internal companion object {
+        /** The refused cache of SYNC.md 9.4 item 1: deterministic, so every refusing replica holds the same. */
+        fun refusedCache(params: SchedulerParams): CardCache =
+            CardCache(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, params.weightsVersion)
+
         fun ms(col: String) = "(extract(epoch from $col) * 1000)::bigint"
         val DUE = ms("c.due_at")
         val LAST_AT = ms("c.last_review_at")

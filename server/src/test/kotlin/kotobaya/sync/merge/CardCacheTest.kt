@@ -1,6 +1,7 @@
 package kotobaya.sync.merge
 
 import kotobaya.contracts.Reserved
+import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.PresetRow
 import kotobaya.contracts.fsrs.SchedulerParams
 import kotobaya.contracts.replay.CardCache
@@ -111,14 +112,20 @@ class CardCacheTest : RealSyncFixture() {
         assertEquals(expected(a, d, RefReplica.DEFAULT_PARAMS), serverCache(d))
     }
 
-    /** T203 review: the engine throws on a replay set it refuses; the op still commits and the card is skipped. */
+    /**
+     * SYNC.md 9.4 (C-8): the engine throws on a replay set it refuses; the op still commits and the card
+     * gets the refused cache (never the old one). The next review replays in full (never a fold into it),
+     * and once the engine accepts the set again the card is normal.
+     */
     @Test
-    fun aReplaySetTheEngineRefusesIsLoggedAndSkippedWithoutFailingThePush() {
+    fun aReplaySetTheEngineRefusesWritesTheRefusedCacheWithoutFailingThePush() {
         val a = SimDevice(A)
         at(base, a)
         val bad = card(a)
         val good = card(a)
+        review(a, bad, base + 1)
         a.sync(server)
+        assertEquals("learning", (serverCache(bad) as Map<*, *>)["state"], "a real cache before the refusal")
         val refusing = RefusingEngine(bad)
         server.module = SyncModule(db, syncConfig().copy(cardCache = CoreCardCache(refusing)))
         review(a, bad, base + 10); review(a, good, base + 10)
@@ -126,10 +133,29 @@ class CardCacheTest : RealSyncFixture() {
         a.push(server)
         assertTrue(a.outbox.all { it.state == "acked" }, "every op accepted")
         assertTrue(refusing.refused > 0)
-        assertEquals("new", (serverCache(bad) as Map<*, *>)["state"], "the refused card keeps its cache")
+        val refused = RefReplica.cacheMap(CardSchedule.NEW, Reserved.REPLAY_REFUSED_ID, RefReplica.DEFAULT_PARAMS.weightsVersion)
+        assertEquals(refused, serverCache(bad), "the refused cache, not the old one")
         assertEquals(expected(a, good, RefReplica.DEFAULT_PARAMS), serverCache(good))
-        assertEquals(3L, count("select count(*) from app.review_log"))
+        assertEquals(4L, count("select count(*) from app.review_log"))
         assertEquals(PushResult.DUPLICATE, pushAsOwner(a.outbox.last().op).status)
+
+        // The engine accepts the set again (e.g. a fixed core): the next review is a full replay, never a fold.
+        val counting = CountingEngine()
+        server.module = SyncModule(db, syncConfig().copy(cardCache = CoreCardCache(counting)))
+        review(a, bad, base + 20)
+        a.push(server)
+        assertEquals(0, counting.folds, "never folded into a refused cache")
+        assertEquals(expected(a, bad, RefReplica.DEFAULT_PARAMS), serverCache(bad), "normal again after a successful replay")
+    }
+
+    /** The core engine, counting folds. */
+    class CountingEngine : ReplayEngine by DefaultReplayEngine {
+        @Volatile var folds = 0
+
+        override fun fold(cache: CardCache, review: ReplayReview, params: SchedulerParams): CardCache {
+            folds++
+            return DefaultReplayEngine.fold(cache, review, params)
+        }
     }
 
     /** Delegates to the core engine but refuses every replay set / fold that touches [cardId]. */

@@ -56,11 +56,33 @@ class ConvergenceFuzzTest {
     fun optInLongRun() {
         val runs = System.getenv("KOTOBAYA_FUZZ_RUNS")?.toIntOrNull() ?: return
         for (k in 0 until runs) run(10_000L + k, steps = 600)
+        for (k in 0 until runs) run(20_000L + k, steps = 600, remint = true)
     }
 
-    private class Gen(val d: SimDevice, val skew: Long)
+    /**
+     * Re-mint (SYNC.md 10.4, C-8) under the fuzz: decks, deck items (`e:<seq>` and `n:<note>`), word statuses
+     * and presets join the stream, and now and then one device's clock jumps 10 days ahead for a while (a
+     * window): everything it mints is rejected (`clock_ahead`, then `unknown_reference` for the chains). When
+     * the window ends the clock is fixed, the device syncs, runs [SimDevice.remint] (step 1a/1b/1c, `D`, the
+     * `n:` re-key with the live-owner condition, the double removal, steps 5/6) and syncs again; every replica
+     * must still converge with the server and nothing may stay rejected.
+     */
+    @Test
+    fun remintWindowsConverge() {
+        for (seed in SEEDS) run(100L + seed, steps = 250, remint = true)
+        println("re-mint fuzz coverage: $remintStats")
+        for (k in REMINT_CASES) assertTrue((remintStats[k] ?: 0) > 0, "re-mint case $k never reached: $remintStats")
+    }
 
-    private fun run(seed: Long, steps: Int) = StoryServer(start).use { s ->
+    private val remintStats = sortedMapOf<String, Int>()
+
+    private fun count(k: String, n: Int = 1) {
+        if (n > 0) remintStats[k] = (remintStats[k] ?: 0) + n
+    }
+
+    private class Gen(val d: SimDevice, var skew: Long)
+
+    private fun run(seed: Long, steps: Int, remint: Boolean = false) = StoryServer(start).use { s ->
         val rng = Random(seed)
         val gens = devices.map { (id, skew) -> Gen(SimDevice(id), skew) }
         var real = start
@@ -68,16 +90,40 @@ class ConvergenceFuzzTest {
             s.pt = real
             gens.forEach { it.d.pt = real + it.skew }
         }
+        var window: Gen? = null
+        var windowLeft = 0
+        fun endWindow() {
+            val g = window ?: return
+            window = null
+            g.skew = 0 // the user fixed the clock
+            clocks()
+            g.d.sync(s.sim) // every op minted in the window is answered
+            g.d.remint()
+            g.d.lastSelection?.let(::record)
+            g.d.sync(s.sim)
+        }
         clocks()
         repeat(steps) {
             real += rng.nextLong(1, 3_600_000)
             clocks()
-            val g = gens[rng.nextInt(gens.size)]
+            if (remint && window == null && rng.nextInt(100) < 6) {
+                window = gens[rng.nextInt(gens.size)].also { it.skew = 10 * Reserved.DAY_MS }
+                windowLeft = rng.nextInt(6, 30)
+                count("windows")
+                clocks()
+            }
+            val g = window?.takeIf { rng.nextBoolean() } ?: gens[rng.nextInt(gens.size)]
             try {
-                act(g.d, rng, s)
+                act(g.d, rng, s, rich = remint)
+                if (window != null && --windowLeft <= 0) endWindow()
             } catch (e: Exception) {
                 throw AssertionError("seed $seed step $it (${g.d.id.takeLast(2)}): ${e.message}", e)
             }
+        }
+        try {
+            endWindow()
+        } catch (e: Exception) {
+            throw AssertionError("seed $seed final window: ${e.message}", e)
         }
         repeat(3) {
             real += 1000
@@ -102,15 +148,98 @@ class ConvergenceFuzzTest {
         assertLiveUniqueness(label, sp)
     }
 
+    /** Which 10.4 rules one re-mint exercised. */
+    private fun record(sel: SimDevice.Selection) {
+        count("E", sel.e.size); count("R", sel.r.size); count("U", sel.u.size); count("D", sel.d.size)
+        for (row in sel.e) {
+            val o = row.op
+            if (row.lastError !in SimDevice.CLOCK_CODES || SimDevice.windowSeq(o) == null) continue
+            count("window-derived")
+            val t = o["op_type"].asText()
+            if (t.startsWith("word.status")) count("word-status")
+            if (!t.startsWith("deck.item_") || o["payload"]["deck_id"].asText() in sel.w) continue
+            val minted = sel.payloads.getValue(o["op_id"].asText())
+            when {
+                minted.size == 2 -> count("double-removal")
+                minted[0]["item_key"].asText() != o["payload"]["item_key"].asText() -> count("rekeyed")
+                t == "deck.item_put" -> count("kept-e-put")
+                else -> count("kept-e-removal")
+            }
+        }
+    }
+
+    /**
+     * Decks, deck items, word statuses and presets (the rows Re-mint's E rules touch; C-8). Entry seqs share the
+     * notes' pool (1..5), so `e:<seq>` items and statuses are window-derived whenever a window note has the entry.
+     */
+    private fun actRich(d: SimDevice, rng: Random, notes: List<Map<String, Any?>>, cards: List<Map<String, Any?>>) {
+        val decks = d.r.t.getValue("deck").values.filter { it["deleted_at"] == null }
+        fun key(): String = notes.randomOrNull(rng)?.takeIf { rng.nextInt(3) == 0 }?.let { "n:${it["id"]}" } ?: "e:${rng.nextLong(1, 6)}"
+        when (rng.nextInt(100)) {
+            in 0 until 8 -> d.make(OpType.DECK_CREATED, mapOf("id" to d.newId(4), "name" to "deck ${rng.nextInt(9)}", "type" to "user"))
+            in 8 until 20 -> {
+                // Mining into a deck: a new word's note and card plus its e:<seq> item, the item put first
+                // sometimes (a pending entry materialised later; 10.4 "Order of E").
+                val deck = decks.randomOrNull(rng) ?: return
+                val seq = rng.nextLong(1, 6)
+                if (notes.any { it["deleted_at"] == null && it["entry_seq"] == seq }) return
+                val first = rng.nextBoolean()
+                fun put() = d.make(OpType.DECK_ITEM_PUT, mapOf("deck_id" to deck["id"], "item_key" to "e:$seq", "position" to rng.nextLong(0, 4096)))
+                if (first) put()
+                val id = d.newId(1)
+                d.make(OpType.NOTE_CREATED, mapOf("id" to id, "note_type_id" to Reserved.NOTE_TYPE_VOCAB, "entry_seq" to seq))
+                d.make(OpType.CARD_CREATED, mapOf("id" to d.newId(2), "note_id" to id, "kind" to "meaning"))
+                if (!first) put()
+                when (rng.nextInt(4)) { // the user changes their mind (10.4: double removal; owner deleted → keeps e:)
+                    0 -> d.make(OpType.DECK_ITEM_REMOVED, mapOf("deck_id" to deck["id"], "item_key" to "e:$seq"))
+                    1 -> d.make(OpType.NOTE_DELETED, mapOf("id" to id))
+                    else -> Unit
+                }
+            }
+            in 20 until 45 -> {
+                val deck = decks.randomOrNull(rng) ?: return
+                d.make(OpType.DECK_ITEM_PUT, mapOf("deck_id" to deck["id"], "item_key" to key(), "position" to rng.nextLong(0, 4096)))
+            }
+            in 45 until 65 -> {
+                val deck = decks.randomOrNull(rng) ?: return
+                // Mostly a key the deck holds (the removal of something put), else any key.
+                val held = d.r.t.getValue("deck_item").values.filter { it["deck_id"] == deck["id"] && it["deleted_at"] == null }
+                val k = held.randomOrNull(rng)?.takeIf { rng.nextInt(4) != 0 }?.get("item_key") as String? ?: key()
+                d.make(OpType.DECK_ITEM_REMOVED, mapOf("deck_id" to deck["id"], "item_key" to k))
+            }
+            in 65 until 85 -> {
+                val seq = rng.nextLong(1, 6)
+                if (rng.nextInt(4) == 0) {
+                    d.make(OpType.WORD_STATUS_CLEARED, mapOf("entry_seq" to seq))
+                } else {
+                    d.make(OpType.WORD_STATUS_SET, mapOf("entry_seq" to seq, "status" to listOf("known", "ignored", "never_forget", "blacklisted").random(rng)))
+                }
+            }
+            in 85 until 92 -> {
+                // A new preset, often given to an existing card right away (in a window: list D of 10.4).
+                val id = d.newId(6)
+                d.make(OpType.FSRS_PARAMS_CREATED, mapOf("id" to id, "name" to "preset ${rng.nextInt(9)}"))
+                val card = cards.randomOrNull(rng)?.takeIf { rng.nextBoolean() } ?: return
+                d.make(OpType.CARD_PRESET_SET, mapOf("id" to card["id"], "preset_id" to id))
+            }
+            else -> {
+                val card = cards.randomOrNull(rng) ?: return
+                val preset = d.r.t.getValue("fsrs_params").values.filter { it["deleted_at"] == null }.randomOrNull(rng) ?: return
+                d.make(OpType.CARD_PRESET_SET, mapOf("id" to card["id"], "preset_id" to preset["id"]))
+            }
+        }
+    }
+
     /** One random action of [d]: a sync, or minting one change the way a client would (SYNC.md 4 duties). */
     @Suppress("UNCHECKED_CAST")
-    private fun act(d: SimDevice, rng: Random, s: StoryServer) {
+    private fun act(d: SimDevice, rng: Random, s: StoryServer, rich: Boolean = false) {
         val notes = d.r.t.getValue("note").values.filter { it["merged_into_id"] == null }
         val liveNotes = notes.filter { it["deleted_at"] == null }
         val cards = d.r.t.getValue("card").values.filter { it["merged_into_id"] == null }
         val liveCards = cards.filter { it["deleted_at"] == null }
         val reviews = d.r.t.getValue("review_log").values.toList()
         fun entryFree(seq: Long) = liveNotes.none { it["entry_seq"] == seq }
+        if (rich && rng.nextInt(100) < 35) return actRich(d, rng, notes, cards)
         when (rng.nextInt(100)) {
             in 0 until 18 -> d.sync(s.sim)
             in 18 until 32 -> {
@@ -244,6 +373,11 @@ class ConvergenceFuzzTest {
 
     companion object {
         val SEEDS = listOf(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L)
+
+        /** The SYNC.md 10.4 cases [remintWindowsConverge] must reach (counted by `record`). */
+        val REMINT_CASES = listOf(
+            "windows", "E", "R", "U", "D", "window-derived", "rekeyed", "double-removal", "kept-e-put", "kept-e-removal", "word-status",
+        )
         const val SERVER = "00000000-0000-7000-8000-000000000001"
 
         /** A random order that keeps each device's ops in log order, applies an op only once the rows it references exist, and re-delivers some. */

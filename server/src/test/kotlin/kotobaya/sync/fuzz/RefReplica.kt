@@ -231,6 +231,47 @@ class RefReplica {
                 need("fsrs_params", s("preset_id"))
                 regWrite("card", s("id"), "preset_id", s("preset_id"), h)
             }
+            // Decks, deck items, word statuses (model.py op_deck_*, _item, _word): what Re-mint's E rules touch (C-8).
+            "deck.created" -> create(
+                "deck", s("id"),
+                mapOf("id" to s("id"), "type" to s("type")),
+                listOf(
+                    Triple("name", p["name"], null), Triple("priority", p["priority"] ?: 0L, 0L), Triple("enabled", p["enabled"] ?: true, true),
+                ),
+                mapOf("settings" to (p["settings"] as Map<String, Any?>? ?: emptyMap())), h,
+            )
+            "deck.item_put", "deck.item_removed" -> {
+                val removed = type == "deck.item_removed"
+                need("deck", s("deck_id"))
+                val key = s("item_key")
+                val value = key.substring(2)
+                if (key.startsWith("n:")) need("note", value)
+                val rowKey = "${s("deck_id")}|$key"
+                val old = t.getValue("deck_item")[rowKey]
+                if (old == null || h > old["hlc"] as String) {
+                    t.getValue("deck_item")[rowKey] = linkedMapOf(
+                        "deck_id" to s("deck_id"), "item_key" to key, "entry_seq" to (if (key.startsWith("e:")) value.toLong() else null),
+                        "note_id" to (if (key.startsWith("n:")) value else null), "position" to (if (removed) 0L else p["position"]),
+                        "occurrence_count" to 0L, "added_at" to wallOf(h), "deleted_at" to (if (removed) wallOf(h) else null), "hlc" to h,
+                    )
+                }
+            }
+            "word.status_set", "word.status_cleared" -> {
+                val seq = p["entry_seq"] as Long
+                val status = if (type == "word.status_set") s("status") else null
+                val origin = if (type == "word.status_set") (p["origin"] ?: "manual") else null
+                val row = t.getValue("word_status").getOrPut(seq.toString()) {
+                    linkedMapOf(
+                        "entry_seq" to seq, "status" to "new", "auto_status" to null, "override_status" to null, "override_hlc" to null,
+                        "override_origin" to null,
+                    )
+                }
+                val cur = row["override_hlc"] as String?
+                if (cur == null || h > cur) {
+                    row["override_status"] = status; row["override_origin"] = origin; row["override_hlc"] = h
+                    row["status"] = status ?: row["auto_status"] ?: "new"
+                }
+            }
             else -> error("RefReplica does not implement $type")
         }
     }
@@ -267,7 +308,7 @@ class RefReplica {
      */
     fun projection(): Map<String, Map<String, Any?>> {
         val out = TreeMap<String, Map<String, Any?>>()
-        for (table in listOf("note", "card", "review_log")) {
+        for (table in PROJECTED) {
             val rows = TreeMap<String, Any?>()
             for ((k, row) in t.getValue(table)) {
                 val r = TreeMap<String, Any?>()
@@ -294,7 +335,10 @@ class RefReplica {
         val DEFAULT_PARAMS = FsrsScheduler.paramsOf(
             PresetRow(Reserved.DEFAULT_PRESET_ID, 0.9, 36500, listOf(60, 600), listOf(600), true, List(7) { 1.0 }, null, null, 0, false),
         )
-        val TABLES = listOf("note_type", "note", "card", "review_log", "fsrs_params")
+        val TABLES = listOf("note_type", "note", "card", "review_log", "fsrs_params", "deck", "deck_item", "word_status")
+
+        /** Tables in the SYNC.md 11 projection (keys: `id`; `deck_id|item_key`; `entry_seq`). */
+        val PROJECTED = listOf("note", "card", "review_log", "deck", "deck_item", "word_status")
         val BUILTIN_NOTE_TYPES = mapOf(
             Reserved.NOTE_TYPE_VOCAB to "vocab", Reserved.NOTE_TYPE_KANJI to "kanji", Reserved.NOTE_TYPE_PHRASE to "phrase",
             Reserved.NOTE_TYPE_GRAMMAR to "grammar", Reserved.NOTE_TYPE_SENTENCE to "sentence", Reserved.NOTE_TYPE_CUSTOM to "custom",
@@ -313,6 +357,10 @@ class RefReplica {
                 "id", "card_id", "device_id", "hlc", "reviewed_at", "utc_offset_min", "review_type", "rating", "button", "duration_ms",
                 "manual_action", "manual_due_at", "sentence_id", "import_source", "undone_at", "undone_hlc",
             ),
+            "deck" to listOf("id", "type", "name", "priority", "enabled", "settings", "created_at", "updated_at", "deleted_at", "clocks"),
+            "deck_item" to listOf("deck_id", "item_key", "entry_seq", "note_id", "position", "occurrence_count", "added_at", "deleted_at", "hlc"),
+            // updated_at is left out like model.py's projection; auto_status is never synced (always null with the NoOp hook).
+            "word_status" to listOf("entry_seq", "status", "auto_status", "override_status", "override_hlc", "override_origin"),
         )
 
         fun cacheMap(s: CardSchedule, lastReviewId: String?, weightsVersion: Int): Map<String, Any?> = sortedMapOf(

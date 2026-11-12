@@ -12,8 +12,9 @@ import org.slf4j.LoggerFactory
  * `core_scheduler_version` differs from [schedulerVersion], and upserts the version in the same
  * transaction; the instance is not ready (`/readyz`, `StartupCheck`) until that has committed.
  *
- * A card the engine refuses is logged and skipped (see [CoreCardCache]); the replay still commits,
- * so one bad card cannot keep the server unready.
+ * A card the engine refuses gets the refused cache of SYNC.md 9.4 and is logged at ERROR (see
+ * [CoreCardCache]); the replay and the new `core_scheduler_version` still commit, so one bad card cannot
+ * keep the server unready.
  */
 class CoreSchedulerReplay(private val cache: CoreCardCache = CoreCardCache()) : SchedulerReplay {
     private val log = LoggerFactory.getLogger(CoreSchedulerReplay::class.java)

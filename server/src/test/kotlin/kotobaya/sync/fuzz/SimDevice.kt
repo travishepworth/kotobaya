@@ -186,49 +186,51 @@ class SimDevice(val id: String, private val guard: Boolean = true) {
         rebuildPending = false
     }
 
-    /** SYNC.md 10.4 Re-mint, one local transaction; the rebuild runs in the next sync. */
+    /**
+     * Step 1 of Re-mint (SYNC.md 10.4, C-8): a port of `model.remint_select`. [rows] = the outbox rows in
+     * state `rejected`, any order. [Selection.e] is in step-1 order (window-derived ops after their owner
+     * note); [Selection.payloads] = op id → the payloads step 6a mints for each op of E, in order.
+     */
+    class Selection(
+        val c: List<Row>, val e: List<Row>, val r: List<Row>, val u: List<Row>, val d: List<Row>,
+        val w: Set<String>, val payloads: Map<String, List<ObjectNode>>,
+    )
+
+    /** The step-1 selection of the last [remint] (for the fuzz's coverage counts). */
+    var lastSelection: Selection? = null
+
+    /** SYNC.md 10.4 Re-mint, one local transaction (a port of `model.Device.remint`); the rebuild runs in the next sync. */
     fun remint() {
         check(outbox.none { it.state == "pending" }) { "push until nothing is pending" }
         check(lastSkew != null && Math.abs(lastSkew!!) <= 300_000) { "clock must be correct" }
-        val w = mutableSetOf<String>()
-        val c = mutableListOf<Row>(); val e = mutableListOf<Row>(); val rr = mutableListOf<Row>(); val u = mutableListOf<Row>()
-        for (row in outbox.filter { it.state == "rejected" }.sortedBy { it.op["hlc"].asText() }) {
-            val t = row.op["op_type"].asText()
-            val pid = row.op["payload"]["id"]?.asText()
-            if (row.lastError in CLOCK_CODES) {
-                c += row
-                if (t == "review.logged") rr += row else if (t in CREATES) { e += row; w += pid!! }
-            } else if (row.lastError == "unknown_reference" && refs(row.op).any { it in w || it in rr.map { x -> x.op["payload"]["id"].asText() } }) {
-                when (t) {
-                    "review.logged" -> rr += row
-                    "review.undone" -> u += row
-                    else -> { e += row; if (t in CREATES) w += pid!! }
-                }
-            }
-        }
-        val reviewIds = rr.map { it.op["payload"]["id"].asText() }.toSet()
-        u += outbox.filter { it.op["op_type"].asText() == "review.undone" && it.op["payload"]["review_id"].asText() in reviewIds && it !in u }
-        val drop = (c + e + rr + u).toSet()
+        val sel = remintSelect(outbox.filter { it.state == "rejected" })
+        lastSelection = sel
+        val reviewIds = sel.r.map { it.op["payload"]["id"].asText() }.toSet()
+        val u = sel.u + outbox.filter { it.op["op_type"].asText() == "review.undone" && it.op["payload"]["review_id"].asText() in reviewIds && it !in sel.u }
+        val drop = (sel.c + sel.d + sel.e + sel.r + u).toSet()
         val savedOutbox = outbox.toList(); val savedLast = hlcLast
-        outbox.removeAll { it in drop }
-        if (c.any { it.lastError == "clock_ahead" }) hlcLast = (listOf(hlcAcked) + outbox.map { it.op["hlc"].asText() }).max()
-        if (!clockGuardOk()) {
+        outbox.removeAll { it in drop } // 2. discard
+        if (sel.c.any { it.lastError == "clock_ahead" }) hlcLast = (listOf(hlcAcked) + outbox.map { it.op["hlc"].asText() }).max()
+        if (!clockGuardOk()) { // 3. abort: nothing changes
             outbox.clear(); outbox += savedOutbox; hlcLast = savedLast
             throw IllegalStateException("fix your clock")
         }
-        val todo = rr.map { it.op["payload"] }.filter { r.t.getValue("review_log").getValue(it["id"].asText())["undone_hlc"] == null }
-        val items = e.map { wallOf(it.op["hlc"].asText()) to Reserved.CLOCK_FLOOR_MS } +
+        val todo = sel.r.map { it.op["payload"] }.filter { r.t.getValue("review_log").getValue(it["id"].asText())["undone_hlc"] == null }
+        val items = sel.e.map { wallOf(it.op["hlc"].asText()) to Reserved.CLOCK_FLOOR_MS } +
             todo.map { p ->
                 val card = p["card_id"].asText()
-                p["reviewed_at"].asLong() to (if (card in w) Reserved.CLOCK_FLOOR_MS else r.t.getValue("card").getValue(card)["created_at"] as Long)
+                p["reviewed_at"].asLong() to (if (card in sel.w) Reserved.CLOCK_FLOOR_MS else r.t.getValue("card").getValue(card)["created_at"] as Long)
             }
-        if (items.isNotEmpty()) {
+        if (items.isNotEmpty()) { // 4-5. one shift for the whole batch
             val (delta, times) = remintTimes(items, remintOffset ?: 0, pt)
-            for ((row, v) in e.zip(times)) {
-                @Suppress("UNCHECKED_CAST")
-                make(OpType.entries.first { it.wire == row.op["op_type"].asText() }, plain(row.op["payload"]) as Map<String, Any?>, at = v)
+            for ((row, v) in sel.e.zip(times)) { // 6a. same ids; window-derived deck items re-keyed per 10.4
+                val type = OpType.entries.first { it.wire == row.op["op_type"].asText() }
+                for (q in sel.payloads.getValue(row.op["op_id"].asText())) {
+                    @Suppress("UNCHECKED_CAST")
+                    make(type, plain(q) as Map<String, Any?>, at = v)
+                }
             }
-            for ((p, t) in todo.zip(times.drop(e.size))) {
+            for ((p, t) in todo.zip(times.drop(sel.e.size))) { // 6b. reviews with new ids, in the original hlc order
                 @Suppress("UNCHECKED_CAST")
                 val q = (plain(p) as Map<String, Any?>).toMutableMap()
                 q["id"] = newId(3); q["reviewed_at"] = t
@@ -236,7 +238,7 @@ class SimDevice(val id: String, private val guard: Boolean = true) {
                 make(OpType.REVIEW_LOGGED, q)
             }
         }
-        remintOffset = null
+        remintOffset = null // 7.
         rebuildPending = true
     }
 
@@ -259,9 +261,100 @@ class SimDevice(val id: String, private val guard: Boolean = true) {
             val named = mapOf(
                 "note.created" to listOf("note_type_id", "grammar_point_id"), "card.created" to listOf("note_id", "preset_id"),
                 "card.preset_set" to listOf("id", "preset_id"), "review.logged" to listOf("card_id"), "review.undone" to listOf("review_id"),
+                "deck.item_put" to listOf("deck_id"), "deck.item_removed" to listOf("deck_id"),
+                "confusable.confirmed" to listOf("note_a_id", "note_b_id"), "confusable.rejected" to listOf("note_a_id", "note_b_id"),
+                "grammar.span_put" to listOf("grammar_point_id"), "grammar.span_removed" to listOf("grammar_point_id"),
             )
             val keys = named[t] ?: if (t in CREATES || p["id"] == null) emptyList() else listOf("id")
-            return keys.mapNotNull { k -> p[k]?.takeUnless { it.isNull }?.asText() }.toSet()
+            val out = keys.mapNotNull { k -> p[k]?.takeUnless { it.isNull }?.asText()?.takeIf { it.isNotEmpty() } }.toMutableSet()
+            if (t.startsWith("deck.item_") && p["item_key"].asText().startsWith("n:")) out += p["item_key"].asText().substring(2)
+            return out
+        }
+
+        /** Ids in the identity of the row the op writes (10.4 "window row"; `model.row_ids`): `entity_id` parts, `n:<id>` as `<id>`. */
+        fun rowIds(op: JsonNode): Set<String> {
+            val parts = op["entity_id"].asText().split("|").toSet()
+            return parts + parts.filter { it.startsWith("n:") }.map { it.substring(2) }
+        }
+
+        /** The entry_seq an op addresses by entry (10.4 step 1c "window-derived"; `model.window_seq`), or null. */
+        fun windowSeq(op: JsonNode): Long? {
+            val t = op["op_type"].asText()
+            val p = op["payload"]
+            if ((t == "deck.item_put" || t == "deck.item_removed") && p["item_key"].asText().startsWith("e:")) {
+                return p["item_key"].asText().substring(2).toLong()
+            }
+            if (t == "word.status_set" || t == "word.status_cleared") return p["entry_seq"].asLong()
+            return null
+        }
+
+        /** Step 1 of Re-mint (SYNC.md 10.4 1a/1b/1c, the order of E, the step-6a payloads): a port of `model.remint_select`. */
+        fun remintSelect(rows: List<Row>): Selection {
+            val w = mutableSetOf<String>()
+            val c = mutableListOf<Row>(); val e = mutableListOf<Row>(); val rr = mutableListOf<Row>()
+            val u = mutableListOf<Row>(); val d = mutableListOf<Row>()
+            fun hlc(row: Row) = row.op["hlc"].asText()
+            fun type(row: Row) = row.op["op_type"].asText()
+            fun pid(row: Row) = row.op["payload"]["id"].asText()
+            val ordered = rows.sortedBy(::hlc)
+            for (row in ordered) { // 1a / 1b: one pass in ascending original hlc
+                val t = type(row)
+                if (row.lastError in CLOCK_CODES) {
+                    c += row
+                    when {
+                        t == "review.logged" -> rr += row
+                        t in CREATES -> { e += row; w += pid(row) }
+                        rowIds(row.op).any { it in w } -> e += row
+                    }
+                } else if (row.lastError == "unknown_reference" && refs(row.op).any { it in w || it in rr.map(::pid) }) {
+                    when {
+                        t == "review.logged" -> rr += row
+                        t == "review.undone" -> u += row
+                        t in CREATES || rowIds(row.op).any { it in w } -> { e += row; if (t in CREATES) w += pid(row) }
+                        else -> d += row
+                    }
+                }
+            }
+            // 1c: window-derived ops; the first note.created (hlc order) in E with the entry owns the seq.
+            val owner = LinkedHashMap<Long, JsonNode>()
+            for (row in e) {
+                val p = row.op["payload"]
+                if (type(row) == "note.created" && p["entry_seq"]?.isNull == false) owner.putIfAbsent(p["entry_seq"].asLong(), row.op)
+            }
+            val taken = (e + rr).toSet()
+            for (row in ordered) {
+                if (row in taken || row !in c) continue
+                if (windowSeq(row.op)?.let { it in owner } == true) e += row
+            }
+            fun noteHlc(row: Row) = windowSeq(row.op)?.let { owner[it] }?.get("hlc")?.asText() ?: ""
+            val sorted = e.sortedWith(
+                compareBy<Row>({ maxOf(hlc(it), noteHlc(it)) }, { hlc(it) < noteHlc(it) }, { hlc(it) }),
+            )
+            // 6a payloads: e:<seq> put into a deck not in W re-keyed n:<owner> iff the owner is live; a removal
+            // of a (deck, e:<seq>) whose put E re-keyed (decided in E order) is minted twice: n:<owner>, then e:<seq>.
+            val deleted = sorted.filter { type(it) == "note.deleted" }.map(::pid).toSet()
+            val rekeyed = mutableSetOf<Pair<String, Long>>()
+            val payloads = LinkedHashMap<String, List<ObjectNode>>()
+            for (row in sorted) {
+                val o = row.op
+                val p = o["payload"].deepCopy<ObjectNode>()
+                val seq = windowSeq(o)
+                val t = type(row)
+                val ownerNote = seq?.let { owner[it] }?.get("payload")?.get("id")?.asText()
+                if (seq != null && ownerNote != null && t.startsWith("deck.item_") && p["deck_id"].asText() !in w) {
+                    val deck = p["deck_id"].asText()
+                    if (t == "deck.item_put" && ownerNote !in deleted) {
+                        rekeyed += deck to seq
+                        p.put("item_key", "n:$ownerNote")
+                    } else if (t == "deck.item_removed" && (deck to seq) in rekeyed) {
+                        val first = p.deepCopy().put("item_key", "n:$ownerNote")
+                        payloads[o["op_id"].asText()] = listOf(first, p)
+                        continue
+                    }
+                }
+                payloads[o["op_id"].asText()] = listOf(p)
+            }
+            return Selection(c, sorted, rr, u, d, w, payloads)
         }
     }
 }

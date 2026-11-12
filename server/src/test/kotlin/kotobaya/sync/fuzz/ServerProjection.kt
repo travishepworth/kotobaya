@@ -14,11 +14,11 @@ import java.util.TreeMap
  * merge losers only on `id`, `merged_into_id`, `deleted_at`, the cache of live non-loser cards.
  */
 object ServerProjection {
-    private val instants = setOf("created_at", "updated_at", "deleted_at", "buried_until", "reviewed_at", "manual_due_at", "undone_at")
+    private val instants = setOf("created_at", "updated_at", "deleted_at", "buried_until", "reviewed_at", "manual_due_at", "undone_at", "added_at")
 
     fun of(db: Database): Map<String, Map<String, Any?>> = db.txBlocking { dsl ->
         val out = TreeMap<String, Map<String, Any?>>()
-        for (table in listOf("note", "card", "review_log")) {
+        for (table in RefReplica.PROJECTED) {
             val rows = TreeMap<String, Any?>()
             for (rec in dsl.fetch("select to_jsonb(t)::text from app.$table t")) {
                 val n = json.readTree(rec.get(0, String::class.java))
@@ -29,11 +29,18 @@ object ServerProjection {
                     for (c in RefReplica.COLUMNS.getValue(table)) r[c] = if (c in instants) SyncJson.ms(n[c]) else RefReplica.canon(plain(n[c]))
                     if (table == "card" && n["deleted_at"].isNull) r["cache"] = cache(n)
                 }
-                rows[n["id"].asText()] = r
+                rows[keyOf(table, n)] = r
             }
             out[table] = rows
         }
         out
+    }
+
+    /** The [RefReplica] row key: `id`; `deck_id|item_key` for deck items; `entry_seq` for word statuses. */
+    private fun keyOf(table: String, n: JsonNode): String = when (table) {
+        "deck_item" -> "${n["deck_id"].asText()}|${n["item_key"].asText()}"
+        "word_status" -> n["entry_seq"].asText()
+        else -> n["id"].asText()
     }
 
     private fun cache(n: JsonNode): Map<String, Any?> {

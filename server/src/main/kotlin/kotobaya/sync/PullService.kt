@@ -67,7 +67,7 @@ class PullService(private val db: Database, private val config: SyncConfig) {
             }
         }
         val hw = (dsl.fetchValue("select coalesce(max(seq), 0) from app.change") as Number).toLong()
-        val id = logIdentity(dsl, hw, config.backupsDisabled) ?: throw Problems.unavailable("The sync log epoch is not initialised yet.")
+        val id = logIdentity(dsl, hw) ?: throw Problems.unavailable("The sync log epoch is not initialised yet.")
         deviceId?.let { dsl.execute("update app.device set last_pull_seq = ?, last_seen_at = now() where id = ?", since, it) }
         val tail = linkedMapOf<String, Any?>(
             "next_since" to nextSince,

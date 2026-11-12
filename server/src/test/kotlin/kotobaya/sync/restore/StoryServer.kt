@@ -24,7 +24,11 @@ import java.util.concurrent.atomic.AtomicReference
  * the T112 restore script exactly: load the backup, write `restore_pending`, start the server (whose
  * startup finalizes the restore, SYNC.md 6.3).
  */
-class StoryServer(startMs: Long, private val backupsDisabled: Boolean = false) : AutoCloseable {
+class StoryServer(startMs: Long, backupsDisabled: Boolean = false) : AutoCloseable {
+    /** The instance's `BACKUPS_DISABLED` setting; change it with [restartWith]. */
+    var backupsDisabled: Boolean = backupsDisabled
+        private set
+
     val now = AtomicReference(Instant.ofEpochMilli(startMs))
     var url: String = TestPg.freshDatabaseUrl()
         private set
@@ -34,7 +38,26 @@ class StoryServer(startMs: Long, private val backupsDisabled: Boolean = false) :
 
     init {
         kotobaya.server.Migrations.migrate(db.dataSource)
+        startup()
+    }
+
+    /**
+     * The SYNC.md 6.3 startup: [StartupSequence] (steps 1–2), then step 3 (C-8) under lock 7033001 with this
+     * instance's backups setting. (`server/Startup.kt` does not call step 3 yet; see F-3 HANDOFF.)
+     */
+    private fun startup() {
         StartupSequence(db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }).runOnce()
+        db.txBlocking { dsl ->
+            dsl.execute("select pg_advisory_xact_lock(?)", kotobaya.server.SYNC_LOCK)
+            DurableSeq.raiseOnStartup(dsl, backupsDisabled)
+        }
+    }
+
+    /** Restarts the server with another backups setting (same database, same epoch). */
+    fun restartWith(backupsDisabled: Boolean) {
+        this.backupsDisabled = backupsDisabled
+        startup()
+        sim.module = module()
     }
 
     var pt: Long
@@ -84,7 +107,7 @@ class StoryServer(startMs: Long, private val backupsDisabled: Boolean = false) :
                     "on conflict (key) do update set value = '1', updated_at = now()",
             )
         }
-        StartupSequence(db, schedulerVersion = "unset", replay = SchedulerReplay.NoOp, now = { now.get() }).runOnce()
+        startup()
         sim.module = module()
     }
 

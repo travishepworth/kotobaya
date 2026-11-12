@@ -59,9 +59,53 @@ class RestoreTest {
         assertFalse(DurableSeq.backupsDisabled(emptyMap()))
         assertTrue(SyncWiring.config(env = mapOf("BACKUPS_DISABLED" to "true")).backupsDisabled)
         assertFalse(SyncWiring.config(env = emptyMap()).backupsDisabled)
-        assertEquals(5L, DurableSeq.reported(2, 5, backupsDisabled = true))
-        assertEquals(2L, DurableSeq.reported(2, 5, backupsDisabled = false))
-        assertEquals(5L, DurableSeq.reported(9, 5, backupsDisabled = false))
+        assertEquals(2L, DurableSeq.reported(2, 5))
+        assertEquals(5L, DurableSeq.reported(9, 5))
+        assertEquals(0L, DurableSeq.reported(-1, 5))
+    }
+
+    /**
+     * SYNC.md 6.2 / 6.3 (C-8): enabled → disabled → enabled never lowers `durable_seq` within an epoch. While
+     * disabled the row itself is raised (startup step 3 and every transaction that inserts `change`), so
+     * re-enabling keeps it until a verified backup passes it.
+     */
+    @Test
+    fun durableSeqNeverDecreasesAcrossABackupsDisabledPeriod() = StoryServer(start).use { s ->
+        val a = SimDevice(A).also { it.pt = start }
+        val seen = mutableListOf<Long>()
+        fun report(): Long = s.sim.pull(0)["durable_seq"].asLong().also { seen += it }
+        fun row(): Long? = s.serverState("durable_seq")?.toLong()
+        val epoch = s.serverState("log_epoch")
+
+        notes(s, a, 3)
+        s.backup() // verified backup of 1..3
+        notes(s, a, 2) // hw 5
+        assertEquals(3L, report(), "enabled: the backup marker")
+
+        s.restartWith(backupsDisabled = true)
+        assertEquals(5L, row(), "startup step 3 persists max(seq) in every case")
+        assertEquals(5L, report())
+        notes(s, a, 2) // hw 7
+        assertEquals(7L, row(), "every transaction inserting change rows raises the row")
+        assertEquals(7L, report())
+
+        s.restartWith(backupsDisabled = false)
+        assertEquals(7L, row(), "re-enabling lowers nothing")
+        assertEquals(7L, report())
+        notes(s, a, 1) // hw 8: no backup covers it yet
+        assertEquals(7L, report(), "an enabled instance does not raise the row")
+        s.backup()
+        assertEquals(8L, report(), "the next verified backup passes it")
+
+        // A rolling update: a disabled instance and an enabled one on the same database.
+        s.restartWith(backupsDisabled = true)
+        notes(s, a, 1) // hw 9
+        s.restartWith(backupsDisabled = false)
+        notes(s, a, 1) // hw 10
+        assertEquals(9L, report())
+
+        assertEquals(epoch, s.serverState("log_epoch"), "one epoch throughout")
+        assertEquals(seen.sorted(), seen, "never decreases: $seen")
     }
 
     /** "Freeze A → T202/T104": restore finalisation raises `hlc_last` so the server never mints behind its pre-restore clock. */

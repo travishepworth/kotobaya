@@ -227,6 +227,25 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(404, client.call(HttpMethod.Get, "/review/queue?deck_id=$deck", bearer = t).status.value)
     }
 
+    /** SYNC.md 9.4 item 4 (C-8): a card holding the refused cache is never queued (it would be offered as new every day). */
+    @Test
+    fun aCardHoldingTheRefusedCacheIsNeverQueued() = reviewApp {
+        val t = token()
+        val refused = cardOf(note(t, "refused"), "meaning")
+        val normal = cardOf(note(t, "normal"), "meaning")
+        assertTrue(refused in queueIds(t) && normal in queueIds(t))
+        // The refused cache as CoreCardCache writes it (the schema's checks make a real refusal unreachable here).
+        db.txBlocking {
+            it.execute(
+                "update app.card set state = 'new', due_at = null, last_review_id = ?::uuid where id = ?::uuid",
+                kotobaya.contracts.Reserved.REPLAY_REFUSED_ID, refused,
+            )
+        }
+        val ids = queueIds(t)
+        assertTrue(refused !in ids, "the refused card is skipped")
+        assertTrue(normal in ids)
+    }
+
     @Test
     fun settingsFollowTheSchemaValidityTest() {
         fun v(json: String) = ReviewSettings.intValue(kotobaya.server.json.readTree(json), Int.MIN_VALUE, Int.MAX_VALUE)

@@ -30,7 +30,10 @@ data class SyncConfig(
     val maxOpBytes: Int = Limits.MAX_OP_BYTES,
     /** `limits.max_push_bytes`: a push body above it is 413; a pull page ends before exceeding it. */
     val maxPushBytes: Int = Limits.MAX_PUSH_BYTES,
-    /** T202c: `BACKUPS_DISABLED=true` → `durable_seq` = `high_water_seq` (SYNC.md 6.3; `restore.DurableSeq`). */
+    /**
+     * `BACKUPS_DISABLED=true` (SYNC.md 6.2, C-8): every op transaction that inserts `change` rows raises the
+     * persisted `durable_seq` row to `max(change.seq)` (`restore.DurableSeq.raiseToHighWater`).
+     */
     val backupsDisabled: Boolean = false,
 )
 
@@ -197,8 +200,22 @@ class OpTx internal constructor(
     /** Highest committed-or-own `seq` (0 for an empty log). */
     fun highWaterSeq(): Long = (dsl.fetchValue("select coalesce(max(seq), 0) from app.change") as Number).toLong()
 
+    private var durableRaisedAt = 0
+
+    /**
+     * SYNC.md 6.2 (C-8): with backups disabled, a transaction that inserted `change` rows persists
+     * `durable_seq` = `max(seq)` with the `greatest()` upsert, under the lock it holds. [finish] calls it for
+     * every transaction; the push calls it before it reads the value for its response. No-op otherwise.
+     */
+    internal fun persistDurableSeq() {
+        if (!config.backupsDisabled || logged.size == durableRaisedAt) return
+        kotobaya.sync.restore.DurableSeq.raiseToHighWater(dsl)
+        durableRaisedAt = logged.size
+    }
+
     internal fun finish() {
         clock.persist()
+        persistDurableSeq()
         if (logged.isNotEmpty()) config.events.logged(dsl, highWaterSeq(), logged.toList())
     }
 
@@ -208,11 +225,11 @@ class OpTx internal constructor(
 /** `log_epoch` and `durable_seq` as reported in push/pull responses (SYNC.md 6.2, 6.3). */
 internal data class LogIdentity(val logEpoch: String, val durableSeq: Long)
 
-internal fun logIdentity(dsl: DSLContext, highWater: Long, backupsDisabled: Boolean = false): LogIdentity? {
+internal fun logIdentity(dsl: DSLContext, highWater: Long): LogIdentity? {
     val epoch = dsl.fetchOptional("select value from app.server_state where key = ?", ServerStateKeys.LOG_EPOCH)
         .map { it.get(0, String::class.java) }.orElse(null) ?: return null
     val durable = dsl.fetchOptional("select value from app.server_state where key = ?", ServerStateKeys.DURABLE_SEQ)
         .map { it.get(0, String::class.java).toLongOrNull() ?: 0L }.orElse(0L)
-    // Never report a durable_seq above the high-water mark (6.3); backups disabled → high-water (T202c).
-    return LogIdentity(epoch, kotobaya.sync.restore.DurableSeq.reported(durable, highWater, backupsDisabled))
+    // The persisted row, never above the high-water mark (6.3), whatever the configuration (6.2, C-8).
+    return LogIdentity(epoch, kotobaya.sync.restore.DurableSeq.reported(durable, highWater))
 }

@@ -1,6 +1,7 @@
 package kotobaya.review
 
 import kotobaya.contracts.NoteBaseType
+import kotobaya.contracts.Reserved
 import kotobaya.contracts.WordStatus
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
@@ -25,7 +26,8 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  * - decks are the live ones only, and a membership naming a tombstoned or unknown deck is dropped, so a NEW card
  *   whose only deck was deleted falls back to the deckless source;
  * - candidates are live cards of live notes (not merge losers); suspended cards and cards that cannot be queued
- *   today are left out in SQL (the builder would drop them anyway);
+ *   today are left out in SQL (the builder would drop them anyway); so is every card holding the refused cache
+ *   (`last_review_id` = `Reserved.REPLAY_REFUSED_ID`, SYNC.md 9.4: the loader MUST NOT pass it, QueueInput.candidates);
  * - `add_kanji` of a deck counts only when it is exactly `"off"`, `"before"` or `"alongside"`, else it falls back to
  *   `scheduler.kanji_before_vocab` (SCHEMA.md 6.2);
  * - entry items `e:<seq>` of enabled decks without a live note are **not** passed as pending entries: `GET
@@ -45,8 +47,10 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 "left join app.word_status ws on ws.entry_seq = n.entry_seq " +
                 "left join ref.dict_entry de on de.seq = n.entry_seq " +
                 "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended " +
-                "and (c.state = 'new' or c.due_at < ?::timestamptz)",
-            java.sql.Timestamp(day.endMs),
+                "and (c.state = 'new' or c.due_at < ?::timestamptz) " +
+                // SYNC.md 9.4 item 4 (C-8): a refused cache has no trustworthy schedule; never queue it.
+                "and c.last_review_id is distinct from ?::uuid",
+            java.sql.Timestamp(day.endMs), Reserved.REPLAY_REFUSED_ID,
         )
         val todayRows = loadToday(day.startMs, nowMs)
         val noteIds = (rows.map { it.get(1, String::class.java) } + todayRows.map { it.noteId }).toSet()
