@@ -141,7 +141,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ## Phase 1 — Foundations
 
 ### T101 — Dictionary pipeline: JMdict, KANJIDIC2, KRADFILE
-- model: sonnet · risk: med · deps: GATE-CONTRACTS, T008 · status: TODO
+- model: sonnet · risk: med · deps: GATE-CONTRACTS, T008 · status: RUNNING
 - paths: `worker/kotobaya_worker/dict/`, `worker/tests/dict/`
 - do: Download (with checksums and caching), parse, normalise into `ref.*` tables for a release id.
 - accept: Fixture subset loads exactly; idempotent re-run.

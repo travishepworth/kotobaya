@@ -132,3 +132,4 @@
 2026-11-12T12:18:34Z C-2 DISPATCH architect(opus): freeze round 1 fixes (5 major, 8 minor)
 2026-11-12T12:18:34Z T107a DISPATCH writer-senior(opus) (deps T006,T008 only)
 2026-11-12T12:18:34Z T108a DISPATCH writer(sonnet) (deps T006 only)
+2026-11-12T12:18:48Z T101 DISPATCH writer(sonnet) early: ref.* schema untouched by C-2

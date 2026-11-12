@@ -6,6 +6,7 @@ Updated: 2026-11-12T12:18:34Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T101 | writer (gp/sonnet) | 1 | t/T101-dict-pipeline | 2026-11-12T12:18:48Z |
 | C-2 | architect (gp/opus) | 1 | t/C-2-freeze-fixes | 2026-11-12T12:18:34Z |
 | T107a | writer-senior (gp/opus) | 1 | t/T107a-portable-math | 2026-11-12T12:18:34Z |
 | T108a | writer (gp/sonnet) | 1 | t/T108a-search-parser | 2026-11-12T12:18:34Z |
