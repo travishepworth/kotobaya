@@ -16,7 +16,9 @@
 		{ href: '/review', label: 'nav.review' },
 		{ href: '/dictionary', label: 'nav.dictionary' },
 		{ href: '/notes', label: 'nav.notes' },
+		{ href: '/cards', label: 'nav.cards' },
 		{ href: '/decks', label: 'nav.decks' },
+		{ href: '/note-types', label: 'nav.noteTypes' },
 		{ href: '/media', label: 'nav.media' },
 		{ href: '/settings', label: 'nav.settings' }
 	];
