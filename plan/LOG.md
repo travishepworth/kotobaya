@@ -340,3 +340,6 @@
 2026-11-12T16:42:58Z T202b REVIEW_CHANGES architect: 2 major — instant ≥ year 10000 → Postgres error → 500 → outbox wedged; merge seam mints h1≠h2 → loser deleted_at diverges
 2026-11-12T16:42:58Z T202b DISPATCH attempt 2 (same agent) + 5 cheap minors
 2026-11-12T16:42:58Z C-6 DISPATCH architect(opus): storable-values contract (breaking, no data) + doc minors from T203/C-5
+2026-11-12T16:48:01Z T202b HANDOFF DONE attempt 2 (pg instant format, reserveHlc, media deck follow-up, minors)
+2026-11-12T16:48:01Z T202b CHECK_GREEN server after rebase
+2026-11-12T16:48:01Z T202b REVIEW dispatched architect verification
