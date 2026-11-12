@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T16:19:50Z
+Updated: 2026-11-12T16:35:43Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -13,11 +13,11 @@ Updated: 2026-11-12T16:19:50Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T202b | architect (opus) | 1 | t/T202b-sync-server | 2026-11-12T16:09:43Z |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T202b (check green) | reviewer (opus) + architect 2nd pass | 2026-11-12T16:35:43Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

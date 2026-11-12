@@ -115,3 +115,6 @@
 - T203 architect -> next C-ticket: add @throws to ReplayEngine.replay KDoc; reword SYNC §9 (SYNC.md:946) — SET_DUE on NEW card leaves it unchanged (Scheduler.kt:317), T204/T205 UI must not expect a due date.
 - T203 architect: ReplayGoldenTest digest failure message should say "bump SCHEDULER_VERSION" (constant lives in replay/, separate from FsrsScheduler).
 - T203 architect -> next C-ticket or Android: IncrementalReplay/replaySet/rowOrder/SCHEDULER_VERSION public but not frozen.
+- T202b -> wiring (W-2, after T202c): Main.kt must add `SyncModule(db, SyncConfig(events = { d, hw, _ -> jobs.bus.syncChangedInTx(d, hw) }))` and register its handlers; sync endpoints are not live until then.
+- T202b -> next C-ticket: payload U+0000 or int > int4 range → invalid_value (Postgres can't store); contract silent.
+- T202b: Kotobaya-Seq absent on idempotent retry (T004 follow-up resolved as 'document'); no jOOQ codegen (to_jsonb/jsonb_populate_record).
