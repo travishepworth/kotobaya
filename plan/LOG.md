@@ -164,3 +164,4 @@
 2026-11-12T12:35:45Z T103 CHECK_GREEN worker
 2026-11-12T12:35:45Z T103 MERGE
 2026-11-12T12:35:45Z C-3 DISPATCH architect(opus): dictionary package/diff format into contracts (T103 invented it)
+2026-11-12T12:39:03Z - DECIDE ADR-009 (human): jpdb import JP→EN only, merge duplicate vids, known only when sole event, keywords editable
