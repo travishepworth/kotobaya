@@ -101,3 +101,4 @@
 2026-11-12T11:54:43Z T006 HANDOFF BLOCKED only on Write-tool refusal of SUMMARY.md; orchestrator committed the architect's text verbatim
 2026-11-12T11:54:43Z T006 CHECK_GREEN core, web, contracts/core/check.sh
 2026-11-12T11:54:43Z T006 REVIEW reviewer + architect dispatched
+2026-11-12T11:58:19Z T006 REVIEW_CHANGES architect: 1 major (cross-platform float determinism in FSRS pow/exp/round), 5 minor (2 need C-ticket on SCHEMA/SYNC)
