@@ -20,6 +20,7 @@
 		{ href: '/decks', label: 'nav.decks' },
 		{ href: '/note-types', label: 'nav.noteTypes' },
 		{ href: '/media', label: 'nav.media' },
+		{ href: '/import', label: 'nav.import' },
 		{ href: '/settings', label: 'nav.settings' }
 	];
 
