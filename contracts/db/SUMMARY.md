@@ -145,7 +145,9 @@
 - §6 now says plainly: any key is stored; only well-known keys are type-checked, and only by
   `PATCH /settings` (422 at `/values/<key>`). Values that arrive by sync are not checked, so a
   bad value is read as the default.
-- Worth a second look: (1) whether kanji-before-vocab should override a deck's explicit
-  `add_kanji` rather than act only as a fallback; (2) the core KDoc still calls the priority key
-  `scheduler.deckless_new_priority`, and the deckless source needs a new `QueueInput` member for
-  kanji ordering. Both are left for a small core-contract follow-up before T205.
+- The core contract follows the same rules (`QueueBuilder.kt`). The priority key is now called
+  `scheduler.mined_priority` there too; it was `deckless_new_priority`. The new
+  `QueueInput.decklessAddKanji` (default `OFF`, so existing callers still compile) holds the kanji
+  ordering for mined cards.
+- Worth a second look: whether kanji-before-vocab should override a deck's explicit `add_kanji`,
+  instead of only filling in where the deck has none.

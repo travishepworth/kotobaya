@@ -473,9 +473,8 @@ schedule, or replay (OPS.md `settings.set`: "Replay: None").
 
 **`scheduler.mined_priority`** is the priority of the virtual deckless new-card source of
 ADR-006 (NEW cards with no deck membership at all, e.g. mined from Yomitan); it is the value of
-`QueueInput.decklessPriority`. (That property's KDoc currently names the key
-`scheduler.deckless_new_priority`; `scheduler.mined_priority` is the one name, follow-up to fix
-the KDoc.) Meaning, on the same scale as `deck.priority` (QueueBuilder rule 4):
+`QueueInput.decklessPriority`. (Earlier drafts called it `scheduler.deckless_new_priority`;
+that name is not used.) Meaning, on the same scale as `deck.priority` (QueueBuilder rule 4):
 - New-card sources are drawn in tiers by priority, **ascending**: a lower number is drawn
   earlier; a **higher number means later** (lower precedence).
 - Equal to a deck's priority (default `0` vs. decks at the default `0`) → the same tier: the
@@ -495,13 +494,14 @@ uses):
   `alongside`); the deck's explicit choice always wins, including an explicit `off`;
 - a deck without the key, and the deckless source → `before` if `scheduler.kanji_before_vocab` is
   `true`, else `off`.
+
+The platform resolves these modes before calling the core: decks go into `QueueDeck.addKanji`, and
+the deckless source goes into `QueueInput.decklessAddKanji` (default `OFF`).
 `before` means (rule 4): right before drawing a vocab card, the source draws the eligible, not yet
 taken NEW cards of kanji notes whose literal appears in the word's expression, and they count
 against that source and the budget. The key only orders cards that already exist; whether adding a
 vocab card *creates* kanji cards stays governed by the deck's explicit `add_kanji` alone (absent =
-none created). With the default `false` every source behaves exactly as before C-7. Applying it to
-the deckless source needs an additive `QueueInput` member (follow-up C-ticket before T205); until
-then the deckless source uses `off`.
+none created). With the default `false` every source behaves exactly as before C-7.
 
 ## 7. Cross-check: table ↔ op ↔ API
 

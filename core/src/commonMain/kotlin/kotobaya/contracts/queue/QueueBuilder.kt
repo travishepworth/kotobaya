@@ -32,7 +32,11 @@ public enum class AddKanjiMode(
     /** Wire value. */
     public val wire: String,
 ) {
-    /** No automatic kanji cards / no ordering constraint. Default when the key is absent. */
+    /**
+     * No automatic kanji cards / no ordering constraint. For ordering, a deck without the key
+     * resolves to [BEFORE] if setting `scheduler.kanji_before_vocab` is `true`, else to this
+     * (SCHEMA.md 6.2; C-7); card creation treats an absent key as this.
+     */
     OFF("off"),
 
     /** New kanji cards for a word's unknown kanji are introduced immediately **before** the word's new cards. */
@@ -54,7 +58,11 @@ public data class QueueDeck(
     public val newPerDay: Int?,
     /** `deck.reviews_per_day`; null = only the global limit. */
     public val reviewsPerDay: Int?,
-    /** `deck.settings.add_kanji`. */
+    /**
+     * Effective `add_kanji` ordering: `deck.settings.add_kanji` if the key is present (an explicit
+     * value, including `off`, always wins); otherwise resolved from `scheduler.kanji_before_vocab`
+     * as [AddKanjiMode.OFF] documents. Resolved by the platform before [QueueBuilder.build].
+     */
     public val addKanji: AddKanjiMode,
 )
 
@@ -170,10 +178,18 @@ public data class QueueInput(
     /** Entries of enabled decks without a live note. */
     public val pendingEntries: List<PendingEntry>,
     /**
-     * Priority of the **deckless source** (ADR-006): setting `scheduler.deckless_new_priority`
-     * (int, default 0 = the same tier as ordinary decks of priority 0, interleaved with them).
+     * Priority of the **deckless source** (ADR-006): setting `scheduler.mined_priority`
+     * (int4, default 0 = the same tier as ordinary decks of priority 0, interleaved with them;
+     * lower is drawn earlier). SCHEMA.md 6.2.
      */
     public val decklessPriority: Int = 0,
+    /**
+     * `add_kanji` ordering of the **deckless source** (rule 4), which has no deck settings: BEFORE
+     * if setting `scheduler.kanji_before_vocab` is `true`, else OFF (SCHEMA.md 6.2; C-7). The
+     * platform resolves it; a missing, null or non-boolean setting means OFF. ALONGSIDE is allowed
+     * and behaves as for a deck.
+     */
+    public val decklessAddKanji: AddKanjiMode = AddKanjiMode.OFF,
 )
 
 /** Why an item is in the queue. */
@@ -246,7 +262,8 @@ public data class ReviewQueue(
  *    (counting 1 against the budgets) unless their `wordOverride` is KNOWN, NEVER_FORGET,
  *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
  *    Per-deck limit: `deck.newPerDay` − today's `introducedNew` reviews whose card's home
- *    new-source is that deck. **add_kanji** of the drawing deck: BEFORE — before a vocab card,
+ *    new-source is that deck. **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the
+ *    deckless source [QueueInput.decklessAddKanji]): BEFORE — before a vocab card,
  *    draw the eligible NEW cards of kanji notes whose `kanjiLiteral` is in its `expressionKanji`
  *    (expression order, then `kindOrder`) that are not yet taken; ALONGSIDE — the same cards right
  *    after the word's card. They count against the drawing deck and the budget; if the budget ends

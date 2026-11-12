@@ -44,3 +44,11 @@
 - KDoc only: duplicate JSON keys (the decoder rejects them; the server's push parse is separate),
   the media URL example is now `/api/v1/blobs/{sha256}`, and vocab note types always have
   `expression`/`reading`/`meaning`.
+
+## C-7 changes (additive)
+- The mined-cards priority setting is now `scheduler.mined_priority`. It was
+  `scheduler.deckless_new_priority`, which nothing ever wrote. It feeds `decklessPriority`.
+- New `QueueInput.decklessAddKanji` (default `OFF`, so existing callers still compile). It sets the
+  kanji ordering for mined cards and is `BEFORE` when `scheduler.kanji_before_vocab` is true.
+  Decks without their own `add_kanji` get the same fallback, but a deck's own setting, even `off`,
+  always wins. SCHEMA.md 6.2 has the rules.

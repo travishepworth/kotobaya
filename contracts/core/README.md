@@ -144,7 +144,8 @@ UI code (renderer HTML, queue, completions, hot scores) needs tests only where i
 
 - `assets/card/card.css` lacks most classes of `CardClasses.ALL` (T213 adds them).
 - `make check MODULE=contracts` should run `contracts/core/check.sh` (FOLLOWUPS: Makefile wiring).
-- SCHEMA.md 6 should list `scheduler.deckless_new_priority` (int, default 0; ADR-006).
+- Done in C-7: SCHEMA.md 6 lists `scheduler.mined_priority` (→ `QueueInput.decklessPriority`) and
+  `scheduler.kanji_before_vocab` (→ `QueueDeck.addKanji` fallback, `QueueInput.decklessAddKanji`).
 - `make check MODULE=core` should run `:core:jsTest` (T107, with `nodejs()` on the js target).
 - Card media serving: the web API route and the Android `WebViewAssetLoader` path behind
   `RenderOptions.mediaUrlTemplate` (T213 / the media ticket).
