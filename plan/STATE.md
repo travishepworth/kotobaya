@@ -1,8 +1,10 @@
 # STATE
 Mode: single-session
 Phase: P2 (Review loop)   Gate: GATE-P1 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T14:34:55Z
+Updated: 2026-11-12T14:35:23Z (usage-limit handover)
 
+
+## USAGE-LIMIT STOP 2026-11-12T14:35:23Z: T202a, T213a, T207a, T212 were stopped mid-work (no handoffs). On resume: each → TODO (attempt count kept), re-dispatch fresh; optionally tell the writer its worktree under .claude/worktrees/agent-{a989ca3f3d92c6ee5,a87729ea7e20b320b,a959d373363d18f0a,ac5202ff1adab0451} may hold partial uncommitted work.
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
 - P1 done (18/18, make test green, GATE-P1 deferred). P2 tickets in plan/tickets/ (splits: T201a/b, T202a/b/c, T207a/b, T210a/b, T213a/b; C-4; T214). Per-ticket status: BACKLOG.md "Phase 2 splits" line.

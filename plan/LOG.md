@@ -275,3 +275,4 @@
 2026-11-12T14:34:55Z T208 CHECK_GREEN web+deploy after rebase
 2026-11-12T14:34:55Z T208 MERGE (web/Dockerfile 1-line out-of-path edit accepted: copies clients/typescript)
 2026-11-12T14:35:11Z T212 DISPATCH writer(sonnet)
+2026-11-12T14:35:23Z - HANDOVER usage limit: stopped T202a, T213a, T207a, T212 mid-work (uncommitted partial work may be in their worktrees); redispatch on resume
