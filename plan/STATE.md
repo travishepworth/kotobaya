@@ -13,7 +13,7 @@ Updated: 2026-11-12T17:51:22Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T210b | writer (sonnet) | 1 | t/T210b-web-browse | 2026-11-12T17:51:22Z |
+| T210b | writer (sonnet) | 1 | t/T210b-web-cards | 2026-11-12T17:51:22Z |
 | C-8 | architect (opus) | 2 | t/C-8-sync-gaps | 2026-11-12T17:48:17Z |
 | T207b | writer-senior (opus) | 1 | t/T207b-jpdb-server | 2026-11-12T17:44:11Z |
 
