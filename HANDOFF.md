@@ -1,25 +1,25 @@
-# HANDOFF T001b+T002
+# HANDOFF T001b+T002 (attempt 2)
 
 STATUS: DONE
 BRANCH: t/T001b+T002-images-compose
-CHECK: `make check MODULE=deploy` → green (stub; no checks until T009)
+CHECK: `make check MODULE=deploy` → green; `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- docker-compose.yml: `minio` → `objectstore` (`chrislusf/seaweedfs:3.80`, `server -s3`, S3 on 8333, volume `objectdata`). api and worker get `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`.
-- Makefile: `images`, `push`, `apk` targets; vars `ARCH`, `REGISTRY`, `VERSION`, `DRY_RUN`.
+- android/build.gradle.kts: card-asset copy is a typed task registered via `androidComponents.onVariants` → `addGeneratedSourceDirectory`. Lint and merge both depend on it.
+- .gitignore: `!deploy/build/` added. release.yml no longer needs `git add -f`.
+- docker-compose.yml: `minio` → `objectstore` (SeaweedFS 3.80, S3 8333). api/worker get `S3_*` env.
+- Makefile: `images`, `push`, `apk` targets (`ARCH`, `REGISTRY`, `VERSION`, `DRY_RUN`).
 - deploy/build/release.yml: tag-only example workflow, not active.
-- Existing Dockerfiles reused in place (server/, worker/, web/).
 
 ## Acceptance → tests
-- `make dev-up` → api, objectstore, postgres, web, worker all `Up (healthy)`. S3 port 8333 returns HTTP 200. Torn down with `-v`.
-- `make images` → 3 images built locally. Removed after.
-- `make push` with placeholder → clear failure. `DRY_RUN=1 REGISTRY=…` → prints 3 push commands.
-- `make apk` → not run (needs Android SDK).
+- `make dev-up` (attempt 1): api, objectstore, postgres, web, worker `Up (healthy)`. S3 8333 returns 200. Torn down with `-v`.
+- `make images` (attempt 1): 3 images built, then removed.
+- `make push` placeholder → clear failure. `DRY_RUN=1 REGISTRY=…` → prints 3 push commands.
+- `make apk` → `android/build/outputs/apk/release/android-release-unsigned.apk`, bundles `assets/card/`.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- `.gitignore` `build/` ignores deploy/build/, so release.yml was `git add -f`. Add `!deploy/build/`.
 - SeaweedFS has no `-s3.config`, so S3 credentials are not enforced (dev only). No bucket is created; the app must create `S3_BUCKET`.
-- `apk` is unsigned: android/ has no signingConfig. `images` is single-arch (`ARCH`).
+- The APK is unsigned: no signingConfig exists, so signing env vars are not wired. `images` is single-arch (`ARCH`).
