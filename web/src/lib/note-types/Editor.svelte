@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { renderCard, type RenderedCard } from '../core/index';
-	import CardView from './CardView.svelte';
+	import { CardView } from '../review/index';
 	import {
 		BASE_TYPES,
 		KEY_PATTERN,
