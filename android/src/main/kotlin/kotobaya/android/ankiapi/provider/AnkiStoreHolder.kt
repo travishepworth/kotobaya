@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
  * binder) instead of pretending to save anything. There is deliberately no in-memory fallback.
  */
 object AnkiStoreHolder {
-    const val DEFAULT_WAIT_MILLIS: Long = 5_000
+    const val DEFAULT_WAIT_MILLIS: Long = 2_000
 
     @Volatile
     private var store: AnkiStore? = null

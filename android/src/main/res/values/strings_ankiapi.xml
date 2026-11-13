@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ankiapi_section_title">Takoboto (AnkiDroid stand-in)</string>
+    <string name="ankiapi_counts">Notes added: %1$d · duplicates: %2$d · refused: %3$d</string>
+    <string name="ankiapi_note_type_ready">Note type \"Takoboto Vocab\" is ready.</string>
+    <string name="ankiapi_note_type_missing">Note type \"Takoboto Vocab\" is not created yet (pair the app first).</string>
+    <string name="ankiapi_unknown_title">Calls Kotobaya did not understand (%1$d)</string>
+    <string name="ankiapi_recent_title">Last provider calls</string>
+    <string name="ankiapi_none">None</string>
+    <string name="ankiapi_refresh">Refresh</string>
+</resources>

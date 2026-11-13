@@ -10,6 +10,7 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.Bundle
+import androidx.annotation.VisibleForTesting
 import kotobaya.android.ankiapi.provider.AnkiContract.CardTemplate
 import kotobaya.android.ankiapi.provider.AnkiContract.Deck
 import kotobaya.android.ankiapi.provider.AnkiContract.Model
@@ -45,7 +46,8 @@ class AnkiProvider : ContentProvider() {
             }
     }
 
-    /** Test seam: pins the store this provider instance uses. */
+    /** Test seam: pins the store this provider instance uses. Production uses [AnkiStoreHolder] only. */
+    @VisibleForTesting
     fun attachStore(store: AnkiStore) {
         attachedStore = store
     }

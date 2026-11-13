@@ -31,7 +31,11 @@ data class ExistingNote(
  * - holds the entry the word matches (`entry_seq`), or
  * - has no entry and its `fields.expression` is the word (and, when both sides have one, the same
  *   `fields.reading`, katakana folded): a note added while the word was unmatched or the dictionary
- *   was missing.
+ *   was missing, or
+ * - (only when the word itself matched no entry, e.g. the dictionary is missing now) HAS an entry and its
+ *   `fields.expression` is the word, compared the same way: a matched note added earlier (Takoboto
+ *   stores the expression) must not get an unmatched twin. With a match, a note of another entry with the
+ *   same spelling is a homograph, not a duplicate, so this is not checked then.
  *
  * Several live candidates (a pre-merge local duplicate) → the oldest `(created_at, id)`, the one the
  * server would keep (8.1 "the note that already held the reference").
@@ -54,14 +58,20 @@ class DuplicateCheck(private val reader: LearningReader, private val matcher: En
     companion object {
         /** [find] on [tables] (inside a caller's transaction). [expression] and [reading] must be cleaned. */
         fun find(tables: LearningTables, seq: Long?, expression: String?, reading: String?): ExistingNote? =
-            seq?.let { byEntry(tables, it) } ?: expression?.let { byWord(tables, it, reading) }
+            seq?.let { byEntry(tables, it) } ?: expression?.let { byWord(tables, it, reading, includeMatched = seq == null) }
 
         fun byEntry(tables: LearningTables, seq: Long): ExistingNote? =
             oldest(tables.where(LearningTable.NOTE, "entry_seq", JsonNumber(seq.toDouble())).filter(::isLive))
 
-        private fun byWord(tables: LearningTables, expression: String, reading: String?): ExistingNote? =
+        private fun byWord(tables: LearningTables, expression: String, reading: String?, includeMatched: Boolean): ExistingNote? =
             oldest(
-                tables.where(LearningTable.NOTE, "entry_seq", JsonNull).filter { row ->
+                (
+                    if (includeMatched) {
+                        tables.where(LearningTable.NOTE, "type", JsonString("vocab"))
+                    } else {
+                        tables.where(LearningTable.NOTE, "entry_seq", JsonNull)
+                    }
+                    ).filter { row ->
                     if (!isLive(row) || row["type"] != JsonString("vocab")) return@filter false
                     val fields = (row["fields"] as? JsonObject)?.members.orEmpty()
                     val e = EntryMatcher.clean((fields["expression"] as? JsonString)?.value) ?: return@filter false
