@@ -546,7 +546,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `worker/kotobaya_worker/tts/`, `deploy/helm/templates/voicevox*`
 
 ### T602 — Pitch accent display and cards
-- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: low · deps: GATE-P5 · status: MERGED (run 10)
 - paths: `core/src/commonMain/kotlin/kotobaya/cards/pitch/`, `core/src/commonMain/kotlin/kotobaya/render/pitch/`, `assets/card/`
 - do: Pitch card kind and any pitch display beyond T213, inside the shared renderer only; no per-client pitch code.
 
