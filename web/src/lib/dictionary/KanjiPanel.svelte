@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { Deck, Kanji, KanjiWord } from '../api/generated';
-	import { decksApi, dictionaryApi } from './api';
+	import { KanjiPanelState } from '../state/dictionary.svelte';
 	import { td } from './messages';
 
 	let {
@@ -9,107 +8,26 @@
 		onclose
 	}: { literal: string; onopen: (seq: number) => void; onclose: () => void } = $props();
 
-	const PAGE = 50;
-
-	let kanji = $state<Kanji | null>(null);
-	let loadingKanji = $state(true);
-	let tab = $state<'frequent' | 'mine'>('frequent');
-	let deckId = $state('');
-	let decks = $state<Deck[]>([]);
-	let words = $state<KanjiWord[]>([]);
-	let cursor = $state<string | null>(null);
-	let loading = $state(false);
-	let gen = 0;
-
-	$effect(() => {
-		const lit = literal;
-		loadingKanji = true;
-		kanji = null;
-		let live = true;
-		void (async () => {
-			try {
-				const k = await dictionaryApi.getKanji({ literal: lit });
-				if (live) kanji = k;
-			} catch {
-				/* error toast shown by the client; words are still listed */
-			} finally {
-				if (live) loadingKanji = false;
-			}
-		})();
-		return () => {
-			live = false;
-		};
-	});
-
-	$effect(() => {
-		let live = true;
-		void (async () => {
-			try {
-				const all = (await decksApi.listDecks({})).items;
-				if (live) decks = all.filter((d) => d.deletedAt === null);
-			} catch {
-				/* dropdown stays empty */
-			}
-		})();
-		return () => {
-			live = false;
-		};
-	});
-
-	async function load(reset: boolean): Promise<void> {
-		const g = reset ? ++gen : gen;
-		if (reset) {
-			words = [];
-			cursor = null;
-		} else if (cursor === null) return;
-		loading = true;
-		try {
-			const page = await dictionaryApi.listKanjiWords({
-				literal,
-				mine: tab === 'mine' ? true : undefined,
-				deckId: deckId === '' ? undefined : deckId,
-				limit: PAGE,
-				cursor: reset ? undefined : (cursor ?? undefined)
-			});
-			if (g !== gen) return;
-			// Pages are not a snapshot: de-duplicate by seq.
-			const seen = new Set(reset ? [] : words.map((w) => w.seq));
-			words = [...(reset ? [] : words), ...page.items.filter((w) => !seen.has(w.seq))];
-			cursor = page.nextCursor;
-		} catch {
-			if (g !== gen) return;
-			cursor = null;
-		} finally {
-			if (g === gen) loading = false;
-		}
-	}
-
-	// Reload whenever the kanji, tab or deck filter changes.
-	$effect(() => {
-		void literal;
-		void tab;
-		void deckId;
-		void load(true);
-	});
+	const vm = new KanjiPanelState(() => literal);
 </script>
 
 <section class="kanji-panel" aria-label={td('dict.kanjiPanel')}>
 	<button type="button" class="kb-btn close" onclick={onclose}>{td('dict.kanjiClose')}</button>
 	<h3 lang="ja" class="big">{literal}</h3>
-	{#if loadingKanji}
+	{#if vm.loadingKanji}
 		<p class="muted">{td('dict.kanjiLoading')}</p>
-	{:else if kanji}
-		<p>{kanji.meanings.join(', ')}</p>
-		{#if kanji.onReadings.length > 0}
-			<p><strong>{td('dict.kanjiOn')}</strong> <span lang="ja">{kanji.onReadings.join('、')}</span></p>
+	{:else if vm.kanji}
+		<p>{vm.kanji.meanings.join(', ')}</p>
+		{#if vm.kanji.onReadings.length > 0}
+			<p><strong>{td('dict.kanjiOn')}</strong> <span lang="ja">{vm.kanji.onReadings.join('、')}</span></p>
 		{/if}
-		{#if kanji.kunReadings.length > 0}
-			<p><strong>{td('dict.kanjiKun')}</strong> <span lang="ja">{kanji.kunReadings.join('、')}</span></p>
+		{#if vm.kanji.kunReadings.length > 0}
+			<p><strong>{td('dict.kanjiKun')}</strong> <span lang="ja">{vm.kanji.kunReadings.join('、')}</span></p>
 		{/if}
 		<p class="muted">
-			{#if kanji.strokeCount !== null}{td('dict.kanjiStrokes', { n: kanji.strokeCount })}{/if}
-			{#if kanji.jlpt !== null}· {td('dict.kanjiJlpt', { n: kanji.jlpt })}{/if}
-			{#if kanji.grade !== null}· {td('dict.kanjiGrade', { n: kanji.grade })}{/if}
+			{#if vm.kanji.strokeCount !== null}{td('dict.kanjiStrokes', { n: vm.kanji.strokeCount })}{/if}
+			{#if vm.kanji.jlpt !== null}· {td('dict.kanjiJlpt', { n: vm.kanji.jlpt })}{/if}
+			{#if vm.kanji.grade !== null}· {td('dict.kanjiGrade', { n: vm.kanji.grade })}{/if}
 		</p>
 	{/if}
 
@@ -117,30 +35,30 @@
 		<button
 			type="button"
 			role="tab"
-			aria-selected={tab === 'frequent'}
-			onclick={() => (tab = 'frequent')}>{td('dict.kanjiTabFrequent')}</button
+			aria-selected={vm.tab === 'frequent'}
+			onclick={() => (vm.tab = 'frequent')}>{td('dict.kanjiTabFrequent')}</button
 		>
-		<button type="button" role="tab" aria-selected={tab === 'mine'} onclick={() => (tab = 'mine')}
+		<button type="button" role="tab" aria-selected={vm.tab === 'mine'} onclick={() => (vm.tab = 'mine')}
 			>{td('dict.kanjiTabMine')}</button
 		>
 	</div>
 	<label class="inline">
 		{td('dict.kanjiDeckFilter')}
-		<select bind:value={deckId}>
+		<select bind:value={vm.deckId}>
 			<option value="">{td('dict.kanjiAllDecks')}</option>
-			{#each decks as d (d.id)}
+			{#each vm.decks as d (d.id)}
 				<option value={d.id}>{d.name}</option>
 			{/each}
 		</select>
 	</label>
 
-	{#if loading && words.length === 0}
+	{#if vm.loading && vm.words.length === 0}
 		<p>{td('dict.searching')}</p>
-	{:else if words.length === 0}
+	{:else if vm.words.length === 0}
 		<p class="muted">{td('dict.kanjiNoWords')}</p>
 	{:else}
 		<ul class="words">
-			{#each words as w (w.seq)}
+			{#each vm.words as w (w.seq)}
 				<li>
 					<button type="button" class="word" onclick={() => onopen(w.seq)}>
 						<span class="hw" lang="ja">{w.headword}</span>
@@ -163,8 +81,8 @@
 				</li>
 			{/each}
 		</ul>
-		{#if cursor !== null}
-			<button type="button" class="kb-btn" disabled={loading} onclick={() => void load(false)}>
+		{#if vm.cursor !== null}
+			<button type="button" class="kb-btn" disabled={vm.loading} onclick={() => void vm.load(false)}>
 				{td('dict.more')}
 			</button>
 		{/if}

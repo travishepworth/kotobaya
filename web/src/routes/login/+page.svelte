@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { t } from '../../lib/i18n';
-	import { login } from '../../lib/session.svelte';
+	import { login } from '../../lib/state/session.svelte';
 
 	let password = $state('');
 	let totp = $state('');

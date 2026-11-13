@@ -1,17 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { apiConfig } from '../../../lib/api/client';
-	import {
-		DictionaryApi,
-		JpdbVocabResolutionPutResolutionEnum,
-		MediaApi
-	} from '../../../lib/api/generated';
-	import type {
-		DictEntrySummary,
-		JpdbVocab,
-		JpdbVocabResolutionPut,
-		JpdbVocabResolutionResult
-	} from '../../../lib/api/generated';
+	import { MappingRowState, type JpdbVocab, type JpdbVocabResolutionResult } from '../../../lib/state/import.svelte';
 	import { tm } from './messages';
 
 	let {
@@ -19,50 +8,11 @@
 		onResolved
 	}: { vocab: JpdbVocab; onResolved: (res: JpdbVocabResolutionResult) => void } = $props();
 
-	const dictApi = new DictionaryApi(apiConfig);
-	const mediaApi = new MediaApi(apiConfig);
-
-	let query = $state('');
-	let candidates = $state<DictEntrySummary[]>([]);
-	let searching = $state(false);
-	let busy = $state(false);
-
-	async function search(): Promise<void> {
-		const q = query.trim();
-		if (q === '') {
-			candidates = [];
-			return;
-		}
-		searching = true;
-		try {
-			candidates = (await dictApi.searchDictionary({ q })).items;
-		} catch {
-			// The API client already showed an error toast.
-		} finally {
-			searching = false;
-		}
-	}
-	onMount(() => {
-		// Pre-fill with the spelling (or the reading when there is none) and show candidates.
-		query = vocab.spelling !== '' ? vocab.spelling : vocab.reading;
-		void search();
-	});
-
-	async function put(body: JpdbVocabResolutionPut): Promise<void> {
-		if (busy) return;
-		busy = true;
-		try {
-			const res = await mediaApi.putJpdbVocabResolution({
-				jpdbVid: vocab.jpdbVid,
-				jpdbVocabResolutionPut: body
-			});
-			onResolved(res);
-		} catch {
-			// The API client already showed an error toast.
-		} finally {
-			busy = false;
-		}
-	}
+	const vm = new MappingRowState(
+		() => vocab,
+		() => onResolved
+	);
+	onMount(() => vm.start());
 </script>
 
 <tr>
@@ -80,29 +30,25 @@
 		<form
 			onsubmit={(e) => {
 				e.preventDefault();
-				void search();
+				void vm.search();
 			}}
 		>
-			<label>{tm('map.search')} <input type="search" lang="ja" bind:value={query} /></label>
-			<button class="kb-btn kb-btn-quiet" type="submit" disabled={searching}>
-				{searching ? tm('map.searching') : tm('map.searchButton')}
+			<label>{tm('map.search')} <input type="search" lang="ja" bind:value={vm.query} /></label>
+			<button class="kb-btn kb-btn-quiet" type="submit" disabled={vm.searching}>
+				{vm.searching ? tm('map.searching') : tm('map.searchButton')}
 			</button>
 		</form>
-		{#if !searching && candidates.length === 0}
+		{#if !vm.searching && vm.candidates.length === 0}
 			<p>{tm('map.noMatches')}</p>
 		{:else}
 			<ul>
-				{#each candidates as c (c.seq)}
+				{#each vm.candidates as c (c.seq)}
 					<li>
 						<button
 							class="kb-btn kb-btn-quiet"
 							type="button"
-							disabled={busy}
-							onclick={() =>
-								void put({
-									resolution: JpdbVocabResolutionPutResolutionEnum.Mapped,
-									entrySeq: c.seq
-								})}
+							disabled={vm.busy}
+							onclick={() => void vm.map(c.seq)}
 						>
 							<span lang="ja">{c.headword}</span>
 							<span lang="ja">{c.headwordReading}</span>
@@ -116,9 +62,8 @@
 			<button
 				class="kb-btn kb-btn-quiet"
 				type="button"
-				disabled={busy}
-				onclick={() =>
-					void put({ resolution: JpdbVocabResolutionPutResolutionEnum.Ignored })}
+				disabled={vm.busy}
+				onclick={() => void vm.ignore()}
 			>
 				{tm('map.ignore')}
 			</button>

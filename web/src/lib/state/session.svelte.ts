@@ -1,5 +1,8 @@
-import type { Principal } from './api/generated';
-import { ResponseError, authApi, readProblem, setUnauthenticatedHandler } from './api/client';
+import type { Principal } from '../api/generated';
+import { ResponseError, authApi, readProblem, setUnauthenticatedHandler } from '../api/client';
+import { openEventStream } from '../events';
+import { t } from '../i18n';
+import { pushToast } from '../toasts.svelte';
 
 export type LoginResult =
 	| { ok: true }
@@ -57,4 +60,23 @@ export async function logout(): Promise<void> {
 	} finally {
 		setOut();
 	}
+}
+
+/**
+ * The app-wide live-update stream while logged in (screens subscribe on their own for specific events).
+ * Shows one "reconnecting" toast per outage. Returns the close function.
+ */
+export function watchConnection(): () => void {
+	let shown = false;
+	return openEventStream({
+		types: ['hello'],
+		onEvent: () => {},
+		onStatus: (ok: boolean) => {
+			if (ok) shown = false;
+			else if (!shown) {
+				shown = true;
+				pushToast(t('events.reconnecting'), 'info');
+			}
+		}
+	});
 }

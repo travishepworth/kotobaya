@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Query box: client-side validation and completion come from the shared core (../core/index).
 	// The server stays the source of truth for results; its 422 is shown via `serverError`.
-	import { completeQuery, parseQuery, type SearchVocabulary } from '../core/index';
+	import { completeQuery, parseQuery, type SearchVocabulary } from '../state/search';
 	import { searchErrorText } from '../decks/messages';
 	import { tc } from './messages';
 

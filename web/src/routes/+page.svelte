@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '../lib/i18n';
-	import { session } from '../lib/session.svelte';
+	import { session } from '../lib/state/session.svelte';
 </script>
 
 <svelte:head><title>{t('app.name')}</title></svelte:head>

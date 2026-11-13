@@ -1,33 +1,23 @@
 <script lang="ts">
-	import type { NoteType } from '../../lib/api/generated';
-	import { noteTypesApi } from '../../lib/note-types/api';
 	import { tn } from '../../lib/note-types/messages';
+	import { NoteTypesListPage } from '../../lib/state/noteTypes.svelte';
 
-	let items = $state<NoteType[]>([]);
-	let loaded = $state(false);
+	const s = new NoteTypesListPage();
 
 	$effect(() => {
-		void (async () => {
-			try {
-				items = (await noteTypesApi.listNoteTypes({})).items;
-			} catch {
-				/* toast shown */
-			} finally {
-				loaded = true;
-			}
-		})();
+		s.start();
 	});
 </script>
 
 <h1>{tn('nt.title')}</h1>
 <p><a class="kb-btn" href="/note-types/new">{tn('nt.new')}</a></p>
-{#if !loaded}
+{#if !s.loaded}
 	<p>{tn('nt.loading')}</p>
-{:else if items.length === 0}
+{:else if s.items.length === 0}
 	<p>{tn('nt.none')}</p>
 {:else}
 	<ul>
-		{#each items as nt (nt.id)}
+		{#each s.items as nt (nt.id)}
 			<li>
 				<a href={`/note-types/${nt.id}`}>{nt.name}</a>
 				<small>

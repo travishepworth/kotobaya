@@ -1,24 +1,11 @@
 <script lang="ts">
-	import type { HotKanji, HotWord } from '../../lib/api/generated';
-	import { wordsApi } from '../../lib/review/api';
+	import { StrugglePage } from '../../lib/state/struggle.svelte';
 	import { tg } from './messages';
 
-	let words = $state<HotWord[]>([]);
-	let kanji = $state<HotKanji[]>([]);
-	let loaded = $state(false);
+	const vm = new StrugglePage();
 
 	$effect(() => {
-		void (async () => {
-			try {
-				const [w, k] = await Promise.all([wordsApi.listHotWords({ limit: 50 }), wordsApi.listHotKanji({ limit: 30 })]);
-				words = w.items;
-				kanji = k.items;
-			} catch {
-				/* toast shown */
-			} finally {
-				loaded = true;
-			}
-		})();
+		vm.start();
 	});
 </script>
 
@@ -34,15 +21,15 @@
 	<small>{tg('st.drillNote')}</small>
 </p>
 
-{#if !loaded}
+{#if !vm.loaded}
 	<p>{tg('st.loading')}</p>
 {:else}
 	<h2>{tg('st.hotWords')}</h2>
-	{#if words.length === 0}
+	{#if vm.words.length === 0}
 		<p>{tg('st.hotWordsNone')}</p>
 	{:else}
 		<ul>
-			{#each words as w (w.noteId)}
+			{#each vm.words as w (w.noteId)}
 				<li>
 					<a href={`/struggle/word/${w.noteId}`}>
 						{w.entry?.headword ?? w.note.fields['word'] ?? w.noteId}
@@ -56,11 +43,11 @@
 	{/if}
 
 	<h2>{tg('st.hotKanji')}</h2>
-	{#if kanji.length === 0}
+	{#if vm.kanji.length === 0}
 		<p>{tg('st.hotKanjiNone')}</p>
 	{:else}
 		<ul>
-			{#each kanji as k (k.literal)}
+			{#each vm.kanji as k (k.literal)}
 				<li>
 					<strong>{k.literal}</strong>
 					<span>{k.meanings.slice(0, 3).join(', ')}</span>

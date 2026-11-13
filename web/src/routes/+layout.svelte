@@ -1,13 +1,12 @@
 <script lang="ts">
 	import '../../../assets/card/card.css';
 	import '../lib/tokens.css';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Toaster from '../lib/components/Toaster.svelte';
-	import { openEventStream } from '../lib/events';
-	import { pushToast } from '../lib/toasts.svelte';
 	import { t, type MessageKey } from '../lib/i18n';
-	import { logout, refreshSession, session } from '../lib/session.svelte';
+	import { logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
 
 	let { children } = $props();
 
@@ -28,8 +27,8 @@
 
 	const onLogin = $derived(page.url.pathname.startsWith('/login'));
 
-	// Check the cookie once at startup.
-	$effect(() => {
+	// Check the cookie once at startup (the status never returns to 'unknown').
+	onMount(() => {
 		if (session.status === 'unknown') void refreshSession();
 	});
 
@@ -48,18 +47,7 @@
 	// Live-update stream while logged in; screens subscribe on their own for specific events.
 	$effect(() => {
 		if (session.status !== 'in') return;
-		let shown = false;
-		return openEventStream({
-			types: ['hello'],
-			onEvent: () => {},
-			onStatus: (ok: boolean) => {
-				if (ok) shown = false;
-				else if (!shown) {
-					shown = true;
-					pushToast(t('events.reconnecting'), 'info');
-				}
-			}
-		});
+		return watchConnection();
 	});
 
 	async function doLogout(): Promise<void> {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Smart-deck query field: validated and completed by the shared core (parseQuery,
 	// completeQuery via ../core/index); nothing about the search language is decided here.
-	import { completeQuery, parseQuery, type SearchVocabulary } from '../core/index';
+	import { completeQuery, parseQuery, type SearchVocabulary } from '../state/search';
 	import { searchErrorText, td } from './messages';
 
 	let {

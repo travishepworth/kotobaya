@@ -1,78 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { apiConfig } from '../../lib/api/client';
-	import { MediaApi, MediaKind } from '../../lib/api/generated';
-	import type { Media } from '../../lib/api/generated';
-	import { pushToast } from '../../lib/toasts.svelte';
 	import { tm } from '../../lib/media/messages';
 	import type { MediaMessageKey } from '../../lib/media/messages';
+	import { MEDIA_KINDS, MediaListPage, type Media } from '../../lib/state/media.svelte';
 
-	const api = new MediaApi(apiConfig);
-	const kinds = Object.values(MediaKind);
+	const vm = new MediaListPage();
+	onMount(() => void vm.load(false));
 
-	let items = $state<Media[]>([]);
-	let cursor = $state<string | null>(null);
-	let loading = $state(false);
-	let kind = $state<MediaKind | ''>('');
-	let q = $state('');
-	let editing = $state<string | null>(null);
-	let draftTitle = $state('');
-
-	async function load(more: boolean): Promise<void> {
-		if (loading) return;
-		loading = true;
-		try {
-			const page = await api.listMedia({
-				kind: kind || undefined,
-				q: q.trim() || undefined,
-				limit: 50,
-				cursor: more ? (cursor ?? undefined) : undefined
-			});
-			items = more ? [...items, ...page.items] : page.items;
-			cursor = page.nextCursor;
-		} catch {
-			// The API client already showed an error toast.
-		} finally {
-			loading = false;
-		}
-	}
-	onMount(() => void load(false));
-
-	function startRename(m: Media): void {
-		editing = m.id;
-		draftTitle = m.title;
-	}
-
-	async function saveRename(m: Media): Promise<void> {
-		const title = draftTitle.trim();
-		if (!title) return;
-		try {
-			const updated = await api.updateMedia({ mediaId: m.id, mediaPatch: { title } });
-			items = items.map((x) => (x.id === m.id ? { ...x, ...updated } : x));
-			editing = null;
-		} catch {
-			// toast shown by the client
-		}
-	}
-
-	async function reparse(m: Media): Promise<void> {
-		try {
-			await api.reparseMedia({ mediaId: m.id });
-			pushToast(tm('med.reparseQueued'), 'info');
-		} catch {
-			// toast shown by the client
-		}
-	}
-
-	async function remove(m: Media): Promise<void> {
+	function remove(m: Media): void {
 		if (!confirm(tm('med.confirmDelete', { title: m.title }))) return;
-		try {
-			await api.deleteMedia({ mediaId: m.id });
-			items = items.filter((x) => x.id !== m.id);
-			pushToast(tm('med.deleted'), 'info');
-		} catch {
-			// toast shown by the client
-		}
+		void vm.remove(m);
 	}
 </script>
 
@@ -82,22 +19,22 @@
 <form
 	onsubmit={(e) => {
 		e.preventDefault();
-		void load(false);
+		void vm.load(false);
 	}}
 >
 	<label
 		>{tm('med.filter.kind')}
-		<select bind:value={kind} onchange={() => void load(false)}>
+		<select bind:value={vm.kind} onchange={() => void vm.load(false)}>
 			<option value="">{tm('med.filter.all')}</option>
-			{#each kinds as k (k)}
+			{#each MEDIA_KINDS as k (k)}
 				<option value={k}>{tm(`med.kind.${k}` as MediaMessageKey)}</option>
 			{/each}
 		</select></label
 	>
-	<label>{tm('med.filter.title')} <input type="search" bind:value={q} /></label>
+	<label>{tm('med.filter.title')} <input type="search" bind:value={vm.q} /></label>
 </form>
 
-{#if items.length === 0 && !loading}
+{#if vm.items.length === 0 && !vm.loading}
 	<p>{tm('med.empty')}</p>
 {:else}
 	<table>
@@ -109,19 +46,19 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each items as m (m.id)}
+			{#each vm.items as m (m.id)}
 				<tr>
 					<td lang="ja">
-						{#if editing === m.id}
+						{#if vm.editing === m.id}
 							<form
 								onsubmit={(e) => {
 									e.preventDefault();
-									void saveRename(m);
+									void vm.saveRename(m);
 								}}
 							>
-								<input aria-label={tm('med.titleLabel')} bind:value={draftTitle} />
+								<input aria-label={tm('med.titleLabel')} bind:value={vm.draftTitle} />
 								<button class="kb-btn" type="submit">{tm('med.save')}</button>
-								<button class="kb-btn kb-btn-quiet" type="button" onclick={() => (editing = null)}
+								<button class="kb-btn kb-btn-quiet" type="button" onclick={() => vm.cancelRename()}
 									>{tm('med.cancel')}</button
 								>
 							</form>
@@ -134,11 +71,11 @@
 					<td>{tm(`med.parse.${m.parseStatus}` as MediaMessageKey)}</td>
 					<td>{m.segments?.length ?? 0}</td>
 					<td>
-						<button class="kb-btn kb-btn-quiet" type="button" onclick={() => startRename(m)}
+						<button class="kb-btn kb-btn-quiet" type="button" onclick={() => vm.startRename(m)}
 							>{tm('med.rename')}</button
 						>
 						{#if m.source !== 'jpdb'}
-							<button class="kb-btn kb-btn-quiet" type="button" onclick={() => void reparse(m)}
+							<button class="kb-btn kb-btn-quiet" type="button" onclick={() => void vm.reparse(m)}
 								>{tm('med.reparse')}</button
 							>
 						{/if}
@@ -151,8 +88,8 @@
 		</tbody>
 	</table>
 {/if}
-{#if cursor}
-	<button class="kb-btn" type="button" disabled={loading} onclick={() => void load(true)}
+{#if vm.cursor}
+	<button class="kb-btn" type="button" disabled={vm.loading} onclick={() => void vm.load(true)}
 		>{tm('med.more')}</button
 	>
 {/if}

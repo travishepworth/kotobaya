@@ -1,10 +1,6 @@
 <script lang="ts">
-	import type { DeckListCatalogueEntry } from '../api/generated';
-	import type { SearchVocabulary } from '../core/index';
-	import { pushToast } from '../toasts.svelte';
-	import { parseNumbers, type DeckDraft } from './draft';
+	import { checkDeckDraft, type DeckDraft, type DeckListCatalogueEntry, type SearchVocabulary } from '../state/decks.svelte';
 	import { td } from './messages';
-	import { parseQuery } from '../core/index';
 	import QueryEditor from './QueryEditor.svelte';
 
 	let {
@@ -29,24 +25,9 @@
 		ondelete?: () => void;
 	} = $props();
 
-	const FIELD_LABEL = {
-		priority: 'decks.priorityLabel',
-		newPerDay: 'decks.newPerDay',
-		reviewsPerDay: 'decks.reviewsPerDay'
-	} as const;
-
 	function submit(e: SubmitEvent): void {
 		e.preventDefault();
-		const n = parseNumbers(draft);
-		if (!n.ok) {
-			pushToast(td('decks.invalidNumber', { field: td(FIELD_LABEL[n.field]) }), 'error');
-			return;
-		}
-		if (draft.type === 'smart' && !parseQuery(draft.query).ok) {
-			pushToast(td('decks.queryInvalid'), 'error');
-			return;
-		}
-		onsubmit();
+		if (checkDeckDraft(draft)) onsubmit();
 	}
 </script>
 

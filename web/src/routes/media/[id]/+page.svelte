@@ -1,108 +1,42 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { apiConfig } from '../../../lib/api/client';
-	import { MediaApi } from '../../../lib/api/generated';
-	import type { Coverage, Media } from '../../../lib/api/generated';
-	import { ResponseError } from '../../../lib/api/client';
 	import CurveChart from '../../../lib/coverage/CurveChart.svelte';
 	import UnknownWords from '../../../lib/coverage/UnknownWords.svelte';
-	import { HIDE_CLASSES, loadFilters, saveFilters } from '../../../lib/coverage/filters';
-	import type { HideClass } from '../../../lib/coverage/filters';
 	import { tc } from '../../../lib/coverage/messages';
 	import type { CoverageMessageKey } from '../../../lib/coverage/messages';
 	import { tm } from '../../../lib/media/messages';
 	import type { MediaMessageKey } from '../../../lib/media/messages';
+	import { HIDE_CLASSES, MediaCoveragePage } from '../../../lib/state/media.svelte';
 
-	const api = new MediaApi(apiConfig);
 	const id = $derived(page.params.id ?? '');
+	const vm = new MediaCoveragePage(() => id);
 
-	let media = $state<Media | null>(null);
-	let coverage = $state<Coverage | null>(null);
-	let missing = $state(false);
-	let filters = $state(loadFilters());
-	let ready = $state(false);
-
-	async function loadMedia(mediaId: string): Promise<void> {
-		try {
-			media = await api.getMedia({ mediaId });
-		} catch (e) {
-			if (e instanceof ResponseError && (e.response.status === 404 || e.response.status === 410)) {
-				missing = true;
-			}
-		}
-	}
-
-	let gen = 0;
-	async function loadCoverage(): Promise<void> {
-		const mine = ++gen;
-		try {
-			const c = await api.getMediaCoverage({
-				mediaId: id,
-				segmentId: filters.segmentId ?? undefined,
-				hide: new Set(filters.hide)
-			});
-			if (mine === gen) coverage = c;
-		} catch {
-			/* toast shown */
-		}
-	}
-
-	onMount(() => {
-		filters = loadFilters();
-		ready = true;
-	});
-
-	$effect(() => {
-		void loadMedia(id);
-	});
-
-	$effect(() => {
-		if (!ready) return;
-		void filters.hide;
-		void filters.segmentId;
-		void loadCoverage();
-	});
-
-	function toggle(c: HideClass, on: boolean): void {
-		const hide = on ? [...filters.hide, c] : filters.hide.filter((x) => x !== c);
-		filters = { ...filters, hide: HIDE_CLASSES.filter((x) => hide.includes(x)) };
-		saveFilters(filters);
-	}
+	onMount(() => vm.mount());
 
 	function pickSegment(e: Event): void {
-		const v = (e.currentTarget as HTMLSelectElement).value;
-		filters = { ...filters, segmentId: v === '' ? null : v };
-		saveFilters(filters);
+		vm.pickSegment((e.currentTarget as HTMLSelectElement).value);
 	}
-
-	const segments = $derived(media?.segments ?? []);
-	// A stored segment from another media is ignored by the server with 404; drop it.
-	$effect(() => {
-		if (media && filters.segmentId && !segments.some((s) => s.id === filters.segmentId)) {
-			filters = { ...filters, segmentId: null };
-		}
-	});
 </script>
 
-{#if missing}
+{#if vm.missing}
 	<p>{tc('cov.notFound')}</p>
 	<p><a href="/media">{tc('cov.back')}</a></p>
-{:else if !media}
+{:else if !vm.media}
 	<p>{tc('cov.loading')}</p>
 {:else}
 	<header>
-		<h1 lang="ja">{media.title}</h1>
+		<h1 lang="ja">{vm.media.title}</h1>
 		<p>
 			{tc('cov.meta', {
-				kind: tm(`med.kind.${media.kind}` as MediaMessageKey),
-				status: tm(`med.parse.${media.parseStatus}` as MediaMessageKey),
-				segments: segments.length
+				kind: tm(`med.kind.${vm.media.kind}` as MediaMessageKey),
+				status: tm(`med.parse.${vm.media.parseStatus}` as MediaMessageKey),
+				segments: vm.segments.length
 			})}
 		</p>
 	</header>
 
-	{#if media.contentVersion === 0}
+	{#if vm.media.contentVersion === 0}
 		<p>{tc('cov.notParsed')}</p>
 	{/if}
 
@@ -114,8 +48,8 @@
 				<label>
 					<input
 						type="checkbox"
-						checked={filters.hide.includes(c)}
-						onchange={(e) => toggle(c, e.currentTarget.checked)}
+						checked={vm.filters.hide.includes(c)}
+						onchange={(e) => vm.toggle(c, e.currentTarget.checked)}
 					/>
 					{tc(`cov.hide.${c}` as CoverageMessageKey)}
 				</label>
@@ -123,19 +57,19 @@
 		</fieldset>
 		<label>
 			{tc('cov.segment')}
-			<select value={filters.segmentId ?? ''} onchange={pickSegment}>
+			<select value={vm.filters.segmentId ?? ''} onchange={pickSegment}>
 				<option value="">{tc('cov.segment.all')}</option>
-				{#each segments as s (s.id)}
+				{#each vm.segments as s (s.id)}
 					<option value={s.id}>{s.title || s.ordinal + 1}</option>
 				{/each}
 			</select>
 		</label>
 	</section>
 
-	{#if coverage}
+	{#if vm.coverage}
 		<section>
 			<h2>{tc('cov.summary')}</h2>
-			<p class="big">{tc('cov.tokenCoverage')}: {coverage.tokens.knownPct}%</p>
+			<p class="big">{tc('cov.tokenCoverage')}: {vm.coverage.tokens.knownPct}%</p>
 			<table>
 				<thead>
 					<tr>
@@ -149,36 +83,36 @@
 				<tbody>
 					<tr>
 						<th>{tc('cov.unique')}</th>
-						<td>{coverage.unique.total}</td>
-						<td>{coverage.unique.known}</td>
-						<td>{coverage.unique.learning}</td>
-						<td>{coverage.unique.unknown}</td>
+						<td>{vm.coverage.unique.total}</td>
+						<td>{vm.coverage.unique.known}</td>
+						<td>{vm.coverage.unique.learning}</td>
+						<td>{vm.coverage.unique.unknown}</td>
 					</tr>
 					<tr>
 						<th>{tc('cov.tokens')}</th>
-						<td>{coverage.tokens.total}</td>
-						<td>{coverage.tokens.known}</td>
-						<td>{coverage.tokens.learning}</td>
-						<td>{coverage.tokens.unknown}</td>
+						<td>{vm.coverage.tokens.total}</td>
+						<td>{vm.coverage.tokens.known}</td>
+						<td>{vm.coverage.tokens.learning}</td>
+						<td>{vm.coverage.tokens.unknown}</td>
 					</tr>
 				</tbody>
 			</table>
-			<p>{tc('cov.unmapped')}: {coverage.tokens.unmapped} · {tc('cov.ignored')}: {coverage.ignoredCount}</p>
-			{#if coverage.difficulty}
+			<p>{tc('cov.unmapped')}: {vm.coverage.tokens.unmapped} · {tc('cov.ignored')}: {vm.coverage.ignoredCount}</p>
+			{#if vm.coverage.difficulty}
 				<p>
 					{tc('cov.difficulty')}:
-					{tc('cov.difficultyRank', { rank: coverage.difficulty.rank, of: coverage.difficulty.of })},
-					{tc('cov.difficultyPer1000', { value: coverage.difficulty.unknownPer1000 })}
+					{tc('cov.difficultyRank', { rank: vm.coverage.difficulty.rank, of: vm.coverage.difficulty.of })},
+					{tc('cov.difficultyPer1000', { value: vm.coverage.difficulty.unknownPer1000 })}
 				</p>
 			{/if}
 		</section>
 
 		<section>
 			<h2>{tc('cov.curve')}</h2>
-			<CurveChart curve={coverage.curve} />
+			<CurveChart curve={vm.coverage.curve} />
 		</section>
 
-		{#if coverage.segments.length > 0}
+		{#if vm.coverage.segments.length > 0}
 			<section>
 				<h2>{tc('cov.segments')}</h2>
 				<table>
@@ -192,7 +126,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each coverage.segments as s (s.segmentId)}
+						{#each vm.coverage.segments as s (s.segmentId)}
 							<tr>
 								<td lang="ja">{s.title || s.ordinal + 1}</td>
 								<td>{s.uniqueTotal}</td>
@@ -207,7 +141,7 @@
 		{/if}
 	{/if}
 
-	<UnknownWords deckId={media.id} onchanged={() => void loadCoverage()} />
+	<UnknownWords deckId={vm.media.id} onchanged={() => vm.reloadCoverage()} />
 {/if}
 
 <style>

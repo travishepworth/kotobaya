@@ -1,104 +1,41 @@
 <script lang="ts">
-	import { Scope, type Token } from '../api/generated';
-	import { pushToast } from '../toasts.svelte';
-	import { tokensApi } from './api';
+	import { SCOPES, TokensState, type Token } from '../state/settings.svelte';
 	import { ts, type SettingsMessageKey } from './messages';
 
-	const SCOPES = [Scope.Read, Scope.Write, Scope.Review, Scope.Import, Scope.Admin] as const;
-
-	let tokens = $state<Token[]>([]);
-	let name = $state('');
-	let scopes = $state<Record<string, boolean>>({ read: true });
-	let expiry = $state('');
-	let withDevice = $state(false);
-	let busy = $state(false);
-	/** The secret, held only while the dialog is open. */
-	let secret = $state<string | null>(null);
+	const vm = new TokensState();
 	let dialog: HTMLDialogElement | undefined = $state();
 
-	async function load(): Promise<void> {
-		try {
-			tokens = (await tokensApi.listTokens({})).items;
-		} catch {
-			/* toast shown */
-		}
-	}
 	$effect(() => {
-		void load();
+		void vm.load();
 	});
 
 	$effect(() => {
-		if (secret !== null && dialog && !dialog.open) dialog.showModal();
+		if (vm.secret !== null && dialog && !dialog.open) dialog.showModal();
 	});
 
-	async function create(e: SubmitEvent): Promise<void> {
+	function create(e: SubmitEvent): void {
 		e.preventDefault();
-		const chosen = SCOPES.filter((s) => scopes[s]);
-		if (name.trim() === '') return void pushToast(ts('tokens.needName'), 'error');
-		if (chosen.length === 0) return void pushToast(ts('tokens.needScope'), 'error');
-		let expiresAt: Date | undefined;
-		if (expiry !== '') {
-			expiresAt = new Date(expiry);
-			if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
-				return void pushToast(ts('tokens.pastExpiry'), 'error');
-			}
-		}
-		busy = true;
-		try {
-			const created = await tokensApi.createToken({
-				tokenCreate: {
-					name: name.trim(),
-					scopes: new Set(chosen),
-					...(expiresAt ? { expiresAt } : {}),
-					withDevice
-				}
-			});
-			secret = created.token;
-			name = '';
-			expiry = '';
-			withDevice = false;
-			scopes = { read: true };
-			await load();
-		} catch {
-			/* toast shown */
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function copy(): Promise<void> {
-		if (secret === null) return;
-		try {
-			await navigator.clipboard.writeText(secret);
-			pushToast(ts('tokens.copied'), 'info');
-		} catch {
-			/* clipboard unavailable: the user can still select the text */
-		}
+		void vm.create();
 	}
 
 	function closeSecret(): void {
-		secret = null; // forget it; it is never retrievable again
+		vm.forgetSecret();
 		dialog?.close();
 	}
 
-	async function revoke(tok: Token): Promise<void> {
+	function revoke(tok: Token): void {
 		if (!confirm(ts('tokens.confirmRevoke', { name: tok.name }))) return;
-		try {
-			await tokensApi.revokeToken({ tokenId: tok.id });
-			await load();
-		} catch {
-			/* toast shown */
-		}
+		void vm.revoke(tok);
 	}
 </script>
 
 <section>
 	<h2>{ts('tokens.title')}</h2>
-	{#if tokens.length === 0}
+	{#if vm.tokens.length === 0}
 		<p>{ts('tokens.none')}</p>
 	{/if}
 	<ul>
-		{#each tokens as tok (tok.id)}
+		{#each vm.tokens as tok (tok.id)}
 			<li class:inactive={!tok.active}>
 				<strong>{tok.name}</strong>
 				<small>{ts(`tokens.kind.${tok.kind}` as SettingsMessageKey)} · {tok.tokenPrefix}… · {[...tok.scopes].join(', ')}</small>
@@ -123,26 +60,26 @@
 
 	<form onsubmit={create}>
 		<h3>{ts('tokens.create')}</h3>
-		<label>{ts('tokens.name')} <input type="text" maxlength="100" bind:value={name} /></label>
+		<label>{ts('tokens.name')} <input type="text" maxlength="100" bind:value={vm.name} /></label>
 		<fieldset>
 			<legend>{ts('tokens.scopes')}</legend>
 			{#each SCOPES as s (s)}
 				<label class="scope">
-					<input type="checkbox" bind:checked={scopes[s]} />
+					<input type="checkbox" bind:checked={vm.scopes[s]} />
 					<span><strong>{ts(`scope.${s}` as SettingsMessageKey)}</strong> — {ts(`scope.${s}.desc` as SettingsMessageKey)}</span>
 				</label>
 			{/each}
 		</fieldset>
-		<label>{ts('tokens.expiry')} <input type="datetime-local" bind:value={expiry} /></label>
-		<label><input type="checkbox" bind:checked={withDevice} /> {ts('tokens.withDevice')}</label>
-		<button class="kb-btn" type="submit" disabled={busy}>{ts('tokens.create')}</button>
+		<label>{ts('tokens.expiry')} <input type="datetime-local" bind:value={vm.expiry} /></label>
+		<label><input type="checkbox" bind:checked={vm.withDevice} /> {ts('tokens.withDevice')}</label>
+		<button class="kb-btn" type="submit" disabled={vm.busy}>{ts('tokens.create')}</button>
 	</form>
 
 	<dialog bind:this={dialog} oncancel={(e) => e.preventDefault()}>
 		<p>{ts('tokens.shownOnce')}</p>
-		<code class="secret">{secret}</code>
+		<code class="secret">{vm.secret}</code>
 		<div class="actions">
-			<button class="kb-btn" type="button" onclick={copy}>{ts('tokens.copy')}</button>
+			<button class="kb-btn" type="button" onclick={() => vm.copy()}>{ts('tokens.copy')}</button>
 			<button class="kb-btn" type="button" onclick={closeSecret}>{ts('tokens.done')}</button>
 		</div>
 	</dialog>

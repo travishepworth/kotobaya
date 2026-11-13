@@ -1,11 +1,8 @@
 <script lang="ts">
 	// Bulk toolbar. Every action is first run with dry_run and the counts shown; only a second,
 	// explicit click applies it. The bulk call is synchronous, so "progress" is the applying state.
-	import type { CardBulkResult, Deck } from '../api/generated';
-	import { ResponseError, problemMessage, readProblem } from '../api/client';
-	import { cardsApi } from './api';
+	import { BULK_KINDS, BulkBarState, type Deck, type Selector } from '../state/cards.svelte';
 	import { tc, type CardsMessageKey } from './messages';
-	import { BULK_KINDS, buildRequest, type BulkKind, type BulkParams, type Selector } from './model';
 
 	let {
 		selector,
@@ -19,65 +16,10 @@
 		onapplied: () => void;
 	} = $props();
 
-	let kind = $state<BulkKind>('add_tags');
-	let params = $state<BulkParams>({ tags: '', deckId: '', flag: 0, dueLocal: '' });
-	type Phase = 'idle' | 'checking' | 'confirm' | 'applying' | 'done';
-	let phase = $state<Phase>('idle');
-	let dry = $state<CardBulkResult | null>(null);
-	let result = $state<CardBulkResult | null>(null);
-	let error = $state<string | null>(null);
-
-	// Any change of action, parameters or selection invalidates a dry run that was already shown.
-	$effect(() => {
-		void kind;
-		void params.tags;
-		void params.deckId;
-		void params.flag;
-		void params.dueLocal;
-		void selector;
-		reset();
-	});
-
-	function reset(): void {
-		phase = 'idle';
-		dry = null;
-		result = null;
-		error = null;
-	}
-
-	async function run(dryRun: boolean): Promise<CardBulkResult | null> {
-		const req = buildRequest(kind, params, selector, dryRun);
-		if (!req) {
-			error = tc('bulk.invalidInput');
-			return null;
-		}
-		try {
-			return req.schedule
-				? await cardsApi.bulkScheduleCards({ cardBulkScheduleRequest: req.body })
-				: await cardsApi.bulkCards({ cardBulkRequest: req.body });
-		} catch (e) {
-			const detail =
-				e instanceof ResponseError
-					? problemMessage(await readProblem(e.response), e.response.status)
-					: String(e);
-			error = tc('bulk.failed', { detail });
-			return null;
-		}
-	}
-
-	async function check(): Promise<void> {
-		error = null;
-		phase = 'checking';
-		dry = await run(true);
-		phase = dry ? 'confirm' : 'idle';
-	}
-
-	async function apply(): Promise<void> {
-		phase = 'applying';
-		result = await run(false);
-		phase = result ? 'done' : 'confirm';
-		if (result) onapplied();
-	}
+	const s = new BulkBarState(
+		() => selector,
+		() => onapplied()
+	);
 </script>
 
 <section class="bar" aria-label={tc('bulk.title')}>
@@ -86,50 +28,50 @@
 	<div class="fields">
 		<label>
 			{tc('bulk.action')}
-			<select bind:value={kind} disabled={phase === 'checking' || phase === 'applying'}>
+			<select bind:value={s.kind} disabled={s.phase === 'checking' || s.phase === 'applying'}>
 				{#each BULK_KINDS as k (k)}
 					<option value={k}>{tc(`bulk.action.${k}` as CardsMessageKey)}</option>
 				{/each}
 			</select>
 		</label>
-		{#if kind === 'add_tags' || kind === 'remove_tags'}
-			<label>{tc('bulk.tags')} <input type="text" bind:value={params.tags} /></label>
-		{:else if kind === 'move'}
+		{#if s.kind === 'add_tags' || s.kind === 'remove_tags'}
+			<label>{tc('bulk.tags')} <input type="text" bind:value={s.params.tags} /></label>
+		{:else if s.kind === 'move'}
 			<label>
 				{tc('bulk.deck')}
-				<select bind:value={params.deckId}>
+				<select bind:value={s.params.deckId}>
 					<option value="">{tc('bulk.deckPick')}</option>
 					{#each decks as d (d.id)}
 						<option value={d.id}>{d.name}</option>
 					{/each}
 				</select>
 			</label>
-		{:else if kind === 'flag'}
-			<label>{tc('bulk.flag')} <input type="number" min="0" max="7" bind:value={params.flag} /></label>
-		{:else if kind === 'reschedule'}
-			<label>{tc('bulk.dueAt')} <input type="datetime-local" bind:value={params.dueLocal} /></label>
+		{:else if s.kind === 'flag'}
+			<label>{tc('bulk.flag')} <input type="number" min="0" max="7" bind:value={s.params.flag} /></label>
+		{:else if s.kind === 'reschedule'}
+			<label>{tc('bulk.dueAt')} <input type="datetime-local" bind:value={s.params.dueLocal} /></label>
 		{/if}
-		{#if phase === 'idle' || phase === 'checking' || phase === 'done'}
-			<button type="button" class="kb-btn" disabled={phase === 'checking'} onclick={check}>
-				{phase === 'checking' ? tc('bulk.checking') : tc('bulk.preview')}
+		{#if s.phase === 'idle' || s.phase === 'checking' || s.phase === 'done'}
+			<button type="button" class="kb-btn" disabled={s.phase === 'checking'} onclick={() => s.check()}>
+				{s.phase === 'checking' ? tc('bulk.checking') : tc('bulk.preview')}
 			</button>
 		{/if}
 	</div>
 	<div role="status" aria-live="polite">
-		{#if (phase === 'confirm' || phase === 'applying') && dry}
-			<p>{tc('bulk.dryRun', { matched: dry.matched, changed: dry.changed, skipped: dry.skipped })}</p>
-			{#if kind === 'delete'}<p class="warn">{tc('bulk.deleteWarn')}</p>{/if}
-			<button type="button" class="kb-btn" disabled={phase === 'applying'} onclick={apply}>
-				{phase === 'applying' ? tc('bulk.applying') : tc('bulk.confirm')}
+		{#if (s.phase === 'confirm' || s.phase === 'applying') && s.dry}
+			<p>{tc('bulk.dryRun', { matched: s.dry.matched, changed: s.dry.changed, skipped: s.dry.skipped })}</p>
+			{#if s.kind === 'delete'}<p class="warn">{tc('bulk.deleteWarn')}</p>{/if}
+			<button type="button" class="kb-btn" disabled={s.phase === 'applying'} onclick={() => s.apply()}>
+				{s.phase === 'applying' ? tc('bulk.applying') : tc('bulk.confirm')}
 			</button>
-			<button type="button" class="kb-btn kb-btn-quiet" disabled={phase === 'applying'} onclick={reset}>
+			<button type="button" class="kb-btn kb-btn-quiet" disabled={s.phase === 'applying'} onclick={() => s.reset()}>
 				{tc('bulk.cancel')}
 			</button>
 		{/if}
-		{#if phase === 'done' && result}
-			<p>{tc('bulk.result', { matched: result.matched, changed: result.changed, skipped: result.skipped })}</p>
+		{#if s.phase === 'done' && s.result}
+			<p>{tc('bulk.result', { matched: s.result.matched, changed: s.result.changed, skipped: s.result.skipped })}</p>
 		{/if}
-		{#if error}<p class="warn">{error}</p>{/if}
+		{#if s.error}<p class="warn">{s.error}</p>{/if}
 	</div>
 </section>
 

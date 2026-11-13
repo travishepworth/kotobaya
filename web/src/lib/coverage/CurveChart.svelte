@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CoverageCurveInner } from '../api/generated';
+	import type { CoverageCurveInner } from '../state/media.svelte';
 	import { tc } from './messages';
 
 	let { curve }: { curve: CoverageCurveInner[] } = $props();

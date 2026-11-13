@@ -1,62 +1,8 @@
 <script lang="ts">
-	import type { Confusable, ConfusableStatus, NoteSummary } from '../../../lib/api/generated';
-	import { wordsApi } from '../../../lib/review/api';
-	import { pushToast } from '../../../lib/toasts.svelte';
+	import { CONFUSABLE_STATUSES, ConfusablesPage, noteName } from '../../../lib/state/struggle.svelte';
 	import { tg, tgEnum } from '../messages';
 
-	let pairs = $state<Confusable[]>([]);
-	let cursor = $state<string | null>(null);
-	let status = $state<ConfusableStatus>('suggested');
-	let loaded = $state(false);
-	let busy = $state(false);
-
-	async function load(more: boolean): Promise<void> {
-		busy = true;
-		try {
-			const page = await wordsApi.listConfusables({
-				status,
-				limit: 50,
-				cursor: more ? (cursor ?? undefined) : undefined
-			});
-			pairs = more ? [...pairs, ...page.items] : page.items;
-			cursor = page.nextCursor;
-		} catch {
-			/* toast shown */
-		} finally {
-			busy = false;
-			loaded = true;
-		}
-	}
-
-	$effect(() => {
-		void status;
-		void load(false);
-	});
-
-	function name(n: NoteSummary): string {
-		return n.fields['word'] ?? n.fields['sentence'] ?? n.kanjiLiteral ?? n.id;
-	}
-
-	async function decide(p: Confusable, to: 'confirmed' | 'rejected'): Promise<void> {
-		busy = true;
-		try {
-			await wordsApi.setConfusable({
-				noteAId: p.noteAId,
-				noteBId: p.noteBId,
-				reason: p.reason,
-				confusableSet: { status: to }
-			});
-			// The pair leaves the current filter (or changes status): drop it from the view.
-			pairs = pairs.filter(
-				(x) => !(x.noteAId === p.noteAId && x.noteBId === p.noteBId && x.reason === p.reason)
-			);
-			pushToast(tg('st.pairUpdated'), 'info');
-		} catch {
-			/* toast shown */
-		} finally {
-			busy = false;
-		}
-	}
+	const vm = new ConfusablesPage();
 </script>
 
 <h1>{tg('st.confusables')}</h1>
@@ -67,38 +13,38 @@
 </p>
 <label>
 	{tg('st.filter')}
-	<select bind:value={status}>
-		{#each ['suggested', 'confirmed', 'rejected'] as s (s)}
+	<select bind:value={vm.status}>
+		{#each CONFUSABLE_STATUSES as s (s)}
 			<option value={s}>{tgEnum('st.status', s)}</option>
 		{/each}
 	</select>
 </label>
 
-{#if !loaded}
+{#if !vm.loaded}
 	<p>{tg('st.loading')}</p>
-{:else if pairs.length === 0}
+{:else if vm.pairs.length === 0}
 	<p>{tg('st.confusablesNone')}</p>
 {:else}
 	<ul>
-		{#each pairs as p (`${p.noteAId}/${p.noteBId}/${p.reason}`)}
+		{#each vm.pairs as p (`${p.noteAId}/${p.noteBId}/${p.reason}`)}
 			<li>
-				<strong lang="ja">{name(p.noteA)}</strong> ⇄ <strong lang="ja">{name(p.noteB)}</strong>
+				<strong lang="ja">{noteName(p.noteA)}</strong> ⇄ <strong lang="ja">{noteName(p.noteB)}</strong>
 				<small>{tgEnum('st.reason', p.reason)} · {tgEnum('st.status', p.status)}</small>
 				{#if p.status !== 'confirmed'}
-					<button class="kb-btn" type="button" disabled={busy} onclick={() => decide(p, 'confirmed')}>
+					<button class="kb-btn" type="button" disabled={vm.busy} onclick={() => vm.decide(p, 'confirmed')}>
 						{tg('st.confirm')}
 					</button>
 				{/if}
 				{#if p.status !== 'rejected'}
-					<button class="kb-btn kb-btn-quiet" type="button" disabled={busy} onclick={() => decide(p, 'rejected')}>
+					<button class="kb-btn kb-btn-quiet" type="button" disabled={vm.busy} onclick={() => vm.decide(p, 'rejected')}>
 						{tg('st.reject')}
 					</button>
 				{/if}
 			</li>
 		{/each}
 	</ul>
-	{#if cursor}
-		<button class="kb-btn" type="button" disabled={busy} onclick={() => load(true)}>{tg('st.more')}</button>
+	{#if vm.cursor}
+		<button class="kb-btn" type="button" disabled={vm.busy} onclick={() => vm.load(true)}>{tg('st.more')}</button>
 	{/if}
 {/if}
 

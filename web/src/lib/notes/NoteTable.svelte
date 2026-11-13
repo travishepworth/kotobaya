@@ -1,8 +1,6 @@
 <script lang="ts">
 	// Windowed note table (same windowing as the card table).
-	import type { Note } from '../api/generated';
-	import { ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
-	import type { HeadwordMap } from './headwords.svelte';
+	import { ROW_HEIGHT, rowLabel, windowRange, type HeadwordMap, type Note } from '../state/notes.svelte';
 	import { tn } from './messages';
 
 	let {

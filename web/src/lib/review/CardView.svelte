@@ -2,8 +2,7 @@
 	// Displays one RenderedCard from the shared core renderer. No review-session state: used by the
 	// review screen and the note-type preview (T211). Furigana is a CSS class switch on the
 	// container (the card is always rendered with readings), never a re-render.
-	import type { RenderedCard } from '../core/index';
-	import { MEDIA_URL_TEMPLATE } from './model';
+	import { MEDIA_URL_TEMPLATE, type RenderedCard } from '../state/preview.svelte';
 
 	let {
 		rendered,
