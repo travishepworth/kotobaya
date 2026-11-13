@@ -175,10 +175,14 @@ __all__ = [
     "JobPayloadDeckBuild",
     "JobPayloadDictRefresh",
     "JobPayloadFsrsOptimize",
+    "JobPayloadGrammarDetect",
     "JobPayloadMediaParse",
     "JobResultDeckBuild",
     "JobResultDictRefresh",
     "JobResultFsrsOptimize",
+    "JobResultGrammarDetect",
+    "JobResultGrammarDetectFanOut",
+    "JobResultGrammarDetectMedia",
     "JobResultJpdbHistory",
     "JobResultJpdbHistoryKanjiUnmappedInner",
     "JobResultJpdbHistoryUnmappedInner",
@@ -476,10 +480,14 @@ from kotobaya_client.models.job_page import JobPage as JobPage
 from kotobaya_client.models.job_payload_deck_build import JobPayloadDeckBuild as JobPayloadDeckBuild
 from kotobaya_client.models.job_payload_dict_refresh import JobPayloadDictRefresh as JobPayloadDictRefresh
 from kotobaya_client.models.job_payload_fsrs_optimize import JobPayloadFsrsOptimize as JobPayloadFsrsOptimize
+from kotobaya_client.models.job_payload_grammar_detect import JobPayloadGrammarDetect as JobPayloadGrammarDetect
 from kotobaya_client.models.job_payload_media_parse import JobPayloadMediaParse as JobPayloadMediaParse
 from kotobaya_client.models.job_result_deck_build import JobResultDeckBuild as JobResultDeckBuild
 from kotobaya_client.models.job_result_dict_refresh import JobResultDictRefresh as JobResultDictRefresh
 from kotobaya_client.models.job_result_fsrs_optimize import JobResultFsrsOptimize as JobResultFsrsOptimize
+from kotobaya_client.models.job_result_grammar_detect import JobResultGrammarDetect as JobResultGrammarDetect
+from kotobaya_client.models.job_result_grammar_detect_fan_out import JobResultGrammarDetectFanOut as JobResultGrammarDetectFanOut
+from kotobaya_client.models.job_result_grammar_detect_media import JobResultGrammarDetectMedia as JobResultGrammarDetectMedia
 from kotobaya_client.models.job_result_jpdb_history import JobResultJpdbHistory as JobResultJpdbHistory
 from kotobaya_client.models.job_result_jpdb_history_kanji_unmapped_inner import JobResultJpdbHistoryKanjiUnmappedInner as JobResultJpdbHistoryKanjiUnmappedInner
 from kotobaya_client.models.job_result_jpdb_history_unmapped_inner import JobResultJpdbHistoryUnmappedInner as JobResultJpdbHistoryUnmappedInner

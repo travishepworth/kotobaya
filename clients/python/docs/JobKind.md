@@ -20,6 +20,8 @@ Job type slug. Payload and result schema per kind are listed on `Job`. Only publ
 
 * `DECK_MINUS_BUILD` (value: `'deck-build'`)
 
+* `GRAMMAR_MINUS_DETECT` (value: `'grammar-detect'`)
+
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
 

@@ -150,7 +150,7 @@ try {
 ### Parameters
 | Name | Type | Description  | Notes |
 | ------------- | ------------- | ------------- | ------------- |
-| **kind** | [**JobKind**](.md)| Only jobs of this kind. | [optional] [enum: dict-refresh, media-import, media-parse, jpdb-deck-import, jpdb-history-import, fsrs-optimize, tts, deck-build] |
+| **kind** | [**JobKind**](.md)| Only jobs of this kind. | [optional] [enum: dict-refresh, media-import, media-parse, jpdb-deck-import, jpdb-history-import, fsrs-optimize, tts, deck-build, grammar-detect] |
 | **status** | [**kotlin.collections.Set&lt;JobStatus&gt;**](JobStatus.md)| Only jobs in one of these states (comma-separated). | [optional] |
 | **limit** | **kotlin.Int**| Page size. | [optional] [default to 50] |
 | **cursor** | **kotlin.String**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] |

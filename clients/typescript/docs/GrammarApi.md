@@ -22,7 +22,7 @@ All URIs are relative to */api/v1*
 
 Create a grammar point.
 
-Server emits &#x60;grammar.created&#x60;. Only &#x60;title&#x60; is required. Each &#x60;detection_rules[].rule&#x60; must parse in the token-pattern language (&#x60;422&#x60; with the rule\&#39;s pointer otherwise). &#x60;related_ids&#x60; are soft references and are not checked. Creating the point does not create a grammar note or card: do that with &#x60;POST /notes&#x60; (&#x60;grammar_point_id&#x60;). Changing rules does not re-detect by itself; detection runs in media parse jobs. 
+Server emits &#x60;grammar.created&#x60;. Only &#x60;title&#x60; is required. Each &#x60;detection_rules[].rule&#x60; must parse in the token-pattern language (&#x60;422&#x60; with the rule\&#39;s pointer otherwise). &#x60;related_ids&#x60; are soft references and are not checked. Creating the point does not create a grammar note or card: do that with &#x60;POST /notes&#x60; (&#x60;grammar_point_id&#x60;). Non-empty &#x60;detection_rules&#x60; make the server enqueue re-detection of all media (a &#x60;grammar-detect&#x60; job, C-13; see &#x60;Job&#x60;); media parse and import jobs also detect. 
 
 ### Example
 
@@ -678,7 +678,7 @@ example().catch(console.error);
 
 Edit a grammar point.
 
-Server emits one &#x60;grammar.updated&#x60; with the registers present: &#x60;title&#x60;, &#x60;pattern&#x60;, &#x60;meaning&#x60;, &#x60;explanation&#x60;, &#x60;notes&#x60;, &#x60;jlpt&#x60;, &#x60;detection_rules&#x60; (whole array), &#x60;related_ids&#x60; (whole array), &#x60;links&#x60; (whole array), &#x60;is_stub&#x60;. Editing any text property of a stub does not clear &#x60;is_stub&#x60; by itself; send &#x60;is_stub: false&#x60;. Empty body: &#x60;422&#x60;. 
+Server emits one &#x60;grammar.updated&#x60; with the registers present: &#x60;title&#x60;, &#x60;pattern&#x60;, &#x60;meaning&#x60;, &#x60;explanation&#x60;, &#x60;notes&#x60;, &#x60;jlpt&#x60;, &#x60;detection_rules&#x60; (whole array), &#x60;related_ids&#x60; (whole array), &#x60;links&#x60; (whole array), &#x60;is_stub&#x60;. Editing any text property of a stub does not clear &#x60;is_stub&#x60; by itself; send &#x60;is_stub: false&#x60;. Empty body: &#x60;422&#x60;. A winning &#x60;detection_rules&#x60; write makes the server enqueue re-detection of all media (a &#x60;grammar-detect&#x60; job, C-13; see &#x60;Job&#x60;), in the transaction that applies the op. 
 
 ### Example
 

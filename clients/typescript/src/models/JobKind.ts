@@ -26,6 +26,7 @@ export const JobKind = {
     FsrsOptimize: 'fsrs-optimize',
     Tts: 'tts',
     DeckBuild: 'deck-build',
+    GrammarDetect: 'grammar-detect',
 } as const;
 export type JobKind = typeof JobKind[keyof typeof JobKind];
 

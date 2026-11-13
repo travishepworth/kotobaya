@@ -351,7 +351,7 @@ optional `reading` and `class` besides `surface`, `lemma`, `seq`.
 | `device` | S | pairing / auth endpoints | The device knows its own id via `sync_state`. |
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
-| `job` | S | API enqueues, worker updates; internal kinds: worker enqueues, server updates | `kind` is a public `JobKind` (openapi) or a **server-internal kind** (C-9; list below). The `V1__init.sql` comment on `job.kind` predates C-9 and is left unchanged so the applied migration's checksum stays valid; the `CHECK` (`^[a-z][a-z0-9_-]*$`) already admits internal kinds, so no DDL changed. This row is authoritative. |
+| `job` | S | API enqueues, worker updates; internal kinds: worker enqueues, server updates; `grammar-detect`: server (op apply) and worker enqueue, worker updates (C-13) | `kind` is a public `JobKind` (openapi) or a **server-internal kind** (C-9; list below). The `V1__init.sql` comment on `job.kind` predates C-9 and is left unchanged so the applied migration's checksum stays valid; the `CHECK` (`^[a-z][a-z0-9_-]*$`) already admits internal kinds, so no DDL changed. This row is authoritative. |
 | `jpdb_vocab`, `jpdb_vocab_media` | S | `media-publish` runner (rows, links), API (`putJpdbVocabResolution`, `clearJpdbVocabResolution`: resolution, holding `pg_advisory_xact_lock(7033001)` then `(7033011)`, in that order: MEDIA_PIPELINE.md 3.4) | jpdb mapping corrections: server-only import configuration, no op, not synced, not exported (`V2__jpdb_vocab.sql`, `MEDIA_PIPELINE.md` 5; C-11). |
 | `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, and so does the server while backups are disabled (C-8, never lowering it); the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
@@ -365,9 +365,67 @@ Its payload carries `parent_job_id`; its `dedupe_key` is `<kind>:<parent id>`. R
 | Kind | Parent kind | Enqueued by | Claimed by | Payload | Result | Protocol |
 |---|---|---|---|---|---|---|
 | `jpdb-history-apply` | `jpdb-history-import` | worker | server (`JpdbHistoryApplyRunner`) | `{"parent_job_id": uuid, "plan": <ImportPlan v1>}`; `plan` removed when the row ends | `JobResultJpdbHistory` | `importJpdbHistory` "Execution" |
-| `media-publish` | `media-import`, `media-parse`, `jpdb-deck-import` | worker | server (`MediaPublishRunner`) | `media/media-publish.v1.schema.json` (`parent_job_id`, `media_id`, `base_content_version`, `create`, two archive blobs, `unmapped`, `jpdb`); kept when the row ends; `max_attempts = 1` | `JobResultMedia` | `MEDIA_PIPELINE.md` 3 (C-11) |
+| `media-publish` | `media-import`, `media-parse`, `jpdb-deck-import`, `grammar-detect` (C-13) | worker | server (`MediaPublishRunner`) | `media/media-publish.v1.schema.json` (`parent_job_id`, `media_id`, `base_content_version`, `create`, two archive blobs, `unmapped`, `jpdb`); kept when the row ends; `max_attempts = 1` | `JobResultMedia` | `MEDIA_PIPELINE.md` 3 (C-11) |
 
 A new internal kind is added here by a contract ticket; it must not equal a `JobKind` value.
+The parent-kind column is authoritative; the parent lists in `MEDIA_PIPELINE.md` 2 and in the
+`parent_job_id` description of `media/media-publish.v1.schema.json` predate C-13.
+
+**`grammar-detect` (C-13, public kind).** Re-runs grammar detection (SPEC "Grammar review ›
+Detection") over a media's stored tokens and republishes the media when its detected spans
+change. It is a public `JobKind` like `media-parse` (the worker claims it; `listJobs`, `getJob`,
+`cancelJob` and `job.updated` treat it like any public job), not an internal kind: it is not a
+worker→server hand-off. It is never started through the API and never forwarded to ntfy.
+Payload `JobPayloadGrammarDetect`, result `JobResultGrammarDetect` (`openapi.yaml`).
+
+- **Fan-out enqueue (server).** In the op-apply transaction of an op that sets or advances the
+  `detection_rules` clock of a grammar point (a winning `grammar.updated` register write,
+  including one forwarded to a merge survivor; a `grammar.created` with non-empty
+  `detection_rules`), whatever the op's emitter, the server runs
+  `INSERT INTO app.job (id, kind, payload, dedupe_key) VALUES (<UUIDv7>, 'grammar-detect', '{}',
+  'grammar-detect:all') ON CONFLICT DO NOTHING` and, if a row was inserted, sends its
+  `job.updated` after commit. A re-pushed op (already in `change`) is not applied again and
+  enqueues nothing. A losing write enqueues nothing. `grammar.deleted` MAY enqueue (readers
+  already hide spans of deleted points).
+- **Fan-out run (worker), in this order:** (1) release the key: `UPDATE app.job SET dedupe_key =
+  NULL WHERE id = <own id>`, committed; (2) read the rules and compute `rules_digest` over the
+  live points' `detection_rules`; (3) for each eligible media (live, `content_version > 0`,
+  `source <> 'jpdb'`), `INSERT … ('grammar-detect', {"media_id": <id>}, dedupe_key
+  'grammar-detect:<media id>:<rules_digest>') ON CONFLICT DO NOTHING`, notifying `job.updated`
+  for inserted rows; honour cancellation between inserts. Step 1 before step 2 is what makes
+  edits never lost: an edit committed before the release collapses into this job, which reads
+  the rules afterwards; an edit committed after it finds no queued key and enqueues a new
+  fan-out. Per-media jobs are independent public jobs, not children: cancelling the fan-out
+  stops further inserts only.
+- **Per-media run (worker).** Follows `MEDIA_PIPELINE.md` 3.2 with these refinements:
+  - Step 1 (an earlier attempt already published): result `{media_id, changed: true,
+    content_version: <the child's>}`.
+  - Step 2 reads, in **one** `REPEATABLE READ` snapshot, the base rows, the rules of live
+    points (draft rules and deleted points excluded; `rule_index` = index in the point's
+    `detection_rules` array, drafts included) and the media's installed `origin = 'detected'`
+    spans. Skip reasons (result `skipped`, no publish) are evaluated on that snapshot. Spans are
+    computed from the stored tokens; tokens, segments and sentences are copied unchanged.
+  - If the computed span set equals the installed detected set (same snapshot): succeed with
+    `changed: false`, no publish.
+  - Every `stale_base` re-plan re-reads the rules and spans in the new snapshot (never reuses
+    rules read earlier) and re-applies the equality check. Reading rules and base in one
+    snapshot guarantees the installed version never goes back to older rules than a version it
+    replaces.
+  - The publish payload has `create: null`, `unmapped: []`, `jpdb: null`.
+  - Dedupe: the key the fan-out set; a per-media job inserted any other way uses
+    `grammar-detect:<media id>:<rules_digest>` too. `deleteMedia` cancels it like any job whose
+    `payload->>'media_id'` is the media.
+- **`media-publish` runner, parent `grammar-detect`.** As `MEDIA_PIPELINE.md` 3.3 except step 8:
+  `media.content_published` carries the media's current `parse_status` and `parse_error` (read
+  in step 5 under the lock) instead of `parsed`/`null`, because detection is not a parse (a
+  `failed` media stays `failed`; a `parsing` media stays `parsing` for its own job to finish).
+  A payload with non-null `create` or `jpdb` from this parent is `invalid_payload`. The parent's
+  result is `JobResultGrammarDetect`, not the child's `JobResultMedia`. The reconciler
+  (`MEDIA_PIPELINE.md` 4) ignores `grammar-detect`; it never sets `parsing`.
+- **Other publishes keep spans.** `media-import`, `media-parse` and `jpdb-deck-import` publishes
+  replace every detected span of the media (`SNAPSHOT.md` 7), so their plan MUST run detection
+  with the rules read in its step 2 snapshot (same rules as above); otherwise a re-parse erases
+  detected spans until the next rule edit.
 
 **`change` invariants.**
 - One row per accepted op, including ops that lose a last-writer-wins comparison (they are still

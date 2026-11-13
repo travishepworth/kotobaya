@@ -23,8 +23,9 @@ Create a grammar point.
 Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule`
 must parse in the token-pattern language (`422` with the rule's pointer otherwise).
 `related_ids` are soft references and are not checked. Creating the point does not create
-a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Changing rules
-does not re-detect by itself; detection runs in media parse jobs.
+a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty
+`detection_rules` make the server enqueue re-detection of all media (a `grammar-detect`
+job, C-13; see `Job`); media parse and import jobs also detect.
 
 
 ### Example
@@ -784,6 +785,8 @@ Server emits one `grammar.updated` with the registers present: `title`, `pattern
 `meaning`, `explanation`, `notes`, `jlpt`, `detection_rules` (whole array), `related_ids`
 (whole array), `links` (whole array), `is_stub`. Editing any text property of a stub does
 not clear `is_stub` by itself; send `is_stub: false`. Empty body: `422`.
+A winning `detection_rules` write makes the server enqueue re-detection of all media
+(a `grammar-detect` job, C-13; see `Job`), in the transaction that applies the op.
 
 
 ### Example

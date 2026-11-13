@@ -20,5 +20,7 @@
 
     * `DECK_BUILD` (value: `"deck-build"`)
 
+    * `GRAMMAR_DETECT` (value: `"grammar-detect"`)
+
 
 

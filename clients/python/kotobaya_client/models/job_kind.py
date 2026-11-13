@@ -34,6 +34,7 @@ class JobKind(str, Enum):
     FSRS_MINUS_OPTIMIZE = 'fsrs-optimize'
     TTS = 'tts'
     DECK_MINUS_BUILD = 'deck-build'
+    GRAMMAR_MINUS_DETECT = 'grammar-detect'
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:

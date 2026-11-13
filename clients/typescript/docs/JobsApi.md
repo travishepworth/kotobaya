@@ -217,7 +217,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **kind** | `JobKind` | Only jobs of this kind. | [Optional] [Defaults to `undefined`] [Enum: dict-refresh, media-import, media-parse, jpdb-deck-import, jpdb-history-import, fsrs-optimize, tts, deck-build] |
+| **kind** | `JobKind` | Only jobs of this kind. | [Optional] [Defaults to `undefined`] [Enum: dict-refresh, media-import, media-parse, jpdb-deck-import, jpdb-history-import, fsrs-optimize, tts, deck-build, grammar-detect] |
 | **status** | `Set<JobStatus>` | Only jobs in one of these states (comma-separated). | [Optional] |
 | **limit** | `number` | Page size. | [Optional] [Defaults to `50`] |
 | **cursor** | `string` | Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [Optional] [Defaults to `undefined`] |

@@ -29,7 +29,7 @@ import com.google.gson.annotations.SerializedName
 /**
  * Job type slug. Payload and result schema per kind are listed on `Job`. Only public kinds; server-internal kinds (C-9, see `Job`) are never values of this enum and never appear in the API.
  *
- * Values: DICT_REFRESH,MEDIA_IMPORT,MEDIA_PARSE,JPDB_DECK_IMPORT,JPDB_HISTORY_IMPORT,FSRS_OPTIMIZE,TTS,DECK_BUILD
+ * Values: DICT_REFRESH,MEDIA_IMPORT,MEDIA_PARSE,JPDB_DECK_IMPORT,JPDB_HISTORY_IMPORT,FSRS_OPTIMIZE,TTS,DECK_BUILD,GRAMMAR_DETECT
  */
 
 enum class JobKind(val value: kotlin.String) {
@@ -56,7 +56,10 @@ enum class JobKind(val value: kotlin.String) {
     TTS("tts"),
 
     @SerializedName(value = "deck-build")
-    DECK_BUILD("deck-build");
+    DECK_BUILD("deck-build"),
+
+    @SerializedName(value = "grammar-detect")
+    GRAMMAR_DETECT("grammar-detect");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use

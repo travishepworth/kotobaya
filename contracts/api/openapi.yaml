@@ -3382,8 +3382,9 @@ paths:
         Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule`
         must parse in the token-pattern language (`422` with the rule's pointer otherwise).
         `related_ids` are soft references and are not checked. Creating the point does not create
-        a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Changing rules
-        does not re-detect by itself; detection runs in media parse jobs.
+        a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty
+        `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect`
+        job, C-13; see `Job`); media parse and import jobs also detect.
       x-emits-ops: [grammar.created]
       security:
         - bearerAuth: [write]
@@ -3449,6 +3450,8 @@ paths:
         `meaning`, `explanation`, `notes`, `jlpt`, `detection_rules` (whole array), `related_ids`
         (whole array), `links` (whole array), `is_stub`. Editing any text property of a stub does
         not clear `is_stub` by itself; send `is_stub: false`. Empty body: `422`.
+        A winning `detection_rules` write makes the server enqueue re-detection of all media
+        (a `grammar-detect` job, C-13; see `Job`), in the transaction that applies the op.
       x-emits-ops: [grammar.updated]
       security:
         - bearerAuth: [write]
@@ -4902,8 +4905,8 @@ paths:
         `types` filters the stream (comma-separated); `hello` is always sent.
 
         **ntfy forwarding.** The server posts the same `Event` JSON as the message body to the
-        `push_topic` of every non-revoked device for: `job.updated` with a terminal status,
-        and `sync.changed` (coalesced to at most one per minute per device, and not to the
+        `push_topic` of every non-revoked device for: `job.updated` with a terminal status
+        (except kind `grammar-detect`, C-13: one rule edit can end hundreds of them), and `sync.changed` (coalesced to at most one per minute per device, and not to the
         device that originated the change).
       security:
         - bearerAuth: [read]
@@ -5657,6 +5660,7 @@ components:
       - fsrs-optimize
       - tts
       - deck-build
+      - grammar-detect
       description: Job type slug. Payload and result schema per kind are listed on `Job`. Only public kinds; server-internal
         kinds (C-9, see `Job`) are never values of this enum and never appear in the API.
     JobStatus:
@@ -10877,13 +10881,22 @@ components:
         | `fsrs-optimize` | `JobPayloadFsrsOptimize` | `JobResultFsrsOptimize` |
         | `tts` | `TtsRequest` | `JobResultTts` |
         | `deck-build` | `JobPayloadDeckBuild` | `JobResultDeckBuild` |
+        | `grammar-detect` | `JobPayloadGrammarDetect` | `JobResultGrammarDetect` |
+
+        **`grammar-detect` (C-13).** Re-runs grammar detection over stored tokens; never
+        re-parses. Not started through the API: the server enqueues a fan-out (`{}`) when a
+        `detection_rules` register changes, and the fan-out enqueues one per-media job
+        (`{"media_id"}`) per eligible media. A per-media job that finds new spans republishes
+        the media through `media-publish` (a new `content_version`, same tokens, `parse_status`
+        unchanged). It is an ordinary public job (listed, streamed, cancellable) but is never
+        forwarded to ntfy. Normative protocol: `contracts/db/SCHEMA.md`, "Jobs", "`grammar-detect`".
 
         **Server-internal jobs (C-9).** An `app.job` row whose `kind` is not a `JobKind` value
         is *server-internal*: a hand-off between the worker and the server inside one public
         job (its *parent*). The registered internal kinds are listed in
         `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
         "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
-        `jpdb-deck-import`; `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
+        `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
         - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
           cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
           answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`
@@ -11014,6 +11027,19 @@ components:
         media_id:
           $ref: '#/components/schemas/Uuid'
           description: Media to re-parse.
+    JobPayloadGrammarDetect:
+      type: object
+      description: |
+        Payload of a `grammar-detect` job (C-13). `{}` = fan-out: enqueue one per-media job for
+        every eligible media. `{"media_id": …}` = re-detect that one media. Enqueued by the
+        server (fan-out) and the worker (per-media), never through the API.
+      additionalProperties: false
+      properties:
+        media_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Media to re-detect. Absent = fan-out over all eligible media.
+          examples:
+          - 01931f40-4000-7000-8000-000000000501
     JobPayloadFsrsOptimize:
       type: object
       description: Payload of an `fsrs-optimize` job.
@@ -11539,6 +11565,93 @@ components:
           type: integer
           minimum: 0
           description: Items in the snapshot.
+    JobResultGrammarDetect:
+      description: Result of a `grammar-detect` job (C-13). Per-media jobs (payload has `media_id`) report
+        `JobResultGrammarDetectMedia`; fan-out jobs (payload `{}`) report `JobResultGrammarDetectFanOut`.
+      oneOf:
+      - $ref: '#/components/schemas/JobResultGrammarDetectMedia'
+      - $ref: '#/components/schemas/JobResultGrammarDetectFanOut'
+    JobResultGrammarDetectMedia:
+      type: object
+      description: |
+        Result of a per-media `grammar-detect` job. Three shapes:
+        - published: `changed: true`, `content_version` = the version this job published,
+          `spans`, `invalid_rules`;
+        - nothing to do: `changed: false`, `content_version` = the media's current version
+          (detected spans already equal the computed ones), `spans`, `invalid_rules`;
+        - skipped: `changed: false`, `skipped` set, no `content_version`, `spans` or
+          `invalid_rules`.
+        A retry whose earlier attempt already published (MEDIA_PIPELINE.md 3.2 step 1) reports
+        `changed: true` and `content_version` only.
+      additionalProperties: false
+      required:
+      - media_id
+      - changed
+      properties:
+        media_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The media.
+        changed:
+          type: boolean
+          description: True iff this job published a new content version.
+        content_version:
+          type: integer
+          minimum: 1
+          description: Published version (`changed`), else the media's current version. Absent iff `skipped`.
+          examples:
+          - 4
+        spans:
+          type: integer
+          minimum: 0
+          description: Detected spans the media carries after this job (manual spans not counted).
+          examples:
+          - 37
+        invalid_rules:
+          type: integer
+          minimum: 0
+          description: Non-draft rules of live grammar points that failed to compile and were ignored (each is
+            logged with its grammar point id and rule index).
+          examples:
+          - 0
+        skipped:
+          type: string
+          enum:
+          - unknown_media
+          - media_deleted
+          - not_applicable
+          - not_parsed
+          description: Why nothing was detected - no such media; media tombstoned; `source = jpdb` (no
+            sentences); `content_version = 0` or no segments. Present iff skipped.
+    JobResultGrammarDetectFanOut:
+      type: object
+      description: Result of a fan-out `grammar-detect` job.
+      additionalProperties: false
+      required:
+      - media
+      - enqueued
+      - rules_digest
+      properties:
+        media:
+          type: integer
+          minimum: 0
+          description: Eligible media (live, `content_version > 0`, `source` not `jpdb`).
+          examples:
+          - 120
+        enqueued:
+          type: integer
+          minimum: 0
+          description: Per-media jobs actually inserted (`<= media`); the rest collapsed into an identical
+            queued or running job (same dedupe key).
+          examples:
+          - 118
+        rules_digest:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Opaque worker-defined digest of the live points' detection rules read by this job; compare
+            for equality only. Part of the per-media dedupe keys.
+          examples:
+          - 3f1c9a0e7b42d8e5
     TtsRequest:
       type: object
       description: Text to synthesize. Also the payload of `tts` jobs.
