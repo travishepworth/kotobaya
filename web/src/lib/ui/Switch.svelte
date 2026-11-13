@@ -31,8 +31,9 @@
 	.row {
 		position: relative;
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--kb-space-4);
+		gap: var(--kb-space-2) var(--kb-space-4);
 		min-height: var(--kb-size-touch-min);
 		cursor: pointer;
 	}
@@ -43,13 +44,17 @@
 	.text {
 		display: flex;
 		flex-direction: column;
-		flex: 1;
+		flex: 1 1 10rem;
 		min-width: 0;
 	}
 	.label {
 		font: var(--kb-type-body);
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 	.desc {
+		min-width: 0;
+		overflow-wrap: anywhere;
 		font: var(--kb-type-body-sm);
 		color: var(--kb-color-text-muted);
 	}
