@@ -50,4 +50,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.ankiconnect.ankiConnectFeature,
     kotobaya.android.sync.syncFeature,
     kotobaya.android.sync.ui.syncUiFeature,
+    kotobaya.android.struggle.struggleFeature,
 )

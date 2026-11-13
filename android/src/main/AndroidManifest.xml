@@ -45,6 +45,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kotobaya" android:host="add" />
                 <data android:scheme="kotobaya" android:host="word" />
+                <data android:scheme="kotobaya" android:host="struggle" />
             </intent-filter>
         </activity>
         <receiver
@@ -79,6 +80,16 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.hotword.HotWordWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_hotword_info" />
         </receiver>
         <service
             android:name=".widget.ReviewTileService"

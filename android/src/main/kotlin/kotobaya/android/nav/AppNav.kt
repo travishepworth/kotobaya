@@ -7,6 +7,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -17,6 +19,8 @@ import kotobaya.android.R
 import kotobaya.android.di.FeatureRegistry
 import kotobaya.android.i18n.T
 import kotobaya.android.ui.HomeScreen
+import kotobaya.android.struggle.STRUGGLE_ROUTE
+import kotobaya.android.struggle.StruggleDeepLink
 import kotobaya.android.ui.PlaceholderScreen
 
 /**
@@ -62,6 +66,10 @@ fun AppNav(registry: FeatureRegistry) {
     val nav = rememberNavController()
     val routes = allRoutes(registry)
     val current by nav.currentBackStackEntryAsState()
+    val struggleLink by StruggleDeepLink.pending.collectAsState()
+    LaunchedEffect(struggleLink) {
+        if (struggleLink != null) nav.navigate(STRUGGLE_ROUTE) { launchSingleTop = true }
+    }
     Scaffold(
         bottomBar = {
             NavigationBar {
