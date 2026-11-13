@@ -652,3 +652,4 @@
 2026-11-13T04:30:09Z F-17 MERGE CHECK_GREEN server; 1 attempt (low)
 2026-11-13T04:30:19Z T403c+T408a DISPATCH writer (resume crashed wt, Gradle slot)
 2026-11-13T04:34:08Z T403c+T408a MERGE CHECK_GREEN server; 1 attempt (low+med)
+2026-11-13T04:34:27Z T406+T408b DISPATCH writer (web batch); T410 DISPATCH writer (android, Gradle slot)

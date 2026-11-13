@@ -18,7 +18,9 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T404b | writer-senior (worker) | 1 | t/T404b-media-pipeline | run 6 |
-Next: T408b (after T408a), T406 (web, after T403c+T408a), T410 (android), W-5 (server, last)
+| T406+T408b | writer (web) | 1 | t/T406+T408b-web-reader-sentences | run 6 |
+| T410 | writer (android, Gradle slot) | 1 | t/T410-android-coverage-sentences | run 6 |
+Next: W-5 (server, Gradle; after T404b+T410). W-5 note: F-17 dict/EntryExamples and T408a SentencesModule both implement listEntryExamples — register only one.
 
 ## Parked
 (none)
