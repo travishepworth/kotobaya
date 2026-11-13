@@ -70,7 +70,11 @@ wait_no_pods() { # selector, what
 # 1. Suspend the backup jobs (a backup of a half-restored database must never become "verified").
 #    Remember which we suspended (annotation) so a re-run after a failure still resumes them.
 CRONS="$REL-backup $REL-backup-verify"
-for c in $CRONS; do
+# Other CronJobs that write to the database (T609): the optimizer enqueue job, when the chart renders it. Suspended
+# and resumed the same way; the watchdog only watches $CRONS.
+OTHER_CRONS=""
+if k get cronjob "$REL-optimize" >/dev/null 2>&1; then OTHER_CRONS="$REL-optimize"; fi
+for c in $CRONS $OTHER_CRONS; do
   if [ "$(k get cronjob "$c" -o jsonpath='{.spec.suspend}')" != true ]; then
     k annotate cronjob "$c" kotobaya/suspended-by-restore="$(date -u +%s)" --overwrite >/dev/null
     k patch cronjob "$c" -p '{"spec":{"suspend":true}}' >/dev/null
@@ -80,7 +84,7 @@ for c in $CRONS; do
   fi
 done
 echo "backup CronJobs suspended; waiting for running backup jobs to finish"
-wait_no_pods "app.kubernetes.io/component in (backup,backup-verify)" "backup"
+wait_no_pods "app.kubernetes.io/component in (backup,backup-verify,optimize)" "backup"
 
 # Replica counts are kept in an annotation so a re-run after a failed restore (workloads at 0) restores them.
 replicas() { # deployment
@@ -121,7 +125,7 @@ k annotate deploy "$REL-api" "$REL-worker" kotobaya/replicas-before-restore- >/d
 # between the two renames, or a restore that must be undone, can be recovered).
 run_restore_job cleanup || echo "WARNING: could not drop <db>_pre_restore_* databases; drop them by hand (README)" >&2
 # Only now (restore finalized by the server) may backups run again. The watchdog CronJob is never suspended.
-for c in $CRONS; do
+for c in $CRONS $OTHER_CRONS; do
   if [ -n "$(k get cronjob "$c" -o jsonpath='{.metadata.annotations.kotobaya/suspended-by-restore}')" ]; then
     k patch cronjob "$c" -p '{"spec":{"suspend":false}}' >/dev/null
     k annotate cronjob "$c" kotobaya/suspended-by-restore- >/dev/null

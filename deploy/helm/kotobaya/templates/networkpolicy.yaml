@@ -1,5 +1,19 @@
 {{- if .Values.networkPolicy.enabled }}
-{{- /* Ingress-only: default deny, then explicit allows. Egress is left open. */}}
+{{- /*
+  Default deny, then only the paths the app needs (T609, docs/SECURITY.md "Network paths"):
+    edge (networkPolicy.ingressFrom) -> web, api           api -> worker (parser), postgres, objectstore, ntfy
+    worker -> postgres, objectstore, voicevox, internet     backup jobs -> postgres, objectstore, backupTo
+    optimize, migrate -> postgres                          objectstore -> itself (master/volume/filer in one pod)
+  Every release pod may resolve DNS. ntfy's ingress rule lives in ntfy.yaml.
+*/}}
+{{- $np := .Values.networkPolicy }}
+{{- $dbUsers := list "api" "worker" "backup" "backup-verify" "backup-restore" "optimize" "migrate" }}
+{{- $s3Users := list "api" "worker" "backup" "backup-verify" "backup-restore" }}
+{{- $backup := list "backup" "backup-verify" "backup-restore" "backup-watchdog" }}
+{{- $external := or (not .Values.postgres.enabled) (not .Values.objectStore.enabled) }}
+{{- if and $np.egress.enabled $external (not $np.egress.externalServices) }}
+{{- fail "networkPolicy.egress.externalServices must list the external Postgres / S3 (postgres.enabled=false or objectStore.enabled=false), or set networkPolicy.egress.enabled=false" }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,7 +23,7 @@ spec:
   podSelector: {}
   policyTypes: [Ingress]
 ---
-# api and web receive traffic from the ingress controller (any namespace) and in-namespace pods.
+# web and api receive traffic from the ingress controller / gateway only (and Prometheus, if listed).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -17,11 +31,11 @@ metadata:
   labels: {{- include "kotobaya.labels" . | nindent 4 }}
 spec:
   podSelector:
-    matchExpressions:
-      - { key: app.kubernetes.io/component, operator: In, values: [api, web] }
+    {{- include "kotobaya.components" (dict "root" . "components" (list "api" "web")) | nindent 4 }}
   policyTypes: [Ingress]
   ingress:
-    - from: [{ namespaceSelector: {} }]
+    - from: {{- toYaml $np.ingressFrom | nindent 8 }}
+      ports: [{ port: {{ .Values.api.port }} }, { port: {{ .Values.web.port }} }]
 ---
 # The parse service port is reachable from the api pod only.
 apiVersion: networking.k8s.io/v1
@@ -58,6 +72,7 @@ spec:
 {{- end }}
 {{- if .Values.postgres.enabled }}
 ---
+# Postgres: only the pods that hold DATABASE_URL (not web, ntfy, voicevox).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -68,11 +83,15 @@ spec:
     matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "postgres") | nindent 6 }}
   policyTypes: [Ingress]
   ingress:
-    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }} } } }]
+    - from:
+        - podSelector:
+            {{- include "kotobaya.components" (dict "root" . "components" $dbUsers) | nindent 12 }}
       ports: [{ port: 5432 }]
 {{- end }}
 {{- if .Values.objectStore.enabled }}
 ---
+# Object store: the S3 port for the pods that hold S3 credentials; any port from itself (master, volume and filer
+# talk to each other over the pod IP). The filer/master/volume HTTP ports have no auth, so nothing else gets them.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -83,7 +102,141 @@ spec:
     matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 6 }}
   policyTypes: [Ingress]
   ingress:
-    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }} } } }]
+    - from:
+        - podSelector:
+            {{- include "kotobaya.components" (dict "root" . "components" $s3Users) | nindent 12 }}
       ports: [{ port: 8333 }]
+    - from:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 14 }}
+{{- end }}
+{{- if $np.egress.enabled }}
+---
+# Egress default deny for this release's pods; DNS (port 53, any resolver) for all of them.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-dns
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: kotobaya, app.kubernetes.io/instance: {{ .Release.Name }} }
+  policyTypes: [Egress]
+  egress:
+    - ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+---
+# Database / object store clients.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-data
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    {{- include "kotobaya.components" (dict "root" . "components" $dbUsers) | nindent 4 }}
+  policyTypes: [Egress]
+  egress:
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "postgres") | nindent 14 }}
+      ports: [{ port: 5432 }]
+    {{- end }}
+    {{- if .Values.objectStore.enabled }}
+    # optimize and migrate never use S3; the objectstore's own ingress rule refuses them anyway.
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 14 }}
+      ports: [{ port: 8333 }]
+    {{- end }}
+    {{- with $np.egress.externalServices }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+# api: the parse service, ntfy (bundled or external).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-api
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "api") | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "worker") | nindent 14 }}
+      ports: [{ port: {{ .Values.worker.parserPort }} }]
+    {{- if .Values.ntfy.enabled }}
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "ntfy") | nindent 14 }}
+      ports: [{ port: {{ .Values.ntfy.port }} }]
+    {{- else if .Values.ntfy.externalBaseUrl }}
+    # external ntfy: public internet only (an ntfy on the LAN goes in networkPolicy.egress.externalServices)
+    - to:
+        {{- range $np.egress.internet }}
+        - ipBlock: {{- toYaml . | nindent 12 }}
+        {{- end }}
+      ports: [{ port: 443 }, { port: 80 }]
+    {{- end }}
+---
+# worker: VOICEVOX and the public internet (dictionary sources, jpdb, media import by URL); never the LAN or the
+# cluster beyond the explicit peers above (SSRF containment, docs/SECURITY.md S-04).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-worker
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "worker") | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    {{- if .Values.voicevox.enabled }}
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "voicevox") | nindent 14 }}
+      ports: [{ port: {{ .Values.voicevox.port }} }]
+    {{- end }}
+    - to:
+        {{- range $np.egress.internet }}
+        - ipBlock: {{- toYaml . | nindent 12 }}
+        {{- end }}
+      ports:
+        {{- range $np.egress.internetPorts }}
+        - { port: {{ . }} }
+        {{- end }}
+{{- if .Values.objectStore.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-objectstore
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "objectstore") | nindent 14 }}
+{{- end }}
+{{- if .Values.backup.enabled }}
+---
+# Backup jobs: restic repository, NOTIFY_URL and (watchdog) the Kubernetes API, per networkPolicy.egress.backupTo.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-egress-backup
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    {{- include "kotobaya.components" (dict "root" . "components" $backup) | nindent 4 }}
+  policyTypes: [Egress]
+  egress: {{- toYaml $np.egress.backupTo | nindent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}

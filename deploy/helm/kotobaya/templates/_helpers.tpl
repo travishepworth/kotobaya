@@ -37,4 +37,12 @@ command: {{- toYaml .Values.migrate.command | nindent 2 }}
 env:
   - name: DATABASE_URL
     valueFrom: { secretKeyRef: { name: {{ .Values.secrets.appSecretName }}, key: DATABASE_URL } }
+resources: {{- toYaml .Values.migrate.resources | nindent 2 }}
+volumeMounts: [{ name: tmp, mountPath: /tmp }]
+{{- end -}}
+{{- /* Pods of this release with one of the given components (NetworkPolicy peer / podSelector body). */ -}}
+{{- define "kotobaya.components" -}}
+matchLabels: { app.kubernetes.io/name: kotobaya, app.kubernetes.io/instance: {{ .root.Release.Name }} }
+matchExpressions:
+  - { key: app.kubernetes.io/component, operator: In, values: [{{ join ", " .components }}] }
 {{- end -}}

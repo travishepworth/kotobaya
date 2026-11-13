@@ -1,4 +1,16 @@
+{{- define "kotobaya.routeHeaders" -}}
+{{- if .h -}}
+filters:
+  - type: ResponseHeaderModifier
+    responseHeaderModifier:
+      set:
+        {{- range $k := keys .h | sortAlpha }}
+        - { name: {{ $k }}, value: {{ get $.h $k | quote }} }
+        {{- end }}
+{{- end }}
+{{- end -}}
 {{- if .Values.httpRoute.enabled }}
+{{- $hdr := .Values.httpRoute.securityHeaders | default dict }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -20,17 +32,26 @@ spec:
     # stream text/event-stream unbuffered. Equivalent of the nginx Ingress no-buffering/read-timeout annotations.
     - matches:
         - path: { type: PathPrefix, value: /api/v1/events }
+      {{- include "kotobaya.routeHeaders" (dict "h" $hdr) | nindent 6 }}
       backendRefs:
         - { name: {{ .Release.Name }}-api, port: {{ .Values.api.port }} }
       timeouts:
         request: {{ .Values.httpRoute.sse.requestTimeout | quote }}
+    # Blobs are user-uploaded bytes served with their stored Content-Type: sandbox them (docs/SECURITY.md S-01).
+    - matches:
+        - path: { type: PathPrefix, value: /api/v1/blobs }
+      {{- include "kotobaya.routeHeaders" (dict "h" (merge (dict) (.Values.httpRoute.blobHeaders | default dict) $hdr)) | nindent 6 }}
+      backendRefs:
+        - { name: {{ .Release.Name }}-api, port: {{ .Values.api.port }} }
     - matches:
         - path: { type: PathPrefix, value: /api }
         - path: { type: Exact, value: /healthz }
+      {{- include "kotobaya.routeHeaders" (dict "h" $hdr) | nindent 6 }}
       backendRefs:
         - { name: {{ .Release.Name }}-api, port: {{ .Values.api.port }} }
     - matches:
         - path: { type: PathPrefix, value: / }
+      {{- include "kotobaya.routeHeaders" (dict "h" $hdr) | nindent 6 }}
       backendRefs:
         - { name: {{ .Release.Name }}-web, port: {{ .Values.web.port }} }
 {{- end }}

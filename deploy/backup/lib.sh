@@ -125,13 +125,18 @@ trap 'exit 143' TERM INT
 # deadline) or never runs is noticed by the next job that does run.
 # No verified snapshot at all is not "stale" here (fresh repository); verify.sh rejects that itself.
 check_fresh() {
-  local newest age t e
+  local newest age t e snaps
+  # An unreadable repository (unreachable, wrong password, deleted) is a failure, never "fresh" (T609).
+  if ! snaps=$(restic snapshots --tag verified --json); then
+    FAIL_DETAIL="cannot list snapshots in the restic repository (unreachable, wrong password or missing). "
+    log "$FAIL_DETAIL"; return 1
+  fi
   # Each timestamp is parsed (any UTC offset) to epoch seconds; never compare the strings.
   newest=0
   while read -r t; do
     [ -n "$t" ] || continue
     e=$(date -u -d "$t" +%s); [ "$e" -gt "$newest" ] && newest=$e
-  done < <(restic snapshots --tag verified --json | jq -r '.[].time')
+  done < <(jq -r '.[].time' <<<"$snaps")
   [ "$newest" -gt 0 ] || return 0
   age=$(( $(date -u +%s) - newest ))
   if [ "$age" -gt "${STALE_SECONDS:-187200}" ]; then

@@ -16,10 +16,14 @@ trap 'finish backup-watchdog' EXIT
 restic_need
 problems=""
 
-if [ "$(restic snapshots --tag verified --json | jq length)" = 0 ]; then
+# A failing `restic snapshots` must alert, not read as "0 snapshots" or "fresh" (T609).
+if ! snaps=$(restic snapshots --tag verified --json); then
+  problems="${problems}cannot read the restic repository (unreachable, wrong password or missing). "
+elif [ "$(jq length <<<"$snaps")" = 0 ]; then
   problems="${problems}no verified backup exists in the repository (expected after the first nightly run). "
+else
+  check_fresh || problems="$problems$FAIL_DETAIL"
 fi
-check_fresh || problems="$problems$FAIL_DETAIL"
 FAIL_DETAIL=""
 
 for c in $BACKUP_CRONJOBS; do

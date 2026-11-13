@@ -29,6 +29,7 @@ spec:
     metadata:
       labels: {{- include "kotobaya.selector" $sel | nindent 8 }}
     spec:
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
         runAsUser: 1000
@@ -43,7 +44,12 @@ spec:
           ports: [{ name: http, containerPort: {{ .Values.ntfy.port }} }]
           env:
             - { name: NTFY_LISTEN_HTTP, value: {{ printf ":%v" .Values.ntfy.port | quote }} }
-            - { name: NTFY_BASE_URL, value: {{ .Values.ntfy.baseUrl | default (printf "https://kotobaya.%s/ntfy" .Values.domain) | quote }} }
+            {{- /* ntfy refuses a base-url with a path (it does not support sub-path hosting): only a path-less baseUrl is passed. */}}
+            {{- with .Values.ntfy.baseUrl }}
+            {{- if eq (trimSuffix "/" (urlParse .).path) "" }}
+            - { name: NTFY_BASE_URL, value: {{ trimSuffix "/" . | quote }} }
+            {{- end }}
+            {{- end }}
             - { name: NTFY_BEHIND_PROXY, value: "true" }
             - { name: NTFY_CACHE_FILE, value: /var/lib/ntfy/cache.db }
             - { name: NTFY_AUTH_FILE, value: /var/lib/ntfy/user.db }
@@ -64,7 +70,9 @@ spec:
           resources: {{- toYaml .Values.ntfy.resources | nindent 12 }}
           volumeMounts:
             - { name: data, mountPath: /var/lib/ntfy }
+            - { name: tmp, mountPath: /tmp }
       volumes:
+        - { name: tmp, emptyDir: {} }
         - name: data
           persistentVolumeClaim: { claimName: {{ .Release.Name }}-ntfy }
 ---
@@ -99,8 +107,12 @@ spec:
   podSelector:
     matchLabels: {{- include "kotobaya.selector" $sel | nindent 6 }}
   policyTypes: [Ingress]
+  # the edge (phones subscribe through the ingress) and the api (publishes events)
   ingress:
-    - from: [{ namespaceSelector: {} }]
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+        - podSelector:
+            {{- include "kotobaya.components" (dict "root" . "components" (list "api")) | nindent 12 }}
       ports: [{ port: {{ .Values.ntfy.port }} }]
 {{- end }}
 {{- if and .Values.ingress.enabled .Values.ntfy.ingress.enabled }}

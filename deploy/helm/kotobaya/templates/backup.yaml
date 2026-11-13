@@ -24,6 +24,8 @@ jobTemplate:
         terminationGracePeriodSeconds: 60
         {{- if .serviceAccount }}
         serviceAccountName: {{ .serviceAccount }}
+        {{- else }}
+        automountServiceAccountToken: false
         {{- end }}
         securityContext:
           {{- toYaml $root.Values.podSecurityContext | nindent 10 }}

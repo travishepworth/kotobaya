@@ -45,6 +45,8 @@ STUB_TIME="$(date -u -d '-3 hours' +%FT%T.123456789Z)"
 if STALE_SECONDS=7200 check_fresh 2>/dev/null; then fail "stale snapshot not flagged"; fi
 restic() { echo "[]"; }
 check_fresh 2>/dev/null || fail "empty repository must not be stale"
+restic() { echo "Fatal: repository does not exist" >&2; return 1; }
+if check_fresh 2>/dev/null; then fail "an unreadable repository must fail check_fresh"; fi
 unset -f restic
 
 # --- durable_seq.sql / restore guards are exercised by restore-drill.sh; assert their shape here
@@ -113,6 +115,24 @@ FAKE_LIVE="" expect no-tags 1 "no epoch:/seq: tags" --
 grep -q 'restic tag --add "L:' "$here/backup.sh" || fail "backup.sh must record L as a snapshot tag"
 grep -q 'run_restore_job preflight' "$here/restore-k8s.sh" || fail "restore-k8s.sh must preflight before stopping anything"
 grep -q '"name":"RESTORE_ACCEPT_DATA_LOSS"' "$here/restore-k8s.sh" || fail "restore-k8s.sh must pass RESTORE_ACCEPT_DATA_LOSS"
+
+# --- watchdog (T609): an unreadable repository alerts; a fresh one with active CronJobs passes ------------
+wb="$tmp/wdbin"; mkdir -p "$wb"
+cat >"$wb/restic" <<'EOS'
+#!/usr/bin/env bash
+# fake restic for the watchdog: fails when FAKE_RESTIC_FAIL is set, else one snapshot taken now
+[ -n "${FAKE_RESTIC_FAIL:-}" ] && { echo "Fatal: repository does not exist" >&2; exit 1; }
+echo "[{\"time\":\"$(date -u +%FT%TZ)\"}]"
+EOS
+cat >"$wb/kubectl" <<'EOS'
+#!/usr/bin/env bash
+echo '{"spec":{"suspend":false},"metadata":{}}'
+EOS
+chmod +x "$wb"/*
+wd() { PATH="$wb:$PATH" RESTIC_REPOSITORY=x RESTIC_PASSWORD=x BACKUP_CRONJOBS="a b" NOTIFY_URL="" bash "$here/watchdog.sh" 2>&1; }
+out=$(FAKE_RESTIC_FAIL="" wd) || fail "watchdog must pass with a fresh repository: $out"
+if out=$(FAKE_RESTIC_FAIL=1 wd); then fail "watchdog must fail when the repository is unreadable: $out"; fi
+case $out in *"cannot read the restic repository"*) ;; *) fail "watchdog must say the repository is unreadable: $out";; esac
 
 # --- notify: failure posts, and never fails the caller --------------------------------------------
 NOTIFY_URL="" notify t m 2>/dev/null

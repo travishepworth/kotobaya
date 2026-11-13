@@ -10,11 +10,17 @@ metadata:
 spec:
   backoffLimit: 1
   template:
+    metadata:
+      labels:
+        {{- include "kotobaya.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
         runAsUser: 65534
       containers:
         - {{- include "kotobaya.migrateContainer" . | nindent 10 }}
+      volumes: [{ name: tmp, emptyDir: {} }]
 {{- end }}

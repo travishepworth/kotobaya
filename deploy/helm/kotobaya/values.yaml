@@ -13,11 +13,14 @@ secrets:
   # keys: S3_ACCESS_KEY, S3_SECRET_KEY, s3.json (only read when objectStore.enabled)
   objectStoreSecretName: kotobaya-objectstore
 
+# Hardening for every workload (T609, docs/SECURITY.md). Each pod also sets its own runAsUser and
+# automountServiceAccountToken: false (only the backup watchdog gets a ServiceAccount token).
 podSecurityContext:
   runAsNonRoot: true
   seccompProfile: { type: RuntimeDefault }
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true   # writable paths are emptyDirs/PVCs; voicevox is the one exception (see voicevox.*)
   capabilities: { drop: [ALL] }
 
 # Single replica everywhere (personal deployment), so no PodDisruptionBudgets are rendered.
@@ -110,7 +113,13 @@ migrate:
   # hook: Helm Job `pre-install,pre-upgrade`; use with an external, already reachable Postgres.
   mode: initContainer
   command: [/opt/server/bin/server, migrate]
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
 
+# VPN ONLY (SPEC "Networking and TLS"): use an ingress class / Gateway whose load balancer listens only on the
+# VPN-facing interface or an internal LB, and a DNS name that resolves only inside the VPN. Nothing here is meant
+# to be reachable from the public internet; the chart cannot enforce that, the ingress controller's Service does.
 ingress:
   enabled: true
   className: ""
@@ -132,15 +141,52 @@ ingress:
 # parentRefs: list of { name, namespace, sectionName }. hostnames empty = kotobaya.<domain>.
 # Routes the same paths as the Ingress: /api, /healthz -> api; / -> web; /api/v1/events (SSE) gets no
 # request timeout (the equivalent of the nginx buffering/read-timeout annotations).
+# Same VPN-only rule as the Ingress: parentRefs must name a Gateway listening only on the VPN side.
 httpRoute:
   enabled: false
   parentRefs: []
   hostnames: []
   sse:
     requestTimeout: 0s
+  # Response headers set by the gateway (ResponseHeaderModifier). Every route: nosniff, no cross-origin framing, no referrer.
+  # /api/v1/blobs additionally gets a CSP sandbox, so an uploaded HTML/SVG blob served from this origin can never
+  # run script with the session cookie (docs/SECURITY.md S-01). Empty map = no filter on that rule.
+  securityHeaders:
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: SAMEORIGIN
+    Referrer-Policy: no-referrer
+  blobHeaders:
+    Content-Security-Policy: "sandbox; default-src 'none'"
 
+# Default deny for ingress (whole namespace) and egress (this release's pods), then only the paths the app needs
+# (docs/SECURITY.md "Network paths"). Pod-to-Service traffic is matched on the destination pod after DNAT.
 networkPolicy:
   enabled: true
+  # Who may reach the edge workloads (web, api, ntfy): the ingress controller / Gateway pods (and Prometheus for the
+  # api's /metrics). Default any namespace; narrow it to the controller's namespace, e.g.
+  #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-gateway } }
+  ingressFrom:
+    - namespaceSelector: {}
+  egress:
+    enabled: true
+    # Extra egress rules (NetworkPolicyEgressRule: {to, ports}) for every pod that talks to the database or the object
+    # store (api, worker, backup jobs, optimize, migrate). REQUIRED when postgres.enabled=false or
+    # objectStore.enabled=false: list where the external Postgres / S3 lives, e.g.
+    #   - to: [{ ipBlock: { cidr: 10.0.3.10/32 } }]
+    #     ports: [{ port: 5432 }]
+    externalServices: []
+    # Public internet for the worker (dictionary downloads, jpdb, media import by URL) and, with ntfy.externalBaseUrl,
+    # the api. Private, CGNAT, link-local (cloud metadata) and loopback ranges are excluded so a fetch of a
+    # user-supplied URL cannot reach the cluster or the LAN (docs/SECURITY.md S-04). Add IPv6 here on dual-stack.
+    internet:
+      - cidr: 0.0.0.0/0
+        except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 127.0.0.0/8]
+    internetPorts: [80, 443]
+    # Backup jobs (backup, verify, restore, watchdog): the restic repository (often a NAS on the LAN), NOTIFY_URL and,
+    # for the watchdog, the Kubernetes API server (k3s: node IP port 6443). Default: anywhere, any port. Narrow it to
+    # the repository, the ntfy host and the API server if you know them.
+    backupTo:
+      - to: [{ ipBlock: { cidr: 0.0.0.0/0 } }]
 
 # ntfy / UnifiedPush (T309). Off by default. With enabled=true the chart runs ntfy (auth required, default access
 # deny-all) and the api posts server events to each device's push_topic (NTFY_BASE_URL, NTFY_POST_BASE_URL, NTFY_TOKEN).
@@ -149,10 +195,12 @@ networkPolicy:
 # write the devices' topics, the phone's user to read its own). Topics outside the public base URL are never posted to.
 ntfy:
   enabled: false
-  image: binwiederhall/ntfy:v2.14.0
+  image: binwiederhier/ntfy:v2.14.0
   port: 8080
   secretName: kotobaya-ntfy
-  # Public base URL ntfy advertises; empty = https://kotobaya.<domain>/ntfy
+  # Public base URL of ntfy. Empty = https://kotobaya.<domain>/ntfy (the prefix of device push topics the api posts
+  # to). ntfy itself refuses a base-url with a path, so it gets NTFY_BASE_URL only when this is set and has no path
+  # (e.g. a dedicated host https://ntfy.<domain>); docs/SECURITY.md S-09.
   baseUrl: ""
   # Forward to an external ntfy (ntfy.enabled=false): its public base URL, the prefix of device push topics.
   externalBaseUrl: ""
@@ -170,6 +218,9 @@ ntfy:
 # VOICEVOX_URL, and a NetworkPolicy lets only the worker reach it. Pinned CPU tag; check the licence of the voices you use.
 voicevox:
   enabled: false
+  # The engine writes caches/settings under its home directory and has no documented read-only mode, so its root
+  # filesystem stays writable (no egress, ingress from the worker only). Try true once verified (docs/SECURITY.md S-10).
+  readOnlyRootFilesystem: false
   image: voicevox/voicevox_engine:cpu-0.21.1
   port: 50021
   resources:
