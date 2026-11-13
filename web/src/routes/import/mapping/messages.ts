@@ -23,7 +23,10 @@ const en = {
 	'map.status.succeeded': 'succeeded',
 	'map.status.failed': 'failed',
 	'map.status.cancelled': 'cancelled',
-	'map.status.other': 'other'
+	'map.status.other': 'other',
+	'map.candidates': 'Dictionary matches for {word}',
+	'map.occurrences': '{n} times',
+	'map.emptyBody': 'Every jpdb word maps to a dictionary entry.'
 } as const;
 
 export type MapMessageKey = keyof typeof en;

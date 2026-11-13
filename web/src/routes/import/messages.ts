@@ -24,7 +24,24 @@ const en = {
 	'imp.col.reviews': 'Reviews',
 	'imp.col.vid': 'jpdb id',
 	'imp.col.character': 'Character',
-	'imp.col.kind': 'Card kind'
+	'imp.col.kind': 'Card kind',
+	'imp.steps': 'Import steps',
+	'imp.step.upload': 'Upload',
+	'imp.step.import': 'Import',
+	'imp.step.review': 'Review',
+	'imp.step.done': 'Done',
+	'imp.drop': 'Choose your jpdb export',
+	'imp.dropHint': 'The JSON file from jpdb › Settings › Export reviews.',
+	'imp.chosen': '{name} · {size}',
+	'imp.change': 'Choose another file',
+	'imp.options': 'What to import',
+	'imp.leave': 'You can leave this page; the import keeps running.',
+	'imp.vocab': 'Vocabulary',
+	'imp.kanji': 'Kanji',
+	'imp.reviewsGroup': 'Reviews',
+	'imp.other': 'Other',
+	'imp.nothingDropped': 'Everything in the file was accounted for: nothing was dropped silently.',
+	'imp.title.page': 'Import'
 } as const;
 
 export type ImportMessageKey = keyof typeof en;
