@@ -15,13 +15,18 @@ Updated: 2026-11-13 (orchestrator run 3)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-11 | architect (opus) | 1 | t/C-11-media-pipeline | run 3 |
-| T403a | writer-senior (opus) | 1 | t/T403a-parser-segmentation | run 3 |
-| T404c | writer-senior (opus) | 1 | t/T404c-coverage-engine | run 3 |
-| T402b+T409 | writer (sonnet) | 1 | t/T402b+T409-extract-audio | run 3 |
+(none — all stopped for disk)
 
-## Queued (ready; waiting for a slot)
-- none (next unlocks: C-11 → T404a, T407, T411b, T411c, C-12)
+## Parked (work done; BLOCKED only by full disk — re-run check, then review/merge)
+| Ticket | Branch | State | Next |
+|---|---|---|---|
+| T402b+T409 | t/T402b+T409-extract-audio | DONE, path-clean | make check worker → merge (low) |
+| C-11 | t/C-11-media-pipeline (35a5c2e) | contracts done; db/api checks + clients regen passed; Gradle SQLDelight + drift not run | make check contracts → reviewer + architect (opus) → merge |
+| T403a | t/T403a-parser-segmentation | parse tests 57 pass; agreement full 0.9785 / core 0.9762 | make check worker → reviewer (high) → merge |
+| T404c | t/T404c-coverage-engine (832dc8e) | coverage tests 11/11 | rebase + make check server → merge (med) |
+
+## Queued (ready once C-11 merges)
+- F-8 (new, sonnet, low; write plan/tickets/F-8.md): server/build.gradle.kts copies only V1__init.sql — include V2+ migrations (C-11 adds V2__jpdb_vocab.sql); deps C-11. Then T404a, T407, T411b, T411c (needs zstd-jni 1.5.6-4 on server), C-12.
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |

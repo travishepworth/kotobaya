@@ -488,7 +488,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 
 ### Phase 4 splits and additions (2026-11-13, planner)
 +C-11/C-12(contracts)/F-7(fixture); T401→T401a(client)/T401b(job); T402→T402a(subs/text)/T402b(epub/mokuro/html); T403→T403a(segmentation)/T403b(matching+service)/T403c(server API); T404→T404a(publish kit)/T404b(pipeline)/T404c(server coverage); T405→T405a(library)/T405b(dashboards); T408→T408a(server)/T408b(web); +T411a(blobs)/T411b(media API)/T411c(publish runner); +W-5(wiring). Ticket files plan/tickets/ hold deps/paths. Parents T401–T405, T408 → SPLIT.
-- C-11 RUNNING · F-7 RUNNING · T401a RUNNING · T402a RUNNING · T404c RUNNING · T411a RUNNING · rest TODO (C-12, T401b, T402b, T403a, T403b, T403c, T404a, T404b, T405a, T405b, T406, T407, T408a, T408b, T409, T410, T411b, T411c, W-5)
+- F-7 MERGED · T401a MERGED · T402a MERGED · T405a MERGED · T411a MERGED · C-11/T403a/T404c/T402b/T409 BLOCKED (disk full; work done, parked) · +F-8 TODO (server Flyway include V2+, deps C-11) · rest TODO (C-12, T401b, T402b, T403a, T403b, T403c, T404a, T404b, T405a, T405b, T406, T407, T408a, T408b, T409, T410, T411b, T411c, W-5)
 
 → `make test`, then **GATE-P4**: human compares coverage on two shows against jpdb.
 
