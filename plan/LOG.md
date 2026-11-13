@@ -862,3 +862,6 @@
 2026-11-13T13:55:45Z UI-DS MERGE 3007499 CHECK_GREEN web+core+android (med, no review)
 2026-11-13T13:55:45Z B2 GATE_OPEN UI-WEB/UI-APP HUMAN-GATED; HUMAN_CHECKS top READY TO READ
 2026-11-13T13:55:45Z RUN17 END 8 merges; UI-FOUND-APP in flight (t/UI-FOUND-APP-viewmodels-harness)
+2026-11-13T13:57:09Z RUN18 START resume; UI-FOUND-APP writer (run 17) still alive, not touched
+2026-11-13T13:57:09Z SYNC-T1 DISPATCH writer-senior (opus, med)
+2026-11-13T13:57:09Z C-20 DISPATCH architect (opus, low; wording only)

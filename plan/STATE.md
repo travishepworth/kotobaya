@@ -17,10 +17,12 @@ Updated: RUN17 END
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 (in flight at end) |
+| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 (writer still alive in run 18) |
+| SYNC-T1 | writer-senior | 1 | t/SYNC-T1-chunked-pull-tests | RUN18 |
+| C-20 | architect | 1 | t/C-20-sync-subpage-wording | RUN18 |
 
 ## Queued
-UI-DS-APP (after UI-FOUND-APP) · SYNC-T1 · C-20
+UI-DS-APP (after UI-FOUND-APP)
 
 ## Ready for review / In review
 (none)

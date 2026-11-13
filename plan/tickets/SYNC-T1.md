@@ -3,7 +3,7 @@
 - Phase: P7 · Model: opus (writer-senior) · Risk: med
 - Deps: BUG-8
 - Branch: t/SYNC-T1-chunked-pull-tests
-- Owned paths: core sync client (SyncEngine, DeviceOpApplier) + core sync tests
+- Owned paths: core/src/commonMain/kotlin/kotobaya/sync/client/**, core/src/commonTest/kotlin/kotobaya/sync/client/**
 - Module(s) for CI: core (flock /tmp/kotobaya-gradle.lock)
 
 ## Read
