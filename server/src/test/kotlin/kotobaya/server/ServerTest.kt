@@ -34,7 +34,9 @@ class ServerTest {
         assertEquals(200, client.get("/healthz").status.value)
         startup.runUntilDone()
         assertEquals(200, client.get("/readyz").status.value)
-        assertEquals(200, client.get("/api/v1/health").status.value)
+        val health = json.readTree(client.get("/api/v1/health").bodyAsText())
+        // F-16: the build-provided version (Gradle passes it as a system property), never a literal.
+        assertEquals(System.getProperty("kotobaya.expectedVersion"), health["version"].asText())
         val meta = json.readTree(client.get("/api/v1/meta").bodyAsText())
         assertEquals(0, meta["high_water_seq"].asInt())
         assertEquals(36, meta["log_epoch"].asText().length)

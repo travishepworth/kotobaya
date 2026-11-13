@@ -23,7 +23,13 @@ import net.logstash.logback.argument.StructuredArguments.kv
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
-const val SERVER_VERSION = "0.1.0"
+/** Build version from the generated `kotobaya-version.properties` (F-16); "dev" when absent. */
+val SERVER_VERSION: String = runCatching {
+    val props = java.util.Properties()
+    object {}.javaClass.getResourceAsStream("/kotobaya-version.properties")?.use { props.load(it) }
+    props.getProperty("version")?.takeIf { it.isNotBlank() }
+}.getOrNull() ?: "dev"
+
 const val CORE_VERSION = "0.1.0"
 
 /** Everything the application needs; tests and `main` build one. */

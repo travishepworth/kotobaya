@@ -44,6 +44,21 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
 }
 
+// F-16: build version (KOTOBAYA_VERSION env or -PkotobayaVersion; "dev" when absent) baked into a generated resource.
+val buildVersion: String = (providers.gradleProperty("kotobayaVersion").orNull ?: System.getenv("KOTOBAYA_VERSION"))
+    ?.takeIf { it.isNotBlank() } ?: "dev"
+val generateVersionResource by tasks.registering {
+    val out = layout.buildDirectory.dir("generated/version")
+    inputs.property("version", buildVersion)
+    outputs.dir(out)
+    doLast {
+        val f = out.get().asFile.resolve("kotobaya-version.properties")
+        f.parentFile.mkdirs()
+        f.writeText("version=$buildVersion\n")
+    }
+}
+sourceSets.main { resources.srcDir(generateVersionResource) }
+
 // The API and DB contracts are served from the frozen files, never copied into the source tree.
 tasks.processResources {
     from(rootProject.file("contracts/api")) {
@@ -61,4 +76,5 @@ tasks.test {
     maxHeapSize = "2g"
     // pgjdbc sends the JVM zone to Postgres; legacy ids such as "Japan" are rejected by the postgres image.
     systemProperty("user.timezone", "UTC")
+    systemProperty("kotobaya.expectedVersion", buildVersion)
 }

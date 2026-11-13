@@ -19,6 +19,7 @@ import kotobaya.review.ReviewModule
 import kotobaya.decks.DecksModule
 import kotobaya.imports.ImportsModule
 import kotobaya.jobs.JobsModule
+import kotobaya.media.api.MediaApiModule
 import kotobaya.notes.NotesModule
 import kotobaya.settings.SettingsModule
 import kotobaya.sync.SyncEvents
@@ -97,6 +98,7 @@ fun composeApp(
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
         NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
+        MediaApiModule(db, sync.opApply).handlers +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())
     val deps = AppDeps(
         db = db,
