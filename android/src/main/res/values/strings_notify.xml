@@ -19,4 +19,5 @@
     <string name="notify_permission_denied_note">Without permission the app works the same, but shows no due count or reminders.</string>
     <string name="notify_nudges_enable">Nudges</string>
     <string name="notify_evening_enable">Evening reminder at %1$d:00 if I have not reviewed</string>
+    <string name="notify_nudges_hint">A reminder when many cards are due. Off by default.</string>
 </resources>

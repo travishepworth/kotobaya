@@ -28,7 +28,7 @@
             android:name=".intake.IntakeActivity"
             android:exported="true"
             android:label="@string/intake_label"
-            android:theme="@style/Theme.Kotobaya">
+            android:theme="@style/Theme.Kotobaya.Sheet">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

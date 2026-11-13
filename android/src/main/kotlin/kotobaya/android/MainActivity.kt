@@ -5,9 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import kotobaya.android.di.FeatureRegistry
-import kotobaya.android.nav.AppNav
+import kotobaya.android.nav.AppRoot
 import kotobaya.android.struggle.StruggleDeepLink
-import kotobaya.android.ui.KotobayaTheme
 import org.koin.android.ext.android.get
 
 class MainActivity : ComponentActivity() {
@@ -15,7 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val registry: FeatureRegistry = get()
         StruggleDeepLink.handle(intent)
-        setContent { KotobayaTheme { AppNav(registry) } }
+        setContent { AppRoot(registry) }
     }
 
     override fun onNewIntent(intent: Intent) {

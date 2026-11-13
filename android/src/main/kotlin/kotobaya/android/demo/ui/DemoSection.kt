@@ -1,44 +1,47 @@
 package kotobaya.android.demo.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.demo.DemoSettingsIntents
 import kotobaya.android.demo.DemoSettingsUiState
 import kotobaya.android.i18n.T
+import kotobaya.android.settings.ui.SettingsBody
+import kotobaya.android.ui.components.KbBanner
+import kotobaya.android.ui.components.KbPanel
+import kotobaya.android.ui.components.KbSegmented
+import kotobaya.android.ui.components.KbSwitchRow
+import kotobaya.android.ui.theme.KbTheme
 
-/** Settings > Demo data (debug builds): the switch and the scenario. */
+/** Settings › Demo data (debug builds): the switch and the scenario. */
 @Composable
 fun DemoSection(state: DemoSettingsUiState, intents: DemoSettingsIntents) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    SettingsBody {
         if (!state.available) {
-            Text(T(R.string.demo_unavailable))
-            return@Column
+            KbBanner(T(R.string.demo_unavailable))
+            return@SettingsBody
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(T(R.string.demo_enable), Modifier.weight(1f))
-            Switch(checked = state.enabled, onCheckedChange = intents::setEnabled)
+        KbPanel(padding = PaddingValues(vertical = 4.dp)) {
+            KbSwitchRow(T(R.string.demo_enable), state.enabled, intents::setEnabled)
         }
-        Text(T(R.string.demo_scenario))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for ((value, label) in listOf("default" to R.string.demo_scenario_default, "due900" to R.string.demo_scenario_due900, "empty" to R.string.demo_scenario_empty)) {
-                if (state.scenario == value) {
-                    Button(onClick = {}) { Text(T(label)) }
-                } else {
-                    OutlinedButton(onClick = { intents.setScenario(value) }) { Text(T(label)) }
-                }
-            }
+        KbPanel {
+            Text(T(R.string.demo_scenario), style = KbTheme.type.titleSm, color = KbTheme.colors.text)
+            KbSegmented(
+                listOf(
+                    "default" to T(R.string.demo_scenario_default),
+                    "due900" to T(R.string.demo_scenario_due900),
+                    "empty" to T(R.string.demo_scenario_empty),
+                ),
+                selected = state.scenario,
+                onSelect = intents::setScenario,
+                modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+            )
         }
-        Text(T(R.string.demo_note))
+        KbBanner(T(R.string.demo_note))
     }
 }

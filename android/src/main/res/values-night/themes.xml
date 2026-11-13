@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kb_window_bg">#131211</color>
+    <color name="kb_window_surface">#1B1A18</color>
+    <bool name="kb_light_bars">false</bool>
+</resources>

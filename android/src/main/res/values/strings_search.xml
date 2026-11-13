@@ -4,14 +4,12 @@
     <string name="search_hint_cards">Card search, e.g. deck:Frieren is:due lapses&gt;3</string>
     <string name="search_mode_words">Dictionary</string>
     <string name="search_mode_cards">My cards</string>
-    <string name="search_go">Search</string>
     <string name="search_more">Show more</string>
     <string name="search_no_results">Nothing found.</string>
     <string name="search_from_server">Results from the server.</string>
     <string name="search_needs_connection">Needs a connection: nothing is available offline for this.</string>
     <string name="search_failed">The search failed.</string>
-    <string name="search_card_line">%1$s · %2$s</string>
-    <string name="search_card_suspended">suspended</string>
+    <string name="search_card_suspended">Suspended</string>
 
     <string name="search_error_unknown_key">Unknown search key.</string>
     <string name="search_error_bad_value">Invalid value.</string>
@@ -27,10 +25,10 @@
     <string name="status_never_forget">Never forget</string>
     <string name="status_blacklisted">Blacklisted</string>
     <string name="status_ignored">Ignored</string>
-    <string name="card_state_new">new</string>
-    <string name="card_state_learning">learning</string>
-    <string name="card_state_review">review</string>
-    <string name="card_state_relearning">relearning</string>
+    <string name="card_state_new">New</string>
+    <string name="card_state_learning">Learning</string>
+    <string name="card_state_review">Review</string>
+    <string name="card_state_relearning">Relearning</string>
 
     <string name="word_back">Back</string>
     <string name="word_loading">Loading…</string>
@@ -38,15 +36,24 @@
     <string name="word_needs_connection">Needs a connection: this entry is not on the device.</string>
     <string name="word_failed">Could not load this entry.</string>
     <string name="word_retired">No longer in the dictionary.</string>
-    <string name="word_status">Status: %1$s</string>
-    <string name="word_kanji_forms">Kanji forms: %1$s</string>
-    <string name="word_readings">Readings: %1$s</string>
-    <string name="word_kanji">Kanji: %1$s</string>
-    <string name="word_my_notes">My notes and cards</string>
     <string name="word_no_notes">You have no note for this word.</string>
-    <string name="word_card_line">%1$s (%2$s)</string>
     <string name="note_title">Note</string>
     <string name="note_unavailable">This note is not on the device yet.</string>
-    <string name="note_mnemonic">Mnemonic: %1$s</string>
-    <string name="note_tags">Tags: %1$s</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_pick_title">Pick a result</string>
+    <string name="search_pick_body">Its meanings, kanji and your cards show here.</string>
+    <string name="search_idle_words_title">Look up a word</string>
+    <string name="search_idle_words_body">Kanji, kana, romaji and English all work.</string>
+    <string name="search_idle_cards_title">Search your cards</string>
+    <string name="search_idle_cards_body">Type words, or use the query language.</string>
+    <string name="search_retry">Try again</string>
+    <string name="search_no_results_words">Check the spelling, or try kana, romaji or an English word.</string>
+    <string name="search_no_results_cards">Try fewer conditions, or check the deck name.</string>
+    <string name="word_in_your_cards">In your cards</string>
+    <string name="word_also">Also %1$s</string>
+    <string name="word_tab_senses">Senses (%1$d)</string>
+    <string name="word_tab_kanji">Kanji (%1$d)</string>
+    <string name="word_tab_cards">My cards (%1$d)</string>
+    <string name="word_kanji_search">Search words with %1$s</string>
+    <string name="note_mnemonic_label">Mnemonic</string>
 </resources>

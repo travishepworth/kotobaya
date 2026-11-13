@@ -2,7 +2,6 @@
 <resources>
     <string name="nav_struggle">Struggle</string>
     <string name="struggle_title">Struggle</string>
-    <string name="struggle_loading">Loading…</string>
     <string name="struggle_needs_connection">Needs a connection: nothing saved for offline yet.</string>
     <string name="struggle_error">Could not load this.</string>
     <string name="struggle_cached">Showing the last saved copy.</string>
@@ -56,4 +55,10 @@
     <string name="hotword_widget_description">A word you are struggling with; tap to open it.</string>
     <string name="hotword_widget_title">Word to watch</string>
     <string name="hotword_widget_none">No trouble words right now.</string>
+    <string name="struggle_leeches_body">Cards you keep forgetting</string>
+    <string name="struggle_confusables_body">Words you mix up with each other</string>
+    <string name="struggle_mnemonic_label">Your memory aid</string>
+    <string name="struggle_none_body">Nothing is giving you trouble here.</string>
+    <string name="struggle_leech">Leech</string>
+    <string name="struggle_back_to_struggle">Back to Struggle</string>
 </resources>

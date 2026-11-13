@@ -10,7 +10,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotobaya.android.intake.ui.IntakeSheet
-import kotobaya.android.ui.KotobayaTheme
+import kotobaya.android.nav.Appearance
+import kotobaya.android.ui.theme.KotobayaTheme
 
 /**
  * Entry for the share sheet (`ACTION_SEND text/plain`), the text-selection menu (`ACTION_PROCESS_TEXT`) and
@@ -26,7 +27,7 @@ class IntakeActivity : ComponentActivity() {
         model = ViewModelProvider(this, viewModelFactory { initializer { IntakeViewModel(IntakeServicesProvider.get(), target) } })[IntakeViewModel::class.java]
         setContent {
             val state by model.state.collectAsState()
-            KotobayaTheme { IntakeSheet(state, model, onClose = { finish() }) }
+            KotobayaTheme(Appearance.load(this)) { IntakeSheet(state, model, onClose = { finish() }) }
         }
     }
 

@@ -1,7 +1,8 @@
 package kotobaya.android.app
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.work.testing.WorkManagerTestInitHelper
 import kotlin.test.assertEquals
@@ -10,7 +11,9 @@ import kotobaya.android.R
 import kotobaya.android.db.DbThreadGuard
 import kotobaya.android.di.FeatureRegistry
 import kotobaya.android.di.featureEntries
+import kotobaya.android.nav.Tab
 import kotobaya.android.nav.allRoutes
+import kotobaya.android.nav.navTag
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -56,15 +59,20 @@ class NoDbOnMainThreadTest {
         val guard = GlobalContext.get().get<DbThreadGuard>()
         settle()
         val tabs = allRoutes(FeatureRegistry(featureEntries)).filter { it.topLevel }
-        for (tab in tabs) {
-            val label = rule.activity.getString(tab.labelRes)
-            rule.onAllNodesWithText(label)[0].performClick()
+        assertEquals(Tab.entries.map { it.route }, tabs.map { it.route })
+        for (tab in Tab.entries) {
+            rule.onNodeWithTag(navTag(tab)).performClick()
             settle()
+            // Review is immersive on phones (no bottom bar): leave it through its close button
+            if (tab == Tab.REVIEW) {
+                rule.onNodeWithContentDescription(rule.activity.getString(R.string.review_close)).performClick()
+                settle()
+            }
         }
-        // Home again (its chip reads the sync status) and Settings last (every feature's section)
-        rule.onAllNodesWithText(rule.activity.getString(R.string.nav_home))[0].performClick()
+        // Today again (its chip reads the sync status) and Settings last (every feature's section)
+        rule.onNodeWithTag(navTag(Tab.TODAY)).performClick()
         settle()
-        rule.onAllNodesWithText(rule.activity.getString(R.string.nav_settings))[0].performClick()
+        rule.onNodeWithTag(navTag(Tab.SETTINGS)).performClick()
         settle()
         assertEquals(emptyList(), guard.violations, guard.violations.joinToString("\n\n"))
     }

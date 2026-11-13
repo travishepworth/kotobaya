@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Kotobaya" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window colours match the design tokens (bg / surface) so nothing flashes before Compose draws. -->
+    <style name="Theme.Kotobaya" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/kb_window_bg</item>
+        <item name="android:statusBarColor">@color/kb_window_bg</item>
+        <item name="android:navigationBarColor">@color/kb_window_surface</item>
+        <item name="android:windowLightStatusBar">@bool/kb_light_bars</item>
+    </style>
+
+    <!-- The share-intake sheet rises over the source app (DESIGN §5.13). -->
+    <style name="Theme.Kotobaya.Sheet" parent="Theme.Kotobaya">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <color name="kb_window_bg">#F8F6F1</color>
+    <color name="kb_window_surface">#FFFFFF</color>
+    <bool name="kb_light_bars">true</bool>
 </resources>

@@ -19,11 +19,12 @@ class DemoScreenNames : PreviewParameterProvider<String> {
 
 /** Every screen name of [DemoScreens.all] for the default scenario. */
 val SCREEN_NAMES: List<String> = listOf(
-    "home", "home-unpaired", "review-front", "review-back", "search-words", "search-cards", "word-detail", "note-detail",
-    "decks", "deck-detail", "media", "media-detail", "struggle", "struggle-word", "struggle-leeches", "struggle-confusables",
-    "struggle-drill", "sync-flow", "sync-rejected", "settings", "settings-devices", "settings-dict", "settings-notify",
-    "settings-push", "settings-media", "settings-takoboto", "settings-ankiconnect", "settings-sync", "settings-study",
-    "settings-demo", "settings-about", "grammar-capture", "intake", "notify-permission",
+    "home", "home-unpaired", "home-loading", "review-front", "review-back", "review-loading", "review-summary", "search-idle",
+    "search-words", "search-cards", "word-detail", "note-detail", "decks", "deck-detail", "struggle", "struggle-word",
+    "struggle-leeches", "struggle-confusables", "struggle-drill", "sync-flow", "sync-rejected", "settings", "settings-appearance",
+    "settings-devices", "settings-dict", "settings-notify", "settings-push", "settings-media", "settings-takoboto",
+    "settings-ankiconnect", "settings-sync", "settings-study", "settings-demo", "settings-about", "grammar-capture", "intake",
+    "notify-permission",
 )
 
 @Composable

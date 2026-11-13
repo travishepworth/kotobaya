@@ -52,7 +52,7 @@ class ScreenshotMatrixTest(private val device: Device, private val dark: Boolean
 
         /** Screens whose empty state the `empty` scenario shows. */
         private val EMPTY_STATE_SCREENS = setOf(
-            "home", "review-front", "search-cards", "decks", "media", "struggle", "struggle-leeches", "struggle-confusables",
+            "home", "review-front", "search-cards", "decks", "struggle", "struggle-leeches", "struggle-confusables",
             "struggle-drill",
         )
 

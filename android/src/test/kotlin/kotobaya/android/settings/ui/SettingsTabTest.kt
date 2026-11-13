@@ -2,6 +2,7 @@ package kotobaya.android.settings.ui
 
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlin.test.assertTrue
@@ -44,6 +45,9 @@ class SettingsTabTest {
         rule.onNodeWithText(str(R.string.home_pair_action)).performClick()
         rule.waitForIdle()
         rule.onNodeWithText(str(R.string.pair_scan_qr)).assertExists()
+        // UI-APP: Today's Pair opens Settings on the Devices section; back shows the index with every section
+        rule.onNodeWithContentDescription(str(R.string.settings_back)).performClick()
+        rule.waitForIdle()
         val sections = FeatureRegistry(featureEntries).settingsSections
         assertTrue(sections.any { it.id == "devices" })
         for (s in sections) {

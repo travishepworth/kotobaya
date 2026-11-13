@@ -2,7 +2,6 @@
 <resources>
     <string name="decks_title">Decks</string>
     <string name="decks_empty">No decks yet. Create decks on the web app; they sync here.</string>
-    <string name="decks_loading">Loading…</string>
     <string name="decks_refresh">Refresh</string>
     <string name="decks_back">Back</string>
     <string name="decks_type_user">Your deck</string>
@@ -10,13 +9,26 @@
     <string name="decks_type_list">List deck</string>
     <string name="decks_type_smart">Smart deck</string>
     <string name="decks_disabled">Disabled</string>
-    <string name="decks_counts">Due %1$d · New %2$d · Learning %3$d · %4$d cards</string>
-    <string name="decks_detail_type">Type: %1$s</string>
-    <string name="decks_detail_query">Query: %1$s</string>
     <string name="decks_study">Study this deck</string>
     <string name="decks_words">Words</string>
     <string name="decks_words_empty">No words in this deck on this device.</string>
     <string name="decks_more">Show more</string>
     <string name="decks_smart_note">Smart decks are matched by their query on the server; counts here may be empty.</string>
-    <string name="decks_review_not_ready">Review is not available yet.</string>
+    <string name="decks_empty_title">No decks yet</string>
+    <string name="decks_filter">Filter decks</string>
+    <string name="decks_filter_none">No deck matches “%1$s”.</string>
+    <string name="decks_group_user">Your decks</string>
+    <string name="decks_group_smart">Smart decks</string>
+    <string name="decks_group_list">Lists</string>
+    <string name="decks_group_media">Media decks</string>
+    <string name="decks_due">%1$d due</string>
+    <string name="decks_new">%1$d new</string>
+    <string name="decks_total">%1$d cards</string>
+    <string name="decks_stat_due">Due</string>
+    <string name="decks_stat_new">New</string>
+    <string name="decks_stat_learning">Learning</string>
+    <string name="decks_stat_cards">Cards</string>
+    <string name="decks_query_label">Query</string>
+    <string name="decks_select_title">Choose a deck</string>
+    <string name="decks_select_body">Its counts, words and a Study button show here.</string>
 </resources>

@@ -1,23 +1,13 @@
 package kotobaya.android.media.browse
 
 import android.content.Context
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import app.cash.sqldelight.db.SqlDriver
 import java.io.File
-import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
-import kotobaya.android.grammar.captureEntry
 import kotobaya.android.media.BlobDownloader
-import kotobaya.android.media.browse.ui.MediaBrowseScreen
-import kotobaya.android.nav.NavRoute
-import kotobaya.android.nav.Routes
 import kotobaya.android.net.ApiClient
 import kotobaya.android.pairing.TokenStore
 import kotobaya.android.settings.SettingsStore
-import org.koin.compose.getKoin
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -40,16 +30,12 @@ private val browseModule = module {
     factory<MediaBrowsePort> { AppMediaBrowsePort(get(), get(), SentencePlayer(get(), get())) }
 }
 
+/**
+ * Media browsing on the phone. The Media tab is gone (DESIGN §4.2, I-5: media import and the reader are web tasks), so
+ * this entry only keeps the module (the struggle screen shares its cache types). Audio prefetch and storage live in
+ * Settings › Audio and offline.
+ */
 val mediaBrowseFeature = FeatureEntry(
     id = "media-browse",
     module = browseModule,
-    routes = listOf(NavRoute(Routes.MEDIA, R.string.nav_media, topLevel = true) { MediaBrowseRoute() }),
 )
-
-@Composable
-private fun MediaBrowseRoute() {
-    val koin = getKoin()
-    val vm: MediaBrowseViewModel = viewModel { MediaBrowseViewModel(koin.get<MediaBrowsePort>()) }
-    val state by vm.state.collectAsState()
-    MediaBrowseScreen(state, vm, captureEntry)
-}
