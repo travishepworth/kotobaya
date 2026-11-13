@@ -17,9 +17,7 @@ import java.util.Base64
 /**
  * Handlers for the dictionary operations of T106, keyed by operationId for `AppDeps.handlers`.
  *
- * `listEntryExamples` is not registered (stays the 501 stub): it needs `ref.example_sentence`
- * (Tatoeba, T102) and the media sentence tables, which no merged ticket populates yet.
- * `getDictRelease` / `refreshDictionary` live in DictRelease.kt (W-5a).
+ * `listEntryExamples` lives in EntryExamples.kt (F-17). `getDictRelease` / `refreshDictionary` live in DictRelease.kt (W-5a).
  */
 fun dictHandlers(db: Database): Map<String, OperationHandler> {
     val api = DictApi(db)
@@ -27,6 +25,7 @@ fun dictHandlers(db: Database): Map<String, OperationHandler> {
         "searchDictionary" to { api.search(this) },
         "getDictEntry" to { api.entry(this) },
         "getKanji" to { api.kanji(this) },
+        "listEntryExamples" to { EntryExamplesApi(db).list(this) },
         "getDictRelease" to { DictReleaseApi.get(db, this) },
         "refreshDictionary" to { DictReleaseApi.refresh(db, this) },
     )
