@@ -650,3 +650,4 @@
 2026-11-13T04:25:25Z F-17 DISPATCH writer (gradle slot); F-19 DISPATCH writer-light
 2026-11-13T04:25:52Z F-19 MERGE CHECK_GREEN deploy; 1 attempt (low)
 2026-11-13T04:30:09Z F-17 MERGE CHECK_GREEN server; 1 attempt (low)
+2026-11-13T04:30:19Z T403c+T408a DISPATCH writer (resume crashed wt, Gradle slot)

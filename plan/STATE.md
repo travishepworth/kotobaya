@@ -18,7 +18,8 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T404b | writer-senior (worker) | 1 | t/T404b-media-pipeline | run 6 |
-Queued for Gradle slot: T403c+T408a (crashed wt .claude/worktrees/agent-aa2a58c8d4cb2a04d, 4 uncommitted server files; resume there)
+| T403c+T408a | writer (resumed, Gradle slot) | 1 | t/T403c+T408a-parse-sentences-api (wt agent-aa2a58c8d4cb2a04d) | run 6 |
+Next: T408b (after T408a), T406 (web, after T403c+T408a), T410 (android), W-5 (server, last)
 
 ## Parked
 (none)
