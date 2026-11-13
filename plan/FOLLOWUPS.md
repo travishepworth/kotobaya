@@ -373,3 +373,4 @@
 - AND-SEARCH (run 15): word/{seq} not a nav route (NavRoute.content has no args; detail is in-screen state); is:hot + live smart-deck terms not compiled on device; no 'Add to my words'; API card fallback first 100 only.
 - AND-SETTINGS (run 15): QR scanner launch not exercised in tests (Robolectric renders Devices/Scan QR only) -> HUMAN_CHECKS device check; no licences screen for About link.
 - HOTFIX-0.1.7 (run 17): preview effect-loop regression vitest (mount CardPreview + NoteEditor with dict-backed note, bounded effect runs) NOT added: adding devDependency jsdom was denied by the permission classifier. Human approved jsdom 2026-11-13 -> TEST-1.
+- BUG-9 (run 17): no constrained -Xmx256m test run (server/build.gradle.kts maxHeapSize 2g outside paths); bound shown by chunked design + 335 MB peak in 2 GB test JVM. known-words?interval=day slowest (607 ms).

@@ -695,7 +695,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
 
 ### BUG-9 — Stats OOM/slow: one bounded streaming pass for retention+calibration (I-1 real fix)
-- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: TODO
+- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: MERGED ac0765f
 - paths: server stats/, server/Dockerfile heap default (ticket: plan/tickets/BUG-9.md)
 
 ### BUG-10 — /words/hot, /kanji/hot, /kanji/{literal}/words slow (I-2)
