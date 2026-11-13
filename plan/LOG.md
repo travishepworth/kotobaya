@@ -738,3 +738,5 @@
 2026-11-13T07:50:30Z T608 DISPATCH writer (server, med); T603 REVIEW dispatched
 2026-11-13T07:51:37Z T603 REVIEW APPROVE (8 minors -> FOLLOWUPS); full server check pending after T601 merge
 2026-11-13T07:52:21Z T601 MERGE CHECK_GREEN worker+server (deploy per writer); wiring-audit test edits outside paths accepted
+2026-11-13T07:52:35Z T606 DISPATCH writer (worker+server, med)
+2026-11-13T07:55:51Z T603 MERGE CHECK_GREEN server (full, post-rebase on T601); review APPROVE
