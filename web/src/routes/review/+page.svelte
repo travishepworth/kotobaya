@@ -450,7 +450,8 @@
 		overflow-y: auto;
 		overscroll-behavior: contain;
 		/* Top-anchored at the optical centre: the front sits where it was when the answer appears below it. */
-		padding: clamp(var(--kb-space-8), 12dvh, var(--kb-space-24)) clamp(var(--kb-space-4), 5vw, var(--kb-space-12))
+		/* Viewport-relative (not rem) so large text does not push the answer below the fold. */
+		padding: clamp(24px, 12dvh, 112px) clamp(var(--kb-space-4), 5vw, var(--kb-space-12))
 			var(--kb-space-10);
 	}
 	.skeleton {
@@ -578,8 +579,9 @@
 			justify-content: flex-start;
 		}
 		.stage {
-			flex: 0 1 auto;
-			height: min(36rem, calc(100dvh - 15rem));
+			/* Fills the room left, up to 36 rem; actions sit right under it (large text keeps the answer in view). */
+			flex: 1 1 auto;
+			max-height: 36rem;
 			margin-top: clamp(var(--kb-space-2), 4dvh, var(--kb-space-10));
 		}
 		.actions {

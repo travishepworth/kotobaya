@@ -88,6 +88,7 @@
 <style>
 	.screen {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		place-items: center;
 		min-height: 100dvh;
 		padding: var(--kb-space-6) var(--kb-space-4);
