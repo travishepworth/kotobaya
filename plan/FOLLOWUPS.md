@@ -266,3 +266,6 @@
 ## T404a (2026-11-13)
 - publish_replanning allows 4 publishes (3 re-plans); confirm against MEDIA_PIPELINE wording '3 publishes… 4th fails' (possible off-by-one).
 - New-media retry re-plans fresh ids → orphan app.blob row per retry (GC later).
+- T411c (architect, minor): OpApplier.mediaCreated emits deck.created w/ defaults then runner sends deck.updated — make mediaCreated return none() and have the runner emit deck.created per MEDIA_PIPELINE 3.3 step 6 (also clears T202b silent-skip path).
+- T411c (architect, minor): re-claimed child with already-published archives (version + both blob hashes match) succeeds with no ops instead of stale_base — record as ADR / MEDIA_PIPELINE 3.3 step 5 amendment.
+- T411c (reviewer, minor): deviation 2 alt fix — return stale_base when payload.parent_job_id differs from the publishing parent, or document in MEDIA_PIPELINE 3.4.
