@@ -370,3 +370,4 @@
 - Rolling deploy with 2 server pods: old pod could run a jpdb import after new pod stored fsrs6-2, writing old-rule caches under the new version. Single replica today; use Recreate strategy (or re-check) to rule it out.
 - AND-DECKS (run 15): deck create/rename/delete not on Android (read-only tab); smart-deck counts empty on device (no on-device resolver); deck words from replica notes only (no API fallback).
 - FEAT-1 (run 15): 'other users' decks' case untestable (single-user schema); deck dropdown lists smart decks (empty page per contract); clickable kanji in review cards/Android still out of scope.
+- AND-SEARCH (run 15): word/{seq} not a nav route (NavRoute.content has no args; detail is in-screen state); is:hot + live smart-deck terms not compiled on device; no 'Add to my words'; API card fallback first 100 only.

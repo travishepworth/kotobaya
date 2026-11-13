@@ -635,7 +635,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: server dict/ + tests, server routing, web dictionary (ticket: plan/tickets/FEAT-1.md)
 
 ### AND-SEARCH — Android Search tab (core parser, offline dict/replica, API fallback; word detail route)
-- model: sonnet · risk: med · deps: — · status: RUNNING
+- model: sonnet · risk: med · deps: — · status: MERGED
 - paths: android search/, word/ (ticket: plan/tickets/AND-SEARCH.md)
 
 ### AND-DECKS — Android Decks tab (counts, deck detail, study this deck)

@@ -14,7 +14,6 @@ Updated: run 15 start
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| AND-SEARCH | writer (rebase fix) | 2 | t/AND-SEARCH-search-tab | run 15 |
 | AND-SETTINGS | writer | 1 | t/AND-SETTINGS-settings-tab | run 15 |
 
 ## Queued
@@ -43,6 +42,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-SEARCH (run 15): Android Search tab (offline dict -> API; my cards via core parser+SQLite compiler -> API), word/note detail in-screen
 - FEAT-1 (run 15): listKanjiWords server (keyset, mine/deck_id, decks[]) + web clickable kanji panel (Most frequent / In my decks)
 - AND-DECKS (run 15): Android Decks tab (replica counts = LocalQueueLoader, deck study via ReviewScreen deckId); read-only, gaps -> FOLLOWUPS
 - C-17 (run 15): listKanjiWords GET /kanji/{literal}/words (deck_id, mine, cursor bound to filters) + clients regen
