@@ -669,3 +669,4 @@
 2026-11-13T04:56:05Z T501 DISPATCH writer (core+server, Gradle slot)
 2026-11-13T04:56:05Z T505a DISPATCH writer-light (fixtures)
 2026-11-13T04:58:40Z T505a MERGE validate.py green (280 stubs); 1 attempt (low)
+2026-11-13T05:07:33Z T501 MERGE CHECK_GREEN core+server; 1 attempt (med)
