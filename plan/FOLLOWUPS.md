@@ -354,3 +354,9 @@
 ## T610 runbook gaps (run 11)
 - No FSRS weight reset/rollback path in the contract (bad optimizer publish). (med)
 - Chart renders no job-stuck or disk alert; no dictionary-refresh CronJob. (low)
+
+## SEC-1 review minors (run 11)
+- Non-inline blobs still send stored active Content-Type (text/html, svg); also send application/octet-stream (defence in depth). (low)
+- Tests: assert hardening headers on 404/416 (StatusPages path) and Content-Disposition on 304. (low)
+- getBlob contract could document the security headers (C-ticket, doc only). (low)
+- docs/SECURITY.md: mark S-01 (SEC-1) and S-02 (SEC-2) fixed. (low)

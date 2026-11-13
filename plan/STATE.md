@@ -16,7 +16,6 @@ Updated: 2026-11-13 (end of orchestrator run 10)
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| SEC-1 | writer-senior | 1 | t/SEC-1-blob-xss | run 11 (only Gradle writer) |
 
 ## Parked
 (none)
@@ -52,6 +51,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- SEC-1 (run 11): getBlob nosniff + CSP sandbox on all responses; inline only audio/* + raster images, else attachment; review APPROVE
 - SEC-2 (run 11): worker URL import SSRF guard (per-hop resolve, non-public refused, pinned IP, manual redirects cap 5)
 - T610 (run 11): docs/RUNBOOK.md (install, checks, backup/restore per SYNC 6.2-6.3, drill table, incidents)
 - T609 (run 11): security review — docs/SECURITY.md (S-01..S-14), chart hardening, egress NetworkPolicies, HTTPRoute headers, ntfy image fix, watchdog/restore fixes; review APPROVE

@@ -589,7 +589,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `worker/pyproject.toml`, `worker/uv.lock`, `worker/Dockerfile` (ticket: plan/tickets/F-28.md; from T606 HUMAN_CHECK)
 
 ### SEC-1 — Blob responses: nosniff/CSP/attachment (T609 S-01, HIGH)
-- model: opus · risk: high · deps: T609 · status: RUNNING
+- model: opus · risk: high · deps: T609 · status: MERGED
 - paths: server blobs/, ankiconnect/AnkiMedia.kt + tests (ticket: plan/tickets/SEC-1.md)
 
 ### SEC-2 — Worker SSRF guard on URL import (T609 S-02)
