@@ -73,7 +73,7 @@ internal const val HISTORY_SQL =
     "with $ROOT_CTE " +
         "select root.root_id::text, r.id::text, r.card_id::text, r.hlc::text, " +
         "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
-        "(extract(epoch from r.manual_due_at) * 1000)::bigint " +
+        "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.import_source " +
         "from app.review_log r join root on root.id = r.card_id join unnest(?::uuid[]) as s(id) on s.id = root.root_id " +
         "where r.undone_at is null"
 
@@ -108,6 +108,7 @@ private fun replayReview(r: Record, survivorId: String): ReplayReview {
         manualAction = action?.let { a -> ManualAction.entries.first { it.wire == a } },
         manualDueAt = (r.get(9) as Number?)?.toLong(),
         undoneHlc = null,
+        importSource = r.get(10, String::class.java),
     )
 }
 

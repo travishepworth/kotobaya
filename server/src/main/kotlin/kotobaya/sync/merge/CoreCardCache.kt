@@ -191,7 +191,7 @@ class CoreCardCache(
     /** `(target card, row)` for the `review_log` rows matching [where] (alias `r`; `c` is the row's card). */
     private fun loadReviews(tx: DSLContext, where: String, vararg args: Any?): List<Pair<UUID, ReplayReview>> = tx.fetch(
         "select coalesce(c.merged_into_id, c.id), r.id::text, r.card_id::text, r.hlc::text, ${ms("r.reviewed_at")}, r.utc_offset_min, " +
-            "r.review_type, r.rating, r.manual_action, ${ms("r.manual_due_at")}, r.undone_hlc::text " +
+            "r.review_type, r.rating, r.manual_action, ${ms("r.manual_due_at")}, r.undone_hlc::text, r.import_source " +
             "from app.review_log r join app.card c on c.id = r.card_id where $where",
         *args,
     ).map { it.get(0, UUID::class.java) to review(it) }
@@ -210,6 +210,7 @@ class CoreCardCache(
             manualAction = action?.let { a -> ManualAction.entries.first { it.wire == a } },
             manualDueAt = (r.get(9) as Number?)?.toLong(),
             undoneHlc = r.get(10, String::class.java),
+            importSource = r.get(11, String::class.java),
         )
     }
 

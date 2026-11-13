@@ -88,7 +88,7 @@ internal class DrillSources(private val dsl: DSLContext, private val now: Long) 
         val rows = dsl.fetch(
             "select coalesce(c.merged_into_id, c.id)::text, r.id::text, r.card_id::text, r.hlc::text, " +
                 "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
-                "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.undone_hlc::text " +
+                "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.undone_hlc::text, r.import_source " +
                 "from app.review_log r join app.card c on c.id = r.card_id " +
                 "where r.undone_at is null and coalesce(c.merged_into_id, c.id) = any(?::uuid[])",
             survivors.toTypedArray(),
@@ -111,6 +111,7 @@ internal class DrillSources(private val dsl: DSLContext, private val now: Long) 
             manualAction = action?.let { a -> ManualAction.entries.first { it.wire == a } },
             manualDueAt = (r.get(9) as Number?)?.toLong(),
             undoneHlc = r.get(10, String::class.java),
+            importSource = r.get(11, String::class.java),
         )
     }
 }
