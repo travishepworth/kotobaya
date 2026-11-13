@@ -94,16 +94,16 @@ fun ActionsPage() {
             TextButton(onClick = {}, md, shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_cancel)) }
             Button(
                 onClick = {},
-                shape = KbTheme.shapes.md,
                 md,
+                shape = KbTheme.shapes.md,
                 colors = ButtonDefaults.buttonColors(containerColor = c.danger, contentColor = c.onDanger),
             ) { Text(T(R.string.sg_btn_delete)) }
         }
         SgFlow {
             Button(
                 onClick = {},
-                shape = KbTheme.shapes.md,
                 md,
+                shape = KbTheme.shapes.md,
                 enabled = false,
                 colors = ButtonDefaults.buttonColors(disabledContainerColor = c.surfaceSunken, disabledContentColor = c.textDisabled),
             ) { Text(T(R.string.sg_btn_disabled)) }
@@ -114,8 +114,8 @@ fun ActionsPage() {
             }
             OutlinedButton(
                 onClick = {},
-                shape = KbTheme.shapes.md,
                 Modifier.heightIn(min = KbTheme.size.controlSm),
+                shape = KbTheme.shapes.md,
                 border = BorderStroke(1.dp, c.borderStrong),
                 contentPadding = ButtonDefaults.ContentPadding,
             ) { Text(T(R.string.sg_btn_small)) }
