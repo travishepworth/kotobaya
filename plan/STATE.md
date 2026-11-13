@@ -18,7 +18,6 @@ Updated: 2026-11-13 (run 7 in progress)
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
 | T506a | writer-senior | 2 | t/T506a-grammar-dsl (C-13 follow-through + F-22.1) |
-| W-6 | writer | 1 | t/W-6-grammar-detect-server |
 
 ## Parked
 (none)
@@ -51,6 +50,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- W-6 grammar-detect enqueue on rule edits, publish keeps parse_status, examples + manual span API (testGrammarRules still 501 → C-14/T506c) (run 7)
 - C-13 `grammar-detect` JobKind (additive; fan-out lock 7033001 race fix) — reviewer APPROVE after 2 attempts (run 7)
 - T502 confusables: server-side suggester (homophone/look-alike/meaning, every 6h via ops) + list/set API (run 7)
 - T503 drill selection (hot/leech/confusable pairs, seeded) + DrillApi sources; drill replay never changes schedule (run 7)
