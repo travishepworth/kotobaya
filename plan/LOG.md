@@ -855,3 +855,4 @@
 2026-11-13T13:06:20Z BUG-8 REVIEW dispatched reviewer + architect (high)
 2026-11-13T13:09:34Z BUG-8 REVIEW_APPROVE reviewer (6 minors: 2 -> FOLLOWUPS, 3 folded into UI-FOUND-APP)
 2026-11-13T13:11:11Z BUG-8 REVIEW_APPROVE architect (a/b/c signed off; minors -> SYNC-T1 + C-20 filed)
+2026-11-13T13:16:49Z BUG-8 MERGE dcc3216 CHECK_GREEN core+android+acceptance+server (high; reviewer + architect APPROVE)

@@ -691,7 +691,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - model: haiku (writer-light) · risk: low · deps: HOTFIX-0.1.7 · status: MERGED b43dbca (ticket: plan/tickets/TEST-1.md)
 
 ### BUG-8 — Android first sync slow + ANR: main-thread DB, single connection, per-op costs (I-4, I-7)
-- model: opus · risk: high (reviewer + architect) · deps: HOTFIX-0.1.7 · status: TODO
+- model: opus · risk: high (reviewer + architect) · deps: HOTFIX-0.1.7 · status: MERGED dcc3216 (reviewer + architect APPROVE)
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
 
 ### SYNC-T1 — Chunked pull failure-path tests + hardening (BUG-8 review minors)
