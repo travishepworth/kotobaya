@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P5 (Struggle + grammar)   Gate: GATE-P2, GATE-P3, GATE-P4 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (end of orchestrator run 7)
+Updated: 2026-11-13 (orchestrator run 8 in progress)
 
 
 ## RESUME HERE (updated 2026-11-13, end of orchestrator run 7)
@@ -20,7 +20,11 @@ Updated: 2026-11-13 (end of orchestrator run 7)
 - BACKLOG status column is stale for P4/P5 (STATE/LOG are authoritative).
 
 ## Running
-(none)
+| Ticket | Agent | Attempt | Branch | Started |
+|---|---|---|---|---|
+| C-14 | architect | 1 | t/C-14-rule-test-contract | run 8 |
+| D-2 | writer (Gradle slot) | 1 | t/D-2-volume-leak | run 8 |
+| T504a | writer (web) | 1 | t/T504a-struggle-web | run 8 |
 
 ## Parked
 (none)

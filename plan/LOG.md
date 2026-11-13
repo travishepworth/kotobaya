@@ -688,3 +688,8 @@
 2026-11-13T05:55:49Z - DISK 8.7 GB free (<10 GB): no further builds this run
 2026-11-13T05:56:17Z T506a MERGE REVIEW_APPROVE (re-review, 1 minor → F-23) CHECK_GREEN worker (745); 2 attempts (high)
 2026-11-13T05:56:17Z - HANDOVER run 7: 10 merged; P4 gate deferred; disk 8.7 GB (<10) → stopped; next C-14/T506c, T507, T504, T508
+2026-11-13T05:57:53Z - RESUME run 8: clean state; disk 19 GB; 195 docker volumes
+2026-11-13T05:58:36Z C-14 DISPATCH architect (contracts)
+2026-11-13T05:58:36Z D-2 DISPATCH writer (volume leak; Gradle slot)
+2026-11-13T05:58:36Z T504 SPLIT T504a web, T504b android+widget
+2026-11-13T05:58:36Z T504a DISPATCH writer (web)
