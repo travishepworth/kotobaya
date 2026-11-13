@@ -694,6 +694,12 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - model: opus · risk: high (reviewer + architect) · deps: HOTFIX-0.1.7 · status: TODO
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
 
+### SYNC-T1 — Chunked pull failure-path tests + hardening (BUG-8 review minors)
+- model: opus · risk: med · deps: BUG-8 · status: TODO (ticket: plan/tickets/SYNC-T1.md)
+
+### C-20 — SYNC.md 6.1: client MAY apply a page as consecutive sub-pages (each commits pull_seq = its last seq; 9.3 replays at end of that tx). Wording only, matches BUG-8.
+- model: opus (architect) · risk: low · deps: BUG-8 · status: TODO (no ticket file; one sentence in contracts/sync/SYNC.md + SUMMARY note)
+
 ### BUG-9 — Stats OOM/slow: one bounded streaming pass for retention+calibration (I-1 real fix)
 - model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: MERGED ac0765f
 - paths: server stats/, server/Dockerfile heap default (ticket: plan/tickets/BUG-9.md)
