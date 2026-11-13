@@ -23,3 +23,5 @@ CHECK: `make check MODULE=web` green · `make screenshots-web` 172 passed
 
 ## For the reviewer
 - Minor 7: nothing is hidden at the end of the scroll (checked in Playwright). Padding would leave a gap under the bar, so I used `scroll-margin-bottom`.
+
+Round 3: Switch label now wraps (overflow-wrap anywhere, min-width 0) and the track drops to its own line when the text column would drop below 10rem (360 px at 200% text). ListRow already safe; no Checkbox/Radio exist. Curated screenshots refreshed.
