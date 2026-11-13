@@ -760,7 +760,7 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - model: opus (architect) · risk: med · deps: — · status: MERGED 578985c (ticket: plan/tickets/C-19.md)
 
 ### UI-WEB — Rebuild every web screen on the design system (B3, folds in FEAT-x)
-- model: opus · risk: high · deps: UI-DS, C-19 · status: RUNNING (run 19, attempt 1) (ticket: plan/tickets/UI-WEB.md)
+- model: opus · risk: high · deps: UI-DS, C-19 · status: MERGED 8095cce (ticket: plan/tickets/UI-WEB.md)
 
 ### UI-APP — Rebuild every Android screen on the design system (B4; drops Media tab per IA, dark mode)
 - model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: MERGED 2587826 (ticket: plan/tickets/UI-APP.md)

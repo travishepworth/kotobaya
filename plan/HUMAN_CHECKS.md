@@ -4,6 +4,30 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 19, 2026-11-14): 0.1.9 — UI rewrite (web + Android). No migrations, no new env, no chart changes.
+Merged: SYNC-T1 4dce8ba, UI-DS-APP 92889d0, UI-APP 2587826, UI-WEB 8095cce. Build web image + APK (and server for one pinned SHA) from main at/after 8095cce; pin the SHA, don't rebuild if main moves.
+- What changed: every web route and every Android screen rebuilt on the approved DESIGN.md (light/dark following the system + manual override). Android Media tab removed. Web: FEAT-x per-field overrides on /notes, load-error states with Retry, theme set before first paint. Android: new nav shell (bottom bar on phones, rail >= 600dp), Appearance setting, immersive Review, debug-only Settings > Styleguide. Core: chunked-pull hardening (bad chunk -> sync fails safely and retries; no data change). Server: no functional change.
+- Deploy: no new env/config/migrations. Server image optional (no server code change).
+### Web click-through (do at 360 px phone width AND desktop; once in light, once in dark; once at browser zoom 200%)
+- [ ] Theme: switch Light/Dark/System in Settings; reload: no white flash in dark.
+- [ ] Review: front -> Space reveals with no layout jump; grade 1-4 (or 5) with interval previews; U undo; ? shows shortcuts; at 200% the back scrolls to the meaning; finish the queue -> "All done" page; drill mode.
+- [ ] Dictionary: search, open an entry (headword/reading/pitch, senses), click a kanji -> panel (Most frequent / In my decks).
+- [ ] Cards: table columns aligned; search query; row click/Enter opens preview; bulk select + dry-run count; click a field in the preview -> jumps to /notes with that field highlighted (must NOT create an override).
+- [ ] Notes: open a jpdb note -> rendered card with field boxes; click "edit" on Meaning -> override; save -> box marked overridden; Reset to dictionary -> back to dictionary value; edit only a tag + save -> no field becomes an override.
+- [ ] Home/dashboard: today's counts, hot words/kanji. Stats: all panels load, charts readable in dark, card kinds named (no raw ids).
+- [ ] Decks (list, detail items, create/edit smart deck), Note types, Settings (Study incl. grading buttons control at 360 px, presets, devices/QR pairing, PATs), Import (jpdb + media wizard), Media/reader, Struggle (hot/leech/confusables), Grammar, /styleguide.
+- [ ] Stop the api pod briefly: list pages show the designed error state with Retry, and Retry recovers.
+### APK click-through (phone; also tablet/foldable or a resized emulator if you have one; once with system font at 200%)
+- [ ] Bottom bar shows five tabs (no Media); on a tablet/landscape a nav rail.
+- [ ] Settings > Appearance: Dark on a light phone and Light on a dark phone -> status/nav bar icons stay legible.
+- [ ] Today: date matches your study day (rollover hour), deck counts sensible, "Pair this device" when unpaired -> Settings > Devices.
+- [ ] Review: immersive with close button; reveal; grade buttons in thumb reach with intervals; undo; suspend/bury/flag/edit actions; finish -> "Back to Today".
+- [ ] Search: dictionary offline, word page (list-detail on tablet), My cards query (e.g. `deck:x is:due`).
+- [ ] Decks: list + study one deck. Struggle: word -> sentences -> "Saw something weird" grammar capture opens.
+- [ ] Settings: every group opens; Sync screen + chip during sync ("Syncing N of M"), app stays responsive; pairing via QR; share text into the app (intake sheet) in both themes.
+- [ ] Debug APK only: Settings > Styleguide renders; Demo data switch still works.
+- Known gaps (FOLLOWUPS, not blockers): deck colours/due counts, confusable headwords, Android stats screen, review "12 of 85" progress, pitch on Android word page, grammar capture from Search/intake.
+
 ## DONE (2026-11-14): UI design system B2 gate APPROVED
 Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB and UI-APP are now TODO. /styleguide stays in the web build.
 

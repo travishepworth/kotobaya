@@ -1,11 +1,12 @@
 # STATE
 Mode: single-session
-Phase: P9 UI rewrite (+ SYNC-T1)   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: run 19
+Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
+Updated: RUN19 END
 
-## RESUME HERE (run 19 in progress)
-- Run 19 merged SYNC-T1 4dce8ba, UI-DS-APP 92889d0, UI-APP 2587826. Running: UI-WEB (attempt 1), UI-APP (attempt 1). Both high: reviewer gets screenshot set + quality bar (amateur/badly scaling = major).
-- UI-FOUND-APP worktree + branch removed.
+## RESUME HERE (run 19 END: ALL_DONE for queued work)
+- Run 19 merged 4: SYNC-T1 4dce8ba, UI-DS-APP 92889d0, UI-APP 2587826, UI-WEB 8095cce. Phase 9 UI rewrite DONE. "0.1.9 ready" section at top of HUMAN_CHECKS.
+- No writers running; all run-19 worktrees/branches removed.
+- NEXT: triage plan/FOLLOWUPS.md into tickets. Candidates: APP-STATE-1 (Android ViewModels: review progress/next-due, Home totals, Stats VM, word pitch/kanji readings); API gaps (deck colour + due count, confusable headwords, sentence ids for Search/intake grammar capture; contract tickets first); web test for NoteEditor dropRedundantOverrides; small UI minors (run 19 block). Run `make test` once before the next release.
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
 ## 0.1.7 hotfix status
@@ -14,7 +15,6 @@ Updated: run 19
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-WEB | writer | 3 (Switch wrap) | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
 FOLLOWUPS
@@ -38,6 +38,7 @@ FOLLOWUPS
 - UI-WEB/UI-APP approved (B2, 2026-11-14). Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+Run 19: merged 4 (SYNC-T1, UI-DS-APP, UI-APP, UI-WEB) · attempts 9 (UI-WEB 1+1b+2+3, UI-APP 2, SYNC-T1 2, UI-DS-APP 2) · escalations 0
 Run 18: merged 2 (UI-FOUND-APP, C-20) · attempts 4 (SYNC-T1, UI-DS-APP died on API 429) · escalations 0
 Run 17: merged 8 · attempts 10 · escalations 0 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
@@ -46,6 +47,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- UI-WEB (run 19, 8095cce): every web route rebuilt on DESIGN.md, FEAT-x per-field overrides (highlight-only region click), loadFailed/retry + LoadError, app.html theme pre-paint, 24 dead POC components removed, 176+ curated shots; reviewer APPROVE after 3 rounds
 - UI-APP (run 19, 2587826): every Android screen rebuilt on DESIGN.md (ui/components, nav shell bottom bar <600dp / rail, 5 tabs, Appearance override, immersive Review), Media tab removed, KbSystemBars, 176 curated shots; reviewer APPROVE round 2
 - UI-DS-APP (run 19, 92889d0): ui/theme KotobayaTheme/KbTheme API (ThemeMode, KbTextStyles ja+ruby, tones, shapes, motion), debug styleguide 10 pages (Settings > Styleguide), 120 Roborazzi PNGs, 26 curated in docs/design-screenshots/app
 - SYNC-T1 (run 19, 4dce8ba): chunked pull per-chunk pull_seq + log_epoch checks (Failed PROTOCOL), skew on first chunk only, open @Volatile, failure-path tests + fuzz chunk 1..5
