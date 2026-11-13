@@ -804,3 +804,4 @@
 2026-11-13T10:45:22Z AND-DECKS HANDOFF DONE 908589e; AppStartsTest stopKoin edit outside paths accepted (test fix)
 2026-11-13T10:45:22Z AND-SETTINGS DISPATCH writer (sonnet, med; revised ticket)
 2026-11-13T10:49:00Z AND-DECKS MERGE CHECK_GREEN android (med, no review); read-only tab, deck study via ReviewScreen deckId
+2026-11-13T10:49:13Z AND-DECKS NOTE first ff failed (main moved), branch restored from 908589e, rebased, merged
