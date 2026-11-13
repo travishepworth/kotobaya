@@ -811,3 +811,4 @@
 2026-11-13T10:57:01Z AND-SETTINGS HANDOFF DONE; KotobayaApp open + Home hook accepted; REBASE conflict -> writer resolving (attempt 2)
 2026-11-13T10:58:53Z AND-SETTINGS MERGE CHECK_GREEN android (med, no review; attempt 2 = rebase fix); SettingsTabTest covers Devices/Scan QR
 2026-11-13T10:59:05Z AND-SETTINGS NOTE first ff failed (main moved), restored from 7b264e0, rebased (plan-only delta), merged
+2026-11-13T11:04:29Z RUN15 END make test rc=0; P8 complete (5 merges); UI-1 HUMAN-GATED

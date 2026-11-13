@@ -4,7 +4,7 @@ Phase: P8 (features) COMPLETE (run 15)   Gate: GATE-P2..P5 deferred (HUMAN_CHECK
 Updated: 2026-11-13T10:59:28Z (run 15 end)
 
 ## RESUME HERE (run 15 END: P8 done)
-- Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test: MAKETEST_RESULT.
+- Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
 - AND-SETTINGS (user requirement): the Settings tab renders every FeatureEntry.settingsSections entry, so Devices → Scan QR pairing is reachable. Unpaired Home shows a "Pair this device" prompt. The real scanner/pair flow is a device check in HUMAN_CHECKS (run 15).
 - Nothing in flight. No t/* or worktree-agent-* branches or worktrees. Deploy: no migrations, no new env/config; new server/web images + APK.
 - NEXT: nothing runnable in BACKLOG except FOLLOWUPS (run 15 added AND-*/FEAT-1 gaps: deck CRUD on Android, smart-deck counts on device, word/{seq} nav route). UI-1 is HUMAN-GATED: never dispatch.
