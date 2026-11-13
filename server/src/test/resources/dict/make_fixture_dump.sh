@@ -7,7 +7,7 @@ ROOT=$(cd "$HERE/../../../../.." && pwd)
 OUT="$HERE/ref_fixture.sql.gz"
 NAME=kotobaya-t106-dump-$$
 trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
-docker run -d --rm --name "$NAME" -e POSTGRES_PASSWORD=pw \
+docker run -d --rm --tmpfs /var/lib/postgresql/data --name "$NAME" -e POSTGRES_PASSWORD=pw \
   -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --lc-ctype=C.UTF-8" -p 127.0.0.1::5432 postgres:17 >/dev/null
 PORT=$(docker port "$NAME" 5432/tcp | head -1 | sed 's/.*://')
 for _ in $(seq 60); do
