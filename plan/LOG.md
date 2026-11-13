@@ -849,3 +849,4 @@
 2026-11-13T12:30:21Z TEST-1 MERGE b43dbca CHECK_GREEN web (low, no review); jsdom@31.0.0
 2026-11-13T12:30:21Z UI-FOUND-WEB DISPATCH writer-senior (opus, med)
 2026-11-13T12:37:30Z BUG-10 HANDOFF DONE; hot words 7221->110ms warm, hot kanji ~7.7s->94ms; kanji words not reproduced
+2026-11-13T12:40:54Z BUG-10 MERGE 4ce6632 CHECK_GREEN server (med, no review); for 0.1.8

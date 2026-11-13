@@ -22,7 +22,6 @@ Updated: RUN17
 (none ready) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
-BUG-10: HANDOFF DONE (hot words 7.2s->110ms warm, hot kanji ->94ms; no migration); server re-check running
 
 ## Blocked
 (none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
@@ -40,13 +39,14 @@ BUG-10: HANDOFF DONE (hot words 7.2s->110ms warm, hot kanji ->94ms; no migration
 - UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Run 17: merged 4 · attempts 6 · escalations 0
+Run 17: merged 5 · attempts 7 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- BUG-10 (run 17, 4ce6632): HotWords.loadHistory via card pk/merged_into + review_log_card_idx (7.2s->110ms warm), settings loaded once; no migration (0.1.8)
 - TEST-1 (run 17, b43dbca): jsdom@31 devDep (human-approved), CardPreview/NoteEditor bounded-effect vitests (fail on pre-fix code)
 - C-19 (run 17, 578985c): RenderOptions.fieldRegions (data-field/data-field-source spans, RenderedCard.fields), goldens unchanged when off; for UI-WEB FEAT-x
 - BUG-9 (run 17, ac0765f): stats chunked replay (500 cards), retention+calibration share one pass, Semaphore(1); /stats/* 7-607 ms on 89,775 reviews; Dockerfile JAVA_TOOL_OPTIONS default (0.1.8)

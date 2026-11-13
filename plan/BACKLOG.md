@@ -699,7 +699,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: server stats/, server/Dockerfile heap default (ticket: plan/tickets/BUG-9.md)
 
 ### BUG-10 — /words/hot, /kanji/hot, /kanji/{literal}/words slow (I-2)
-- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: TODO
+- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: MERGED 4ce6632
 - paths: server hot words/kanji queries (+ index migration if allowed) (ticket: plan/tickets/BUG-10.md)
 
 Source for HOTFIX-0.1.7..BUG-10 and Phase 9: plan/handoffs/INBOX-0.1.6.md (0.1.6 live triage + run 17 brief).
