@@ -716,3 +716,5 @@
 2026-11-13T06:49:05Z F-25 DISPATCH writer (core+server+web; Gradle after T504b)
 2026-11-13T06:53:43Z T504b MERGE CHECK_GREEN android; 1 attempt (low); online-only writes → F-27
 2026-11-13T06:53:58Z T508b DISPATCH writer (android; Gradle after F-25 checks)
+2026-11-13T07:07:52Z F-25 MERGE CHECK_GREEN core+server+web; 1 attempt (med); picker steps past lastShown (full coverage)
+2026-11-13T07:07:52Z F-25b NEW android half of F-25 (after T508b)
