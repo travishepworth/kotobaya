@@ -1,32 +1,27 @@
 # STATE
 Mode: single-session
 Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (orchestrator run 3)
+Updated: 2026-11-13 (orchestrator run 4)
 
 
-## RESUME HERE (updated 2026-11-13, orchestrator run 3)
-- STOPPED: host root disk 100% full. Docker anonymous volumes (Testcontainers Postgres leftovers, one per test run) grew to ~35 GB/179 volumes; `docker volume prune -f` was denied by the permission classifier. Human must prune (HUMAN_CHECKS top item) before any module check can run.
-- Run 3 merged: T313 (P3 complete; make test green per module; GATE-P3 deferred into HUMAN_CHECKS), T402a, T401a, T411a, T405a, F-7. Board reconciled. P4 planned (25 tickets, ADR-014..019). 66 merged worktrees removed.
-- On resume (after prune): T402b+T409 HANDOFF DONE (branch t/T402b+T409-extract-audio, path-clean) → `make check MODULE=worker` then merge (low). C-11, T404c, T403a were told to stop with BLOCKED (disk) — check their branches/HANDOFF.md; resume each in its worktree (same tier, attempt counts unchanged) and re-run checks. C-11 and T403a are high risk → reviewer (+architect for C-11).
-- Then: C-11 unlocks T404a, T407, T411b, T411c, C-12; C-12 unlocks T403b/T403c/T408a.
-- Merge helper used this run: diffstat → `git rebase main` in worktree → make check → ff-merge → archive HANDOFF → `git worktree remove` + branch delete → push (removal works now).
-- Conventions: architect-role → model opus (never Fable). MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy, ≤3 reviewers. Review loop only on real majors. Check `df -h /` before dispatching Testcontainers-heavy work.
+## RESUME HERE (updated 2026-11-13, orchestrator run 4)
+- Run 4 merged: T402b+T409, T403a, F-8+F-9 (all V*.sql shipped; tmpfs Postgres in tests, worker dict conftest leaked volumes), C-11 (2 attempts; lock-order fix).
+- Human-reported gaps (coordinator): W-5a URGENT (blobs unwired + dict refresh/release never implemented) → then human pushes 0.1.1. Tickets D-1, F-12+F-13 (batch), T412+T413 (batch web), ADR-020.
+- QUEUE ORDER for free slots: W-5a > T404c re-check (after F-11) > D-1 > F-12+F-13 > T412+T413 > F-10 > (after C-12) T403b/T403c/T408a; (after T404c) T405b.
+- Server full test suite OOMs in test JVM (default 512m heap) → F-11 running; T404c (code fine, coverage tests 11/11) waits on F-11 then re-run make check server → merge (med).
 
 ## Running
-| Ticket | Agent | Attempt | Branch | Started |
-|---|---|---|---|---|
-(none — all stopped for disk)
-
-## Parked (work done; BLOCKED only by full disk — re-run check, then review/merge)
-| Ticket | Branch | State | Next |
+| Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
-| T402b+T409 | t/T402b+T409-extract-audio | DONE, path-clean | make check worker → merge (low) |
-| C-11 | t/C-11-media-pipeline (35a5c2e) | contracts done; db/api checks + clients regen passed; Gradle SQLDelight + drift not run | make check contracts → reviewer + architect (opus) → merge |
-| T403a | t/T403a-parser-segmentation | parse tests 57 pass; agreement full 0.9785 / core 0.9762 | make check worker → reviewer (high) → merge |
-| T404c | t/T404c-coverage-engine (832dc8e) | coverage tests 11/11 | rebase + make check server → merge (med) |
+| C-12 | architect(opus) | 1 | t/C-12-parser-contract |
+| T411c | writer-senior | 1 | t/T411c-media-publish-runner |
+| T411b | writer | 1 | t/T411b-media-api |
+| T404a | writer | 1 | t/T404a-media-publish-kit |
+| T407 | writer-light | 1 | t/T407-web-jpdb-mapping |
+| F-11 | writer | 1 | t/F-11-server-test-heap |
 
-## Queued (ready once C-11 merges)
-- F-8 (new, sonnet, low; write plan/tickets/F-8.md): server/build.gradle.kts copies only V1__init.sql — include V2+ migrations (C-11 adds V2__jpdb_vocab.sql); deps C-11. Then T404a, T407, T411b, T411c (needs zstd-jni 1.5.6-4 on server), C-12.
+## Parked
+| T404c | t/T404c-coverage-engine (worktree agent-a512c8249968d8273) | rebased; waits F-11 | re-run make check server → merge |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -49,7 +44,7 @@ Updated: 2026-11-13 (orchestrator run 3)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P4: merged 5/25 (T402a, T401a, T411a, T405a, F-7) · attempts 9 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
+P4: merged 10/32 (T402a, T401a, T411a, T405a, F-7, T402b, T409, T403a, C-11, F-8, F-9) · attempts 9 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
