@@ -715,3 +715,4 @@
 2026-11-13T06:48:50Z C-15 MERGE REVIEW_APPROVE (3 minors → F-25) contracts green; 1 attempt (high)
 2026-11-13T06:49:05Z F-25 DISPATCH writer (core+server+web; Gradle after T504b)
 2026-11-13T06:53:43Z T504b MERGE CHECK_GREEN android; 1 attempt (low); online-only writes → F-27
+2026-11-13T06:53:58Z T508b DISPATCH writer (android; Gradle after F-25 checks)
