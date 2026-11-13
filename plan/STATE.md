@@ -14,7 +14,7 @@ Updated: run 19
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-WEB | writer-senior | 2 (review fixes) | t/UI-WEB-rebuild | run 19 |
+| UI-WEB | writer | 3 (Switch wrap) | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
 FOLLOWUPS

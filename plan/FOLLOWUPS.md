@@ -394,3 +394,4 @@
 - UI-WEB (run 19): DeckItems + UnknownWords state have no load-error flag; client-side nav /cards -> /notes shows id-prefix labels in the notes list (full load fine)
 - UI-WEB review minor (run 19): nav rail icons fixed px while labels scale at 200% (size in rem)
 - UI-APP (run 19): grammar capture entry from Search/intake needs sentence hits with id/mediaId (or a create-sentence call); Today overline study date computed once per composition (stale past rollover if app stays open)
+- UI-WEB (run 19): commit the override-redundancy vitest the round-2 writer ran one-off (NoteEditor dropRedundantOverrides; web/tests)
