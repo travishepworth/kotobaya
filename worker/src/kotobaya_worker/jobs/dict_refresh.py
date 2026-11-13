@@ -120,9 +120,7 @@ def make_dict_refresh(
         fp = src.fingerprint(slugs)
 
         with psycopg.connect(to_conninfo(database_url)) as conn:
-            cur = conn.execute(
-                "SELECT sources FROM ref.dict_release WHERE is_current"
-            ).fetchone()
+            cur = conn.execute("SELECT sources FROM ref.dict_release WHERE is_current").fetchone()
             if cur and not force:
                 have = {k: v.get("sha256") for k, v in cur[0].items() if isinstance(v, dict)}
                 if all(have.get(k) == v for k, v in fp.items()):

@@ -46,7 +46,7 @@ def _server_runner(db_url: str, stop: threading.Event) -> None:
             assert row[1] == "1"
             c.execute(
                 "update app.job set status = 'succeeded', finished_at = now(), "
-                "result = '{\"reviews_imported\": 1, \"reviews_id_collisions\": 0}'::jsonb, "
+                'result = \'{"reviews_imported": 1, "reviews_id_collisions": 0}\'::jsonb, '
                 "payload = payload - 'plan' where id = %s",
                 (row[0],),
             )
