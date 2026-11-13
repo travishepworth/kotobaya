@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
-Phase: P7 (live bugfixes) COMPLETE; P8 (features) TODO, awaiting user go-ahead   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T10:34:40Z (run 14 end)
+Phase: P8 (features) RUNNING (run 15, user approved)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: run 15 start
 
 ## RESUME HERE (run 14 END: P7 done, release point green)
 - Run 14 took over run 13 (died on an API auth error, no handover). It committed run 13's board state (59985bc), rebased BUG-6 cleanly, and merged it (a660c52) with core, server and contracts checks green. make test rc=0 at a660c52. Pushed.
@@ -14,6 +14,7 @@ Updated: 2026-11-13T10:34:40Z (run 14 end)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| C-17 | architect (opus) | 1 | t/C-17-kanji-words | run 15 |
 
 ## Ready for review / In review
 (none)
@@ -31,7 +32,7 @@ Updated: 2026-11-13T10:34:40Z (run 14 end)
 - Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- Confirm Phase 8 (C-17, FEAT-1) before dispatch. Others: see plan/HUMAN_CHECKS.md.
+- P8 approved (run 15). UI-1 is HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)

@@ -793,3 +793,5 @@
 2026-11-13T10:27:49Z BUG-6 REBASE onto 59985bc clean; CHECK_GREEN core+server+contracts
 2026-11-13T10:27:49Z BUG-6 MERGE a660c52 (review APPROVE reviewer+architect); worktree+branches removed
 2026-11-13T10:34:40Z RUN14 END make test rc=0 at a660c52; P7 complete; P8 (C-17, FEAT-1) left TODO pending user confirm
+2026-11-13T10:36:46Z RUN15 START main 60c8391; disk /home 37G free; P8 approved by user
+2026-11-13T10:36:46Z C-17 DISPATCH architect (opus, med)

@@ -627,12 +627,15 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 8 — Features (requested 2026-11-13)
 
 ### C-17 — Contract: GET /kanji/{literal}/words (by frequency, deck membership; additive)
-- model: opus (architect) · risk: med · deps: — · status: TODO
+- model: opus (architect) · risk: med · deps: — · status: RUNNING
 - paths: contracts/api/, clients/ (regen) (ticket: plan/tickets/C-17.md)
 
 ### FEAT-1 — Clickable kanji in dictionary: words by frequency + in my decks
 - model: sonnet · risk: med · deps: C-17 · status: TODO
 - paths: server dict/ + tests, server routing, web dictionary (ticket: plan/tickets/FEAT-1.md)
+
+### UI-1 — Full UI gamification and visual polish pass across web and Android
+- status: HUMAN-GATED (never dispatch) · Starts only after everything works; the user plans and starts it personally. No ticket file.
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
