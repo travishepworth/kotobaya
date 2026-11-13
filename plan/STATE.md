@@ -1,10 +1,10 @@
 # STATE
 Mode: single-session
 Phase: P7 (live bugfixes, run 12) — P6 complete, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (run 12 in progress)
+Updated: 2026-11-13 (run 13 in progress)
 
 
-## RESUME HERE (run 12 IN PROGRESS: bugfix run BUG-1..5 for 0.1.4 live bugs; see Running)
+## RESUME HERE (run 13 IN PROGRESS: finishing BUG-1 + BUG-6; run 12 died, merged BUG-4, BUG-2+BUG-3, BUG-5 → a0e509e)
 
 ## Run 11 handover (previous)
 - Run 11 merged (5): F-28 (worker CPU-only torch, image 2.04 GB), T609 (security review: docs/SECURITY.md, chart hardening + egress NetworkPolicies; review APPROVE), T610 (docs/RUNBOOK.md), SEC-2 (worker SSRF guard), SEC-1 (blob XSS headers; review APPROVE). All checks green post-rebase.
@@ -16,8 +16,8 @@ Updated: 2026-11-13 (run 12 in progress)
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| BUG-1 | writer-senior | 1 | t/BUG-1-stats-perf | run 12 |
-| BUG-6 | architect (opus) | 1 | t/BUG-6-import-graduation | run 12 |
+| BUG-1 | writer-senior | 2 (QueueLoader granted) | t/BUG-1-stats-perf | run 13 |
+| BUG-6 | architect (opus) | 2 (server CoreCardCache granted; ADR-021) | t/BUG-6-import-graduation | run 12 |
 
 ## Parked
 (none)

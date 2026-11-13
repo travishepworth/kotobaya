@@ -769,3 +769,12 @@
 2026-11-13T09:45:31Z BUG-2+BUG-3 MERGE CHECK_GREEN worker+web (med, no review); web messages.ts edit outside paths accepted
 2026-11-13T09:45:31Z BUG-5 DISPATCH writer; HANDOFF DONE; 501 allowlist empty
 2026-11-13T09:45:43Z BUG-5 MERGE CHECK_GREEN server (med, no review)
+2026-11-13T09:56:38Z BUG-1 HANDOFF BLOCKED (run 12): stats endpoints <1s except summary; asks for QueueLoader.kt (same LAG rewrite)
+2026-11-13T09:56:38Z BUG-6 HANDOFF BLOCKED (run 12): contracts+core green; asks for server CoreCardCache + import_source selects
+2026-11-13T09:56:38Z RUN12 END: died mid-run (API auth error), no handover; merges BUG-4, BUG-2+BUG-3, BUG-5 (main a0e509e)
+2026-11-13T09:56:38Z RUN13 START main a0e509e; disk /home 38G free; run-12 BUG-6 architect still alive in its worktree
+2026-11-13T09:56:38Z BUG-1 DECIDE coordinator: option (a), owned paths += server/.../review/QueueLoader.kt
+2026-11-13T09:56:38Z BUG-6 DECIDE coordinator: grant CoreCardCache.kt + import_source in StatsQueries/StruggleModule/DrillSources + server test; merge after BUG-1
+2026-11-13T09:56:38Z BUG-1 DISPATCH writer-senior attempt 2 (same worktree)
+2026-11-13T09:58:29Z BUG-6 DECIDE ADR-021 PROVISIONAL jpdb import graduation (fsrs6-2); HUMAN_CHECKS line
+2026-11-13T09:58:34Z BUG-6 DISPATCH architect (opus) attempt 2: server import_source + replay equality test
