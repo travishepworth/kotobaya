@@ -183,3 +183,14 @@
 - (reviewer) DeviceCardCache.paramsFor runs outside `guarded`: malformed preset fails the pull page instead of refused cache (schema-invalid input only).
 - (reviewer) T303a SyncEngine: reject pull pages not matching requested `since` (stale page after wipe).
 - (reviewer) MergeReaders.visibleDeckItems: tombstone-drop vs duplicate-collapse order unspecified in SYNC 8.5 — ask architect, document.
+
+## T303c (architect second pass, 2026-11-13)
+- Readers (LocalQueueLoader, DueNotifications, widget) don't await startup replay (§10.5) → stale due dates after upgrade → folded into T304b.
+- DurabilityTest WAL+FULL check tests the JDBC driver, not DurableDriver.open; PRAGMA synchronous in onConfigure may hit one pooled connection — verify on device (HUMAN_CHECKS).
+- Trigger during a running cycle joins it; op minted after push step waits for next trigger (≤15 min) — add a dirty flag.
+- Unreachable mapped to SERVER_ERROR → folded into T303e.
+- inState push order by hlc only; add `, op_id` tie-break.
+- client.sync_failures sync_state key undocumented in Local.sq/§10.5.
+- db/Databases.kt should open the durable driver itself (sync module currently replaces AppDatabase binding); expedited-work notification needs a "Syncing" string (T303e).
+- (reviewer) DurableDriver: synchronous=FULL set once in onConfigure; re-assert at start of SqlDelightDeviceStore.run or test after other features touch the DB.
+- (reviewer) SqlLearningTables.put keeps absent columns; LearningTables contract says replace whole row (in-memory drops them) — fill NULL/default or require full rows.

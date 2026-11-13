@@ -14,8 +14,8 @@ Updated: 2026-11-13T00:46:19Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T303c | writer-senior (opus) | 1 | t/T303c-android-sync | 2026-11-13T00:46:19Z |
-| T303d | writer-senior (opus) | 1 | t/T303d-remint | 2026-11-13T00:46:19Z |
+| T303c | — (in review) | 1 | t/T303c-android-sync | 2026-11-13T01:07:15Z |
+| T303d | — (in review) | 1 | t/T303d-remint | 2026-11-13T01:07:37Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -23,6 +23,8 @@ Updated: 2026-11-13T00:46:19Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T303d | reviewer (opus) + architect (opus) | 2026-11-13T01:07:37Z |
+| T303c | reviewer (opus) + architect (opus) | 2026-11-13T01:07:15Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
