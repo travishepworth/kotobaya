@@ -52,4 +52,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.sync.ui.syncUiFeature,
     kotobaya.android.struggle.struggleFeature,
     kotobaya.android.decks.decksFeature,
+    kotobaya.android.search.searchFeature,
 )
