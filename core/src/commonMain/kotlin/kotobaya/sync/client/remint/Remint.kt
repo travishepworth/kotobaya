@@ -33,6 +33,7 @@ import kotobaya.sync.client.store.PendingOpRow
 import kotobaya.sync.client.store.PendingState
 import kotobaya.sync.client.store.StoreTransaction
 import kotobaya.sync.client.store.SyncBookkeeping
+import kotobaya.sync.client.store.SyncStateKeys
 import kotobaya.sync.client.store.bookkeeping
 
 /** Why a clock action (Re-mint, Discard of `clock_ahead` rows) is unavailable (SYNC.md 10.4 "Preconditions"). */
@@ -120,10 +121,12 @@ public sealed interface RemintOutcome {
         public val minted: List<Op>,
         /** Op ids of every deleted row. */
         public val deleted: Set<Uuid>,
-        /** Op ids of the deleted rows that were not re-minted (equals the preview's discard list). */
+        /** Op ids of the deleted rows that were not re-minted: the preview's discard list, ascending hlc. */
         public val discarded: List<Uuid>,
         /** The shift `delta` of step 5. */
         public val delta: Long,
+        /** Original review id → the new id it was re-minted with (step 6b). */
+        public val reviewIds: Map<Uuid, Uuid>,
     ) : RemintOutcome
 
     /** The preview is stale (something changed since it was taken): take a new one and show it again. Nothing changed. */
@@ -240,15 +243,19 @@ public class Reminter<L : LearningTables>(
             minted += mint(mints.map { MintRequest(it.type, it.payload) }, at)
         }
         // step 6b
+        val newIds = LinkedHashMap<Uuid, Uuid>()
         for ((j, r) in reviewOps.withIndex()) {
             val t = shift.times[planned.size + j]
-            minted += mint(listOf(MintRequest(OpType.REVIEW_LOGGED, remintedReview(r, t, shift.delta, now))), null)
+            val payload = remintedReview(r, t, shift.delta, now)
+            minted += mint(listOf(MintRequest(OpType.REVIEW_LOGGED, payload)), null)
+            val old = r.str("id")
+            val new = (payload.members["id"] as? JsonString)?.value
+            if (old != null && new != null) newIds[old] = new
         }
         // step 7
         bk.remintOffset = null
         bk.rebuildPending = true
-        val reminted = sel.remint.mapTo(HashSet()) { it.row.opId }.also { s -> plan.kept.forEach { s += it.opId } }
-        return RemintOutcome.Reminted(minted, sel.deleted, sel.deleted.filter { it !in reminted }, shift.delta)
+        return RemintOutcome.Reminted(minted, sel.deleted, plan.discards.map { it.row.opId }, shift.delta, newIds)
     }
 
     /** Mints through the ordinary minter (section 4); a refusal aborts the whole transaction. */
@@ -285,18 +292,28 @@ public class Reminter<L : LearningTables>(
     }
 
     /**
-     * What a preview depends on: every outbox row (id, state, error, hlc), the bookkeeping Re-mint
-     * reads, and the undo state of the selected reviews. Not the server skew or `hlc_last` (a pull
-     * changes them; the preconditions and the repair are re-evaluated at run time).
+     * What a preview depends on, so that any later change makes it stale: every outbox row (id,
+     * state, error, hlc, attempts), every `sync_state` key this client knows (a sync cycle in between
+     * changes `last_sync_at`), and the undo state of the selected reviews.
      */
     private fun fingerprint(tx: StoreTransaction<L>, rows: List<PendingOpRow>, sel: RemintSelection): String = buildString {
-        for (r in rows.sortedBy { it.opId }) append(r.opId).append('|').append(r.state.wire).append('|').append(r.hlc).append('|').append(r.lastError).append('\n')
-        val bk = tx.bookkeeping
-        append("acked=").append(bk.hlcAcked).append(";offset=").append(bk.remintOffset).append(";rebuild=").append(bk.rebuildPending).append('\n')
+        for (r in rows.sortedBy { it.opId }) {
+            append(r.opId).append('|').append(r.state.wire).append('|').append(r.hlc).append('|')
+                .append(r.attempts).append('|').append(r.lastError).append('\n')
+        }
+        for (key in FINGERPRINT_KEYS) append(key).append('=').append(tx.syncState.get(key)).append('\n')
         for (r in sel.reviews) append(r.opId).append(if (isUndone(tx.learning, r)) ":undone" else ":live").append('\n')
     }
 
     private fun allRows(tx: StoreTransaction<L>): List<PendingOpRow> =
         PendingState.entries.flatMap { tx.outbox.inState(it) }.sortedBy { it.hlc }
-}
 
+    private companion object {
+        val FINGERPRINT_KEYS = listOf(
+            SyncStateKeys.DEVICE_ID, SyncStateKeys.PULL_SEQ, SyncStateKeys.HLC_LAST, SyncStateKeys.LAST_SYNC_AT,
+            SyncStateKeys.REBUILD_PENDING, SyncStateKeys.LOG_EPOCH, SyncStateKeys.DURABLE_SEQ, SyncStateKeys.HLC_ACKED,
+            SyncStateKeys.REMINT_OFFSET, SyncStateKeys.SERVER_SKEW_MS, SyncStateKeys.CLOCK_BLOCKED,
+            SyncStateKeys.UPGRADE_REQUIRED, SyncStateKeys.LOG_RESET_EPOCH,
+        )
+    }
+}
