@@ -36,6 +36,8 @@ dependencies {
     // auth does not depend on minio's transitive graph. Same version, no new artifact.
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     // --- end T105a
+    // T411c: zstd for media snapshot archives (contracts/db/SNAPSHOT.md 2.8; same artifact as the Android dict installer).
+    implementation("com.github.luben:zstd-jni:1.5.6-4")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
