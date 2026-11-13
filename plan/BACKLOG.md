@@ -748,7 +748,7 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - HUMAN GATE after merge: UI-WEB and UI-APP wait for human approval.
 
 ### C-19 — Core render contract: data-field regions in RenderedCard (FEAT-x prerequisite; additive)
-- model: opus (architect) · risk: med · deps: — · status: TODO (ticket: plan/tickets/C-19.md)
+- model: opus (architect) · risk: med · deps: — · status: MERGED 578985c (ticket: plan/tickets/C-19.md)
 
 ### UI-WEB — Rebuild every web screen on the design system (B3, folds in FEAT-x)
 - model: opus · risk: high · deps: UI-DS, C-19 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
