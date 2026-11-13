@@ -25,6 +25,7 @@ fun dictHandlers(db: Database): Map<String, OperationHandler> {
         "searchDictionary" to { api.search(this) },
         "getDictEntry" to { api.entry(this) },
         "getKanji" to { api.kanji(this) },
+        "listKanjiWords" to { KanjiWordsApi(db).list(this) },
         "listEntryExamples" to { EntryExamplesApi(db).list(this) },
         "getDictRelease" to { DictReleaseApi.get(db, this) },
         "refreshDictionary" to { DictReleaseApi.refresh(db, this) },

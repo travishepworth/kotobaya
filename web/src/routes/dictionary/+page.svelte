@@ -4,6 +4,7 @@
 	import { dictionaryApi, noteTypesApi, notesApi } from '../../lib/dictionary/api';
 	import GrammarCapture from '../../lib/grammar-capture/GrammarCapture.svelte';
 	import { tg } from '../../lib/grammar-capture/messages';
+	import KanjiPanel from '../../lib/dictionary/KanjiPanel.svelte';
 	import { td } from '../../lib/dictionary/messages';
 	import { pushToast } from '../../lib/toasts.svelte';
 
@@ -19,6 +20,7 @@
 	let selectedSeq = $state<number | null>(null);
 	let entry = $state<DictEntry | null>(null);
 	let capturing = $state<string | null>(null);
+	let kanjiOpen = $state<string | null>(null);
 	let examples = $state<EntryExamples | null>(null);
 	let loadingEntry = $state(false);
 	let adding = $state(false);
@@ -72,6 +74,7 @@
 
 	async function open(seq: number): Promise<void> {
 		selectedSeq = seq;
+		kanjiOpen = null;
 		const gen = ++entryGen;
 		loadingEntry = true;
 		entry = null;
@@ -245,7 +248,24 @@
 			</ol>
 			{#if e.kanji.length > 0}
 				<h3>{td('dict.kanji')}</h3>
-				<p lang="ja">{e.kanji.join(' ')}</p>
+				<p lang="ja">
+					{#each e.kanji as k (k)}
+						<button
+							type="button"
+							class="kanji-btn"
+							aria-label={td('dict.kanjiOpen', { k })}
+							aria-pressed={kanjiOpen === k}
+							onclick={() => (kanjiOpen = kanjiOpen === k ? null : k)}>{k}</button
+						>
+					{/each}
+				</p>
+				{#if kanjiOpen !== null}
+					<KanjiPanel
+						literal={kanjiOpen}
+						onopen={(seq) => void open(seq)}
+						onclose={() => (kanjiOpen = null)}
+					/>
+				{/if}
 			{/if}
 			{#if examples && (examples.media.length > 0 || examples.tatoeba.length > 0)}
 				<h3>{td('dict.examples')}</h3>
@@ -337,6 +357,10 @@
 	.muted {
 		color: var(--kb-text-muted);
 		margin: 0;
+	}
+	.kanji-btn {
+		font-size: 1.4rem;
+		cursor: pointer;
 	}
 	h3,
 	h4 {

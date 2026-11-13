@@ -33,7 +33,22 @@ const en = {
 	'dict.adding': 'Adding…',
 	'dict.added': 'Note added.',
 	'dict.noVocabType': 'No vocab note type is available.',
-	'dict.openNotes': 'Open in Notes'
+	'dict.openNotes': 'Open in Notes',
+	'dict.kanjiOpen': 'Show kanji {k}',
+	'dict.kanjiPanel': 'Kanji details',
+	'dict.kanjiClose': 'Close',
+	'dict.kanjiLoading': 'Loading kanji…',
+	'dict.kanjiOn': 'On',
+	'dict.kanjiKun': 'Kun',
+	'dict.kanjiStrokes': 'Strokes: {n}',
+	'dict.kanjiJlpt': 'JLPT N{n}',
+	'dict.kanjiGrade': 'Grade {n}',
+	'dict.kanjiTabFrequent': 'Most frequent',
+	'dict.kanjiTabMine': 'In my decks',
+	'dict.kanjiDeckFilter': 'Deck',
+	'dict.kanjiAllDecks': 'All decks',
+	'dict.kanjiNoWords': 'No words.',
+	'dict.kanjiDeckCount': '{name} ×{n}'
 } as const;
 
 export type DictMessageKey = keyof typeof en;
