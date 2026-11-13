@@ -70,7 +70,7 @@ RUN = $(if $(filter 1,$(DRY_RUN)),echo,)
 .PHONY: images push apk
 
 images:
-	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f server/Dockerfile -t $(REGISTRY)/api:$(VERSION) .
+	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f server/Dockerfile --build-arg KOTOBAYA_VERSION=$(VERSION) -t $(REGISTRY)/api:$(VERSION) .
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f worker/Dockerfile -t $(REGISTRY)/worker:$(VERSION) worker
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f web/Dockerfile -t $(REGISTRY)/web:$(VERSION) .
 	$(RUN) docker buildx build --platform linux/$(ARCH) --load -f deploy/backup/Dockerfile -t $(REGISTRY)/backup:$(VERSION) deploy/backup

@@ -1,5 +1,7 @@
 # Build context: repository root (see docker-compose.yml). Dev image only; release images are T002.
 FROM gradle:8.11.1-jdk17 AS build
+ARG KOTOBAYA_VERSION=dev
+ENV KOTOBAYA_VERSION=${KOTOBAYA_VERSION}
 WORKDIR /src
 COPY . .
 RUN gradle --no-daemon :server:installDist -x test
