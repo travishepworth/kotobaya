@@ -1,112 +1,191 @@
 <script lang="ts">
+	// Browse › Notes: search and filter notes, edit one next to its live card (FEAT-x per-field overrides).
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import Button from '../../lib/ui/Button.svelte';
+	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import Select from '../../lib/ui/Select.svelte';
+	import TextField from '../../lib/ui/TextField.svelte';
+	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
+	import type { TableColumn } from '../../lib/ui/kinds';
 	import { tn } from '../../lib/notes/messages';
-	import NoteEditor from '../../lib/notes/NoteEditor.svelte';
-	import NoteTable from '../../lib/notes/NoteTable.svelte';
-	import { BASE_TYPES, NotesPage } from '../../lib/state/notes.svelte';
+	import { BASE_TYPES, NotesPage, rowLabel, type Note, type NoteBaseType } from '../../lib/state/notes.svelte';
+	import BrowseLayout from '../cards/BrowseLayout.svelte';
+	import { tb, type BrowseKey } from '../cards/messages';
+	import NoteEditor from './NoteEditor.svelte';
 
 	const s = new NotesPage();
-
-	// Deep link from the dictionary page: /notes?note=<id>
+	// Deep link from the dictionary: /notes?note=<id>
 	onMount(() => s.start(page.url.searchParams.get('note')));
-</script>
 
-<h1>{tn('notes.title')}</h1>
+	const headwordMap = $derived(new Map([...s.headwords.byseq].map(([k, v]) => [k, v.headword])));
+	const typeOptions = [
+		{ value: '' as NoteBaseType | '', label: tb('br.typeAny') },
+		...BASE_TYPES.map((b) => ({ value: b as NoteBaseType | '', label: tb(`br.type.${b}` as BrowseKey) }))
+	];
+	const columns: TableColumn[] = [
+		{ key: 'note', label: tn('notes.col.note'), lang: 'ja' },
+		{ key: 'meaning', label: tn('notes.col.meaning'), optional: true },
+		{ key: 'type', label: tb('br.col.type'), width: '8rem', optional: true },
+		{ key: 'cards', label: tb('br.col.cards'), width: '5rem', align: 'end', optional: true }
+	];
 
-<form
-	class="search"
-	onsubmit={(e) => {
+	// Dictionary-backed notes are named by their headword; others by their first field.
+	function label(n: Note): string {
+		const hw = n.entrySeq != null ? headwordMap.get(n.entrySeq) : undefined;
+		return hw ?? rowLabel(n, n.id, headwordMap);
+	}
+	function meaning(n: Note): string {
+		const hw = n.entrySeq != null ? s.headwords.get(n.entrySeq) : undefined;
+		return hw?.gloss ?? '';
+	}
+	function submit(e: Event): void {
 		e.preventDefault();
 		s.search();
-	}}
->
-	<label>
-		{tn('notes.search')}
-		<input type="search" bind:value={s.draft} lang="ja" />
-	</label>
-	<label>
-		{tn('notes.type')}
-		<select bind:value={s.typeFilter}>
-			<option value="">{tn('notes.typeAny')}</option>
-			{#each BASE_TYPES as b (b)}<option value={b}>{b}</option>{/each}
-		</select>
-	</label>
-	<label>
-		{tn('notes.tag')}
-		<input type="text" bind:value={s.tagFilter} />
-	</label>
-	<button type="submit" class="kb-btn">{tn('notes.go')}</button>
-</form>
-<p class="muted">{tn('notes.searchHelp')}</p>
+	}
+	function clear(): void {
+		s.draft = '';
+		s.typeFilter = '';
+		s.tagFilter = '';
+		s.search();
+	}
+	const filtered = $derived(s.draft.trim() !== '' || s.typeFilter !== '' || s.tagFilter.trim() !== '');
+</script>
 
-<div class="layout">
-	<div class="main">
-		{#if !s.loadedOnce}
-			<p>{tn('notes.loading')}</p>
-		{:else if s.notes.length === 0}
-			<p>{tn('notes.none')}</p>
-		{:else}
-			<NoteTable
-				notes={s.notes}
-				activeId={s.activeId}
-				headwords={s.headwords}
-				hasMore={s.cursor !== null}
-				onactivate={(n) => s.activate(n)}
-				onnearend={() => void s.loadPage(false)}
-			/>
-			<p class="muted">
-				{tn('notes.loadedCount', { n: s.notes.length })}{#if s.cursor !== null}
-					· {tn('notes.moreAvailable')}{/if}
-			</p>
-		{/if}
-	</div>
+<svelte:head><title>{tb('br.notes')} · Kotobaya</title></svelte:head>
 
-	<aside>
-		{#if s.active}
-			<NoteEditor
-				note={s.active}
-				noteType={s.noteTypes.get(s.active.noteTypeId)}
-				onentry={(seq, e) => s.entryLoaded(seq, e)}
-				onsaved={(n) => s.saved(n)}
-				ondeleted={(id) => s.deleted(id)}
+{#snippet toolbar()}
+	<form class="tools" onsubmit={submit}>
+		<div class="q">
+			<TextField
+				label={tb('br.noteSearch')}
+				hideLabel
+				type="search"
+				icon="search"
+				clearable
+				lang="ja"
+				placeholder={tb('br.noteSearchPlaceholder')}
+				bind:value={s.draft}
 			/>
-		{:else}
-			<p class="muted">{tn('notes.selectPrompt')}</p>
-		{/if}
-	</aside>
-</div>
+		</div>
+		<div class="type"><Select label={tb('br.type')} hideLabel options={typeOptions} bind:value={s.typeFilter} onchange={() => s.search()} /></div>
+		<div class="tag"><TextField label={tb('br.tag')} hideLabel icon="flag" placeholder={tb('br.tag')} bind:value={s.tagFilter} /></div>
+		<Button variant="primary" type="submit">{tb('br.search')}</Button>
+	</form>
+{/snippet}
+
+{#snippet cell(n: Note, col: TableColumn)}
+	{#if col.key === 'note'}
+		<button type="button" class="link" onclick={() => s.activate(n)}>{label(n)}</button>
+	{:else if col.key === 'meaning'}
+		<span class="muted">{meaning(n)}</span>
+	{:else if col.key === 'type'}
+		<span class="muted">{tb(`br.type.${n.type}` as BrowseKey)}</span>
+	{:else}
+		<span class="kb-num">{n.cards.length}</span>
+	{/if}
+{/snippet}
+
+{#snippet master()}
+	<VirtualTable
+		label={tb('br.notes')}
+		{columns}
+		rows={s.notes}
+		rowKey={(n) => n.id}
+		{cell}
+		activeKey={s.activeId}
+		onactivate={(n) => s.activate(n)}
+		loading={!s.loadedOnce || (s.loading && s.notes.length === 0)}
+		hasMore={s.cursor !== null}
+		onnearend={() => void s.loadPage(false)}
+		height="min(40rem, calc(100dvh - 14rem))"
+	>
+		{#snippet empty()}
+			{#if filtered}
+				<EmptyState art="search" title={tb('br.noNotesTitle')} body={tb('br.noneBody')}>
+					{#snippet action()}<Button variant="outline" onclick={clear}>{tb('br.clearSearch')}</Button>{/snippet}
+				</EmptyState>
+			{:else}
+				<EmptyState art="edit" title={tb('br.emptyNotesTitle')} body={tb('br.emptyBody')}>
+					{#snippet action()}<Button variant="tonal" icon="search" href="/dictionary">{tb('br.toDictionary')}</Button>{/snippet}
+				</EmptyState>
+			{/if}
+		{/snippet}
+	</VirtualTable>
+	{#if s.notes.length > 0}
+		<p class="count">{s.cursor !== null ? tb('br.loadedMore', { n: s.notes.length }) : tb('br.loaded', { n: s.notes.length })}</p>
+	{/if}
+{/snippet}
+
+{#snippet detail()}
+	{#if s.active}
+		<NoteEditor
+			note={s.active}
+			noteType={s.noteTypes.get(s.active.noteTypeId)}
+			onentry={(seq, e) => s.entryLoaded(seq, e)}
+			onsaved={(n) => s.saved(n)}
+			ondeleted={(id) => s.deleted(id)}
+		/>
+	{/if}
+{/snippet}
+
+{#snippet placeholder()}
+	<EmptyState art="edit" title={tb('br.pickNote')} body={tb('br.pickNoteBody')} />
+{/snippet}
+
+<BrowseLayout
+	view="notes"
+	{toolbar}
+	{master}
+	detail={s.active ? detail : null}
+	{placeholder}
+	detailTitle={s.active ? label(s.active) : tn('notes.edit')}
+	onclose={() => (s.activeId = null)}
+/>
 
 <style>
-	.search {
+	.tools {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--kb-space-3);
-		align-items: end;
+		align-items: flex-start;
+		gap: var(--kb-space-2);
 	}
-	.search label {
-		display: grid;
-		gap: var(--kb-space-1);
-	}
-	.layout {
-		display: grid;
-		grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
-		gap: var(--kb-space-4);
-		margin-top: var(--kb-space-4);
-		align-items: start;
-	}
-	.main {
-		display: grid;
-		gap: var(--kb-space-3);
+	.q {
+		flex: 1 1 16rem;
 		min-width: 0;
 	}
-	.muted {
-		color: var(--kb-text-muted);
-		margin: 0;
+	.type {
+		flex: 1 1 9rem;
+		min-width: 0;
+		max-width: 12rem;
 	}
-	@media (max-width: 60rem) {
-		.layout {
-			grid-template-columns: 1fr;
-		}
+	.tag {
+		flex: 1 1 8rem;
+		min-width: 0;
+		max-width: 11rem;
+	}
+	.link {
+		max-width: 100%;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: start;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.link:focus-visible {
+		outline: 2px solid var(--kb-color-focus);
+	}
+	.muted {
+		color: var(--kb-color-text-muted);
+	}
+	.count {
+		margin-top: var(--kb-space-2);
+		font: var(--kb-type-caption);
+		color: var(--kb-color-text-muted);
 	}
 </style>

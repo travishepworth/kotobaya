@@ -77,9 +77,11 @@
 		flex-direction: column;
 		overflow: hidden;
 	}
-	.panel.lg {
-		width: min(40rem, calc(100vw - 2 * var(--kb-space-4)));
-		max-height: min(88dvh, 56rem);
+	@media (min-width: 600px) {
+		.panel.lg {
+			width: min(40rem, calc(100vw - 2 * var(--kb-space-4)));
+			max-height: min(88dvh, 56rem);
+		}
 	}
 	dialog.panel:not([open]) {
 		display: none;
@@ -154,6 +156,18 @@
 		}
 		dialog.panel .handle {
 			display: block;
+		}
+		dialog.panel {
+			max-height: 92dvh;
+		}
+		header {
+			padding-inline: var(--kb-space-4) var(--kb-space-2);
+		}
+		.body {
+			padding-inline: var(--kb-space-4);
+		}
+		footer {
+			padding-inline: var(--kb-space-4);
 		}
 		footer {
 			flex-direction: column-reverse;

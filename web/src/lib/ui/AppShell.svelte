@@ -244,7 +244,11 @@
 			clip-path: inset(50%);
 		}
 		.pill {
-			width: 3rem;
+			width: 100%;
+			max-width: 3rem;
+		}
+		.top .word {
+			display: none;
 		}
 	}
 	.more {
