@@ -164,6 +164,9 @@ docs/JpdbVocabResolution.md
 docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
+docs/KanjiWord.md
+docs/KanjiWordDeck.md
+docs/KanjiWordPage.md
 docs/LoginRequest.md
 docs/Media.md
 docs/MediaApi.md
@@ -470,6 +473,9 @@ src/models/JpdbVocabResolution.ts
 src/models/JpdbVocabResolutionPut.ts
 src/models/JpdbVocabResolutionResult.ts
 src/models/Kanji.ts
+src/models/KanjiWord.ts
+src/models/KanjiWordDeck.ts
+src/models/KanjiWordPage.ts
 src/models/LoginRequest.ts
 src/models/Media.ts
 src/models/MediaContentPublishedSchema.ts

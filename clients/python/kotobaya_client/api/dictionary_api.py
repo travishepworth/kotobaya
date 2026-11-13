@@ -15,7 +15,7 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import Field, StrictBool
+from pydantic import Field, StrictBool, field_validator
 from typing import Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.dict_entry import DictEntry
@@ -25,6 +25,7 @@ from kotobaya_client.models.entry_examples import EntryExamples
 from kotobaya_client.models.job import Job
 from kotobaya_client.models.job_payload_dict_refresh import JobPayloadDictRefresh
 from kotobaya_client.models.kanji import Kanji
+from kotobaya_client.models.kanji_word_page import KanjiWordPage
 
 from kotobaya_client.api_client import ApiClient, RequestSerialized
 from kotobaya_client.api_response import ApiResponse
@@ -1107,6 +1108,346 @@ class DictionaryApi:
         return self.api_client.param_serialize(
             method='GET',
             resource_path='/dict/entries/{seq}/examples',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_kanji_words(
+        self,
+        literal: Annotated[str, Field(min_length=1, strict=True, max_length=2, description="Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).")],
+        deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).")] = None,
+        mine: Annotated[Optional[StrictBool], Field(description="Only entries that are a live item of at least one of your live decks or have a live vocab note.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> KanjiWordPage:
+        """Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+
+        Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`, a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not exist in `ref.kanji`, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (`items: []`, `next_cursor: null`).  **Filters** (combine with AND): - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with   `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must   be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted   deck is `404` even though its rows remain. A live deck with no matching item (including   every `smart` deck, which has no items) gives an empty page. - `mine=true`: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,   `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).   Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,   `mine=true` adds nothing (every result is already in one of your decks). - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only   `entry_seq` items count, here and in `decks`.  **Order** (total; `seq` is unique): - `deck_id` given: that deck's `deck_item.occurrence_count` descending (in-deck frequency;   all `0` for non-media decks, so this degrades to the global order), then   `freq_rank` ascending with NULLs last, then `seq` ascending. - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count` or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by `seq`. `next_cursor` is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary` (caller's `status` and `note_id` overlay), plus `decks`: the caller's live decks (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at IS NULL`), ordered by `name` in code-point order (`COLLATE \"C\"`), then `id`. Empty array when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among them. `decks[].occurrence_count` is that deck's `deck_item.occurrence_count`. 
+
+        :param literal: Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`). (required)
+        :type literal: str
+        :param deck_id: Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+        :type deck_id: str
+        :param mine: Only entries that are a live item of at least one of your live decks or have a live vocab note.
+        :type mine: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_kanji_words_serialize(
+            literal=literal,
+            deck_id=deck_id,
+            mine=mine,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "KanjiWordPage",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def list_kanji_words_with_http_info(
+        self,
+        literal: Annotated[str, Field(min_length=1, strict=True, max_length=2, description="Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).")],
+        deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).")] = None,
+        mine: Annotated[Optional[StrictBool], Field(description="Only entries that are a live item of at least one of your live decks or have a live vocab note.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[KanjiWordPage]:
+        """Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+
+        Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`, a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not exist in `ref.kanji`, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (`items: []`, `next_cursor: null`).  **Filters** (combine with AND): - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with   `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must   be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted   deck is `404` even though its rows remain. A live deck with no matching item (including   every `smart` deck, which has no items) gives an empty page. - `mine=true`: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,   `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).   Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,   `mine=true` adds nothing (every result is already in one of your decks). - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only   `entry_seq` items count, here and in `decks`.  **Order** (total; `seq` is unique): - `deck_id` given: that deck's `deck_item.occurrence_count` descending (in-deck frequency;   all `0` for non-media decks, so this degrades to the global order), then   `freq_rank` ascending with NULLs last, then `seq` ascending. - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count` or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by `seq`. `next_cursor` is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary` (caller's `status` and `note_id` overlay), plus `decks`: the caller's live decks (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at IS NULL`), ordered by `name` in code-point order (`COLLATE \"C\"`), then `id`. Empty array when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among them. `decks[].occurrence_count` is that deck's `deck_item.occurrence_count`. 
+
+        :param literal: Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`). (required)
+        :type literal: str
+        :param deck_id: Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+        :type deck_id: str
+        :param mine: Only entries that are a live item of at least one of your live decks or have a live vocab note.
+        :type mine: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_kanji_words_serialize(
+            literal=literal,
+            deck_id=deck_id,
+            mine=mine,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "KanjiWordPage",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def list_kanji_words_without_preload_content(
+        self,
+        literal: Annotated[str, Field(min_length=1, strict=True, max_length=2, description="Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).")],
+        deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).")] = None,
+        mine: Annotated[Optional[StrictBool], Field(description="Only entries that are a live item of at least one of your live decks or have a live vocab note.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+
+        Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`, a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not exist in `ref.kanji`, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (`items: []`, `next_cursor: null`).  **Filters** (combine with AND): - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with   `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must   be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted   deck is `404` even though its rows remain. A live deck with no matching item (including   every `smart` deck, which has no items) gives an empty page. - `mine=true`: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,   `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).   Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,   `mine=true` adds nothing (every result is already in one of your decks). - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only   `entry_seq` items count, here and in `decks`.  **Order** (total; `seq` is unique): - `deck_id` given: that deck's `deck_item.occurrence_count` descending (in-deck frequency;   all `0` for non-media decks, so this degrades to the global order), then   `freq_rank` ascending with NULLs last, then `seq` ascending. - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count` or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by `seq`. `next_cursor` is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary` (caller's `status` and `note_id` overlay), plus `decks`: the caller's live decks (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at IS NULL`), ordered by `name` in code-point order (`COLLATE \"C\"`), then `id`. Empty array when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among them. `decks[].occurrence_count` is that deck's `deck_item.occurrence_count`. 
+
+        :param literal: Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`). (required)
+        :type literal: str
+        :param deck_id: Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+        :type deck_id: str
+        :param mine: Only entries that are a live item of at least one of your live decks or have a live vocab note.
+        :type mine: bool
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_kanji_words_serialize(
+            literal=literal,
+            deck_id=deck_id,
+            mine=mine,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "KanjiWordPage",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _list_kanji_words_serialize(
+        self,
+        literal,
+        deck_id,
+        mine,
+        limit,
+        cursor,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if literal is not None:
+            _path_params['literal'] = literal
+        # process the query parameters
+        if deck_id is not None:
+            
+            _query_params.append(('deck_id', deck_id))
+            
+        if mine is not None:
+            
+            _query_params.append(('mine', mine))
+            
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if cursor is not None:
+            
+            _query_params.append(('cursor', cursor))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/kanji/{literal}/words',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

@@ -1301,6 +1301,92 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         default: {$ref: '#/components/responses/Problem'}
 
+  /kanji/{literal}/words:
+    parameters:
+      - name: literal
+        in: path
+        required: true
+        description: Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).
+        schema: {type: string, minLength: 1, maxLength: 2}
+        example: 食
+    get:
+      operationId: listKanjiWords
+      tags: [dictionary]
+      summary: Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+      description: |
+        Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a
+        `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.
+
+        **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`,
+        a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not
+        exist in `ref.kanji`, so such a character, or any code point no entry contains (kana,
+        Latin...), is simply an empty page (`items: []`, `next_cursor: null`).
+
+        **Filters** (combine with AND):
+        - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with
+          `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must
+          be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted
+          deck is `404` even though its rows remain. A live deck with no matching item (including
+          every `smart` deck, which has no items) gives an empty page.
+        - `mine=true`: only entries that are a live item (as above) of at least one live deck of
+          the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,
+          `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).
+          Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,
+          `mine=true` adds nothing (every result is already in one of your decks).
+        - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only
+          `entry_seq` items count, here and in `decks`.
+
+        **Order** (total; `seq` is unique):
+        - `deck_id` given: that deck's `deck_item.occurrence_count` descending (in-deck frequency;
+          all `0` for non-media decks, so this degrades to the global order), then
+          `freq_rank` ascending with NULLs last, then `seq` ascending.
+        - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.
+
+        **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row
+        and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different
+        `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count`
+        or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be
+        skipped or repeated; clients that page through MUST de-duplicate by `seq`.
+        `next_cursor` is null on the last page (it MAY be non-null on a page that happens to
+        end exactly at the last row; the following page is then empty).
+
+        **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary`
+        (caller's `status` and `note_id` overlay), plus `decks`: the caller's live decks
+        (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at
+        IS NULL`), ordered by `name` in code-point order (`COLLATE "C"`), then `id`. Empty array
+        when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among
+        them. `decks[].occurrence_count` is that deck's `deck_item.occurrence_count`.
+      security:
+        - bearerAuth: [read]
+        - sessionCookie: [read]
+      parameters:
+        - name: deck_id
+          in: query
+          description: Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+          schema: {$ref: '#/components/schemas/Uuid'}
+          example: 01931f40-2000-7000-8000-000000000d01
+        - name: mine
+          in: query
+          description: Only entries that are a live item of at least one of your live decks or have a live vocab note.
+          schema: {type: boolean, default: false}
+          example: false
+        - name: limit
+          in: query
+          description: Page size.
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+          example: 50
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200':
+          description: One page of entries containing the kanji. Empty page when none do.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/KanjiWordPage'}
+              examples: {default: {$ref: '#/components/examples/KanjiWordPage'}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+
   # ---------------------------------------------------------------- notes
   /notes:
     get:
@@ -6918,6 +7004,63 @@ components:
           items:
             $ref: '#/components/schemas/DictEntrySummary'
           description: Entries in result order.
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          description: Cursor of the next page, or null.
+    KanjiWordDeck:
+      type: object
+      description: One of your live decks holding the entry as a live item (C-17).
+      required:
+      - deck_id
+      - name
+      - type
+      - occurrence_count
+      properties:
+        deck_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Deck id (`app.deck.id`).
+        name:
+          type: string
+          minLength: 1
+          description: Deck display name (`app.deck.name`, not unique).
+          examples:
+          - 葬送のフリーレン
+        type:
+          $ref: '#/components/schemas/DeckType'
+          description: Deck type. Never `smart` in practice (smart decks have no items); clients must still accept it.
+        occurrence_count:
+          type: integer
+          minimum: 0
+          description: '`app.deck_item.occurrence_count` of this entry in this deck: occurrences in the deck''s media; 0 for non-media decks.'
+          examples:
+          - 87
+    KanjiWord:
+      description: A dictionary entry containing the requested kanji, with the decks that hold it (C-17).
+      allOf:
+      - $ref: '#/components/schemas/DictEntrySummary'
+      - type: object
+        required:
+        - decks
+        properties:
+          decks:
+            type: array
+            items:
+              $ref: '#/components/schemas/KanjiWordDeck'
+            description: Your live decks holding this entry as a live item, by `name` (code-point order) then `deck_id`. Empty when none.
+    KanjiWordPage:
+      type: object
+      description: A page of entries containing a kanji (`listKanjiWords`).
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KanjiWord'
+          description: Entries in result order (see `listKanjiWords`).
         next_cursor:
           type:
           - string
@@ -12550,6 +12693,51 @@ components:
           status: learning
           note_id: 01931f40-1a2b-7c3d-8e4f-000000000a01
         next_cursor: null
+    KanjiWordPage:
+      summary: GET /kanji/食/words?deck_id=01931f40-2000-7000-8000-000000000d01&limit=2
+      value:
+        items:
+        - seq: 1358280
+          headword: 食べる
+          headword_reading: たべる
+          is_common: true
+          glosses:
+          - to eat
+          pos:
+          - v1
+          - vt
+          freq_rank: 312
+          retired: false
+          status: learning
+          note_id: 01931f40-1a2b-7c3d-8e4f-000000000a01
+          decks:
+          - deck_id: 01931f40-2000-7000-8000-000000000d02
+            name: JLPT N5
+            type: list
+            occurrence_count: 0
+          - deck_id: 01931f40-2000-7000-8000-000000000d01
+            name: 葬送のフリーレン
+            type: media
+            occurrence_count: 87
+        - seq: 1358300
+          headword: 食事
+          headword_reading: しょくじ
+          is_common: true
+          glosses:
+          - meal
+          pos:
+          - n
+          - vs
+          freq_rank: 1404
+          retired: false
+          status: new
+          note_id: null
+          decks:
+          - deck_id: 01931f40-2000-7000-8000-000000000d01
+            name: 葬送のフリーレン
+            type: media
+            occurrence_count: 12
+        next_cursor: eyJrIjpbMTIsMTQwNCwxMzU4MzAwXX0
     DictEntry:
       value:
         seq: 1358280

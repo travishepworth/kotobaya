@@ -49,6 +49,11 @@ import {
     KanjiToJSON,
 } from '../models/Kanji';
 import {
+    type KanjiWordPage,
+    KanjiWordPageFromJSON,
+    KanjiWordPageToJSON,
+} from '../models/KanjiWordPage';
+import {
     type Problem,
     ProblemFromJSON,
     ProblemToJSON,
@@ -77,6 +82,29 @@ export interface ListEntryExamplesRequest {
      * Maximum number of sentences per list.
      */
     limit?: number;
+}
+
+export interface ListKanjiWordsRequest {
+    /**
+     * Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).
+     */
+    literal: string;
+    /**
+     * Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+     */
+    deckId?: string;
+    /**
+     * Only entries that are a live item of at least one of your live decks or have a live vocab note.
+     */
+    mine?: boolean;
+    /**
+     * Page size.
+     */
+    limit?: number;
+    /**
+     * Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+     */
+    cursor?: string;
 }
 
 export interface RefreshDictionaryRequest {
@@ -323,6 +351,77 @@ export class DictionaryApi extends runtime.BaseAPI {
      */
     async listEntryExamples(requestParameters: ListEntryExamplesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EntryExamples> {
         const response = await this.listEntryExamplesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listKanjiWords without sending the request
+     */
+    async listKanjiWordsRequestOpts(requestParameters: ListKanjiWordsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['literal'] == null) {
+            throw new runtime.RequiredError(
+                'literal',
+                'Required parameter "literal" was null or undefined when calling listKanjiWords().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['deckId'] != null) {
+            queryParameters['deck_id'] = requestParameters['deckId'];
+        }
+
+        if (requestParameters['mine'] != null) {
+            queryParameters['mine'] = requestParameters['mine'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["read"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/kanji/{literal}/words`;
+        urlPath = urlPath.replace('{literal}', encodeURIComponent(String(requestParameters['literal'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`, a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not exist in `ref.kanji`, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (`items: []`, `next_cursor: null`).  **Filters** (combine with AND): - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with   `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must   be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted   deck is `404` even though its rows remain. A live deck with no matching item (including   every `smart` deck, which has no items) gives an empty page. - `mine=true`: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,   `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).   Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,   `mine=true` adds nothing (every result is already in one of your decks). - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only   `entry_seq` items count, here and in `decks`.  **Order** (total; `seq` is unique): - `deck_id` given: that deck\'s `deck_item.occurrence_count` descending (in-deck frequency;   all `0` for non-media decks, so this degrades to the global order), then   `freq_rank` ascending with NULLs last, then `seq` ascending. - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count` or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by `seq`. `next_cursor` is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary` (caller\'s `status` and `note_id` overlay), plus `decks`: the caller\'s live decks (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at IS NULL`), ordered by `name` in code-point order (`COLLATE \"C\"`), then `id`. Empty array when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among them. `decks[].occurrence_count` is that deck\'s `deck_item.occurrence_count`. 
+     * Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+     */
+    async listKanjiWordsRaw(requestParameters: ListKanjiWordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KanjiWordPage>> {
+        const requestOptions = await this.listKanjiWordsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KanjiWordPageFromJSON(jsonValue));
+    }
+
+    /**
+     * Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a `ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`, a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not exist in `ref.kanji`, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (`items: []`, `next_cursor: null`).  **Filters** (combine with AND): - `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with   `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must   be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted   deck is `404` even though its rows remain. A live deck with no matching item (including   every `smart` deck, which has no items) gives an empty page. - `mine=true`: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,   `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).   Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,   `mine=true` adds nothing (every result is already in one of your decks). - Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only   `entry_seq` items count, here and in `decks`.  **Order** (total; `seq` is unique): - `deck_id` given: that deck\'s `deck_item.occurrence_count` descending (in-deck frequency;   all `0` for non-media decks, so this degrades to the global order), then   `freq_rank` ascending with NULLs last, then `seq` ascending. - Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different `literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count` or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by `seq`. `next_cursor` is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary` (caller\'s `status` and `note_id` overlay), plus `decks`: the caller\'s live decks (`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at IS NULL`), ordered by `name` in code-point order (`COLLATE \"C\"`), then `id`. Empty array when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among them. `decks[].occurrence_count` is that deck\'s `deck_item.occurrence_count`. 
+     * Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+     */
+    async listKanjiWords(requestParameters: ListKanjiWordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KanjiWordPage> {
+        const response = await this.listKanjiWordsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

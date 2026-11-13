@@ -54,6 +54,13 @@ class TestDictionaryApi(unittest.TestCase):
         """
         pass
 
+    def test_list_kanji_words(self) -> None:
+        """Test case for list_kanji_words
+
+        Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+        """
+        pass
+
     def test_refresh_dictionary(self) -> None:
         """Test case for refresh_dictionary
 

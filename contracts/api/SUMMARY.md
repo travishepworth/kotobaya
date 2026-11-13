@@ -213,7 +213,7 @@ Everything else (additions):
 | Meta | `getHealth`, `getMeta` |
 | Presets | `listPresets`, `createPreset`, `getPreset`, `updatePreset`, `deletePreset`, `optimizePreset` |
 | Note types | `listNoteTypes`, `createNoteType`, `getNoteType`, `updateNoteType`, `deleteNoteType` |
-| Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary` |
+| Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary`, `listKanjiWords` |
 | Notes and cards | `getNote`, `bulkScheduleCards`, `createCard`, `getCard`, `updateCard`, `deleteCard`, `listCardReviews` |
 | Decks | `listDeckLists`, `getDeck`, `deleteDeck`, `addDeckItems`, `putDeckItem`, `removeDeckItem` |
 | Media | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `reparseMedia`, `importJpdbHistory`, `listSentences`, `getSentence` |
@@ -244,7 +244,7 @@ operation starts; "(consequence)" = emitted by the op-apply path. Every op also 
 | `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkScheduleCards`, `listCardReviews`, `importJpdbHistory`, `getStatsHeatmap`, `getStatsRetention`, `getStatsCalibration` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `getWordStatus`, `setWordStatus`, `clearWordStatus`, `getStatsKnownWords`, `importJpdbHistory` |
 | `deck` | `deck.created/updated/deleted`; `deck.content_published` (job) | `listDecks`, `getDeck`, `createDeck`, `updateDeck`, `deleteDeck`, `importMedia`, `importJpdbDeck`, `deleteMedia` |
-| `deck_item` | `deck.item_put`, `deck.item_removed`; snapshot via `deck.content_published` (job) | `listDeckItems`, `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote`, `bulkCards`, `getDeckCoverage` |
+| `deck_item` | `deck.item_put`, `deck.item_removed`; snapshot via `deck.content_published` (job) | `listDeckItems`, `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote`, `bulkCards`, `getDeckCoverage`, `listKanjiWords` |
 | `confusable` | `confusable.confirmed/rejected`; `confusable.suggested` (server; trigger not defined) | `listWordConfusables`, `listConfusables`, `setConfusable` |
 | `grammar_point` | `grammar.created/updated/deleted` | `listGrammarPoints`, `getGrammarPoint`, `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint` |
 | `sentence_grammar_span` | `grammar.span_put`, `grammar.span_removed` | `putGrammarSpan`, `removeGrammarSpan`, `listGrammarExamples`, `testGrammarRules` |
@@ -437,3 +437,23 @@ attempt 1 is gone). Needs node and python3; network on first run.
 - No new operation, no new public `JobKind`, no new op. Cross-check row unchanged:
   `fsrs_params` ↔ `fsrs_params.published` ↔ `optimizePreset` (job, `x-emits-ops: []`).
 - Worth a second look: see `contracts/db/SUMMARY.md` "C-16 changes".
+
+## C-17 changes (additive): words containing a kanji
+- **`listKanjiWords`** `GET /kanji/{literal}/words` (tag `dictionary`, scope `read`, read-only, no
+  ops). Live entries with a `ref.entry_kanji` row for the literal. One code point else `422`; a
+  literal missing from `ref.kanji` (or contained by no entry) is an empty page, not `404`.
+  Filters: `deck_id` (live entry-keyed items of that live deck; deleted/unknown deck `404`),
+  `mine` (live item of any live deck, or a live vocab note; word status alone does not count).
+  Order: with `deck_id`, `occurrence_count` desc, then `freq_rank` asc NULLs last, then `seq`;
+  else `freq_rank`, `seq`. `limit` 1..200 (default 50; own parameter, the shared `Limit` allows
+  500), keyset `cursor` bound to `literal`/`deck_id`/`mine` (mismatch `422`).
+- **Schemas**: `KanjiWord` = `allOf(DictEntrySummary, {decks})`; `KanjiWordDeck {deck_id, name,
+  type, occurrence_count}`, decks ordered by `name` in code-point order (`COLLATE "C"`) then id;
+  `KanjiWordPage {items, next_cursor}`. Example `KanjiWordPage`.
+- No DB change (`entry_kanji_literal_idx`, `deck_item_entry_idx` suffice). Cross-check: added to
+  the `deck_item` row as a reader.
+- Rejected: a `kanji:` filter on `searchDictionary` (different ordering and no deck membership);
+  embedding the word list in `Kanji` (unbounded, unpaged).
+- Worth a second look: (1) `literal` is matched without NFKC, so a CJK compatibility ideograph
+  finds nothing; (2) pages are not a snapshot - clients de-duplicate by `seq`; (3) `mine` ignores
+  word status, so a word marked `known` but in no deck and with no note is excluded.

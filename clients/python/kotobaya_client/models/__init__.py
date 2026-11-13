@@ -164,6 +164,9 @@ from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution
 from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji
+from kotobaya_client.models.kanji_word import KanjiWord
+from kotobaya_client.models.kanji_word_deck import KanjiWordDeck
+from kotobaya_client.models.kanji_word_page import KanjiWordPage
 from kotobaya_client.models.login_request import LoginRequest
 from kotobaya_client.models.media import Media
 from kotobaya_client.models.media_content_published_schema import MediaContentPublishedSchema

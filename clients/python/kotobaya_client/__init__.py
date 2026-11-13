@@ -201,6 +201,9 @@ __all__ = [
     "JpdbVocabResolutionPut",
     "JpdbVocabResolutionResult",
     "Kanji",
+    "KanjiWord",
+    "KanjiWordDeck",
+    "KanjiWordPage",
     "LoginRequest",
     "Media",
     "MediaContentPublishedSchema",
@@ -508,6 +511,9 @@ from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution as 
 from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut as JpdbVocabResolutionPut
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult as JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji as Kanji
+from kotobaya_client.models.kanji_word import KanjiWord as KanjiWord
+from kotobaya_client.models.kanji_word_deck import KanjiWordDeck as KanjiWordDeck
+from kotobaya_client.models.kanji_word_page import KanjiWordPage as KanjiWordPage
 from kotobaya_client.models.login_request import LoginRequest as LoginRequest
 from kotobaya_client.models.media import Media as Media
 from kotobaya_client.models.media_content_published_schema import MediaContentPublishedSchema as MediaContentPublishedSchema

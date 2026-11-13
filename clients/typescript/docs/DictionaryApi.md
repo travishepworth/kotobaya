@@ -8,6 +8,7 @@ All URIs are relative to */api/v1*
 | [**getDictRelease**](DictionaryApi.md#getdictrelease) | **GET** /dict/release | The current dictionary release and its downloadable device builds. |
 | [**getKanji**](DictionaryApi.md#getkanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any. |
 | [**listEntryExamples**](DictionaryApi.md#listentryexamples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba. |
+| [**listKanjiWords**](DictionaryApi.md#listkanjiwords) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17). |
 | [**refreshDictionary**](DictionaryApi.md#refreshdictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release). |
 | [**searchDictionary**](DictionaryApi.md#searchdictionary) | **GET** /dict/search | Search JMdict entries by kanji, kana, romaji or English. |
 
@@ -303,6 +304,94 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **200** | Example sentences. |  -  |
 | **404** | No such resource. |  -  |
+| **0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listKanjiWords
+
+> KanjiWordPage listKanjiWords(literal, deckId, mine, limit, cursor)
+
+Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+
+Rows: the live (&#x60;retired_release_id IS NULL&#x60;) &#x60;ref.dict_entry&#x60; rows &#x60;e&#x60; with a &#x60;ref.entry_kanji&#x60; row &#x60;(e.seq, literal)&#x60;. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is &#x60;422&#x60;. Unlike &#x60;getKanji&#x60;, a character absent from &#x60;ref.kanji&#x60; is **not** &#x60;404&#x60;: &#x60;ref.entry_kanji.literal&#x60; need not exist in &#x60;ref.kanji&#x60;, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (&#x60;items: []&#x60;, &#x60;next_cursor: null&#x60;).  **Filters** (combine with AND): - &#x60;deck_id&#x60;: only entries &#x60;e&#x60; with a live item of that deck: an &#x60;app.deck_item&#x60; row with   &#x60;deck_id&#x60; &#x3D; the parameter, &#x60;entry_seq &#x3D; e.seq&#x60; and &#x60;deleted_at IS NULL&#x60;. The deck must   be a live deck of the caller (&#x60;app.deck.deleted_at IS NULL&#x60;), else &#x60;404&#x60; - a deleted   deck is &#x60;404&#x60; even though its rows remain. A live deck with no matching item (including   every &#x60;smart&#x60; deck, which has no items) gives an empty page. - &#x60;mine&#x3D;true&#x60;: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (&#x60;app.note&#x60; with &#x60;entry_seq &#x3D; e.seq&#x60;,   &#x60;deleted_at IS NULL&#x60;, base type &#x60;vocab&#x60; - the same note the &#x60;note_id&#x60; overlay reports).   Word status alone (e.g. &#x60;known&#x60; set by hand) does not count. With &#x60;deck_id&#x60; also given,   &#x60;mine&#x3D;true&#x60; adds nothing (every result is already in one of your decks). - Note-keyed deck items (&#x60;deck_item.note_id&#x60;, &#x60;entry_seq IS NULL&#x60;) never match: only   &#x60;entry_seq&#x60; items count, here and in &#x60;decks&#x60;.  **Order** (total; &#x60;seq&#x60; is unique): - &#x60;deck_id&#x60; given: that deck\&#39;s &#x60;deck_item.occurrence_count&#x60; descending (in-deck frequency;   all &#x60;0&#x60; for non-media decks, so this degrades to the global order), then   &#x60;freq_rank&#x60; ascending with NULLs last, then &#x60;seq&#x60; ascending. - Otherwise: &#x60;freq_rank&#x60; ascending with NULLs last, then &#x60;seq&#x60; ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the &#x60;literal&#x60;, &#x60;deck_id&#x60; and &#x60;mine&#x60; it was issued for; reusing it with a different &#x60;literal&#x60;, &#x60;deck_id&#x60; or &#x60;mine&#x60; is &#x60;422&#x60;. Pages are not a snapshot: if &#x60;occurrence_count&#x60; or &#x60;freq_rank&#x60; changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by &#x60;seq&#x60;. &#x60;next_cursor&#x60; is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every &#x60;DictEntrySummary&#x60; field with the same meaning as in &#x60;searchDictionary&#x60; (caller\&#39;s &#x60;status&#x60; and &#x60;note_id&#x60; overlay), plus &#x60;decks&#x60;: the caller\&#39;s live decks (&#x60;app.deck.deleted_at IS NULL&#x60;) that hold the entry as a live item (&#x60;deck_item.deleted_at IS NULL&#x60;), ordered by &#x60;name&#x60; in code-point order (&#x60;COLLATE \&quot;C\&quot;&#x60;), then &#x60;id&#x60;. Empty array when none. Independent of &#x60;deck_id&#x60;/&#x60;mine&#x60;: with &#x60;deck_id&#x60;, that deck is always among them. &#x60;decks[].occurrence_count&#x60; is that deck\&#39;s &#x60;deck_item.occurrence_count&#x60;. 
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DictionaryApi,
+} from '@kotobaya/api-client';
+import type { ListKanjiWordsRequest } from '@kotobaya/api-client';
+
+async function example() {
+  console.log("🚀 Testing @kotobaya/api-client SDK...");
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // Configure HTTP bearer authorization: bearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new DictionaryApi(config);
+
+  const body = {
+    // string | Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).
+    literal: 食,
+    // string | Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise). (optional)
+    deckId: 01931f40-2000-7000-8000-000000000d01,
+    // boolean | Only entries that are a live item of at least one of your live decks or have a live vocab note. (optional)
+    mine: false,
+    // number | Page size. (optional)
+    limit: 50,
+    // string | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`. (optional)
+    cursor: eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19,
+  } satisfies ListKanjiWordsRequest;
+
+  try {
+    const data = await api.listKanjiWords(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **literal** | `string` | Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against &#x60;ref.entry_kanji.literal&#x60; (no normalisation, same rules as &#x60;getKanji&#x60;). | [Defaults to `undefined`] |
+| **deckId** | `string` | Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (&#x60;404&#x60; otherwise). | [Optional] [Defaults to `undefined`] |
+| **mine** | `boolean` | Only entries that are a live item of at least one of your live decks or have a live vocab note. | [Optional] [Defaults to `false`] |
+| **limit** | `number` | Page size. | [Optional] [Defaults to `50`] |
+| **cursor** | `string` | Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**KanjiWordPage**](KanjiWordPage.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | One page of entries containing the kanji. Empty page when none do. |  -  |
+| **404** | No such resource. |  -  |
+| **422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
 | **0** | Any other error. See the error table in the API description. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

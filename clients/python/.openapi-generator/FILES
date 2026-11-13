@@ -166,6 +166,9 @@ docs/JpdbVocabResolution.md
 docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
+docs/KanjiWord.md
+docs/KanjiWordDeck.md
+docs/KanjiWordPage.md
 docs/LoginRequest.md
 docs/Media.md
 docs/MediaApi.md
@@ -477,6 +480,9 @@ kotobaya_client/models/jpdb_vocab_resolution.py
 kotobaya_client/models/jpdb_vocab_resolution_put.py
 kotobaya_client/models/jpdb_vocab_resolution_result.py
 kotobaya_client/models/kanji.py
+kotobaya_client/models/kanji_word.py
+kotobaya_client/models/kanji_word_deck.py
+kotobaya_client/models/kanji_word_page.py
 kotobaya_client/models/login_request.py
 kotobaya_client/models/media.py
 kotobaya_client/models/media_content_published_schema.py
@@ -764,6 +770,9 @@ test/test_jpdb_vocab_resolution.py
 test/test_jpdb_vocab_resolution_put.py
 test/test_jpdb_vocab_resolution_result.py
 test/test_kanji.py
+test/test_kanji_word.py
+test/test_kanji_word_deck.py
+test/test_kanji_word_page.py
 test/test_login_request.py
 test/test_media.py
 test/test_media_api.py

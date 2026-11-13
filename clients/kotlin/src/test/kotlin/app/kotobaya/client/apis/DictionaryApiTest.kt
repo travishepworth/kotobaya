@@ -34,6 +34,7 @@ import app.kotobaya.client.models.EntryExamples
 import app.kotobaya.client.models.Job
 import app.kotobaya.client.models.JobPayloadDictRefresh
 import app.kotobaya.client.models.Kanji
+import app.kotobaya.client.models.KanjiWordPage
 import app.kotobaya.client.models.Problem
 
 class DictionaryApiTest : ShouldSpec() {
@@ -70,6 +71,18 @@ class DictionaryApiTest : ShouldSpec() {
             //val seq : kotlin.Long = 1358280 // kotlin.Long | JMdict sequence number of the entry.
             //val limit : kotlin.Int = 10 // kotlin.Int | Maximum number of sentences per list.
             //val result : EntryExamples = apiInstance.listEntryExamples(seq, limit)
+            //result shouldBe ("TODO")
+        }
+
+        // to test listKanjiWords
+        should("test listKanjiWords") {
+            // uncomment below to test listKanjiWords
+            //val literal : kotlin.String = 食 // kotlin.String | Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).
+            //val deckId : kotlin.String = 01931f40-2000-7000-8000-000000000d01 // kotlin.String | Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise).
+            //val mine : kotlin.Boolean = false // kotlin.Boolean | Only entries that are a live item of at least one of your live decks or have a live vocab note.
+            //val limit : kotlin.Int = 50 // kotlin.Int | Page size.
+            //val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+            //val result : KanjiWordPage = apiInstance.listKanjiWords(literal, deckId, mine, limit, cursor)
             //result shouldBe ("TODO")
         }
 

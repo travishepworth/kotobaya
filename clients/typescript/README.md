@@ -89,6 +89,7 @@ All URIs are relative to */api/v1*
 *DictionaryApi* | [**getDictRelease**](docs/DictionaryApi.md#getdictrelease) | **GET** /dict/release | The current dictionary release and its downloadable device builds.
 *DictionaryApi* | [**getKanji**](docs/DictionaryApi.md#getkanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any.
 *DictionaryApi* | [**listEntryExamples**](docs/DictionaryApi.md#listentryexamples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba.
+*DictionaryApi* | [**listKanjiWords**](docs/DictionaryApi.md#listkanjiwords) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
 *DictionaryApi* | [**refreshDictionary**](docs/DictionaryApi.md#refreshdictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release).
 *DictionaryApi* | [**searchDictionary**](docs/DictionaryApi.md#searchdictionary) | **GET** /dict/search | Search JMdict entries by kanji, kana, romaji or English.
 *EventsApi* | [**streamEvents**](docs/EventsApi.md#streamevents) | **GET** /events | Server-sent events - job progress, sync activity, new notes, device changes.
@@ -326,6 +327,9 @@ All URIs are relative to */api/v1*
 - [JpdbVocabResolutionPut](docs/JpdbVocabResolutionPut.md)
 - [JpdbVocabResolutionResult](docs/JpdbVocabResolutionResult.md)
 - [Kanji](docs/Kanji.md)
+- [KanjiWord](docs/KanjiWord.md)
+- [KanjiWordDeck](docs/KanjiWordDeck.md)
+- [KanjiWordPage](docs/KanjiWordPage.md)
 - [LoginRequest](docs/LoginRequest.md)
 - [Media](docs/Media.md)
 - [MediaContentPublishedSchema](docs/MediaContentPublishedSchema.md)

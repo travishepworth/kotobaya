@@ -30,6 +30,7 @@ import app.kotobaya.client.models.EntryExamples
 import app.kotobaya.client.models.Job
 import app.kotobaya.client.models.JobPayloadDictRefresh
 import app.kotobaya.client.models.Kanji
+import app.kotobaya.client.models.KanjiWordPage
 import app.kotobaya.client.models.Problem
 
 import app.kotobaya.client.infrastructure.*
@@ -178,6 +179,48 @@ import java.text.DateFormat
             val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/dict/entries/{seq}/examples".replace("{" + "seq" + "}", "$seq"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            )
+
+            return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+            ).wrap()
+            }
+
+        /**
+        * GET /kanji/{literal}/words
+        * Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+        * Rows: the live (&#x60;retired_release_id IS NULL&#x60;) &#x60;ref.dict_entry&#x60; rows &#x60;e&#x60; with a &#x60;ref.entry_kanji&#x60; row &#x60;(e.seq, literal)&#x60;. Retired entries are never returned.  **Literal.** More than one code point (or an empty string) is &#x60;422&#x60;. Unlike &#x60;getKanji&#x60;, a character absent from &#x60;ref.kanji&#x60; is **not** &#x60;404&#x60;: &#x60;ref.entry_kanji.literal&#x60; need not exist in &#x60;ref.kanji&#x60;, so such a character, or any code point no entry contains (kana, Latin...), is simply an empty page (&#x60;items: []&#x60;, &#x60;next_cursor: null&#x60;).  **Filters** (combine with AND): - &#x60;deck_id&#x60;: only entries &#x60;e&#x60; with a live item of that deck: an &#x60;app.deck_item&#x60; row with   &#x60;deck_id&#x60; &#x3D; the parameter, &#x60;entry_seq &#x3D; e.seq&#x60; and &#x60;deleted_at IS NULL&#x60;. The deck must   be a live deck of the caller (&#x60;app.deck.deleted_at IS NULL&#x60;), else &#x60;404&#x60; - a deleted   deck is &#x60;404&#x60; even though its rows remain. A live deck with no matching item (including   every &#x60;smart&#x60; deck, which has no items) gives an empty page. - &#x60;mine&#x3D;true&#x60;: only entries that are a live item (as above) of at least one live deck of   the caller, **or** that have a live vocab note (&#x60;app.note&#x60; with &#x60;entry_seq &#x3D; e.seq&#x60;,   &#x60;deleted_at IS NULL&#x60;, base type &#x60;vocab&#x60; - the same note the &#x60;note_id&#x60; overlay reports).   Word status alone (e.g. &#x60;known&#x60; set by hand) does not count. With &#x60;deck_id&#x60; also given,   &#x60;mine&#x3D;true&#x60; adds nothing (every result is already in one of your decks). - Note-keyed deck items (&#x60;deck_item.note_id&#x60;, &#x60;entry_seq IS NULL&#x60;) never match: only   &#x60;entry_seq&#x60; items count, here and in &#x60;decks&#x60;.  **Order** (total; &#x60;seq&#x60; is unique): - &#x60;deck_id&#x60; given: that deck&#39;s &#x60;deck_item.occurrence_count&#x60; descending (in-deck frequency;   all &#x60;0&#x60; for non-media decks, so this degrades to the global order), then   &#x60;freq_rank&#x60; ascending with NULLs last, then &#x60;seq&#x60; ascending. - Otherwise: &#x60;freq_rank&#x60; ascending with NULLs last, then &#x60;seq&#x60; ascending.  **Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row and the &#x60;literal&#x60;, &#x60;deck_id&#x60; and &#x60;mine&#x60; it was issued for; reusing it with a different &#x60;literal&#x60;, &#x60;deck_id&#x60; or &#x60;mine&#x60; is &#x60;422&#x60;. Pages are not a snapshot: if &#x60;occurrence_count&#x60; or &#x60;freq_rank&#x60; changes between pages (media reparse, dictionary refresh), a row may be skipped or repeated; clients that page through MUST de-duplicate by &#x60;seq&#x60;. &#x60;next_cursor&#x60; is null on the last page (it MAY be non-null on a page that happens to end exactly at the last row; the following page is then empty).  **Item.** Every &#x60;DictEntrySummary&#x60; field with the same meaning as in &#x60;searchDictionary&#x60; (caller&#39;s &#x60;status&#x60; and &#x60;note_id&#x60; overlay), plus &#x60;decks&#x60;: the caller&#39;s live decks (&#x60;app.deck.deleted_at IS NULL&#x60;) that hold the entry as a live item (&#x60;deck_item.deleted_at IS NULL&#x60;), ordered by &#x60;name&#x60; in code-point order (&#x60;COLLATE \&quot;C\&quot;&#x60;), then &#x60;id&#x60;. Empty array when none. Independent of &#x60;deck_id&#x60;/&#x60;mine&#x60;: with &#x60;deck_id&#x60;, that deck is always among them. &#x60;decks[].occurrence_count&#x60; is that deck&#39;s &#x60;deck_item.occurrence_count&#x60;. 
+         * @param literal Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against &#x60;ref.entry_kanji.literal&#x60; (no normalisation, same rules as &#x60;getKanji&#x60;). 
+         * @param deckId Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (&#x60;404&#x60; otherwise). (optional)
+         * @param mine Only entries that are a live item of at least one of your live decks or have a live vocab note. (optional, default to false)
+         * @param limit Page size. (optional, default to 50)
+         * @param cursor Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. (optional)
+         * @return KanjiWordPage
+        */
+            @Suppress("UNCHECKED_CAST")
+        open suspend fun listKanjiWords(literal: kotlin.String, deckId: kotlin.String? = null, mine: kotlin.Boolean? = false, limit: kotlin.Int? = 50, cursor: kotlin.String? = null): HttpResponse<KanjiWordPage> {
+
+            val localVariableAuthNames = listOf<String>("sessionCookie", "bearerAuth")
+
+            val localVariableBody = 
+                    io.ktor.client.utils.EmptyContent
+
+            val localVariableQuery = mutableMapOf<String, List<String>>()
+            deckId?.apply { localVariableQuery["deck_id"] = listOf("$deckId") }
+            mine?.apply { localVariableQuery["mine"] = listOf("$mine") }
+            limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+            cursor?.apply { localVariableQuery["cursor"] = listOf("$cursor") }
+
+            val localVariableHeaders = mutableMapOf<String, String>()
+
+            val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/kanji/{literal}/words".replace("{" + "literal" + "}", "$literal"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

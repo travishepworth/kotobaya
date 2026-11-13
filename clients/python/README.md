@@ -342,6 +342,7 @@ Class | Method | HTTP request | Description
 *DictionaryApi* | [**get_dict_release**](docs/DictionaryApi.md#get_dict_release) | **GET** /dict/release | The current dictionary release and its downloadable device builds.
 *DictionaryApi* | [**get_kanji**](docs/DictionaryApi.md#get_kanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any.
 *DictionaryApi* | [**list_entry_examples**](docs/DictionaryApi.md#list_entry_examples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba.
+*DictionaryApi* | [**list_kanji_words**](docs/DictionaryApi.md#list_kanji_words) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
 *DictionaryApi* | [**refresh_dictionary**](docs/DictionaryApi.md#refresh_dictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release).
 *DictionaryApi* | [**search_dictionary**](docs/DictionaryApi.md#search_dictionary) | **GET** /dict/search | Search JMdict entries by kanji, kana, romaji or English.
 *EventsApi* | [**stream_events**](docs/EventsApi.md#stream_events) | **GET** /events | Server-sent events - job progress, sync activity, new notes, device changes.
@@ -579,6 +580,9 @@ Class | Method | HTTP request | Description
  - [JpdbVocabResolutionPut](docs/JpdbVocabResolutionPut.md)
  - [JpdbVocabResolutionResult](docs/JpdbVocabResolutionResult.md)
  - [Kanji](docs/Kanji.md)
+ - [KanjiWord](docs/KanjiWord.md)
+ - [KanjiWordDeck](docs/KanjiWordDeck.md)
+ - [KanjiWordPage](docs/KanjiWordPage.md)
  - [LoginRequest](docs/LoginRequest.md)
  - [Media](docs/Media.md)
  - [MediaContentPublishedSchema](docs/MediaContentPublishedSchema.md)

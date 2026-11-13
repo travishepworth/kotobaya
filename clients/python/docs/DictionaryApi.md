@@ -8,6 +8,7 @@ Method | HTTP request | Description
 [**get_dict_release**](DictionaryApi.md#get_dict_release) | **GET** /dict/release | The current dictionary release and its downloadable device builds.
 [**get_kanji**](DictionaryApi.md#get_kanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any.
 [**list_entry_examples**](DictionaryApi.md#list_entry_examples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba.
+[**list_kanji_words**](DictionaryApi.md#list_kanji_words) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
 [**refresh_dictionary**](DictionaryApi.md#refresh_dictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release).
 [**search_dictionary**](DictionaryApi.md#search_dictionary) | **GET** /dict/search | Search JMdict entries by kanji, kana, romaji or English.
 
@@ -366,6 +367,144 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** | Example sentences. |  -  |
 **404** | No such resource. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_kanji_words**
+> KanjiWordPage list_kanji_words(literal, deck_id=deck_id, mine=mine, limit=limit, cursor=cursor)
+
+Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+
+Rows: the live (`retired_release_id IS NULL`) `ref.dict_entry` rows `e` with a
+`ref.entry_kanji` row `(e.seq, literal)`. Retired entries are never returned.
+
+**Literal.** More than one code point (or an empty string) is `422`. Unlike `getKanji`,
+a character absent from `ref.kanji` is **not** `404`: `ref.entry_kanji.literal` need not
+exist in `ref.kanji`, so such a character, or any code point no entry contains (kana,
+Latin...), is simply an empty page (`items: []`, `next_cursor: null`).
+
+**Filters** (combine with AND):
+- `deck_id`: only entries `e` with a live item of that deck: an `app.deck_item` row with
+  `deck_id` = the parameter, `entry_seq = e.seq` and `deleted_at IS NULL`. The deck must
+  be a live deck of the caller (`app.deck.deleted_at IS NULL`), else `404` - a deleted
+  deck is `404` even though its rows remain. A live deck with no matching item (including
+  every `smart` deck, which has no items) gives an empty page.
+- `mine=true`: only entries that are a live item (as above) of at least one live deck of
+  the caller, **or** that have a live vocab note (`app.note` with `entry_seq = e.seq`,
+  `deleted_at IS NULL`, base type `vocab` - the same note the `note_id` overlay reports).
+  Word status alone (e.g. `known` set by hand) does not count. With `deck_id` also given,
+  `mine=true` adds nothing (every result is already in one of your decks).
+- Note-keyed deck items (`deck_item.note_id`, `entry_seq IS NULL`) never match: only
+  `entry_seq` items count, here and in `decks`.
+
+**Order** (total; `seq` is unique):
+- `deck_id` given: that deck's `deck_item.occurrence_count` descending (in-deck frequency;
+  all `0` for non-media decks, so this degrades to the global order), then
+  `freq_rank` ascending with NULLs last, then `seq` ascending.
+- Otherwise: `freq_rank` ascending with NULLs last, then `seq` ascending.
+
+**Paging.** Keyset pagination: the cursor encodes the sort key of the last returned row
+and the `literal`, `deck_id` and `mine` it was issued for; reusing it with a different
+`literal`, `deck_id` or `mine` is `422`. Pages are not a snapshot: if `occurrence_count`
+or `freq_rank` changes between pages (media reparse, dictionary refresh), a row may be
+skipped or repeated; clients that page through MUST de-duplicate by `seq`.
+`next_cursor` is null on the last page (it MAY be non-null on a page that happens to
+end exactly at the last row; the following page is then empty).
+
+**Item.** Every `DictEntrySummary` field with the same meaning as in `searchDictionary`
+(caller's `status` and `note_id` overlay), plus `decks`: the caller's live decks
+(`app.deck.deleted_at IS NULL`) that hold the entry as a live item (`deck_item.deleted_at
+IS NULL`), ordered by `name` in code-point order (`COLLATE "C"`), then `id`. Empty array
+when none. Independent of `deck_id`/`mine`: with `deck_id`, that deck is always among
+them. `decks[].occurrence_count` is that deck's `deck_item.occurrence_count`.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.kanji_word_page import KanjiWordPage
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.DictionaryApi(api_client)
+    literal = '食' # str | Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against `ref.entry_kanji.literal` (no normalisation, same rules as `getKanji`).
+    deck_id = '01931f40-2000-7000-8000-000000000d01' # str | Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (`404` otherwise). (optional)
+    mine = False # bool | Only entries that are a live item of at least one of your live decks or have a live vocab note. (optional) (default to False)
+    limit = 50 # int | Page size. (optional) (default to 50)
+    cursor = 'eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19' # str | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`. (optional)
+
+    try:
+        # Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
+        api_response = api_instance.list_kanji_words(literal, deck_id=deck_id, mine=mine, limit=limit, cursor=cursor)
+        print("The response of DictionaryApi->list_kanji_words:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DictionaryApi->list_kanji_words: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **literal** | **str**| Exactly one Unicode code point, percent-encoded UTF-8, matched exactly as given against &#x60;ref.entry_kanji.literal&#x60; (no normalisation, same rules as &#x60;getKanji&#x60;). | 
+ **deck_id** | **str**| Only entries that are live items of this deck, ordered by in-deck frequency. Must be a live deck (&#x60;404&#x60; otherwise). | [optional] 
+ **mine** | **bool**| Only entries that are a live item of at least one of your live decks or have a live vocab note. | [optional] [default to False]
+ **limit** | **int**| Page size. | [optional] [default to 50]
+ **cursor** | **str**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] 
+
+### Return type
+
+[**KanjiWordPage**](KanjiWordPage.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | One page of entries containing the kanji. Empty page when none do. |  -  |
+**404** | No such resource. |  -  |
+**422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
 **0** | Any other error. See the error table in the API description. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
