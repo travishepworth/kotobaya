@@ -617,3 +617,4 @@
 2026-11-13T03:37:07Z T404c MERGE CHECK_GREEN server; 3 check runs (OOM was F-11), 1 attempt
 2026-11-13T03:37:54Z T412+T413 MERGE CHECK_GREEN web; 1 attempt (human-reported nav pages)
 2026-11-13T03:37:58Z F-12+F-13 MERGE CHECK_GREEN worker; 1 attempt (resume builds pkg; ADR-020 optional pins)
+2026-11-13T03:41:22Z C-12 HANDOFF DONE; REVIEW_CHANGES architect (1 major: override katakana reading → /parse 503)
