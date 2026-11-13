@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 /** T505b: grammar CRUD over HTTP, every write arriving as an op; seed validity and idempotence. */
 class GrammarApiTest : SyncFixture() {
-    private val grammar by lazy { GrammarModule(db, sync.opApply) }
+    private val grammar by lazy { GrammarModule(db, sync.opApply, FakeRuleTester()) }
 
     private fun opTypes(): List<String> =
         db.txBlocking { dsl -> dsl.fetch("select op_type from app.change order by seq").map { it.get(0, String::class.java) } }

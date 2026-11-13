@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 
 /** W-6: re-detection enqueue on rule edits (C-13), manual span ops, examples. */
 class GrammarDetectApiTest : SyncFixture() {
-    private val grammar by lazy { GrammarModule(db, sync.opApply) }
+    private val grammar by lazy { GrammarModule(db, sync.opApply, FakeRuleTester()) }
 
     private fun jobs(): Long = count("select count(*) from app.job where kind = 'grammar-detect'")
 

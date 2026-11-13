@@ -67,7 +67,8 @@ fun main(args: Array<String>) {
     }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config), blobStore = S3BlobStore(s3Client(config), config.s3Bucket),
-        parser = HttpParserClient(config.parserUrl, config.parserTimeoutMs))
+        parser = HttpParserClient(config.parserUrl, config.parserTimeoutMs),
+        ruleTester = kotobaya.grammar.HttpRuleTesterClient(config.parserUrl, config.parserTimeoutMs))
     app.jobs.start(scope)
     app.imports.start(scope)
     app.mediaPublish?.start(scope)
@@ -108,6 +109,8 @@ fun composeApp(
     eventsGuardMs: Long = 5_000,
     /** Backs `parseText`; the default has no `PARSER_URL`, so it answers 503. */
     parser: ParserClient = HttpParserClient(null),
+    /** Backs `testGrammarRules` and the rule check of grammar create/update (same `PARSER_URL`). */
+    ruleTester: kotobaya.grammar.RuleTesterClient = kotobaya.grammar.HttpRuleTesterClient(null),
 ): ComposedApp {
     val validator = TokenValidator(db)
     val jobs = JobsModule(
@@ -120,7 +123,7 @@ fun composeApp(
     // One OpApply for every writer: they share its advisory lock, HLC and card cache.
     val imports = ImportsModule(db, sync.opApply)
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
-        NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + GrammarModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
+        NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + GrammarModule(db, sync.opApply, ruleTester).handlers + SettingsModule(db, sync.opApply).handlers +
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
         ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +

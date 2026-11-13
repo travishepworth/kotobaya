@@ -27,6 +27,7 @@ from kotobaya_worker.parse.match import MatchLookup
 from kotobaya_worker.parse.match.postgres import MatchCache, PostgresMatchLookup, current_release
 from kotobaya_worker.parse.overrides import OverrideRow, load_overrides
 from kotobaya_worker.parse.pipeline import parse_sentences, parser_version
+from kotobaya_worker.parse.service import rules as rules_mod
 from kotobaya_worker.parse.sudachi import Analyzer, get_analyzer
 
 log = logging.getLogger(__name__)
@@ -58,6 +59,11 @@ class ParseBackend(Protocol):
 
     def parse(self, text: str) -> Json:
         """``WorkerParseResult`` for ``text``; raises :class:`NotReady`."""
+        ...
+
+    def tokenise(self, texts: Sequence[str]) -> tuple[str, list[list[Any]]]:
+        """(parser_version, tokens) per text, each text exactly one sentence (no splitting),
+        global overrides only; raises :class:`NotReady`."""
         ...
 
 
@@ -115,6 +121,14 @@ class StaticParseBackend:
             dict_release=self.dict_release,
             analyzer=self.analyzer,
         )
+
+    def tokenise(self, texts: Sequence[str]) -> tuple[str, list[list[Any]]]:
+        if self.analyzer is None or self.dict_release is None:
+            raise NotReady("no dictionary release loaded" if self.analyzer else "starting")
+        toks = parse_sentences(
+            texts, None, None, lookup=self.lookup, overrides=self.overrides, analyzer=self.analyzer
+        )
+        return parser_version(self.dict_release, self.analyzer), [list(t) for t in toks]
 
 
 class PostgresParseBackend:
@@ -190,6 +204,30 @@ class PostgresParseBackend:
                     dict_release=release,
                     analyzer=an,
                 )
+        except psycopg.OperationalError as exc:
+            raise NotReady("database unreachable") from exc
+
+    def tokenise(self, texts: Sequence[str]) -> tuple[str, list[list[Any]]]:
+        with self._lock:
+            an = self._analyzer
+        if an is None:
+            raise NotReady("Sudachi dictionary still loading")
+        try:
+            with self._connect() as conn:
+                conn.execute("set transaction isolation level repeatable read, read only")
+                release = current_release(conn)
+                cache = self._remember_release(release)
+                if release is None:
+                    raise NotReady("no dictionary release loaded yet")
+                toks = parse_sentences(
+                    texts,
+                    None,
+                    None,
+                    lookup=PostgresMatchLookup(conn, cache),
+                    overrides=load_overrides(conn, None),
+                    analyzer=an,
+                )
+                return parser_version(release, an), [list(t) for t in toks]
         except psycopg.OperationalError as exc:
             raise NotReady("database unreachable") from exc
 
@@ -286,6 +324,29 @@ class ParseService:
         finally:
             self.slots.release()
 
+    def handle_rules(self, content_type: str | None, body: bytes) -> tuple[int, Json]:
+        checked = rules_mod.validate(content_type, body)
+        if len(checked) == 2:
+            return checked
+        rules, sentences, max_matches = checked
+        if not sentences:  # validate only: no dictionary, no database, no concurrency slot
+            try:
+                return 200, rules_mod.evaluate(rules, [], max_matches, self.backend.tokenise)
+            except Exception:
+                log.exception("parse service: internal error")
+                return problem(500, "internal", "Internal error", "unexpected error")
+        if not self.slots.acquire(blocking=False):
+            return problem(503, "busy", "Busy", f"{self.max_concurrency} parses in flight")
+        try:
+            return 200, rules_mod.evaluate(rules, sentences, max_matches, self.backend.tokenise)
+        except NotReady as exc:
+            return problem(503, "not_ready", "Not ready", str(exc))
+        except Exception:
+            log.exception("parse service: internal error")
+            return problem(500, "internal", "Internal error", "unexpected error")
+        finally:
+            self.slots.release()
+
 
 def _make_handler(service: ParseService) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
@@ -314,9 +375,11 @@ def _make_handler(service: ParseService) -> type[BaseHTTPRequestHandler]:
             self._send(status, payload, "application/json")
 
         def do_POST(self) -> None:
-            if self.path != "/internal/parse":
+            if self.path not in ("/internal/parse", "/internal/grammar/rules/test"):
                 self._not_found()
                 return
+            is_rules = self.path == "/internal/grammar/rules/test"
+            max_body = rules_mod.MAX_BODY_BYTES if is_rules else MAX_BODY_BYTES
             rid = self.headers.get("X-Request-Id", "")[:100]
             length_raw = self.headers.get("Content-Length")
             try:
@@ -327,14 +390,20 @@ def _make_handler(service: ParseService) -> type[BaseHTTPRequestHandler]:
                 self.close_connection = True
                 self._problem(*_invalid("Content-Length required"))
                 return
-            if length > MAX_BODY_BYTES:
+            if length > max_body:
                 self.close_connection = True  # the body is not read
                 self._problem(
-                    *problem(413, "payload_too_large", "Payload too large", "body over 256 KiB")
+                    *problem(
+                        413,
+                        "payload_too_large",
+                        "Payload too large",
+                        f"body over {max_body // 1024} KiB",
+                    )
                 )
                 return
             body = self.rfile.read(length)
-            status, payload = service.handle_parse(self.headers.get("Content-Type"), body)
+            handle = service.handle_rules if is_rules else service.handle_parse
+            status, payload = handle(self.headers.get("Content-Type"), body)
             log.info("parse request id=%s status=%d bytes=%d", rid, status, length)
             if status == 200:
                 self._send(status, payload, "application/json")

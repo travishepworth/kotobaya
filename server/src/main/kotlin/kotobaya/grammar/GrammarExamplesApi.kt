@@ -13,12 +13,12 @@ import org.jooq.Record
 import java.util.Base64
 
 /** Same definition as `SentencesModule` (PARSER.md 2, `SentenceFilter`): distinct mapped content/other entries with status `new`. */
-private const val UNKNOWN =
+internal const val UNKNOWN =
     "(select count(distinct (t.v->>'seq')::bigint) from jsonb_array_elements(s.tokens) as t(v) " +
         "where jsonb_typeof(t.v->'seq') = 'number' and t.v->>'class' in ('content', 'other') " +
         "and coalesce((select ws.status from app.word_status ws where ws.entry_seq = (t.v->>'seq')::bigint), 'new') = 'new')"
 
-private const val COLUMNS = "s.id::text, s.media_id::text, s.segment_id::text, s.ordinal, s.text, s.tokens::text, s.origin, " +
+internal const val COLUMNS = "s.id::text, s.media_id::text, s.segment_id::text, s.ordinal, s.text, s.tokens::text, s.origin, " +
     "s.start_ms, s.end_ms, s.audio_blob_hash, s.image_blob_hash, s.location::text, $UNKNOWN::int"
 
 private const val FROM = "from app.sentence s join app.media m on m.id = s.media_id and m.deleted_at is null"
@@ -72,7 +72,7 @@ internal class GrammarExamplesApi(private val db: Database) {
         call.respondJson(body)
     }
 
-    private fun spans(dsl: DSLContext, ids: List<String>): Map<String, List<Map<String, Any?>>> {
+    internal fun spans(dsl: DSLContext, ids: List<String>): Map<String, List<Map<String, Any?>>> {
         if (ids.isEmpty()) return emptyMap()
         return dsl.fetch(
             "select gs.sentence_id::text, gs.grammar_point_id::text, gs.start_offset, gs.end_offset, gs.origin " +
@@ -90,7 +90,7 @@ internal class GrammarExamplesApi(private val db: Database) {
         }
     }
 
-    private fun render(rows: List<Record>, spans: Map<String, List<Map<String, Any?>>>): List<Map<String, Any?>> = rows.map { r ->
+    internal fun render(rows: List<Record>, spans: Map<String, List<Map<String, Any?>>>): List<Map<String, Any?>> = rows.map { r ->
         val id = r.get(0, String::class.java)
         linkedMapOf(
             "id" to id,

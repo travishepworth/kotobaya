@@ -40,7 +40,7 @@ private fun view(dsl: DSLContext, id: String): ObjectNode? =
 private val PROPS = setOf("title", "pattern", "meaning", "explanation", "notes", "jlpt", "detection_rules", "related_ids", "links", "is_stub")
 
 /** `listGrammarPoints`, `createGrammarPoint`, `getGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`. */
-internal class GrammarApi(private val db: Database, private val opApply: OpApply) {
+internal class GrammarApi(private val db: Database, private val opApply: OpApply, private val validator: RuleValidator) {
     suspend fun list(call: ApplicationCall) {
         val q = call.request.queryParameters
         val deleted = call.includeDeleted()
@@ -118,6 +118,9 @@ internal class GrammarApi(private val db: Database, private val opApply: OpApply
         e.string(body, "title", 1, 300, required = true)?.let { p.put("title", it) }
         validateProps(body, e, p)
         e.throwIfAny()
+        // An existing id is the idempotent 200 before anything else: a retry never meets 422/503 from the worker.
+        if (id != null) db.tx { view(it, id) }?.let { return call.send(Reply(HttpStatusCode.OK, it)) }
+        validator.check(call, p.get("detection_rules"))
         val reply = opApply.rest(call.callerTokenId()) { tx ->
             if (id != null) view(tx.dsl, id)?.let { return@rest Reply(HttpStatusCode.OK, it) }
             val newId = id ?: Uuid7.generate().toString()
@@ -138,6 +141,7 @@ internal class GrammarApi(private val db: Database, private val opApply: OpApply
         e.string(body, "title", 1, 300)?.let { set.put("title", it) }
         validateProps(body, e, set)
         e.throwIfAny()
+        validator.check(call, set.get("detection_rules"))
         val reply = opApply.rest(call.callerTokenId(), { it.removePrefix("/set") }) { tx ->
             val row = view(tx.dsl, id) ?: throw Problems.notFound("No such grammar point.")
             if (!row["deleted_at"].isNull) throw gone("grammar point", row["deleted_at"].asText())
