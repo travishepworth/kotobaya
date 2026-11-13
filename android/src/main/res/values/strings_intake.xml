@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="intake_label">Add to Kotobaya</string>
+    <string name="intake_title">Add a word</string>
+    <string name="intake_word">Word</string>
+    <string name="intake_reading">Reading</string>
+    <string name="intake_sentence">Sentence</string>
+    <string name="intake_deck">Deck</string>
+    <string name="intake_no_deck">No deck</string>
+    <string name="intake_trimmed">Text was too long and has been trimmed.</string>
+    <string name="intake_add">Add</string>
+    <string name="intake_close">Close</string>
+    <string name="intake_added">Added to your collection.</string>
+    <string name="intake_duplicate">Already in your collection.</string>
+    <string name="intake_open_existing">Open existing</string>
+    <string name="intake_err_empty">Nothing to add.</string>
+    <string name="intake_err_missing_word">The link has no word.</string>
+    <string name="intake_err_malformed">That link is malformed.</string>
+    <string name="intake_err_unsupported">Kotobaya cannot open that.</string>
+    <string name="intake_err_no_word">Enter a word or a reading.</string>
+    <string name="intake_err_failed">The note could not be created (%1$s).</string>
+    <string name="intake_word_unavailable">The word page is not available yet.</string>
+</resources>

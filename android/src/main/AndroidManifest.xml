@@ -24,6 +24,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".intake.IntakeActivity"
+            android:exported="true"
+            android:label="@string/intake_label"
+            android:theme="@style/Theme.Kotobaya">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kotobaya" android:host="add" />
+                <data android:scheme="kotobaya" android:host="word" />
+            </intent-filter>
+        </activity>
         <receiver
             android:name=".notify.DueReceiver"
             android:exported="false">
