@@ -56,7 +56,7 @@ export interface ReviewAnswerRequest {
      */
     reviewedAt?: Date;
     /**
-     * The example sentence that was shown, from the queue item.
+     * The example sentence that was shown, from the queue item (for a grammar card, `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence.
      */
     sentenceId?: string;
     /**

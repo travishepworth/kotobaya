@@ -140,6 +140,22 @@ class TestQueueItem(unittest.TestCase):
                         ], 
                     seq = 1, 
                     status = null, ),
+                grammar_sentence = kotobaya_client.models.grammar_card_sentence.GrammarCardSentence(
+                    end_offset = 1, 
+                    last_shown_sentence_id = null, 
+                    rotation = 0, 
+                    sentence_id = null, 
+                    source = kotobaya_client.models.example_sentence_source.ExampleSentenceSource(
+                        location = { }, 
+                        media_id = null, 
+                        media_title = '', 
+                        segment_id = null, 
+                        segment_title = '', 
+                        start_ms = 0, ), 
+                    start_offset = 0, 
+                    text = '0', 
+                    translation = '', 
+                    unknown_count = 0, ),
                 kanji = kotobaya_client.models.kanji.Kanji(
                     components = [
                         ''

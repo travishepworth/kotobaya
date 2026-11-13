@@ -37,7 +37,7 @@ import com.google.gson.annotations.SerializedName
  * @param durationMs Time from card shown to answer; clamped to 600000.
  * @param mode `schedule` feeds FSRS; `drill` and `cram` only log.
  * @param reviewedAt When the answer was given. Default - now. Must be at most 5 minutes after now, not before 2020-01-01, and not more than 24 h before `min(card.created_at, now)`; otherwise `422` (see `answerReview`).
- * @param sentenceId The example sentence that was shown, from the queue item.
+ * @param sentenceId The example sentence that was shown, from the queue item (for a grammar card, `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence.
  * @param utcOffsetMin Reviewer's UTC offset in minutes (540 = JST).
  */
 
@@ -72,7 +72,7 @@ data class ReviewAnswerRequest (
     @SerializedName("reviewed_at")
     val reviewedAt: java.time.OffsetDateTime? = null,
 
-    /* The example sentence that was shown, from the queue item. */
+    /* The example sentence that was shown, from the queue item (for a grammar card, `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence. */
     @SerializedName("sentence_id")
     val sentenceId: kotlin.String? = null,
 

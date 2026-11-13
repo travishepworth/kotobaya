@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `card` | [Card](Card.md)
 `entry` | [DictEntry](DictEntry.md)
+`grammarSentence` | [GrammarCardSentence](GrammarCardSentence.md)
 `kanji` | [Kanji](Kanji.md)
 `preview` | [SchedulePreview](SchedulePreview.md)
 `reviewType` | string
@@ -23,6 +24,7 @@ import type { QueueItem } from '@kotobaya/api-client'
 const example = {
   "card": null,
   "entry": null,
+  "grammarSentence": null,
   "kanji": null,
   "preview": null,
   "reviewType": null,

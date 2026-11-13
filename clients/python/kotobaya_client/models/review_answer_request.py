@@ -37,7 +37,7 @@ class ReviewAnswerRequest(BaseModel):
     mode: Optional[StrictStr] = Field(default='schedule', description="`schedule` feeds FSRS; `drill` and `cram` only log.")
     rating: Annotated[int, Field(le=4, strict=True, ge=1)] = Field(description="1 Again, 2 Hard, 3 Good, 4 Easy.")
     reviewed_at: Optional[datetime] = Field(default=None, description="When the answer was given. Default - now. Must be at most 5 minutes after now, not before 2020-01-01, and not more than 24 h before `min(card.created_at, now)`; otherwise `422` (see `answerReview`).")
-    sentence_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="The example sentence that was shown, from the queue item.")
+    sentence_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="The example sentence that was shown, from the queue item (for a grammar card, `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence.")
     utc_offset_min: Optional[Annotated[int, Field(le=1080, strict=True, ge=-1080)]] = Field(default=None, description="Reviewer's UTC offset in minutes (540 = JST).")
     __properties: ClassVar[List[str]] = ["button", "card_id", "duration_ms", "id", "mode", "rating", "reviewed_at", "sentence_id", "utc_offset_min"]
 

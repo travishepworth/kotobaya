@@ -95,6 +95,7 @@ docs/EventNoteCreated.md
 docs/EventSyncChanged.md
 docs/EventType.md
 docs/EventsApi.md
+docs/ExampleSentenceSource.md
 docs/ExportApi.md
 docs/ExportDump.md
 docs/FieldError.md
@@ -105,6 +106,7 @@ docs/FsrsParamsPublishedSchemaOptimizerStats.md
 docs/FsrsParamsUpdatedSchema.md
 docs/FsrsParamsUpdatedSchemaSet.md
 docs/GrammarApi.md
+docs/GrammarCardSentence.md
 docs/GrammarCreatedSchema.md
 docs/GrammarCreatedSchemaDetectionRulesInner.md
 docs/GrammarCreatedSchemaLinksInner.md
@@ -414,6 +416,7 @@ src/main/kotlin/app/kotobaya/client/models/EventHello.kt
 src/main/kotlin/app/kotobaya/client/models/EventNoteCreated.kt
 src/main/kotlin/app/kotobaya/client/models/EventSyncChanged.kt
 src/main/kotlin/app/kotobaya/client/models/EventType.kt
+src/main/kotlin/app/kotobaya/client/models/ExampleSentenceSource.kt
 src/main/kotlin/app/kotobaya/client/models/ExportDump.kt
 src/main/kotlin/app/kotobaya/client/models/FieldError.kt
 src/main/kotlin/app/kotobaya/client/models/FsrsParamsPublishedSchemaOptimizerStats.kt
@@ -422,6 +425,7 @@ src/main/kotlin/app/kotobaya/client/models/FsrsParamscreatedschema.kt
 src/main/kotlin/app/kotobaya/client/models/FsrsParamsdeletedschema.kt
 src/main/kotlin/app/kotobaya/client/models/FsrsParamspublishedschema.kt
 src/main/kotlin/app/kotobaya/client/models/FsrsParamsupdatedschema.kt
+src/main/kotlin/app/kotobaya/client/models/GrammarCardSentence.kt
 src/main/kotlin/app/kotobaya/client/models/GrammarCreatedSchemaDetectionRulesInner.kt
 src/main/kotlin/app/kotobaya/client/models/GrammarCreatedSchemaLinksInner.kt
 src/main/kotlin/app/kotobaya/client/models/GrammarLink.kt
@@ -703,6 +707,7 @@ src/test/kotlin/app/kotobaya/client/models/EventNoteCreatedTest.kt
 src/test/kotlin/app/kotobaya/client/models/EventSyncChangedTest.kt
 src/test/kotlin/app/kotobaya/client/models/EventTest.kt
 src/test/kotlin/app/kotobaya/client/models/EventTypeTest.kt
+src/test/kotlin/app/kotobaya/client/models/ExampleSentenceSourceTest.kt
 src/test/kotlin/app/kotobaya/client/models/ExportDumpTest.kt
 src/test/kotlin/app/kotobaya/client/models/FieldErrorTest.kt
 src/test/kotlin/app/kotobaya/client/models/FsrsParamsCreatedSchemaTest.kt
@@ -711,6 +716,7 @@ src/test/kotlin/app/kotobaya/client/models/FsrsParamsPublishedSchemaOptimizerSta
 src/test/kotlin/app/kotobaya/client/models/FsrsParamsPublishedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/FsrsParamsUpdatedSchemaSetTest.kt
 src/test/kotlin/app/kotobaya/client/models/FsrsParamsUpdatedSchemaTest.kt
+src/test/kotlin/app/kotobaya/client/models/GrammarCardSentenceTest.kt
 src/test/kotlin/app/kotobaya/client/models/GrammarCreatedSchemaDetectionRulesInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/GrammarCreatedSchemaLinksInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/GrammarCreatedSchemaTest.kt

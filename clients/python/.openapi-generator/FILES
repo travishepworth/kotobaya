@@ -98,6 +98,7 @@ docs/EventNoteCreated.md
 docs/EventSyncChanged.md
 docs/EventType.md
 docs/EventsApi.md
+docs/ExampleSentenceSource.md
 docs/ExportApi.md
 docs/ExportDump.md
 docs/FieldError.md
@@ -108,6 +109,7 @@ docs/FsrsParamsPublishedSchemaOptimizerStats.md
 docs/FsrsParamsUpdatedSchema.md
 docs/FsrsParamsUpdatedSchemaSet.md
 docs/GrammarApi.md
+docs/GrammarCardSentence.md
 docs/GrammarCreatedSchema.md
 docs/GrammarCreatedSchemaDetectionRulesInner.md
 docs/GrammarCreatedSchemaLinksInner.md
@@ -410,6 +412,7 @@ kotobaya_client/models/event_hello.py
 kotobaya_client/models/event_note_created.py
 kotobaya_client/models/event_sync_changed.py
 kotobaya_client/models/event_type.py
+kotobaya_client/models/example_sentence_source.py
 kotobaya_client/models/export_dump.py
 kotobaya_client/models/field_error.py
 kotobaya_client/models/fsrs_params_created_schema.py
@@ -418,6 +421,7 @@ kotobaya_client/models/fsrs_params_published_schema.py
 kotobaya_client/models/fsrs_params_published_schema_optimizer_stats.py
 kotobaya_client/models/fsrs_params_updated_schema.py
 kotobaya_client/models/fsrs_params_updated_schema_set.py
+kotobaya_client/models/grammar_card_sentence.py
 kotobaya_client/models/grammar_created_schema.py
 kotobaya_client/models/grammar_created_schema_detection_rules_inner.py
 kotobaya_client/models/grammar_created_schema_links_inner.py
@@ -692,6 +696,7 @@ test/test_event_note_created.py
 test/test_event_sync_changed.py
 test/test_event_type.py
 test/test_events_api.py
+test/test_example_sentence_source.py
 test/test_export_api.py
 test/test_export_dump.py
 test/test_field_error.py
@@ -702,6 +707,7 @@ test/test_fsrs_params_published_schema_optimizer_stats.py
 test/test_fsrs_params_updated_schema.py
 test/test_fsrs_params_updated_schema_set.py
 test/test_grammar_api.py
+test/test_grammar_card_sentence.py
 test/test_grammar_created_schema.py
 test/test_grammar_created_schema_detection_rules_inner.py
 test/test_grammar_created_schema_links_inner.py

@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from kotobaya_client.models.card import Card
 from kotobaya_client.models.dict_entry import DictEntry
+from kotobaya_client.models.grammar_card_sentence import GrammarCardSentence
 from kotobaya_client.models.kanji import Kanji
 from kotobaya_client.models.schedule_preview import SchedulePreview
 from kotobaya_client.models.sentence import Sentence
@@ -34,11 +35,12 @@ class QueueItem(BaseModel):
     """ # noqa: E501
     card: Card = Field(description="The card, with `note`.")
     entry: Optional[DictEntry] = Field(description="The note's dictionary entry, or null (no reference, or entry missing).")
+    grammar_sentence: Optional[GrammarCardSentence] = Field(default=None, description="C-15 (additive). The example sentence and span to show for a card of a grammar note (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0 first). Null for all other cards, and for grammar cards with no usable candidate. Absent (older server) is treated as null. The rules are on `GrammarCardSentence`.  Clients pass it to the core renderer unchanged as `RenderInput.cloze` / `JsRenderInput.cloze` (`sentence_id` → `sentenceId`, `text`, `start_offset` → `start`, `end_offset` → `end`, `translation`), keep showing it for the whole showing of this item (front, back, undo of a later card, redisplay), and send `sentence_id` back as `ReviewAnswerRequest.sentence_id`. When it is null for a grammar card, they render with `cloze = null` (the renderer emits the `missing_cloze` warning) and SHOULD show an i18n \"no example sentence yet\" notice with the point's pattern. ")
     kanji: Optional[Kanji] = Field(default=None, description="For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null.")
     preview: Optional[SchedulePreview] = Field(description="Null for drill and cram items.")
     review_type: StrictStr = Field(description="Review type an answer will be logged with.")
-    sentence: Optional[Sentence] = Field(description="Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise.")
-    __properties: ClassVar[List[str]] = ["card", "entry", "kanji", "preview", "review_type", "sentence"]
+    sentence: Optional[Sentence] = Field(description="Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null, and null when `grammar_sentence` is null.")
+    __properties: ClassVar[List[str]] = ["card", "entry", "grammar_sentence", "kanji", "preview", "review_type", "sentence"]
 
     @field_validator('review_type')
     def review_type_validate_enum(cls, value):
@@ -92,6 +94,9 @@ class QueueItem(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of entry
         if self.entry:
             _dict['entry'] = self.entry.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of grammar_sentence
+        if self.grammar_sentence:
+            _dict['grammar_sentence'] = self.grammar_sentence.to_dict()
         # override the default output from pydantic by calling `to_dict()` of kanji
         if self.kanji:
             _dict['kanji'] = self.kanji.to_dict()
@@ -105,6 +110,11 @@ class QueueItem(BaseModel):
         # and model_fields_set contains the field
         if self.entry is None and "entry" in self.model_fields_set:
             _dict['entry'] = None
+
+        # set to None if grammar_sentence (nullable) is None
+        # and model_fields_set contains the field
+        if self.grammar_sentence is None and "grammar_sentence" in self.model_fields_set:
+            _dict['grammar_sentence'] = None
 
         # set to None if kanji (nullable) is None
         # and model_fields_set contains the field
@@ -135,6 +145,7 @@ class QueueItem(BaseModel):
         _obj = cls.model_validate({
             "card": Card.from_dict(obj["card"]) if obj.get("card") is not None else None,
             "entry": DictEntry.from_dict(obj["entry"]) if obj.get("entry") is not None else None,
+            "grammar_sentence": GrammarCardSentence.from_dict(obj["grammar_sentence"]) if obj.get("grammar_sentence") is not None else None,
             "kanji": Kanji.from_dict(obj["kanji"]) if obj.get("kanji") is not None else None,
             "preview": SchedulePreview.from_dict(obj["preview"]) if obj.get("preview") is not None else None,
             "review_type": obj.get("review_type"),

@@ -261,7 +261,9 @@ counts zero means done for the study day.
 Each item carries everything needed to render and grade the card: the card with its note
 summary, the dictionary entry (when the note references one that exists), the example
 sentence chosen for rotating-example cards, the `review_type` an answer will be logged
-with, and a preview of the next due time per rating.
+with, and a preview of the next due time per rating. Grammar cards also carry
+`grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core
+picker with the rules on `GrammarCardSentence` (drill sessions use the same rules).
 
 
 ### Example

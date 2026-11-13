@@ -1857,7 +1857,9 @@ paths:
         Each item carries everything needed to render and grade the card: the card with its note
         summary, the dictionary entry (when the note references one that exists), the example
         sentence chosen for rotating-example cards, the `review_type` an answer will be logged
-        with, and a preview of the next due time per rating.
+        with, and a preview of the next due time per rating. Grammar cards also carry
+        `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core
+        picker with the rules on `GrammarCardSentence` (drill sessions use the same rules).
       security:
         - bearerAuth: [read]
         - sessionCookie: [read]
@@ -8280,7 +8282,27 @@ components:
           - $ref: '#/components/schemas/Sentence'
           - type: 'null'
           description: Example sentence chosen for this showing (grammar cloze and other rotating-example kinds);
-            send its id back as `sentence_id`. Null otherwise.
+            send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of
+            `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null,
+            and null when `grammar_sentence` is null.
+        grammar_sentence:
+          oneOf:
+          - $ref: '#/components/schemas/GrammarCardSentence'
+          - type: 'null'
+          description: |
+            C-15 (additive). The example sentence and span to show for a card of a grammar note
+            (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at
+            queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0
+            first). Null for all other cards, and for grammar cards with no usable candidate.
+            Absent (older server) is treated as null. The rules are on `GrammarCardSentence`.
+
+            Clients pass it to the core renderer unchanged as `RenderInput.cloze` /
+            `JsRenderInput.cloze` (`sentence_id` → `sentenceId`, `text`, `start_offset` → `start`,
+            `end_offset` → `end`, `translation`), keep showing it for the whole showing of this item
+            (front, back, undo of a later card, redisplay), and send `sentence_id` back as
+            `ReviewAnswerRequest.sentence_id`. When it is null for a grammar card, they render
+            with `cloze = null` (the renderer emits the `missing_cloze` warning) and SHOULD show an
+            i18n "no example sentence yet" notice with the point's pattern.
         review_type:
           type: string
           enum:
@@ -8294,6 +8316,151 @@ components:
           - $ref: '#/components/schemas/SchedulePreview'
           - type: 'null'
           description: Null for drill and cram items.
+    GrammarCardSentence:
+      type: object
+      description: |
+        C-15. The example sentence for one showing of a grammar card (SPEC "Grammar review": the
+        sentence rotates on each review; i+0 sentences first). It is exactly the
+        `GrammarCandidate` returned by the core's `GrammarCardSentences.pick(candidates,
+        lastShown, rotation)`, plus its inputs and source. Servers MUST call that core function;
+        they never re-implement the choice.
+
+        **Candidates** (one per distinct (`sentence_id`, `start_offset`, `end_offset`)): every
+        live span (`deleted_at` null; origin `detected` or `manual`) of the note's
+        `grammar_point_id` in an `app.sentence` row with `origin = media` whose media is live.
+        Generated sentences are never candidates (SPEC: kept separate); Tatoeba sentences have no
+        spans and are not candidates. A span whose grammar point is deleted, whose sentence is
+        missing, or that is not a valid UTF-16 range of the text (`GrammarCardSentences.isValidSpan`:
+        empty, out of range, or cutting a surrogate pair) is dropped. `unknownCount` = the
+        sentence's `Sentence.unknown_count` (the `filter` parameter's definition, now).
+
+        **Inputs**:
+        - `rotation` = `card.reps` of the card as returned in the same item (after replay).
+        - `lastShown` = the `sentence_id` of the card's latest review (highest `hlc`) among
+          `review_log` rows with `undone_at` null and `review_type` not `manual`, counting rows
+          logged on cards merged into it; null if there is none or its `sentence_id` is null
+          (earlier rows are not consulted).
+
+        **Determinism**: the result is a pure function of the replica's state. Fetching the
+        queue again without answering returns the same sentence; answering moves both inputs
+        (the answered sentence becomes `lastShown`; a schedule answer also increments `reps`),
+        so the next showing differs whenever two or more candidate sentences exist; undoing
+        that answer restores both inputs and therefore the earlier sentence. The pick can
+        change between fetches only when the candidates change (new detection, a span removed,
+        a word becoming known); clients must not swap the sentence of an item already shown.
+        Drill and cram answers log `sentence_id` but leave `reps` unchanged; `lastShown` still
+        advances, so drills rotate too.
+
+        **Offline / Android**: a device building its queue locally runs the same pick over its
+        replica: candidates from installed media snapshots (sentences, detected spans) plus
+        manual spans from `grammar.span_put`, `unknownCount` from local word statuses, and
+        `card.reps` / `review_log` from local state. Media whose snapshot is not installed
+        contribute nothing; with no candidate the device renders with `cloze = null`, as for a
+        null `QueueItem.grammar_sentence`. A device and the server may pick differently when
+        their replicas differ; this only affects display, and the review logs whatever was shown.
+      required:
+      - sentence_id
+      - text
+      - start_offset
+      - end_offset
+      - translation
+      - unknown_count
+      - rotation
+      - last_shown_sentence_id
+      - source
+      properties:
+        sentence_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The chosen sentence (`app.sentence.id`); equals `QueueItem.sentence.id`. Send it as
+            `ReviewAnswerRequest.sentence_id`.
+        text:
+          type: string
+          minLength: 1
+          description: The sentence text, identical to `QueueItem.sentence.text`.
+          examples:
+          - 行かざるを得ない。
+        start_offset:
+          type: integer
+          minimum: 0
+          description: UTF-16 start of the chosen span of the card's grammar point, inclusive. Cloze blanks it,
+            recognition highlights it, spot reveals it on the back. Other spans of the same point in this sentence
+            are in `QueueItem.sentence.grammar_spans` and are not highlighted by the core renderer.
+          examples:
+          - 0
+        end_offset:
+          type: integer
+          minimum: 1
+          description: UTF-16 end of the span, exclusive; `start_offset < end_offset <= text length`, never inside a
+            surrogate pair.
+          examples:
+          - 8
+        translation:
+          type:
+          - string
+          - 'null'
+          description: English translation for the back, or null. Always null for now (mined media sentences carry
+            none); reserved so the renderer's `{{cloze:translation}}` can be filled later without a contract change.
+        unknown_count:
+          type: integer
+          minimum: 0
+          description: The sentence's unknown-word count the pick used (0 = i+0).
+          examples:
+          - 0
+        rotation:
+          type: integer
+          minimum: 0
+          description: The `rotation` input of the pick (`card.reps`). Informational, for debugging and for checking
+            that a device agrees.
+          examples:
+          - 6
+        last_shown_sentence_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+          description: The `lastShown` input of the pick. Informational.
+        source:
+          $ref: '#/components/schemas/ExampleSentenceSource'
+    ExampleSentenceSource:
+      type: object
+      description: C-15. Where an example sentence comes from, for the "source" line on the back and a link to the reader.
+      required:
+      - media_id
+      - media_title
+      - segment_id
+      - segment_title
+      - start_ms
+      - location
+      properties:
+        media_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The sentence's media.
+        media_title:
+          type: string
+          description: '`Media.title`.'
+          examples:
+          - 葬送のフリーレン
+        segment_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The sentence's segment.
+        segment_title:
+          type: string
+          description: '`MediaSegment.title`; may be empty.'
+          examples:
+          - 第1話
+        start_ms:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          description: '`Sentence.start_ms` (null for text sources).'
+          examples:
+          - 73400
+        location:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+          description: '`Sentence.location` (null for timed media).'
     ReviewQueue:
       type: object
       description: A prefix of today's review queue.
@@ -8392,7 +8559,9 @@ components:
           description: Reviewer's UTC offset in minutes (540 = JST).
         sentence_id:
           $ref: '#/components/schemas/Uuid'
-          description: The example sentence that was shown, from the queue item.
+          description: The example sentence that was shown, from the queue item (for a grammar card,
+            `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft
+            reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence.
     ReviewResult:
       type: object
       description: A review and the card after it.
@@ -12882,6 +13051,149 @@ components:
             easy:
               due_at: '2027-01-09T09:30:00.000Z'
               interval_days: 58
+        - card:
+            id: 01931f40-1a2b-7c3d-8e4f-000000000c09
+            note_id: 01931f40-1a2b-7c3d-8e4f-000000000a09
+            kind: cloze
+            preset_id: 00000000-0000-7000-8000-000000000010
+            suspended: false
+            buried_until: null
+            flags: 0
+            state: review
+            step: null
+            stability: 9.8
+            difficulty: 6.0
+            due_at: '2026-11-12T08:00:00.000Z'
+            interval_days: 9
+            last_review_at: '2026-11-03T08:00:00.000Z'
+            reps: 6
+            lapses: 0
+            leech: false
+            created_at: '2026-10-05T12:00:00.000Z'
+            updated_at: '2026-10-05T12:00:00.000Z'
+            deleted_at: null
+            merged_into_id: null
+            note:
+              id: 01931f40-1a2b-7c3d-8e4f-000000000a09
+              note_type_id: 00000000-0000-7000-8000-000000000104
+              type: grammar
+              entry_seq: null
+              kanji_literal: null
+              grammar_point_id: 01931f40-4000-7000-8000-000000000901
+              fields:
+                pattern: 〜ざるを得ない
+                meaning: cannot help but; have no choice but to
+              tags: []
+              mnemonic: ''
+              source_sentence: ''
+          entry: null
+          sentence:
+            id: 01931f40-5000-7000-8000-000000000709
+            media_id: 01931f40-3000-7000-8000-000000000e01
+            segment_id: 01931f40-3100-7000-8000-000000000e11
+            ordinal: 52
+            text: 行かざるを得ない。
+            tokens:
+            - s: 0
+              e: 2
+              surface: 行か
+              lemma: 行く
+              reading: いか
+              pos:
+              - 動詞
+              - 非自立可能
+              cform: 未然形-一般
+              seq: 1578850
+              class: content
+              override: false
+            - s: 2
+              e: 4
+              surface: ざる
+              lemma: ず
+              reading: ざる
+              pos:
+              - 助動詞
+              cform: 連体形-一般
+              seq: null
+              class: auxiliary
+              override: false
+            - s: 4
+              e: 5
+              surface: を
+              lemma: を
+              reading: を
+              pos:
+              - 助詞
+              - 格助詞
+              cform: null
+              seq: 2029010
+              class: particle
+              override: false
+            - s: 5
+              e: 6
+              surface: 得
+              lemma: 得る
+              reading: え
+              pos:
+              - 動詞
+              - 非自立可能
+              cform: 未然形-一般
+              seq: null
+              class: content
+              override: false
+            - s: 6
+              e: 8
+              surface: ない
+              lemma: ない
+              reading: ない
+              pos:
+              - 助動詞
+              cform: 終止形-一般
+              seq: null
+              class: auxiliary
+              override: false
+            origin: media
+            start_ms: 81200
+            end_ms: 83000
+            audio_blob_hash: null
+            image_blob_hash: null
+            location: null
+            unknown_count: 0
+            grammar_spans:
+            - grammar_point_id: 01931f40-4000-7000-8000-000000000901
+              start_offset: 0
+              end_offset: 8
+              origin: detected
+          grammar_sentence:
+            sentence_id: 01931f40-5000-7000-8000-000000000709
+            text: 行かざるを得ない。
+            start_offset: 0
+            end_offset: 8
+            translation: null
+            unknown_count: 0
+            rotation: 6
+            last_shown_sentence_id: 01931f40-5000-7000-8000-000000000702
+            source:
+              media_id: 01931f40-3000-7000-8000-000000000e01
+              media_title: 葬送のフリーレン
+              segment_id: 01931f40-3100-7000-8000-000000000e11
+              segment_title: 第1話
+              start_ms: 81200
+              location: null
+          review_type: scheduled
+          preview:
+            again:
+              due_at: '2026-11-12T09:40:00.000Z'
+              interval_days: 0
+            hard:
+              due_at: '2026-11-24T09:30:00.000Z'
+              interval_days: 12
+            good:
+              due_at: '2026-12-05T09:30:00.000Z'
+              interval_days: 23
+            easy:
+              due_at: '2026-12-28T09:30:00.000Z'
+              interval_days: 46
         counts:
           new: 8
           learning: 3

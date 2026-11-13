@@ -397,3 +397,28 @@ attempt 1 is gone). Needs node and python3; network on first run.
   before `-`; (3) tie-break prefers `content`, so a word used equally as particle and content is
   never hidden by "hide particles". HUMAN_CHECKS candidate: the `SentenceToken` required-list
   tightening.
+
+## C-15 changes (additive): grammar card sentence at review time
+- **Shape**: optional `QueueItem.grammar_sentence` (`GrammarCardSentence | null`; absent = null)
+  on `getReviewQueue` and `createDrillSession` items: `sentence_id`, `text`, the chosen span
+  (`start_offset`/`end_offset`, UTF-16), `translation` (null for now), the pick's inputs
+  (`unknown_count`, `rotation`, `last_shown_sentence_id`) and `source` (`ExampleSentenceSource`:
+  media/segment id and title, `start_ms`, `location`). It maps 1:1 to the core renderer's
+  `ClozeSentence`/`JsCloze`. `QueueItem.sentence` carries the full row (tokens, audio). No new
+  operation, no new op, no table change; `ReviewAnswerRequest.sentence_id` (existing) is echoed back.
+- **Rules**: set for grammar-note cards except `production`; the server MUST call core
+  `GrammarCardSentences.pick(candidates, lastShown, rotation)`. Candidates = live spans
+  (detected + manual) of the point in live `origin = media` sentences; `rotation = card.reps`;
+  `lastShown` = `sentence_id` of the card's latest non-undone, non-manual review by `hlc`. Pure
+  function of replica state, so a refetch or an undo shows the same sentence; an answer moves on.
+- **Offline / Android**: the phone runs the same pick over its replica (installed media
+  snapshots + synced manual spans + local word status and review log). No candidate → render
+  with `cloze = null` and an i18n "no example sentence yet" notice (grammar notes have no fixed
+  sentence field to fall back to). Phone and server may pick differently; display only.
+- Rejected: a per-card `GET` (one extra round trip per grammar card, and the queue is refetched
+  after every answer anyway); a stored "current sentence" register on the card (a new synced
+  op and LWW conflicts for a display choice); random rotation (undo/redisplay would change it).
+- Worth a second look: (1) `rotation = card.reps` ignores drills (they still rotate via
+  `lastShown`); (2) only the latest review's `sentence_id` is consulted, so a review answered
+  without `sentence_id` lets the previous sentence repeat once; (3) `translation` is always null
+  until mined sentences get translations, so `{{cloze:translation}}`/hint stay empty.

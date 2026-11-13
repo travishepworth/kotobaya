@@ -96,6 +96,7 @@ docs/EventNoteCreated.md
 docs/EventSyncChanged.md
 docs/EventType.md
 docs/EventsApi.md
+docs/ExampleSentenceSource.md
 docs/ExportApi.md
 docs/ExportDump.md
 docs/FieldError.md
@@ -106,6 +107,7 @@ docs/FsrsParamsPublishedSchemaOptimizerStats.md
 docs/FsrsParamsUpdatedSchema.md
 docs/FsrsParamsUpdatedSchemaSet.md
 docs/GrammarApi.md
+docs/GrammarCardSentence.md
 docs/GrammarCreatedSchema.md
 docs/GrammarCreatedSchemaDetectionRulesInner.md
 docs/GrammarCreatedSchemaLinksInner.md
@@ -403,6 +405,7 @@ src/models/EventHello.ts
 src/models/EventNoteCreated.ts
 src/models/EventSyncChanged.ts
 src/models/EventType.ts
+src/models/ExampleSentenceSource.ts
 src/models/ExportDump.ts
 src/models/FieldError.ts
 src/models/FsrsParamsCreatedSchema.ts
@@ -411,6 +414,7 @@ src/models/FsrsParamsPublishedSchema.ts
 src/models/FsrsParamsPublishedSchemaOptimizerStats.ts
 src/models/FsrsParamsUpdatedSchema.ts
 src/models/FsrsParamsUpdatedSchemaSet.ts
+src/models/GrammarCardSentence.ts
 src/models/GrammarCreatedSchema.ts
 src/models/GrammarCreatedSchemaDetectionRulesInner.ts
 src/models/GrammarCreatedSchemaLinksInner.ts

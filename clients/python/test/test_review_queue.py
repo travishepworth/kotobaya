@@ -45,6 +45,7 @@ class TestReviewQueue(unittest.TestCase):
                     kotobaya_client.models.queue_item.QueueItem(
                         card = null, 
                         entry = null, 
+                        grammar_sentence = null, 
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 
@@ -64,6 +65,7 @@ class TestReviewQueue(unittest.TestCase):
                     kotobaya_client.models.queue_item.QueueItem(
                         card = null, 
                         entry = null, 
+                        grammar_sentence = null, 
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 

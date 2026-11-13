@@ -76,7 +76,7 @@ class ReviewAnswerRequestTest : ShouldSpec() {
             //modelInstance.reviewedAt shouldBe ("TODO")
         }
 
-        // to test the property `sentenceId` - The example sentence that was shown, from the queue item.
+        // to test the property `sentenceId` - The example sentence that was shown, from the queue item (for a grammar card, `QueueItem.grammar_sentence.sentence_id`, C-15). Stored as given in `review_log.sentence_id` (soft reference, not checked); it becomes the next showing's `lastShown`, so omitting it may repeat the sentence.
         should("test sentenceId") {
             // uncomment below to test the property
             //modelInstance.sentenceId shouldBe ("TODO")

@@ -136,6 +136,7 @@ __all__ = [
     "EventNoteCreated",
     "EventSyncChanged",
     "EventType",
+    "ExampleSentenceSource",
     "ExportDump",
     "FieldError",
     "FsrsParamsCreatedSchema",
@@ -144,6 +145,7 @@ __all__ = [
     "FsrsParamsPublishedSchemaOptimizerStats",
     "FsrsParamsUpdatedSchema",
     "FsrsParamsUpdatedSchemaSet",
+    "GrammarCardSentence",
     "GrammarCreatedSchema",
     "GrammarCreatedSchemaDetectionRulesInner",
     "GrammarCreatedSchemaLinksInner",
@@ -441,6 +443,7 @@ from kotobaya_client.models.event_hello import EventHello as EventHello
 from kotobaya_client.models.event_note_created import EventNoteCreated as EventNoteCreated
 from kotobaya_client.models.event_sync_changed import EventSyncChanged as EventSyncChanged
 from kotobaya_client.models.event_type import EventType as EventType
+from kotobaya_client.models.example_sentence_source import ExampleSentenceSource as ExampleSentenceSource
 from kotobaya_client.models.export_dump import ExportDump as ExportDump
 from kotobaya_client.models.field_error import FieldError as FieldError
 from kotobaya_client.models.fsrs_params_created_schema import FsrsParamsCreatedSchema as FsrsParamsCreatedSchema
@@ -449,6 +452,7 @@ from kotobaya_client.models.fsrs_params_published_schema import FsrsParamsPublis
 from kotobaya_client.models.fsrs_params_published_schema_optimizer_stats import FsrsParamsPublishedSchemaOptimizerStats as FsrsParamsPublishedSchemaOptimizerStats
 from kotobaya_client.models.fsrs_params_updated_schema import FsrsParamsUpdatedSchema as FsrsParamsUpdatedSchema
 from kotobaya_client.models.fsrs_params_updated_schema_set import FsrsParamsUpdatedSchemaSet as FsrsParamsUpdatedSchemaSet
+from kotobaya_client.models.grammar_card_sentence import GrammarCardSentence as GrammarCardSentence
 from kotobaya_client.models.grammar_created_schema import GrammarCreatedSchema as GrammarCreatedSchema
 from kotobaya_client.models.grammar_created_schema_detection_rules_inner import GrammarCreatedSchemaDetectionRulesInner as GrammarCreatedSchemaDetectionRulesInner
 from kotobaya_client.models.grammar_created_schema_links_inner import GrammarCreatedSchemaLinksInner as GrammarCreatedSchemaLinksInner
