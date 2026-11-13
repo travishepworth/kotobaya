@@ -283,3 +283,6 @@
 ## F-20 (from T505b, run 7) — grammar seed polish (low; fold into T507 or a small server ticket)
 - Seeding is only a library call (`GrammarSeeder.seed(opApply)`); nothing invokes it. Add a trigger (first-start opt-in, settings action, or CLI) so the user can actually load the 280 stubs.
 - 3 duplicate (jlpt,title) pairs in fixtures/grammar-seed (N2 "cannot help but do"; N1 "not to mention"; N1 "without, formal"): retitle, re-copy to server/src/main/resources/grammar-seed/, make validate.py + GrammarApiTest check unique titles per level.
+
+## F-21 (from T503, run 7) — dedupe hot-word loading (low)
+- server drill/DrillSources.kt duplicates StruggleModule's private HotWords loading/scoring; extract one shared server helper. Also `DrillSelector.word` is unused (request schema has no single-word source; hot word page "extra drill" may need it → C-ticket if T504 needs it).

@@ -17,7 +17,7 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
-| T503 | writer | 1 | t/T503-drill |
+| T502 | writer | 1 | t/T502-confusables |
 | T506a | writer-senior | 1 | t/T506a-grammar-dsl |
 
 ## Parked
@@ -51,6 +51,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T503 drill selection (hot/leech/confusable pairs, seeded) + DrillApi sources; drill replay never changes schedule (run 7)
 - T505b grammar CRUD via ops + GrammarSeeder (not yet invoked → F-20) (run 7)
 - T501 hot words/kanji scorer (core) + listHotWords/listLeeches (server, leech threshold from settings) (run 7)
 - T505a grammar seed: 280 N3–N1 stubs (title/pattern/jlpt, CC0) + validate.py (run 7)

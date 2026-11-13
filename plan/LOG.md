@@ -675,3 +675,5 @@
 2026-11-13T05:17:21Z T506 SPLIT T506a (worker DSL/matcher/tagging, opus high) + T506b (server rule tester/examples/spans); DSL spec lives in worker (single impl), no contract
 2026-11-13T05:17:27Z T503 DISPATCH writer (core+server, Gradle slot)
 2026-11-13T05:17:27Z T506a DISPATCH writer-senior (worker, no gradle)
+2026-11-13T05:25:20Z T503 MERGE CHECK_GREEN core+server; 1 attempt (med); minor → F-21
+2026-11-13T05:25:20Z T502 DISPATCH writer (worker+server, Gradle slot)
