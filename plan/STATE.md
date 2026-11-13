@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T01:16:06Z
+Updated: 2026-11-13T01:23:37Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -16,7 +16,6 @@ Updated: 2026-11-13T01:16:06Z
 |---|---|---|---|---|
 | T304b | writer (sonnet) | 2 (rebase on T303c) | t/T304b-review-ui | 2026-11-13T01:20:43Z |
 | T305b | — (in review) | 1 | t/T305b-note-creator | 2026-11-13T01:22:02Z |
-| T303e | writer (sonnet) | 1 | t/T303e-sync-ui | 2026-11-13T01:16:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none (W-4 waits on T304b, T303e; F-5 waits on T304b)
@@ -44,11 +43,12 @@ Updated: 2026-11-13T01:16:06Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 15/24 · attempts 21 · escalations 0
+P3: merged 16/25 · attempts 23 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T303e Android sync UI (chip, Sync screen, Rejected list grouped, Re-mint flow hidden on clock wrong, unreachable vs server error) — 1 attempt
 - T310 audio prefetch (planner, Range-resume downloader w/ SHA-256, BlobStore on durable driver, WorkManager) — wiring gaps → W-4
 - T303d core rejected ops (Retry/Discard/clock repair) + Re-mint §10.4 (1a/1b/1c, E order, 6a re-key, atomic rollback), 4 scenario files + 110-seed fuzz — reviewer + architect APPROVE, 1 attempt
 - T303c Android sync: SQLDelight DeviceStore/LearningTables, DurableDriver (WAL+FULL), HttpSyncTransport, SyncCoordinator, WorkManager, startup-replay gate — reviewer + architect APPROVE, 1 attempt
