@@ -7,6 +7,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 ## Ready now (run 6, 2026-11-13) — 0.1.2
 - [ ] **Build and push 0.1.2** from main: F-14 (SeaweedFS blob PUT: temp-file spool with known length; copy via get+put since SeaweedFS 3.80 CopyObject also 500s), F-15 (MediaApiModule registered → GET /import/jpdb/vocab no longer 501; WiringAuditTest pins the remaining 501 allowlist), F-16+F-19 (/health reports the build version: `make images VERSION=0.1.2` passes `--build-arg KOTOBAYA_VERSION`; if you build the api image by hand, add `--build-arg KOTOBAYA_VERSION=0.1.2`, else health says "dev"), F-18 (web dictionary page keeps the entry when examples fail).
 - [ ] After deploy: retry the live jpdb import; check `/health` version; upload a blob through the UI to confirm the SeaweedFS fix live (tested only against chrislusf/seaweedfs:3.80 in Testcontainers).
+- [ ] F-17 also in 0.1.2: dictionary examples endpoint works. Tatoeba examples stay empty until you add a `tatoeba` source to DICT_SOURCES_JSON: `"tatoeba": {"url": "<JA-EN pair TSV export from downloads.tatoeba.org/exports/>", "sha256": "<sha256sum of the file>"}`, then run dict-refresh. Format expected: see worker/src/kotobaya_worker/dict/extra/tatoeba.py (writer could not verify the exact export file offline). Writer says the worker requires sha256 for this entry (may conflict with ADR-020 optional pins; see FOLLOWUPS).
 - Still 501 until W-5: coverage, sentences, parse, stats, grammar, confusables, leeches, hot words/kanji, TTS, export.
 
 ## Ready now (run 4, 2026-11-13)
