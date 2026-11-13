@@ -4,7 +4,7 @@ Phase: P9 UI rewrite (+ SYNC-T1)   Gate: none open (B2 approved 2026-11-14); GAT
 Updated: run 19
 
 ## RESUME HERE (run 19 in progress)
-- Run 19 merged SYNC-T1 4dce8ba. Running: UI-DS-APP (attempt 2, fresh), UI-WEB (attempt 1). UI-APP dispatches when UI-DS-APP merges.
+- Run 19 merged SYNC-T1 4dce8ba, UI-DS-APP 92889d0. Running: UI-WEB (attempt 1), UI-APP (attempt 1). Both high: reviewer gets screenshot set + quality bar (amateur/badly scaling = major).
 - UI-FOUND-APP worktree + branch removed.
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
@@ -14,11 +14,11 @@ Updated: run 19
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-DS-APP | writer-senior | 2 | t/UI-DS-APP-styleguide | run 19 |
+| UI-APP | writer-senior | 1 | t/UI-APP-rebuild | run 19 |
 | UI-WEB | writer-senior | 1 | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
-UI-APP (after UI-DS-APP) · then FOLLOWUPS
+FOLLOWUPS
 
 ## Ready for review / In review
 (none)
@@ -47,6 +47,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- UI-DS-APP (run 19, 92889d0): ui/theme KotobayaTheme/KbTheme API (ThemeMode, KbTextStyles ja+ruby, tones, shapes, motion), debug styleguide 10 pages (Settings > Styleguide), 120 Roborazzi PNGs, 26 curated in docs/design-screenshots/app
 - SYNC-T1 (run 19, 4dce8ba): chunked pull per-chunk pull_seq + log_epoch checks (Failed PROTOCOL), skew on first chunk only, open @Volatile, failure-path tests + fuzz chunk 1..5
 - C-20 (run 18, 6814485): SYNC.md 6.1 sub-pages (one tx each, pull_seq = last seq; since from stored sync_state; purge/last_sync_at after last sub-page), 9.3 replay deferrable to tx end; xrefs 7.8/10.3/11/17; model.py unchanged
 - UI-FOUND-APP (run 18, b0683c1): per-screen ViewModels (StateViewModel, ports), ui/ purity test, debug demo-data mode (fixtures/demo), Roborazzi 1.40.1 matrix (516 PNGs, make screenshots-app), buildConfig on; BUG-8 touch-ups (dict DbThreadGuard, SyncStatus update{}, unpair awaited)
