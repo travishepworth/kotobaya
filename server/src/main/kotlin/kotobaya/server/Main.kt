@@ -74,6 +74,7 @@ fun main(args: Array<String>) {
     app.jobs.start(scope)
     app.imports.start(scope)
     app.mediaPublish?.start(scope)
+    app.fsrsPublish.start(scope)
     app.confusables?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
@@ -98,6 +99,8 @@ class ComposedApp(
     val confusables: ConfusableSuggester? = null,
     /** Loads the grammar seed stubs (T507/F-20); main calls it once after startup when `GRAMMAR_SEED_ON_START` is set. */
     val seedGrammar: suspend () -> Int = { 0 },
+    /** The `fsrs-params-publish` runner (T606): mints `fsrs_params.published` for the worker's optimizer jobs. */
+    val fsrsPublish: kotobaya.optimizer.FsrsParamsPublishRunner,
 )
 
 /**
@@ -153,7 +156,8 @@ fun composeApp(
         bucketInit = bucketInit,
     )
     return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply),
-        seedGrammar = { kotobaya.grammar.GrammarSeeder.seed(sync.opApply) })
+        seedGrammar = { kotobaya.grammar.GrammarSeeder.seed(sync.opApply) },
+        fsrsPublish = kotobaya.optimizer.FsrsParamsPublishRunner(db, sync.opApply))
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()

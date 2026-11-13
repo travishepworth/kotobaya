@@ -56,6 +56,16 @@ worker:
     # A full dictionary build needs > 1Gi; override here if needed.
     requests: { cpu: 100m, memory: 1Gi }
     limits: { memory: 3Gi }
+optimizer:
+  # Weekly CronJob (T606): enqueues one fsrs-optimize job per live preset; the worker trains and the server publishes.
+  # Off by default (like backup); the worker pod needs RAM for torch (worker.resources), and training knobs go in
+  # worker.env (OPTIMIZER_MIN_REVIEWS, OPTIMIZER_HOLDOUT_FRACTION).
+  enabled: false
+  schedule: "23 4 * * 0"   # Sunday 04:23 UTC
+  activeDeadlineSeconds: 300
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 256Mi }
 web:
   image: { repository: web, tag: "0.1.0" }
   replicas: 1

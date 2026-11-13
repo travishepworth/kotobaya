@@ -15,6 +15,7 @@ from kotobaya_worker.importers.jpdb_history.handler import make_jpdb_history_imp
 from kotobaya_worker.jobs.dict_refresh import make_dict_refresh
 from kotobaya_worker.media.pipeline.import_job import make_media_import
 from kotobaya_worker.media.pipeline.parse_job import make_media_parse
+from kotobaya_worker.optimizer import make_fsrs_optimize
 from kotobaya_worker.parse.service import start_parse_service
 from kotobaya_worker.runner.core import Registry, Runner, RunnerConfig
 from kotobaya_worker.tts import make_tts
@@ -34,6 +35,7 @@ def build_registry() -> Registry:
     reg.register("jpdb-deck-import", make_jpdb_deck_import(database_url))
     reg.register("grammar-detect", make_grammar_detect(database_url))
     reg.register("tts", make_tts(database_url))
+    reg.register("fsrs-optimize", make_fsrs_optimize(database_url))
     return reg
 
 

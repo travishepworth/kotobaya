@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Kotobaya background jobs: dictionary, import, parse, coverage, TTS, optimizer"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "fsrs[optimizer]==6.3.2",
     "psycopg[binary]>=3.2",
     "sudachidict-full==20250825",
     "sudachipy==0.6.10",
