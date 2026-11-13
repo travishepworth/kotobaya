@@ -1,23 +1,25 @@
 # HANDOFF UI-WEB
 
 STATUS: DONE
-BRANCH: t/UI-WEB-rebuild
-CHECK: `make check MODULE=web` → green · `make screenshots-web` → 172 passed, curated set unchanged
+BRANCH: t/UI-WEB-rebuild (rebased onto origin/main)
+CHECK: `make check MODULE=web` green · `make screenshots-web` 172 passed
 
-## Changed (≤ 6 lines)
-- Earlier round: every route rebuilt on lib/ui, FEAT-x boxes on /notes, coverage deckId fix, 176 curated shots.
-- FEAT-x: `PreviewInput.fieldRegions` added; notes and cards previews pass true. A region click opens the box on /notes; in /cards it goes to `/notes?note=&field=`.
-- `loadFailed` + `retry()` added to ReviewPage, Cards, Notes, DecksList, NoteTypesList, MediaList, Struggle, Leeches, Confusables, Mapping and Sentences. New `lib/ui/LoadError` renders them.
-- Deleted 24 dead lib/<feature>/*.svelte, Toaster and the legacy token block (it lives in design/tokens/web-legacy.css; generator and one tokens.test assertion edited).
-- app.html sets data-theme before first paint. 12 `--error` shots were curated.
+## Earlier rounds
+- Every route rebuilt on lib/ui. Added FEAT-x field regions, `loadFailed`/`retry`/`LoadError`, pre-paint theme and the curated set.
+
+## Round 2
+- Review back: a card that overflows goes compact (`cqh` sizing) and scrolls to the answer, with a bottom fade. A card that fits doesn't move.
+- Cards `state` column fixed at 8.5rem.
+- SegmentedControl stacks as a radio list when labels get cut off (all uses).
+- NoteEditor: a region click or `?field=` only highlights. Saving clears overrides equal to the dictionary value.
+- Shared `kindLabel` (lib/ui/cardState) covers all 11 built-in kinds.
+- DeckItems and UnknownWords: `loadFailed`/`retry`. Fake space token removed.
 
 ## Acceptance → tests
-- Loop regressions now mount routes/notes/NoteEditor and routes/cards/CardDetail.
-- Region clicks, retry and pre-paint passed a one-off Playwright run (not committed).
+- A one-off vitest for the override fix failed before the fix and passes now. Not committed: tests/ isn't in my paths. Suggest adding it.
 
 ## New dependencies
 - none
 
-## For the reviewer (≤ 3 lines)
-- Follow-ups: confusable headwords, deck colour and due count (both need API changes). DeckItems and UnknownWords still have no error flag.
-- Existing bug: client-side nav from /cards to /notes shows id-prefix labels in the notes list (a full load is fine).
+## For the reviewer
+- Minor 7: nothing is hidden at the end of the scroll (checked in Playwright). Padding would leave a gap under the bar, so I used `scroll-margin-bottom`.
