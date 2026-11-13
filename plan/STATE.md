@@ -15,6 +15,11 @@ Updated: run 15 start
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | C-17 | architect (opus) | 1 | t/C-17-kanji-words | run 15 |
+| AND-SEARCH | writer | 1 | t/AND-SEARCH-search-tab | run 15 |
+| AND-DECKS | writer | 1 | t/AND-DECKS-decks-tab | run 15 |
+
+## Queued
+- FEAT-1 (after C-17), AND-SETTINGS (next free slot)
 
 ## Ready for review / In review
 (none)
