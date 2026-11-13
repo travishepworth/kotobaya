@@ -611,3 +611,4 @@
 2026-11-13T03:24:50Z W-5a created (URGENT: blobs unwired + dict refresh/release never implemented); next free slot
 2026-11-13T03:26:55Z T407 MERGE CHECK_GREEN web; 1 attempt (low)
 2026-11-13T03:29:05Z T404a MERGE CHECK_GREEN worker; 1 attempt (med; ruff-format touch in jobs/dict_refresh.py)
+2026-11-13T03:29:15Z D-1 MERGE CHECK_GREEN deploy; 1 attempt (HTTPRoute toggle, worker mem 1Gi/3Gi)
