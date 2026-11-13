@@ -596,3 +596,4 @@
 2026-11-13T02:42:11Z T403a,T404c,C-11 BLOCK disk full (work done; parked); T402b+T409 HANDOFF DONE (check pending)
 2026-11-13T02:42:11Z F-8 created: server Flyway copies only V1 (C-11 adds V2)
 2026-11-13T02:42:11Z - HANDOVER: disk full blocks all checks; nothing in flight
+2026-11-13T03:11:14Z T402b+T409 CHECK_GREEN worker; MERGE 1 attempt
