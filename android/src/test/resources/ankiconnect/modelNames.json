@@ -1,0 +1,13 @@
+{
+  "request": {
+    "action": "modelNames",
+    "version": 6
+  },
+  "response": {
+    "result": [
+      "Takoboto Vocab",
+      "Basic"
+    ],
+    "error": null
+  }
+}

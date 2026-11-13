@@ -1,0 +1,13 @@
+{
+  "request": {
+    "action": "modelFieldNames",
+    "version": 6,
+    "params": {
+      "modelName": "Nope"
+    }
+  },
+  "response": {
+    "result": null,
+    "error": "model was not found: Nope"
+  }
+}

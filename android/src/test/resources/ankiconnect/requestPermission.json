@@ -1,0 +1,14 @@
+{
+  "request": {
+    "action": "requestPermission",
+    "version": 6
+  },
+  "response": {
+    "result": {
+      "permission": "granted",
+      "requireApiKey": false,
+      "version": 6
+    },
+    "error": null
+  }
+}

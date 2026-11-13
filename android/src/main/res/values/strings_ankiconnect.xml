@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ankiconnect_section_title">AnkiConnect server</string>
+    <string name="ankiconnect_enable">Run the AnkiConnect server on this phone</string>
+    <string name="ankiconnect_port">Port</string>
+    <string name="ankiconnect_api_key">API key (optional)</string>
+    <string name="ankiconnect_origins">Allowed origins (comma separated)</string>
+    <string name="ankiconnect_status_stopped">Stopped.</string>
+    <string name="ankiconnect_status_running">Listening on 127.0.0.1:%1$d (this phone only).</string>
+    <string name="ankiconnect_status_failed">Could not start: %1$s</string>
+    <string name="ankiconnect_hint">Point Yomitan at http://127.0.0.1:%1$d.</string>
+</resources>

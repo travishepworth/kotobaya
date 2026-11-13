@@ -1,0 +1,13 @@
+{
+  "request": {
+    "action": "deckNamesAndIds",
+    "version": 6
+  },
+  "response": {
+    "result": {
+      "Default": 1,
+      "Mined": 1496198395707
+    },
+    "error": null
+  }
+}

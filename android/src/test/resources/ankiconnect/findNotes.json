@@ -1,0 +1,15 @@
+{
+  "request": {
+    "action": "findNotes",
+    "version": 6,
+    "params": {
+      "query": "deck:Mined \"Expression:食べる\""
+    }
+  },
+  "response": {
+    "result": [
+      1483959289817
+    ],
+    "error": null
+  }
+}

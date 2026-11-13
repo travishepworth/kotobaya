@@ -1,0 +1,44 @@
+{
+  "request": {
+    "action": "notesInfo",
+    "version": 6,
+    "params": {
+      "notes": [
+        1483959289817,
+        42
+      ]
+    }
+  },
+  "response": {
+    "result": [
+      {
+        "noteId": 1483959289817,
+        "modelName": "Takoboto Vocab",
+        "tags": [
+          "yomitan"
+        ],
+        "fields": {
+          "Expression": {
+            "value": "食べる",
+            "order": 0
+          },
+          "Kana": {
+            "value": "たべる",
+            "order": 1
+          },
+          "Meaning": {
+            "value": "to eat",
+            "order": 2
+          },
+          "Sentence": {
+            "value": "",
+            "order": 3
+          }
+        },
+        "cards": []
+      },
+      {}
+    ],
+    "error": null
+  }
+}

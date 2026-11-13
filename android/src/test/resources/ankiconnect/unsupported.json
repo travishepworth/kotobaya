@@ -1,0 +1,15 @@
+{
+  "request": {
+    "action": "suspend",
+    "version": 6,
+    "params": {
+      "cards": [
+        1
+      ]
+    }
+  },
+  "response": {
+    "result": null,
+    "error": "unsupported action"
+  }
+}

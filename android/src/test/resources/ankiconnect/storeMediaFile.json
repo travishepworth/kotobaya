@@ -1,0 +1,14 @@
+{
+  "request": {
+    "action": "storeMediaFile",
+    "version": 6,
+    "params": {
+      "filename": "_hello.txt",
+      "data": "SGVsbG8h"
+    }
+  },
+  "response": {
+    "result": "_hello.txt",
+    "error": null
+  }
+}

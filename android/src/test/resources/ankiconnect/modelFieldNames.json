@@ -1,0 +1,18 @@
+{
+  "request": {
+    "action": "modelFieldNames",
+    "version": 6,
+    "params": {
+      "modelName": "Takoboto Vocab"
+    }
+  },
+  "response": {
+    "result": [
+      "Expression",
+      "Kana",
+      "Meaning",
+      "Sentence"
+    ],
+    "error": null
+  }
+}

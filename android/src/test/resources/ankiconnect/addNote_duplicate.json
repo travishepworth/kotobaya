@@ -1,0 +1,22 @@
+{
+  "request": {
+    "action": "addNote",
+    "version": 6,
+    "params": {
+      "note": {
+        "deckName": "Mined",
+        "modelName": "Takoboto Vocab",
+        "fields": {
+          "Expression": "食べる"
+        },
+        "tags": [
+          "yomitan"
+        ]
+      }
+    }
+  },
+  "response": {
+    "result": null,
+    "error": "cannot create note because it is a duplicate"
+  }
+}

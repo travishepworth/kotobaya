@@ -1,0 +1,13 @@
+{
+  "request": {
+    "action": "modelNamesAndIds",
+    "version": 6
+  },
+  "response": {
+    "result": {
+      "Takoboto Vocab": 1483883011648,
+      "Basic": 1483883011649
+    },
+    "error": null
+  }
+}

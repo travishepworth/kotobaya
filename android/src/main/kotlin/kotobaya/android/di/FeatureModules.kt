@@ -46,6 +46,7 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.notes.notesFeature,
     kotobaya.android.ankiapi.takoboto.takobotoFeature,
     kotobaya.android.intake.intakeFeature,
+    kotobaya.android.ankiconnect.ankiConnectFeature,
     kotobaya.android.sync.syncFeature,
     kotobaya.android.sync.ui.syncUiFeature,
 )

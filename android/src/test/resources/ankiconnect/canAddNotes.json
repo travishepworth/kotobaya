@@ -1,0 +1,39 @@
+{
+  "request": {
+    "action": "canAddNotes",
+    "version": 6,
+    "params": {
+      "notes": [
+        {
+          "deckName": "Mined",
+          "modelName": "Takoboto Vocab",
+          "fields": {
+            "Expression": "猫",
+            "Kana": "ねこ",
+            "Meaning": "cat"
+          },
+          "tags": [
+            "yomitan"
+          ]
+        },
+        {
+          "deckName": "Mined",
+          "modelName": "Takoboto Vocab",
+          "fields": {
+            "Expression": "食べる"
+          },
+          "tags": [
+            "yomitan"
+          ]
+        }
+      ]
+    }
+  },
+  "response": {
+    "result": [
+      true,
+      false
+    ],
+    "error": null
+  }
+}
