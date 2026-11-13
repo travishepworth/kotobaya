@@ -88,12 +88,13 @@ fun ActionsPage() {
     val md = Modifier.heightIn(min = KbTheme.size.control)
     SgGroup(R.string.sg_group_buttons) {
         SgFlow {
-            Button(onClick = {}, md) { Text(T(R.string.sg_btn_start)) }
-            FilledTonalButton(onClick = {}, md) { Text(T(R.string.sg_btn_add)) }
-            OutlinedButton(onClick = {}, md, border = BorderStroke(1.dp, c.borderStrong)) { Text(T(R.string.sg_btn_import)) }
-            TextButton(onClick = {}, md) { Text(T(R.string.sg_btn_cancel)) }
+            Button(onClick = {}, md, shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_start)) }
+            FilledTonalButton(onClick = {}, md, shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_add)) }
+            OutlinedButton(onClick = {}, md, border = BorderStroke(1.dp, c.borderStrong), shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_import)) }
+            TextButton(onClick = {}, md, shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_cancel)) }
             Button(
                 onClick = {},
+                shape = KbTheme.shapes.md,
                 md,
                 colors = ButtonDefaults.buttonColors(containerColor = c.danger, contentColor = c.onDanger),
             ) { Text(T(R.string.sg_btn_delete)) }
@@ -101,23 +102,25 @@ fun ActionsPage() {
         SgFlow {
             Button(
                 onClick = {},
+                shape = KbTheme.shapes.md,
                 md,
                 enabled = false,
                 colors = ButtonDefaults.buttonColors(disabledContainerColor = c.surfaceSunken, disabledContentColor = c.textDisabled),
             ) { Text(T(R.string.sg_btn_disabled)) }
-            Button(onClick = {}, md) {
+            Button(onClick = {}, md, shape = KbTheme.shapes.md) {
                 CircularProgressIndicator(progress = { 0.7f }, Modifier.size(KbTheme.size.iconSm), color = c.onPrimary, strokeWidth = 2.dp)
                 Spacer(Modifier.width(KbTheme.space.s2))
                 Text(T(R.string.sg_btn_loading))
             }
             OutlinedButton(
                 onClick = {},
+                shape = KbTheme.shapes.md,
                 Modifier.heightIn(min = KbTheme.size.controlSm),
                 border = BorderStroke(1.dp, c.borderStrong),
                 contentPadding = ButtonDefaults.ContentPadding,
             ) { Text(T(R.string.sg_btn_small)) }
         }
-        Button(onClick = {}, Modifier.fillMaxWidth().height(KbTheme.size.gradeButton)) {
+        Button(onClick = {}, Modifier.fillMaxWidth().height(KbTheme.size.gradeButton), shape = KbTheme.shapes.md) {
             Text(T(R.string.sg_btn_show_answer), style = KbTheme.type.titleSm)
         }
     }
@@ -345,8 +348,8 @@ fun FeedbackPage() {
                     Text(T(R.string.sg_dialog_title), style = KbTheme.type.title, color = c.text)
                     Text(T(R.string.sg_dialog_body), style = KbTheme.type.body, color = c.textMuted)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KbTheme.space.s2, Alignment.End)) {
-                        TextButton(onClick = {}) { Text(T(R.string.sg_btn_cancel)) }
-                        Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = c.danger, contentColor = c.onDanger)) {
+                        TextButton(onClick = {}, shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_cancel)) }
+                        Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = c.danger, contentColor = c.onDanger), shape = KbTheme.shapes.md) {
                             Text(T(R.string.sg_btn_delete))
                         }
                     }
@@ -358,8 +361,8 @@ fun FeedbackPage() {
                 Box(Modifier.align(Alignment.CenterHorizontally).size(width = 32.dp, height = 4.dp).background(c.borderStrong, KbTheme.shapes.full))
                 Text(T(R.string.sg_sheet_title), style = KbTheme.type.title, color = c.text)
                 OutlinedTextField(T(R.string.sg_input_value), {}, Modifier.fillMaxWidth(), label = { Text(T(R.string.sg_input_label)) }, shape = KbTheme.shapes.sm)
-                Button(onClick = {}, Modifier.fillMaxWidth().heightIn(min = KbTheme.size.control)) { Text(T(R.string.sg_btn_create)) }
-                TextButton(onClick = {}, Modifier.fillMaxWidth()) { Text(T(R.string.sg_btn_cancel)) }
+                Button(onClick = {}, Modifier.fillMaxWidth().heightIn(min = KbTheme.size.control), shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_create)) }
+                TextButton(onClick = {}, Modifier.fillMaxWidth(), shape = KbTheme.shapes.md) { Text(T(R.string.sg_btn_cancel)) }
             }
         }
     }
@@ -389,7 +392,7 @@ fun FeedbackPage() {
     }
     SgGroup(R.string.sg_group_progress) {
         Progress(12f / 85f, T(R.string.sg_progress_count))
-        Progress(0.64f, T(R.string.sg_progress_import))
+        Progress(0.64f, T(R.string.sg_progress_import, 64))
     }
 }
 
@@ -419,7 +422,7 @@ private fun Toast(kind: KbFeedback, message: Int, action: Int?) {
                 KbFeedback.Danger -> "✕"
             }
             Text("$glyph ${T(message)}", Modifier.weight(1f).padding(vertical = KbTheme.space.s3), style = KbTheme.type.bodySm)
-            if (action != null) TextButton(onClick = {}) { Text(T(action), color = tone.content, style = KbTheme.type.label) }
+            if (action != null) TextButton(onClick = {}, shape = KbTheme.shapes.md) { Text(T(action), color = tone.content, style = KbTheme.type.label) }
             if (kind == KbFeedback.Danger) {
                 val dismiss = T(R.string.sg_dismiss)
                 IconButton(onClick = {}, Modifier.semantics { contentDescription = dismiss }) { Glyph("×", tone.content) }
@@ -447,9 +450,9 @@ private fun EmptyState(enso: Boolean, title: Int, body: Int, action: Int, error:
         Text(T(title), style = KbTheme.type.title, color = c.text)
         Text(T(body), style = KbTheme.type.body, color = c.textMuted)
         if (error) {
-            OutlinedButton(onClick = {}, border = BorderStroke(1.dp, c.borderStrong)) { Text(T(action)) }
+            OutlinedButton(onClick = {}, border = BorderStroke(1.dp, c.borderStrong), shape = KbTheme.shapes.md) { Text(T(action)) }
         } else {
-            FilledTonalButton(onClick = {}) { Text(T(action)) }
+            FilledTonalButton(onClick = {}, shape = KbTheme.shapes.md) { Text(T(action)) }
         }
     }
 }

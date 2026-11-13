@@ -163,7 +163,7 @@
     <string name="sg_error_title">Couldn’t load the queue</string>
     <string name="sg_error_body">The local database is busy. Try again.</string>
     <string name="sg_progress_count">12 of 85</string>
-    <string name="sg_progress_import">Importing… 64 %</string>
+    <string name="sg_progress_import">Importing… %1$d%%</string>
     <string name="sg_pitch_word">はし</string>
     <string name="sg_pitch_word_kanji">箸</string>
     <string name="sg_pitch_word2">さかな</string>

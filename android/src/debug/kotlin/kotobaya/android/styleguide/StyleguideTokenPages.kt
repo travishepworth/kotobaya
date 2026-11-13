@@ -316,7 +316,7 @@ fun SizeMotionPage() {
             style = KbTheme.type.caption,
             color = c.textMuted,
         )
-        OutlinedButton(onClick = { moved = !moved }) { Text(T(R.string.sg_play), style = KbTheme.type.label) }
+        OutlinedButton(onClick = { moved = !moved }, shape = KbTheme.shapes.md) { Text(T(R.string.sg_play), style = KbTheme.type.label) }
     }
     SgGroup(R.string.sg_group_easing) {
         SgFlow {
