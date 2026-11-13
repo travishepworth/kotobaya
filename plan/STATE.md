@@ -1,9 +1,9 @@
 # STATE
 Mode: single-session
 Phase: P7 live bug BUG-7 (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T11:05:33Z (run 16 dispatch)
+Updated: 2026-11-13T11:08:06Z (run 16 C-18 dispatch)
 
-## RESUME HERE (run 16 IN PROGRESS: BUG-7 dispatched to writer, branch t/BUG-7-cards-preview; on resume reconcile per §2, then check/merge; low risk = no review)
+## RESUME HERE (run 16 IN PROGRESS: BUG-7 MERGED c81147d; C-18 (architect, contract batch headwords) running on t/C-18-dict-headwords; then BUG-7b (server+web, low). Reconcile per §2.)
 
 ### Run 15 handover
 - Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
@@ -15,10 +15,10 @@ Updated: 2026-11-13T11:05:33Z (run 16 dispatch)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| BUG-7 | writer (sonnet, low) | 1 | t/BUG-7-cards-preview | 2026-11-13T11:05:33Z |
+| C-18 | architect (opus, med) | 1 | t/C-18-dict-headwords | 2026-11-13T11:08:06Z |
 
 ## Queued
-(none)
+- BUG-7b (sonnet, low; server+web) after C-18
 
 ## Ready for review / In review
 (none)
@@ -44,6 +44,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- BUG-7 (run 16): /cards row click + Enter opens preview, rowLabel fallback (fields→headword→kanji→id), preview fetches DictEntry/Kanji (toDictionary/toKanji)
 - AND-SETTINGS (run 15): Settings tab renders all registered settingsSections (QR pairing reachable), Study limits/rollover via settings.set ops, About; unpaired Home pairing prompt
 - AND-SEARCH (run 15): Android Search tab (offline dict -> API; my cards via core parser+SQLite compiler -> API), word/note detail in-screen
 - FEAT-1 (run 15): listKanjiWords server (keyset, mine/deck_id, decks[]) + web clickable kanji panel (Most frequent / In my decks)

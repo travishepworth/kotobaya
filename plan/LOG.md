@@ -816,3 +816,4 @@
 2026-11-13T11:07:58Z BUG-7 HANDOFF DONE c81147d; CONTRACT_CHANGE_REQUEST batch headwords (shipped id fallback)
 2026-11-13T11:07:58Z BUG-7 MERGE CHECK_GREEN web (low, no review); row click + Enter, rowLabel fallback, dict-backed preview
 2026-11-13T11:07:58Z C-18 SPLIT filed from BUG-7 CCR (batch headwords contract); BUG-7b filed (server+web, dep C-18)
+2026-11-13T11:08:06Z C-18 DISPATCH architect (opus, med)
