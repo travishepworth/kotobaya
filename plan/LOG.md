@@ -826,3 +826,5 @@
 2026-11-13T11:19:46Z C-18 HANDOFF DONE; listDictHeadwords GET /dict/headwords?seq= (<=500), 501 stub allowlisted for BUG-7c
 2026-11-13T11:19:46Z C-18 MERGE CHECK_GREEN contracts+server (med, additive, no review); clients regen
 2026-11-13T11:19:46Z BUG-7c DISPATCH writer (sonnet, low; server+web batch headwords)
+2026-11-13T11:28:47Z BUG-7c HANDOFF DONE; listDictHeadwords server + Netty initial line 16384; both tables batch-filled
+2026-11-13T11:28:47Z BUG-7c MERGE CHECK_GREEN server+web (low, no review); 501 allowlist empty again
