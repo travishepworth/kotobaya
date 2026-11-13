@@ -23,20 +23,11 @@ object DurableDriver {
             override fun onConfigure(db: SupportSQLiteDatabase) {
                 super.onConfigure(db)
                 db.enableWriteAheadLogging()
-                // a PRAGMA that returns a row must be run as a query on Android
-                db.query("PRAGMA synchronous = FULL").close()
+                // after WAL is enabled (enabling it resets the connection's sync mode to the platform default)
+                db.execSQL("PRAGMA synchronous = FULL")
             }
         },
     )
-
-    /**
-     * The same settings on any other driver (the JDBC driver in tests). Must run outside a
-     * transaction; `journal_mode` is persistent, `synchronous` is per connection.
-     */
-    fun configure(driver: SqlDriver) {
-        driver.executeQuery(null, "PRAGMA journal_mode = WAL", { c -> c.next(); QueryResult.Value(Unit) }, 0)
-        driver.execute(null, "PRAGMA synchronous = FULL", 0)
-    }
 
     /** `PRAGMA synchronous` of [driver]'s connection: 2 = FULL. */
     fun synchronousLevel(driver: SqlDriver): Long =
