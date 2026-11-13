@@ -640,3 +640,5 @@
 2026-11-13T04:14:32Z F-14 DISPATCH writer (resume in crashed worktree, uncommitted work kept)
 2026-11-13T04:14:32Z T403b DISPATCH writer-senior (resume in crashed worktree)
 2026-11-13T04:14:57Z F-18 CHECK_GREEN web; MERGE 1 attempt (low)
+2026-11-13T04:19:49Z T403b HANDOFF DONE (519 worker tests, agreement 0.978); check worker + reviewer dispatched
+2026-11-13T04:20:40Z F-14 MERGE CHECK_GREEN server; 1 attempt (URGENT, med)

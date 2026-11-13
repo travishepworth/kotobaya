@@ -17,7 +17,6 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| F-14 | writer (resumed) | 1 | t/F-14-seaweedfs-blob-put (wt agent-af00baf874fb21e11) | run 6 |
 | T403b | writer-senior (resumed) | 1 | t/T403b-parse-matching (wt agent-a916bbd5a76a60c04) | run 6 |
 
 Queued (Gradle slot, serial): F-15+F-16 (wt agent-aa893aced2b0ba95a, uncommitted server work) → F-17 → T403c+T408a (wt agent-aa2a58c8d4cb2a04d, uncommitted server work)
@@ -56,6 +55,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-14 SeaweedFS blob PUT: spool to temp file, known length; copy via get+put (CopyObject 500) (run 6)
 - F-18 web dict page keeps entry when examples fail/empty (run 6)
 - F-7 parse fixture 200 sentences + JMdict_parse_extra (hand-authored segmentation)
 - T405a web media library + import wizard (UUIDv7 import_id retry)
