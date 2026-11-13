@@ -14,12 +14,12 @@ Updated: 2026-11-13T01:16:06Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T304b | writer (sonnet) | 1 | t/T304b-review-ui | 2026-11-13T01:10:04Z |
+| T304b | writer (sonnet) | 2 (rebase on T303c) | t/T304b-review-ui | 2026-11-13T01:20:43Z |
 | T305b | writer-senior (opus) | 1 | t/T305b-note-creator | 2026-11-13T01:10:04Z |
 | T303e | writer (sonnet) | 1 | t/T303e-sync-ui | 2026-11-13T01:16:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- none (W-4 waits on T304b, T303e)
+- none (W-4 waits on T304b, T303e; F-5 waits on T304b)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -30,6 +30,7 @@ Updated: 2026-11-13T01:16:06Z
 |---|---|---|
 
 ## Notes
+- PUSH main BEFORE dispatching worktree writers: worktrees are cut from origin/main (T304b/T305b got a stale base on 2026-11-13).
 - Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
 - Stale worktrees (all merged tickets + the 4 stopped runs; old branch names held, hence `-r` branches) still present: removal denied by permission classifier → in HUMAN_CHECKS.
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.

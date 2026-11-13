@@ -543,3 +543,6 @@
 2026-11-13T01:14:48Z W-4 created (T310 wiring gaps; deps T310,T304b,T303e)
 2026-11-13T01:16:06Z T310 CHECK_GREEN android; MERGE 1 attempt (+rebase fix)
 2026-11-13T01:16:06Z T303e DISPATCH writer(sonnet)
+2026-11-13T01:20:43Z T304b HANDOFF attempt 1 built on stale base (worktree cut from unpushed origin/main) → attempt 2: rebase + wire T303c store
+2026-11-13T01:20:43Z T305b told to rebase (same stale base)
+2026-11-13T01:20:43Z F-5 created: server AutoStatusHook NoOp → device/server status differ (deps T304b)
