@@ -10,6 +10,9 @@ import kotobaya.auth.AuthConfig
 import kotobaya.auth.AuthEvents
 import kotobaya.auth.TokenValidator
 import java.util.UUID
+import kotobaya.blobs.BlobStore
+import kotobaya.blobs.BlobsModule
+import kotobaya.blobs.S3BlobStore
 import kotobaya.cards.CardsModule
 import kotobaya.dict.dictHandlers
 import kotobaya.review.ReviewModule
@@ -52,7 +55,7 @@ fun main(args: Array<String>) {
         exitProcess(2)
     }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config))
+    val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config), blobStore = S3BlobStore(s3Client(config), config.s3Bucket))
     app.jobs.start(scope)
     app.imports.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
@@ -77,6 +80,8 @@ fun composeApp(
     authConfig: AuthConfig,
     startup: StartupSequence? = SyncWiring.startup(db),
     bucketInit: BucketInit = BucketInit.Disabled,
+    /** Backs putBlob/getBlob/queryBlobs; `main` always passes the S3 store (S3 config is required at startup). Null leaves them 501. */
+    blobStore: BlobStore? = null,
     eventsGuardMs: Long = 5_000,
 ): ComposedApp {
     val validator = TokenValidator(db)
@@ -91,7 +96,8 @@ fun composeApp(
     val imports = ImportsModule(db, sync.opApply)
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
         NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
-        ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers
+        ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
+        (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,
@@ -101,6 +107,12 @@ fun composeApp(
     )
     return ComposedApp(deps, jobs, imports)
 }
+
+private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()
+    .endpoint(config.s3Endpoint)
+    .credentials(config.s3AccessKey, config.s3SecretKey)
+    .apply { config.s3Region?.let { region(it) } }
+    .build()
 
 fun migrateCommand(env: Map<String, String> = System.getenv()): Int {
     val log = LoggerFactory.getLogger("kotobaya.migrate")
