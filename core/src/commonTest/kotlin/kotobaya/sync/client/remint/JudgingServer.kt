@@ -43,6 +43,31 @@ class JudgingServer(now: Long, seed: Int = 7) {
             server.nowMs = v
         }
 
+    private val publishedVersion = HashMap<String, Long>()
+
+    /** The optimizer publishes new weights for [presetId] (a server-minted `fsrs_params.published`). */
+    fun publish(presetId: String) {
+        val v = (publishedVersion[presetId] ?: 0L) + 1
+        publishedVersion[presetId] = v
+        val weights = listOf(
+            0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+            1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
+        ).map { JsonNumber(it) }
+        val p = JsonObject(
+            mapOf(
+                "id" to JsonString(presetId),
+                "weights_version" to JsonNumber(v.toDouble()),
+                "fsrs_version" to JsonString("6"),
+                "weights" to kotobaya.contracts.sync.JsonArray(weights),
+                "optimized_at" to JsonNumber(server.nowMs.toDouble()),
+                "optimizer_stats" to JsonObject(mapOf("review_count" to JsonNumber(10.0), "log_loss" to JsonNumber(0.3), "rmse_bins" to JsonNumber(0.03))),
+            ),
+        )
+        val m = DefaultHlcRules.mint(server.hlc, server.nowMs, Reserved.SERVER_DEVICE_ID)
+        val type = OpType.FSRS_PARAMS_PUBLISHED
+        server.append(Op(ids.newOpId(server.nowMs), type, 1, type.entityType, presetId, Reserved.SERVER_DEVICE_ID, m.hlc, p), null)
+    }
+
     private fun judge(op: Op): Pair<String, String>? {
         DeviceOpApplier.missingReference(tables, op)?.let { return "unknown_reference" to "no $it" }
         if (op.opType == OpType.REVIEW_LOGGED) {
