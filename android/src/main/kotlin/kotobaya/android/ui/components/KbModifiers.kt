@@ -49,7 +49,7 @@ fun Modifier.kbFocusRing(interaction: InteractionSource, radius: Dp): Modifier =
 fun Modifier.kbPressScale(interaction: InteractionSource): Modifier = composed {
     val pressed by interaction.collectIsPressedAsState()
     val reduced = KbTheme.reducedMotion
-    val scale by animateFloatAsState(if (pressed && !reduced) KB_PRESS_SCALE else 1f, kbTween(KbMotion.INSTANT), label = "press")
+    val scale by animateFloatAsState(if (pressed && !reduced) KB_PRESS_SCALE else 1f, kbTween(KbMotion.INSTANT))
     graphicsLayer {
         scaleX = scale
         scaleY = scale

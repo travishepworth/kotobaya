@@ -169,7 +169,6 @@ fun SettingsBody(content: @Composable ColumnScope.() -> Unit) {
 fun AppearanceSection(mode: ThemeMode, onChange: (ThemeMode) -> Unit) {
     SettingsBody {
         KbPanel {
-            Text(T(R.string.appearance_theme), style = KbTheme.type.titleSm, color = KbTheme.colors.text)
             KbSegmented(
                 listOf(
                     ThemeMode.System to T(R.string.appearance_system),
@@ -178,7 +177,7 @@ fun AppearanceSection(mode: ThemeMode, onChange: (ThemeMode) -> Unit) {
                 ),
                 selected = mode,
                 onSelect = onChange,
-                modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
             )
             Text(T(R.string.appearance_hint), style = KbTheme.type.bodySm, color = KbTheme.colors.textMuted, modifier = Modifier.padding(top = 10.dp))
         }

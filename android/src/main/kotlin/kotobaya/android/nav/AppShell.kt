@@ -146,7 +146,7 @@ fun Seal(modifier: Modifier = Modifier) {
 @Composable
 private fun NavItem(tab: Tab, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = KbTheme.colors
-    val pill by animateColorAsState(if (selected) c.primaryContainer else Color.Transparent, kbTween(KbMotion.FAST), label = "nav-pill")
+    val pill by animateColorAsState(if (selected) c.primaryContainer else Color.Transparent, kbTween(KbMotion.FAST))
     val interaction = remember { MutableInteractionSource() }
     Column(
         modifier

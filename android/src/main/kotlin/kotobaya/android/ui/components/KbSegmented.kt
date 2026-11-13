@@ -2,6 +2,7 @@ package kotobaya.android.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,7 +69,7 @@ fun <T> KbSegmented(
 @Composable
 private fun Segment(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = KbTheme.colors
-    val bg by animateColorAsState(if (selected) c.surfaceRaised else Color.Transparent, kbTween(KbMotion.FAST), label = "seg")
+    val bg by animateColorAsState(if (selected) c.surfaceRaised else Color.Transparent, kbTween(KbMotion.FAST))
     val fg = if (selected) c.text else c.textMuted
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(KbRadius.sm + 1.dp)
@@ -78,7 +79,7 @@ private fun Segment(label: String, selected: Boolean, modifier: Modifier, onClic
             .kbFocusRing(interaction, KbRadius.sm)
             .clip(shape)
             .background(bg)
-            .then(if (selected) Modifier.background(Color.Transparent) else Modifier)
+            .then(if (selected) Modifier.border(1.dp, c.border, shape) else Modifier)
             .selectable(selected, interaction, ripple(), role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
@@ -105,7 +106,7 @@ fun <T> KbTabs(tabs: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, 
             tabs.forEach { (value, label) ->
                 val on = value == selected
                 val interaction = remember { MutableInteractionSource() }
-                val line by animateColorAsState(if (on) c.primary else Color.Transparent, kbTween(KbMotion.BASE), label = "tab")
+                val line by animateColorAsState(if (on) c.primary else Color.Transparent, kbTween(KbMotion.BASE))
                 Column(
                     Modifier
                         .weight(1f)

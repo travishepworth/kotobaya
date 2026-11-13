@@ -31,8 +31,8 @@ class AppStartsTest {
 
     @Test
     fun todayRendersAndTabsNavigate() {
-        // UI-APP: Today is the start screen (its Start review button is the hero action).
-        assertTrue(rule.onAllNodesWithText(str(R.string.today_start_review)).fetchSemanticsNodes().isNotEmpty())
+        // UI-APP: Today is the start screen.
+        assertTrue(rule.onAllNodesWithText(str(R.string.today_title)).fetchSemanticsNodes().isNotEmpty())
         // The Decks tab (its list has a Refresh button).
         rule.onNodeWithTag(navTag(Tab.DECKS)).performClick()
         rule.onNodeWithContentDescription(str(R.string.decks_refresh)).assertExists()

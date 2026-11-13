@@ -181,7 +181,7 @@ private fun DecksPanel(decks: List<DeckSummary>?, intents: TodayIntents) {
                 if (i > 0) KbDivider(inset = 42.dp)
                 KbListRow(
                     title = d.name,
-                    supporting = typeLabel(d.type),
+                    supporting = if (d.type == "user") null else typeLabel(d.type),
                     leading = { KbDeckDot(KbDeckColor.Hai) },
                     trailing = { DeckCounts(d) },
                     onClick = { intents.studyDeck(d.id) },

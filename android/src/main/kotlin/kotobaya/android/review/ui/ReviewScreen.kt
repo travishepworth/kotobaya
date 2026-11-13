@@ -375,7 +375,7 @@ private fun LoadingCard(modifier: Modifier) {
 @Composable
 private fun ActionArea(side: CardSide, card: ShownCard?, prefs: ReviewPrefs, keyHints: Boolean, intents: ReviewIntents, enabled: Boolean) {
     val back = side == CardSide.BACK && card != null
-    val gradeAlpha by animateFloatAsState(if (back) 1f else 0f, kbTween(KbMotion.BASE), label = "grades")
+    val gradeAlpha by animateFloatAsState(if (back) 1f else 0f, kbTween(KbMotion.BASE))
     Box(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp).navigationBarsPadding()) {
         GradeBar(
             buttons = prefs.buttons,

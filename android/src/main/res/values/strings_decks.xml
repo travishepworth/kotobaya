@@ -24,7 +24,7 @@
     <string name="decks_due">%1$d due</string>
     <string name="decks_new">%1$d new</string>
     <string name="decks_total">%1$d cards</string>
-    <string name="decks_stat_due">Due</string>
+    <string name="decks_stat_due">Reviews</string>
     <string name="decks_stat_new">New</string>
     <string name="decks_stat_learning">Learning</string>
     <string name="decks_stat_cards">Cards</string>

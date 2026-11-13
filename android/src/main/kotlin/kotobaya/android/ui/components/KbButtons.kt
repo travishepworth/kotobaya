@@ -82,7 +82,7 @@ fun KbButton(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = colorsOf(variant, enabled)
-    val bg by animateColorAsState(colors.bg, kbTween(KbMotion.FAST), label = "btn-bg")
+    val bg by animateColorAsState(colors.bg, kbTween(KbMotion.FAST))
     val interaction = remember { MutableInteractionSource() }
     val shape = KbTheme.shapes.md
     val lg = size == KbButtonSize.Lg

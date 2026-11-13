@@ -127,7 +127,6 @@ private fun FieldBox(isError: Boolean, enabled: Boolean, content: @Composable (M
             else -> c.border
         },
         kbTween(KbMotion.FAST),
-        label = "field-edge",
     )
     val shape = RoundedCornerShape(KbRadius.sm)
     Box(

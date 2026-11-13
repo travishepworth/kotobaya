@@ -29,6 +29,7 @@ import java.io.File
 import kotobaya.android.review.CardPage
 import kotobaya.android.review.PageRequest
 import kotobaya.android.ui.components.KbDivider
+import kotobaya.android.ui.components.jaPhrase
 import kotobaya.android.ui.theme.KbTheme
 import kotobaya.contracts.render.RenderedCard
 
@@ -142,7 +143,7 @@ fun CardStandIn(card: RenderedCard, modifier: Modifier = Modifier) {
                     KbDivider(Modifier.padding(vertical = 8.dp))
                     continue
                 }
-                val style = if (first) KbTheme.type.jpDisplay else if (b.any { it.code > 0x2E80 }) KbTheme.type.jpBody else KbTheme.type.bodyLg
+                val style = (if (first) KbTheme.type.jpDisplay else if (b.any { it.code > 0x2E80 }) KbTheme.type.jpBody else KbTheme.type.bodyLg).jaPhrase()
                 Text(b, style = style, color = if (first) c.text else c.text, textAlign = TextAlign.Center)
                 first = false
             }

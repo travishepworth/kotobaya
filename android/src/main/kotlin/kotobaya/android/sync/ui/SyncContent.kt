@@ -187,7 +187,7 @@ fun RejectedRow(e: RejectedEntry, indented: Boolean, onRetry: () -> Unit, onDisc
     val c = KbTheme.colors
     KbPanel(Modifier.fillMaxWidth().padding(start = if (indented) 24.dp else 0.dp), padding = PaddingValues(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (indented) KbOverline(T(R.string.rejected_child))
+            if (indented) Text(T(R.string.rejected_child), style = KbTheme.type.caption, color = c.textMuted)
             Text(T(R.string.rejected_what, e.row.opType, e.row.entityId), style = KbTheme.type.titleSm.copy(fontFamily = mono, fontSize = KbTheme.type.bodySm.fontSize), color = c.text)
             Text(T(R.string.rejected_when, formatTime(e.row.createdAt)), style = KbTheme.type.caption, color = c.textMuted)
             Text(T(R.string.rejected_why, reasonText(e.row.rejectionCode)), style = KbTheme.type.bodySm, color = c.text)

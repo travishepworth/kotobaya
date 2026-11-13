@@ -173,7 +173,7 @@ fun KbSkeletonRows(count: Int, modifier: Modifier = Modifier, leading: Boolean =
 @Composable
 fun KbProgressBar(fraction: Float, modifier: Modifier = Modifier, label: String? = null) {
     val c = KbTheme.colors
-    val f by animateFloatAsState(fraction.coerceIn(0f, 1f), kbTween(KbMotion.SLOW), label = "progress")
+    val f by animateFloatAsState(fraction.coerceIn(0f, 1f), kbTween(KbMotion.SLOW))
     Box(
         modifier
             .fillMaxWidth()
