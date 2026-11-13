@@ -609,3 +609,4 @@
 2026-11-13T03:24:07Z - DECIDE ADR-020 (EDRDG checksum pinning dropped; optional pin)
 2026-11-13T03:24:07Z - human-reported gaps → tickets D-1 (HTTPRoute+worker mem), F-12 (resumed refresh builds pkg), F-13 (ADR-020), T412 (web dict), T413 (web notes); W-5 split pending 501 audit
 2026-11-13T03:24:50Z W-5a created (URGENT: blobs unwired + dict refresh/release never implemented); next free slot
+2026-11-13T03:26:55Z T407 MERGE CHECK_GREEN web; 1 attempt (low)
