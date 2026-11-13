@@ -15,7 +15,15 @@ Updated: 2026-11-13 (orchestrator run 3)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| P4 planning | planner (opus) | 1 | — (plan/tickets/T4*) | run 3 |
+| C-11 | architect (opus) | 1 | t/C-11-media-pipeline | run 3 |
+| F-7 | writer (sonnet) | 1 | t/F-7-parse-fixture-200 | run 3 |
+| T401a | writer (sonnet) | 1 | t/T401a-jpdb-deck-client | run 3 |
+| T402a | writer (sonnet) | 1 | t/T402a-extract-subs-text | run 3 |
+| T404c | writer-senior (opus) | 1 | t/T404c-coverage-engine | run 3 |
+| T411a | writer (sonnet) | 1 | t/T411a-blobs-api | run 3 |
+
+## Queued (ready; waiting for a slot)
+- T405a (web, no deps) — next free slot
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -38,6 +46,7 @@ Updated: 2026-11-13 (orchestrator run 3)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P4: merged 0/25 (planner split; ticket files plan/tickets/) · attempts 6 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
