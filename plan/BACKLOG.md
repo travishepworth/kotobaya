@@ -677,7 +677,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 
 ### BUG-7b — Notes page: readable list, preview-first, dictionary values (BUG-7 addendum)
 - model: sonnet · risk: low · deps: BUG-7 · status: TODO
-- paths: web/src/lib/notes/, web/src/routes/notes/, web/src/lib/cards/model.ts (+ model.test.ts, messages.ts) (ticket: plan/tickets/BUG-7b.md)
+- paths: web/src/lib/notes/, web/src/routes/notes/, web/src/lib/cards/ (model.ts, model.test.ts, messages.ts, CardPreview.svelte, api.ts), web/src/routes/cards/, web/src/routes/review/, web/src/lib/review/ (ticket: plan/tickets/BUG-7b.md; includes BUG-7 addendum 2, kanji preview)
 
 ### BUG-7c — Batch headword/reading/gloss in /cards and /notes tables
 - model: sonnet · risk: low · deps: C-18, BUG-7b · status: TODO
@@ -707,6 +707,10 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 
 ### UI-1 — Full UI gamification and visual polish pass across web and Android
 - status: HUMAN-GATED (never dispatch) · Starts only after everything works; the user plans and starts it personally. No ticket file.
+
+### FEAT-x — WYSIWYG note view: rendered card with per-field override
+- status: HUMAN-GATED (part of the UI upgrade the user plans personally; never dispatch) · from BUG-7 addendum 2 FOLLOWUP
+On /notes (and the card browser preview), show the actual rendered card, front and back, with each field region (expression, reading, meaning, keyword, readings, notes, …) as a box filled from the dictionary/KANJIDIC. Each box has an edit button that turns it into an override input. Saving writes the note field (note.updated); "reset to dictionary" clears it. Overridden boxes are visibly marked. Needs a renderer hook from core so the web can map rendered regions to field keys (e.g. data-field="keyword" wrappers in RenderedCard). That is a core render-contract change, so architect first (C-xx), then web.
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.

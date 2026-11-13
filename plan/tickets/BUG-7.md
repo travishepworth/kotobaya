@@ -60,3 +60,15 @@ Extra acceptance:
 Note: the batch lookup is now needed by both pages (headword + reading + first gloss per entry_seq). If no existing endpoint serves a list of entry_seqs, the contract ticket for it is in scope this run: architect, additive. Then wire both tables to it.
 
 (Orchestrator: BUG-7 had already merged when this arrived; the addendum ships as BUG-7b. Batch wiring for both tables is BUG-7c after C-18.)
+
+## Addendum 2 (user, run 16): kanji preview (user-reported, verified)
+
+Symptom: on /notes, a jpdb kanji note's preview shows an empty front and a back with only the kanji.
+Cause: jpdb kanji notes store only `{"literal": "緊"}`; keyword/readings render from ref.kanji (CardRenderer C-2). NoteEditor.svelte:72 passes `kanji: null`, and it previews `note.cards[0]`, which for these notes is often `writing` (front = {{keyword}} → empty, back = literal + empty readings). Live counts: Kanji keyword 2185, writing 754.
+Fix (in addition to Addendum 1's kanji fetch): fetch GET /kanji/{literal} and pass toKanji(...) in both NoteEditor and CardPreview; add a kind switcher over the note's live cards (default: the card the user clicked on /cards, else the first default-template kind).
+Acceptance:
+- [ ] jpdb kanji note, writing card: front shows the keyword; back shows kanji + on/kun readings.
+- [ ] keyword card: front shows the kanji; back shows keyword + readings.
+- [ ] Check reviews too: confirm /review renders the same two cards correctly (QueueItem.kanji); if not, fix it here.
+
+(Orchestrator: arrived while BUG-7b's writer was running and overlapping NoteEditor; sent to that writer instead of a parallel ticket. BUG-7b paths widened to lib/cards/CardPreview.svelte, lib/cards/api.ts, routes/cards/, routes/review/, lib/review/.)

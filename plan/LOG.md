@@ -819,3 +819,5 @@
 2026-11-13T11:08:06Z C-18 DISPATCH architect (opus, med)
 2026-11-13T11:08:50Z BUG-7 NOTE user addendum (/notes) arrived after merge -> BUG-7b; batch wiring renamed BUG-7c (deps C-18, BUG-7b); C-18 widened to headword/reading/gloss
 2026-11-13T11:08:50Z BUG-7b DISPATCH writer (sonnet, low; web notes)
+2026-11-13T11:10:54Z BUG-7b NOTE BUG-7 addendum 2 (kanji preview, kind switcher, /review check) sent to running BUG-7b writer; paths widened (cards/review)
+2026-11-13T11:10:54Z FEAT-x NOTE filed HUMAN-GATED next to UI-1 (WYSIWYG note view; needs core render-contract C-xx first)

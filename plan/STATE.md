@@ -37,7 +37,7 @@ Updated: 2026-11-13T11:08:50Z (run 16 C-18 + BUG-7b dispatch)
 - Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- UI-1 is HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
+- UI-1 and FEAT-x are HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
