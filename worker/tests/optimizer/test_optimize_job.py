@@ -213,3 +213,63 @@ def test_an_earlier_attempts_published_child_is_adopted_without_work() -> None:
 def test_unknown_preset_fails_the_attempt() -> None:
     with pytest.raises(LookupError, match="unknown_preset"):
         run(FakeStore(None), true_weights())
+
+
+def test_naive_db_timestamps_go_through_the_whole_job() -> None:
+    """Regression (BUG-3): naive datetimes from the DB made py-fsrs raise in decide."""
+    rows = [
+        (r.card_id, r.reviewed_at.replace(tzinfo=None), r.rating) for r in simulate(true_weights())
+    ]
+    reviews = [Review(c, t, r) for c, t, r in rows]  # naive in, as a row source would give
+    assert all(r.reviewed_at.tzinfo is UTC for r in reviews)
+    store = FakeStore(plan(reviews))
+    result = run(store, true_weights())
+    assert result["published"] is True
+    assert len(store.inserted) == 1
+
+
+def test_pg_store_normalises_naive_and_offset_timestamps() -> None:
+    from datetime import timezone
+
+    from kotobaya_worker.optimizer.store import PgStore
+
+    rows = [
+        {"card_id": "a", "reviewed_at": datetime(2025, 1, 1, 12), "rating": 3},
+        {
+            "card_id": "b",
+            "reviewed_at": datetime(2025, 1, 1, 14, tzinfo=timezone(timedelta(hours=2))),
+            "rating": 3,
+        },
+    ]
+
+    class Cur:
+        def __init__(self, data: Any) -> None:
+            self._d = data
+
+        def fetchone(self) -> Any:
+            return self._d
+
+        def __iter__(self) -> Any:
+            return iter(self._d)
+
+    class Tx:
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, *a: object) -> None:
+            return None
+
+    class Conn:
+        def transaction(self) -> Tx:
+            return Tx()
+
+        def execute(self, sql: str, params: Any = None) -> Cur:
+            if "fsrs_params" in sql:
+                return Cur({"deleted": False, "weights_version": 0, "weights": None})
+            if "review_log" in sql:
+                return Cur(rows)
+            return Cur(None)
+
+    loaded = PgStore(Conn()).load_plan(PRESET)  # type: ignore[arg-type]
+    assert loaded is not None
+    assert [r.reviewed_at for r in loaded.reviews] == [datetime(2025, 1, 1, 12, tzinfo=UTC)] * 2

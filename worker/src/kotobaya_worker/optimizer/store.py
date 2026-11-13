@@ -15,7 +15,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from kotobaya_worker.importers.jpdb_history.apply import EVENTS_CHANNEL, ChildRow
-from kotobaya_worker.optimizer.model import Review
+from kotobaya_worker.optimizer.model import Review, as_utc
 
 INTERNAL_KIND = "fsrs-params-publish"
 
@@ -80,7 +80,7 @@ class PgStore:
             if p is None:
                 return None
             reviews = [
-                Review(str(r["card_id"]), r["reviewed_at"], int(r["rating"]))
+                Review(str(r["card_id"]), as_utc(r["reviewed_at"]), int(r["rating"]))
                 for r in self._c.execute(_REVIEWS_SQL, (preset_id,))
             ]
         weights = None if p["weights"] is None else [float(w) for w in p["weights"]]

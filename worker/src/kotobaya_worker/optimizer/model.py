@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fsrs import Card, Rating, Scheduler
 from fsrs.scheduler import DEFAULT_PARAMETERS, LOWER_BOUNDS_PARAMETERS, UPPER_BOUNDS_PARAMETERS
@@ -27,11 +27,19 @@ BINS = 20
 EPS = 1e-6  # predictions are clipped to [EPS, 1 - EPS], as torch's BCELoss clamps its log
 
 
+def as_utc(t: datetime) -> datetime:
+    """Aware UTC: naive is taken as UTC (CLAUDE.md rule 9), aware non-UTC is converted."""
+    return t.replace(tzinfo=UTC) if t.tzinfo is None else t.astimezone(UTC)
+
+
 @dataclass(frozen=True)
 class Review:
     card_id: str
-    reviewed_at: datetime  # timezone-aware
+    reviewed_at: datetime  # normalised to aware UTC on construction (py-fsrs rejects anything else)
     rating: int  # 1..4
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "reviewed_at", as_utc(self.reviewed_at))
 
 
 Trainer = Callable[[Sequence[Review]], list[float]]
