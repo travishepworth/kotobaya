@@ -108,7 +108,7 @@ public class DeviceCardCache(
 
     /** Full replay of each maintained card of [cardIds] (undo, merge, preset change; 9.2). */
     public fun replayCards(tables: LearningTables, cardIds: Collection<Uuid>) {
-        for (id in cardIds.toSortedSet()) {
+        for (id in cardIds.distinct().sorted()) {
             val card = maintained(tables, id) ?: continue
             replayOne(tables, id, paramsFor(tables, card))
         }
