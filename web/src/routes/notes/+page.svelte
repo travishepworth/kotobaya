@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import type { DictEntry, Note, NoteBaseType, NoteType } from '../../lib/api/generated';
+	import type { Note, NoteBaseType, NoteType } from '../../lib/api/generated';
 	import { PAGE_SIZE } from '../../lib/cards/model';
-	import { dictionaryApi, noteTypesApi, notesApi } from '../../lib/notes/api';
+	import { noteTypesApi, notesApi } from '../../lib/notes/api';
+	import { HeadwordMap } from '../../lib/notes/headwords.svelte';
 	import { tn } from '../../lib/notes/messages';
 	import NoteEditor from '../../lib/notes/NoteEditor.svelte';
 	import NoteTable from '../../lib/notes/NoteTable.svelte';
@@ -19,7 +20,7 @@
 	let loadedOnce = $state(false);
 	let noteTypes = $state<Map<string, NoteType>>(new Map());
 	let activeId = $state<string | null>(null);
-	let activeEntry = $state<DictEntry | null>(null);
+	const headwords = new HeadwordMap();
 	let generation = 0;
 	let applied = { q: '', type: '' as NoteBaseType | '', tag: '' };
 
@@ -60,16 +61,8 @@
 		void loadPage(true);
 	}
 
-	async function activate(n: Note): Promise<void> {
+	function activate(n: Note): void {
 		activeId = n.id;
-		activeEntry = null;
-		if (n.entrySeq === null) return;
-		try {
-			const e = await dictionaryApi.getDictEntry({ seq: n.entrySeq });
-			if (activeId === n.id) activeEntry = e;
-		} catch {
-			/* preview falls back to the note's own fields */
-		}
 	}
 
 	function saved(n: Note): void {
@@ -94,7 +87,7 @@
 				try {
 					const n = await notesApi.getNote({ noteId: wanted });
 					if (!notes.some((x) => x.id === n.id)) notes = [n, ...notes];
-					await activate(n);
+					activate(n);
 				} catch {
 					/* toast shown */
 				}
@@ -142,8 +135,9 @@
 			<NoteTable
 				{notes}
 				{activeId}
+				{headwords}
 				hasMore={cursor !== null}
-				onactivate={(n) => void activate(n)}
+				onactivate={activate}
 				onnearend={() => void loadPage(false)}
 			/>
 			<p class="muted">
@@ -158,7 +152,7 @@
 			<NoteEditor
 				note={active}
 				noteType={noteTypes.get(active.noteTypeId)}
-				entry={activeEntry}
+				onentry={(seq, e) => headwords.put(seq, e)}
 				onsaved={saved}
 				ondeleted={deleted}
 			/>

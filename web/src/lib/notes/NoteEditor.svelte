@@ -1,23 +1,25 @@
 <script lang="ts">
 	// Edit pane: fields, tags, mnemonic, source sentence, with a core-rendered preview and delete.
-	import type { DictEntry, Note, NotePatch, NoteType } from '../api/generated';
+	import type { DictEntry, Kanji, Note, NotePatch, NoteType } from '../api/generated';
 	import { renderCard, type CardSide, type RenderedCard } from '../core/index';
 	import CardView from '../review/CardView.svelte';
-	import { MEDIA_URL_TEMPLATE, toCoreNoteType, toDictionary } from '../review/model';
+	import { fetchEntry, fetchKanji } from '../cards/api';
+	import { MEDIA_URL_TEMPLATE, toCoreNoteType, toDictionary, toKanji } from '../review/model';
 	import { pushToast } from '../toasts.svelte';
+	import { dictFieldValues } from './dict';
 	import { notesApi } from './api';
 	import { tn } from './messages';
 
 	let {
 		note,
 		noteType,
-		entry,
+		onentry,
 		onsaved,
 		ondeleted
 	}: {
 		note: Note;
 		noteType: NoteType | undefined;
-		entry: DictEntry | null;
+		onentry: (seq: number, entry: DictEntry) => void;
 		onsaved: (n: Note) => void;
 		ondeleted: (id: string) => void;
 	} = $props();
@@ -27,6 +29,12 @@
 	let mnemonic = $state('');
 	let sourceSentence = $state('');
 	let side = $state<CardSide>('front');
+	let tab = $state<'preview' | 'edit'>('preview');
+	let kind = $state('');
+	let entry = $state<DictEntry | null>(null);
+	let kanji = $state<Kanji | null>(null);
+	let dictLoading = $state(false);
+	let dictFailed = $state(false);
 	let saving = $state(false);
 	let confirming = $state(false);
 
@@ -41,7 +49,62 @@
 	$effect(() => {
 		void note.id;
 		side = 'front';
+		tab = 'preview';
+		kind = '';
 	});
+
+	// Referenced notes render from the dictionary: fetch (cached) whenever another note is opened.
+	$effect(() => {
+		const seq = note.entrySeq;
+		const lit = note.kanjiLiteral;
+		entry = null;
+		kanji = null;
+		dictFailed = false;
+		dictLoading = seq !== null || lit !== null;
+		if (!dictLoading) return;
+		let stale = false;
+		void (async () => {
+			try {
+				if (seq !== null) {
+					const e = await fetchEntry(seq);
+					if (stale) return;
+					entry = e;
+					onentry(seq, e);
+				}
+				if (lit !== null) {
+					const k = await fetchKanji(lit);
+					if (stale) return;
+					kanji = k;
+				}
+			} catch {
+				if (!stale) dictFailed = true;
+			} finally {
+				if (!stale) dictLoading = false;
+			}
+		})();
+		return () => {
+			stale = true;
+		};
+	});
+
+	/** The note's live card kinds (falls back to the note type's templates). */
+	const kinds = $derived.by(() => {
+		const live = [...new Set(note.cards.map((c) => c.kind))];
+		const order = noteType ? Object.keys(noteType.templates) : [];
+		if (live.length === 0) return order;
+		// Default (first) kind follows the note type's template order.
+		return live.sort((a, b) => {
+			const ia = order.indexOf(a);
+			const ib = order.indexOf(b);
+			return (ia < 0 ? order.length : ia) - (ib < 0 ? order.length : ib);
+		});
+	});
+	const activeKind = $derived(kinds.includes(kind) ? kind : (kinds[0] ?? ''));
+	const dictValues = $derived(dictFieldValues(entry, kanji));
+
+	function kindLabel(k: string): string {
+		return k === 'meaning' || k === 'reading' ? tn(`notes.kind.${k}`) : k;
+	}
 
 	const fieldKeys = $derived.by(() => {
 		const keys = noteType ? noteType.fields.map((f) => f.key) : [];
@@ -60,16 +123,15 @@
 	const rendered = $derived.by((): Rendered => {
 		if (!noteType) return { ok: false, detail: tn('notes.previewMissingType') };
 		try {
-			const kind = note.cards[0]?.kind ?? Object.keys(noteType.templates)[0] ?? '';
 			return {
 				ok: true,
 				card: renderCard({
 					noteType: toCoreNoteType(noteType),
-					kind,
+					kind: activeKind,
 					fields,
 					mnemonic,
 					dictionary: toDictionary(entry),
-					kanji: null,
+					kanji: toKanji(kanji),
 					side,
 					options: {
 						furigana: true,
@@ -133,78 +195,107 @@
 
 <section aria-label={tn('notes.edit')}>
 	<h2>{tn('notes.edit')}</h2>
-	<form
-		onsubmit={(e) => {
-			e.preventDefault();
-			void save();
-		}}
-	>
-		<fieldset>
-			<legend>{tn('notes.fields')}</legend>
-			{#if referenced}<p class="muted">{tn('notes.refFieldHint')}</p>{/if}
-			{#each fieldKeys as k (k)}
-				<label>
-					{noteType?.fields.find((f) => f.key === k)?.label ?? k}
-					<textarea rows="2" lang="ja" bind:value={fields[k]}></textarea>
-				</label>
-			{/each}
-		</fieldset>
-		<label>
-			{tn('notes.tags')}
-			<input type="text" bind:value={tagsText} />
-		</label>
-		{#if !tagsValid}<p class="err">{tn('notes.badTag')}</p>{/if}
-		<label>
-			{tn('notes.mnemonic')}
-			<textarea rows="2" bind:value={mnemonic}></textarea>
-		</label>
-		<label>
-			{tn('notes.sourceSentence')}
-			<textarea rows="2" lang="ja" bind:value={sourceSentence}></textarea>
-		</label>
-		<div class="actions">
-			<button type="submit" class="kb-btn" disabled={saving || !tagsValid}>
-				{saving ? tn('notes.saving') : tn('notes.save')}
-			</button>
-			{#if !confirming}
-				<button type="button" class="kb-btn kb-btn-quiet" onclick={() => (confirming = true)}>
-					{tn('notes.delete')}
-				</button>
-			{/if}
-		</div>
-	</form>
-
-	{#if confirming}
-		<div class="confirm" role="alertdialog" aria-label={tn('notes.delete')}>
-			<p>{tn('notes.deleteConfirm')}</p>
-			<button type="button" class="kb-btn" disabled={saving} onclick={() => void remove()}>
-				{tn('notes.deleteYes')}
-			</button>
-			<button type="button" class="kb-btn kb-btn-quiet" onclick={() => (confirming = false)}>
-				{tn('notes.deleteNo')}
-			</button>
-		</div>
-	{/if}
-
-	<h3>{tn('notes.preview')}</h3>
 	<div class="tabs">
-		<button
-			type="button"
-			class="kb-btn kb-btn-quiet"
-			aria-pressed={side === 'front'}
-			onclick={() => (side = 'front')}>{tn('notes.previewFront')}</button
-		>
-		<button
-			type="button"
-			class="kb-btn kb-btn-quiet"
-			aria-pressed={side === 'back'}
-			onclick={() => (side = 'back')}>{tn('notes.previewBack')}</button
-		>
+		<button type="button" class="kb-btn kb-btn-quiet" aria-pressed={tab === 'preview'} onclick={() => (tab = 'preview')}>{tn('notes.tabPreview')}</button>
+		<button type="button" class="kb-btn kb-btn-quiet" aria-pressed={tab === 'edit'} onclick={() => (tab = 'edit')}>{tn('notes.tabEdit')}</button>
 	</div>
-	{#if rendered.ok}
-		<CardView rendered={rendered.card} />
+	{#if tab === 'preview'}
+		<div class="tabs">
+			{#each kinds as k (k)}
+				<button
+					type="button"
+					class="kb-btn kb-btn-quiet"
+					aria-label={tn('notes.cardKind') + ': ' + kindLabel(k)}
+					aria-pressed={activeKind === k}
+					onclick={() => (kind = k)}>{kindLabel(k)}</button
+				>
+			{/each}
+		</div>
+		<div class="tabs">
+			<button
+				type="button"
+				class="kb-btn kb-btn-quiet"
+				aria-pressed={side === 'front'}
+				onclick={() => (side = 'front')}>{tn('notes.previewFront')}</button
+			>
+			<button
+				type="button"
+				class="kb-btn kb-btn-quiet"
+				aria-pressed={side === 'back'}
+				onclick={() => (side = 'back')}>{tn('notes.previewBack')}</button
+			>
+		</div>
+		{#if dictLoading}
+			<p class="muted">{tn('notes.dictLoading')}</p>
+		{:else if dictFailed}
+			<p class="err">{tn('notes.dictFailed')}</p>
+		{/if}
+		{#if rendered.ok}
+			<CardView rendered={rendered.card} />
+		{:else}
+			<p class="err">{tn('notes.previewFailed', { detail: rendered.detail })}</p>
+		{/if}
 	{:else}
-		<p class="err">{tn('notes.previewFailed', { detail: rendered.detail })}</p>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				void save();
+			}}
+		>
+			<fieldset>
+				<legend>{tn('notes.fields')}</legend>
+				{#if referenced}<p class="muted">{tn('notes.refFieldHint')}</p>{/if}
+				{#each fieldKeys as k (k)}
+					<label>
+						{noteType?.fields.find((f) => f.key === k)?.label ?? k}
+						<textarea
+							rows="2"
+							lang="ja"
+							placeholder={referenced && dictValues[k] !== undefined ? tn('notes.fromDictionary', { value: dictValues[k] }) : undefined}
+							bind:value={fields[k]}
+						></textarea>
+						{#if referenced && (fields[k] ?? '') === '' && dictValues[k] !== undefined}
+							<span class="dict" lang="ja">{tn('notes.fromDictionary', { value: dictValues[k] })}</span>
+						{/if}
+					</label>
+				{/each}
+			</fieldset>
+			<label>
+				{tn('notes.tags')}
+				<input type="text" bind:value={tagsText} />
+			</label>
+			{#if !tagsValid}<p class="err">{tn('notes.badTag')}</p>{/if}
+			<label>
+				{tn('notes.mnemonic')}
+				<textarea rows="2" bind:value={mnemonic}></textarea>
+			</label>
+			<label>
+				{tn('notes.sourceSentence')}
+				<textarea rows="2" lang="ja" bind:value={sourceSentence}></textarea>
+			</label>
+			<div class="actions">
+				<button type="submit" class="kb-btn" disabled={saving || !tagsValid}>
+					{saving ? tn('notes.saving') : tn('notes.save')}
+				</button>
+				{#if !confirming}
+					<button type="button" class="kb-btn kb-btn-quiet" onclick={() => (confirming = true)}>
+						{tn('notes.delete')}
+					</button>
+				{/if}
+			</div>
+		</form>
+
+		{#if confirming}
+			<div class="confirm" role="alertdialog" aria-label={tn('notes.delete')}>
+				<p>{tn('notes.deleteConfirm')}</p>
+				<button type="button" class="kb-btn" disabled={saving} onclick={() => void remove()}>
+					{tn('notes.deleteYes')}
+				</button>
+				<button type="button" class="kb-btn kb-btn-quiet" onclick={() => (confirming = false)}>
+					{tn('notes.deleteNo')}
+				</button>
+			</div>
+		{/if}
 	{/if}
 </section>
 
@@ -236,6 +327,10 @@
 	}
 	[aria-pressed='true'] {
 		font-weight: 700;
+	}
+	.dict {
+		color: var(--kb-text-muted);
+		font-size: 0.9em;
 	}
 	.muted {
 		color: var(--kb-text-muted);

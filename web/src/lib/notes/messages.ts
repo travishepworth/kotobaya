@@ -13,6 +13,8 @@ const en = {
 	'notes.moreAvailable': 'more available (scroll down)',
 	'notes.table': 'Notes',
 	'notes.col.note': 'Note',
+	'notes.col.reading': 'Reading',
+	'notes.col.meaning': 'Meaning',
 	'notes.col.type': 'Type',
 	'notes.col.cards': 'Cards',
 	'notes.col.tags': 'Tags',
@@ -39,6 +41,14 @@ const en = {
 	'notes.previewBack': 'Back',
 	'notes.previewFailed': 'This note could not be rendered: {detail}',
 	'notes.previewMissingType': 'The note type of this note is missing.',
+	'notes.tabPreview': 'Preview',
+	'notes.tabEdit': 'Edit',
+	'notes.cardKind': 'Card',
+	'notes.kind.meaning': 'Meaning',
+	'notes.kind.reading': 'Reading',
+	'notes.dictLoading': 'Loading dictionary data…',
+	'notes.dictFailed': 'Dictionary data could not be loaded; showing the note as stored.',
+	'notes.fromDictionary': 'From dictionary: {value}',
 	'notes.openDictionary': 'Entry {seq}'
 } as const;
 

@@ -1,4 +1,4 @@
-import { CardsApi, DecksApi, DictionaryApi, NoteTypesApi, type DictEntry, type Kanji } from '../api/generated';
+import { CardsApi, DecksApi, DictionaryApi, NoteTypesApi, NotesApi, type DictEntry, type Kanji } from '../api/generated';
 import { apiConfig } from '../api/client';
 
 export const cardsApi = new CardsApi(apiConfig);
@@ -24,3 +24,9 @@ export const fetchEntry = (seq: number): Promise<DictEntry> =>
 	cached(entries, seq, () => dictionaryApi.getDictEntry({ seq }));
 export const fetchKanji = (literal: string): Promise<Kanji> =>
 	cached(kanji, literal, () => dictionaryApi.getKanji({ literal }));
+
+const notesApi = new NotesApi(apiConfig);
+const noteKinds = new Map<string, Promise<string[]>>();
+/** Live card kinds of a note (cached); the card list only carries a NoteSummary. */
+export const fetchNoteKinds = (noteId: string): Promise<string[]> =>
+	cached(noteKinds, noteId, async () => (await notesApi.getNote({ noteId })).cards.map((c) => c.kind));

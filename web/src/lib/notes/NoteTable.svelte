@@ -1,18 +1,21 @@
 <script lang="ts">
 	// Windowed note table (same windowing as the card table).
 	import type { Note } from '../api/generated';
-	import { ROW_HEIGHT, noteSummary, windowRange } from '../cards/model';
+	import { ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
+	import type { HeadwordMap } from './headwords.svelte';
 	import { tn } from './messages';
 
 	let {
 		notes,
 		activeId,
+		headwords,
 		hasMore,
 		onactivate,
 		onnearend
 	}: {
 		notes: Note[];
 		activeId: string | null;
+		headwords: HeadwordMap;
 		hasMore: boolean;
 		onactivate: (n: Note) => void;
 		onnearend: () => void;
@@ -24,7 +27,13 @@
 	let box: HTMLDivElement | undefined = $state();
 
 	const range = $derived(windowRange(notes.length, scrollTop, viewport));
+	const labels = $derived(new Map([...headwords.byseq].map(([k, v]) => [k, v.headword])));
 	const rows = $derived(notes.slice(range.start, range.end));
+
+	function info(n: Note): { reading: string; gloss: string } | undefined {
+		if (n.entrySeq === null) return undefined;
+		return headwords.get(n.entrySeq);
+	}
 
 	function onscroll(): void {
 		if (!box) return;
@@ -41,6 +50,8 @@
 <div class="table" role="table" aria-label={tn('notes.table')} aria-rowcount={notes.length + 1}>
 	<div class="row head" role="row">
 		<span role="columnheader">{tn('notes.col.note')}</span>
+		<span role="columnheader">{tn('notes.col.reading')}</span>
+		<span role="columnheader">{tn('notes.col.meaning')}</span>
 		<span role="columnheader">{tn('notes.col.type')}</span>
 		<span role="columnheader">{tn('notes.col.cards')}</span>
 		<span role="columnheader">{tn('notes.col.tags')}</span>
@@ -58,9 +69,11 @@
 			>
 				<span role="cell">
 					<button type="button" class="link" onclick={() => onactivate(n)}>
-						{noteSummary(n.fields) || n.id}
+						{rowLabel(n, n.id, labels)}
 					</button>
 				</span>
+				<span role="cell">{info(n)?.reading ?? ''}</span>
+				<span role="cell">{info(n)?.gloss ?? ''}</span>
 				<span role="cell">{n.type}</span>
 				<span role="cell">{n.cards.length}</span>
 				<span role="cell">{n.tags.join(' ')}</span>
@@ -82,7 +95,7 @@
 	}
 	.row {
 		display: grid;
-		grid-template-columns: 1fr 6rem 4rem 12rem 8rem;
+		grid-template-columns: 1fr 8rem 10rem 6rem 4rem 12rem 8rem;
 		align-items: center;
 		gap: var(--kb-space-2);
 		padding: 0 var(--kb-space-2);
