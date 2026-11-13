@@ -41,4 +41,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.notify.notifyFeature,
     kotobaya.android.widget.widgetFeature,
     kotobaya.android.push.pushFeature,
+    kotobaya.android.sync.syncFeature,
 )
