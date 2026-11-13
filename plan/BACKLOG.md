@@ -585,7 +585,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `docs/RUNBOOK.md`
 
 ### F-28 — Worker image: CPU-only torch
-- model: sonnet · risk: low · deps: T606 · status: RUNNING
+- model: sonnet · risk: low · deps: T606 · status: MERGED
 - paths: `worker/pyproject.toml`, `worker/uv.lock`, `worker/Dockerfile` (ticket: plan/tickets/F-28.md; from T606 HUMAN_CHECK)
 
 → **GATE-DONE**: human sign-off.

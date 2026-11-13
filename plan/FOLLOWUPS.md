@@ -337,3 +337,6 @@
 - optimizer/model.py: eval uses 24h elapsed days vs core's user day boundaries (gate still fair); document
 - optimizer: PgStore, enqueue_all, helm cron untested; deploy/helm/check.sh has no optimizer CronJob assertion
 - worker image: fsrs[optimizer] pulls torch; uv.lock resolves CUDA wheels, Dockerfile plain pip -> multi-GB image. Use CPU-only torch index before deploying (HUMAN_CHECK)
+
+## F-28 notes (run 11)
+- worker/Dockerfile hardcodes torch==2.15.0 (CPU index); bump together with uv.lock, or switch Dockerfile to `uv sync --frozen`. (low)

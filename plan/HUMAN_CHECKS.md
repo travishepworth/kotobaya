@@ -143,3 +143,5 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - Web: Struggle screens (hot words/kanji, leeches, confusables confirm/reject, extra drill); grammar review shows a rotating sentence with span highlight (reviews A,B,C all appear; undo/refetch same sentence); "Saw something weird" button in reader, media sentences, dictionary examples → new/attach point, rule test.
 - Android: Struggle bottom tab + 4x3 hot-word widget (tap → kotobaya://struggle/word/<seq>); grammar capture from media sentences and hot-word sentences; offline grammar card sentence (needs media snapshots on device, else notice).
 - Known limits: Android struggle/grammar-capture writes are online-only (F-27); widget hot word uses local lapse stand-in. Deploy: grammar rule create/update needs PARSER_URL (503 otherwise); GRAMMAR_SEED_ON_START seeds grammar points.
+
+- (run 11) Worker image torch is CPU-only now (F-28); image ~2.04 GB (sudachidict-full + torch). Build with `--build-arg SUDACHI_DICT=core` for a smaller image if wanted.

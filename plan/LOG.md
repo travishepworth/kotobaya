@@ -748,3 +748,4 @@
 2026-11-13T08:27:23Z RUN11 START main 5eca45d; disk /home 41G free
 2026-11-13T08:27:23Z F-28 DISPATCH sonnet writer (filed from T606 torch HUMAN_CHECK)
 2026-11-13T08:27:23Z T609 DISPATCH writer-senior (opus/high)
+2026-11-13T08:34:28Z F-28 MERGE CHECK_GREEN worker; CPU torch, image 2.04GB

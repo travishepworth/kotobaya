@@ -9,13 +9,14 @@ Updated: 2026-11-13 (end of orchestrator run 10)
 - P6 remaining: T609 (deps T601–T608 excl. T607: now satisfied, opus/high), then T610. T607 DEFERRED.
 - Stopped for context budget. Nothing in flight; no worktrees or t/* branches.
 - BACKLOG statuses synced run 10 (T406/T407/T409/T410/T501–T508/T601–T608 → MERGED).
-- HUMAN_CHECK: T606 adds fsrs[optimizer] → torch (CUDA wheels in uv.lock); worker image multi-GB. Switch to CPU-only torch index before deploy. Optimizer cron + voicevox are helm default-off.
+- RESOLVED run 11 by F-28: worker torch now CPU-only (uv.lock 0 nvidia; image 2.04 GB). Optimizer cron + voicevox are helm default-off.
 - FOLLOWUPS added run 10: T601 notes, T603/T606/T608 review minors (priority: T608 mnemonic blob images silently omitted from .apkg).
 - Orchestrator lessons: always rebase branch onto main before ff-merge (concurrent Main.kt/WiringAuditTest edits conflict — both sides only remove their own 501-allowlist entries, so drop the hunk); never pipe git rebase/merge through tail (masks failures); look worktrees up by path, not branch (detached during rebase).
 
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| T609 | writer-senior | 1 | t/T609-security-review | run 11 |
 
 ## Parked
 (none)
@@ -51,6 +52,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-28 (run 11): worker torch CPU-only index (uv.lock no nvidia/triton; Dockerfile pins torch==2.15.0 CPU; image 2.04 GB)
 - T606 (run 10): FSRS optimizer (worker py-fsrs training + holdout gate, server FsrsParamsPublishRunner, helm cron default off); review APPROVE
 - T608 (run 10): export (JSON dump snapshot stream, Anki .apkg via sqlite-jdbc); review APPROVE, minors in FOLLOWUPS
 - T605 (run 10): stats (6 server handlers via core replay/queue builder, web /stats page)
