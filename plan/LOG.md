@@ -806,3 +806,4 @@
 2026-11-13T10:49:00Z AND-DECKS MERGE CHECK_GREEN android (med, no review); read-only tab, deck study via ReviewScreen deckId
 2026-11-13T10:49:13Z AND-DECKS NOTE first ff failed (main moved), branch restored from 908589e, rebased, merged
 2026-11-13T10:54:03Z FEAT-1 MERGE CHECK_GREEN server+web (med, no review); web lib/dictionary api/messages edits
+2026-11-13T10:54:29Z AND-SEARCH HANDOFF DONE af01458; REBASE conflict FeatureModules/AppStartsTest -> writer resolving (attempt 2)
