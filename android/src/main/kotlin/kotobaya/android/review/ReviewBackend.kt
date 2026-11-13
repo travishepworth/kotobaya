@@ -38,6 +38,12 @@ class ReviewBackend<L : LearningTables>(
     /** Starts a sync cycle (the 'Sync' prompt); null hides the button. */
     val syncNow: (() -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
+    /** First instant of the study day after the one containing the argument (bury horizon, T304c). Default: next local midnight. */
+    val nextStudyDayStart: (Long) -> Long = { at ->
+        val tz = TimeZone.getDefault()
+        java.time.LocalDate.ofEpochDay(Math.floorDiv(at + tz.getOffset(at), 86_400_000L)).plusDays(1)
+            .atStartOfDay(tz.toZoneId()).toInstant().toEpochMilli()
+    },
 ) {
     private val ids = UuidV7Source(Random.Default)
 

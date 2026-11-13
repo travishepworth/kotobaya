@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_actions_menu">More</string>
+    <string name="review_action_edit">Edit note</string>
+    <string name="review_action_flag">Flag</string>
+    <string name="review_action_bury">Bury until tomorrow</string>
+    <string name="review_action_unbury">Unbury</string>
+    <string name="review_action_suspend">Suspend</string>
+    <string name="review_action_unsuspend">Unsuspend</string>
+    <string name="review_action_never_forget">Never forget</string>
+    <string name="review_action_clear_never_forget">Clear never forget</string>
+    <string name="review_action_blacklist">Blacklist word</string>
+    <string name="review_action_clear_blacklist">Remove from blacklist</string>
+    <string name="review_action_done">Done</string>
+    <string name="review_action_undo">Undo</string>
+    <string name="review_action_refused">Could not save this change</string>
+    <string name="review_action_not_applicable">Not available for this card</string>
+    <string name="review_flag_none">No flag</string>
+    <string name="review_flag_colour">Flag %1$d</string>
+    <string name="review_edit_title">Edit note</string>
+    <string name="review_edit_save">Save</string>
+    <string name="review_edit_cancel">Cancel</string>
+    <string name="review_edit_saved">Note saved</string>
+    <string name="review_edit_empty_front">%1$d card(s) of this note now have an empty front and will show blank.</string>
+</resources>

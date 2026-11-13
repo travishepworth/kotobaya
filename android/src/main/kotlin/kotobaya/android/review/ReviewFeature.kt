@@ -41,6 +41,7 @@ val reviewFeature = FeatureEntry(
             val ctx = get<Context>()
             val store = ReviewPrefsStore(ctx.getSharedPreferences("kotobaya-review", Context.MODE_PRIVATE))
             val koin = getKoin()
+            val db = get<kotobaya.db.app.AppDatabase>()
             ReviewBackend(
                 store = client.store,
                 minter = client.minter,
@@ -49,6 +50,11 @@ val reviewFeature = FeatureEntry(
                 blobs = BlobStoreResolver(get()),
                 awaitReady = { koin.get<SyncBootstrap>().ready.await() },
                 syncNow = { triggers.background(kotobaya.android.sync.SyncTrigger.MANUAL) },
+                nextStudyDayStart = { at ->
+                    val raw = db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ }
+                    val st = kotobaya.android.queue.QueueSettings.from(raw)
+                    kotobaya.android.queue.studyDayOf(at, st.timezone, st.dayRolloverHour).day.endMs
+                },
             )
         }
     },

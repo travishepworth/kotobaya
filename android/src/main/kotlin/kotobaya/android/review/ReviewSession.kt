@@ -135,10 +135,17 @@ class ReviewSession<L : LearningTables>(
     fun toggleFurigana() = synchronized(lock) {
         furigana = !furigana
         _meta.value = _meta.value.copy(furigana = furigana)
-        val card = current ?: return@synchronized
+        refreshLocked()
+    }
+
+    /** Re-reads and re-renders the card on screen (after its note was edited); the queue is not rebuilt. */
+    fun refreshCurrent() = synchronized(lock) { refreshLocked() }
+
+    private fun refreshLocked() {
+        val card = current ?: return
         val kind = card.kind
         val side = currentSide
-        val reloaded = load(card.cardId, kind, card.token) ?: return@synchronized
+        val reloaded = load(card.cardId, kind, card.token) ?: return
         current = reloaded
         currentSide = side
         _state.value = ReviewState.Showing(reloaded, side)

@@ -180,6 +180,7 @@ fun ReviewScreen(backend: ReviewBackend<*>?, onSessionEnd: () -> Unit = {}) {
             }
             TextButton(onClick = { io { session.undo() } }, enabled = meta.canUndo) { Text(T(R.string.review_undo)) }
         }
+        (state as? ReviewState.Showing)?.card?.let { kotobaya.android.review.actions.ReviewActionsBar(backend, session, it.cardId) }
         if (meta.pendingOps >= ReviewSession.SYNC_PROMPT_AT) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(T(R.string.review_sync_prompt, meta.pendingOps), Modifier.weight(1f))
