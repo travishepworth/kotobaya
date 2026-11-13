@@ -356,6 +356,35 @@ attempt 1 is gone). Needs node and python3; network on first run.
   fresh install's `helm --wait` does not hang) on worker port `PARSER_PORT` (8082), no auth,
   NetworkPolicy only, never host-exposed; ≤ `PARSER_MAX_CONCURRENCY` (4) in flight else `503 busy`. API env `PARSER_URL`,
   `PARSER_TIMEOUT_MS` (10 s). Everything but worker `200`/`413` becomes public `503 unavailable`.
+- **Worker rule test (C-14, additive, `worker-parse.yaml` 1.1.0)**: `POST
+  /internal/grammar/rules/test` `{rules:[str], sentences?:[str | {text, tokens}], max_matches?}`
+  → `200 {matches:[{rule_index, sentence_index, start_offset, end_offset, text}],
+  errors:[{rule_index, message, column}], truncated, parser_version}`. The worker is the only
+  implementation of the token-pattern language, so the server asks it instead of re-implementing.
+  - Validate-only = no `sentences`: needs neither dictionary nor database, never `busy` or
+    `not_ready`. `createGrammarPoint`/`updateGrammarPoint` call it for a non-empty
+    `detection_rules` before building the op; each error is a `422` item with pointer
+    `/detection_rules/{i}/rule` and detail `column N: message`. Worker unreachable: `503
+    unavailable`, nothing written.
+  - Invalid rules are `200` + `errors` (at most one per rule; `column` 1-based in code points);
+    valid rules are still matched. Offsets are UTF-16 into the sentence text; one rule's matches
+    in a sentence never overlap; order (sentence, start, rule, end).
+  - `testGrammarRules` sends stored sentences **with their stored tokens** (`{text, tokens}`,
+    used as given, so media- and sentence-scoped overrides count); a plain string is tokenised
+    as one sentence with global overrides only.
+  - Limits: 20 rules × 1000 code points, 500 sentences × 20,000 code points, 8 MiB body, 10,000
+    matches (`truncated`); over a limit is `413`.
+  - Ops pushed by sync are never validated (rejecting would break convergence): stored rules
+    may be invalid, detection skips them.
+  - Rejected: a separate validate endpoint (same parser, one more path); strings only as the
+    ticket sketched (re-tokenising 200,000 stored sentences per test, and results that disagree
+    with stored spans because scoped overrides are lost); `422` from the worker for bad rules
+    (a batch with one bad rule would lose the other rules' results); porting the language to
+    the server (two implementations to keep in step).
+  - Worth a second look: (1) grammar create/update with rules now fails `503` when the worker is
+    down (fail closed) rather than storing unchecked rules; (2) the tokenised sentence form goes
+    beyond the ticket's `sentences:[str]`; (3) PARSER.md 5.1 still says the service has only two
+    paths (not owned by C-14; `worker-parse.yaml` states that it supersedes that sentence).
 - **Versioning**: optional `parser_version` (opaque) in the worker response, `ParseResult` and
   `JobResultMedia`. Follow-up for the snapshot owner: an optional `parser_version` header member in
   the media content archive so the publish runner can fill `JobResultMedia.parser_version`.

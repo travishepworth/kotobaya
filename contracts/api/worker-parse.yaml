@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Kotobaya worker parse service (cluster-internal)
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Synchronous parser used by the API server for `POST /parse` (C-12). Normative prose:
     `contracts/api/PARSER.md` sections 3-5. Not public: no Ingress route, no generated client.
@@ -15,6 +15,11 @@ info:
     - The API reaches it at `PARSER_URL` (e.g. `http://kotobaya-worker:8082`) with a total timeout
       of `PARSER_TIMEOUT_MS` (default 10000); every failure other than `413` becomes the public
       `503 unavailable`.
+
+    **1.1.0 (C-14, additive):** `POST /internal/grammar/rules/test`, the grammar rule tester and
+    rule validator. Same port, same transport, same NetworkPolicy, no authentication. It
+    supersedes the sentence "Nothing else; any other path is 404" in PARSER.md 5.1: the service
+    now has three paths. Nothing about `/internal/parse` or `/internal/health` changed.
   license:
     name: Proprietary (personal project)
 servers:
@@ -23,6 +28,8 @@ servers:
 tags:
   - name: parse
     description: Text parsing.
+  - name: grammar
+    description: Grammar detection rules (token-pattern language), validation and dry-run matching.
 paths:
   /internal/parse:
     post:
@@ -57,6 +64,180 @@ paths:
               schema: {$ref: '#/components/schemas/WorkerParseResult'}
               examples:
                 default: {$ref: '#/components/examples/WorkerParseResult'}
+        '400': {$ref: '#/components/responses/Problem'}
+        '413': {$ref: '#/components/responses/Problem'}
+        '500': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /internal/grammar/rules/test:
+    post:
+      operationId: workerTestGrammarRules
+      tags: [grammar]
+      summary: Validate grammar detection rules and, optionally, match them against sentences.
+      description: |
+        The worker holds the only implementation of the token-pattern language (parser and
+        matcher; the language itself is documented in `worker/src/kotobaya_worker/grammar/DSL.md`).
+        The API server calls this endpoint whenever it needs to know whether a rule parses or
+        where it matches. Pure function of the request (plus, for string sentences only, the
+        dictionary and the global parse overrides): stores nothing, emits no op, writes no span.
+
+        ## 1. Two modes, one endpoint
+
+        - **Validate only**: `sentences` absent or `[]`. The answer has `matches: []` and one
+          `errors` entry per rule that does not parse. Needs no dictionary and no database, so it
+          MUST work on a fresh install: it never answers `503 not_ready` and never `503 busy`
+          (it does not count against `PARSER_MAX_CONCURRENCY`).
+        - **Test**: `sentences` non-empty. Every valid rule is matched against every sentence.
+          Counts against `PARSER_MAX_CONCURRENCY` like a parse (`503 busy` beyond it, never
+          queued).
+
+        An invalid rule is **not** an HTTP error: the status is `200`, the rule is listed in
+        `errors`, and the other rules are still evaluated. `400`/`413` are only for requests
+        that break this schema or its limits.
+
+        ## 2. Rules
+
+        - `rules[k]` is the rule text exactly as stored in `DetectionRule.rule`. The `draft` flag
+          is not sent: the caller decides which rules to send (drafts included for a test).
+        - `rule_index` everywhere is the 0-based index into the request's `rules`. Duplicate rule
+          texts are evaluated independently and each reports under its own index.
+        - Transport limits: 1 to 20 rules, each 0 to 1000 code points (the `DetectionRule.rule`
+          limit), no U+0000. Language limits are stricter and are reported as `errors`, not as
+          HTTP errors: an empty or whitespace-only rule, or one longer than the language's maximum
+          (500 code points today), gives an `errors` entry.
+        - `errors` holds **at most one entry per rule** (the first problem the parser reports),
+          ascending by `rule_index`. `column` is 1-based and counts Unicode **code points** (not
+          UTF-16 units) into the rule text; it is in `1 ..= length + 1` (`length + 1` = "at the
+          end"). `message` is English, for display, without the column; no caller may parse it.
+
+        ## 3. Sentences
+
+        Each `sentences[j]` is one sentence in one of two forms; forms may be mixed in a request.
+        `sentence_index` is the 0-based index into the request's `sentences`. Duplicate sentences
+        are evaluated independently.
+
+        - **Tokenised** (`{text, tokens}`): the caller already has tokens (stored
+          `app.sentence.tokens`, which include media- and sentence-scoped parse overrides). The
+          worker MUST use them as given and MUST NOT re-tokenise. It reads only `s`, `e`,
+          `surface`, `lemma`, `reading`, `pos`, `cform` and ignores every other member (`seq`,
+          `class`, `override`, unknown ones). Tokens must be ascending and non-overlapping with
+          `0 <= s < e <= UTF-16 length of text`; otherwise `400 invalid_request` naming the
+          sentence index in `detail`. The worker does not check `surface` against the text
+          slice. `tokens: []` is valid and never matches. Needs no dictionary: a request whose
+          sentences are all tokenised never answers `503 not_ready`.
+        - **String** (`"…"`): the worker tokenises it as **exactly one sentence**: the PARSER.md
+          pipeline for one sentence (normalisation, Sudachi, global parse overrides) but **no
+          sentence splitting and no trimming**. Offsets index the string exactly as sent. Needs
+          the dictionary: `503 not_ready` when no release is loaded. This is the form for ad-hoc
+          text; it sees global overrides only, like `/internal/parse`.
+
+        Limits: 0 to 500 sentences, each text 1 to 20,000 code points, no U+0000; body at most
+        8 MiB. Over any count, length or body limit: `413 payload_too_large` (the caller must
+        split; nothing is evaluated). A caller scanning stored sentences MUST batch by both
+        count and bytes, and MUST skip (count as scanned, no match) a stored sentence that alone
+        exceeds the limits.
+
+        ## 4. Matches
+
+        - A match is a contiguous run of tokens. `start_offset` = the first matched token's `s`,
+          `end_offset` = the last matched token's `e`: UTF-16 code units into that sentence's
+          text, inclusive / exclusive, the same convention as tokens and `sentence_grammar_span`.
+          `text` is exactly that UTF-16 slice of the sentence text (so it includes punctuation
+          or spaces lying between matched tokens).
+        - Per rule and sentence the scan is left to right; at each start token the first match in
+          the language's priority order wins and the search resumes after it, so **matches of one
+          rule in one sentence never overlap**. Matches of different rules may overlap or be
+          identical; they are reported separately.
+        - Order: ascending by (`sentence_index`, `start_offset`, `rule_index`, `end_offset`).
+          The response is deterministic for a given request, worker version and (string
+          sentences only) `parser_version`.
+        - A match never spans two sentences. Rules in `errors` produce no matches.
+        - `max_matches` (default and maximum 10,000): when more matches exist, the response
+          holds the first `max_matches` in the order above and `truncated: true`. To continue,
+          resend the sentences from the last returned match's sentence onward (that sentence may
+          have been cut, so its matches come back again in full; drop the ones already seen).
+          Otherwise `truncated: false`.
+
+        ## 5. How the API server uses it (normative for the server ticket)
+
+        Timeout, URL and failure handling as PARSER.md 5.3 (`PARSER_URL`, `PARSER_TIMEOUT_MS`,
+        one call, no retry).
+
+        - **`createGrammarPoint` / `updateGrammarPoint`**: when the request carries a non-empty
+          `detection_rules`, the server calls validate-only with every rule (drafts included, in
+          array order) **before** building the sync op. Each `errors` entry becomes one item of
+          the `422 validation_failed` problem: `pointer` = `/detection_rules/{rule_index}/rule`,
+          `code` = `invalid_value`, `detail` = `column {column}: {message}`. Nothing is written
+          and no op is emitted. If the worker cannot be reached or answers anything but `200`
+          (timeout, `5xx`, `400`, `413`, unparsable body), the request fails with
+          `503 unavailable` and nothing is written (fail closed: an unchecked rule is never
+          stored through REST). An absent or empty `detection_rules` makes no call, so the worker
+          being down never blocks other grammar edits.
+        - **`testGrammarRules`**: the server sends the rules under test and batches of stored
+          sentences in the tokenised form, in scan order, until its `limit` of matching sentences
+          or its scan cap is reached. Any `errors` entry is `422` with `pointer`
+          `/rules/{rule_index}/rule` (also when the rules were the point's stored ones). Worker
+          `503 busy`/`not_ready` or any other failure is the public `503 unavailable`
+          (`Retry-After: 5` for `busy`/`not_ready`).
+        - **Sync is never validated here.** `grammar.created` / `grammar.updated` ops arriving
+          through `POST /sync/push` are applied whatever their rule texts are: rejecting an op
+          would break convergence, and an offline client cannot reach the worker. Stored rules
+          may therefore be invalid; detection (`grammar-detect`) skips a rule that does not
+          parse and keeps going, and `GET` returns it unchanged. The op-apply path MUST NOT call
+          this endpoint.
+        - A rule accepted by one worker version and rejected by a later one is the same case as
+          an invalid rule arriving by sync: stored, skipped by detection, reported on the next
+          REST edit that still contains it.
+      security: []
+      parameters:
+        - name: X-Request-Id
+          in: header
+          required: false
+          description: Correlation id from the API, logged by the worker.
+          schema: {type: string, maxLength: 100}
+          example: 0193a1b2-0c12-7000-8000-00000000aa02
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WorkerRuleTestRequest'}
+            examples:
+              validate_only:
+                summary: Validate two rules (grammar create/update); the second does not parse.
+                value: {rules: ['[verb:未然形] ざる を 得 ない', '[verbb] ない']}
+              tokenised: {$ref: '#/components/examples/WorkerRuleTestRequestTokenised'}
+              strings:
+                summary: Test against ad-hoc text; the worker tokenises each string as one sentence.
+                value: {rules: ['[verb:未然形] ざる を 得 ない'], sentences: [行かざるを得ない。, パンを食べる。], max_matches: 100}
+      responses:
+        '200':
+          description: Evaluated. Invalid rules are in `errors`; this is not an HTTP error.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkerRuleTestResult'}
+              examples:
+                validate_only:
+                  summary: Answer to the `validate_only` request.
+                  value:
+                    matches: []
+                    errors: [{rule_index: 1, message: unknown part of speech 'verbb', column: 2}]
+                    truncated: false
+                    parser_version: null
+                tokenised:
+                  summary: Answer to the `tokenised` request (rule 1 is invalid, rule 0 still matched).
+                  value:
+                    matches:
+                      - {rule_index: 0, sentence_index: 0, start_offset: 0, end_offset: 8, text: 行かざるを得ない}
+                    errors: [{rule_index: 1, message: unknown part of speech 'verbb', column: 2}]
+                    truncated: false
+                    parser_version: null
+                strings:
+                  summary: Answer to the `strings` request.
+                  value:
+                    matches:
+                      - {rule_index: 0, sentence_index: 0, start_offset: 0, end_offset: 8, text: 行かざるを得ない}
+                    errors: []
+                    truncated: false
+                    parser_version: 'kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.5.0'
         '400': {$ref: '#/components/responses/Problem'}
         '413': {$ref: '#/components/responses/Problem'}
         '500': {$ref: '#/components/responses/Problem'}
@@ -155,6 +336,120 @@ components:
           oneOf:
             - $ref: '#/components/schemas/ParserVersion'
             - type: 'null'
+    WorkerRuleTestRequest:
+      type: object
+      additionalProperties: false
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: Rule texts (`DetectionRule.rule`), drafts included if the caller wants them checked. `rule_index` refers to this array.
+          items:
+            type: string
+            maxLength: 1000
+            pattern: '^[^\u0000]*$'
+            description: One rule, 0 to 1000 code points. Empty, whitespace-only or over the language limit is an `errors` entry, not an HTTP error.
+        sentences:
+          type: array
+          maxItems: 500
+          default: []
+          description: Sentences to match against; absent or empty = validate only. `sentence_index` refers to this array.
+          items:
+            oneOf:
+              - type: string
+                minLength: 1
+                maxLength: 20000
+                pattern: '^[^\u0000]*$'
+                description: Untokenised text, treated as exactly one sentence (no splitting, no trimming); the worker tokenises it with global overrides.
+              - $ref: '#/components/schemas/WorkerRuleTestSentence'
+        max_matches:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 10000
+          description: Return at most this many matches (first in response order); more sets `truncated`.
+    WorkerRuleTestSentence:
+      type: object
+      additionalProperties: false
+      required: [text, tokens]
+      description: A sentence the caller has already tokenised (stored `app.sentence` text and tokens). Used as given.
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          pattern: '^[^\u0000]*$'
+          description: Original sentence text; offsets are UTF-16 code units into it.
+        tokens:
+          type: array
+          maxItems: 20000
+          description: Ascending, non-overlapping, `e` at most the UTF-16 length of `text`; may be empty (never matches).
+          items: {$ref: '#/components/schemas/WorkerRuleTestToken'}
+    WorkerRuleTestToken:
+      type: object
+      description: |
+        The members of a token format 1 element (`token.schema.json`) that the matcher reads.
+        Open on purpose: a full stored token validates, and `seq`, `class`, `override` and any
+        unknown member are ignored.
+      required: [s, e, surface, lemma, reading, pos, cform]
+      properties:
+        s: {type: integer, minimum: 0, maximum: 2147483646, description: 'Start, UTF-16 code units into the sentence text, inclusive.'}
+        e: {type: integer, minimum: 1, maximum: 2147483647, description: 'End, exclusive; > s.'}
+        surface: {type: string, description: 'Original text [s, e).'}
+        lemma: {type: string, description: Dictionary form.}
+        reading: {type: string, description: Reading (kana); may be empty.}
+        pos:
+          type: array
+          items: {type: string}
+          description: Sudachi POS levels; trailing `*` levels, if any, are ignored.
+        cform:
+          oneOf:
+            - {type: string}
+            - type: 'null'
+          description: Sudachi conjugation form verbatim (e.g. 未然形-一般); null, empty or `*` = does not inflect.
+    WorkerRuleTestResult:
+      type: object
+      additionalProperties: false
+      required: [matches, errors, truncated, parser_version]
+      properties:
+        matches:
+          type: array
+          maxItems: 10000
+          description: Ascending by (sentence_index, start_offset, rule_index, end_offset). Empty in validate-only mode.
+          items: {$ref: '#/components/schemas/WorkerRuleMatch'}
+        errors:
+          type: array
+          maxItems: 20
+          description: At most one entry per invalid rule, ascending by rule_index. Empty = every rule parses.
+          items: {$ref: '#/components/schemas/WorkerRuleError'}
+        truncated:
+          type: boolean
+          description: true iff more than `max_matches` matches existed and only the first `max_matches` are returned.
+        parser_version:
+          description: The parser version used to tokenise string sentences; null when the request had no string sentence.
+          oneOf:
+            - $ref: '#/components/schemas/ParserVersion'
+            - type: 'null'
+    WorkerRuleMatch:
+      type: object
+      additionalProperties: false
+      required: [rule_index, sentence_index, start_offset, end_offset, text]
+      properties:
+        rule_index: {type: integer, minimum: 0, maximum: 19, description: Index into the request's `rules`.}
+        sentence_index: {type: integer, minimum: 0, maximum: 499, description: Index into the request's `sentences`.}
+        start_offset: {type: integer, minimum: 0, description: 'UTF-16 code units into the sentence text, inclusive (the first matched token''s `s`).'}
+        end_offset: {type: integer, minimum: 1, description: 'UTF-16 code units, exclusive (the last matched token''s `e`); > start_offset.'}
+        text: {type: string, minLength: 1, description: 'The sentence text slice [start_offset, end_offset).'}
+    WorkerRuleError:
+      type: object
+      additionalProperties: false
+      required: [rule_index, message, column]
+      properties:
+        rule_index: {type: integer, minimum: 0, maximum: 19, description: Index into the request's `rules`.}
+        message: {type: string, minLength: 1, maxLength: 500, description: 'English, for display; does not include the column. Not machine-readable.'}
+        column: {type: integer, minimum: 1, maximum: 1001, description: '1-based position in the rule text, counted in Unicode code points; length + 1 = at the end.'}
     ParserVersion:
       type: string
       minLength: 1
@@ -171,6 +466,20 @@ components:
         code: {type: string, enum: [invalid_request, payload_too_large, busy, not_ready, internal]}
         detail: {type: string}
   examples:
+    WorkerRuleTestRequestTokenised:
+      summary: Test against stored sentences (tokens supplied; extra token members are ignored).
+      value:
+        rules: ['[verb:未然形] ざる を 得 ない', '[verbb] ない']
+        sentences:
+          - text: 行かざるを得ない。
+            tokens:
+              - {s: 0, e: 2, surface: 行か, lemma: 行く, reading: いか, pos: [動詞, 非自立可能], cform: 未然形-一般, seq: 1578850, class: content, override: false}
+              - {s: 2, e: 4, surface: ざる, lemma: ず, reading: ざる, pos: [助動詞], cform: 連体形-補助, seq: null, class: auxiliary, override: false}
+              - {s: 4, e: 5, surface: を, lemma: を, reading: を, pos: [助詞, 格助詞], cform: null, seq: 2029010, class: particle, override: false}
+              - {s: 5, e: 6, surface: 得, lemma: 得る, reading: え, pos: [動詞, 非自立可能], cform: 未然形-一般, seq: 1588760, class: content, override: false}
+              - {s: 6, e: 8, surface: ない, lemma: ない, reading: ない, pos: [助動詞], cform: 終止形-一般, seq: 2258690, class: auxiliary, override: false}
+          - text: ……
+            tokens: []
     WorkerParseResult:
       value:
         parser_version: 'kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0'
