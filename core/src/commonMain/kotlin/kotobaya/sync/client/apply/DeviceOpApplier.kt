@@ -65,7 +65,9 @@ public class DeviceOpApplier<L : LearningTables>(
             onMissing(op, it)
             return false
         }
+        val before = AutoStatus.entriesOf(t, op)
         Apply(t, AppendOnlyReviewLog(AppendOnlyReviewLog.unguarded(t)), cache, op).run()
+        AutoStatus.rederive(t, before + AutoStatus.entriesOf(t, op), wall(op.hlc))
         return true
     }
 

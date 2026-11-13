@@ -27,6 +27,7 @@ public class StartupReplay(
         val running = cache.engine.schedulerVersion
         if (tx.syncState.get(CORE_SCHEDULER_VERSION) == running) return false
         cache.replayAll(tx.learning)
+        AutoStatus.rederive(tx.learning, AutoStatus.allEntries(tx.learning), null)
         tx.syncState.put(CORE_SCHEDULER_VERSION, running)
         return true
     }
