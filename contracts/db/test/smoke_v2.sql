@@ -24,7 +24,8 @@ VALUES (9300001, 'フリーレン', 'ふりーれん', '2026-11-12T09:00:00Z'),
        (9300002, 'ヒンメル', 'ひんめる', '2026-11-12T09:00:00Z'),
        (9300003, '魔族', 'まぞく', '2026-11-12T09:00:00Z')
 ON CONFLICT (jpdb_vid) DO UPDATE SET spelling = EXCLUDED.spelling, reading = EXCLUDED.reading;
--- The API resolves two of them (under pg_advisory_xact_lock(7033011)).
+-- The API resolves two of them (lock order: 7033001, then 7033011; MEDIA_PIPELINE.md 3.4, 5.4).
+SELECT pg_advisory_xact_lock(7033001);
 SELECT pg_advisory_xact_lock(7033011);
 UPDATE app.jpdb_vocab SET resolution = 'ignored', resolved_at = '2026-11-13T08:00:00Z' WHERE jpdb_vid = 9300002;
 UPDATE app.jpdb_vocab SET resolution = 'mapped', entry_seq = 1612400, resolved_at = '2026-11-13T08:01:00Z' WHERE jpdb_vid = 9300003;

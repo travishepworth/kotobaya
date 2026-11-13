@@ -7,7 +7,8 @@
 --   * the media-publish runner (server) inserts vocab rows and replaces a media's link rows;
 --   * the API (putJpdbVocabResolution / clearJpdbVocabResolution) changes resolution fields.
 -- Every writer of a resolution field, and the remap-job claim step, holds
--- pg_advisory_xact_lock(7033011) (MEDIA_PIPELINE.md 5.4).
+-- pg_advisory_xact_lock(7033011) (MEDIA_PIPELINE.md 5.4). Lock order: a transaction that also
+-- takes the op-apply lock 7033001 takes it first (MEDIA_PIPELINE.md 3.4).
 
 CREATE TABLE app.jpdb_vocab (
   jpdb_vid       bigint      PRIMARY KEY CHECK (jpdb_vid > 0),
@@ -25,7 +26,7 @@ COMMENT ON TABLE  app.jpdb_vocab IS 'jpdb vocabulary that the automatic mapper c
 COMMENT ON COLUMN app.jpdb_vocab.jpdb_vid IS 'jpdb vocabulary id (positive). Rows without a vid are never stored here (the importer reports them as skipped).';
 COMMENT ON COLUMN app.jpdb_vocab.spelling IS 'Spelling as jpdb gives it, from the most recent publish that listed the vid (may be empty).';
 COMMENT ON COLUMN app.jpdb_vocab.reading IS 'Reading as jpdb gives it, from the most recent publish that listed the vid (may be empty).';
-COMMENT ON COLUMN app.jpdb_vocab.resolution IS 'unresolved = in the review queue; mapped = the importer maps the vid to entry_seq; ignored = the importer keeps it unmapped and out of JobResultMedia.unmapped (its tokens still count in unmapped_token_count). Written only by the API, under advisory lock 7033011.';
+COMMENT ON COLUMN app.jpdb_vocab.resolution IS 'unresolved = in the review queue; mapped = the importer maps the vid to entry_seq; ignored = the importer keeps it unmapped and out of JobResultMedia.unmapped (its tokens still count in unmapped_token_count). Written only by the API, holding advisory locks 7033001 then 7033011 (that order).';
 COMMENT ON COLUMN app.jpdb_vocab.entry_seq IS 'Set iff resolution = mapped. Soft reference to ref.dict_entry.seq (validated live by the API when written).';
 COMMENT ON COLUMN app.jpdb_vocab.first_seen_at IS 'When the media-publish runner first inserted the row (server clock).';
 COMMENT ON COLUMN app.jpdb_vocab.resolved_at IS 'When the current resolution was set (server clock); NULL iff unresolved.';

@@ -91,7 +91,8 @@ Claim: `SELECT … FROM app.job WHERE kind = 'media-publish' AND status = 'queue
 now() ORDER BY run_after, created_at FOR UPDATE SKIP LOCKED LIMIT 1`; set `running`, `attempts +
 1`, `started_at`, `locked_by`, `heartbeat_at`; heartbeat every 30 s while working. A `running` child
 whose `heartbeat_at` is older than 5 minutes (server restart) is re-queued by the runner whatever
-its `attempts`.
+its `attempts` (`UPDATE … SET status = 'queued', locked_by = NULL WHERE id = $1 AND status =
+'running' AND heartbeat_at < now() - interval '5 minutes'`).
 
 **Before the transaction** (no locks held):
 
@@ -107,8 +108,10 @@ its `attempts`.
 (`pg_advisory_xact_lock(7033001)`, taken by OpApply), with every op minted through OpApply as a
 server op (server device id, server HLC, `change` row):
 
-4. Re-check: child still `running` and locked by this runner; parent `running` (else end the child
-   `cancelled`, commit only that).
+4. Re-check: `SELECT … FROM app.job WHERE id = <child> FOR UPDATE`; the child is still `running`
+   and `locked_by` = this runner (else roll back and stop: it was re-queued and belongs to another
+   claim); parent `running` (else end the child `cancelled`, commit only that). The step 10 child
+   update carries `WHERE status = 'running' AND locked_by = <this runner>`; 0 rows → roll back.
 5. `SELECT … FROM app.media WHERE id = media_id FOR UPDATE`.
    - `create` ≠ null: no `media` row with that id may exist (else `stale_base`); no `deck` row with
      that id (any type, live or not; else `deck_id_taken`); if `source = jpdb`, no live media with
@@ -157,6 +160,12 @@ Error codes: `invalid_payload`, `unsupported_format`, `blob_missing`, `invalid_s
   remap, whose dedupe keys differ): the `FOR UPDATE` on the media row orders them, and the second
   sees `content_version ≠ base_content_version` → `stale_base` → its worker re-plans on top of the
   first (3.2 step 4). Nothing is lost and versions stay strictly increasing by one.
+- **Lock order (normative, every path that takes both).** `pg_advisory_xact_lock(7033001)`
+  (op-apply) is taken **before** `pg_advisory_xact_lock(7033011)` (jpdb mapping), and both before
+  any row write or row lock. The publish transaction holds 7033001 and writes `jpdb_vocab`
+  (step 9) without 7033011; the 5.4 handlers take 7033001 then 7033011. A path that needs only
+  7033011 (remap R1) MUST NOT take 7033001 inside the same transaction. Advisory xact locks are
+  re-entrant per session, so OpApply re-taking 7033001 inside such a transaction is harmless.
 - `deleteMedia` cancels the media's queued and running jobs; a runner that still gets there
   finds the parent not `running` (step 4) or the media tombstoned (`media_deleted`).
 
@@ -186,7 +195,7 @@ archive of version n stays valid while n+1 is being built, and after a failed re
 | Transition | Who | Op (all `media.content_published`, same `content_version` and `content_blob_hash` unless stated) |
 |---|---|---|
 | (none) → `pending` → `parsed` | runner, first publish (3.3 steps 6, 8) | `media.created` inserts `pending` with version 0; `parsed` with version 1 follows in the same transaction. A new media is never seen `parsing` or `failed`: until its first publish it does not exist (its job is visible in `listJobs`). |
-| `parsed` \| `failed` → `parsing` | the API handler that enqueues a job for an **existing live** media: `importMedia` (append), `importJpdbDeck` (known `jpdb_id`), `reparseMedia`, `putJpdbVocabResolution` / `clearJpdbVocabResolution` (remap, 5.4) | `parsing`, `parse_error: null`. Only when a job row was actually inserted (not when an existing job is returned) and the status is not already `parsing`. SHOULD be the transaction that inserts the job; otherwise insert the job first and emit after (the reconciler repairs the gap). |
+| `parsed` \| `failed` → `parsing` | the API handler that enqueues a job for an **existing live** media: `importMedia` (append), `importJpdbDeck` (known `jpdb_id`), `reparseMedia`, `putJpdbVocabResolution` / `clearJpdbVocabResolution` (remap, 5.4) | `parsing`, `parse_error: null`. Only when a job row was actually inserted (not when an existing job is returned) and the status is not already `parsing`. The media's `parse_status`, `content_version` and `content_blob_hash` copied into the op are read after `pg_advisory_xact_lock(7033001)` is held, in the transaction that emits it. SHOULD be the transaction that inserts the job; otherwise insert the job first and emit after (the reconciler repairs the gap). |
 | `parsing` → `parsed` (version + 1) | runner, successful publish | 3.3 step 8. |
 | `parsing` → `failed` \| `parsed` (same version) | server **reconciler** | below. |
 
@@ -265,7 +274,11 @@ In the publish transaction (3.3 step 9) the runner, for a jpdb media:
 `putJpdbVocabResolution` (`PUT /import/jpdb/vocab/{jpdb_vid}/resolution`) and
 `clearJpdbVocabResolution` (`DELETE …`), one transaction each:
 
-1. `SELECT pg_advisory_xact_lock(7033011)` (the jpdb-mapping lock).
+1. `SELECT pg_advisory_xact_lock(7033001)` (op-apply), then `SELECT pg_advisory_xact_lock(7033011)`
+   (the jpdb-mapping lock), before any read used for a decision and before any row write (lock
+   order, 3.4). Without 7033001 first, the handler (holding 7033011, then OpApply for `parsing`)
+   and a publish transaction (holding 7033001, writing the same `jpdb_vocab` rows in step 9)
+   deadlock.
 2. The vid must have a row (`404`). For `mapped`: `entry_seq` must be a non-retired
    `ref.dict_entry` (`422`, pointer `/entry_seq`). If the stored resolution already equals the
    request (same `resolution` and `entry_seq`; for clear: already `unresolved`) → `200` with
