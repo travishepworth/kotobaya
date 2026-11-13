@@ -47,8 +47,9 @@ worker:
   dictSourcesJson: ""
   env: {}
   resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits: { memory: 1Gi }
+    # A full dictionary build needs > 1Gi; override here if needed.
+    requests: { cpu: 100m, memory: 1Gi }
+    limits: { memory: 3Gi }
 web:
   image: { repository: web, tag: "0.1.0" }
   replicas: 1
@@ -109,6 +110,18 @@ ingress:
   # (k3s: HelmChartConfig for traefik) so the real client IP reaches the login rate limiter.
   sse:
     readTimeoutSeconds: 3600
+
+# Gateway API alternative to the Ingress (independent toggle; either, both or neither may be on).
+# Requires the Gateway API CRDs and an existing Gateway (not installed by this chart).
+# parentRefs: list of { name, namespace, sectionName }. hostnames empty = kotobaya.<domain>.
+# Routes the same paths as the Ingress: /api, /healthz -> api; / -> web; /api/v1/events (SSE) gets no
+# request timeout (the equivalent of the nginx buffering/read-timeout annotations).
+httpRoute:
+  enabled: false
+  parentRefs: []
+  hostnames: []
+  sse:
+    requestTimeout: 0s
 
 networkPolicy:
   enabled: true
