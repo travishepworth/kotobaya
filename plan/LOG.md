@@ -583,3 +583,4 @@
 2026-11-13T02:15:38Z - housekeeping: 66 merged worktrees+branches removed; disk 10G free
 2026-11-13T02:17:06Z P4 SPLIT planner: 25 tickets (C-11,C-12,F-7,T401a..T411c,W-5); ADR-014..019 provisional
 2026-11-13T02:17:06Z - DECIDE ADR-014..019 (P4 media pipeline defaults)
+2026-11-13T02:17:37Z C-11,F-7,T401a,T402a,T404c,T411a DISPATCH (architect-opus, writer×4, writer-senior)
