@@ -127,8 +127,11 @@ fun composeApp(
         credentialValid = { token -> token?.id?.let { runCatching { UUID.fromString(it) }.getOrNull() }?.let { validator.isLive(it) } ?: false },
         guardIntervalMs = eventsGuardMs,
     )
-    val auth = Auth(db, authConfig, validator = validator, events = AuthEvents.of(jobs.bus, jobs.hub))
     val sync = SyncModule(db, SyncWiring.config(events = SyncEvents { dsl, hw, _ -> jobs.bus.syncChangedInTx(dsl, hw) }))
+    val auth = Auth(
+        db, authConfig, validator = validator, events = AuthEvents.of(jobs.bus, jobs.hub),
+        ankiConnect = kotobaya.ankiconnect.AnkiConnectModule(db, sync.opApply, blobStore).actions,
+    )
     // One OpApply for every writer: they share its advisory lock, HLC and card cache.
     val imports = ImportsModule(db, sync.opApply)
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
