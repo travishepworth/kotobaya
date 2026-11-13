@@ -581,3 +581,5 @@
 2026-11-13T02:15:38Z - make test green (core, server, acceptance, worker, web, android, deploy, contracts; worker rerun after DiskFull)
 2026-11-13T02:15:38Z GATE-P3 GATE_CLOSE deferred → HUMAN_CHECKS (device week offline, Takoboto, AnkiConnect)
 2026-11-13T02:15:38Z - housekeeping: 66 merged worktrees+branches removed; disk 10G free
+2026-11-13T02:17:06Z P4 SPLIT planner: 25 tickets (C-11,C-12,F-7,T401a..T411c,W-5); ADR-014..019 provisional
+2026-11-13T02:17:06Z - DECIDE ADR-014..019 (P4 media pipeline defaults)

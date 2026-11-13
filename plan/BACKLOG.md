@@ -437,30 +437,30 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 4 — Media
 
 ### T401 — jpdb media deck import
-- model: sonnet · risk: med · deps: GATE-P3, S02 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P3, S02 · status: SPLIT
 - paths: `worker/kotobaya_worker/importers/jpdb_media/`
 - accept: Imports a deck with occurrences and global rank; cache prevents refetch; unmapped → review queue.
 
 ### T402 — Text extractors
-- model: sonnet · risk: low · deps: GATE-P3 · status: TODO
+- model: sonnet · risk: low · deps: GATE-P3 · status: SPLIT
 - paths: `worker/kotobaya_worker/extract/`
 - do: SRT/ASS/VTT (timestamps), EPUB/TXT (chapters, ruby handling), Mokuro JSON, URL/HTML (readability), text-hooker logs.
 - accept: Each fixture extracts to expected segments/sentences.
 
 ### T403 — Parser
-- model: opus · risk: high · deps: T101, T402 · status: TODO
+- model: opus · risk: high · deps: T101, T402 · status: SPLIT
 - paths: `worker/kotobaya_worker/parse/`
 - do: Normalisation, Sudachi (full dict) mode C → B fallback, deinflection, JMdict candidate ranking, `parse_override` application, `/parse` endpoint backing.
 - accept: ≥ 97% token-level agreement on the 20-sentence fixture (expand fixture to 200 sentences first if needed); overrides survive re-parse.
 
 ### T404 — Occurrences and coverage engine
-- model: opus · risk: med · deps: T401, T403 · status: TODO
+- model: opus · risk: med · deps: T401, T403 · status: SPLIT
 - paths: `worker/kotobaya_worker/coverage/`, `server/src/main/kotlin/kotobaya/coverage/`
 - do: Per media/segment unique and token coverage, unknown-by-in-deck-frequency, top-N curve, filters, difficulty estimate; incremental recompute on word-status change.
 - accept: Within 3 percentage points of jpdb's numbers on two imported decks (fixture snapshot).
 
 ### T405 — Coverage dashboards (web)
-- model: sonnet · risk: low · deps: T404, T208 · status: TODO
+- model: sonnet · risk: low · deps: T404, T208 · status: SPLIT
 - paths: `web/src/routes/media/`
 - accept: Unknown words sortable by in-deck count and global rank; curve chart; filters persist.
 
@@ -474,7 +474,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `web/src/routes/imports/mapping/`
 
 ### T408 — i+1 sentences and sentence cards
-- model: sonnet · risk: low · deps: T404 · status: TODO
+- model: sonnet · risk: low · deps: T404 · status: SPLIT
 - paths: `server/src/main/kotlin/kotobaya/sentences/`, `web/src/routes/media/[id]/sentences/`
 
 ### T409 — Audio clip cutting
@@ -485,6 +485,10 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ### T410 — Android coverage and sentence lists
 - model: sonnet · risk: low · deps: T404, T301 · status: TODO
 - paths: `android/app/src/main/kotlin/kotobaya/android/media/browse/`
+
+### Phase 4 splits and additions (2026-11-13, planner)
++C-11/C-12(contracts)/F-7(fixture); T401→T401a(client)/T401b(job); T402→T402a(subs/text)/T402b(epub/mokuro/html); T403→T403a(segmentation)/T403b(matching+service)/T403c(server API); T404→T404a(publish kit)/T404b(pipeline)/T404c(server coverage); T405→T405a(library)/T405b(dashboards); T408→T408a(server)/T408b(web); +T411a(blobs)/T411b(media API)/T411c(publish runner); +W-5(wiring). Ticket files plan/tickets/ hold deps/paths. Parents T401–T405, T408 → SPLIT.
+- C-11 RUNNING · F-7 RUNNING · T401a RUNNING · T402a RUNNING · T404c RUNNING · T411a RUNNING · rest TODO (C-12, T401b, T402b, T403a, T403b, T403c, T404a, T404b, T405a, T405b, T406, T407, T408a, T408b, T409, T410, T411b, T411c, W-5)
 
 → `make test`, then **GATE-P4**: human compares coverage on two shows against jpdb.
 

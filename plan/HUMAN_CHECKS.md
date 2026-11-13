@@ -16,6 +16,8 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - AnkiConnect (T311): default allowed origins include moz-extension://* and chrome-extension://* (loopback + API key). Confirm acceptable; server must be re-toggled after app restart.
 
 ## Provisional decisions
+- ADR-014..019 (P4 planning): server installs media from worker snapshots; jpdb mapping corrections = server import settings; jpdb cache on PVC; coverage/i+1 per request; Android coverage via API; Sudachi full-dict tests skip offline.
+- Blob endpoints were 501 through P2/P3 → the web jpdb history upload (T214) could not work; fixed by T411a (P4). Use `PUT /blobs` path only after T411a merges.
 - ADR-013: Takoboto note type id is a name-derived UUIDv8 (SCHEMA says UUIDv7 unless stated). Confirm or ask for a contract note.
 - ADR-012: Android calls the API through a hand-written client (generated Kotlin client needs a newer Kotlin than the app).
 - jpdb re-import (T207c): notes you deleted after an import are NOT recreated on re-run; they are skipped and counted.
@@ -78,6 +80,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] **P3:** pair the phone; review offline (airplane mode) for a week; sync; confirm review counts match on web and phone.
 - [ ] **P3:** widget sizes, due-count notification, Quick Settings tile, share-to-app, Yomitan via on-device AnkiConnect.
 - [ ] **P4:** import two shows you have on jpdb; compare coverage numbers (expect within ~3 points).
+- [ ] **P4 (Sudachi full dict):** run the parser agreement test with the full Sudachi dictionary installed (ADR-019).
 - [ ] **P4:** import one of your own files (subtitles or EPUB); fix a mis-parsed word in the reader.
 - [ ] **P5:** hot words and leeches look sensible after a week of data; grammar cards appear from your own sentences.
 - [ ] **P6:** TTS audio, pitch display, CLI (`kotobaya cards find 'is:due'`), export.
