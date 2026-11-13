@@ -3,6 +3,7 @@ const en = {
 	'imp.intro':
 		'Choose the review export from jpdb (JSON). It is uploaded, then imported in the background; re-running the same file imports nothing twice.',
 	'imp.file': 'jpdb export file',
+	'imp.mapping': 'Review unmapped jpdb vocabulary',
 	'imp.reviews': 'Import review history',
 	'imp.status': 'Import known words as word statuses',
 	'imp.start': 'Upload and import',

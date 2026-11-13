@@ -93,6 +93,7 @@
 
 {#if job === null}
 	<p>{ti('imp.intro')}</p>
+	<p><a href="/import/mapping">{ti('imp.mapping')}</a></p>
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
