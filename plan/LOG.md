@@ -565,3 +565,5 @@
 2026-11-13T01:50:14Z T305c CHECK_GREEN android after rebase
 2026-11-13T01:52:36Z T305c REVIEW_APPROVE reviewer (8 minors → FOLLOWUPS)
 2026-11-13T01:52:36Z DECIDE ADR-013 provisional: Takoboto note type UUIDv8 fixed id
+2026-11-13T01:52:36Z T305c MERGE 1 attempt
+2026-11-13T01:52:36Z T306+T311 DISPATCH writer(sonnet) batched

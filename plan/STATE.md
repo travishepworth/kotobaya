@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T01:34:25Z
+Updated: 2026-11-13T01:52:36Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -15,16 +15,15 @@ Updated: 2026-11-13T01:34:25Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T313 | writer-senior (opus) | 1 | t/T313-offline-chaos | 2026-11-13T01:34:25Z |
-| T305c | — (in review) | 1 | t/T305c-takoboto-store | 2026-11-13T01:50:06Z |
+| T306+T311 | writer (sonnet) | 1 | t/T306+T311-share-ankiconnect | 2026-11-13T01:52:36Z |
 | F-6 | writer (sonnet) | 1 | t/F-6-sync-db-first-use | 2026-11-13T01:50:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- T306+T311 (batch, sonnet) — after T305c (DuplicateCheck overlap)
+- none
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T305c | reviewer (opus) | 2026-11-13T01:50:06Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -44,11 +43,12 @@ Updated: 2026-11-13T01:34:25Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 21/26 · attempts 30 · escalations 0
+P3: merged 22/27 · attempts 32 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T305c Takoboto note type (fixed id, ADR-013) + op-backed AnkiStore (AnkiIdMap ankiapi.db, NoteCreator/DuplicateCheck, eager AnkiStoreHolder), S01 replay test — reviewer APPROVE
 - F-5 server auto_status via core DefaultWordStatusRules (CoreAutoStatusHook; OpApplier re-derives after review/preset/merge/fsrs_params) — server = device test
 - T304c+W-4 review actions (suspend/bury/flag/never-forget/blacklist/edit, undo) + media wiring (CardAudioNeeds, MediaSettings, prefetch after sync)
 - T305b on-device NoteCreator (EntryMatcher, DuplicateCheck, card_kinds/add_kanji, one-tx mint, request-id retry, two-device merge test) — reviewer + architect APPROVE
