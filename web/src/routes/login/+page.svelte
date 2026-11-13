@@ -1,6 +1,9 @@
 <script lang="ts">
+	// Login: a quiet centred panel with the seal, password (and the authenticator code when asked), one button.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import Button from '../../lib/ui/Button.svelte';
+	import TextField from '../../lib/ui/TextField.svelte';
 	import { t } from '../../lib/i18n';
 	import { login } from '../../lib/state/session.svelte';
 
@@ -9,16 +12,23 @@
 	let needTotp = $state(false);
 	let busy = $state(false);
 	let error = $state('');
+	let retryLeft = $state(0);
+
+	// Rate limit: count down to the moment another try is allowed.
+	$effect(() => {
+		if (retryLeft <= 0) return;
+		const id = setInterval(() => (retryLeft = Math.max(0, retryLeft - 1)), 1000);
+		return () => clearInterval(id);
+	});
 
 	/** Only same-origin absolute paths; anything else falls back to home (open-redirect guard). */
 	function safeNext(raw: string | null): string {
-		return raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login')
-			? raw
-			: '/';
+		return raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login') ? raw : '/';
 	}
 
 	async function submit(e: SubmitEvent): Promise<void> {
 		e.preventDefault();
+		if (retryLeft > 0) return;
 		busy = true;
 		error = '';
 		const r = await login(password, needTotp ? totp.trim() : undefined);
@@ -32,77 +42,86 @@
 		} else if (r.reason === 'invalid') {
 			error = t('login.invalid');
 		} else if (r.reason === 'rate_limited') {
-			error =
-				r.retryAfter !== undefined
-					? t('login.retryAfter', { seconds: r.retryAfter })
-					: t('login.rateLimited');
+			retryLeft = r.retryAfter ?? 0;
+			error = r.retryAfter !== undefined ? t('login.retryAfter', { seconds: r.retryAfter }) : t('login.rateLimited');
 		} else {
 			error = t('error.network');
 		}
 	}
+	const message = $derived(retryLeft > 0 ? t('login.retryAfter', { seconds: retryLeft }) : error);
 </script>
 
 <svelte:head><title>{t('login.title')} · {t('app.name')}</title></svelte:head>
 
-<form onsubmit={submit} class="card">
-	<h1>{t('app.name')}</h1>
-	<label>
-		{t('login.password')}
+<div class="screen">
+	<form class="panel" onsubmit={submit}>
+		<div class="brand">
+			<span class="seal" aria-hidden="true">言</span>
+			<h1>{t('app.name')}</h1>
+		</div>
 		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			class="kb-input"
+		<TextField
+			label={t('login.password')}
 			type="password"
 			autocomplete="current-password"
 			required
 			autofocus
 			bind:value={password}
+			error={!needTotp && message ? message : undefined}
 		/>
-	</label>
-	{#if needTotp}
-		<label>
-			{t('login.totp')}
-			<input
-				class="kb-input"
-				type="text"
+		{#if needTotp}
+			<!-- svelte-ignore a11y_autofocus -->
+			<TextField
+				label={t('login.totp')}
 				inputmode="numeric"
 				autocomplete="one-time-code"
-				pattern={'[0-9]{6}'}
-				maxlength="6"
-				required
+				maxlength={8}
+				autofocus
 				bind:value={totp}
+				error={message || undefined}
 			/>
-		</label>
-	{/if}
-	{#if error}<p class="error" role="alert">{error}</p>{/if}
-	<button class="kb-btn" type="submit" disabled={busy}>
-		{busy ? t('login.submitting') : t('login.submit')}
-	</button>
-</form>
+		{/if}
+		<Button variant="primary" size="lg" type="submit" full loading={busy} disabled={retryLeft > 0}>{t('login.submit')}</Button>
+	</form>
+</div>
 
 <style>
-	.card {
-		max-width: 22rem;
-		margin: 15vh auto 0;
+	.screen {
+		display: grid;
+		place-items: center;
+		min-height: 100dvh;
+		padding: var(--kb-space-6) var(--kb-space-4);
+		background: var(--kb-color-bg);
+	}
+	.panel {
 		display: flex;
 		flex-direction: column;
-		gap: var(--kb-space-4);
-		padding: var(--kb-space-6);
-		background: var(--kb-surface);
-		border: 1px solid var(--kb-border);
-		border-radius: var(--kb-radius);
+		gap: var(--kb-space-5);
+		width: min(100%, 25rem);
+		padding: var(--kb-space-8) var(--kb-space-6);
+		border: 1px solid var(--kb-color-border);
+		border-radius: var(--kb-radius-xl);
+		background: var(--kb-color-surface);
+		box-shadow: var(--kb-elevation-1);
+	}
+	.brand {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--kb-space-3);
+		margin-bottom: var(--kb-space-2);
+	}
+	.seal {
+		display: grid;
+		place-items: center;
+		width: 3.5rem;
+		height: 3.5rem;
+		border-radius: var(--kb-radius-md);
+		background: var(--kb-color-brand);
+		color: var(--kb-color-surface);
+		font: 600 2rem/1 var(--kb-family-serif);
 	}
 	h1 {
-		margin: 0;
-		color: var(--kb-accent);
-		text-align: center;
-	}
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: var(--kb-space-1);
-	}
-	.error {
-		margin: 0;
-		color: var(--kb-error);
+		font: var(--kb-type-headline);
 	}
 </style>
