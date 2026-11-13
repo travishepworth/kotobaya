@@ -235,7 +235,7 @@
 		color: var(--kb-color-on-primary-container);
 	}
 	/* Very narrow bar (phones at large text sizes): icons only; the label stays the accessible name. */
-	@container shell (max-width: 26rem) {
+	@container shell (max-width: 20rem) {
 		.tab .text {
 			position: absolute;
 			width: 1px;

@@ -99,7 +99,7 @@
 		flex-direction: column;
 		gap: var(--kb-space-0-5);
 		min-width: 0;
-		flex: 1 1 10rem;
+		flex: 1 1 8rem;
 	}
 	.title {
 		font: var(--kb-type-title-sm);
