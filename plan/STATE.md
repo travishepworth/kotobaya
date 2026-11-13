@@ -1,22 +1,21 @@
 # STATE
 Mode: single-session
 Phase: P6 (Polish) — running; T604 merged, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (end of orchestrator run 9)
+Updated: 2026-11-13 (end of orchestrator run 10)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 9)
-- Run 9 merged (7): T508a (web "saw something weird"), C-15 (QueueItem.grammar_sentence, additive), T504b (android struggle + 4x3 hot-word widget), F-25 (core picker full rotation + server/web grammar sentence), T508b (android grammar capture), F-22 (matcher tests; fixes already present), F-25b (android offline grammar sentence pick).
-- All P5 tickets MERGED. P5 `make test`: GREEN (rc=0, 2026-11-13); GATE-P5 deferred → HUMAN_CHECKS
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 10)
+- Run 10 merged (7): T602 (pitch cards), C-16 (fsrs-params-publish contract), T601 (VOICEVOX TTS), T603 (server AnkiConnect, review APPROVE), T605 (stats), T608 (export JSON + .apkg, review APPROVE), T606 (FSRS optimizer, review APPROVE). All checks re-run green post-rebase.
+- P6 remaining: T609 (deps T601–T608 excl. T607: now satisfied, opus/high), then T610. T607 DEFERRED.
 - Stopped for context budget. Nothing in flight; no worktrees or t/* branches.
-- CORRECTED run 10: P6 TODO = T601, T602, T603, T605, T606, T608 (deps GATE-P5 deferred = satisfied), then T609 (deps T601–T608 excl. T607), then T610. T607 DEFERRED only.
-- Optional low followups: F-27 (android struggle/grammar-capture writes online-only, not ops), F-24 (contract polish, Gradle), F-23 (A→B→A dedupe, contract), F-21.
-- Merge helper unchanged. RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (contracts check uses Gradle too).
+- BACKLOG statuses synced run 10 (T406/T407/T409/T410/T501–T508/T601–T608 → MERGED).
+- HUMAN_CHECK: T606 adds fsrs[optimizer] → torch (CUDA wheels in uv.lock); worker image multi-GB. Switch to CPU-only torch index before deploy. Optimizer cron + voicevox are helm default-off.
+- FOLLOWUPS added run 10: T601 notes, T603/T606/T608 review minors (priority: T608 mnemonic blob images silently omitted from .apkg).
+- Orchestrator lessons: always rebase branch onto main before ff-merge (concurrent Main.kt/WiringAuditTest edits conflict — both sides only remove their own 501-allowlist entries, so drop the hunk); never pipe git rebase/merge through tail (masks failures); look worktrees up by path, not branch (detached during rebase).
 
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T606 | writer | 1 | t/T606-fsrs-optimizer | run 10 |
-| T608 | writer | 1 | t/T608-export | run 10 |
 
 ## Parked
 (none)
@@ -52,6 +51,8 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T606 (run 10): FSRS optimizer (worker py-fsrs training + holdout gate, server FsrsParamsPublishRunner, helm cron default off); review APPROVE
+- T608 (run 10): export (JSON dump snapshot stream, Anki .apkg via sqlite-jdbc); review APPROVE, minors in FOLLOWUPS
 - T605 (run 10): stats (6 server handlers via core replay/queue builder, web /stats page)
 - T603 (run 10): server AnkiConnect actions (7 actions, anki_id, findNotes, media rewrite; ops via OpApply); review APPROVE, minors in FOLLOWUPS
 - T601 (run 10): VOICEVOX TTS (server synthesizeSpeech enqueue+dedupe, worker tts job Opus/S3 cache, helm voicevox default off)

@@ -563,7 +563,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `server/src/main/kotlin/kotobaya/stats/`, `web/src/routes/stats/`
 
 ### T606 — FSRS optimizer job
-- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P5 · status: MERGED
 - paths: `worker/kotobaya_worker/optimizer/`, `deploy/helm/templates/cron-optimize*`
 - accept: Parameters published only if they improve log-loss on a held-out split.
 
@@ -573,7 +573,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - do: Pluggable provider per DECISIONS; outputs labelled generated; off by default.
 
 ### T608 — Export (JSON, .apkg)
-- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P5 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/export/`
 
 ### T609 — Security hardening review

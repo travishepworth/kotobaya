@@ -743,3 +743,5 @@
 2026-11-13T08:10:33Z T608 REVIEW APPROVE (minors -> FOLLOWUPS); merge after T605
 2026-11-13T08:16:55Z T606 REVIEW APPROVE (minors -> FOLLOWUPS); torch image size flagged
 2026-11-13T08:18:44Z T605 MERGE CHECK_GREEN server+web after rebase (Main.kt/WiringAudit conflicts resolved by orchestrator)
+2026-11-13T08:22:07Z T608 MERGE CHECK_GREEN server after rebase (WiringAudit conflict resolved by orchestrator); new dep sqlite-jdbc 3.47.1.0
+2026-11-13T08:26:27Z T606 MERGE CHECK_GREEN worker+server after rebase; review APPROVE. RUN 10 END: 7 merges, stopped for context
