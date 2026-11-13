@@ -22,6 +22,7 @@ import kotobaya.android.ui.HomeScreen
 import kotobaya.android.struggle.STRUGGLE_ROUTE
 import kotobaya.android.struggle.StruggleDeepLink
 import kotobaya.android.ui.PlaceholderScreen
+import kotobaya.android.settings.ui.rememberIsUnpaired
 
 /**
  * One navigation destination. [topLevel] routes appear in the bottom bar; others are pushed
@@ -43,8 +44,8 @@ object Routes {
     const val MEDIA = "media"
 }
 
-private fun shellRoutes(registry: FeatureRegistry): List<NavRoute> = listOf(
-    NavRoute(Routes.HOME, R.string.nav_home, topLevel = true) { HomeScreen(registry.homeStatusChips) },
+private fun shellRoutes(registry: FeatureRegistry, navigate: (String) -> Unit): List<NavRoute> = listOf(
+    NavRoute(Routes.HOME, R.string.nav_home, topLevel = true) { HomeScreen(registry.homeStatusChips, unpaired = rememberIsUnpaired(), onPair = { navigate(Routes.SETTINGS) }) },
     NavRoute(Routes.REVIEW, R.string.nav_review, topLevel = true) { PlaceholderScreen(R.string.nav_review) },
     NavRoute(Routes.SEARCH, R.string.nav_search, topLevel = true) { PlaceholderScreen(R.string.nav_search) },
     NavRoute(Routes.DECKS, R.string.nav_decks, topLevel = true) { PlaceholderScreen(R.string.nav_decks) },
@@ -55,16 +56,16 @@ private fun shellRoutes(registry: FeatureRegistry): List<NavRoute> = listOf(
  * Shell routes plus feature routes. A feature route with the same path as a shell route
  * replaces its placeholder (that is how T304+ fill in screens); other feature routes are appended.
  */
-fun allRoutes(registry: FeatureRegistry): List<NavRoute> {
+fun allRoutes(registry: FeatureRegistry, navigate: (String) -> Unit = {}): List<NavRoute> {
     val byRoute = LinkedHashMap<String, NavRoute>()
-    (shellRoutes(registry) + registry.routes).forEach { byRoute[it.route] = it }
+    (shellRoutes(registry, navigate) + registry.routes).forEach { byRoute[it.route] = it }
     return byRoute.values.toList()
 }
 
 @Composable
 fun AppNav(registry: FeatureRegistry) {
     val nav = rememberNavController()
-    val routes = allRoutes(registry)
+    val routes = allRoutes(registry) { r -> nav.navigate(r) { popUpTo(Routes.HOME); launchSingleTop = true } }
     val current by nav.currentBackStackEntryAsState()
     val struggleLink by StruggleDeepLink.pending.collectAsState()
     LaunchedEffect(struggleLink) {

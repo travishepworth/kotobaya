@@ -24,10 +24,6 @@ class AppStartsTest {
     @Test
     fun homeRendersAndPlaceholdersNavigate() {
         rule.onNodeWithText("Welcome to Kotobaya").assertExists()
-        for (name in listOf("Settings")) {
-            rule.onNodeWithText(name).performClick()
-            rule.onNodeWithText("$name is not built yet.").assertExists()
-        }
         // AND-DECKS: the Decks tab is real now (its toolbar has a Refresh button).
         rule.onNodeWithText("Decks").performClick()
         rule.onNodeWithText("Refresh").assertExists()

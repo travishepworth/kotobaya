@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="study_title">Study</string>
+    <string name="study_new_per_day">New cards per day</string>
+    <string name="study_reviews_per_day">Reviews per day</string>
+    <string name="study_rollover_hour">Day starts at (hour, 0 to 23)</string>
+    <string name="study_save">Save</string>
+    <string name="study_saved">Saved.</string>
+    <string name="study_unchanged">Nothing to change.</string>
+    <string name="study_invalid">That value is out of range.</string>
+    <string name="study_refused">This change could not be saved right now (not paired, or a rebuild is running).</string>
+    <string name="about_title">About</string>
+    <string name="about_version">App version: %1$s</string>
+    <string name="about_flavor">Build: %1$s</string>
+    <string name="about_flavor_ankidroid">AnkiDroid stand-in</string>
+    <string name="about_flavor_own">Own package</string>
+    <string name="about_server_version">Server version: %1$s</string>
+    <string name="about_server_unknown">Server version: unavailable</string>
+    <string name="home_pair_prompt">This device is not paired with a server yet.</string>
+    <string name="home_pair_action">Pair this device</string>
+</resources>

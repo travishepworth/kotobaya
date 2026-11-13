@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,9 +24,13 @@ fun PlaceholderScreen(@StringRes nameRes: Int) {
 
 /** Home stub. [statusChips] is the slot the sync status chip (T303e) fills. */
 @Composable
-fun HomeScreen(statusChips: List<@Composable () -> Unit>) {
+fun HomeScreen(statusChips: List<@Composable () -> Unit>, unpaired: Boolean = false, onPair: () -> Unit = {}) {
     Column(Modifier.padding(16.dp)) {
         Text(T(R.string.home_title))
+        if (unpaired) {
+            Text(T(R.string.home_pair_prompt))
+            Button(onClick = onPair) { Text(T(R.string.home_pair_action)) }
+        }
         statusChips.forEach { it() }
     }
 }
