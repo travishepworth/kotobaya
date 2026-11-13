@@ -763,7 +763,7 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - model: opus · risk: high · deps: UI-DS, C-19 · status: RUNNING (run 19, attempt 1) (ticket: plan/tickets/UI-WEB.md)
 
 ### UI-APP — Rebuild every Android screen on the design system (B4; drops Media tab per IA, dark mode)
-- model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: RUNNING (run 19, attempt 1) (ticket: plan/tickets/UI-APP.md)
+- model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: MERGED 2587826 (ticket: plan/tickets/UI-APP.md)
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.

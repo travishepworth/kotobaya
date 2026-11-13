@@ -892,3 +892,5 @@
 2026-11-13T16:55:19Z UI-WEB REVIEW dispatched reviewer (screenshots + bar)
 2026-11-13T16:58:01Z UI-WEB REVIEW_CHANGES 4 majors (200% answer below fold; table cols misaligned; segmented clip 360; FEAT-x click creates override) + 5 minors
 2026-11-13T16:58:01Z UI-WEB DISPATCH writer-senior attempt 2 (majors + minors 5,7,8,9; same worktree)
+2026-11-13T16:59:59Z UI-APP REVIEW_APPROVE round 2 (major #1 withdrawn: Struggle capture reachable)
+2026-11-13T16:59:59Z UI-APP MERGE 2587826 CHECK_GREEN android (high; reviewer APPROVE)

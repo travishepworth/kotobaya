@@ -393,3 +393,4 @@
 - UI-APP review minors (run 19): settings-notify icon tile squeezes text at 200%; Settings rows reuse one sync icon / single-row groups; deck-detail word rows lack reading/gloss and show sentences as words; "All done" review state needs Study ahead/Browse + next-due (if not done in attempt 2)
 - UI-WEB (run 19): DeckItems + UnknownWords state have no load-error flag; client-side nav /cards -> /notes shows id-prefix labels in the notes list (full load fine)
 - UI-WEB review minor (run 19): nav rail icons fixed px while labels scale at 200% (size in rem)
+- UI-APP (run 19): grammar capture entry from Search/intake needs sentence hits with id/mediaId (or a create-sentence call); Today overline study date computed once per composition (stale past rollover if app stays open)
