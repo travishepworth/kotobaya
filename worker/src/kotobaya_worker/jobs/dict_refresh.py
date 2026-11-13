@@ -1,9 +1,11 @@
 """``dict-refresh`` handler: refresh -> refresh_extra -> build_release (+ S3) -> ref.dict_release.artifacts.
 
-Pinned sources come from ``DICT_SOURCES_JSON`` (job configuration; checksums are never fetched blindly)::
+Sources come from ``DICT_SOURCES_JSON``. The EDRDG files (jmdict, kanjidic, krad) change daily, so
+their ``sha256`` is an optional pin (ADR-020): if set it must match exactly, otherwise the fetched
+digest is recorded in the release provenance. Other sources keep a mandatory pin::
 
-    {"jmdict": {"sha256": "..", "url": "optional override"},
-     "kanjidic": {"sha256": ".."}, "krad": {"sha256": ".."},
+    {"jmdict": {"url": "optional override", "sha256": "optional pin"},
+     "kanjidic": {}, "krad": {},
      "kanjium": {"url": "..", "sha256": ".."},          # optional
      "tatoeba": {"url": "..", "sha256": ".."},          # optional
      "freq_lists": {"jpdb": {"url": "..", "sha256": "..", "title": "jpdb"}}}   # optional, priority = order
@@ -16,7 +18,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,7 +33,10 @@ from kotobaya_worker.dict.fetch import (
     JMDICT_URL,
     KANJIDIC2_URL,
     KRAD_URL,
+    Fetcher,
     SourceSpec,
+    fetch_source,
+    urllib_fetcher,
 )
 from kotobaya_worker.dict.models import ReleaseInfo
 from kotobaya_worker.dict.package.release import build_release
@@ -54,16 +59,25 @@ class DictSources:
     def from_json(text: str) -> DictSources:
         raw = json.loads(text)
 
-        def spec(name: str, d: Mapping[str, str], default_url: str | None = None) -> SourceSpec:
+        def spec(
+            name: str,
+            d: Mapping[str, str],
+            default_url: str | None = None,
+            *,
+            pin_required: bool = True,
+        ) -> SourceSpec:
             url = d.get("url", default_url)
             if not url:
                 raise ValueError(f"DICT_SOURCES_JSON: {name} needs a url")
-            return SourceSpec(name, url, d["sha256"])
+            pin = d.get("sha256") or None
+            if pin is None and pin_required:
+                raise ValueError(f"DICT_SOURCES_JSON: {name} needs a sha256")
+            return SourceSpec(name, url, pin)
 
         core = Sources(
-            spec("JMdict_e.gz", raw["jmdict"], JMDICT_URL),
-            spec("kanjidic2.xml.gz", raw["kanjidic"], KANJIDIC2_URL),
-            spec("kradzip.zip", raw["krad"], KRAD_URL),
+            spec("JMdict_e.gz", raw.get("jmdict", {}), JMDICT_URL, pin_required=False),
+            spec("kanjidic2.xml.gz", raw.get("kanjidic", {}), KANJIDIC2_URL, pin_required=False),
+            spec("kradzip.zip", raw.get("krad", {}), KRAD_URL, pin_required=False),
         )
         freq: dict[str, FreqListSource] = {}
         for i, (slug, d) in enumerate(raw.get("freq_lists", {}).items(), start=1):
@@ -86,19 +100,44 @@ class DictSources:
             raise RuntimeError("DICT_SOURCES_JSON is not set; cannot run dict-refresh")
         return DictSources.from_json(text)
 
+    def resolve(self, slugs: list[str], cache_dir: Path, fetch: Fetcher) -> DictSources:
+        """Fetch every source (pins enforced) and return specs completed with the fetched digests."""
+
+        def one(spec: SourceSpec) -> SourceSpec:
+            return fetch_source(spec, cache_dir, fetch).spec
+
+        return DictSources(
+            Sources(one(self.core.jmdict), one(self.core.kanjidic), one(self.core.krad)),
+            one(self.kanjium) if self.kanjium else None,
+            one(self.tatoeba) if self.tatoeba else None,
+            {s: replace(self.freq[s], source=one(self.freq[s].source)) for s in slugs},
+        )
+
     def fingerprint(self, slugs: list[str]) -> dict[str, str]:
-        fp = {
-            "jmdict": self.core.jmdict.sha256,
-            "kanjidic2": self.core.kanjidic.sha256,
-            "kradfile": self.core.krad.sha256,
+        """Source key -> sha256. Only meaningful on a :meth:`resolve`d instance."""
+        specs: dict[str, SourceSpec] = {
+            "jmdict": self.core.jmdict,
+            "kanjidic2": self.core.kanjidic,
+            "kradfile": self.core.krad,
         }
         if self.kanjium:
-            fp["kanjium"] = self.kanjium.sha256
+            specs["kanjium"] = self.kanjium
         if self.tatoeba:
-            fp["tatoeba"] = self.tatoeba.sha256
+            specs["tatoeba"] = self.tatoeba
         for s in slugs:
-            fp[f"freq:{s}"] = self.freq[s].source.sha256
-        return fp
+            specs[f"freq:{s}"] = self.freq[s].source
+        return {k: v.sha256 or "" for k, v in specs.items()}
+
+
+CORE_KEYS = ("jmdict", "kanjidic2", "kradfile")
+
+
+def _published(artifacts: Any) -> bool:
+    """True when every device scope has a ``full`` artifact recorded."""
+    if not isinstance(artifacts, list):
+        return False
+    have = {a.get("scope") for a in artifacts if isinstance(a, dict) and a.get("kind") == "full"}
+    return all(sc in have for sc in SCOPES)
 
 
 def make_dict_refresh(
@@ -106,50 +145,76 @@ def make_dict_refresh(
     sources: Callable[[], DictSources] = DictSources.from_env,
     s3: Callable[[], S3Client | None] = lambda: S3Client(S3Config.from_env()),
     cache_dir: Path = DEFAULT_CACHE_DIR,
+    fetch: Fetcher = urllib_fetcher,
 ) -> Callable[[JobContext], dict[str, Any]]:
     """Build the handler. ``sources`` and ``s3`` are resolved per job so config errors fail the job, not startup."""
 
     def handler(ctx: JobContext) -> dict[str, Any]:
-        src = sources()
+        raw_src = sources()
         wanted = ctx.payload.get("freq_lists")
-        slugs = list(src.freq) if wanted is None else list(wanted)
-        unknown = [s for s in slugs if s not in src.freq]
+        slugs = list(raw_src.freq) if wanted is None else list(wanted)
+        unknown = [s for s in slugs if s not in raw_src.freq]
         if unknown:
             raise ValueError(f"frequency lists not configured: {unknown}")
         force = bool(ctx.payload.get("force", False))
+        ctx.progress(0.02, "fetching sources")
+        src = raw_src.resolve(slugs, cache_dir, fetch)
         fp = src.fingerprint(slugs)
+        extra = ExtraSources(src.kanjium, tuple(src.freq[s] for s in slugs), src.tatoeba)
 
+        # Resume: the current release already has this core data. Whatever step was cut short
+        # (extras, device package) is redone for that same release; nothing is reloaded.
+        resume_id: int | None = None
+        resume_version = ""
+        need_extra = False
         with psycopg.connect(to_conninfo(database_url)) as conn:
-            cur = conn.execute("SELECT sources FROM ref.dict_release WHERE is_current").fetchone()
+            cur = conn.execute(
+                "SELECT id, version, sources, artifacts FROM ref.dict_release WHERE is_current"
+            ).fetchone()
             if cur and not force:
-                have = {k: v.get("sha256") for k, v in cur[0].items() if isinstance(v, dict)}
-                if all(have.get(k) == v for k, v in fp.items()):
-                    live = conn.execute(
-                        "SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL"
-                    ).fetchone()
-                    return {
-                        "release_id": None,
-                        "version": None,
-                        "entries": live[0] if live else 0,
-                        "retired": 0,
-                    }
+                have = {k: v.get("sha256") for k, v in cur[2].items() if isinstance(v, dict)}
+                core_ok = all(have.get(k) == fp[k] for k in CORE_KEYS)
+                clash = any(have.get(k) not in (None, v) for k, v in fp.items())
+                if core_ok and not clash:
+                    resume_id, resume_version = cur[0], cur[1]
+                    need_extra = any(k not in have for k in fp)
+                    if not need_extra and _published(cur[3]):
+                        live = conn.execute(
+                            "SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL"
+                        ).fetchone()
+                        return {
+                            "release_id": None,
+                            "version": None,
+                            "entries": live[0] if live else 0,
+                            "retired": 0,
+                        }
             row = conn.execute("SELECT coalesce(max(id), 0) FROM ref.dict_release").fetchone()
             new_id = (row[0] if row else 0) + 1
 
-        now = datetime.now(UTC)
-        release = ReleaseInfo(new_id, f"{now:%Y.%m.%d}.{new_id}", now.isoformat())
-
-        ctx.progress(0.05, "loading JMdict and KANJIDIC2")
-        loaded = refresh(database_url, release, src.core, cache_dir=cache_dir)
-        ctx.check_cancelled()
-        ctx.progress(0.4, "loading pitch, frequency and examples")
-        refresh_extra(
-            database_url,
-            new_id,
-            ExtraSources(src.kanjium, tuple(src.freq[s] for s in slugs), src.tatoeba),
-            cache_dir=cache_dir,
-        )
-        ctx.check_cancelled()
+        if resume_id is not None:
+            release_id, version = resume_id, resume_version
+            log.info("resuming release %s (extras=%s)", release_id, need_extra)
+            if need_extra:
+                ctx.progress(0.4, "loading pitch, frequency and examples")
+                refresh_extra(database_url, release_id, extra, cache_dir=cache_dir, fetch=fetch)
+            ctx.check_cancelled()
+            with psycopg.connect(to_conninfo(database_url)) as conn:
+                live = conn.execute(
+                    "SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL"
+                ).fetchone()
+            entries, retired = (live[0] if live else 0), 0
+        else:
+            now = datetime.now(UTC)
+            release_id = new_id
+            version = f"{now:%Y.%m.%d}.{new_id}"
+            release = ReleaseInfo(new_id, version, now.isoformat())
+            ctx.progress(0.05, "loading JMdict and KANJIDIC2")
+            loaded = refresh(database_url, release, src.core, cache_dir=cache_dir, fetch=fetch)
+            ctx.check_cancelled()
+            ctx.progress(0.4, "loading pitch, frequency and examples")
+            refresh_extra(database_url, new_id, extra, cache_dir=cache_dir, fetch=fetch)
+            ctx.check_cancelled()
+            entries, retired = loaded.entries, loaded.retired
 
         ctx.progress(0.6, "building device packages")
         client = s3()
@@ -159,19 +224,19 @@ def make_dict_refresh(
             psycopg.connect(to_conninfo(database_url)) as conn,
         ):
             for scope in SCOPES:
-                _, arts = build_release(conn, new_id, scope, Path(tmp) / scope, s3=client)
+                _, arts = build_release(conn, release_id, scope, Path(tmp) / scope, s3=client)
                 artifacts.extend(a.manifest_entry() for a in arts)
                 ctx.check_cancelled()
             conn.execute(
                 "UPDATE ref.dict_release SET artifacts = %s::jsonb WHERE id = %s",
-                (json.dumps(artifacts), new_id),
+                (json.dumps(artifacts), release_id),
             )
             conn.commit()
         return {
-            "release_id": new_id,
-            "version": release.version,
-            "entries": loaded.entries,
-            "retired": loaded.retired,
+            "release_id": release_id,
+            "version": version,
+            "entries": entries,
+            "retired": retired,
         }
 
     return handler

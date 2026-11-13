@@ -12,7 +12,13 @@ from pathlib import Path
 import psycopg
 
 from ..dburl import to_conninfo
-from ..fetch import DEFAULT_CACHE_DIR, Fetcher, SourceSpec, ensure_source, urllib_fetcher
+from ..fetch import (
+    DEFAULT_CACHE_DIR,
+    Fetcher,
+    SourceSpec,
+    fetch_source,
+    urllib_fetcher,
+)
 from .freq import parse_freq_zip
 from .index import load_index
 from .kanjium import parse_accents
@@ -68,9 +74,9 @@ def refresh_extra(
 
     ``database_url`` is the JDBC-form ``DATABASE_URL``. Idempotent for a given release id.
     """
-    kj = ensure_source(sources.kanjium, cache_dir, fetch) if sources.kanjium else None
-    fq = [(f, ensure_source(f.source, cache_dir, fetch)) for f in sources.frequency]
-    tt = ensure_source(sources.tatoeba, cache_dir, fetch) if sources.tatoeba else None
+    kj = fetch_source(sources.kanjium, cache_dir, fetch) if sources.kanjium else None
+    fq = [(f, fetch_source(f.source, cache_dir, fetch)) for f in sources.frequency]
+    tt = fetch_source(sources.tatoeba, cache_dir, fetch) if sources.tatoeba else None
 
     pitch: PitchResult | None = None
     examples: ExampleResult | None = None
@@ -78,39 +84,31 @@ def refresh_extra(
     with psycopg.connect(to_conninfo(database_url)) as conn, conn.transaction():
         begin(conn, release_id)
         idx = load_index(conn)
-        if kj and sources.kanjium:
-            pitch = load_pitch(conn, idx, parse_accents(kj))
+        if kj:
+            pitch = load_pitch(conn, idx, parse_accents(kj.path))
             record_source(
                 conn,
                 release_id,
                 "kanjium",
-                {
-                    "url": sources.kanjium.url,
-                    "sha256": sources.kanjium.sha256,
-                    "license": "CC BY-SA 4.0",
-                },
+                kj.spec.provenance("CC BY-SA 4.0"),
             )
-        for spec, path in fq:
-            freqs.append(load_freq_list(conn, idx, spec.config, parse_freq_zip(path)))
+        for spec, path in fq:  # spec: config; path: fetched source
+            freqs.append(load_freq_list(conn, idx, spec.config, parse_freq_zip(path.path)))
             record_source(
                 conn,
                 release_id,
                 f"freq:{spec.config.id}",
-                {"url": spec.source.url, "sha256": spec.source.sha256},
+                path.spec.provenance(),
             )
         if freqs:
             recompute_freq_rank(conn)
-        if tt and sources.tatoeba:
-            examples = load_examples(conn, build_link_index(idx), parse_pairs(tt))
+        if tt:
+            examples = load_examples(conn, build_link_index(idx), parse_pairs(tt.path))
             record_source(
                 conn,
                 release_id,
                 "tatoeba",
-                {
-                    "url": sources.tatoeba.url,
-                    "sha256": sources.tatoeba.sha256,
-                    "license": "CC BY 2.0 FR",
-                },
+                tt.spec.provenance("CC BY 2.0 FR"),
             )
         report = coverage(conn)
     print(report.render())

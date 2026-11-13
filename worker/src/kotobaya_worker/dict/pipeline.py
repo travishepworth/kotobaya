@@ -16,7 +16,7 @@ from .fetch import (
     KRAD_URL,
     Fetcher,
     SourceSpec,
-    ensure_source,
+    fetch_source,
     urllib_fetcher,
 )
 from .jmdict import parse_jmdict
@@ -29,14 +29,18 @@ LICENSE = "CC BY-SA 4.0"
 
 @dataclass(frozen=True)
 class Sources:
-    """Pinned downloads for one refresh (checksums come from the job configuration)."""
+    """Downloads for one refresh; checksum pins are optional (ADR-020)."""
 
     jmdict: SourceSpec
     kanjidic: SourceSpec
     krad: SourceSpec
 
     @staticmethod
-    def edrdg(jmdict_sha256: str, kanjidic_sha256: str, krad_sha256: str) -> Sources:
+    def edrdg(
+        jmdict_sha256: str | None = None,
+        kanjidic_sha256: str | None = None,
+        krad_sha256: str | None = None,
+    ) -> Sources:
         return Sources(
             SourceSpec("JMdict_e.gz", JMDICT_URL, jmdict_sha256),
             SourceSpec("kanjidic2.xml.gz", KANJIDIC2_URL, kanjidic_sha256),
@@ -64,35 +68,25 @@ def refresh(
     cache_dir: Path = DEFAULT_CACHE_DIR,
     fetch: Fetcher = urllib_fetcher,
 ) -> LoadResult:
-    """Download (checksum-verified, cached), parse and load. Nothing is written on any failure.
+    """Download (verified against any pin, cached), parse and load. Nothing is written on any failure.
 
     ``database_url`` is the JDBC-form ``DATABASE_URL``.
     """
     # Every download is verified before the database is touched.
-    jm = ensure_source(sources.jmdict, cache_dir, fetch)
-    kd = ensure_source(sources.kanjidic, cache_dir, fetch)
-    kz = ensure_source(sources.krad, cache_dir, fetch)
-    krad = read_krad_zip(kz)
+    jm = fetch_source(sources.jmdict, cache_dir, fetch)
+    kd = fetch_source(sources.kanjidic, cache_dir, fetch)
+    kz = fetch_source(sources.krad, cache_dir, fetch)
+    krad = read_krad_zip(kz.path)
     info = replace(
         release,
         sources={
-            "jmdict": {
-                "url": sources.jmdict.url,
-                "sha256": sources.jmdict.sha256,
-                "license": LICENSE,
-            },
-            "kanjidic2": {
-                "url": sources.kanjidic.url,
-                "sha256": sources.kanjidic.sha256,
-                "license": LICENSE,
-            },
-            "kradfile": {
-                "url": sources.krad.url,
-                "sha256": sources.krad.sha256,
-                "license": LICENSE,
-            },
+            "jmdict": jm.spec.provenance(LICENSE),
+            "kanjidic2": kd.spec.provenance(LICENSE),
+            "kradfile": kz.spec.provenance(LICENSE),
             **release.sources,
         },
     )
     with psycopg.connect(to_conninfo(database_url)) as conn:
-        return load_release(conn, info, parse_jmdict(jm), with_components(parse_kanjidic(kd), krad))
+        return load_release(
+            conn, info, parse_jmdict(jm.path), with_components(parse_kanjidic(kd.path), krad)
+        )

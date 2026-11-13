@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from kotobaya_worker.dict.dburl import to_conninfo
-from kotobaya_worker.dict.fetch import ChecksumMismatch, SourceSpec, ensure_source
+from kotobaya_worker.dict.fetch import ChecksumMismatch, SourceSpec, ensure_source, fetch_source
 from kotobaya_worker.dict.jmdict import parse_jmdict
 from kotobaya_worker.dict.kanjidic import parse_krad
 from kotobaya_worker.dict.normalize import normalize_form
@@ -74,3 +74,30 @@ def test_cached_file_is_not_redownloaded(tmp_path: Path) -> None:
     first.write_bytes(b"corrupted")  # cached file with a wrong checksum is re-fetched
     ensure_source(spec, tmp_path, fetch)
     assert len(calls) == 2
+
+
+def test_unpinned_fetch_of_changed_file_records_digest(tmp_path: Path) -> None:
+    """F-13: no pin -> any content accepted, digest + Last-Modified recorded, re-fetched daily."""
+    spec = SourceSpec("x.bin", "http://example.invalid/x")
+    body = [b"monday"]
+
+    def fetch(url: str, dest: Path) -> dict[str, str]:
+        dest.write_bytes(body[0])
+        return {"Last-Modified": "Mon, 09 Nov 2026 00:00:00 GMT"}
+
+    a = fetch_source(spec, tmp_path, fetch)
+    assert a.spec.sha256 == hashlib.sha256(b"monday").hexdigest()
+    assert a.spec.provenance()["last_modified"] == "Mon, 09 Nov 2026 00:00:00 GMT"
+    body[0] = b"tuesday"
+    b = fetch_source(spec, tmp_path, fetch)
+    assert b.spec.sha256 == hashlib.sha256(b"tuesday").hexdigest()
+
+
+def test_pinned_mismatch_fails_clearly(tmp_path: Path) -> None:
+    spec = _spec(b"good")
+
+    def bad(url: str, dest: Path) -> None:
+        dest.write_bytes(b"changed")
+
+    with pytest.raises(ChecksumMismatch, match="sha256 mismatch"):
+        fetch_source(spec, tmp_path, bad)
