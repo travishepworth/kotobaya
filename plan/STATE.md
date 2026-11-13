@@ -14,7 +14,7 @@ Updated: run 15 start
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| AND-SETTINGS | writer | 1 | t/AND-SETTINGS-settings-tab | run 15 |
+| AND-SETTINGS | writer (rebase fix) | 2 | t/AND-SETTINGS-settings-tab | run 15 |
 
 ## Queued
 (none)
