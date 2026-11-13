@@ -671,3 +671,4 @@
 2026-11-13T04:58:40Z T505a MERGE validate.py green (280 stubs); 1 attempt (low)
 2026-11-13T05:07:33Z T501 MERGE CHECK_GREEN core+server; 1 attempt (med)
 2026-11-13T05:08:19Z T505b DISPATCH writer (server, Gradle slot)
+2026-11-13T05:16:41Z T505b MERGE CHECK_GREEN server; 1 attempt (low); minors → FOLLOWUPS F-20

@@ -279,3 +279,7 @@
 - T404b: ruby reading hints (ruby: hint) unused — parse_sentences has no hint input; add hint plumbing.
 - T406/T408b: SentenceToken lacks word status → web fetches getDictEntry per entry (N requests/page); consider status in sentences/parse response (contract add).
 - T406: override UX applies on click without parseText preview/inline editor (deviation for ≤2-click rule); human to judge in HUMAN_CHECKS.
+
+## F-20 (from T505b, run 7) — grammar seed polish (low; fold into T507 or a small server ticket)
+- Seeding is only a library call (`GrammarSeeder.seed(opApply)`); nothing invokes it. Add a trigger (first-start opt-in, settings action, or CLI) so the user can actually load the 280 stubs.
+- 3 duplicate (jlpt,title) pairs in fixtures/grammar-seed (N2 "cannot help but do"; N1 "not to mention"; N1 "without, formal"): retitle, re-copy to server/src/main/resources/grammar-seed/, make validate.py + GrammarApiTest check unique titles per level.
