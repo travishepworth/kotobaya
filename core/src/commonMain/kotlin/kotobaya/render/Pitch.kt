@@ -7,6 +7,16 @@ internal object Pitch {
     /** Small kana that join the preceding mora (っ, ー and ん are morae of their own). */
     private const val SMALL = "ゃゅょぁぃぅぇぉゎゕゖャュョァィゥェォヮヵヶ"
 
+    private const val PARTICLE = "○"
+
+    private fun name(drop: Int, size: Int): String? = when {
+        drop == 0 -> "heiban"
+        drop == 1 -> "atamadaka"
+        drop == size -> "odaka"
+        drop < size -> "nakadaka"
+        else -> null
+    }
+
     fun morae(reading: String): List<String> {
         val out = ArrayList<String>()
         for (c in reading) {
@@ -18,7 +28,9 @@ internal object Pitch {
     /**
      * One `<span class="kb-pitch">` per distinct non-negative drop, in the given order. Mora i (1-based)
      * is high iff `(i == 1 && drop == 1) || (i >= 2 && (drop == 0 || i <= drop))`; mora `drop` also gets
-     * `kb-pitch-drop`. A drop past the last mora (odaka with particle) marks no drop.
+     * `kb-pitch-drop`. Order is the caller's (dictionary order, most common first). A drop on the last mora
+     * (odaka, or a one-mora atamadaka) adds a trailing low particle slot (`○`) so the drop is visible. Each
+     * pattern ends with its name as text (`<small>`). A drop past the last mora marks no drop and has no name.
      */
     fun html(reading: String, drops: List<Int>): String {
         val morae = morae(reading)
@@ -34,6 +46,10 @@ internal object Pitch {
                 if (i == drop) sb.append(" kb-pitch-drop")
                 sb.append("\">").append(escapeHtml(mora)).append("</span>")
             }
+            if (drop == morae.size) {
+                sb.append("<span class=\"kb-mora kb-pitch-low\">").append(PARTICLE).append("</span>")
+            }
+            name(drop, morae.size)?.let { sb.append("<small>").append(it).append("</small>") }
             sb.append("</span>")
         }
         return sb.toString()

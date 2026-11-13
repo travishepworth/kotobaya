@@ -199,8 +199,7 @@ public object DefaultCardRenderer : CardRenderer {
 
         private fun pitch(): String {
             val d = input.dictionary ?: return ""
-            val on = options.pitch || input.kind == "pitch"
-            if (!on || d.pitchDrops.isEmpty()) return ""
+            if (!options.pitch || d.pitchDrops.isEmpty()) return ""
             val html = Pitch.html(Sanitizer.stripSentinels(d.reading), d.pitchDrops)
             return if (html.isEmpty()) "" else "<div class=\"kb-reading\">$html</div>"
         }

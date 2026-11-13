@@ -110,3 +110,4 @@
 .kb-pitch-high { border-top: 2px solid var(--kb-pitch-line); }
 .kb-pitch-low { border-top: 2px solid transparent; }
 .kb-pitch-drop { border-right: 2px solid var(--kb-pitch-line); }
+.kb-pitch small { display: block; font-size: 0.6em; line-height: 1.2; color: var(--kb-fg-muted); }

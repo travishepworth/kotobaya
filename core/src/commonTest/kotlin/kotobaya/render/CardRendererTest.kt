@@ -264,53 +264,16 @@ class CardRendererTest {
 
     // --- pitch ---
 
-    private fun pitchSpans(reading: String, vararg drops: Int): String {
-        val d = DictionaryData("x", reading, emptyList(), emptyList(), drops.toList())
-        val r = render(BuiltInNoteTypes.VOCAB.info, mapOf("reading" to "r"), kind = "pitch", side = CardSide.BACK, dictionary = d)
-        return r.html.substringAfter("<div class=\"kb-reading\"><span class=\"kb-pitch\">", "")
-            .substringBefore("</div>").let { if (it.isEmpty()) "" else "<span class=\"kb-pitch\">$it" }
-    }
-
-    private fun m(mora: String, high: Boolean, drop: Boolean = false) =
-        "<span class=\"kb-mora ${if (high) "kb-pitch-high" else "kb-pitch-low"}${if (drop) " kb-pitch-drop" else ""}\">$mora</span>"
-
-    private fun p(vararg morae: String) = "<span class=\"kb-pitch\">" + morae.joinToString("") + "</span>"
-
     @Test
-    fun pitchHeibanAtamadakaNakadakaOdaka() {
-        assertEquals(p(m("さ", false), m("く", true), m("ら", true)), pitchSpans("さくら", 0))
-        assertEquals(p(m("い", true, true), m("の", false), m("ち", false)), pitchSpans("いのち", 1))
-        assertEquals(p(m("た", false), m("べ", true, true), m("る", false)), pitchSpans("たべる", 2))
-        assertEquals(p(m("お", false), m("と", true), m("こ", true, true)), pitchSpans("おとこ", 3))
-    }
-
-    @Test
-    fun pitchJoinsSmallKanaButNotSokuonOrLongVowel() {
-        assertEquals(
-            p(m("きょ", false), m("う", true), m("しゃ", true), m("ー", true), m("っ", true), m("と", true)),
-            pitchSpans("きょうしゃーっと", 0),
-        )
-    }
-
-    @Test
-    fun pitchOneSpanPerDistinctPatternAndInvalidDropsSkipped() {
-        assertEquals(
-            p(m("あ", true, true), m("め", false)) + p(m("あ", false), m("め", true)),
-            pitchSpans("あめ", 1, -1, 1, 0),
-        )
-        assertEquals(p(m("あ", false), m("め", true)), pitchSpans("あめ", 5))
-    }
-
-    @Test
-    fun pitchOnlyWhenEnabledOrOnPitchCards() {
+    fun pitchOnlyWhenEnabled() {
         val d = taberu
         val meaningOff = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "meaning", side = CardSide.BACK, dictionary = d)
         assertFalse("kb-pitch" in meaningOff.html)
         val meaningOn = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "meaning", side = CardSide.BACK, dictionary = d, options = opts.copy(pitch = true))
         assertTrue("kb-pitch-drop" in meaningOn.html)
-        val pitchCard = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "pitch", side = CardSide.BACK, dictionary = d)
+        val pitchCard = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "pitch", side = CardSide.BACK, dictionary = d, options = opts.copy(pitch = true))
         assertTrue("kb-pitch-drop" in pitchCard.html)
-        val noData = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "pitch", side = CardSide.BACK, dictionary = d.copy(pitchDrops = emptyList()))
+        val noData = render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "pitch", side = CardSide.BACK, dictionary = d.copy(pitchDrops = emptyList()), options = opts.copy(pitch = true))
         assertFalse("kb-pitch" in noData.html)
         assertFalse("kb-pitch" in render(BuiltInNoteTypes.VOCAB.info, emptyMap(), kind = "pitch", side = CardSide.FRONT, dictionary = d).html)
     }

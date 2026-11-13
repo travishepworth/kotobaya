@@ -29,7 +29,10 @@ internal object BuiltInTemplates {
         "reading" to Template(EXPRESSION, back(READING, MEANING, AUDIO, VOCAB_TAIL)),
         "listening" to Template(AUDIO, back(EXPRESSION, READING, MEANING, VOCAB_TAIL)),
         "production" to Template(MEANING, back(EXPRESSION, READING, AUDIO, VOCAB_TAIL)),
-        "pitch" to Template(EXPRESSION, back(READING, AUDIO, VOCAB_TAIL)),
+        "pitch" to Template(
+            EXPRESSION + "{{#reading}}<div class=\"kb-reading\">{{kana:reading}}</div>{{/reading}}",
+            back("{{pitch:reading}}", AUDIO, VOCAB_TAIL),
+        ),
     )
 
     private val kanji = mapOf(
