@@ -35,6 +35,21 @@ class GrammarCardSentencesTest {
     }
 
     @Test
+    fun rotationCoversEveryTierSentenceDeterministically() {
+        val cands = listOf(c("c", 0), c("a", 0), c("b", 0), c("z", 2))
+        // Reviews: rotation (reps) and lastShown both advance.
+        var last: String? = null
+        val seen = (0 until 6).map { n -> GrammarCardSentences.pick(cands, last, n)!!.sentenceId.also { last = it } }
+        assertEquals(listOf("a", "b", "c", "a", "b", "c"), seen)
+        // Drills: reps stays put, lastShown moves.
+        last = null
+        val drills = (0 until 6).map { GrammarCardSentences.pick(cands, last, 4)!!.sentenceId.also { last = it } }
+        assertEquals(setOf("a", "b", "c"), drills.toSet())
+        // Pure: same inputs, same pick, whatever the input order.
+        assertEquals(GrammarCardSentences.pick(cands, "a", 1), GrammarCardSentences.pick(cands.reversed(), "a", 1))
+    }
+
+    @Test
     fun iPlusZeroIsPreferredOverUnknownWords() {
         val cands = listOf(c("a", 2), c("b", 0), c("c", 1), c("d", 0))
         repeat(6) { n -> assertEquals(0, GrammarCardSentences.pick(cands, null, n)!!.unknownCount) }

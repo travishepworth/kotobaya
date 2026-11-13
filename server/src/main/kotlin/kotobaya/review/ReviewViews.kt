@@ -8,6 +8,7 @@ import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.PresetRow
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.dict.SearchText
+import kotobaya.grammar.cards.GrammarCardSentenceSource
 import kotobaya.server.formatInstant
 import kotobaya.server.json
 import org.jooq.DSLContext
@@ -88,8 +89,12 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.set<JsonNode>("card", v.json)
             item.set<JsonNode>("entry", note["entry_seq"].takeUnless { it.isNull }?.let { entry(note["entry_seq"].asLong()) } ?: json.nullNode())
             item.set<JsonNode>("kanji", note["kanji_literal"].takeUnless { it.isNull }?.let { kanji(it.asText()) } ?: json.nullNode())
-            // No sentence tables are populated yet (listEntryExamples is a stub), so no rotating example is chosen.
-            item.putNull("sentence")
+            // C-15: grammar cards (not production) show a rotating example sentence from the user's media.
+            val gid = note["grammar_point_id"].takeUnless { it.isNull }?.asText()
+            val grammarCloze = gid != null && v.json["kind"].asText() != "production"
+            val picked = if (grammarCloze && gid != null) GrammarCardSentenceSource.itemFor(dsl, id, gid, v.json["reps"].asInt()) else null
+            item.set<JsonNode>("sentence", picked?.first ?: json.nullNode())
+            if (grammarCloze) item.set<JsonNode>("grammar_sentence", picked?.second ?: json.nullNode())
             item.put("review_type", type)
             if (type == "drill" || type == "cram") {
                 item.putNull("preview")

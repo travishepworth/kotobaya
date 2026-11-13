@@ -34,19 +34,32 @@ public object GrammarCardSentences {
     /**
      * Picks one candidate, or null if none has a valid span.
      *
-     * Invalid spans are dropped. With two or more usable candidates the [lastShown] sentence is excluded, so two
-     * consecutive reviews never show the same sentence. Among the rest the lowest [GrammarCandidate.unknownCount]
-     * wins (i+0 before i+1 before the rest); ties are broken by [rotation] (e.g. the card's review count) over the
-     * tied candidates in a stable order (sentence id), so successive reviews cycle through them.
+     * Invalid spans are dropped; candidates are put in the stable order (sentence id, start, end). The best tier is
+     * the lowest [GrammarCandidate.unknownCount] (i+0 before i+1 before the rest). If [lastShown] is in that tier and
+     * another sentence is too, the pick steps to the next sentence after it (wrapping), so repeated showings, with or
+     * without [rotation] moving (drills), visit every sentence of the tier. Otherwise the tier is indexed by
+     * [rotation] (e.g. the card's review count). A [lastShown] that is the only sentence of its tier is skipped in
+     * favour of the next best tier whenever another sentence exists; a lone sentence is shown even if it was last.
      */
     public fun pick(candidates: List<GrammarCandidate>, lastShown: Uuid?, rotation: Int = 0): GrammarCandidate? {
         val usable = candidates.filter { isValidSpan(it.text, it.start, it.end) }
             .distinctBy { Triple(it.sentenceId, it.start, it.end) }
+            .sortedWith(compareBy({ it.sentenceId.toString() }, { it.start }, { it.end }))
         if (usable.isEmpty()) return null
-        val pool = if (usable.map { it.sentenceId }.distinct().size >= 2) usable.filter { it.sentenceId != lastShown } else usable
-        val best = pool.minOf { it.unknownCount }
-        val tier = pool.filter { it.unknownCount == best }.sortedBy { it.sentenceId.toString() }
-        return tier[((rotation % tier.size) + tier.size) % tier.size]
+        fun tierOf(pool: List<GrammarCandidate>): List<GrammarCandidate> {
+            val best = pool.minOf { it.unknownCount }
+            return pool.filter { it.unknownCount == best }
+        }
+        fun byRotation(tier: List<GrammarCandidate>) = tier[((rotation % tier.size) + tier.size) % tier.size]
+        var tier = tierOf(usable)
+        if (lastShown != null && tier.any { it.sentenceId == lastShown }) {
+            if (tier.map { it.sentenceId }.distinct().size >= 2) {
+                return tier.firstOrNull { it.sentenceId.toString() > lastShown.toString() } ?: tier.first()
+            }
+            val others = usable.filter { it.sentenceId != lastShown }
+            if (others.isNotEmpty()) tier = tierOf(others)
+        }
+        return byRotation(tier)
     }
 
     /** The renderer input for [c]. */

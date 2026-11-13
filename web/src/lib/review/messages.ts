@@ -33,6 +33,8 @@ const en = {
 	'review.type.cram': 'Cram (schedule unchanged)',
 	'review.drillUnavailable': 'This drill source is not available yet.',
 	'review.missingNoteType': 'The note type of this card is missing.',
+	'review.noExampleSentence':
+		'No example sentence for this grammar point yet. Mine one from your media, or mark a span in the reader.',
 	'review.renderFailed': 'This card could not be rendered: {detail}',
 	'review.edit.title': 'Edit note',
 	'review.edit.mnemonic': 'Mnemonic',

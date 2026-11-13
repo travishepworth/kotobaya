@@ -86,6 +86,16 @@
 					mnemonic: note.mnemonic,
 					dictionary: toDictionary(item.entry),
 					kanji: toKanji(item.kanji),
+					// C-15: the rotated example sentence of a grammar card; the span is blanked/highlighted by core.
+					cloze: item.grammarSentence
+						? {
+								sentenceId: item.grammarSentence.sentenceId,
+								text: item.grammarSentence.text,
+								start: item.grammarSentence.startOffset,
+								end: item.grammarSentence.endOffset,
+								translation: item.grammarSentence.translation ?? null
+							}
+						: null,
 					side: flipped ? 'back' : 'front',
 					// Furigana is switched with a CSS class in CardView, not by re-rendering.
 					options: { furigana: true, pitch: true, showMnemonic: true, mediaUrlTemplate: MEDIA_URL_TEMPLATE }
@@ -95,6 +105,14 @@
 			return { ok: false, detail: e instanceof Error ? e.message : String(e) };
 		}
 	});
+
+	/** A grammar card (not production) with no mined example sentence yet: explain the empty cloze. */
+	const noExample = $derived(
+		!!current &&
+			current.card.note?.type === 'grammar' &&
+			current.card.kind !== 'production' &&
+			!current.grammarSentence
+	);
 
 	const previews = $derived.by((): IntervalPreview[] | null => {
 		const item = current;
@@ -190,6 +208,7 @@
 				reviewAnswerRequest: {
 					id: answerId,
 					cardId: item.card.id,
+					...(item.grammarSentence ? { sentenceId: item.grammarSentence.sentenceId } : {}),
 					rating: b.rating,
 					...(b.button ? { button: b.button } : {}),
 					mode: item.reviewType === 'drill' || item.reviewType === 'cram' ? item.reviewType : 'schedule',
@@ -394,6 +413,9 @@
 	{:else if rendered === null}
 		<!-- unreachable: current is set -->
 	{:else if rendered.ok}
+		{#if noExample}
+			<p class="notice">{tr('review.noExampleSentence')}</p>
+		{/if}
 		<CardView bind:this={cardView} rendered={rendered.card} {furigana} />
 	{:else}
 		<p class="error" role="alert">{tr('review.renderFailed', { detail: rendered.detail })}</p>
@@ -444,6 +466,10 @@
 	}
 	.done {
 		text-align: center;
+	}
+	.notice {
+		color: var(--kb-muted, #6b7280);
+		font-style: italic;
 	}
 	.error {
 		color: var(--kb-danger, #b91c1c);
