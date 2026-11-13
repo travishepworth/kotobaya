@@ -269,3 +269,5 @@
 - T411c (architect, minor): OpApplier.mediaCreated emits deck.created w/ defaults then runner sends deck.updated — make mediaCreated return none() and have the runner emit deck.created per MEDIA_PIPELINE 3.3 step 6 (also clears T202b silent-skip path).
 - T411c (architect, minor): re-claimed child with already-published archives (version + both blob hashes match) succeeds with no ops instead of stale_base — record as ADR / MEDIA_PIPELINE 3.3 step 5 amendment.
 - T411c (reviewer, minor): deviation 2 alt fix — return stale_base when payload.parent_job_id differs from the publishing parent, or document in MEDIA_PIPELINE 3.4.
+- C-12 (reviewer, minor): PARSER.md 4.4 sync-path `reading` sanitising has no length cap while API OverrideToken.reading maxLength 200 — document or apply the same cap.
+- C-12 (architect handoff): C-11 owner adds optional `parser_version` to content archive header; T403b note real Sudachi may tag unknown 𠮷 as punctuation.

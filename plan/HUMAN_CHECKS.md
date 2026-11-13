@@ -22,6 +22,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - AnkiConnect (T311): default allowed origins include moz-extension://* and chrome-extension://* (loopback + API key). Confirm acceptable; server must be re-toggled after app restart.
 
 ## Provisional decisions
+- C-12 (contract tightening, no merged consumer): SentenceToken all 10 fields required; worker parse port 8082 unauthenticated (NetworkPolicy only); cform stored verbatim; pos_class ties → `content`; overrides must align to token boundaries. Reverse via a C-ticket.
 - ADR-014..019 (P4 planning): server installs media from worker snapshots; jpdb mapping corrections = server import settings; jpdb cache on PVC; coverage/i+1 per request; Android coverage via API; Sudachi full-dict tests skip offline.
 - ADR-020: EDRDG source files no longer exact-checksum pinned (they change daily); fetched SHA-256 recorded in release provenance; optional pin for reproducible builds (F-13).
 - 501 audit (2026-11-13): putBlob/getBlob/queryBlobs implemented but unwired, and refreshDictionary/getDictRelease never implemented → W-5a (urgent). Other 501s belong to open P4 tickets or later phases (grammar, export, TTS). No ticket found for listHot*; confirm whether it is in scope.

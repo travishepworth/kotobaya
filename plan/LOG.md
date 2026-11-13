@@ -627,3 +627,6 @@
 2026-11-13T03:52:52Z T411c CHECK_GREEN server after rebase; reviewer + architect dispatched
 2026-11-13T03:53:33Z T411c REVIEW_APPROVE architect (2 minors → FOLLOWUPS)
 2026-11-13T03:53:51Z T411c MERGE reviewer + architect APPROVE (minors → FOLLOWUPS); 1 attempt
+2026-11-13T04:00:12Z C-12 HANDOFF attempt 2 DONE; CHECK_GREEN contracts; reviewer + architect re-check dispatched
+2026-11-13T04:00:34Z C-12 REVIEW_APPROVE reviewer (both majors fixed; 1 minor → FOLLOWUPS)
+2026-11-13T04:00:50Z C-12 MERGE reviewer + architect APPROVE; 2 attempts
