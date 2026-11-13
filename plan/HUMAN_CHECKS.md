@@ -4,6 +4,12 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 4, 2026-11-13)
+- [ ] **Build and push 0.1.1**: W-5a is merged (main). putBlob/getBlob/queryBlobs are wired with S3BlobStore (S3_* env already in the Helm Deployment), and getDictRelease/refreshDictionary are implemented (dedupe key `dict-refresh`). Then retry the jpdb history import from the web app.
+- [ ] Also in 0.1.1: Helm `httpRoute.enabled` + `httpRoute.parentRefs/hostnames` (D-1), so the hand-written gateway.yaml can go. Worker memory defaults to 1Gi request / 3Gi limit. A resumed dict refresh now rebuilds the device package (F-12). EDRDG files are no longer checksum-pinned (F-13/ADR-020); if your values set EDRDG `sha256` in DICT_SOURCES_JSON, drop them.
+- [ ] New web pages: Dictionary (/dictionary) and Notes (/notes) (T412+T413). Notes search is the contract's plain substring `q`, not the card query language.
+- [ ] Docker hygiene: tests now use tmpfs for Postgres (F-9); acceptance follows in F-10.
+
 ## Fill in when you can (placeholders used until then)
 - [ ] `docs/DECISIONS.md` › Cluster: arch, registry URL, domain, DNS provider, existing Postgres/S3, restic target.
 - [ ] `.env.local` with `JPDB_API_KEY`, and `fixtures/private/jpdb-export.json` (both git-ignored).
