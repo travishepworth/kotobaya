@@ -7,6 +7,8 @@ COPY pyproject.toml ./
 COPY src ./src
 # pyproject pins the Sudachi full dictionary. SUDACHI_DICT=core swaps in the small core dictionary for smaller images.
 ARG SUDACHI_DICT=full
+# CPU-only torch (matches uv.lock); avoids multi-GB CUDA wheels. Keep version in sync with uv.lock.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
 RUN pip install --no-cache-dir . \
     && if [ "$SUDACHI_DICT" = "core" ]; then \
          pip uninstall -y sudachidict-full && pip install --no-cache-dir sudachidict-core==20250825; \

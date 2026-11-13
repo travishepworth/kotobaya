@@ -8,8 +8,17 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "sudachidict-full==20250825",
     "sudachipy==0.6.10",
+    "torch>=2.5",
     "zstandard>=0.25.0",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [
