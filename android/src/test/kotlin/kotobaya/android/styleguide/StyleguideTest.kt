@@ -24,7 +24,7 @@ import org.robolectric.annotation.Config
 
 /** The styleguide lists every generated token, and every page renders in light and dark (make check). */
 @RunWith(RobolectricTestRunner::class)
-@Config(application = Application::class, sdk = [34])
+@Config(application = Application::class) // default SDK sandbox, like SyncUiTest: the sdk-34 one carries app-start tests
 class StyleguideTest {
     @get:Rule
     val rule = createComposeRule()
