@@ -1,23 +1,16 @@
 # STATE
 Mode: single-session
-Phase: P5 (Struggle + grammar)   Gate: GATE-P2, GATE-P3, GATE-P4 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (orchestrator run 9 in progress)
+Phase: P5 DONE → P6 (T604 merged, T607 deferred)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13 (end of orchestrator run 9)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 8)
-- Run 8 merged (6): T504a (web struggle UI), C-14 (worker-parse 1.1.0 rule-test), D-2 + D-3 (Docker volume leaks fixed: core/server/worker postgres+seaweedfs → tmpfs; counts stable), T506c (rule tester + 422/503 rule validation), T507 (grammar cards picker/rotation/i+0 + F-20 seed trigger GRAMMAR_SEED_ON_START).
-- Stopped for context budget, not disk (32 GB free; human pruned volumes).
-- T607 DEFERRED by human (LLM assist; DECISIONS.md line 32): never dispatch; P6 is complete without it.
-- Nothing in flight; no worktrees or t/* branches.
-- QUEUE ORDER next run (P5 remaining; all deps merged):
-  1. F-25 (server, sonnet med): expose GrammarCardSentenceSource to review (no API op yet → may need C-ticket) — needed for P5 "Done when".
-  2. T504b (android struggle + 4×3 hot-word widget; ticket plan/tickets/T504.md SPLIT line; mirror web T504a). Gradle slot.
-  3. T508 (ticket plan/tickets/T508.md; web+android; deps T507 ✓ T406 ✓). Consider split a=web (no Gradle) / b=android.
-  4. F-22 (grammar detection gaps; check part 1 vs T506a att 2), F-24 (contract polish) if cheap.
-  5. Then `make test` → GATE-P5 deferred → P6 (T604 merged; T607 deferred).
-- Merge helper unchanged (rebase → make check → ff → git mv HANDOFF.md plan/handoffs/<ID>.md → worktree remove -f -f → branch -D incl. worktree-agent-* → LOG → push).
-- RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (count re-checks/reviewers). Stale idle Gradle daemons (4–6 h, ~5 GB RSS) seen run 8 — `./gradlew --stop` when nothing builds.
-- BACKLOG status column is stale for P4/P5 (STATE/LOG are authoritative).
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 9)
+- Run 9 merged (7): T508a (web "saw something weird"), C-15 (QueueItem.grammar_sentence, additive), T504b (android struggle + 4x3 hot-word widget), F-25 (core picker full rotation + server/web grammar sentence), T508b (android grammar capture), F-22 (matcher tests; fixes already present), F-25b (android offline grammar sentence pick).
+- All P5 tickets MERGED. P5 `make test`: GREEN (rc=0, 2026-11-13); GATE-P5 deferred → HUMAN_CHECKS
+- Stopped for context budget. Nothing in flight; no worktrees or t/* branches.
+- NEXT RUN: P6 has no runnable tickets (T604 merged, T607 DEFERRED). Optionally run low followups below, then final make test, finalize HUMAN_CHECKS, notify → ALL_DONE.
+- Optional low followups: F-27 (android struggle/grammar-capture writes online-only, not ops), F-24 (contract polish, Gradle), F-23 (A→B→A dedupe, contract), F-21.
+- Merge helper unchanged. RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (contracts check uses Gradle too).
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
@@ -48,7 +41,7 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P5: merged 14 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a; run 8: T504a, C-14, D-2, T506c, D-3, T507) · attempts 16 · escalations 0 · left: F-25, T504b, T508
+P5: merged 14 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a; run 8: T504a, C-14, D-2, T506c, D-3, T507) · attempts 16 · escalations 0 · run 9: T508a, C-15, T504b, F-25, T508b, F-22, F-25b · left: none (make test → GATE-P5)
 P4 DONE: W-5 merged run 7; make test green
 P4: merged 33+/37 (run 6: F-14, F-15, F-16, F-17, F-18, F-19, T403b, T403c, T408a, T404b, T406, T408b, T410; left: W-5) (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
