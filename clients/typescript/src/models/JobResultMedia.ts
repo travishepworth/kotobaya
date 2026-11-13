@@ -36,6 +36,10 @@ export interface JobResultMedia {
      */
     mediaId: string;
     /**
+     * Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports.
+     */
+    parserVersion?: string;
+    /**
      * Segments now in the media.
      */
     segments: number;
@@ -88,6 +92,7 @@ export function JobResultMediaFromJSONTyped(json: any, ignoreDiscriminator: bool
         
         'contentVersion': json['content_version'],
         'mediaId': json['media_id'],
+        'parserVersion': json['parser_version'] == null ? undefined : json['parser_version'],
         'segments': json['segments'],
         'sentences': json['sentences'],
         'tokens': json['tokens'],
@@ -110,6 +115,7 @@ export function JobResultMediaToJSONTyped(value?: JobResultMedia | null, ignoreD
         
         'content_version': value['contentVersion'],
         'media_id': value['mediaId'],
+        'parser_version': value['parserVersion'],
         'segments': value['segments'],
         'sentences': value['sentences'],
         'tokens': value['tokens'],

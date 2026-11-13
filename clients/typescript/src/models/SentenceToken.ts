@@ -14,40 +14,46 @@
 
 import { mapValues } from '../runtime';
 /**
- * One parser token of a sentence. Shape finalised by the parser contract; unknown properties must be tolerated.
+ * One parser token of a sentence: token format 1, `contracts/api/PARSER.md` section 1 (C-12),
+ * the same value as `app.sentence.tokens` elements and `contracts/api/token.schema.json`.
+ * Servers send all ten properties; clients must tolerate unknown ones (later optional
+ * additions). Within a sentence tokens are ascending and non-overlapping, offsets are UTF-16
+ * code units into the ORIGINAL sentence text, and `surface` equals that slice; gaps are
+ * punctuation and whitespace.
+ * 
  * @export
  * @interface SentenceToken
  */
 export interface SentenceToken {
     [key: string]: any | any;
     /**
-     * Conjugation form.
+     * Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect.
      */
-    cform?: string | null;
+    cform: string | null;
     /**
-     * Coverage filter class.
+     * Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`).
      */
-    _class?: SentenceTokenClassEnum;
+    _class: SentenceTokenClassEnum;
     /**
      * End offset (exclusive).
      */
     e: number;
     /**
-     * Dictionary form.
+     * Dictionary form used for matching (deinflected, from the normalised text).
      */
-    lemma?: string;
+    lemma: string;
     /**
      * true when a parse override produced this token.
      */
-    override?: boolean;
+    override: boolean;
     /**
-     * Sudachi part-of-speech hierarchy.
+     * Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens.
      */
-    pos?: Array<string>;
+    pos: Array<string>;
     /**
-     * Kana reading of the surface.
+     * Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be empty only for override tokens.
      */
-    reading?: string;
+    reading: string;
     /**
      * Start offset in the sentence text (UTF-16 code units, inclusive).
      */
@@ -57,7 +63,7 @@ export interface SentenceToken {
      */
     seq: number | null;
     /**
-     * Text of the token.
+     * The original text `[s, e)` (never normalised).
      */
     surface: string;
 }
@@ -80,7 +86,13 @@ export type SentenceTokenClassEnum = typeof SentenceTokenClassEnum[keyof typeof 
  * Check if a given object implements the SentenceToken interface.
  */
 export function instanceOfSentenceToken(value: object): value is SentenceToken {
+    if (!('cform' in value) || value['cform'] === undefined) return false;
+    if ((!('_class' in (value as Record<string, any>)) && !('class' in (value as Record<string, any>))) || ((value as Record<string, any>)['_class'] === undefined && (value as Record<string, any>)['class'] === undefined)) return false;
     if (!('e' in value) || value['e'] === undefined) return false;
+    if (!('lemma' in value) || value['lemma'] === undefined) return false;
+    if (!('override' in value) || value['override'] === undefined) return false;
+    if (!('pos' in value) || value['pos'] === undefined) return false;
+    if (!('reading' in value) || value['reading'] === undefined) return false;
     if (!('s' in value) || value['s'] === undefined) return false;
     if (!('seq' in value) || value['seq'] === undefined) return false;
     if (!('surface' in value) || value['surface'] === undefined) return false;
@@ -98,13 +110,13 @@ export function SentenceTokenFromJSONTyped(json: any, ignoreDiscriminator: boole
     return {
         
             ...json,
-        'cform': json['cform'] === undefined ? undefined : json['cform'] === null ? null : json['cform'],
-        '_class': json['class'] == null ? undefined : json['class'],
+        'cform': json['cform'],
+        '_class': json['class'],
         'e': json['e'],
-        'lemma': json['lemma'] == null ? undefined : json['lemma'],
-        'override': json['override'] == null ? undefined : json['override'],
-        'pos': json['pos'] == null ? undefined : json['pos'],
-        'reading': json['reading'] == null ? undefined : json['reading'],
+        'lemma': json['lemma'],
+        'override': json['override'],
+        'pos': json['pos'],
+        'reading': json['reading'],
         's': json['s'],
         'seq': json['seq'],
         'surface': json['surface'],

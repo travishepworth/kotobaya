@@ -33,10 +33,46 @@ class SentenceTokenTest : ShouldSpec() {
         // uncomment below to create an instance of SentenceToken
         //val modelInstance = SentenceToken()
 
+        // to test the property `cform` - Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect.
+        should("test cform") {
+            // uncomment below to test the property
+            //modelInstance.cform shouldBe ("TODO")
+        }
+
+        // to test the property `propertyClass` - Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`).
+        should("test propertyClass") {
+            // uncomment below to test the property
+            //modelInstance.propertyClass shouldBe ("TODO")
+        }
+
         // to test the property `e` - End offset (exclusive).
         should("test e") {
             // uncomment below to test the property
             //modelInstance.e shouldBe ("TODO")
+        }
+
+        // to test the property `lemma` - Dictionary form used for matching (deinflected, from the normalised text).
+        should("test lemma") {
+            // uncomment below to test the property
+            //modelInstance.lemma shouldBe ("TODO")
+        }
+
+        // to test the property ``override`` - true when a parse override produced this token.
+        should("test `override`") {
+            // uncomment below to test the property
+            //modelInstance.`override` shouldBe ("TODO")
+        }
+
+        // to test the property `pos` - Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens.
+        should("test pos") {
+            // uncomment below to test the property
+            //modelInstance.pos shouldBe ("TODO")
+        }
+
+        // to test the property `reading` - Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be empty only for override tokens.
+        should("test reading") {
+            // uncomment below to test the property
+            //modelInstance.reading shouldBe ("TODO")
         }
 
         // to test the property `s` - Start offset in the sentence text (UTF-16 code units, inclusive).
@@ -51,46 +87,10 @@ class SentenceTokenTest : ShouldSpec() {
             //modelInstance.seq shouldBe ("TODO")
         }
 
-        // to test the property `surface` - Text of the token.
+        // to test the property `surface` - The original text `[s, e)` (never normalised).
         should("test surface") {
             // uncomment below to test the property
             //modelInstance.surface shouldBe ("TODO")
-        }
-
-        // to test the property `cform` - Conjugation form.
-        should("test cform") {
-            // uncomment below to test the property
-            //modelInstance.cform shouldBe ("TODO")
-        }
-
-        // to test the property `propertyClass` - Coverage filter class.
-        should("test propertyClass") {
-            // uncomment below to test the property
-            //modelInstance.propertyClass shouldBe ("TODO")
-        }
-
-        // to test the property `lemma` - Dictionary form.
-        should("test lemma") {
-            // uncomment below to test the property
-            //modelInstance.lemma shouldBe ("TODO")
-        }
-
-        // to test the property ``override`` - true when a parse override produced this token.
-        should("test `override`") {
-            // uncomment below to test the property
-            //modelInstance.`override` shouldBe ("TODO")
-        }
-
-        // to test the property `pos` - Sudachi part-of-speech hierarchy.
-        should("test pos") {
-            // uncomment below to test the property
-            //modelInstance.pos shouldBe ("TODO")
-        }
-
-        // to test the property `reading` - Kana reading of the surface.
-        should("test reading") {
-            // uncomment below to test the property
-            //modelInstance.reading shouldBe ("TODO")
         }
 
     }

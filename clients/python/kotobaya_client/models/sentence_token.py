@@ -26,27 +26,24 @@ from pydantic_core import to_jsonable_python
 
 class SentenceToken(BaseModel):
     """
-    One parser token of a sentence. Shape finalised by the parser contract; unknown properties must be tolerated.
+    One parser token of a sentence: token format 1, `contracts/api/PARSER.md` section 1 (C-12), the same value as `app.sentence.tokens` elements and `contracts/api/token.schema.json`. Servers send all ten properties; clients must tolerate unknown ones (later optional additions). Within a sentence tokens are ascending and non-overlapping, offsets are UTF-16 code units into the ORIGINAL sentence text, and `surface` equals that slice; gaps are punctuation and whitespace. 
     """ # noqa: E501
-    cform: Optional[StrictStr] = Field(default=None, description="Conjugation form.")
-    var_class: Optional[StrictStr] = Field(default=None, description="Coverage filter class.", alias="class")
+    cform: Optional[StrictStr] = Field(description="Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect.")
+    var_class: StrictStr = Field(description="Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`).", alias="class")
     e: Annotated[int, Field(strict=True, ge=1)] = Field(description="End offset (exclusive).")
-    lemma: Optional[StrictStr] = Field(default=None, description="Dictionary form.")
-    override: Optional[StrictBool] = Field(default=None, description="true when a parse override produced this token.")
-    pos: Optional[List[StrictStr]] = Field(default=None, description="Sudachi part-of-speech hierarchy.")
-    reading: Optional[StrictStr] = Field(default=None, description="Kana reading of the surface.")
+    lemma: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Dictionary form used for matching (deinflected, from the normalised text).")
+    override: StrictBool = Field(description="true when a parse override produced this token.")
+    pos: Annotated[List[Annotated[str, Field(min_length=1, strict=True)]], Field(max_length=4)] = Field(description="Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens.")
+    reading: StrictStr = Field(description="Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be empty only for override tokens.")
     s: Annotated[int, Field(strict=True, ge=0)] = Field(description="Start offset in the sentence text (UTF-16 code units, inclusive).")
     seq: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Matched dictionary entry; null = unmapped.")
-    surface: StrictStr = Field(description="Text of the token.")
+    surface: Annotated[str, Field(min_length=1, strict=True)] = Field(description="The original text `[s, e)` (never normalised).")
     additional_properties: Dict[str, Any] = {}
     __properties: ClassVar[List[str]] = ["cform", "class", "e", "lemma", "override", "pos", "reading", "s", "seq", "surface"]
 
     @field_validator('var_class')
     def var_class_validate_enum(cls, value):
         """Validates the enum"""
-        if value is None:
-            return value
-
         if value not in set(['content', 'particle', 'auxiliary', 'name', 'other']):
             raise ValueError("must be one of enum values ('content', 'particle', 'auxiliary', 'name', 'other')")
         return value

@@ -8,6 +8,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **content_version** | **int** | Content version published by this job. | 
 **media_id** | **str** | The media. | 
+**parser_version** | **str** | Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports. | [optional] 
 **segments** | **int** | Segments now in the media. | 
 **sentences** | **int** | Sentences now in the media. | 
 **tokens** | **int** | Word tokens. | 

@@ -35,7 +35,9 @@ class TestOverrideToken(unittest.TestCase):
         model = OverrideToken()
         if include_optional:
             return OverrideToken(
+                var_class = 'content',
                 lemma = '0',
+                reading = 'jUR,rZ#UM/?R,Fp^l6$ARj0',
                 seq = 1,
                 surface = '0'
             )

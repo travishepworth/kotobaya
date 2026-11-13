@@ -38,6 +38,7 @@ import com.google.gson.annotations.SerializedName
  * @param uniqueEntries Distinct entries (= deck items).
  * @param unmapped jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11).
  * @param unmappedTokens Tokens that matched no entry.
+ * @param parserVersion Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports.
  */
 
 
@@ -73,7 +74,11 @@ data class JobResultMedia (
 
     /* Tokens that matched no entry. */
     @SerializedName("unmapped_tokens")
-    val unmappedTokens: kotlin.Int
+    val unmappedTokens: kotlin.Int,
+
+    /* Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports. */
+    @SerializedName("parser_version")
+    val parserVersion: kotlin.String? = null
 
 ) {
 

@@ -3808,8 +3808,13 @@ paths:
         apply global parse overrides) synchronously and stores nothing. The text is split into
         sentences; token offsets are relative to each sentence's `text`. `entries` holds one
         summary (with your `status` and `note_id`) per distinct `seq` among the tokens.
-        Text of 1 to 20,000 characters; longer is `413 payload_too_large`. If the parser
-        (worker) is unreachable: `503 unavailable`.
+        Text of 1 to 20,000 characters (code points); longer is `413 payload_too_large`.
+        Tokens, sentence splitting and override application: `contracts/api/PARSER.md` (C-12).
+        The server forwards the text to the worker parse service (`contracts/api/worker-parse.yaml`,
+        `PARSER_URL`, timeout `PARSER_TIMEOUT_MS`, default 10 s) and passes its sentences through
+        unchanged. If the parser is not configured, unreachable, times out, is busy or starting,
+        or answers with anything but `200`/`413`: `503 unavailable` (`Retry-After: 5` when busy or
+        starting).
       x-emits-ops: []
       security:
         - bearerAuth: [read]
@@ -9453,13 +9458,24 @@ components:
           description: Import known, never-forget and blacklisted words as overrides.
     SentenceToken:
       type: object
-      description: One parser token of a sentence. Shape finalised by the parser contract; unknown properties must
-        be tolerated.
+      description: |
+        One parser token of a sentence: token format 1, `contracts/api/PARSER.md` section 1 (C-12),
+        the same value as `app.sentence.tokens` elements and `contracts/api/token.schema.json`.
+        Servers send all ten properties; clients must tolerate unknown ones (later optional
+        additions). Within a sentence tokens are ascending and non-overlapping, offsets are UTF-16
+        code units into the ORIGINAL sentence text, and `surface` equals that slice; gaps are
+        punctuation and whitespace.
       required:
       - s
       - e
       - surface
+      - lemma
+      - reading
+      - pos
+      - cform
       - seq
+      - class
+      - override
       additionalProperties: true
       properties:
         s:
@@ -9476,24 +9492,29 @@ components:
           - 4
         surface:
           type: string
-          description: Text of the token.
+          minLength: 1
+          description: The original text `[s, e)` (never normalised).
           examples:
           - 食べ
         lemma:
           type: string
-          description: Dictionary form.
+          minLength: 1
+          description: Dictionary form used for matching (deinflected, from the normalised text).
           examples:
           - 食べる
         reading:
           type: string
-          description: Kana reading of the surface.
+          description: Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be
+            empty only for override tokens.
           examples:
           - たべ
         pos:
           type: array
+          maxItems: 4
           items:
             type: string
-          description: Sudachi part-of-speech hierarchy.
+            minLength: 1
+          description: Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens.
           examples:
           - - 動詞
             - 一般
@@ -9501,9 +9522,9 @@ components:
           type:
           - string
           - 'null'
-          description: Conjugation form.
+          description: Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect.
           examples:
-          - 連用形
+          - 連用形-一般
         seq:
           oneOf:
           - $ref: '#/components/schemas/EntrySeq'
@@ -9517,7 +9538,8 @@ components:
           - auxiliary
           - name
           - other
-          description: Coverage filter class.
+          description: Coverage filter class, derived by the table in PARSER.md section 2 (same values as
+            `occurrence.pos_class`).
         override:
           type: boolean
           description: true when a parse override produced this token.
@@ -10679,9 +10701,18 @@ components:
           items:
             $ref: '#/components/schemas/DictEntrySummary'
           description: One summary per distinct mapped entry, ascending by `seq`.
+        parser_version:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary
+            release) that produced the tokens; compare for equality only (PARSER.md 6).
+          examples:
+          - kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0
     OverrideToken:
       type: object
-      description: One replacement token of a parse override.
+      description: One replacement token of a parse override. How the parser turns it into a token is
+        `contracts/api/PARSER.md` 4.4.
       additionalProperties: false
       required:
       - surface
@@ -10696,14 +10727,35 @@ components:
         lemma:
           type: string
           minLength: 1
-          description: Dictionary form. Default - the surface.
+          description: Dictionary form. Default - the lemma of a parser token with exactly this span, else the
+            surface (PARSER.md 4.4).
           examples:
           - 食べる
         seq:
           oneOf:
           - $ref: '#/components/schemas/EntrySeq'
           - type: 'null'
-          description: Entry to map to; null = force "no entry".
+          description: Entry to map to; null = force "no entry". Never re-matched by the parser.
+        reading:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: ^[^\u0000]*$
+          description: Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+          examples:
+          - たべ
+        class:
+          type: string
+          enum:
+          - content
+          - particle
+          - auxiliary
+          - name
+          - other
+          description: Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the
+            parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
+          examples:
+          - name
     ParseOverride:
       type: object
       description: A tokenisation correction (`app.parse_override`).
@@ -11075,6 +11127,15 @@ components:
                 type: integer
                 minimum: 0
                 description: Occurrences in the deck.
+        parser_version:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent
+            until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb
+            imports.
+          examples:
+          - kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0
     JpdbVocabResolution:
       type: string
       enum: [unresolved, mapped, ignored]
@@ -12234,7 +12295,7 @@ components:
             e: 2
             surface: パン
             lemma: パン
-            reading: パン
+            reading: ぱん
             pos:
             - 名詞
             - 普通名詞
@@ -12262,7 +12323,7 @@ components:
             pos:
             - 動詞
             - 一般
-            cform: 終止形
+            cform: 終止形-一般
             seq: 1358280
             class: content
             override: false
@@ -13205,7 +13266,7 @@ components:
           e: 2
           surface: パン
           lemma: パン
-          reading: パン
+          reading: ぱん
           pos:
           - 名詞
           - 普通名詞
@@ -13233,7 +13294,7 @@ components:
           pos:
           - 動詞
           - 一般
-          cform: 終止形
+          cform: 終止形-一般
           seq: 1358280
           class: content
           override: false
@@ -13258,7 +13319,7 @@ components:
             e: 2
             surface: パン
             lemma: パン
-            reading: パン
+            reading: ぱん
             pos:
             - 名詞
             - 普通名詞
@@ -13286,7 +13347,7 @@ components:
             pos:
             - 動詞
             - 一般
-            cform: 終止形
+            cform: 終止形-一般
             seq: 1358280
             class: content
             override: false
@@ -13538,7 +13599,7 @@ components:
               pos:
               - 動詞
               - 非自立可能
-              cform: 未然形
+              cform: 未然形-一般
               seq: 1578850
               class: content
               override: false
@@ -13736,6 +13797,7 @@ components:
           count: 1470
     ParseResult:
       value:
+        parser_version: kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0
         sentences:
         - text: パンを食べる。
           tokens:
@@ -13743,7 +13805,7 @@ components:
             e: 2
             surface: パン
             lemma: パン
-            reading: パン
+            reading: ぱん
             pos:
             - 名詞
             - 普通名詞
@@ -13771,7 +13833,7 @@ components:
             pos:
             - 動詞
             - 一般
-            cform: 終止形
+            cform: 終止形-一般
             seq: 1358280
             class: content
             override: false

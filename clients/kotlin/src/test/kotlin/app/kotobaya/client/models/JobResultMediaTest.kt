@@ -82,5 +82,11 @@ class JobResultMediaTest : ShouldSpec() {
             //modelInstance.unmappedTokens shouldBe ("TODO")
         }
 
+        // to test the property `parserVersion` - Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports.
+        should("test parserVersion") {
+            // uncomment below to test the property
+            //modelInstance.parserVersion shouldBe ("TODO")
+        }
+
     }
 }

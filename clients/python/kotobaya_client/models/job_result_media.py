@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.job_result_media_unmapped_inner import JobResultMediaUnmappedInner
 from typing import Optional, Set
@@ -31,13 +31,14 @@ class JobResultMedia(BaseModel):
     """ # noqa: E501
     content_version: Annotated[int, Field(strict=True, ge=1)] = Field(description="Content version published by this job.")
     media_id: Annotated[str, Field(strict=True)] = Field(description="The media.")
+    parser_version: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Optional (C-12). The parser build that produced the published tokens (PARSER.md 6). Absent until the media content archive header carries it (follow-up for SNAPSHOT.md); always absent for jpdb imports.")
     segments: Annotated[int, Field(strict=True, ge=0)] = Field(description="Segments now in the media.")
     sentences: Annotated[int, Field(strict=True, ge=0)] = Field(description="Sentences now in the media.")
     tokens: Annotated[int, Field(strict=True, ge=0)] = Field(description="Word tokens.")
     unique_entries: Annotated[int, Field(strict=True, ge=0)] = Field(description="Distinct entries (= deck items).")
     unmapped: List[JobResultMediaUnmappedInner] = Field(description="jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11).")
     unmapped_tokens: Annotated[int, Field(strict=True, ge=0)] = Field(description="Tokens that matched no entry.")
-    __properties: ClassVar[List[str]] = ["content_version", "media_id", "segments", "sentences", "tokens", "unique_entries", "unmapped", "unmapped_tokens"]
+    __properties: ClassVar[List[str]] = ["content_version", "media_id", "parser_version", "segments", "sentences", "tokens", "unique_entries", "unmapped", "unmapped_tokens"]
 
     @field_validator('media_id', mode="before")
     def media_id_validate_regular_expression(cls, value):
@@ -105,6 +106,7 @@ class JobResultMedia(BaseModel):
         _obj = cls.model_validate({
             "content_version": obj.get("content_version"),
             "media_id": obj.get("media_id"),
+            "parser_version": obj.get("parser_version"),
             "segments": obj.get("segments"),
             "sentences": obj.get("sentences"),
             "tokens": obj.get("tokens"),

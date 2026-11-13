@@ -41,7 +41,9 @@ class TestParseOverridePut(unittest.TestCase):
                 sentence_id = 'bf325375-e030-fccb-a009-17317c574773',
                 tokens = [
                     kotobaya_client.models.override_token.OverrideToken(
+                        class = 'content', 
                         lemma = '0', 
+                        reading = 'jUR,rZ#UM/?R,Fp^l6$ARj0', 
                         seq = null, 
                         surface = '0', )
                     ]
@@ -51,7 +53,9 @@ class TestParseOverridePut(unittest.TestCase):
                 match_text = '0',
                 tokens = [
                     kotobaya_client.models.override_token.OverrideToken(
+                        class = 'content', 
                         lemma = '0', 
+                        reading = 'jUR,rZ#UM/?R,Fp^l6$ARj0', 
                         seq = null, 
                         surface = '0', )
                     ],

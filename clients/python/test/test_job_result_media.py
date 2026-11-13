@@ -37,6 +37,7 @@ class TestJobResultMedia(unittest.TestCase):
             return JobResultMedia(
                 content_version = 1,
                 media_id = 'bf325375-e030-fccb-a009-17317c574773',
+                parser_version = '0',
                 segments = 0,
                 sentences = 0,
                 tokens = 0,

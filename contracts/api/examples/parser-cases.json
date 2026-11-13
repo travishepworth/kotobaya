@@ -1,0 +1,174 @@
+{
+  "_comment": "Golden vectors for PARSER.md sections 2, 2.1 and 4 (C-12). check_parser.py runs a reference implementation over them; worker tests (T403b/T403c) SHOULD load this file too. Seqs >= 9100000 are synthetic. `analysis` stands in for 'analyse the surface alone with Sudachi' (PARSER.md 4.4 b): surface -> morphemes {surface, reading_form (katakana, as Sudachi reports it), pos (all six Sudachi fields)}. `entry_pos` stands in for ref.dict_entry.pos (seq -> JMdict POS tags; a seq missing from the map is not in the release).",
+
+  "class_cases": [
+    {"name": "particle (rule 1)", "pos": ["助詞", "格助詞", "*", "*", "*", "*"], "seq": 2029010, "entry_pos": ["prt"], "expected": "particle"},
+    {"name": "particle wins over a noun-only entry (rule 1 before 4-6)", "pos": ["助詞", "係助詞", "*", "*", "*", "*"], "seq": 9100020, "entry_pos": ["n"], "expected": "particle"},
+    {"name": "auxiliary (rule 2)", "pos": ["助動詞", "*", "*", "*", "助動詞-マス", "連用形-一般"], "seq": 2210290, "entry_pos": ["aux-v"], "expected": "auxiliary"},
+    {"name": "unmapped proper noun (rule 3)", "pos": ["名詞", "固有名詞", "人名", "名", "*", "*"], "seq": null, "entry_pos": null, "expected": "name"},
+    {"name": "proper noun beats a particle-only entry (rule 3 before 5)", "pos": ["名詞", "固有名詞", "一般", "*", "*", "*"], "seq": 9100021, "entry_pos": ["prt"], "expected": "name"},
+    {"name": "common noun whose entry is only n-pr (rule 4)", "pos": ["名詞", "普通名詞", "一般", "*", "*", "*"], "seq": 9100022, "entry_pos": ["n-pr"], "expected": "name"},
+    {"name": "conjunction whose entry is only prt (rule 5)", "pos": ["接続詞", "*", "*", "*", "*", "*"], "seq": 9100023, "entry_pos": ["prt"], "expected": "particle"},
+    {"name": "noun whose entry is only auxiliary (rule 6)", "pos": ["名詞", "普通名詞", "一般", "*", "*", "*"], "seq": 9100024, "entry_pos": ["aux", "aux-adj"], "expected": "auxiliary"},
+    {"name": "mixed entry POS does not refine", "pos": ["名詞", "普通名詞", "一般", "*", "*", "*"], "seq": 9100025, "entry_pos": ["n", "prt"], "expected": "content"},
+    {"name": "seq not in the release: E is empty", "pos": ["接続詞", "*", "*", "*", "*", "*"], "seq": 9100026, "entry_pos": null, "expected": "content"},
+    {"name": "numeral (rule 7)", "pos": ["名詞", "数詞", "*", "*", "*", "*"], "seq": null, "entry_pos": null, "expected": "other"},
+    {"name": "verb (rule 8)", "pos": ["動詞", "一般", "*", "*", "上一段-マ行", "連用形-一般"], "seq": 1259290, "entry_pos": ["v1", "vt"], "expected": "content"},
+    {"name": "interjection (rule 8)", "pos": ["感動詞", "一般", "*", "*", "*", "*"], "seq": 9100027, "entry_pos": ["int"], "expected": "content"},
+    {"name": "suffix (rule 8)", "pos": ["接尾辞", "名詞的", "一般", "*", "*", "*"], "seq": 9100028, "entry_pos": ["suf"], "expected": "content"},
+    {"name": "symbol (rule 10)", "pos": ["記号", "一般", "*", "*", "*", "*"], "seq": null, "entry_pos": null, "expected": "other"},
+    {"name": "override token, no POS, mapped (rule 9)", "pos": [], "seq": 9100029, "entry_pos": ["n"], "expected": "content"},
+    {"name": "override token, no POS, entry only n-pr (rule 4 before 9)", "pos": [], "seq": 9100030, "entry_pos": ["n-pr"], "expected": "name"},
+    {"name": "override token, no POS, unmapped (rule 10)", "pos": [], "seq": null, "entry_pos": null, "expected": "other"}
+  ],
+
+  "pos_class_cases": [
+    {"name": "single class", "classes": ["particle", "particle"], "expected": "particle"},
+    {"name": "majority", "classes": ["particle", "particle", "particle", "content"], "expected": "particle"},
+    {"name": "tie content/particle -> content", "classes": ["content", "particle", "particle", "content"], "expected": "content"},
+    {"name": "tie name/other -> name", "classes": ["other", "name"], "expected": "name"},
+    {"name": "tie particle/auxiliary -> particle", "classes": ["auxiliary", "particle"], "expected": "particle"},
+    {"name": "tie auxiliary/other -> auxiliary", "classes": ["other", "auxiliary", "other", "auxiliary"], "expected": "auxiliary"}
+  ],
+
+  "override_cases": [
+    {
+      "name": "worked example (PARSER.md 4.5): misaligned media override is no candidate; global split accepted",
+      "text": "食べかけのパンだ。",
+      "media_id": "0193a1b2-0c12-7000-8000-0000000000e1",
+      "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f1",
+      "entry_pos": {"1358280": ["v1", "vt"], "1207610": ["v1", "vt"]},
+      "analysis": {
+        "食べ": [{"surface": "食べ", "reading_form": "タベ", "pos": ["動詞", "一般", "*", "*", "下一段-バ行", "連用形-一般"]}],
+        "かけ": [{"surface": "かけ", "reading_form": "カケ", "pos": ["動詞", "非自立可能", "*", "*", "下一段-カ行", "連用形-一般"]}]
+      },
+      "base": [
+        {"s": 0, "e": 4, "surface": "食べかけ", "lemma": "食べかけ", "reading": "たべかけ", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 9100001, "class": "content", "override": false},
+        {"s": 4, "e": 5, "surface": "の", "lemma": "の", "reading": "の", "pos": ["助詞", "格助詞"], "cform": null, "seq": 1469800, "class": "particle", "override": false},
+        {"s": 5, "e": 7, "surface": "パン", "lemma": "パン", "reading": "ぱん", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1101220, "class": "content", "override": false},
+        {"s": 7, "e": 8, "surface": "だ", "lemma": "だ", "reading": "だ", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2089020, "class": "auxiliary", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000001", "media_id": null, "sentence_id": null, "match_text": "食べかけ", "hlc": "0193a1b2c3d4-0001-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "食べ", "lemma": "食べる", "seq": 1358280}, {"surface": "かけ", "lemma": "かける", "seq": 1207610}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000002", "media_id": "0193a1b2-0c12-7000-8000-0000000000e1", "sentence_id": null, "match_text": "かけの", "hlc": "0193a1b2c3d5-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "かけの", "seq": null}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 2, "surface": "食べ", "lemma": "食べる", "reading": "たべ", "pos": ["動詞", "一般"], "cform": "連用形-一般", "seq": 1358280, "class": "content", "override": true},
+        {"s": 2, "e": 4, "surface": "かけ", "lemma": "かける", "reading": "かけ", "pos": ["動詞", "非自立可能"], "cform": "連用形-一般", "seq": 1207610, "class": "content", "override": true},
+        {"s": 4, "e": 5, "surface": "の", "lemma": "の", "reading": "の", "pos": ["助詞", "格助詞"], "cform": null, "seq": 1469800, "class": "particle", "override": false},
+        {"s": 5, "e": 7, "surface": "パン", "lemma": "パン", "reading": "ぱん", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1101220, "class": "content", "override": false},
+        {"s": 7, "e": 8, "surface": "だ", "lemma": "だ", "reading": "だ", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2089020, "class": "auxiliary", "override": false}
+      ]
+    },
+    {
+      "name": "sentence scope beats a longer, newer global override; surrogate pair; deleted and foreign-media rows ignored",
+      "text": "𠮷野家で食べた。",
+      "media_id": "0193a1b2-0c12-7000-8000-0000000000e1",
+      "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f2",
+      "entry_pos": {"2028980": ["prt"], "1358280": ["v1", "vt"], "2654250": ["aux-v"], "9100003": ["n"], "9100004": ["exp"]},
+      "analysis": {},
+      "base": [
+        {"s": 0, "e": 4, "surface": "𠮷野家", "lemma": "𠮷野家", "reading": "よしのや", "pos": ["名詞", "固有名詞", "一般"], "cform": null, "seq": null, "class": "name", "override": false},
+        {"s": 4, "e": 5, "surface": "で", "lemma": "で", "reading": "で", "pos": ["助詞", "格助詞"], "cform": null, "seq": 2028980, "class": "particle", "override": false},
+        {"s": 5, "e": 7, "surface": "食べ", "lemma": "食べる", "reading": "たべ", "pos": ["動詞", "一般"], "cform": "連用形-一般", "seq": 1358280, "class": "content", "override": false},
+        {"s": 7, "e": 8, "surface": "た", "lemma": "た", "reading": "た", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2654250, "class": "auxiliary", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000011", "media_id": "0193a1b2-0c12-7000-8000-0000000000e1", "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f2", "match_text": "𠮷野家", "hlc": "0193a1b2c3d4-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "𠮷野家", "lemma": "吉野家", "reading": "よしのや", "seq": null, "class": "name"}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000012", "media_id": null, "sentence_id": null, "match_text": "𠮷野家で", "hlc": "0193a1b2c3d9-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "𠮷野", "seq": 9100003}, {"surface": "家で", "seq": null}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000013", "media_id": null, "sentence_id": null, "match_text": "食べた", "hlc": "0193a1b2c3da-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": true,
+         "tokens": [{"surface": "食べた", "seq": 9100004}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000014", "media_id": "0193a1b2-0c12-7000-8000-0000000000e9", "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f2", "match_text": "た", "hlc": "0193a1b2c3db-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "た", "seq": null}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 4, "surface": "𠮷野家", "lemma": "吉野家", "reading": "よしのや", "pos": ["名詞", "固有名詞", "一般"], "cform": null, "seq": null, "class": "name", "override": true},
+        {"s": 4, "e": 5, "surface": "で", "lemma": "で", "reading": "で", "pos": ["助詞", "格助詞"], "cform": null, "seq": 2028980, "class": "particle", "override": false},
+        {"s": 5, "e": 7, "surface": "食べ", "lemma": "食べる", "reading": "たべ", "pos": ["動詞", "一般"], "cform": "連用形-一般", "seq": 1358280, "class": "content", "override": false},
+        {"s": 7, "e": 8, "surface": "た", "lemma": "た", "reading": "た", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2654250, "class": "auxiliary", "override": false}
+      ]
+    },
+    {
+      "name": "same match_text twice: newest hlc wins; self-overlap leftmost-first",
+      "text": "あああ",
+      "media_id": "0193a1b2-0c12-7000-8000-0000000000e1",
+      "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f3",
+      "entry_pos": {"9100010": ["int"], "9100011": ["int"], "9100012": ["int"]},
+      "analysis": {
+        "ああ": [{"surface": "ああ", "reading_form": "アア", "pos": ["感動詞", "一般", "*", "*", "*", "*"]}]
+      },
+      "base": [
+        {"s": 0, "e": 1, "surface": "あ", "lemma": "あ", "reading": "あ", "pos": ["感動詞", "一般"], "cform": null, "seq": 9100010, "class": "content", "override": false},
+        {"s": 1, "e": 2, "surface": "あ", "lemma": "あ", "reading": "あ", "pos": ["感動詞", "一般"], "cform": null, "seq": 9100010, "class": "content", "override": false},
+        {"s": 2, "e": 3, "surface": "あ", "lemma": "あ", "reading": "あ", "pos": ["感動詞", "一般"], "cform": null, "seq": 9100010, "class": "content", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000021", "media_id": null, "sentence_id": null, "match_text": "ああ", "hlc": "0193a1b2c3d4-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "ああ", "seq": 9100011}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000022", "media_id": null, "sentence_id": null, "match_text": "ああ", "hlc": "0193a1b2c3d4-0001-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "ああ", "seq": 9100012}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 2, "surface": "ああ", "lemma": "ああ", "reading": "ああ", "pos": ["感動詞", "一般"], "cform": null, "seq": 9100012, "class": "content", "override": true},
+        {"s": 2, "e": 3, "surface": "あ", "lemma": "あ", "reading": "あ", "pos": ["感動詞", "一般"], "cform": null, "seq": 9100010, "class": "content", "override": false}
+      ]
+    },
+    {
+      "name": "media beats global; whitespace replacement skipped; punctuation covered on purpose; misaligned global ignored; absent seq = null; no single morpheme -> pos []",
+      "text": "ねこ だ！",
+      "media_id": "0193a1b2-0c12-7000-8000-0000000000e1",
+      "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f4",
+      "entry_pos": {"1467640": ["n"], "2089020": ["cop", "aux-v"]},
+      "analysis": {
+        "だ！": [
+          {"surface": "だ", "reading_form": "ダ", "pos": ["助動詞", "*", "*", "*", "助動詞-ダ", "終止形-一般"]},
+          {"surface": "！", "reading_form": "！", "pos": ["補助記号", "句点", "*", "*", "*", "*"]}
+        ]
+      },
+      "base": [
+        {"s": 0, "e": 2, "surface": "ねこ", "lemma": "ねこ", "reading": "ねこ", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1467640, "class": "content", "override": false},
+        {"s": 3, "e": 4, "surface": "だ", "lemma": "だ", "reading": "だ", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2089020, "class": "auxiliary", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000031", "media_id": "0193a1b2-0c12-7000-8000-0000000000e1", "sentence_id": null, "match_text": "ねこ だ！", "hlc": "0193a1b2c3d4-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "ねこ", "seq": 1467640}, {"surface": " "}, {"surface": "だ！"}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000032", "media_id": null, "sentence_id": null, "match_text": "ねこ", "hlc": "0193a1b2c3e0-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "ねこ", "seq": null}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000033", "media_id": null, "sentence_id": null, "match_text": "こ だ", "hlc": "0193a1b2c3e1-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "こ", "seq": null}, {"surface": " "}, {"surface": "だ", "seq": null}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 2, "surface": "ねこ", "lemma": "ねこ", "reading": "ねこ", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1467640, "class": "content", "override": true},
+        {"s": 3, "e": 5, "surface": "だ！", "lemma": "だ！", "reading": "だ！", "pos": [], "cform": null, "seq": null, "class": "other", "override": true}
+      ]
+    },
+    {
+      "name": "POST /parse: global overrides only; explicit class kept",
+      "text": "パンを食べる。",
+      "media_id": null,
+      "sentence_id": null,
+      "entry_pos": {"1101220": ["n"], "2029010": ["prt"], "1358280": ["v1", "vt"]},
+      "analysis": {},
+      "base": [
+        {"s": 0, "e": 2, "surface": "パン", "lemma": "パン", "reading": "ぱん", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1101220, "class": "content", "override": false},
+        {"s": 2, "e": 3, "surface": "を", "lemma": "を", "reading": "を", "pos": ["助詞", "格助詞"], "cform": null, "seq": 2029010, "class": "particle", "override": false},
+        {"s": 3, "e": 6, "surface": "食べる", "lemma": "食べる", "reading": "たべる", "pos": ["動詞", "一般"], "cform": "終止形-一般", "seq": 1358280, "class": "content", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000041", "media_id": "0193a1b2-0c12-7000-8000-0000000000e1", "sentence_id": null, "match_text": "パン", "hlc": "0193a1b2c3d4-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "パン", "seq": null}]},
+        {"id": "0193a1b2-0c12-7000-8000-000000000042", "media_id": null, "sentence_id": null, "match_text": "食べる", "hlc": "0193a1b2c3d4-0001-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "食べる", "seq": 1358280, "class": "other"}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 2, "surface": "パン", "lemma": "パン", "reading": "ぱん", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1101220, "class": "content", "override": false},
+        {"s": 2, "e": 3, "surface": "を", "lemma": "を", "reading": "を", "pos": ["助詞", "格助詞"], "cform": null, "seq": 2029010, "class": "particle", "override": false},
+        {"s": 3, "e": 6, "surface": "食べる", "lemma": "食べる", "reading": "たべる", "pos": ["動詞", "一般"], "cform": "終止形-一般", "seq": 1358280, "class": "other", "override": true}
+      ]
+    }
+  ]
+}

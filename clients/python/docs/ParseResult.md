@@ -7,6 +7,7 @@ Result of `POST /parse`.
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **entries** | [**List[DictEntrySummary]**](DictEntrySummary.md) | One summary per distinct mapped entry, ascending by &#x60;seq&#x60;. | 
+**parser_version** | **str** | Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6). | [optional] 
 **sentences** | [**List[ParsedSentence]**](ParsedSentence.md) | Sentences in input order. | 
 
 ## Example

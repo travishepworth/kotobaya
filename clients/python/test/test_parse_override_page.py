@@ -46,7 +46,9 @@ class TestParseOverridePage(unittest.TestCase):
                         sentence_id = null, 
                         tokens = [
                             kotobaya_client.models.override_token.OverrideToken(
+                                class = 'content', 
                                 lemma = '0', 
+                                reading = 'jUR,rZ#UM/?R,Fp^l6$ARj0', 
                                 seq = null, 
                                 surface = '0', )
                             ], 
@@ -67,7 +69,9 @@ class TestParseOverridePage(unittest.TestCase):
                         sentence_id = null, 
                         tokens = [
                             kotobaya_client.models.override_token.OverrideToken(
+                                class = 'content', 
                                 lemma = '0', 
+                                reading = 'jUR,rZ#UM/?R,Fp^l6$ARj0', 
                                 seq = null, 
                                 surface = '0', )
                             ], 

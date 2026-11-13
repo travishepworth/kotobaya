@@ -197,8 +197,13 @@ Runs the same pipeline as media parsing (normalise, Sudachi, deinflect, match JM
 apply global parse overrides) synchronously and stores nothing. The text is split into
 sentences; token offsets are relative to each sentence's `text`. `entries` holds one
 summary (with your `status` and `note_id`) per distinct `seq` among the tokens.
-Text of 1 to 20,000 characters; longer is `413 payload_too_large`. If the parser
-(worker) is unreachable: `503 unavailable`.
+Text of 1 to 20,000 characters (code points); longer is `413 payload_too_large`.
+Tokens, sentence splitting and override application: `contracts/api/PARSER.md` (C-12).
+The server forwards the text to the worker parse service (`contracts/api/worker-parse.yaml`,
+`PARSER_URL`, timeout `PARSER_TIMEOUT_MS`, default 10 s) and passes its sentences through
+unchanged. If the parser is not configured, unreachable, times out, is busy or starting,
+or answers with anything but `200`/`413`: `503 unavailable` (`Retry-After: 5` when busy or
+starting).
 
 
 ### Example

@@ -18,7 +18,8 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from kotobaya_client.models.dict_entry_summary import DictEntrySummary
 from kotobaya_client.models.parsed_sentence import ParsedSentence
 from typing import Optional, Set
@@ -30,8 +31,9 @@ class ParseResult(BaseModel):
     Result of `POST /parse`.
     """ # noqa: E501
     entries: List[DictEntrySummary] = Field(description="One summary per distinct mapped entry, ascending by `seq`.")
+    parser_version: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6).")
     sentences: List[ParsedSentence] = Field(description="Sentences in input order.")
-    __properties: ClassVar[List[str]] = ["entries", "sentences"]
+    __properties: ClassVar[List[str]] = ["entries", "parser_version", "sentences"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -97,6 +99,7 @@ class ParseResult(BaseModel):
 
         _obj = cls.model_validate({
             "entries": [DictEntrySummary.from_dict(_item) for _item in obj["entries"]] if obj.get("entries") is not None else None,
+            "parser_version": obj.get("parser_version"),
             "sentences": [ParsedSentence.from_dict(_item) for _item in obj["sentences"]] if obj.get("sentences") is not None else None
         })
         return _obj

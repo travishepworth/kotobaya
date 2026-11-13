@@ -39,6 +39,10 @@ export interface ParseResult {
      */
     entries: Array<DictEntrySummary>;
     /**
+     * Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6).
+     */
+    parserVersion?: string;
+    /**
      * Sentences in input order.
      */
     sentences: Array<ParsedSentence>;
@@ -64,6 +68,7 @@ export function ParseResultFromJSONTyped(json: any, ignoreDiscriminator: boolean
     return {
         
         'entries': ((json['entries'] as Array<any>).map(DictEntrySummaryFromJSON)),
+        'parserVersion': json['parser_version'] == null ? undefined : json['parser_version'],
         'sentences': ((json['sentences'] as Array<any>).map(ParsedSentenceFromJSON)),
     };
 }
@@ -80,6 +85,7 @@ export function ParseResultToJSONTyped(value?: ParseResult | null, ignoreDiscrim
     return {
         
         'entries': ((value['entries'] as Array<any>).map(DictEntrySummaryToJSON)),
+        'parser_version': value['parserVersion'],
         'sentences': ((value['sentences'] as Array<any>).map(ParsedSentenceToJSON)),
     };
 }

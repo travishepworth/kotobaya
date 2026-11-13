@@ -178,7 +178,7 @@ example().catch(console.error);
 
 Parse text - tokens, matched entries and their known status.
 
-Runs the same pipeline as media parsing (normalise, Sudachi, deinflect, match JMdict, apply global parse overrides) synchronously and stores nothing. The text is split into sentences; token offsets are relative to each sentence\&#39;s &#x60;text&#x60;. &#x60;entries&#x60; holds one summary (with your &#x60;status&#x60; and &#x60;note_id&#x60;) per distinct &#x60;seq&#x60; among the tokens. Text of 1 to 20,000 characters; longer is &#x60;413 payload_too_large&#x60;. If the parser (worker) is unreachable: &#x60;503 unavailable&#x60;. 
+Runs the same pipeline as media parsing (normalise, Sudachi, deinflect, match JMdict, apply global parse overrides) synchronously and stores nothing. The text is split into sentences; token offsets are relative to each sentence\&#39;s &#x60;text&#x60;. &#x60;entries&#x60; holds one summary (with your &#x60;status&#x60; and &#x60;note_id&#x60;) per distinct &#x60;seq&#x60; among the tokens. Text of 1 to 20,000 characters (code points); longer is &#x60;413 payload_too_large&#x60;. Tokens, sentence splitting and override application: &#x60;contracts/api/PARSER.md&#x60; (C-12). The server forwards the text to the worker parse service (&#x60;contracts/api/worker-parse.yaml&#x60;, &#x60;PARSER_URL&#x60;, timeout &#x60;PARSER_TIMEOUT_MS&#x60;, default 10 s) and passes its sentences through unchanged. If the parser is not configured, unreachable, times out, is busy or starting, or answers with anything but &#x60;200&#x60;/&#x60;413&#x60;: &#x60;503 unavailable&#x60; (&#x60;Retry-After: 5&#x60; when busy or starting). 
 
 ### Example
 

@@ -27,17 +27,19 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * One replacement token of a parse override.
+ * One replacement token of a parse override. How the parser turns it into a token is `contracts/api/PARSER.md` 4.4.
  *
- * @param seq Entry to map to; null = force \"no entry\".
+ * @param seq Entry to map to; null = force \"no entry\". Never re-matched by the parser.
  * @param surface Surface text.
- * @param lemma Dictionary form. Default - the surface.
+ * @param propertyClass Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
+ * @param lemma Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).
+ * @param reading Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
  */
 
 
 data class OverrideToken (
 
-    /* Entry to map to; null = force \"no entry\". */
+    /* Entry to map to; null = force \"no entry\". Never re-matched by the parser. */
     @SerializedName("seq")
     val seq: kotlin.Long?,
 
@@ -45,12 +47,32 @@ data class OverrideToken (
     @SerializedName("surface")
     val surface: kotlin.String,
 
-    /* Dictionary form. Default - the surface. */
+    /* Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2). */
+    @SerializedName("class")
+    val propertyClass: OverrideToken.PropertyClass? = null,
+
+    /* Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4). */
     @SerializedName("lemma")
-    val lemma: kotlin.String? = null
+    val lemma: kotlin.String? = null,
+
+    /* Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4). */
+    @SerializedName("reading")
+    val reading: kotlin.String? = null
 
 ) {
 
+    /**
+     * Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
+     *
+     * Values: CONTENT,PARTICLE,AUXILIARY,NAME,OTHER
+     */
+    enum class PropertyClass(val value: kotlin.String) {
+        @SerializedName(value = "content") CONTENT("content"),
+        @SerializedName(value = "particle") PARTICLE("particle"),
+        @SerializedName(value = "auxiliary") AUXILIARY("auxiliary"),
+        @SerializedName(value = "name") NAME("name"),
+        @SerializedName(value = "other") OTHER("other");
+    }
 
 }
 

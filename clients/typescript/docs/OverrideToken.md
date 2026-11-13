@@ -1,13 +1,15 @@
 
 # OverrideToken
 
-One replacement token of a parse override.
+One replacement token of a parse override. How the parser turns it into a token is `contracts/api/PARSER.md` 4.4.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`_class` | string
 `lemma` | string
+`reading` | string
 `seq` | number
 `surface` | string
 
@@ -18,7 +20,9 @@ import type { OverrideToken } from '@kotobaya/api-client'
 
 // TODO: Update the object below with actual values
 const example = {
+  "_class": null,
   "lemma": null,
+  "reading": null,
   "seq": null,
   "surface": null,
 } satisfies OverrideToken

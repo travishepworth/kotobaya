@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from typing import Optional, Set
@@ -26,12 +26,34 @@ from pydantic_core import to_jsonable_python
 
 class OverrideToken(BaseModel):
     """
-    One replacement token of a parse override.
+    One replacement token of a parse override. How the parser turns it into a token is `contracts/api/PARSER.md` 4.4.
     """ # noqa: E501
-    lemma: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Dictionary form. Default - the surface.")
-    seq: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Entry to map to; null = force \"no entry\".")
+    var_class: Optional[StrictStr] = Field(default=None, description="Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).", alias="class")
+    lemma: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).")
+    reading: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).")
+    seq: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Entry to map to; null = force \"no entry\". Never re-matched by the parser.")
     surface: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Surface text.")
-    __properties: ClassVar[List[str]] = ["lemma", "seq", "surface"]
+    __properties: ClassVar[List[str]] = ["class", "lemma", "reading", "seq", "surface"]
+
+    @field_validator('var_class')
+    def var_class_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['content', 'particle', 'auxiliary', 'name', 'other']):
+            raise ValueError("must be one of enum values ('content', 'particle', 'auxiliary', 'name', 'other')")
+        return value
+
+    @field_validator('reading', mode="before")
+    def reading_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if value is None:
+            return value
+
+        if isinstance(value, str) and not re.match(r"^[^\u0000]*$", value):
+            raise ValueError(r"must validate the regular expression /^[^\u0000]*$/")
+        return value
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -89,7 +111,9 @@ class OverrideToken(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "class": obj.get("class"),
             "lemma": obj.get("lemma"),
+            "reading": obj.get("reading"),
             "seq": obj.get("seq"),
             "surface": obj.get("surface")
         })

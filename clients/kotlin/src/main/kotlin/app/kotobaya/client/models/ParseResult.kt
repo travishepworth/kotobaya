@@ -33,6 +33,7 @@ import com.google.gson.annotations.SerializedName
  *
  * @param propertyEntries One summary per distinct mapped entry, ascending by `seq`.
  * @param sentences Sentences in input order.
+ * @param parserVersion Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6).
  */
 
 
@@ -44,7 +45,11 @@ data class ParseResult (
 
     /* Sentences in input order. */
     @SerializedName("sentences")
-    val sentences: kotlin.collections.List<ParsedSentence>
+    val sentences: kotlin.collections.List<ParsedSentence>,
+
+    /* Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6). */
+    @SerializedName("parser_version")
+    val parserVersion: kotlin.String? = null
 
 ) {
 

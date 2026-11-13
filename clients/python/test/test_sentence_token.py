@@ -38,22 +38,30 @@ class TestSentenceToken(unittest.TestCase):
                 cform = '',
                 var_class = 'content',
                 e = 1,
-                lemma = '',
+                lemma = '0',
                 override = True,
                 pos = [
-                    ''
+                    '0'
                     ],
                 reading = '',
                 s = 0,
                 seq = 1,
-                surface = ''
+                surface = '0'
             )
         else:
             return SentenceToken(
+                cform = '',
+                var_class = 'content',
                 e = 1,
+                lemma = '0',
+                override = True,
+                pos = [
+                    '0'
+                    ],
+                reading = '',
                 s = 0,
                 seq = 1,
-                surface = '',
+                surface = '0',
         )
         """
 

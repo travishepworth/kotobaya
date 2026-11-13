@@ -47,5 +47,11 @@ class ParseResultTest : ShouldSpec() {
             //modelInstance.sentences shouldBe ("TODO")
         }
 
+        // to test the property `parserVersion` - Optional (C-12). Opaque id of the parser build (code, Sudachi dictionary, dictionary release) that produced the tokens; compare for equality only (PARSER.md 6).
+        should("test parserVersion") {
+            // uncomment below to test the property
+            //modelInstance.parserVersion shouldBe ("TODO")
+        }
+
     }
 }

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/api/token.schema.json",
+  "title": "Parser token, format 1 (PARSER.md section 1)",
+  "description": "One element of app.sentence.tokens / snapshot sentence.tokens / API SentenceToken / worker parse response tokens. Producer schema: closed, all ten members present. Readers ignore unknown members. Cross-token rules (ordering, surface = text slice, gaps) are in PARSER.md 1.2 and checked by check_parser.py, not here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["s", "e", "surface", "lemma", "reading", "pos", "cform", "seq", "class", "override"],
+  "properties": {
+    "s": {"type": "integer", "minimum": 0, "maximum": 2147483646, "description": "Start, UTF-16 code units into the ORIGINAL sentence text, inclusive."},
+    "e": {"type": "integer", "minimum": 1, "maximum": 2147483647, "description": "End, exclusive; > s."},
+    "surface": {"type": "string", "minLength": 1, "pattern": "^[^\\u0000]*$", "description": "Original text [s, e)."},
+    "lemma": {"type": "string", "minLength": 1, "pattern": "^[^\\u0000]*$", "description": "Dictionary form (from the normalised text)."},
+    "reading": {"type": "string", "pattern": "^[^\\u0000\\u30a1-\\u30f6]*$", "description": "Hiragana reading of the surface (no katakana U+30A1-U+30F6); may be empty for override tokens."},
+    "pos": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"type": "string", "minLength": 1, "not": {"const": "*"}, "pattern": "^[^\\u0000]*$"},
+      "description": "Sudachi POS levels 1-4 with '*' removed; empty only for override tokens."
+    },
+    "cform": {"oneOf": [{"type": "string", "minLength": 1, "not": {"const": "*"}, "pattern": "^[^\\u0000]*$"}, {"type": "null"}], "description": "Sudachi conjugation form verbatim (e.g. 連用形-一般); null if it does not inflect."},
+    "seq": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 9007199254740991}, {"type": "null"}], "description": "JMdict ent_seq; null = unmapped."},
+    "class": {"enum": ["content", "particle", "auxiliary", "name", "other"], "description": "Coverage filter class (PARSER.md 2)."},
+    "override": {"type": "boolean", "description": "true iff produced by a parse override."}
+  }
+}

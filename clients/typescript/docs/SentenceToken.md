@@ -1,7 +1,7 @@
 
 # SentenceToken
 
-One parser token of a sentence. Shape finalised by the parser contract; unknown properties must be tolerated.
+One parser token of a sentence: token format 1, `contracts/api/PARSER.md` section 1 (C-12), the same value as `app.sentence.tokens` elements and `contracts/api/token.schema.json`. Servers send all ten properties; clients must tolerate unknown ones (later optional additions). Within a sentence tokens are ascending and non-overlapping, offsets are UTF-16 code units into the ORIGINAL sentence text, and `surface` equals that slice; gaps are punctuation and whitespace. 
 
 ## Properties
 

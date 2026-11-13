@@ -33,7 +33,7 @@ class OverrideTokenTest : ShouldSpec() {
         // uncomment below to create an instance of OverrideToken
         //val modelInstance = OverrideToken()
 
-        // to test the property `seq` - Entry to map to; null = force \"no entry\".
+        // to test the property `seq` - Entry to map to; null = force \"no entry\". Never re-matched by the parser.
         should("test seq") {
             // uncomment below to test the property
             //modelInstance.seq shouldBe ("TODO")
@@ -45,10 +45,22 @@ class OverrideTokenTest : ShouldSpec() {
             //modelInstance.surface shouldBe ("TODO")
         }
 
-        // to test the property `lemma` - Dictionary form. Default - the surface.
+        // to test the property `propertyClass` - Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
+        should("test propertyClass") {
+            // uncomment below to test the property
+            //modelInstance.propertyClass shouldBe ("TODO")
+        }
+
+        // to test the property `lemma` - Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).
         should("test lemma") {
             // uncomment below to test the property
             //modelInstance.lemma shouldBe ("TODO")
+        }
+
+        // to test the property `reading` - Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+        should("test reading") {
+            // uncomment below to test the property
+            //modelInstance.reading shouldBe ("TODO")
         }
 
     }

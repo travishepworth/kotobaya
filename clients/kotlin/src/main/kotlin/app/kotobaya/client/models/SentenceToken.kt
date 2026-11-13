@@ -27,26 +27,50 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * One parser token of a sentence. Shape finalised by the parser contract; unknown properties must be tolerated.
+ * One parser token of a sentence: token format 1, `contracts/api/PARSER.md` section 1 (C-12), the same value as `app.sentence.tokens` elements and `contracts/api/token.schema.json`. Servers send all ten properties; clients must tolerate unknown ones (later optional additions). Within a sentence tokens are ascending and non-overlapping, offsets are UTF-16 code units into the ORIGINAL sentence text, and `surface` equals that slice; gaps are punctuation and whitespace. 
  *
+ * @param cform Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect.
+ * @param propertyClass Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`).
  * @param e End offset (exclusive).
+ * @param lemma Dictionary form used for matching (deinflected, from the normalised text).
+ * @param `override` true when a parse override produced this token.
+ * @param pos Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens.
+ * @param reading Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be empty only for override tokens.
  * @param s Start offset in the sentence text (UTF-16 code units, inclusive).
  * @param seq Matched dictionary entry; null = unmapped.
- * @param surface Text of the token.
- * @param cform Conjugation form.
- * @param propertyClass Coverage filter class.
- * @param lemma Dictionary form.
- * @param `override` true when a parse override produced this token.
- * @param pos Sudachi part-of-speech hierarchy.
- * @param reading Kana reading of the surface.
+ * @param surface The original text `[s, e)` (never normalised).
  */
 
 
 data class SentenceToken (
 
+    /* Sudachi conjugation form verbatim (e.g. `連用形-一般`); null if the word does not inflect. */
+    @SerializedName("cform")
+    val cform: kotlin.String?,
+
+    /* Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`). */
+    @SerializedName("class")
+    val propertyClass: SentenceToken.PropertyClass,
+
     /* End offset (exclusive). */
     @SerializedName("e")
     val e: kotlin.Int,
+
+    /* Dictionary form used for matching (deinflected, from the normalised text). */
+    @SerializedName("lemma")
+    val lemma: kotlin.String,
+
+    /* true when a parse override produced this token. */
+    @SerializedName("override")
+    val `override`: kotlin.Boolean,
+
+    /* Sudachi part-of-speech levels 1-4 with `*` removed; empty only for override tokens. */
+    @SerializedName("pos")
+    val pos: kotlin.collections.List<kotlin.String>,
+
+    /* Hiragana reading of the surface (Sudachi reading, katakana folded to hiragana); may be empty only for override tokens. */
+    @SerializedName("reading")
+    val reading: kotlin.String,
 
     /* Start offset in the sentence text (UTF-16 code units, inclusive). */
     @SerializedName("s")
@@ -56,38 +80,14 @@ data class SentenceToken (
     @SerializedName("seq")
     val seq: kotlin.Long?,
 
-    /* Text of the token. */
+    /* The original text `[s, e)` (never normalised). */
     @SerializedName("surface")
-    val surface: kotlin.String,
-
-    /* Conjugation form. */
-    @SerializedName("cform")
-    val cform: kotlin.String? = null,
-
-    /* Coverage filter class. */
-    @SerializedName("class")
-    val propertyClass: SentenceToken.PropertyClass? = null,
-
-    /* Dictionary form. */
-    @SerializedName("lemma")
-    val lemma: kotlin.String? = null,
-
-    /* true when a parse override produced this token. */
-    @SerializedName("override")
-    val `override`: kotlin.Boolean? = null,
-
-    /* Sudachi part-of-speech hierarchy. */
-    @SerializedName("pos")
-    val pos: kotlin.collections.List<kotlin.String>? = null,
-
-    /* Kana reading of the surface. */
-    @SerializedName("reading")
-    val reading: kotlin.String? = null
+    val surface: kotlin.String
 
 ) : kotlin.collections.HashMap<String, kotlin.Any>() {
 
     /**
-     * Coverage filter class.
+     * Coverage filter class, derived by the table in PARSER.md section 2 (same values as `occurrence.pos_class`).
      *
      * Values: CONTENT,PARTICLE,AUXILIARY,NAME,OTHER
      */

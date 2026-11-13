@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `contentVersion` | number
 `mediaId` | string
+`parserVersion` | string
 `segments` | number
 `sentences` | number
 `tokens` | number
@@ -25,6 +26,7 @@ import type { JobResultMedia } from '@kotobaya/api-client'
 const example = {
   "contentVersion": null,
   "mediaId": null,
+  "parserVersion": null,
   "segments": null,
   "sentences": null,
   "tokens": null,

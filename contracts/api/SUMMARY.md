@@ -1,7 +1,8 @@
 # API contract — summary for the human
 
 Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml` (lint rules),
-`check_contract.py` + `check.sh` (verification, see the end).
+`check_contract.py` + `check.sh` (verification, see the end). Parser (C-12): `PARSER.md`,
+`token.schema.json`, `worker-parse.yaml` (cluster-internal), `examples/`, `check_parser.py`.
 
 ## What was decided
 
@@ -324,3 +325,39 @@ attempt 1 is gone). Needs node and python3; network on first run.
 - Worth a second look: (1) corrections are not synced and not in exports; (2) `parsing` is
   emitted by the request, not the job, so a crashed job relies on the reconciler; (3) the remap
   job clears its own dedupe key on start so later corrections can queue another remap.
+
+## C-12 changes (additive)
+- **Token format 1 frozen** (`PARSER.md` 1, `token.schema.json`): ten members, all always
+  present: `s`, `e` (UTF-16 code units into the ORIGINAL sentence text, half-open, ascending,
+  non-overlapping), `surface` (= that slice), `lemma`, `reading` (hiragana), `pos` (Sudachi levels
+  1-4 without `*`), `cform` (Sudachi form verbatim, e.g. `連用形-一般`, or null), `seq` (null =
+  unmapped), `class`, `override`. Punctuation and whitespace are gaps, never tokens. The same value
+  is stored, snapshotted, served by the API and returned by the worker. `SentenceToken` now lists
+  all ten as required (response-only schema; still open to unknown members); examples use
+  hiragana readings and verbatim forms.
+- **`class` table** (`PARSER.md` 2): Sudachi 助詞 → particle, 助動詞 → auxiliary, 固有名詞 →
+  name; then JMdict POS refinements (entry only `n-pr` → name, only `prt` → particle, only
+  auxiliary tags → auxiliary); 数詞 → other; ordinary word classes → content; the rest → other.
+  `occurrence.pos_class` = most frequent token class, ties `content > name > particle > auxiliary
+  > other`.
+- **Override application** (`PARSER.md` 4): exact match on the original text; a match must not
+  cut a parser token; candidates sorted by scope (sentence > media > global), longest
+  `match_text`, newest `hlc`, `id`, leftmost; greedy non-overlapping acceptance. Missing
+  `lemma`/`reading`/`pos`/`cform`/`class` come from a same-span parser token, else from analysing
+  the surface alone; absent `seq` = null. `OverrideToken` gains optional `reading` and `class`.
+  `/parse` applies global overrides only.
+- **Worker parse service** (`worker-parse.yaml`, `PARSER.md` 5): `POST /internal/parse` and
+  `GET /internal/health` (readiness) on worker port `PARSER_PORT` (8082), no auth, NetworkPolicy
+  only; ≤ `PARSER_MAX_CONCURRENCY` (4) in flight else `503 busy`. API env `PARSER_URL`,
+  `PARSER_TIMEOUT_MS` (10 s). Everything but worker `200`/`413` becomes public `503 unavailable`.
+- **Versioning**: optional `parser_version` (opaque) in the worker response, `ParseResult` and
+  `JobResultMedia`. Follow-up for the snapshot owner: an optional `parser_version` header member in
+  the media content archive so the publish runner can fill `JobResultMedia.parser_version`.
+- Rejected: matching overrides on normalised text (offsets and surfaces are original; the user
+  picks original text); letting overrides cut tokens (leftover fragments would need re-parsing);
+  passing overrides in the parse request (the worker already reads Postgres); a shared-secret
+  header (read-only endpoint, one more secret to wire).
+- Worth a second look: (1) no auth on the internal parse port, relying on NetworkPolicy; (2)
+  `cform` stored verbatim (`連用形-一般`), so the Phase 5 grammar matcher must compare the part
+  before `-`; (3) tie-break prefers `content`, so a word used equally as particle and content is
+  never hidden by "hide particles".

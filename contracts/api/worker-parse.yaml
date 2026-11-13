@@ -1,0 +1,171 @@
+openapi: 3.1.0
+info:
+  title: Kotobaya worker parse service (cluster-internal)
+  version: 1.0.0
+  description: |
+    Synchronous parser used by the API server for `POST /parse` (C-12). Normative prose:
+    `contracts/api/PARSER.md` sections 3-5. Not public: no Ingress route, no generated client.
+
+    - Served by the worker process on `PARSER_PORT` (default 8082), bound to `PARSER_BIND`
+      (default `0.0.0.0`). Liveness stays `GET /healthz` on 8081; `GET /internal/health` here is
+      the readiness probe.
+    - **No authentication**: a NetworkPolicy allows ingress to this port only from the `api` pods.
+    - At most `PARSER_MAX_CONCURRENCY` (default 4) parses at once; more is `503 busy`, never queued.
+    - The API reaches it at `PARSER_URL` (e.g. `http://kotobaya-worker:8082`) with a total timeout
+      of `PARSER_TIMEOUT_MS` (default 10000); every failure other than `413` becomes the public
+      `503 unavailable`.
+  license:
+    name: Proprietary (personal project)
+servers:
+  - url: http://kotobaya-worker:8082
+    description: In-cluster Service (example host name; the chart sets PARSER_URL).
+tags:
+  - name: parse
+    description: Text parsing.
+paths:
+  /internal/parse:
+    post:
+      operationId: workerParse
+      tags: [parse]
+      summary: Parse text into sentences and tokens (global overrides applied).
+      description: |
+        Splits `text` into sentences (PARSER.md 3), tokenises each (token format 1, PARSER.md 1,
+        offsets relative to the sentence's `text`), applies live **global** parse overrides
+        (PARSER.md 4) committed before the request arrived. Stores nothing. Deterministic for a
+        given text, `parser_version` and override set.
+      security: []
+      parameters:
+        - name: X-Request-Id
+          in: header
+          required: false
+          description: Correlation id from the API, logged by the worker.
+          schema: {type: string, maxLength: 100}
+          example: 0193a1b2-0c12-7000-8000-00000000aa01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/WorkerParseRequest'}
+            examples:
+              default: {value: {text: 昨日、友達と映画を見ました。}}
+      responses:
+        '200':
+          description: Parse result.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkerParseResult'}
+              examples:
+                default: {$ref: '#/components/examples/WorkerParseResult'}
+        '400': {$ref: '#/components/responses/Problem'}
+        '413': {$ref: '#/components/responses/Problem'}
+        '500': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /internal/health:
+    get:
+      operationId: workerParseHealth
+      tags: [parse]
+      summary: Readiness of the parse service.
+      description: 200 once a parse can be served (Sudachi dictionary, dictionary release and database reachable); 503 before.
+      security: []
+      responses:
+        '200':
+          description: Ready.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkerParseHealth'}
+              examples:
+                default:
+                  value: {status: ready, parser_version: 'kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0'}
+        '503':
+          description: Starting.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkerParseHealth'}
+              examples:
+                default:
+                  value: {status: starting, parser_version: null}
+components:
+  responses:
+    Problem:
+      description: Error (RFC 9457). `code` per PARSER.md 5.2.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/WorkerProblem'}
+          examples:
+            default:
+              value: {type: about:blank, title: Busy, status: 503, code: busy, detail: 4 parses in flight}
+  schemas:
+    WorkerParseRequest:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          pattern: '^[^\u0000]*$'
+          description: Japanese text, 1 to 20,000 code points; body at most 256 KiB.
+    WorkerParseResult:
+      type: object
+      additionalProperties: false
+      required: [parser_version, sentences]
+      properties:
+        parser_version:
+          $ref: '#/components/schemas/ParserVersion'
+        sentences:
+          type: array
+          description: Sentences in input order; empty when the text is only whitespace.
+          items:
+            type: object
+            additionalProperties: false
+            required: [text, tokens]
+            properties:
+              text:
+                type: string
+                minLength: 1
+                description: Contiguous substring of the request text, trimmed (PARSER.md 3).
+              tokens:
+                type: array
+                description: Token format 1, ascending, non-overlapping, offsets into `text`.
+                items: {$ref: './token.schema.json'}
+    WorkerParseHealth:
+      type: object
+      additionalProperties: false
+      required: [status, parser_version]
+      properties:
+        status: {type: string, enum: [ready, starting]}
+        parser_version:
+          oneOf:
+            - $ref: '#/components/schemas/ParserVersion'
+            - type: 'null'
+    ParserVersion:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^[\x20-\x7e]+$'
+      description: Opaque; changes whenever the same text could parse differently (PARSER.md 6). Compare for equality only.
+    WorkerProblem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer, enum: [400, 413, 500, 503]}
+        code: {type: string, enum: [invalid_request, payload_too_large, busy, not_ready, internal]}
+        detail: {type: string}
+  examples:
+    WorkerParseResult:
+      value:
+        parser_version: 'kp1;sudachi=full-20250825;dict=2026-11-01.1;worker=0.4.0'
+        sentences:
+          - text: 昨日、友達と映画を見ました。
+            tokens:
+              - {s: 0, e: 2, surface: 昨日, lemma: 昨日, reading: きのう, pos: [名詞, 普通名詞, 副詞可能], cform: null, seq: 1579260, class: content, override: false}
+              - {s: 3, e: 5, surface: 友達, lemma: 友達, reading: ともだち, pos: [名詞, 普通名詞, 一般], cform: null, seq: 1540170, class: content, override: false}
+              - {s: 5, e: 6, surface: と, lemma: と, reading: と, pos: [助詞, 格助詞], cform: null, seq: 1008490, class: particle, override: false}
+              - {s: 6, e: 8, surface: 映画, lemma: 映画, reading: えいが, pos: [名詞, 普通名詞, 一般], cform: null, seq: 1173720, class: content, override: false}
+              - {s: 8, e: 9, surface: を, lemma: を, reading: を, pos: [助詞, 格助詞], cform: null, seq: 2029010, class: particle, override: false}
+              - {s: 9, e: 10, surface: 見, lemma: 見る, reading: み, pos: [動詞, 一般], cform: 連用形-一般, seq: 1259290, class: content, override: false}
+              - {s: 10, e: 12, surface: まし, lemma: ます, reading: まし, pos: [助動詞], cform: 連用形-一般, seq: 2210290, class: auxiliary, override: false}
+              - {s: 12, e: 13, surface: た, lemma: た, reading: た, pos: [助動詞], cform: 終止形-一般, seq: 2654250, class: auxiliary, override: false}

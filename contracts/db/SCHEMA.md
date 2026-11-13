@@ -331,6 +331,19 @@ highlighting the same span converge on one row, and a removed span can be added 
 A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`), occurrences with
 `sentence_ids = {}`, and no sentences.
 
+**Sentence tokens (C-12).** The element shape of `sentence.tokens` is frozen by
+`contracts/api/PARSER.md` section 1 ("token format 1", schema `contracts/api/token.schema.json`);
+the `V1__init.sql` column comment stays as it is (Flyway checksum) and its example is illustrative.
+Where they differ, PARSER.md wins: `reading` is hiragana (`ぱん`, not `パン`), `cform` is Sudachi's
+form verbatim (`連用形-一般`, not `連用形`), `pos` is Sudachi levels 1-4 without `*`, and all ten
+members are always present. `s`/`e` are UTF-16 code units into the original `text`; tokens never
+cover punctuation or whitespace unless a parse override covers it on purpose. `class` is derived
+by PARSER.md section 2; `occurrence.pos_class` is the most frequent token `class` of the entry in
+the segment, ties broken `content` > `name` > `particle` > `auxiliary` > `other` (PARSER.md 2.1).
+`parse_override` rows are applied as PARSER.md section 4 (match on the original text, aligned to
+token boundaries, scope then longest `match_text` then highest `hlc`); override tokens may carry
+optional `reading` and `class` besides `surface`, `lemma`, `seq`.
+
 ### 4.4 System
 
 | Table | Sides | Written by | Notes |

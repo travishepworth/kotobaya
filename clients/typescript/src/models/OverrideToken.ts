@@ -14,17 +14,25 @@
 
 import { mapValues } from '../runtime';
 /**
- * One replacement token of a parse override.
+ * One replacement token of a parse override. How the parser turns it into a token is `contracts/api/PARSER.md` 4.4.
  * @export
  * @interface OverrideToken
  */
 export interface OverrideToken {
     /**
-     * Dictionary form. Default - the surface.
+     * Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
+     */
+    _class?: OverrideTokenClassEnum;
+    /**
+     * Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).
      */
     lemma?: string;
     /**
-     * Entry to map to; null = force "no entry".
+     * Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+     */
+    reading?: string;
+    /**
+     * Entry to map to; null = force "no entry". Never re-matched by the parser.
      */
     seq: number | null;
     /**
@@ -32,6 +40,20 @@ export interface OverrideToken {
      */
     surface: string;
 }
+
+
+/**
+ * @export
+ */
+export const OverrideTokenClassEnum = {
+    Content: 'content',
+    Particle: 'particle',
+    Auxiliary: 'auxiliary',
+    Name: 'name',
+    Other: 'other',
+} as const;
+export type OverrideTokenClassEnum = typeof OverrideTokenClassEnum[keyof typeof OverrideTokenClassEnum];
+
 
 /**
  * Check if a given object implements the OverrideToken interface.
@@ -52,7 +74,9 @@ export function OverrideTokenFromJSONTyped(json: any, ignoreDiscriminator: boole
     }
     return {
         
+        '_class': json['class'] == null ? undefined : json['class'],
         'lemma': json['lemma'] == null ? undefined : json['lemma'],
+        'reading': json['reading'] == null ? undefined : json['reading'],
         'seq': json['seq'],
         'surface': json['surface'],
     };
@@ -69,7 +93,9 @@ export function OverrideTokenToJSONTyped(value?: OverrideToken | null, ignoreDis
 
     return {
         
+        'class': value['_class'],
         'lemma': value['lemma'],
+        'reading': value['reading'],
         'seq': value['seq'],
         'surface': value['surface'],
     };

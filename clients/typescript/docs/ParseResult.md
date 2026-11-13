@@ -8,6 +8,7 @@ Result of `POST /parse`.
 Name | Type
 ------------ | -------------
 `entries` | [Array&lt;DictEntrySummary&gt;](DictEntrySummary.md)
+`parserVersion` | string
 `sentences` | [Array&lt;ParsedSentence&gt;](ParsedSentence.md)
 
 ## Example
@@ -18,6 +19,7 @@ import type { ParseResult } from '@kotobaya/api-client'
 // TODO: Update the object below with actual values
 const example = {
   "entries": null,
+  "parserVersion": null,
   "sentences": null,
 } satisfies ParseResult
 

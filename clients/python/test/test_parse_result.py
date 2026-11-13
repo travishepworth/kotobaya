@@ -52,6 +52,7 @@ class TestParseResult(unittest.TestCase):
                         seq = 1, 
                         status = null, )
                     ],
+                parser_version = '0',
                 sentences = [
                     kotobaya_client.models.parsed_sentence.ParsedSentence(
                         text = '', 
