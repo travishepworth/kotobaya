@@ -766,3 +766,5 @@
 2026-11-13T09:36:55Z BUG-6 FILED (coordinator update: jpdb Hard never graduates learning); BUG-1/2/4 detail relayed to writers; live main d618d61 chart a0bcd03
 2026-11-13T09:41:05Z BUG-4 MERGE CHECK_GREEN deploy (low, no review); smoke uid1000 RO rootfs /version 0.21.1
 2026-11-13T09:41:05Z BUG-6 DISPATCH architect (opus, high)
+2026-11-13T09:45:31Z BUG-2+BUG-3 MERGE CHECK_GREEN worker+web (med, no review); web messages.ts edit outside paths accepted
+2026-11-13T09:45:31Z BUG-5 DISPATCH writer; HANDOFF DONE; 501 allowlist empty

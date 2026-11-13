@@ -605,11 +605,11 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: server stats/ + tests, web/src/routes/stats/ (ticket: plan/tickets/BUG-1.md)
 
 ### BUG-2 — jpdb deck import title 404 + bare numeric ID mapping
-- model: sonnet · risk: med · deps: — · status: RUNNING (batched with BUG-3)
+- model: sonnet · risk: med · deps: — · status: MERGED (batched with BUG-3)
 - paths: worker importers/jpdb_deck/ + tests, web media/new (ticket: plan/tickets/BUG-2.md)
 
 ### BUG-3 — FSRS optimizer naive datetimes
-- model: sonnet · risk: med · deps: — · status: RUNNING (batched with BUG-2)
+- model: sonnet · risk: med · deps: — · status: MERGED (batched with BUG-2)
 - paths: worker optimizer/ + tests (ticket: plan/tickets/BUG-3.md)
 
 ### BUG-4 — VOICEVOX gosu crash-loop + readOnlyRootFilesystem override
