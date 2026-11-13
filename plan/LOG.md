@@ -740,3 +740,6 @@
 2026-11-13T07:52:21Z T601 MERGE CHECK_GREEN worker+server (deploy per writer); wiring-audit test edits outside paths accepted
 2026-11-13T07:52:35Z T606 DISPATCH writer (worker+server, med)
 2026-11-13T07:55:51Z T603 MERGE CHECK_GREEN server (full, post-rebase on T601); review APPROVE
+2026-11-13T08:10:33Z T608 REVIEW APPROVE (minors -> FOLLOWUPS); merge after T605
+2026-11-13T08:16:55Z T606 REVIEW APPROVE (minors -> FOLLOWUPS); torch image size flagged
+2026-11-13T08:18:44Z T605 MERGE CHECK_GREEN server+web after rebase (Main.kt/WiringAudit conflicts resolved by orchestrator)

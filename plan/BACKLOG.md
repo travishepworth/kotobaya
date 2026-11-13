@@ -465,12 +465,12 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - accept: Unknown words sortable by in-deck count and global rank; curve chart; filters persist.
 
 ### T406 — Web reader and parse correction
-- model: sonnet · risk: med · deps: T403, T405 · status: TODO
+- model: sonnet · risk: med · deps: T403, T405 · status: MERGED
 - paths: `web/src/routes/media/[id]/read/`, `web/src/lib/reader/`
 - accept: Click word → lookup popup → mine; fix a token in ≤ 2 clicks creating a `parse_override`.
 
 ### T407 — jpdb mapping review queue (web)
-- model: haiku · risk: low · deps: T401, T208 · status: TODO
+- model: haiku · risk: low · deps: T401, T208 · status: MERGED
 - paths: `web/src/routes/imports/mapping/`
 
 ### T408 — i+1 sentences and sentence cards
@@ -478,12 +478,12 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `server/src/main/kotlin/kotobaya/sentences/`, `web/src/routes/media/[id]/sentences/`
 
 ### T409 — Audio clip cutting
-- model: sonnet · risk: low · deps: T402 · status: TODO
+- model: sonnet · risk: low · deps: T402 · status: MERGED
 - paths: `worker/kotobaya_worker/audio/`
 - accept: ffmpeg-cut clips aligned to subtitle timestamps, stored by hash.
 
 ### T410 — Android coverage and sentence lists
-- model: sonnet · risk: low · deps: T404, T301 · status: TODO
+- model: sonnet · risk: low · deps: T404, T301 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/media/browse/`
 
 ### Phase 4 splits and additions (2026-11-13, planner)
@@ -497,42 +497,42 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 5 — Struggle tools and grammar
 
 ### T501 — Hot words, hot kanji, leeches
-- model: sonnet · risk: med · deps: GATE-P4 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P4 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/struggle/`, `server/src/main/kotlin/kotobaya/struggle/`
 - accept: Scoring matches the spec's definition in table-driven tests; words decay off the list.
 
 ### T502 — Confusables
-- model: sonnet · risk: low · deps: T501 · status: TODO
+- model: sonnet · risk: low · deps: T501 · status: MERGED
 - paths: `worker/kotobaya_worker/confusables/`, `server/src/main/kotlin/kotobaya/confusables/`
 - do: Homophones, look-alike kanji (component/shape similarity from KRADFILE), close meanings.
 
 ### T503 — Drill sessions
-- model: sonnet · risk: med · deps: T501 · status: TODO
+- model: sonnet · risk: med · deps: T501 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/drill/`, `server/src/main/kotlin/kotobaya/drill/`
 - accept: Drill reviews logged as `drill`; replay proves they never change schedules.
 
 ### T504 — Struggle UIs (web, Android, widget hot word)
-- model: sonnet · risk: low · deps: T502, T503, T307 · status: TODO
+- model: sonnet · risk: low · deps: T502, T503, T307 · status: MERGED
 - paths: `web/src/routes/struggle/`, `android/app/src/main/kotlin/kotobaya/android/struggle/`, `android/app/src/main/kotlin/kotobaya/android/widget/hotword/`
 
 ### T505 — Grammar library and seed stubs
-- model: sonnet · risk: low · deps: GATE-P4 · status: TODO
+- model: sonnet · risk: low · deps: GATE-P4 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/grammar/`, `fixtures/grammar-seed/`
 - do: CRUD; ~300 N3–N1 stubs (title + pattern only, no copied explanations).
 
 ### T506 — Grammar rule DSL and matcher
-- model: opus · risk: high · deps: T403, T505 · status: TODO
+- model: opus · risk: high · deps: T403, T505 · status: MERGED
 - paths: `worker/kotobaya_worker/grammar/`, `contracts/grammar-dsl/` (via C-ticket if contract change)
 - do: DSL grammar, parser, matcher over Sudachi tokens, rule tester endpoint, batch tagging of sentences.
 - accept: 50 hand-written rules match their positive examples and none of their negative ones.
 
 ### T507 — Grammar cards
-- model: sonnet · risk: med · deps: T506, T201 · status: TODO
+- model: sonnet · risk: med · deps: T506, T201 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/cards/grammar/`, `server/src/main/kotlin/kotobaya/grammar/cards/`
 - accept: Sentence rotates per review; prefers i+0 sentences.
 
 ### T508 — "Saw something weird" flow
-- model: sonnet · risk: low · deps: T507, T406 · status: TODO
+- model: sonnet · risk: low · deps: T507, T406 · status: MERGED
 - paths: `web/src/lib/grammar-capture/`, `android/app/src/main/kotlin/kotobaya/android/grammar/`
 
 → `make test`, then **GATE-P5**.
@@ -542,16 +542,16 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 6 — Polish
 
 ### T601 — VOICEVOX TTS
-- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: low · deps: GATE-P5 · status: MERGED
 - paths: `worker/kotobaya_worker/tts/`, `deploy/helm/templates/voicevox*`
 
 ### T602 — Pitch accent display and cards
-- model: sonnet · risk: low · deps: GATE-P5 · status: MERGED (run 10)
+- model: sonnet · risk: low · deps: GATE-P5 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/cards/pitch/`, `core/src/commonMain/kotlin/kotobaya/render/pitch/`, `assets/card/`
 - do: Pitch card kind and any pitch display beyond T213, inside the shared renderer only; no per-client pitch code.
 
 ### T603 — Server AnkiConnect endpoint
-- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P5 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/ankiconnect/`
 
 ### T604 — CLI
@@ -559,7 +559,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `cli/`
 
 ### T605 — Stats
-- model: sonnet · risk: low · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: low · deps: GATE-P5 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/stats/`, `web/src/routes/stats/`
 
 ### T606 — FSRS optimizer job

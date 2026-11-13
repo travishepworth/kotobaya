@@ -17,7 +17,6 @@ Updated: 2026-11-13 (end of orchestrator run 9)
 |---|---|---|---|---|
 | T606 | writer | 1 | t/T606-fsrs-optimizer | run 10 |
 | T608 | writer | 1 | t/T608-export | run 10 |
-| T605 | writer | 1 | t/T605-stats | run 10 |
 
 ## Parked
 (none)
@@ -53,6 +52,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T605 (run 10): stats (6 server handlers via core replay/queue builder, web /stats page)
 - T603 (run 10): server AnkiConnect actions (7 actions, anki_id, findNotes, media rewrite; ops via OpApply); review APPROVE, minors in FOLLOWUPS
 - T601 (run 10): VOICEVOX TTS (server synthesizeSpeech enqueue+dedupe, worker tts job Opus/S3 cache, helm voicevox default off)
 - C-16 (run 10): fsrs-params-publish contract (contracts/db/FSRS_PUBLISH.md, optimizer schema+examples, JobResultFsrsOptimize fields); unblocks T606

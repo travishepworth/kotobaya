@@ -320,3 +320,20 @@
 
 ## T601 notes (run 10)
 - voicevox image tag cpu-0.21.1 unverified; pod root fs writable; only numeric speaker ids; PG cache/sink SQL untested on real DB; deploy/helm/check.sh not extended for voicevox
+
+## T608 review minors (run 10)
+- export/apkg: collectBlobs scans note fields only; blob: images in mnemonics rendered into kb_back_* are silently omitted (PRIORITY: silent omission)
+- export/apkg: store.get null after size check writes empty media file silently
+- export/apkg: due days from UTC midnight, not user tz/rollover (off-by-one possible)
+- export/apkg: cards/notes/revlog held in memory, not streamed
+- export: JsonDump.open blocking JDBC on request coroutine (no Dispatchers.IO); pooled conn held for whole download
+- export: mid-stream DB failure -> truncated JSON with 200
+- export/apkg: relearning reviews written as revlog type 0 not 2; ivl/lastIvl/factor = 0
+- export: no test that a token without read scope gets 403
+
+## T606 review minors + notes (run 10)
+- optimizer/store.py: Default preset run misses cards whose preset is tombstoned (effective preset = Default) -> lost training data only
+- optimizer/store.py: reviews of tombstoned/merged-away cards not filtered (possible double-counted history)
+- optimizer/model.py: eval uses 24h elapsed days vs core's user day boundaries (gate still fair); document
+- optimizer: PgStore, enqueue_all, helm cron untested; deploy/helm/check.sh has no optimizer CronJob assertion
+- worker image: fsrs[optimizer] pulls torch; uv.lock resolves CUDA wheels, Dockerfile plain pip -> multi-GB image. Use CPU-only torch index before deploying (HUMAN_CHECK)
