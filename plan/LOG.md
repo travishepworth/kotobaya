@@ -817,3 +817,5 @@
 2026-11-13T11:07:58Z BUG-7 MERGE CHECK_GREEN web (low, no review); row click + Enter, rowLabel fallback, dict-backed preview
 2026-11-13T11:07:58Z C-18 SPLIT filed from BUG-7 CCR (batch headwords contract); BUG-7b filed (server+web, dep C-18)
 2026-11-13T11:08:06Z C-18 DISPATCH architect (opus, med)
+2026-11-13T11:08:50Z BUG-7 NOTE user addendum (/notes) arrived after merge -> BUG-7b; batch wiring renamed BUG-7c (deps C-18, BUG-7b); C-18 widened to headword/reading/gloss
+2026-11-13T11:08:50Z BUG-7b DISPATCH writer (sonnet, low; web notes)

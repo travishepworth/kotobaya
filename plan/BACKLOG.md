@@ -650,13 +650,38 @@ Acceptance:
 
 Out of scope: server /cards response shape changes (no contract edits in this ticket), bulk bar, search language, Android.
 
-### C-18 — Contract: batch dictionary headwords (additive; from BUG-7 CONTRACT_CHANGE_REQUEST)
+User addendum to BUG-7: widen it to /notes as well. Add web/src/lib/notes/ and web/src/routes/notes/ to its paths.
+
+User report: "there needs to be a way to actually view my cards/notes, i.e. what I will review. All it states is 'leave empty to render from the dictionary', but I want to see everything."
+
+Verified on /notes:
+- NoteTable.svelte:61 shows `noteSummary(fields) || n.id`, so the ~8,776 jpdb notes (fields `{}`) list as UUIDs. Use the same headword fallback as the card browser (shared helper in lib/cards/model.ts).
+- NoteEditor: for referenced notes, each empty field should show the dictionary-supplied value as a read-only "from dictionary" display or the textarea placeholder, so the user sees the content and knows typing overrides it. Keep the refFieldHint.
+- NoteEditor.svelte:72 passes `kanji: null`; fetch Kanji for kanjiLiteral notes (as in KanjiPanel) and pass toKanji(...). Same fix as CardPreview.
+- Move the Preview above the edit form (or make it a tab: Preview | Edit, default Preview) so selecting a note shows the rendered card first. Preview should let the user switch between the note's live card kinds (Meaning / Reading / …), not just one.
+- Table: add Reading and Meaning (first gloss) columns for referenced notes, filled from the same headword batch lookup, so the list is readable without opening each note. If a batch lookup needs a new endpoint, return CONTRACT_CHANGE_REQUEST (headword/reading/gloss per entry_seq list) and ship the per-row fallback meanwhile.
+
+Extra acceptance:
+- [ ] Selecting a jpdb vocab note on /notes shows the rendered card first, with dictionary content.
+- [ ] Empty override fields visibly show the dictionary value.
+- [ ] Kanji note preview shows keyword/readings.
+- [ ] Notes table shows word/reading/meaning instead of UUIDs.
+
+Note: the batch lookup is now needed by both pages (headword + reading + first gloss per entry_seq). If no existing endpoint serves a list of entry_seqs, the contract ticket for it is in scope this run: architect, additive. Then wire both tables to it.
+
+(Orchestrator: BUG-7 had already merged when this arrived; the addendum ships as BUG-7b. Batch wiring for both tables is BUG-7c after C-18.)
+
+### C-18 — Contract: batch dictionary headword/reading/gloss per entry_seq (additive; BUG-7 CCR + addendum)
 - model: opus (architect) · risk: med · deps: BUG-7 · status: TODO
 - paths: contracts/api/openapi.yaml, clients/ (regen) (ticket: plan/tickets/C-18.md)
 
-### BUG-7b — Card browser: batch headword labels for referenced notes
-- model: sonnet · risk: low · deps: C-18 · status: TODO
-- paths: server dictionary handlers + tests, web/src/lib/cards/, web/src/routes/cards/ (ticket: plan/tickets/BUG-7b.md)
+### BUG-7b — Notes page: readable list, preview-first, dictionary values (BUG-7 addendum)
+- model: sonnet · risk: low · deps: BUG-7 · status: TODO
+- paths: web/src/lib/notes/, web/src/routes/notes/, web/src/lib/cards/model.ts (+ model.test.ts, messages.ts) (ticket: plan/tickets/BUG-7b.md)
+
+### BUG-7c — Batch headword/reading/gloss in /cards and /notes tables
+- model: sonnet · risk: low · deps: C-18, BUG-7b · status: TODO
+- paths: server dictionary handler + tests, web/src/lib/cards/, web/src/routes/cards/, web/src/lib/notes/, web/src/routes/notes/ (ticket: plan/tickets/BUG-7c.md)
 
 ## Phase 8 — Features (requested 2026-11-13)
 

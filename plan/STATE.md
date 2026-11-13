@@ -1,9 +1,9 @@
 # STATE
 Mode: single-session
 Phase: P7 live bug BUG-7 (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T11:08:06Z (run 16 C-18 dispatch)
+Updated: 2026-11-13T11:08:50Z (run 16 C-18 + BUG-7b dispatch)
 
-## RESUME HERE (run 16 IN PROGRESS: BUG-7 MERGED c81147d; C-18 (architect, contract batch headwords) running on t/C-18-dict-headwords; then BUG-7b (server+web, low). Reconcile per §2.)
+## RESUME HERE (run 16 IN PROGRESS: BUG-7 MERGED c81147d. Running: C-18 (architect, batch headword/reading/gloss contract) t/C-18-dict-headwords; BUG-7b (writer, /notes addendum) t/BUG-7b-notes-view. Then BUG-7c (server+web batch wiring, deps C-18+BUG-7b). Reconcile per §2.)
 
 ### Run 15 handover
 - Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
@@ -15,10 +15,11 @@ Updated: 2026-11-13T11:08:06Z (run 16 C-18 dispatch)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| BUG-7b | writer (sonnet, low) | 1 | t/BUG-7b-notes-view | 2026-11-13T11:08:50Z |
 | C-18 | architect (opus, med) | 1 | t/C-18-dict-headwords | 2026-11-13T11:08:06Z |
 
 ## Queued
-- BUG-7b (sonnet, low; server+web) after C-18
+- BUG-7c (sonnet, low; server+web batch wiring) after C-18 + BUG-7b
 
 ## Ready for review / In review
 (none)
