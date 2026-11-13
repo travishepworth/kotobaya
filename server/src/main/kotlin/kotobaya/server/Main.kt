@@ -136,7 +136,7 @@ fun composeApp(
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
         ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +
-        StruggleModule(db).handlers + ConfusableModule(db, sync.opApply).handlers +
+        kotobaya.tts.TtsModule(db).handlers + StruggleModule(db).handlers + ConfusableModule(db, sync.opApply).handlers +
         // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
         (SentencesModule(db).handlers - "listEntryExamples") +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())

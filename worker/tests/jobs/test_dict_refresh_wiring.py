@@ -19,6 +19,7 @@ def test_registry_has_all_registered_kinds(monkeypatch: pytest.MonkeyPatch) -> N
         "media-parse",
         "jpdb-deck-import",
         "grammar-detect",
+        "tts",
     }
 
 

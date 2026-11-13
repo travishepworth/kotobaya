@@ -38,6 +38,9 @@ spec:
             - name: JPDB_API_KEY
               valueFrom: { secretKeyRef: { name: {{ .Values.worker.jpdbApiKey.secretName }}, key: JPDB_API_KEY, optional: true } }
             {{- end }}
+            {{- if .Values.voicevox.enabled }}
+            - { name: VOICEVOX_URL, value: {{ printf "http://%s-voicevox:%v" .Release.Name .Values.voicevox.port | quote }} }
+            {{- end }}
             {{- range $k, $v := .Values.worker.env }}
             - { name: {{ $k }}, value: {{ $v | quote }} }
             {{- end }}

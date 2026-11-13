@@ -17,6 +17,7 @@ from kotobaya_worker.media.pipeline.import_job import make_media_import
 from kotobaya_worker.media.pipeline.parse_job import make_media_parse
 from kotobaya_worker.parse.service import start_parse_service
 from kotobaya_worker.runner.core import Registry, Runner, RunnerConfig
+from kotobaya_worker.tts import make_tts
 
 
 def build_registry() -> Registry:
@@ -32,6 +33,7 @@ def build_registry() -> Registry:
     reg.register("media-parse", make_media_parse(database_url))
     reg.register("jpdb-deck-import", make_jpdb_deck_import(database_url))
     reg.register("grammar-detect", make_grammar_detect(database_url))
+    reg.register("tts", make_tts(database_url))
     return reg
 
 

@@ -35,7 +35,6 @@ class WiringAuditTest {
         "getStatsForecast",
         "getStatsKnownWords",
         "getStatsCalibration",
-        "synthesizeSpeech",
         "exportAll",
         "exportAnki",
     )

@@ -156,6 +156,16 @@ ntfy:
     requests: { cpu: 10m, memory: 32Mi }
     limits: { memory: 128Mi }
 
+# VOICEVOX text-to-speech engine (T601). Off by default (large image). On: a Deployment + Service, the worker gets
+# VOICEVOX_URL, and a NetworkPolicy lets only the worker reach it. Pinned CPU tag; check the licence of the voices you use.
+voicevox:
+  enabled: false
+  image: voicevox/voicevox_engine:cpu-0.21.1
+  port: 50021
+  resources:
+    requests: { cpu: 200m, memory: 1Gi }
+    limits: { memory: 3Gi }
+
 # Backups (T112). Off by default: the target is a placeholder (docs/DECISIONS.md). See deploy/backup/README.md.
 # enabled=true renders the nightly `backup` and weekly `backup-verify` CronJobs and a suspended
 # `backup-restore` CronJob (used by deploy/backup/restore-k8s.sh).
