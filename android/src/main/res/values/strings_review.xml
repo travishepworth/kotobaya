@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_not_ready">Reviewing is not available yet: this device has no sync store.</string>
+    <string name="review_loading">Loading</string>
+    <string name="review_show_answer">Show answer</string>
+    <string name="review_show_front">Show front</string>
+    <string name="review_undo">Undo</string>
+    <string name="review_furigana">Furigana</string>
+    <string name="review_play_audio">Play audio</string>
+    <string name="review_no_audio">Audio is not downloaded yet.</string>
+    <string name="review_empty_title">Nothing to review right now.</string>
+    <string name="review_summary_title">Session complete</string>
+    <string name="review_summary_answered">Cards answered: %1$d</string>
+    <string name="review_summary_time">Time: %1$d s</string>
+    <string name="review_summary_buttons">%1$s: %2$d</string>
+    <string name="review_done">Done</string>
+    <string name="review_sync_prompt">%1$d changes are waiting to sync.</string>
+    <string name="review_sync_now">Sync now</string>
+    <string name="review_blocked_not_paired">This device is not paired. Pair it before reviewing.</string>
+    <string name="review_blocked_rebuild">The local data is being rebuilt. Reviewing resumes when it is done.</string>
+    <string name="review_blocked_clock">The device clock looks wrong. Fix it, then review again.</string>
+    <string name="review_blocked_other">The answer could not be saved.</string>
+    <string name="review_button_again">Again</string>
+    <string name="review_button_hard">Hard</string>
+    <string name="review_button_good">Good</string>
+    <string name="review_button_easy">Easy</string>
+    <string name="review_button_nothing">Nothing</string>
+    <string name="review_button_something">Something</string>
+    <string name="review_button_okay">Okay</string>
+    <string name="review_interval_minutes">%1$d min</string>
+    <string name="review_interval_hours">%1$d h</string>
+    <string name="review_interval_days">%1$d d</string>
+    <string name="review_interval_months">%1$d mo</string>
+    <string name="review_interval_years">%1$d y</string>
+    <string name="review_interval_now">&lt;1 min</string>
+</resources>
