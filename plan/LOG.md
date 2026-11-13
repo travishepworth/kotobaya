@@ -621,3 +621,4 @@
 2026-11-13T03:42:56Z T405b MERGE CHECK_GREEN web; 1 attempt (low)
 2026-11-13T03:43:31Z C-12 REVIEW_CHANGES reviewer (+readiness-probe major, sync-path override validation); parked for attempt 2
 2026-11-13T03:43:46Z T411b CHECK_GREEN server; MERGE 1 attempt (med; not wired until W-5)
+2026-11-13T03:48:29Z F-10 MERGE CHECK_GREEN acceptance; 1 attempt (tmpfs, no volume leak)
