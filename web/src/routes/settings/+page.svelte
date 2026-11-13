@@ -35,6 +35,7 @@
 <svelte:head><title>{ts('settings.title')} · Kotobaya</title></svelte:head>
 
 <Page title={ts('settings.title')}>
+	<div class="frame">
 	<div class="layout">
 		<nav class="index" aria-label={sx('sx.sections')}>
 			<ul>
@@ -82,9 +83,13 @@
 			</section>
 		</div>
 	</div>
+	</div>
 </Page>
 
 <style>
+	.frame {
+		container-type: inline-size;
+	}
 	.layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -103,7 +108,8 @@
 	section {
 		scroll-margin-top: var(--kb-space-6);
 	}
-	@media (min-width: 1024px) {
+	/* The section index appears once there is room for it next to a full-width panel (in rem: follows the text size). */
+	@container (min-width: 56rem) {
 		.layout {
 			grid-template-columns: 13rem minmax(0, 1fr);
 		}

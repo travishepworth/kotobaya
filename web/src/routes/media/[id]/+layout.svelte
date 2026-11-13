@@ -60,6 +60,8 @@
 	}
 	nav {
 		display: flex;
+		max-width: 100%;
+		overflow-x: auto;
 		gap: 2px;
 		padding: 3px;
 		border-radius: var(--kb-radius-md);

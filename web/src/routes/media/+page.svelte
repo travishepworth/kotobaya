@@ -118,6 +118,7 @@
 	}
 	.q {
 		flex: 1 1 16rem;
+		min-width: 0;
 		max-width: 28rem;
 	}
 	.kind {

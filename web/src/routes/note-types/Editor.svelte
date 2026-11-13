@@ -38,15 +38,18 @@
 	const appDark =
 		root.dataset.theme === 'dark' || (root.dataset.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 	let previewTheme = $state<'light' | 'dark'>(appDark ? 'dark' : 'light');
+	let form: HTMLFormElement | undefined = $state();
+	// Preview beside the editor once there are 56 rem of room (follows the text size).
 	$effect(() => {
-		const mq = window.matchMedia('(min-width: 1024px)');
-		const on = (): void => {
-			wide = mq.matches;
+		if (!form) return;
+		const el = form;
+		const ro = new ResizeObserver(() => {
+			const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+			wide = el.clientWidth >= 56 * rem;
 			if (wide && tab === 'preview') tab = 'fields';
-		};
-		on();
-		mq.addEventListener('change', on);
-		return () => mq.removeEventListener('change', on);
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
 	});
 
 	function submit(e: SubmitEvent): void {
@@ -118,7 +121,7 @@
 	</section>
 {/snippet}
 
-<form class="editor" onsubmit={submit}>
+<form class="editor" class:wide onsubmit={submit} bind:this={form}>
 	<div class="basics">
 		<TextField label={tn('nt.name')} bind:value={draft.name} maxlength={100} />
 		<Select
@@ -202,10 +205,8 @@
 		gap: var(--kb-space-6);
 		align-items: start;
 	}
-	@media (min-width: 1024px) {
-		.split {
-			grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.8fr);
-		}
+	.wide .split {
+		grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.8fr);
 	}
 	.panel {
 		display: flex;

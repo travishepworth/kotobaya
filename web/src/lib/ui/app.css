@@ -51,11 +51,18 @@ p {
 	margin: 0;
 }
 
-/* Japanese text: Japanese glyphs (lang), phrase-aware line breaks, kana-friendly leading. */
+/* Japanese text: Japanese glyphs (lang), phrase-aware line breaks, kana-friendly leading. A phrase that cannot fit
+   the line at all (very long compounds at 200 % text) may still wrap rather than push the page sideways. */
 :lang(ja) {
 	font-family: var(--kb-family-sans);
 	word-break: auto-phrase;
 	line-break: strict;
+	overflow-wrap: break-word;
+}
+
+/* Fieldsets default to min-content width; let them shrink like any other block. */
+fieldset {
+	min-inline-size: 0;
 }
 
 ruby {

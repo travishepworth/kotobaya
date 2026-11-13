@@ -108,6 +108,7 @@
 	}
 	.acts {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--kb-space-1);
 	}
 	.more {

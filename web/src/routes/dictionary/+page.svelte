@@ -68,6 +68,7 @@
 <svelte:window {onkeydown} />
 <svelte:head><title>{td('dict.title')} · Kotobaya</title></svelte:head>
 
+<div class="dict-frame">
 <div class="dict" class:show-entry={pane === 'entry'}>
 	<section class="list" aria-label={dx('dx.results')}>
 		<h1 class="title">{td('dict.title')}</h1>
@@ -167,8 +168,12 @@
 		{/if}
 	</section>
 </div>
+</div>
 
 <style>
+	.dict-frame {
+		container-type: inline-size;
+	}
 	.dict {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -325,8 +330,8 @@
 		margin: 0 0 var(--kb-space-3) calc(-1 * var(--kb-space-2));
 	}
 
-	/* Side by side from 840 px: list 40 % / entry 60 %; from 1024 px a fixed 380 px list. */
-	@media (min-width: 840px) {
+	/* Side by side from 46 rem of room: list 40 % / entry 60 %; from 60 rem a fixed 23.75 rem list. */
+	@container (min-width: 46rem) {
 		.dict {
 			grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
 		}
@@ -349,7 +354,7 @@
 			display: none;
 		}
 	}
-	@media (min-width: 1024px) {
+	@container (min-width: 60rem) {
 		.dict {
 			grid-template-columns: 23.75rem minmax(0, 1fr);
 		}

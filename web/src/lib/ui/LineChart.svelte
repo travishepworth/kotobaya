@@ -51,16 +51,17 @@
 			<span>{last?.short ?? last?.label}</span>
 		</div>
 	{/if}
-	<table class="kb-sr">
+	<div class="kb-sr"><table>
 		<caption>{caption}</caption>
 		<tbody>
 			{#each points as p (p.key)}<tr><th scope="row">{p.label}</th><td>{format(p.value)}</td></tr>{/each}
 		</tbody>
-	</table>
+	</table></div>
 </figure>
 
 <style>
 	.chart {
+		position: relative;
 		margin: 0;
 		min-width: 0;
 	}

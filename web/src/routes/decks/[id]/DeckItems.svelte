@@ -95,6 +95,10 @@
 		flex: 1;
 		min-width: 0;
 	}
+	.line > * {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
 	.line {
 		display: flex;
 		flex-wrap: wrap;
@@ -102,8 +106,10 @@
 		gap: 0 var(--kb-space-3);
 	}
 	.hw {
+		min-width: 0;
 		font: var(--kb-type-title-sm);
 		font-weight: 500;
+		overflow-wrap: anywhere;
 	}
 	.rd {
 		font: var(--kb-type-body-sm);

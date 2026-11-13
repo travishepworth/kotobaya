@@ -303,7 +303,7 @@
 	}
 	.calib li {
 		display: grid;
-		grid-template-columns: 5.5rem minmax(0, 1fr) 3rem;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;
 		gap: var(--kb-space-3);
 	}
@@ -335,7 +335,8 @@
 	}
 	.legend {
 		display: flex;
-		gap: var(--kb-space-4);
+		flex-wrap: wrap;
+		gap: var(--kb-space-1) var(--kb-space-4);
 		margin: var(--kb-space-4) 0 0;
 		padding: 0;
 		list-style: none;

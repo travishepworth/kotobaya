@@ -70,7 +70,7 @@
 			{#each series as s (s.label)}<li><i style:background={s.color}></i>{s.label}</li>{/each}
 		</ul>
 	{/if}
-	<table class="kb-sr">
+	<div class="kb-sr"><table>
 		<caption>{caption}</caption>
 		<thead><tr><th scope="col"></th>{#each series as s (s.label)}<th scope="col">{s.label}</th>{/each}</tr></thead>
 		<tbody>
@@ -78,11 +78,12 @@
 				<tr><th scope="row">{b.label}</th>{#each b.values as v, si (si)}<td>{format(v)}</td>{/each}</tr>
 			{/each}
 		</tbody>
-	</table>
+	</table></div>
 </figure>
 
 <style>
 	.chart {
+		position: relative;
 		margin: 0;
 		min-width: 0;
 	}

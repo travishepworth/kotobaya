@@ -19,13 +19,18 @@
 	}
 	let { view, toolbar, master, detail, placeholder, detailTitle, onclose }: Props = $props();
 
+	// Side by side once the frame is at least 60 rem wide (so 200 % text gets the sheet instead of a squeezed pane).
+	let frame: HTMLDivElement | undefined = $state();
 	let wide = $state(true);
 	$effect(() => {
-		const mq = window.matchMedia('(min-width: 1024px)');
-		wide = mq.matches;
-		const on = (): void => void (wide = mq.matches);
-		mq.addEventListener('change', on);
-		return () => mq.removeEventListener('change', on);
+		if (!frame) return;
+		const el = frame;
+		const ro = new ResizeObserver(() => {
+			const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+			wide = el.clientWidth >= 60 * rem;
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
 	});
 	let sheetOpen = $state(false);
 	$effect(() => {
@@ -33,7 +38,7 @@
 	});
 </script>
 
-<div class="browse">
+<div class="browse" class:wide bind:this={frame}>
 	<header class="head">
 		<h1>{tb('br.title')}</h1>
 		<SegmentedControl
@@ -117,8 +122,8 @@
 		.browse {
 			padding: var(--kb-space-10) var(--kb-space-8) var(--kb-space-10);
 		}
-		.split {
-			grid-template-columns: minmax(0, 1fr) clamp(26rem, 34vw, 35rem);
-		}
+	}
+	.wide .split {
+		grid-template-columns: minmax(0, 1fr) minmax(24rem, 40%);
 	}
 </style>
