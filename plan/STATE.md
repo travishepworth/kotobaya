@@ -14,7 +14,7 @@ Updated: run 19
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-APP | reviewer | 1 (IN REVIEW + check) | t/UI-APP-rebuild | run 19 |
+| UI-APP | writer-senior | 2 (review fixes) | t/UI-APP-rebuild | run 19 |
 | UI-WEB | writer-senior | 1b (scope amendment: fieldRegions state, load-error flags, dead code, pre-paint) | t/UI-WEB-rebuild | run 19 |
 
 ## Queued

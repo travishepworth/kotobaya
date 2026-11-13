@@ -886,3 +886,5 @@
 2026-11-13T16:43:30Z UI-WEB DECIDE scope amended: + web/src/lib/state/{preview,notes,cards}.svelte.ts fieldRegions, load-error flags, dead lib/<feature>/*.svelte + legacy tokens + Toaster removal, app.html pre-paint; fresh writer-senior attempt 1b same branch
 2026-11-13T16:48:48Z UI-APP HANDOFF DONE; 660 PNGs, 176 curated; glue edits outside ui/nav accepted (theme switch, Media route removal); state-layer requests -> APP-STATE-1
 2026-11-13T16:48:48Z UI-APP REVIEW dispatched reviewer (screenshots + bar)
+2026-11-13T16:51:45Z UI-APP REVIEW_CHANGES 2 majors (grammar capture unreachable; system bars ignore in-app theme) + 6 minors
+2026-11-13T16:51:45Z UI-APP DISPATCH writer-senior attempt 2 (majors + minors 6,8; same worktree)
