@@ -208,5 +208,40 @@ fun serverReplica(server: TestServer): InMemoryLearningTables {
     return InMemoryLearningTables.seeded().also { t -> for (op in server.loggedOps()) applier.applyTo(t, op) }
 }
 
-/** Runs [block] (a suspend sync step) to completion. */
-fun <T> sync(block: suspend () -> T): T = runSync(block)
+
+/**
+ * Scenario [name] played through a [TestServer] by [ApplyDevice]s (SYNC.md 13, server side): each
+ * device op of the log is put in its device's outbox with its local effect and pushed at once (no
+ * pull), so the server's log equals the scenario's; server-emitted ops follow their cause, job ops
+ * are appended at their place. Devices pull only when the test says so.
+ */
+class ScenarioPlay(val name: String) {
+    val log: List<Op> = scenarioLog(name)
+    val server = TestServer(log.maxOf { DefaultHlcRules.wall(it.hlc) })
+    val devices = LinkedHashMap<String, ApplyDevice>()
+
+    init {
+        server.emitAfter = { op -> log.filter { it.causedByOpId == op.opId }.map { it.copy(seq = null, causedByOpId = null) } }
+    }
+
+    fun device(id: String): ApplyDevice = devices.getOrPut(id) { ApplyDevice(id, server, server.nowMs, devices.size + 1) }
+
+    /** Plays log entries whose seq is in [seqs] (default: all). */
+    fun play(seqs: LongRange = 1L..Long.MAX_VALUE) {
+        for (e in log) {
+            val seq = e.seq!!
+            if (seq !in seqs) continue
+            when {
+                e.deviceId != kotobaya.contracts.Reserved.SERVER_DEVICE_ID -> {
+                    val d = device(e.deviceId)
+                    d.inject(e)
+                    assertIs<CycleResult.Completed>(runSync { d.engine.pushAll() }, "$name push of seq $seq")
+                }
+                e.causedByOpId == null -> server.append(e.copy(seq = null, causedByOpId = null), null)
+                else -> Unit
+            }
+        }
+    }
+
+    fun assertServerLogIsTheScenarioLog() = assertEquals(log, server.loggedOps(), "$name: server log")
+}
