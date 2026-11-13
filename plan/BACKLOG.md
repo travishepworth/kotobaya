@@ -634,6 +634,18 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - model: sonnet · risk: med · deps: C-17 · status: TODO
 - paths: server dict/ + tests, server routing, web dictionary (ticket: plan/tickets/FEAT-1.md)
 
+### AND-SEARCH — Android Search tab (core parser, offline dict/replica, API fallback; word detail route)
+- model: sonnet · risk: med · deps: — · status: TODO
+- paths: android search/, word/ (ticket: plan/tickets/AND-SEARCH.md)
+
+### AND-DECKS — Android Decks tab (counts, deck detail, study this deck)
+- model: sonnet · risk: med · deps: — · status: TODO
+- paths: android decks/, review route deck arg (ticket: plan/tickets/AND-DECKS.md)
+
+### AND-SETTINGS — Android Settings tab (server/pairing, sync, limits via settings ops, notify, TTS, integrations, about)
+- model: sonnet · risk: med · deps: — · status: TODO
+- paths: android settings/ui/ (ticket: plan/tickets/AND-SETTINGS.md)
+
 ### UI-1 — Full UI gamification and visual polish pass across web and Android
 - status: HUMAN-GATED (never dispatch) · Starts only after everything works; the user plans and starts it personally. No ticket file.
 
