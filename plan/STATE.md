@@ -22,7 +22,7 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-15 | architect (opus) | 1 | t/C-15-grammar-card-sentence | run 9 |
+| T504b | writer | 1 | t/T504b-struggle-android | run 9 (Gradle) |
 
 ## Parked
 (none)
@@ -30,6 +30,7 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| C-15 | reviewer | run 9 |
 
 ## Blocked
 | Ticket | Reason | Needs |

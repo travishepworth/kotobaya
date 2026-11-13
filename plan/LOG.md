@@ -710,3 +710,5 @@
 2026-11-13T06:39:27Z C-15 DISPATCH architect (contracts; for F-25 grammar card sentence op)
 2026-11-13T06:39:27Z T508a DISPATCH writer (web)
 2026-11-13T06:42:26Z T508a MERGE CHECK_GREEN web; 1 attempt (low)
+2026-11-13T06:48:14Z C-15 HANDOFF DONE contracts green; QueueItem.grammar_sentence (additive); reviewer dispatched
+2026-11-13T06:48:14Z T504b DISPATCH writer (android, Gradle slot)
