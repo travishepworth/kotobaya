@@ -821,3 +821,5 @@
 2026-11-13T11:08:50Z BUG-7b DISPATCH writer (sonnet, low; web notes)
 2026-11-13T11:10:54Z BUG-7b NOTE BUG-7 addendum 2 (kanji preview, kind switcher, /review check) sent to running BUG-7b writer; paths widened (cards/review)
 2026-11-13T11:10:54Z FEAT-x NOTE filed HUMAN-GATED next to UI-1 (WYSIWYG note view; needs core render-contract C-xx first)
+2026-11-13T11:12:40Z BUG-7b HANDOFF DONE; addendum 1+2 covered; /review kanji already correct (no change)
+2026-11-13T11:12:40Z BUG-7b MERGE CHECK_GREEN web (low, no review); notes Preview|Edit, kind switcher both pages, kanji fetch, dict field values

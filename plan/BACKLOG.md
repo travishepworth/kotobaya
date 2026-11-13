@@ -676,7 +676,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: contracts/api/openapi.yaml, clients/ (regen) (ticket: plan/tickets/C-18.md)
 
 ### BUG-7b — Notes page: readable list, preview-first, dictionary values (BUG-7 addendum)
-- model: sonnet · risk: low · deps: BUG-7 · status: TODO
+- model: sonnet · risk: low · deps: BUG-7 · status: MERGED
 - paths: web/src/lib/notes/, web/src/routes/notes/, web/src/lib/cards/ (model.ts, model.test.ts, messages.ts, CardPreview.svelte, api.ts), web/src/routes/cards/, web/src/routes/review/, web/src/lib/review/ (ticket: plan/tickets/BUG-7b.md; includes BUG-7 addendum 2, kanji preview)
 
 ### BUG-7c — Batch headword/reading/gloss in /cards and /notes tables
