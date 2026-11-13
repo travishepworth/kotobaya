@@ -62,7 +62,7 @@
 	</div>
 	<div class="xlabels" aria-hidden="true" style:--n={bars.length}>
 		{#each bars as b, i (b.key)}
-			<span>{i % labelEvery === 0 || i === bars.length - 1 ? (b.short ?? '') : ''}</span>
+			<span class:end={i >= bars.length * 0.8}>{i % labelEvery === 0 || i === bars.length - 1 ? (b.short ?? '') : ''}</span>
 		{/each}
 	</div>
 	{#if series.length > 1}
@@ -161,8 +161,12 @@
 		white-space: nowrap;
 	}
 	.xlabels span {
-		overflow: visible;
+		display: flex;
 		min-width: 0;
+	}
+	/* Labels near the right edge grow leftwards, so they never stick out of the chart. */
+	.xlabels span.end {
+		justify-content: flex-end;
 	}
 	.legend {
 		display: flex;
