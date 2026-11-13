@@ -19,6 +19,21 @@ internal const val CARD: Uuid = "0193a1b2-0002-7000-8000-000000000001"
 internal const val DEV_A: Uuid = "01931f3e-0000-7000-8000-0000000000a1"
 internal const val DEV_B: Uuid = "01931f3e-0000-7000-8000-0000000000b2"
 
+/** `review_log.import_source` of imported jpdb history (SYNC.md 9.5). */
+internal const val JPDB: String = DefaultReplayEngine.JPDB_IMPORT_SOURCE
+
+/**
+ * An imported jpdb review as the history import stores it: server device, `hlc` = replay_hlc built from
+ * the historical time (`<ms>-<counter>-<server device id>`), `utc_offset_min` NULL, `import_source` jpdb.
+ */
+internal fun imported(
+    id: Uuid,
+    at: InstantMs,
+    rating: Rating,
+    counter: Int = 0,
+    type: ReviewType = ReviewType.SCHEDULED,
+): ReplayReview = rated(id, at, rating, type, hlc(at, counter, Reserved.SERVER_DEVICE_ID), offset = null).copy(importSource = JPDB)
+
 /** Deterministic PRNG for the property tests (SplitMix64 stream; identical on jvm and js). */
 internal class Rng(seed: Long) {
     private var state = seed

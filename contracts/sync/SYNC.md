@@ -1129,6 +1129,7 @@ Nothing else touches a cache: not suspend/bury/flag, not note edits, not setting
 ### 9.3 Rules
 
 - The cache is a pure function of (replay set in order, effective preset row, core version). The
+  rows' `import_source` is part of the replay set's content (9.5). The
   function is T006's; it MUST be deterministic (fuzz seeded from stored data only), and folding
   one more review into a cache MUST give the same result as a full replay.
 - Elapsed time between consecutive reviews is the `reviewed_at` difference. The 9.1 order makes
@@ -1185,6 +1186,67 @@ so every replica behaves the same and nothing is left half-current. **Server and
 
 The server's `CoreCardCache` (T202c) logged and skipped, keeping the old cache: it MUST write the
 refused cache instead (breaking for T202c, no data impact: unreachable with the schema's checks).
+
+### 9.5 Import graduation (BUG-6, core scheduler version `fsrs6-2`)
+
+jpdb has no learning steps: a jpdb review days after a failure that the user passed means the word
+was remembered over days. py-fsrs, which the core ports, treats Hard on a (re)learning card as
+"repeat this step" whatever the elapsed time, so an imported history such as *nothing … hard,
+hard, hard* (jpdb "hard" is a pass, ADR-008) never leaves (re)learning. The grade mapping stays
+(ADR-008); the replay rule below is scoped to imported rows. **Native reviews are unchanged.**
+
+**Rule.** While folding a rated row R (`review_type` `scheduled` or `learning`) into the schedule
+`before` (the cache after every earlier row of the replay set, 9.1 order), R is an **import
+graduation** iff all of:
+
+1. `R.import_source = 'jpdb'` (exactly; NULL and any future source are native);
+2. `R.rating` ∈ {2 Hard, 3 Good, 4 Easy} (a pass; Again never graduates);
+3. `before.state` ∈ {`learning`, `relearning`};
+4. `before.last_review_at` is not NULL (the "last review" rules of section 9: the last **rated**
+   row) and `R.reviewed_at − before.last_review_at ≥ 86 400 000` ms (one day, exact milliseconds,
+   no time zone; the same boundary at which FSRS stops using its same-day formula).
+
+An import graduation is folded with the effective preset's parameters **with both step lists
+empty** — `Scheduler.review(before, R, params.copy(learningStepsSeconds = [],
+relearningStepsSeconds = []))` — and every other row with the unmodified parameters. Effect, all
+from FSRS-6 itself (nothing is invented):
+
+- `stability`, `difficulty`: FSRS's normal update for R's rating with the elapsed days (the
+  long-term formula, since ≥ 1 day) — identical to what the native fold computes; the steps
+  never enter that computation.
+- `state = 'review'`, `step = NULL`, `interval_days` = FSRS next interval of the new stability
+  (desired retention, maximum interval), fuzzed by R's id and Easy Days exactly like any review
+  interval; `due_at = R.reviewed_at + interval_days` days. This is what py-fsrs does for a
+  graduating pass (Good on the last step, Easy, or a preset with no steps).
+- `reps` + 1; `lapses` unchanged (leaving relearning is not a lapse; the lapse was counted when
+  the card entered relearning); `last_review_at = R.reviewed_at`; `last_review_id = R.id`.
+
+Not affected: Again on an imported row; an imported pass less than one day after the previous
+rated row (normal step behaviour, e.g. jpdb's same-session re-tests); the first rated row of a new
+card (no `last_review_at`); a card in `review`; manual rows; a native row after imported ones (the
+rule reads the row being folded, not the card's history). A preset with empty step lists already
+graduates every pass, so the rule changes nothing there.
+
+**Properties.** The rule is a function of (`before`, R, effective preset), like every fold, so
+9.3 holds unchanged: folding one more row equals a full replay, out-of-order arrival forces a full
+replay by the 9.2 table, and `ReplayEngine.decide` is unchanged. `import_source` is written once
+by `review.logged` (server-minted imports only; pushed ops carrying it are rejected `server_only`)
+and is an op-written column of `review_log`, so every replica holds the same value and replays the
+same set (section 11). **Every replica MUST pass the stored `import_source` to the engine**
+(`ReplayReview.importSource`); a replica that drops it computes native caches.
+
+**Rollout.** The rule changed the core scheduler version `fsrs6-1` → `fsrs6-2`, so every replica
+fully replays every maintained card once (10.5): the server at startup of the new image, before it
+applies any op; each device at the first start of the updated app, before any sync or review. No
+op is minted and no `review_log` row changes; caches of stuck cards are re-derived from the log.
+In the window where the server runs `fsrs6-2` and a device still runs `fsrs6-1`, their caches of
+cards with imported history differ (section 11 item 3 compares caches only between replicas of the
+same core version). Nothing is lost or corrupted: caches never travel, every review either replica
+logs in the window is an ordinary `review.logged` that both keep, and the device's startup replay
+after its update re-derives its caches from the same log. The visible effect is only that the old
+app still shows those cards as (re)learning until it is updated.
+
+Worked example: 12.8.
 
 ## 10. Rejected ops
 
@@ -1534,6 +1596,10 @@ reviews MUST wait until it has committed. The rebuild (10.3) keeps this key: it 
 running core, so every cache it creates is already current. Downgrades are handled the same way
 (different ⇒ replay).
 
+**Versions so far:** `fsrs6-1` (T203, the first real engine), `fsrs6-2` (BUG-6, import graduation
+9.5). A replay-rule change is shipped only together with a new version string; that bump is the
+only way a fix to cache semantics reaches caches already computed.
+
 **The server's equivalent** is the row `key = 'core_scheduler_version'` of `app.server_state`
 (server-only key/value table added by C-1; not synced, no op, not exposed through the API, never
 cleaned up; `contracts/db/SCHEMA.md` 4.4). Value and absent-meaning as in the table above. On
@@ -1847,6 +1913,35 @@ no original review id reaches the server. With step 6a minting at the current ti
 `mint_at`, the creation times and the merge outcome are wrong (the check fails); with the replay set
 ordered by `hlc` (attempt 3), A's reviews all replay after B's.
 
+### 12.8 Imported jpdb history: Again, Good, Hard, Hard (BUG-6)
+
+Rule 9.5. Checked by core `ImportGraduationTest.workedExampleOfSync12_8` (values to 4 decimals)
+and, as a convergence story, by core `DeviceConvergenceFuzzTest.replicasConvergeWithImportedHistoryMixedIn`
+(scenario `reviews-same-card-offline` with an imported history spliced in). Preset: default
+FSRS-6 weights, desired retention 0.9, learning steps 1 m / 10 m, relearning step 10 m, fuzz off.
+T = the first answer; every row is a server-minted `review.logged` with `import_source = 'jpdb'`,
+`utc_offset_min` NULL, `hlc` = its `replay_hlc`.
+
+| Row | `reviewed_at` | jpdb grade → rating | `fsrs6-1` (native semantics): state, step, S, D, due | `fsrs6-2`: state, step, S, D, interval, due |
+|---|---|---|---|---|
+| 1 | T | nothing → Again | learning, 0, 0.2120, 6.4133, T + 1 m | same (new card: rule 4 fails) |
+| 2 | T + 1 d | okay → Good | learning, 1, 1.8868, 6.4021, T + 1 d + 10 m | **review**, –, 1.8868, 6.4021, 2 d, T + 3 d |
+| 3 | T + 3 d | hard → Hard | learning, 1, 4.5223, 7.5968, T + 3 d + 10 m | review, –, 4.5223, 7.5968, 5 d, T + 8 d |
+| 4 | T + 7 d | hard → Hard | learning, 1, 8.0705, 8.3899, T + 7 d + 10 m | review, –, 8.0705, 8.3899, 8 d, T + 15 d |
+
+Under `fsrs6-1` the card's stability grows to 8 days but it is due again 10 minutes after each
+answer and never leaves learning: that is the stuck state of BUG-6 (≈ 1,100 cards after the real
+import). Under `fsrs6-2` row 2 graduates with the same S and D; rows 3–4 are ordinary review-state
+folds. The same four rows without `import_source` (native reviews) give the `fsrs6-1` column under
+`fsrs6-2` too. An imported Hard 10 minutes after row 1 instead of a day (rule 4) stays in learning
+with step behaviour, under both versions.
+
+Upgrade path, checked by core `ImportGraduationApplyTest.versionBumpTriggersFullReplayAndStuckCardsEndInReview`:
+a device that applied this history under `fsrs6-1` holds the `fsrs6-1` column with
+`core_scheduler_version = fsrs6-1`; its first start with `fsrs6-2` (10.5) replays every card,
+stores `fsrs6-2`, mints nothing, leaves `review_log` untouched, and ends with the `fsrs6-2` column
+— equal to a device that applied the history with `fsrs6-2` from the start.
+
 ## 13. Scenario files (for the convergence and fuzz tests)
 
 `examples/scenarios/*.json`, schema [`scenario.schema.json`](scenario.schema.json):
@@ -1990,6 +2085,8 @@ lowers `durable_seq` within an epoch (6.2, C-8).
 | Clock-rejected op that refers to a window row but writes a shared row (`card.preset_set` of an old card to a new preset) | Discarded by Re-mint, on the MUST-show discard list. | 10.4 |
 | Words mined offline (wrong clock) into an existing deck, or marked known | `e:<seq>` items and word statuses of words created in the window are window-derived: re-minted (items re-keyed `n:<note>`). | 10.4 |
 | App or server runs a new core scheduler version | Full replay of every card cache before anything is folded; then the new version is stored. | 9.2, 10.5 |
+| Imported jpdb pass (Hard/Good/Easy) on a (re)learning card ≥ 1 day after the previous rated review | Graduates to `review` (FSRS memory state, interval from the new stability). Under 1 day, Again, native rows: py-fsrs step behaviour. | 9.5, 12.8 |
+| Server on core `fsrs6-2`, a device still on `fsrs6-1` | Caches of imported-history cards differ until the device updates; nothing travels or is lost; its startup replay re-derives them. | 9.5, 10.5 |
 | Review right after a reschedule (manual `set_due`) | `last_review_at` is still the last rated review; FSRS elapsed time counts from it. | 9 |
 | Rejected new note with reviewed cards | Children rejected too; Discard loses those reviews (clock codes: Re-mint keeps them, 10.4). | 10.2 |
 | Removing a deck item shown once for several keys | One `deck.item_removed` per equivalent key. | 8.5 |

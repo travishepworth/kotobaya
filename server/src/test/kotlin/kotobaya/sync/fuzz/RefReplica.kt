@@ -299,6 +299,7 @@ class RefReplica {
         rating = (r["rating"] as Long?)?.let { v -> Rating.entries.first { it.value.toLong() == v } },
         manualAction = (r["manual_action"] as String?)?.let { a -> ManualAction.entries.first { it.wire == a } },
         manualDueAt = r["manual_due_at"] as Long?, undoneHlc = r["undone_hlc"] as String?,
+        importSource = r["import_source"] as String?, // SYNC.md 9.5 (BUG-6)
     )
 
     /**

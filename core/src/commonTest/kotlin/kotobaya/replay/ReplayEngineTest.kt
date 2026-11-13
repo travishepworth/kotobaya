@@ -70,7 +70,7 @@ class ReplayEngineTest {
 
     @Test
     fun schedulerVersionIsExposed() {
-        assertEquals("fsrs6-1", e.schedulerVersion)
+        assertEquals("fsrs6-2", e.schedulerVersion)
         assertEquals(DefaultReplayEngine.SCHEDULER_VERSION, e.schedulerVersion)
     }
 

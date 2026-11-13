@@ -257,6 +257,7 @@ public class DeviceCardCache(
                 manualAction = ManualAction.entries.firstOrNull { it.wire == str(row["manual_action"]) },
                 manualDueAt = long(row["manual_due_at"]),
                 undoneHlc = str(row["undone_hlc"]),
+                importSource = str(row["import_source"]),
             )
         }
 

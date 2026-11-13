@@ -48,7 +48,12 @@ internal class History(val rows: List<ReplayReview>, val events: List<Event>, va
     }
 }
 
-internal fun genHistory(rng: Rng, index: Int, maxRows: Int = 20): History {
+/**
+ * [importPercent] > 0 marks that share of the rated rows as imported jpdb history
+ * (`import_source = "jpdb"`, SYNC.md 9.5). At 0 no extra random draw is made, so the stream (and every
+ * pre-BUG-6 seed and digest) is unchanged.
+ */
+internal fun genHistory(rng: Rng, index: Int, maxRows: Int = 20, importPercent: Int = 0): History {
     val n = 1 + rng.int(maxRows)
     var t = T0 + rng.long(0, 30 * DAY)
     val rows = ArrayList<ReplayReview>()
@@ -68,13 +73,18 @@ internal fun genHistory(rng: Rng, index: Int, maxRows: Int = 20): History {
         val h = hlc(hlcMs, rng.int(3), device)
         val id = uuid(index and 0xffff, rng.nextLong())
         val roll = rng.int(100)
-        val row = when {
+        val generated = when {
             roll < 40 -> rated(id, at, rng.pick(Rating.entries), ReviewType.SCHEDULED, h, rng.pick(listOf(540, -300, null)))
             roll < 60 -> rated(id, at, rng.pick(Rating.entries), ReviewType.LEARNING, h, 540)
             roll < 70 -> rated(id, at, rng.pick(Rating.entries), ReviewType.DRILL, h)
             roll < 75 -> rated(id, at, rng.pick(Rating.entries), ReviewType.CRAM, h)
             roll < 93 -> manual(id, at, ManualAction.SET_DUE, at + rng.long(-2 * DAY, 60 * DAY), h)
             else -> manual(id, at, ManualAction.RESET, null, h)
+        }
+        val row = if (importPercent > 0 && generated.rating != null && rng.chance(importPercent)) {
+            generated.copy(importSource = JPDB, utcOffsetMin = null)
+        } else {
+            generated
         }
         rows.add(row)
         events.add(Event.Logged(row))

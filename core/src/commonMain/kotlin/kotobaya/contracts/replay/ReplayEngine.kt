@@ -46,6 +46,13 @@ public data class ReplayReview(
     public val manualDueAt: InstantMs?,
     /** `undone_hlc`; non-null = undone (not in any replay set). */
     public val undoneHlc: HlcString?,
+    /**
+     * `import_source`: null for a native review, `"jpdb"` for imported jpdb history (server-minted,
+     * OPS.md `review.logged`). Read by the import-graduation rule of SYNC.md 9.5 (BUG-6). Default null,
+     * so a caller that does not pass it gets the native semantics; **every replica that maintains card
+     * caches MUST pass the stored column**, or its caches diverge from the other replicas' (SYNC.md 11).
+     */
+    public val importSource: String? = null,
 ) {
     /** This row's [ReplayKey]. */
     public val key: ReplayKey get() = ReplayKey(reviewedAt, hlc, id)
@@ -110,9 +117,20 @@ public data class UndoOutcome(
  * after all of S, `fold(replay(S, p), r, p) == replay(S + r, p)` exactly (bit-identical doubles).
  * This holds under C-1b too: a manual row leaves `lastReviewAt` unchanged in both paths.
  *
+ * **Import graduation (SYNC.md 9.5, BUG-6):** a rated row with [ReplayReview.importSource] `"jpdb"`
+ * and rating HARD, GOOD or EASY, folded into a schedule in state LEARNING or RELEARNING whose
+ * `lastReviewAt` is non-null and at least `Reserved.DAY_MS` before the row's `reviewedAt`, is folded
+ * with `Scheduler.review(before, row, params.copy(learningStepsSeconds = emptyList(),
+ * relearningStepsSeconds = emptyList()))`: FSRS's own memory-state update for that rating and elapsed
+ * time, and the card graduates to REVIEW (interval from the new stability, fuzz seeded by the row id)
+ * instead of repeating a (re)learning step. Every other row (native rows, AGAIN, a gap under one day,
+ * NEW/REVIEW states) is folded with the unmodified params. Pure in (schedule before, row, params), so
+ * the fold = replay invariant holds unchanged.
+ *
  * **Cross-platform invariant:** `replay` and `fold` give bit-identical doubles on jvm, android and js
  * for the same inputs (SYNC.md 11.3 convergence). They add no arithmetic of their own beyond
- * `Scheduler.review`/`Scheduler.manual`; the [kotobaya.contracts.fsrs.PortableMath] rules and the ban
+ * `Scheduler.review`/`Scheduler.manual` (the import-graduation test above is one Long subtraction
+ * and comparison); the [kotobaya.contracts.fsrs.PortableMath] rules and the ban
  * on kotlin.math transcendentals apply to this implementation as well.
  *
  * **Core version (C-1c):** [schedulerVersion] identifies the algorithm. A device stores the version it
@@ -121,7 +139,10 @@ public data class UndoOutcome(
  * live, non-loser card **before folding anything**, then stores the new version.
  */
 public interface ReplayEngine {
-    /** Opaque version of the replay algorithm, e.g. `"fsrs6-1"`. Changes whenever any output for any input could change. */
+    /**
+     * Opaque version of the replay algorithm, e.g. `"fsrs6-2"` (`"fsrs6-1"` before the import-graduation
+     * rule of SYNC.md 9.5, BUG-6). Changes whenever any output for any input could change.
+     */
     public val schedulerVersion: String
 
     /** Total order of SYNC.md 9.1: negative if `a` sorts first. */
@@ -129,7 +150,8 @@ public interface ReplayEngine {
 
     /**
      * Full replay: start from [CardSchedule.NEW]; for each row in 9.1 order fold it
-     * (rated → `Scheduler.review`, manual → `Scheduler.manual`). Elapsed time for a rated row is
+     * (rated → `Scheduler.review`, with the import-graduation params of SYNC.md 9.5 where that rule
+     * applies; manual → `Scheduler.manual`). Elapsed time for a rated row is
      * measured from the previous **rated** row's `reviewed_at` (`CardSchedule.lastReviewAt`, C-1b;
      * manual rows do not move it), clamped to `>= 0`.
      *

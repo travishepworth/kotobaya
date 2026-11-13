@@ -603,7 +603,12 @@ class Replica:
 
     # ------------------------------------------------------------ reading
     def replay_inputs(self, card_id) -> list:
-        """(id, reviewed_at) of the replay set, in replay order: what FSRS replay reads (SYNC.md 9.3)."""
+        """(id, reviewed_at) of the replay set, in replay order (SYNC.md 9.3).
+
+        FSRS replay also reads each row's rating, type, utc_offset_min and import_source (the
+        import-graduation rule, SYNC.md 9.5); the model does not compute FSRS state, so those
+        stay in the review_log rows, which the projection compares.
+        """
         return [(rid, self.t["review_log"][rid]["reviewed_at"]) for rid in self.replay_set(card_id)]
 
     def replay_set(self, card_id) -> list:

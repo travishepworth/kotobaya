@@ -4,8 +4,10 @@ import kotobaya.contracts.HlcString
 import kotobaya.contracts.InstantMs
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.fsrs.CardSchedule
-import kotobaya.contracts.fsrs.ReviewType
+import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.RatedReview
+import kotobaya.contracts.fsrs.Rating
+import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.fsrs.SchedulerParams
 import kotobaya.contracts.replay.CardCache
@@ -34,11 +36,18 @@ import kotobaya.sync.DefaultHlcRules
  */
 public object DefaultReplayEngine : ReplayEngine {
     /**
-     * `"fsrs6-1"`: FSRS-6 (py-fsrs 6.3.2 port, [FsrsScheduler.fsrsVersion] `"6"`), replay rules
-     * revision 1. Bump the suffix whenever any output of [replay] or [fold] could change for any input
+     * `"fsrs6-2"`: FSRS-6 (py-fsrs 6.3.2 port, [FsrsScheduler.fsrsVersion] `"6"`), replay rules
+     * revision 2. Bump the suffix whenever any output of [replay] or [fold] could change for any input
      * (scheduler formulas, fuzz, order, manual-row handling).
+     *
+     * History: `"fsrs6-1"` (T203) → `"fsrs6-2"` (BUG-6: import graduation, SYNC.md 9.5). The bump makes
+     * every replica fully replay every card once (SYNC.md 10.5), which re-derives the caches of cards
+     * stuck in (re)learning by imported jpdb history.
      */
-    public const val SCHEDULER_VERSION: String = "fsrs6-1"
+    public const val SCHEDULER_VERSION: String = "fsrs6-2"
+
+    /** `review_log.import_source` of imported jpdb history: the only source the import-graduation rule reads (SYNC.md 9.5). */
+    public const val JPDB_IMPORT_SOURCE: String = "jpdb"
 
     private val scheduler: Scheduler = FsrsScheduler
 
@@ -106,12 +115,31 @@ public object DefaultReplayEngine : ReplayEngine {
         else -> ReplayDecision.FULL_REPLAY
     }
 
-    /** One row: rated → [Scheduler.review] (clamps elapsed to >= 0), manual → [Scheduler.manual]. */
+    /**
+     * True iff [r] (rated, with [rating]) is an import graduation (SYNC.md 9.5): imported jpdb history,
+     * a pass, on a (re)learning card whose last rated review is at least one day before it.
+     */
+    public fun importGraduates(before: CardSchedule, r: ReplayReview, rating: Rating): Boolean {
+        if (r.importSource != JPDB_IMPORT_SOURCE || rating == Rating.AGAIN) return false
+        if (before.state != CardState.LEARNING && before.state != CardState.RELEARNING) return false
+        val last = before.lastReviewAt ?: return false
+        return r.reviewedAt - last >= Reserved.DAY_MS
+    }
+
+    /**
+     * One row: rated → [Scheduler.review] (clamps elapsed to >= 0), with no (re)learning steps for an
+     * import graduation ([importGraduates]); manual → [Scheduler.manual].
+     */
     private fun step(before: CardSchedule, r: ReplayReview, params: SchedulerParams): CardSchedule =
         when (r.reviewType) {
             ReviewType.SCHEDULED, ReviewType.LEARNING -> {
                 val rating = requireNotNull(r.rating) { "rated row ${r.id} without rating" }
-                scheduler.review(before, RatedReview(r.id, r.reviewedAt, rating, r.utcOffsetMin), params)
+                val p = if (importGraduates(before, r, rating)) {
+                    params.copy(learningStepsSeconds = emptyList(), relearningStepsSeconds = emptyList())
+                } else {
+                    params
+                }
+                scheduler.review(before, RatedReview(r.id, r.reviewedAt, rating, r.utcOffsetMin), p)
             }
             ReviewType.MANUAL -> {
                 val action = requireNotNull(r.manualAction) { "manual row ${r.id} without manual_action" }

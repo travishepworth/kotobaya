@@ -361,3 +361,24 @@
   `fsrs-params-publish` runner, `contracts/db/FSRS_PUBLISH.md`) and the two extra
   `optimizer_stats` keys it writes (`log_loss_before`, `holdout_review_count`). The op schema is
   unchanged: `optimizer_stats` was already an open object.
+
+## BUG-6 changes (replay semantics for imported jpdb history; core scheduler version `fsrs6-2`)
+- **Problem:** py-fsrs treats Hard on a (re)learning card as "repeat this step" whatever the
+  elapsed time; jpdb "hard" (ADR-008: a pass) is its most common grade, so ≈ 1,100 imported cards
+  never left (re)learning.
+- **Decided:** SYNC.md 9.5. An imported row (`import_source = 'jpdb'`) that passes (Hard/Good/Easy)
+  a (re)learning card ≥ 1 day after the last rated review is folded with both step lists empty:
+  FSRS's own S/D update, state `review`, interval from the new stability (fuzzed as usual). Native
+  rows unchanged; the FSRS scheduler and its golden vectors unchanged. `ReplayReview.importSource`
+  added (defaulted, additive). No op, schema or table change. Version `fsrs6-1` → `fsrs6-2`, so the
+  10.5 startup replay re-derives every cache once on each replica. Worked example SYNC.md 12.8.
+- **Alternatives rejected:** remapping jpdb hard → Good (contradicts ADR-008 and inflates
+  stability); a migration rewriting card caches (caches are derived; 10.5 already does this
+  safely); graduating on any import pass regardless of gap (jpdb same-session re-tests would
+  skip FSRS's short-term handling); a heuristic on `hlc`/`device_id` instead of `import_source`
+  (REST reviews share the server device id).
+- **Worth a second look:** (1) the one-day boundary is exact milliseconds, not the user's day
+  boundary (pure, time-zone free; matches FSRS's same-day switch); (2) the rule reads only the row
+  being folded, so a native pass after imported failures keeps py-fsrs steps; (3) every replica
+  must pass `import_source` to the engine — a replica that drops it silently computes the old
+  caches under the new version string.
