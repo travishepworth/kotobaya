@@ -94,6 +94,7 @@ private object PgHolder {
             } else {
                 org.testcontainers.containers.PostgreSQLContainer("postgres:17")
                     .withEnv("POSTGRES_INITDB_ARGS", "--encoding=UTF8 --locale=C.UTF-8")
+                    .withTmpFs(mapOf("/var/lib/postgresql/data" to "rw")) // no anonymous volume per run (D-2)
                     .also { it.start() }
             }
         } catch (e: Throwable) {

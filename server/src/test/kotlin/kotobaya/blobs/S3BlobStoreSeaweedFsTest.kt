@@ -23,6 +23,7 @@ class S3BlobStoreSeaweedFsTest {
         val seaweed: GenericContainer<*> = GenericContainer(DockerImageName.parse("chrislusf/seaweedfs:3.80"))
             .withCommand("server", "-s3", "-dir=/data")
             .withExposedPorts(8333, 9333)
+            .withTmpFs(mapOf("/data" to "rw")) // the image declares VOLUME /data: tmpfs avoids an anonymous volume per run (D-2)
             .waitingFor(Wait.forListeningPorts(8333, 9333))
     }
 
