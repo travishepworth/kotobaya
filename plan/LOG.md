@@ -597,3 +597,4 @@
 2026-11-13T02:42:11Z F-8 created: server Flyway copies only V1 (C-11 adds V2)
 2026-11-13T02:42:11Z - HANDOVER: disk full blocks all checks; nothing in flight
 2026-11-13T03:11:14Z T402b+T409 CHECK_GREEN worker; MERGE 1 attempt
+2026-11-13T03:13:15Z T403a CHECK_GREEN worker; REVIEW_APPROVE (5 minors → FOLLOWUPS); MERGE 1 attempt
