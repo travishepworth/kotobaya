@@ -23,7 +23,7 @@ Updated: 2026-11-13T01:23:37Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T305b | reviewer (opus) + architect (opus) | 2026-11-13T01:22:02Z |
+| T305b | APPROVED (both); writer fixing rebase conflict | |
 
 ## Blocked
 | Ticket | Reason | Needs |

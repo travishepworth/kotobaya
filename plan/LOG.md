@@ -551,3 +551,4 @@
 2026-11-13T01:23:16Z T305b REVIEW_APPROVE architect (6 minors → FOLLOWUPS)
 2026-11-13T01:23:37Z T303e HANDOFF DONE; CHECK_GREEN android after rebase; MERGE 1 attempt
 2026-11-13T01:24:06Z T305b REVIEW_APPROVE reviewer (6 minors → FOLLOWUPS/T305c/T311)
+2026-11-13T01:24:14Z T305b rebase conflict FeatureModules (T303e) → back to writer
