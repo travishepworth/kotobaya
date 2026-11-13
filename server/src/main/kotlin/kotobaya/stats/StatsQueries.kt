@@ -30,6 +30,7 @@ internal class ScheduledReview(
     val intervalBefore: Int,
     val groupKey: String,
     val predicted: Double?,
+    val presetId: String = "",
 )
 
 internal fun msOf(col: String) = "(extract(epoch from $col) * 1000)::bigint"
@@ -87,12 +88,21 @@ internal fun dayRows(dsl: DSLContext, from: LocalDate, to: LocalDate, zone: Zone
     val (lo, hi) = windowMs(from, to)
     val l = java.sql.Timestamp(lo)
     val h = java.sql.Timestamp(hi)
-    return dsl.fetch(DAY_ROWS_SQL, l, h, l, h, l, h).mapNotNull { r ->
-        val day = studyDayOfReview((r.get(0) as Number).toLong(), (r.get(1) as Number?)?.toInt(), zone, hour)
-        if (day < from || day > to) null
-        else DayRow(day, r.get(2, String::class.java), (r.get(3) as Number?)?.toInt(), (r.get(4) as Number).toLong(), r.get(5, Boolean::class.java))
+    val out = ArrayList<DayRow>()
+    // Streamed through a cursor (fetchSize) so the jOOQ result set is never materialised next to the compact DayRow list.
+    dsl.resultQuery(DAY_ROWS_SQL, l, h, l, h, l, h).fetchSize(2000).fetchLazy().use { cur ->
+        while (cur.hasNext()) {
+            val r = cur.fetchNext() ?: break
+            val day = studyDayOfReview((r.get(0) as Number).toLong(), (r.get(1) as Number?)?.toInt(), zone, hour)
+            if (day < from || day > to) continue
+            out += DayRow(day, r.get(2, String::class.java), (r.get(3) as Number?)?.toInt(), (r.get(4) as Number).toLong(), r.get(5, Boolean::class.java))
+        }
     }
+    return out
 }
+
+/** Cards replayed per history query: bounds the history held in memory to a few thousand reviews at a time. */
+private const val CARD_CHUNK = 500
 
 private fun replayReview(r: Record, survivorId: String): ReplayReview {
     val type = r.get(6, String::class.java)
@@ -145,32 +155,34 @@ internal fun scheduledReviews(dsl: DSLContext, from: LocalDate, to: LocalDate, z
         )) info[r.get(0, String::class.java)] = CardInfo(r.get(1, String::class.java), "${r.get(2, String::class.java)}/${r.get(3, String::class.java)}")
     }
     val presets = ReviewViews.loadPresets(dsl)
-    val history = loadHistory(dsl, survivors)
     val out = ArrayList<ScheduledReview>()
-    for (id in survivors) {
-        val ci = info[id] ?: continue
-        if (presetFilter != null && ci.presetId != presetFilter) continue
-        val params = paramsFor(ci.presetId, presets)
-        val found = ArrayList<ScheduledReview>()
-        try {
-            var cache = CardCache(CardSchedule.NEW, null, params.weightsVersion)
-            for (r in DefaultReplayEngine.replaySet(history[id].orEmpty())) {
-                val rating = r.rating
-                if (r.reviewType == ReviewType.SCHEDULED && rating != null) {
-                    val day = studyDayOfReview(r.reviewedAt, r.utcOffsetMin, zone, hour)
-                    if (day >= from && day <= to) {
-                        found += ScheduledReview(
-                            day, rating != Rating.AGAIN, cache.schedule.intervalDays ?: 0, ci.groupKey,
-                            FsrsScheduler.retrievability(cache.schedule, r.reviewedAt, params),
-                        )
+    for (chunk in survivors.chunked(CARD_CHUNK)) {
+        val history = loadHistory(dsl, chunk)
+        for (id in chunk) {
+            val ci = info[id] ?: continue
+            if (presetFilter != null && ci.presetId != presetFilter) continue
+            val params = paramsFor(ci.presetId, presets)
+            val found = ArrayList<ScheduledReview>()
+            try {
+                var cache = CardCache(CardSchedule.NEW, null, params.weightsVersion)
+                for (r in DefaultReplayEngine.replaySet(history[id].orEmpty())) {
+                    val rating = r.rating
+                    if (r.reviewType == ReviewType.SCHEDULED && rating != null) {
+                        val day = studyDayOfReview(r.reviewedAt, r.utcOffsetMin, zone, hour)
+                        if (day >= from && day <= to) {
+                            found += ScheduledReview(
+                                day, rating != Rating.AGAIN, cache.schedule.intervalDays ?: 0, ci.groupKey,
+                                FsrsScheduler.retrievability(cache.schedule, r.reviewedAt, params), ci.presetId,
+                            )
+                        }
                     }
+                    cache = DefaultReplayEngine.fold(cache, r, params)
                 }
-                cache = DefaultReplayEngine.fold(cache, r, params)
+            } catch (e: IllegalArgumentException) {
+                continue
             }
-        } catch (e: IllegalArgumentException) {
-            continue
+            out += found
         }
-        out += found
     }
     return out
 }
@@ -193,21 +205,23 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
     )) cardsOfNote.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += r.get(1, String::class.java) to r.get(2, String::class.java)
     val presets = ReviewViews.loadPresets(dsl)
     val allCards = cardsOfNote.values.flatten()
-    val history = loadHistory(dsl, allCards.map { it.first })
     val snaps = HashMap<String, List<Snap>>()
-    for ((id, preset) in allCards) {
-        val params = paramsFor(preset, presets)
-        val list = ArrayList<Snap>()
-        try {
-            var cache = CardCache(CardSchedule.NEW, null, params.weightsVersion)
-            for (r in DefaultReplayEngine.replaySet(history[id].orEmpty())) {
-                cache = DefaultReplayEngine.fold(cache, r, params)
-                list += Snap(r.reviewedAt, cache.schedule.state, cache.schedule.intervalDays)
+    for (chunk in allCards.chunked(CARD_CHUNK)) {
+        val history = loadHistory(dsl, chunk.map { it.first })
+        for ((id, preset) in chunk) {
+            val params = paramsFor(preset, presets)
+            val list = ArrayList<Snap>()
+            try {
+                var cache = CardCache(CardSchedule.NEW, null, params.weightsVersion)
+                for (r in DefaultReplayEngine.replaySet(history[id].orEmpty())) {
+                    cache = DefaultReplayEngine.fold(cache, r, params)
+                    list += Snap(r.reviewedAt, cache.schedule.state, cache.schedule.intervalDays)
+                }
+            } catch (e: IllegalArgumentException) {
+                list.clear()
             }
-        } catch (e: IllegalArgumentException) {
-            list.clear()
+            snaps[id] = list
         }
-        snaps[id] = list
     }
     val overrides = dsl.fetch("select entry_seq, override_status, ${msOf("updated_at")} from app.word_status")
         .associate { (it.get(0) as Number).toLong() to (it.get(1, String::class.java) to (it.get(2) as Number).toLong()) }

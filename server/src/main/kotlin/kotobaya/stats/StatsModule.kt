@@ -1,6 +1,13 @@
 package kotobaya.stats
 
 import io.ktor.server.application.ApplicationCall
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.queue.QueueBuilder
 import kotobaya.contracts.queue.QueueItemKind
@@ -18,6 +25,7 @@ import org.jooq.DSLContext
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 import java.time.temporal.IsoFields
@@ -47,6 +55,32 @@ class StatsModule(
         "getStatsKnownWords" to { knownWords(this) },
         "getStatsCalibration" to { calibration(this) },
     )
+
+    /** Soft memory guard: at most one history-replaying computation runs at a time, however many panels ask at once. */
+    private val heavy = Semaphore(1)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private data class ReplayKey(val from: LocalDate, val to: LocalDate, val zone: ZoneId, val hour: Int)
+    private val inflight = HashMap<ReplayKey, Deferred<List<ScheduledReview>>>()
+
+    /**
+     * Every scheduled review in the window, replayed once. Concurrent callers (retention and calibration of one stats page)
+     * join the same in-flight computation; the entry is dropped as soon as it finishes, so nothing is served stale.
+     */
+    private suspend fun scheduledShared(from: LocalDate, to: LocalDate, zone: ZoneId, hour: Int): List<ScheduledReview> {
+        val key = ReplayKey(from, to, zone, hour)
+        val job = synchronized(inflight) {
+            inflight.getOrPut(key) {
+                scope.async {
+                    try {
+                        heavy.withPermit { db.tx { dsl -> scheduledReviews(dsl, from, to, zone, hour, null) } }
+                    } finally {
+                        synchronized(inflight) { inflight.remove(key) }
+                    }
+                }
+            }
+        }
+        return job.await()
+    }
 
     private class Range(val from: LocalDate, val to: LocalDate)
 
@@ -159,7 +193,7 @@ class StatsModule(
     private suspend fun heatmap(call: ApplicationCall) {
         val e = Errors()
         val nowMs = clock().toEpochMilli()
-        val body = db.tx { dsl ->
+        val body = heavy.withPermit { db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()
@@ -175,7 +209,7 @@ class StatsModule(
                     )
                 }
             linkedMapOf("from" to r.from.toString(), "to" to r.to.toString(), "days" to days)
-        }
+        } }
         call.respondJson(body)
     }
 
@@ -200,12 +234,14 @@ class StatsModule(
         val nowMs = clock().toEpochMilli()
         val groupBy = call.request.queryParameters["group_by"] ?: "card_kind"
         if (groupBy !in setOf("card_kind", "day", "week", "month")) e.add("/group_by", "invalid_value", "Must be card_kind, day, week or month.")
-        val body = db.tx { dsl ->
+        val (settings, r) = db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()
-            r!!
-            val rows = scheduledReviews(dsl, r.from, r.to, settings.timezone, settings.dayRolloverHour, null)
+            settings to r!!
+        }
+        val rows = scheduledShared(r.from, r.to, settings.timezone, settings.dayRolloverHour)
+        val body = run {
             val keyOf: (ScheduledReview) -> String = when (groupBy) {
                 "day" -> { x -> x.day.toString() }
                 "week" -> { x -> "%d-W%02d".format(x.day.get(IsoFields.WEEK_BASED_YEAR), x.day.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)) }
@@ -262,7 +298,7 @@ class StatsModule(
         val interval = call.request.queryParameters["interval"] ?: "week"
         if (interval !in setOf("day", "week", "month")) e.add("/interval", "invalid_value", "Must be day, week or month.")
         val nowMs = clock().toEpochMilli()
-        val body = db.tx { dsl ->
+        val body = heavy.withPermit { db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val today = todayOf(settings, nowMs).date
             val r = range(call, today, e)
@@ -282,7 +318,7 @@ class StatsModule(
                 "current" to current,
                 "series" to dates.indices.map { linkedMapOf("date" to dates[it].toString(), "known" to counts[it]) },
             )
-        }
+        } }
         call.respondJson(body)
     }
 
@@ -309,13 +345,15 @@ class StatsModule(
         val preset = call.request.queryParameters["preset_id"]?.also {
             if (!kotobaya.notes.UUID_RE.matches(it)) e.add("/preset_id", "invalid_value", "Must be a lowercase UUID.")
         }
-        val body = db.tx { dsl ->
+        val (settings, r) = db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()
-            r!!
-            val rows = scheduledReviews(dsl, r.from, r.to, settings.timezone, settings.dayRolloverHour, preset)
-                .filter { it.predicted != null }
+            settings to r!!
+        }
+        val rows = scheduledShared(r.from, r.to, settings.timezone, settings.dayRolloverHour)
+            .filter { it.predicted != null && (preset == null || it.presetId == preset) }
+        val body = run {
             val bins = rows.groupBy { min(BINS - 1, (it.predicted!! * BINS).toInt()) }.toSortedMap().map { (i, v) ->
                 linkedMapOf(
                     "lower" to i.toDouble() / BINS,

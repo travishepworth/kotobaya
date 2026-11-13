@@ -9,5 +9,6 @@ RUN gradle --no-daemon :server:installDist -x test
 FROM eclipse-temurin:17-jre
 COPY --from=build /src/server/build/install/server /opt/server
 USER 65534
+ENV JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70
 EXPOSE 8080
 CMD ["/opt/server/bin/server"]

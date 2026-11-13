@@ -10,6 +10,7 @@ import kotobaya.review.ReviewSettings
 import kotobaya.server.StartupSequence
 import kotobaya.server.json
 import java.sql.Timestamp
+import kotlinx.coroutines.async
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -157,5 +158,38 @@ class StatsPerfTest : AuthFixture() {
                 if (bad.isNotEmpty()) fail("$name plans review_log x review_log: $bad\n$text")
             }
         }
+    }
+
+    /**
+     * BUG-9: the panels of one stats page fired at once (the OOM trigger at 256 MB). Peak heap after GC is sampled from the
+     * memory pools; the test JVM has a 2 GB heap, so the number is reported and bounded well below the old three-replay cost.
+     */
+    @Test
+    fun concurrentStatsPanelsStayWithinABoundedHeap() {
+        seed()
+        val paths = listOf(
+            "/stats/heatmap", "/stats/retention?group_by=card_kind", "/stats/calibration",
+            "/stats/known-words?interval=week", "/stats/forecast?days=30",
+        )
+        val pools = java.lang.management.ManagementFactory.getMemoryPoolMXBeans().filter { it.type == java.lang.management.MemoryType.HEAP }
+        System.gc()
+        pools.forEach { it.resetPeakUsage() }
+        val times = LinkedHashMap<String, Long>()
+        app(extraHandlers = StatsModule(db, clock = { now.get() }).handlers) {
+            val reader = mint(TokenKind.PERSONAL, listOf("read")).second
+            kotlinx.coroutines.coroutineScope {
+                val t0 = System.nanoTime()
+                paths.map { p ->
+                    async(kotlinx.coroutines.Dispatchers.IO) {
+                        val r = client.call(HttpMethod.Get, p, bearer = reader)
+                        assertEquals(200, r.status.value, p)
+                        times[p] = (System.nanoTime() - t0) / 1_000_000
+                    }
+                }.forEach { it.await() }
+            }
+        }
+        val peakMb = pools.sumOf { it.peakUsage.used } / (1 shl 20)
+        println("BUG-9 concurrent panels: completion ms $times; peak heap $peakMb MB")
+        assertTrue(times.values.all { it < 5000 }, "concurrent panels took $times ms")
     }
 }
