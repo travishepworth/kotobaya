@@ -2,7 +2,7 @@
 	// Windowed card table: only the rows in (or near) the viewport are in the DOM, between two
 	// spacers, so a 5000-row result costs the same as a 50-row one.
 	import type { Card } from '../api/generated';
-	import { ROW_HEIGHT, noteSummary, windowRange } from './model';
+	import { ROW_HEIGHT, rowLabel, windowRange } from './model';
 	import { tc, type CardsMessageKey } from './messages';
 
 	let {
@@ -11,6 +11,7 @@
 		allMatching,
 		activeId,
 		hasMore,
+		headwords,
 		onactivate,
 		ontoggle,
 		ontogglepage,
@@ -21,6 +22,7 @@
 		allMatching: boolean;
 		activeId: string | null;
 		hasMore: boolean;
+		headwords: ReadonlyMap<number, string>;
 		onactivate: (c: Card) => void;
 		ontoggle: (c: Card) => void;
 		ontogglepage: () => void;
@@ -78,12 +80,19 @@
 				class="row"
 				class:active={c.id === activeId}
 				role="row"
+				tabindex="0"
+				aria-selected={c.id === activeId}
 				aria-rowindex={range.start + i + 2}
+				onclick={() => onactivate(c)}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' && e.target === e.currentTarget) onactivate(c);
+				}}
 				style:height="{ROW_HEIGHT}px"
 			>
 				<span role="cell" class="sel">
 					<input
 						type="checkbox"
+						onclick={(e) => e.stopPropagation()}
 						aria-label={tc('cards.col.select')}
 						checked={allMatching || selected.has(c.id)}
 						disabled={allMatching}
@@ -91,9 +100,7 @@
 					/>
 				</span>
 				<span role="cell" class="note">
-					<button type="button" class="link" onclick={() => onactivate(c)}>
-						{c.note ? noteSummary(c.note.fields) : c.noteId}
-					</button>
+					<span class="link">{rowLabel(c.note, c.noteId, headwords)}</span>
 				</span>
 				<span role="cell" class="kind">{c.kind}</span>
 				<span role="cell" class="due">{due(c)}</span>
@@ -141,15 +148,13 @@
 	.active {
 		background: var(--kb-info-bg);
 	}
-	.link {
-		all: unset;
+	.body .row {
 		cursor: pointer;
-		color: var(--kb-link);
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
-	.link:focus-visible {
+	.row:focus-visible {
 		outline: 2px solid var(--kb-focus);
+	}
+	.link {
+		color: var(--kb-link);
 	}
 </style>

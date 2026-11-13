@@ -44,6 +44,24 @@ export function noteSummary(fields: Record<string, string>): string {
 	return '';
 }
 
+/** Row label: field summary, else the dictionary headword, else the kanji literal, else the short note id. */
+export function rowLabel(
+	note: { fields: Record<string, string>; entrySeq?: number | null; kanjiLiteral?: string | null } | null | undefined,
+	noteId: string,
+	headwords?: ReadonlyMap<number, string>
+): string {
+	if (note) {
+		const s = noteSummary(note.fields);
+		if (s) return s;
+		if (note.entrySeq != null) {
+			const h = headwords?.get(note.entrySeq);
+			if (h) return h;
+		}
+		if (note.kanjiLiteral) return note.kanjiLiteral;
+	}
+	return noteId.slice(0, 8);
+}
+
 export type BulkKind =
 	| 'add_tags'
 	| 'remove_tags'

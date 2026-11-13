@@ -36,6 +36,8 @@ const en = {
 	'cards.previewBack': 'Back',
 	'cards.previewFailed': 'This card could not be rendered: {detail}',
 	'cards.previewMissingType': 'The note type of this card is missing.',
+	'cards.previewLoading': 'Loading dictionary data…',
+	'cards.previewDictFailed': 'Dictionary data could not be loaded; showing the card without it.',
 	'bulk.title': 'Bulk action',
 	'bulk.action': 'Action',
 	'bulk.action.add_tags': 'Add tags',

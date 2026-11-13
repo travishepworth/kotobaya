@@ -26,6 +26,8 @@
 	let selected = $state<Set<string>>(new Set());
 	let allMatching = $state(false);
 	let activeId = $state<string | null>(null);
+	/** Headwords of dictionary notes, filled lazily from the preview's entry fetches. */
+	let headwords = $state<Map<number, string>>(new Map());
 	/** Bumped for every new search so a slow page of an older query is dropped. */
 	let generation = 0;
 
@@ -127,6 +129,7 @@
 				{allMatching}
 				{activeId}
 				hasMore={cursor !== null}
+				{headwords}
 				onactivate={(c) => (activeId = c.id)}
 				ontoggle={toggle}
 				ontogglepage={togglePage}
@@ -163,7 +166,12 @@
 	<aside>
 		<h2>{tc('cards.preview')}</h2>
 		{#if active}
-			<CardPreview card={active} noteType={active.note ? noteTypes.get(active.note.noteTypeId) : undefined} />
+			<CardPreview
+				card={active}
+				onheadword={(seq, h) => {
+					if (headwords.get(seq) !== h) headwords = new Map(headwords).set(seq, h);
+				}}
+				 noteType={active.note ? noteTypes.get(active.note.noteTypeId) : undefined} />
 		{:else}
 			<p class="muted">{tc('cards.previewNone')}</p>
 		{/if}

@@ -1,12 +1,56 @@
 <script lang="ts">
 	// Preview pane: renders the card through the shared core (renderCard) into the shared CardView.
-	import type { Card, NoteType } from '../api/generated';
+	import type { Card, DictEntry, Kanji, NoteType } from '../api/generated';
 	import { renderCard, type CardSide, type RenderedCard } from '../core/index';
 	import CardView from '../review/CardView.svelte';
-	import { MEDIA_URL_TEMPLATE, toCoreNoteType } from '../review/model';
+	import { MEDIA_URL_TEMPLATE, toCoreNoteType, toDictionary, toKanji } from '../review/model';
+	import { fetchEntry, fetchKanji } from './api';
 	import { tc } from './messages';
 
-	let { card, noteType }: { card: Card; noteType: NoteType | undefined } = $props();
+	let {
+		card,
+		noteType,
+		onheadword
+	}: { card: Card; noteType: NoteType | undefined; onheadword?: (seq: number, headword: string) => void } = $props();
+
+	let entry = $state<DictEntry | null>(null);
+	let kanji = $state<Kanji | null>(null);
+	let loading = $state(false);
+	let failed = $state(false);
+
+	// Referenced notes render from the dictionary: fetch (cached) whenever the card changes.
+	$effect(() => {
+		const seq = card.note?.entrySeq ?? null;
+		const lit = card.note?.kanjiLiteral ?? null;
+		entry = null;
+		kanji = null;
+		failed = false;
+		loading = seq !== null || lit !== null;
+		if (!loading) return;
+		let stale = false;
+		void (async () => {
+			try {
+				if (seq !== null) {
+					const e = await fetchEntry(seq);
+					if (stale) return;
+					entry = e;
+					onheadword?.(seq, e.headword);
+				}
+				if (lit !== null) {
+					const k = await fetchKanji(lit);
+					if (stale) return;
+					kanji = k;
+				}
+			} catch {
+				if (!stale) failed = true;
+			} finally {
+				if (!stale) loading = false;
+			}
+		})();
+		return () => {
+			stale = true;
+		};
+	});
 
 	let side = $state<CardSide>('front');
 
@@ -29,8 +73,8 @@
 					kind: card.kind,
 					fields: note.fields,
 					mnemonic: note.mnemonic,
-					dictionary: null,
-					kanji: null,
+					dictionary: toDictionary(entry),
+					kanji: toKanji(kanji),
 					side,
 					options: { furigana: true, pitch: true, showMnemonic: true, mediaUrlTemplate: MEDIA_URL_TEMPLATE }
 				})
@@ -50,6 +94,11 @@
 			{tc('cards.previewBack')}
 		</button>
 	</div>
+	{#if loading}
+		<p class="muted">{tc('cards.previewLoading')}</p>
+	{:else if failed}
+		<p class="err">{tc('cards.previewDictFailed')}</p>
+	{/if}
 	{#if rendered.ok}
 		<CardView rendered={rendered.card} />
 	{:else}
@@ -65,6 +114,9 @@
 	}
 	[aria-pressed='true'] {
 		font-weight: 700;
+	}
+	.muted {
+		color: var(--kb-text-muted);
 	}
 	.err {
 		color: var(--kb-error);
