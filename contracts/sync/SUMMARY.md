@@ -382,3 +382,6 @@
   being folded, so a native pass after imported failures keeps py-fsrs steps; (3) every replica
   must pass `import_source` to the engine — a replica that drops it silently computes the old
   caches under the new version string.
+
+## C-20 (wording only; no schema, op or API change)
+- **A phone may apply one downloaded page in several smaller steps** (SYNC.md 6.1 "Sub-pages"; cross-references in 7.8, 9.3, 10.3, 11, 17). Each step is its own transaction that saves how far it got and finishes its schedule recomputation before committing, so a kill between steps resumes there and ends with the same data as applying the page in one go. This is what the app has done since BUG-8 (200 ops per step).

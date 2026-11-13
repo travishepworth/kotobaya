@@ -589,6 +589,50 @@ before the first unknown one.
 2. Set `sync_state.pull_seq = next_since`, `durable_seq`; persist `hlc_last`.
 3. Commit; if `has_more`, pull again.
 
+**Sub-pages (C-20).** A client MAY apply one pulled page as **consecutive sub-pages** instead of in
+one transaction. Nothing changes on the wire and the server cannot tell the difference.
+
+- **Definition.** A sub-page is a non-empty run of consecutive ops of the page, in page order. The
+  sub-pages partition the page's ops: every op is in exactly one, none is reordered, skipped or
+  applied twice. Their sizes are the client's choice (at least 1 op; they need not be equal). A page
+  with no ops is not split: it is the one transaction above.
+- **Step 0 runs once per page**, before the first sub-page's transaction applies anything. It
+  compares against the stored state, so a page that shows a changed log is still discarded whole.
+- **Each sub-page is one local transaction** that does steps 1–3 for its own ops, with
+  **`pull_seq` = the `seq` of the last op of that sub-page** in step 2 (for the last sub-page that
+  is `next_since`). `hlc_last` is persisted in every one of them (3.2); `durable_seq` (and a first
+  `log_epoch`, 6.2) in every one or at least the first. An op with `device_applies = false` counts
+  as an op of its sub-page: skipped, cursor advances.
+- **Replays at the end of each sub-page.** A full replay forced by an op of the sub-page (9.2) MAY
+  be deferred to the end of that sub-page's transaction and done once per card; it MUST be done
+  before that transaction commits (9.3) and MUST NOT be carried into a later sub-page or to the
+  end of the page. The same holds for values a device derives locally from the applied rows
+  (`word_status.auto_status`, `updated_at`; section 11 item 4). So every committed state has no
+  outstanding replay except the lazy `weights_version` case of 9.3.
+- **Equivalence.** After a sub-page commits, the device is exactly where it would be if the server
+  had ended a page at that op (page boundaries are the server's choice and may fall anywhere): a
+  correct prefix of the log with the cursor at its end. After the last sub-page the rows compared
+  in section 11 are the same as after a one-transaction apply of the page.
+- **Crash, kill or error between sub-pages:** the committed sub-pages stay; the sub-page in
+  progress rolls back completely. The next pull sends `since` = the committed `pull_seq` and
+  receives the rows after it; no op is lost, and an op delivered again is harmless (7.8). The
+  client MUST read `since` from stored `sync_state`, never from memory of the interrupted page.
+- **Between sub-pages** the device may mint and apply its own ops, as between pages (section 11).
+  The pull is not finished: the end-of-cycle steps below (purge, `last_sync_at`) wait until
+  `has_more` is false and the last sub-page has committed. The purge rule of 5.4 is safe at any
+  committed `pull_seq`.
+- **Stop at an unknown or schema-invalid op** (next two bullets): the sub-page in progress ends
+  just before that op and commits with `pull_seq` = the `seq` just before it. If the op is the
+  first of its sub-page, the previous commit already left that value and there is nothing to
+  commit. Later sub-pages of the page are not applied.
+- **Example.** `since = 1000`; the page holds 500 ops with `seq` 1001–1500, `next_since = 1500`,
+  `has_more = true`; the client uses sub-pages of 200 ops. Transaction 1 applies 1001–1200 and
+  commits `pull_seq = 1200`; transaction 2 applies 1201–1400, commits `pull_seq = 1400`;
+  transaction 3 applies 1401–1500, commits `pull_seq = 1500`; then it pulls `since = 1500`. If the
+  app is killed during transaction 2, `pull_seq` is 1200 and the next pull (`since = 1200`)
+  returns 1201 onwards. If op 1301 is of an unknown type, transaction 2 applies 1201–1300, commits
+  `pull_seq = 1300`, and the pull stops (*upgrade required*).
+
 - **Own ops come back** in the pull. The device applies them like any other op; they are no-ops
   because of the idempotency rules (7.8). There is deliberately no "skip my own ops" rule.
 - **Unknown `op_type`, or `op_version` higher than the client supports:** apply the ops before
@@ -903,6 +947,9 @@ rebuild, section 10.3).
   smaller; a merge whose loser is already merged is a no-op; a version that is not higher is
   ignored. (Exception: `media.content_published`, 7.6, is idempotent only in `seq` order.)
 - Replaying the entire log from `seq` 0 onto an up-to-date replica changes nothing.
+- The same rules make the transaction boundaries of a pull irrelevant: a page applied as
+  consecutive sub-pages (6.1), and a pull that resumes from a committed `pull_seq` after a crash
+  between sub-pages and receives ops again, give the same rows as one transaction per page.
 - A device therefore needs no "have I seen this op" table.
 
 ### 7.9 `review_log` is append-only — the device rules
@@ -1136,7 +1183,12 @@ Nothing else touches a cache: not suspend/bury/flag, not note edits, not setting
   it ≥ 0; implementations still clamp it to ≥ 0.
 - An empty replay set (or one ending in `manual`/`reset`) gives `state = 'new'`, `due_at = NULL`,
   `last_review_at = NULL` (the "last review" rules above).
-- A replay is done **in the transaction that applied the triggering op**. The only event that
+- A replay is done **in the transaction that applied the triggering op**. Within that transaction
+  it MAY be deferred to the end and done once per card (the result is the same: the cache is a pure
+  function of the replay set as it stands at commit, and the full replay overwrites anything folded
+  before it). On a device pulling, "that transaction" is the page's, or the **sub-page's** when the
+  page is applied as sub-pages (6.1): the deferred replay runs at the end of each sub-page
+  transaction, never later. The only event that
   may be handled lazily is the `weights_version` mismatch, because the mismatch itself is the
   durable marker; such a card MUST be replayed before its cache is next read — **and before
   anything is folded into it**. Folding a review into a stale cache and stamping the current
@@ -1314,7 +1366,8 @@ the device MUST NOT mint ops (reviewing is blocked, with a "rebuilding" status).
    client does not support or that fails its schema** (*upgrade required*, section 6). In the second case the rebuild
    still continues with step 3: the device then holds a correct prefix of the log, exactly like a
    device that stopped there in normal operation, and the pull resumes at the same op after the
-   app update. If a page shows that the log changed again (6.2), start a new log reset.
+   app update. If a page shows that the log changed again (6.2), start a new log reset. Pages MAY be
+   applied as sub-pages here too (6.1); a crash still restarts the rebuild at step 0.
 3. In one transaction: re-apply, in ascending `hlc`, with the local apply function, every
    `pending_op` row in state `pending` or `rejected` (their effects are not in the log), and every
    `acked` row with `acked_seq > pull_seq` (only after an *upgrade required* stop: the device's own
@@ -1643,7 +1696,9 @@ device representation (`contracts/db/SCHEMA.md` 5.1):
 
 What is guaranteed about order:
 
-- Any replica that applies the log in `seq` order converges with the server.
+- Any replica that applies the log in `seq` order converges with the server — however the ops are
+  grouped into local transactions (one per page, or one per sub-page, 6.1). Convergence is
+  compared at a committed state, where no replay is outstanding (9.3).
 - A device that interleaves its own ops (applied at mint time) with the pulled log converges.
 - More generally, **any** interleaving of the per-device op streams converges, provided each
   device's ops stay in their own order and an op is applied only after the rows it references
@@ -2109,5 +2164,5 @@ lowers `durable_seq` within an epoch (6.2, C-8).
 | Server restored from a backup | Restore script sets `restore_pending`; server finalizes at startup (new epoch, `durable_seq`, clock). | 6.2, 6.3 |
 | Client older than server | Stops pulling at the unknown op; *upgrade required*. | 6 |
 | Lost push response | Push again; `duplicate`. | 5.2 |
-| App killed mid-pull | The page is one transaction with the cursor: all or nothing. | 6 |
+| App killed mid-pull | The page — or each sub-page, if the client splits it (C-20) — is one transaction with the cursor: all or nothing. Killed between sub-pages: the next pull resumes at the committed `pull_seq`. | 6.1 |
 | Device restored from backup | Must re-pair (new device id). | 3.3 |
