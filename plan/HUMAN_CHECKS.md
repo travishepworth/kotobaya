@@ -102,7 +102,6 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
   3. Compare coverage % per show with jpdb (expect within ~3 points). Open the reader: click-to-look-up, fix one token's parse, mine an i+1 sentence card.
   4. Android → Media tab: coverage/segments/curve and i+1 sentences match web.
 - [ ] **CLAUDE.md:** add `acceptance/` and `cli/` (Python `kotobaya` CLI, `make check MODULE=cli`) to the module map (human-owned file).
-- [ ] **(was) CLAUDE.md acceptance line:** add `acceptance/` (Kotlin, offline/sync chaos suite, `make check MODULE=acceptance`) to the module map (human-owned file).
 - [ ] **P1 (GATE-P1, deferred; `make test` green 2026-11-12):** `helm install` the chart (k3d: `deploy/k3d/` scripts; set the AUTH_PASSWORD_HASH Secret first), log in, run the dict-refresh job (W-1 item above), then search the dictionary through the API (e.g. `GET /api/v1/dict/search?q=食べる`) and confirm sensible results. Note: login over plain http in k3d dev doesn't resend the Secure cookie — use HTTPS or see FOLLOWUPS.
 - [ ] **P2:** review in the web app for 3 days. Note anything off.
 - [ ] **P3:** pair the phone; review offline (airplane mode) for a week; sync; confirm review counts match on web and phone.
