@@ -59,6 +59,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] Root fs at 95% (5.3 GB free); `make test` hit Postgres DiskFull in worker dict tests. 131 unused anonymous Docker volumes (~22 GB, Testcontainers leftovers) — run `docker volume prune -f` (anonymous only; keeps named volumes). Orchestrator's prune was denied by the permission classifier. Merged worktrees were removed 2026-11-13 (10 GB free after). Still recommended: prune before P4 (Testcontainers volumes accumulate per run).
 
 ## Deploy
+- [ ] Run 8 server changes: grammar create/update with detection rules now calls the worker (PARSER_URL) and returns 503 if it is unset/down; new opt-in env `GRAMMAR_SEED_ON_START=true` loads the ~280 grammar stubs once; Main.kt now starts the server non-blocking then joins (check pod startup/shutdown on the next image).
 - [ ] F-4: run the extended restore drill on k3d (`deploy/backup/restore-drill.sh`): confirm the data-loss preflight refuses without `--accept-data-loss` and leaves api/CronJobs untouched.
 - [ ] **P1 — Cluster:** `helm install` on the real cluster (command filled in by orchestrator); open the web app; search the dictionary.
 - [ ] **Backups:** confirm the first nightly backup landed off-cluster; run the restore drill once.

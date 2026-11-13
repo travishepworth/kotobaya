@@ -703,3 +703,5 @@
 2026-11-13T06:26:48Z D-3 MERGE CHECK_GREEN worker; 1 attempt (low); worker pg_server fixture tmpfs; volumes stable
 2026-11-13T06:26:48Z T507 DISPATCH writer (core+server, Gradle slot; F-20 folded in)
 2026-11-13T06:35:45Z T607 DECIDE DEFERRED by human (LLM assist); P6 complete without it
+2026-11-13T06:38:26Z T507 MERGE CHECK_GREEN core+server; 1 attempt (med); sentence source unexposed → F-25
+2026-11-13T06:38:26Z - HANDOVER run 8: 6 merged; context budget; next F-25, T504b, T508

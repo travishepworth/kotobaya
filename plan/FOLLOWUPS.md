@@ -301,3 +301,6 @@
 - PARSER.md §5.1 still says "any other path is 404"; align with worker-parse 1.1.0.
 - openapi DetectionRule.rule: 1000 code points + "grammar owned by the core" vs worker cap 500 / worker-owned DSL; align.
 - WorkerRuleTestSentence.tokens maxItems 20000 < possible 40000 UTF-16 units; raise or have server skip such sentences.
+
+## F-25 (from T507, run 8) — wire grammar card sentence rotation into review (med; before GATE-P5)
+- server grammar/cards/GrammarCardSentenceSource (rotation, i+0) has no caller: no API op returns the per-review sentence for a grammar card, so clients still show a fixed sentence. Add the op (C-ticket if openapi lacks it) and use it in web/Android review. Tatoeba sentences have no spans → excluded for now.

@@ -1,28 +1,26 @@
 # STATE
 Mode: single-session
 Phase: P5 (Struggle + grammar)   Gate: GATE-P2, GATE-P3, GATE-P4 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (orchestrator run 8 in progress)
+Updated: 2026-11-13 (end of orchestrator run 8)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 7)
-- Run 7 merged (10): W-5, T604 (CLI, new `cli` module), T505a, T501, T505b, T503, T502, C-13, W-6, T506a. P4 closed: `make test` green all modules → GATE-P4 deferred (HUMAN_CHECKS). Phase P5.
-- **DISK: 8.7 GB free (<10 GB floor) — run stopped for this. Do not start Gradle work until the human frees space (HUMAN_CHECKS › Disk space).**
-- 0.1.3 deploy changes listed in HUMAN_CHECKS "Ready now (run 7)" (worker parse Service :8082, PARSER_URL, jpdb-cache PVC, ffmpeg image).
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 8)
+- Run 8 merged (6): T504a (web struggle UI), C-14 (worker-parse 1.1.0 rule-test), D-2 + D-3 (Docker volume leaks fixed: core/server/worker postgres+seaweedfs → tmpfs; counts stable), T506c (rule tester + 422/503 rule validation), T507 (grammar cards picker/rotation/i+0 + F-20 seed trigger GRAMMAR_SEED_ON_START).
+- Stopped for context budget, not disk (32 GB free; human pruned volumes).
+- T607 DEFERRED by human (LLM assist; DECISIONS.md line 32): never dispatch; P6 is complete without it.
 - Nothing in flight; no worktrees or t/* branches.
-- QUEUE ORDER next run (P5 remaining):
-  1. C-14 (architect/opus, contract: worker-parse rule-test endpoint + validate mode) → T506c (sonnet: worker route + server testGrammarRules + 422 on invalid rules).
-  2. T507 grammar cards (sonnet med; deps T506a ✓, T201 ✓) — write ticket; fold F-20 (grammar seed trigger + dup titles) in or run separately.
-  3. T504 struggle UIs (web/android/widget; deps T502 ✓ T503 ✓ T307 ✓) — consider F-21 (single-word drill source needs C-ticket).
-  4. T508 "saw something weird" (deps T507, T406).
-  5. Then `make test` → GATE-P5 deferred → P6 (T604 already merged).
+- QUEUE ORDER next run (P5 remaining; all deps merged):
+  1. F-25 (server, sonnet med): expose GrammarCardSentenceSource to review (no API op yet → may need C-ticket) — needed for P5 "Done when".
+  2. T504b (android struggle + 4×3 hot-word widget; ticket plan/tickets/T504.md SPLIT line; mirror web T504a). Gradle slot.
+  3. T508 (ticket plan/tickets/T508.md; web+android; deps T507 ✓ T406 ✓). Consider split a=web (no Gradle) / b=android.
+  4. F-22 (grammar detection gaps; check part 1 vs T506a att 2), F-24 (contract polish) if cheap.
+  5. Then `make test` → GATE-P5 deferred → P6 (T604 merged; T607 deferred).
 - Merge helper unchanged (rebase → make check → ff → git mv HANDOFF.md plan/handoffs/<ID>.md → worktree remove -f -f → branch -D incl. worktree-agent-* → LOG → push).
-- RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (count re-checks/reviewers). Python/web/fixtures writers can run beside it.
+- RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (count re-checks/reviewers). Stale idle Gradle daemons (4–6 h, ~5 GB RSS) seen run 8 — `./gradlew --stop` when nothing builds.
 - BACKLOG status column is stale for P4/P5 (STATE/LOG are authoritative).
 
 ## Running
-| Ticket | Agent | Attempt | Branch | Started |
-|---|---|---|---|---|
-| T507 | writer (Gradle slot) | 1 | t/T507-grammar-cards | run 8 |
+(none)
 
 ## Parked
 (none)
@@ -49,7 +47,7 @@ Updated: 2026-11-13 (orchestrator run 8 in progress)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P5: merged 8 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a) · attempts 10 · escalations 0 · left: C-14, T506c, T507, T504, T508
+P5: merged 14 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a; run 8: T504a, C-14, D-2, T506c, D-3, T507) · attempts 16 · escalations 0 · left: F-25, T504b, T508
 P4 DONE: W-5 merged run 7; make test green
 P4: merged 33+/37 (run 6: F-14, F-15, F-16, F-17, F-18, F-19, T403b, T403c, T408a, T404b, T406, T408b, T410; left: W-5) (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
@@ -58,6 +56,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T507 (run 8): grammar card sentence picker (core) + server source (not exposed → F-25); seed trigger env; Main.kt start wait=false+join
 - D-3 (run 8): worker pg_server fixture postgres:17 → tmpfs; volumes stable (216) across worker+server+core checks
 - T506c (run 8): worker rule-test endpoint; server testGrammarRules + 422/503 rule validation (needs PARSER_URL in deploy)
 - D-2 (run 8): Docker volume leak fixed (tmpfs for postgres:17 core test + seaweedfs); prune cmd in HUMAN_CHECKS
