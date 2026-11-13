@@ -418,7 +418,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 - accept: Tag → signed APK release consumable by Obtainium.
 
 ### T313 — Offline chaos suite
-- model: opus · risk: high · deps: T303, T305 · status: IN_REVIEW
+- model: opus · risk: high · deps: T303, T305 · status: MERGED
 - paths: `acceptance/offline/`
 - do: Simulated two-device offline week: reviews, adds, edits, deletes, clock skew ±10 min; then sync in random orders.
 - accept: Converges with zero lost reviews across 100 randomised runs (JVM simulation, no devices).
@@ -427,7 +427,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 
 ### Phase 3 splits and additions (2026-11-13, planner)
 T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: store seam, mint, outbox, push/pull)/T303b(core: device apply, replay, rebuild, log reset, refused cache)/T303c(Android: SQLDelight store, WorkManager, connectivity)/T303d(core: rejected ops, Retry/Discard, Re-mint, discard list)/T303e(UI); T304→T304a(queue loader)/T304b(review screen)/T304c(toolbar actions); T305→T305a(flavors, provider)/T305b(note creation service, new)/T305c(Takoboto note type, real store). Real deps differ from the parent rows (e.g. T304b needs T303c, T305b needs T302+T303c, T307 needs T308, T313 needs T303a/b/d + T305b). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded. Android paths use the real module layout `android/src/main/...` (not `android/app/`). T313 adds an `acceptance` Gradle module.
-- T301a status: MERGED · T301b MERGED · T302 MERGED · T303a MERGED · T303b MERGED · T303c MERGED · T303d MERGED · T303e MERGED · T304a MERGED · T304b MERGED · T304c MERGED · T305a MERGED · T305b MERGED · T305c MERGED · T306 MERGED · T307 MERGED · T308 MERGED · T309 MERGED · T310 MERGED · T311 MERGED · T312 MERGED · T313 READY_FOR_REVIEW
+- T301a status: MERGED · T301b MERGED · T302 MERGED · T303a MERGED · T303b MERGED · T303c MERGED · T303d MERGED · T303e MERGED · T304a MERGED · T304b MERGED · T304c MERGED · T305a MERGED · T305b MERGED · T305c MERGED · T306 MERGED · T307 MERGED · T308 MERGED · T309 MERGED · T310 MERGED · T311 MERGED · T312 MERGED · T313 MERGED
 - W-4 MERGED (sonnet, low) Android media wiring — deps T310, T304b, T303e (ticket plan/tickets/W-4.md)
 - F-5 MERGED (sonnet, med) server auto_status derivation — deps T304b (plan/tickets/F-5.md)
 - F-6 MERGED (sonnet, med) sync DB first-use-in-transaction schema bug (plan/tickets/F-6.md)

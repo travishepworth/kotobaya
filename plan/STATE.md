@@ -20,7 +20,6 @@ Updated: 2026-11-13 (orchestrator run 3)
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T313 | reviewer + architect (opus); make check acceptance running (rebased on main) | run 3 |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -40,11 +39,12 @@ Updated: 2026-11-13 (orchestrator run 3)
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 24/25 (22 planned leaf tickets + W-4/F-5/F-6; T313 in review) · attempts 35 · escalations 0
+P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6); make test pending · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T313 offline chaos suite (acceptance/: real core client devices vs real server on Postgres, 100 seeds 0 lost reviews, §12 examples + 16 scenario files) — reviewer + architect APPROVE, 1 attempt
 - T306+T311 share sheet/PROCESS_TEXT/deep-link intake + loopback AnkiConnect v6 server over TakobotoAnkiStore (API key, origin allowlist)
 - F-6 sync DB schema forced open outside any tx (first-use-in-transaction bug) + synchronous=FULL re-asserted per outer tx
 - T305c Takoboto note type (fixed id, ADR-013) + op-backed AnkiStore (AnkiIdMap ankiapi.db, NoteCreator/DuplicateCheck, eager AnkiStoreHolder), S01 replay test — reviewer APPROVE
