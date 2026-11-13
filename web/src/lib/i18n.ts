@@ -10,6 +10,7 @@ const en = {
 	'nav.noteTypes': 'Note types',
 	'nav.media': 'Media',
 	'nav.import': 'Import',
+	'nav.struggle': 'Struggle',
 	'nav.settings': 'Settings',
 	'nav.logout': 'Log out',
 	'nav.main': 'Main navigation',

@@ -21,6 +21,7 @@
 		{ href: '/note-types', label: 'nav.noteTypes' },
 		{ href: '/media', label: 'nav.media' },
 		{ href: '/import', label: 'nav.import' },
+		{ href: '/struggle', label: 'nav.struggle' },
 		{ href: '/settings', label: 'nav.settings' }
 	];
 
