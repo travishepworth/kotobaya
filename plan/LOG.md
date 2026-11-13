@@ -615,3 +615,4 @@
 2026-11-13T03:29:44Z F-11 MERGE CHECK_GREEN server; 2 attempts (heap 2g, cached spec, derived counts)
 2026-11-13T03:33:40Z W-5a MERGE CHECK_GREEN server; 1 attempt (URGENT: blobs wired, dict refresh/release)
 2026-11-13T03:37:07Z T404c MERGE CHECK_GREEN server; 3 check runs (OOM was F-11), 1 attempt
+2026-11-13T03:37:54Z T412+T413 MERGE CHECK_GREEN web; 1 attempt (human-reported nav pages)
