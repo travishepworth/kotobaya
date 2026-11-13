@@ -627,7 +627,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ### BUG-7 — Card browser: preview unreachable/blank for dictionary-backed notes
 - model: sonnet · risk: low · deps: — · module: web
 - paths: web/src/lib/cards/ (CardTable.svelte, CardPreview.svelte, model.ts, messages.ts, api.ts), web/src/routes/cards/
-- status: RUNNING (ticket: plan/tickets/BUG-7.md)
+- status: MERGED (ticket: plan/tickets/BUG-7.md)
 
 Symptom (prod 0.1.5): on /cards, selecting a row only shows the bulk bar; the preview pane stays on "select a card to preview it". Affects ~6,591 of the user's notes (all jpdb-imported vocab).
 
@@ -649,6 +649,14 @@ Acceptance:
 - [ ] make check MODULE=web green.
 
 Out of scope: server /cards response shape changes (no contract edits in this ticket), bulk bar, search language, Android.
+
+### C-18 — Contract: batch dictionary headwords (additive; from BUG-7 CONTRACT_CHANGE_REQUEST)
+- model: opus (architect) · risk: med · deps: BUG-7 · status: TODO
+- paths: contracts/api/openapi.yaml, clients/ (regen) (ticket: plan/tickets/C-18.md)
+
+### BUG-7b — Card browser: batch headword labels for referenced notes
+- model: sonnet · risk: low · deps: C-18 · status: TODO
+- paths: server dictionary handlers + tests, web/src/lib/cards/, web/src/routes/cards/ (ticket: plan/tickets/BUG-7b.md)
 
 ## Phase 8 — Features (requested 2026-11-13)
 

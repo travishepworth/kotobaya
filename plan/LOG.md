@@ -813,3 +813,6 @@
 2026-11-13T10:59:05Z AND-SETTINGS NOTE first ff failed (main moved), restored from 7b264e0, rebased (plan-only delta), merged
 2026-11-13T11:04:29Z RUN15 END make test rc=0; P8 complete (5 merges); UI-1 HUMAN-GATED
 2026-11-13T11:05:33Z BUG-7 DISPATCH writer (sonnet, low); card browser preview for dictionary-backed notes
+2026-11-13T11:07:58Z BUG-7 HANDOFF DONE c81147d; CONTRACT_CHANGE_REQUEST batch headwords (shipped id fallback)
+2026-11-13T11:07:58Z BUG-7 MERGE CHECK_GREEN web (low, no review); row click + Enter, rowLabel fallback, dict-backed preview
+2026-11-13T11:07:58Z C-18 SPLIT filed from BUG-7 CCR (batch headwords contract); BUG-7b filed (server+web, dep C-18)
