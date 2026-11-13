@@ -869,3 +869,9 @@
 2026-11-13T13:59:52Z UI-FOUND-APP DECIDE orchestrator resolved trivial Makefile .PHONY rebase conflict (union with tokens targets)
 2026-11-13T13:59:52Z UI-FOUND-APP MERGE b0683c1 CHECK_GREEN android after rebase (med, no review)
 2026-11-13T13:59:52Z UI-DS-APP DISPATCH writer-senior (opus, low)
+2026-11-13T15:44:26Z C-20 HANDOFF DONE; wording 6.1 sub-pages + 9.3 deferral, xrefs
+2026-11-13T15:44:26Z C-20 MERGE 6814485 CHECK_GREEN contracts (low, no review)
+2026-11-13T15:44:26Z B2 GATE_CLOSE human approved DESIGN.md + styleguide (2026-11-14); UI-WEB, UI-APP -> TODO
+2026-11-13T15:44:26Z SYNC-T1 BLOCK attempt 1 died on API 429 (uncommitted work in worktree); TODO, attempt kept
+2026-11-13T15:44:26Z UI-DS-APP BLOCK attempt 1 died on API 429 (no work saved); TODO, attempt kept
+2026-11-13T15:44:26Z RUN18 END 2 merges; context budget; WORK_REMAINS

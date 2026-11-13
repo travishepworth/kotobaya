@@ -3,13 +3,12 @@ Mode: single-session
 Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE OPEN (UI-DS merged; awaiting human approval); GATE-P2..P5 deferred
 Updated: RUN17 END
 
-## RESUME HERE (run 17 END: B2 HUMAN GATE REACHED)
-- Run 17 merged 8: HOTFIX-0.1.7 a5c4e3a (SHIP AS 0.1.7), BUG-9 ac0765f, C-19 578985c, TEST-1 b43dbca, BUG-10 4ce6632, BUG-8 dcc3216, UI-FOUND-WEB 2056faa, UI-DS 3007499.
-- HUMAN GATE (B2): UI-WEB and UI-APP are HUMAN-GATED until the human approves docs/DESIGN.md + /styleguide (HUMAN_CHECKS top). Never dispatch them before the approval message.
-- IN FLIGHT at end: UI-FOUND-APP (writer-senior, attempt 1), branch t/UI-FOUND-APP-viewmodels-harness, worktree .claude/worktrees/agent-af829448723171bb9. Resume per §2: if it has commits + HANDOFF.md, READY_FOR_REVIEW (rebase, flock make check android, merge, med no review); else re-dispatch (attempt kept).
-- NEXT runnable: UI-FOUND-APP (finish), then UI-DS-APP (deps UI-DS, UI-FOUND-APP); SYNC-T1 (chunked-pull failure tests, med); C-20 (SYNC.md 6.1 wording, architect). Then FOLLOWUPS.
-- 0.1.8 candidate: BUG-8/9/10 (+ UI-FOUND-WEB, UI-DS card.css change). Notes in HUMAN_CHECKS. No migrations; server Dockerfile JAVA_TOOL_OPTIONS default.
-- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
+## RESUME HERE (run 18 END: WORK_REMAINS, stopped on context budget after API 429)
+- Run 18 merged 2: UI-FOUND-APP b0683c1 (rebased; orchestrator resolved trivial Makefile .PHONY conflict), C-20 6814485.
+- B2 GATE CLOSED 2026-11-14: human approved DESIGN.md + styleguide ("Ui is beautiful, you have my approvale - continue"), no changes. UI-WEB and UI-APP are TODO. Dispatch per the Run 17 brief + quality bar (plan/handoffs/INBOX-0.1.6.md); UI-WEB folds in FEAT-x on top of C-19.
+- NEXT runnable: SYNC-T1 (attempt 1 died on API 429, NO commits; uncommitted partial work in worktree .claude/worktrees/agent-a8129782ee98b2f5a, branch t/SYNC-T1-chunked-pull-tests: re-dispatch from that state, attempt kept); UI-DS-APP (attempt 1 died on 429 with nothing saved; re-dispatch fresh); UI-WEB (high, reviewer + spot check); then UI-APP (deps UI-DS-APP; high). Then FOLLOWUPS.
+- Worktree .claude/worktrees/agent-af829448723171bb9 (merged UI-FOUND-APP) is locked by another live claude session; remove it with `git worktree remove -f -f` + `git branch -d t/UI-FOUND-APP-viewmodels-harness` once that session has gone.
+- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session, 0.1.8 release pinned at 2597f12).
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
@@ -17,18 +16,15 @@ Updated: RUN17 END
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| SYNC-T1 | writer-senior | 1 | t/SYNC-T1-chunked-pull-tests | RUN18 |
-| C-20 | architect | 1 | t/C-20-sync-subpage-wording | RUN18 |
-| UI-DS-APP | writer-senior | 1 | t/UI-DS-APP-styleguide | RUN18 |
 
 ## Queued
-(FOLLOWUPS only)
+SYNC-T1 (resume worktree) · UI-DS-APP · UI-WEB · UI-APP (after UI-DS-APP) · then FOLLOWUPS
 
 ## Ready for review / In review
 (none)
 
 ## Blocked
-(none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate: waiting for human approval of DESIGN.md + styleguide)
+(none). B2 gate closed 2026-11-14 (approved).
 
 ## Notes
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
@@ -40,9 +36,10 @@ Updated: RUN17 END
 - Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
+- UI-WEB/UI-APP approved (B2, 2026-11-14). Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+Run 18: merged 2 (UI-FOUND-APP, C-20) · attempts 4 (SYNC-T1, UI-DS-APP died on API 429) · escalations 0
 Run 17: merged 8 · attempts 10 · escalations 0 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
@@ -50,6 +47,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- C-20 (run 18, 6814485): SYNC.md 6.1 sub-pages (one tx each, pull_seq = last seq; since from stored sync_state; purge/last_sync_at after last sub-page), 9.3 replay deferrable to tx end; xrefs 7.8/10.3/11/17; model.py unchanged
 - UI-FOUND-APP (run 18, b0683c1): per-screen ViewModels (StateViewModel, ports), ui/ purity test, debug demo-data mode (fixtures/demo), Roborazzi 1.40.1 matrix (516 PNGs, make screenshots-app), buildConfig on; BUG-8 touch-ups (dict DbThreadGuard, SyncStatus update{}, unpair awaited)
 - UI-DS (run 17, 3007499): tokens.json -> tokens.css/card.css/Tokens.kt (drift + WCAG AA tests), 18 web ui primitives, /styleguide, docs/DESIGN.md (both platforms), docs/design-screenshots/web; B2 gate
 - UI-FOUND-WEB (run 17, 2056faa): web/src/lib/state/* per screen, views import only state/ui (architecture test), fixtures/demo (CC0, scenarios default/empty/due900), make dev-ui, make screenshots-web (672 PNGs; @playwright/test 1.65, CHROMIUM_PATH)

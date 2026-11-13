@@ -695,10 +695,10 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
 
 ### SYNC-T1 — Chunked pull failure-path tests + hardening (BUG-8 review minors)
-- model: opus · risk: med · deps: BUG-8 · status: RUNNING run 18 (ticket: plan/tickets/SYNC-T1.md)
+- model: opus · risk: med · deps: BUG-8 · status: TODO (run 18 attempt 1 died on API 429, no commits; attempt kept) (ticket: plan/tickets/SYNC-T1.md)
 
 ### C-20 — SYNC.md 6.1: client MAY apply a page as consecutive sub-pages (each commits pull_seq = its last seq; 9.3 replays at end of that tx). Wording only, matches BUG-8.
-- model: opus (architect) · risk: low · deps: BUG-8 · status: RUNNING run 18 (ticket: plan/tickets/C-20.md)
+- model: opus (architect) · risk: low · deps: BUG-8 · status: MERGED 6814485 (ticket: plan/tickets/C-20.md)
 
 ### BUG-9 — Stats OOM/slow: one bounded streaming pass for retention+calibration (I-1 real fix)
 - model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: MERGED ac0765f
@@ -754,16 +754,16 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - HUMAN GATE fires when UI-DS merges: UI-WEB and UI-APP wait for human approval.
 
 ### UI-DS-APP — Android debug styleguide screen + Roborazzi screenshots (split from UI-DS; NOT part of the human gate)
-- model: opus · risk: low · deps: UI-DS, UI-FOUND-APP · status: RUNNING run 18 (ticket: plan/tickets/UI-DS-APP.md)
+- model: opus · risk: low · deps: UI-DS, UI-FOUND-APP · status: TODO (run 18 attempt 1 died on API 429; branch t/UI-DS-APP-styleguide, no worktree; attempt kept) (ticket: plan/tickets/UI-DS-APP.md)
 
 ### C-19 — Core render contract: data-field regions in RenderedCard (FEAT-x prerequisite; additive)
 - model: opus (architect) · risk: med · deps: — · status: MERGED 578985c (ticket: plan/tickets/C-19.md)
 
 ### UI-WEB — Rebuild every web screen on the design system (B3, folds in FEAT-x)
-- model: opus · risk: high · deps: UI-DS, C-19 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
+- model: opus · risk: high · deps: UI-DS, C-19 · status: TODO (B2 approved 2026-11-14)
 
 ### UI-APP — Rebuild every Android screen on the design system (B4; drops Media tab per IA, dark mode)
-- model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
+- model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: TODO (B2 approved 2026-11-14)
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
