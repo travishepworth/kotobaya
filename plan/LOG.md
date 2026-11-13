@@ -608,3 +608,4 @@
 2026-11-13T03:23:08Z C-12,T411c,T411b,T404a,T407 DISPATCH (architect-opus, writer-senior, writer×2, writer-light)
 2026-11-13T03:24:07Z - DECIDE ADR-020 (EDRDG checksum pinning dropped; optional pin)
 2026-11-13T03:24:07Z - human-reported gaps → tickets D-1 (HTTPRoute+worker mem), F-12 (resumed refresh builds pkg), F-13 (ADR-020), T412 (web dict), T413 (web notes); W-5 split pending 501 audit
+2026-11-13T03:24:50Z W-5a created (URGENT: blobs unwired + dict refresh/release never implemented); next free slot
