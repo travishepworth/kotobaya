@@ -17,14 +17,13 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-
-Queued (Gradle slot, serial): T403c+T408a (wt agent-aa2a58c8d4cb2a04d, uncommitted server work)
+| T404b | writer-senior (worker) | 1 | t/T404b-media-pipeline | run 6 |
+| F-17 | writer (server, holds Gradle slot) | 1 | t/F-17-entry-examples | run 6 |
+| F-19 | writer-light (Dockerfile/Makefile) | 1 | t/F-19-image-version | run 6 |
+Queued for Gradle slot: T403c+T408a (crashed wt .claude/worktrees/agent-aa2a58c8d4cb2a04d, 4 uncommitted server files; resume there)
 
 ## Parked
-| Ticket | Branch | State | Next |
-|---|---|---|---|
-| T411c | t/T411c-media-publish-runner | DONE, needs check+review | see queue 1 |
-| C-12 | t/C-12-parser-contract | CHANGES (2 majors) | see queue 2 |
+(none)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
