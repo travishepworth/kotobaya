@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html as htmllib
 import re
+import urllib.error
 import urllib.parse
 
 from .fetch import CachedFetcher
@@ -23,9 +24,36 @@ _TAGS = re.compile(r"<[^>]+>")
 MAX_PAGES = 1000
 
 
+_NOT_DECKS = frozenset({"vocabulary", "kanji", "api", "deck"})
+_KIND_ID = re.compile(r"^([a-z][a-z-]*)/(\d+)$")
+_URL_PATH = re.compile(
+    r"^(?:https?://(?:www\.)?jpdb\.io)?/?(.*?)/?(?:\?.*)?(?:#.*)?$", re.IGNORECASE
+)
+
+
+def normalize_deck_id(raw: str) -> str:
+    """Normalise a deck reference to `<kind>/<id>` (e.g. `visual-novel/3913`).
+
+    Accepts full jpdb URLs (with or without a trailing `/vocabulary-list` or other sub-path) and
+    `<kind>/<id>` paths. A bare number is rejected: there is no verified jpdb URL for it.
+    """
+    text = raw.strip()
+    if text.isdigit():
+        raise ValueError(
+            f"jpdb deck {text!r}: a bare number is ambiguous; use the deck URL, "
+            "e.g. https://jpdb.io/visual-novel/3913/vocabulary-list"
+        )
+    m = _URL_PATH.match(text)
+    parts = [p for p in (m.group(1) if m else "").split("/") if p]
+    if len(parts) >= 2:
+        cand = f"{parts[0].lower()}/{parts[1]}"
+        if _KIND_ID.match(cand) and parts[0].lower() not in _NOT_DECKS:
+            return cand
+    raise ValueError(f"jpdb deck {raw!r}: expected a jpdb URL or <kind>/<id> such as anime/5370")
+
+
 def deck_path(jpdb_id: str) -> str:
-    """`anime/5370` -> itself; bare numeric id -> `deck/<id>` (UNVERIFIED path form)."""
-    return f"deck/{jpdb_id}" if jpdb_id.isdigit() else jpdb_id.strip("/")
+    return normalize_deck_id(jpdb_id)
 
 
 def parse_vocab_list_html(page: str) -> tuple[list[DeckWord], list[SkippedRow], int]:
@@ -66,12 +94,16 @@ def next_page_url(page: str, current: str) -> str | None:
     return urllib.parse.urljoin(current, htmllib.unescape(m.group(1))) if m else None
 
 
+_GENERIC = {"vocabulary list", "vocabulary", "jpdb"}
+
+
 def parse_title(page: str) -> str | None:
     for pat in (_H1, _TITLE):
         m = pat.search(page)
         if m:
             text = htmllib.unescape(_TAGS.sub("", m.group(1))).strip()
-            if text:
+            text = re.sub(r"\s*[-|]\s*jpdb\s*$", "", text, flags=re.IGNORECASE).strip()
+            if text and text.lower() not in _GENERIC:
                 return text
     return None
 
@@ -82,17 +114,31 @@ class PagesDeckSource:
         self._base = base.rstrip("/")
 
     def fetch_title(self, jpdb_id: str) -> str | None:
-        return parse_title(self._f.get(f"{self._base}/{deck_path(jpdb_id)}"))
+        """Title from the first vocabulary-list page (never the bare deck URL, which 404s)."""
+        try:
+            return parse_title(self._f.get(self._first_url(deck_path(jpdb_id))))
+        except Exception:  # noqa: BLE001  a title failure must never fail the job
+            return None
+
+    def _first_url(self, path: str) -> str:
+        return f"{self._base}/{path}/vocabulary-list?sort_by=by-frequency-local"
 
     def fetch_deck(self, jpdb_id: str) -> DeckVocabulary:
         path = deck_path(jpdb_id)
-        title = self.fetch_title(jpdb_id) or jpdb_id
-        out = DeckVocabulary(title=title)
-        url: str | None = f"{self._base}/{path}/vocabulary-list?sort_by=by-frequency-local"
+        out = DeckVocabulary(title="")
+        url: str | None = self._first_url(path)
         seen: set[str] = set()
         while url is not None and url not in seen and len(seen) < MAX_PAGES:
+            first = not seen
             seen.add(url)
-            page = self._f.get(url)
+            try:
+                page = self._f.get(url)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    raise RuntimeError(f"jpdb deck page not found (404): {url}") from e
+                raise
+            if first:
+                out.title = parse_title(page) or jpdb_id
             words, skipped, raw = parse_vocab_list_html(page)
             out.words.extend(words)
             out.skipped.extend(skipped)

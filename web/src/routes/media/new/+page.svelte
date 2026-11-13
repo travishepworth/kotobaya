@@ -51,6 +51,16 @@
 	// Hashes already uploaded, so a retry does not re-read and re-send files.
 	let uploaded: MediaImportFile[] | null = null;
 
+	// Mirrors the worker's normalize_deck_id: full jpdb URL or `<kind>/<id>`; a bare number is rejected.
+	function normalizeDeckId(raw: string): string | null {
+		const m = /^(?:https?:\/\/(?:www\.)?jpdb\.io)?\/?([a-z][a-z-]*)\/(\d+)(?:[/?#].*)?$/i.exec(
+			raw.trim()
+		);
+		if (!m || ['vocabulary', 'kanji', 'api', 'deck'].includes(m[1].toLowerCase())) return null;
+		return `${m[1].toLowerCase()}/${m[2]}`;
+	}
+	const deckId = $derived(normalizeDeckId(jpdbId));
+
 	function isRunning(j: Job | null): boolean {
 		return j !== null && (j.status === 'queued' || j.status === 'running');
 	}
@@ -142,7 +152,7 @@
 			if (tab === 'jpdb') {
 				started = await mediaApi.importJpdbDeck({
 					jpdbDeckImportRequest: {
-						jpdbId: jpdbId.trim(),
+						jpdbId: deckId ?? jpdbId.trim(),
 						kind,
 						...(title.trim() ? { title: title.trim() } : {}),
 						deck: deckOptions()
@@ -189,7 +199,7 @@
 
 	const canStart = $derived(
 		tab === 'jpdb'
-			? jpdbId.trim() !== ''
+			? deckId !== null
 			: title.trim() !== '' &&
 					(tab === 'files'
 						? files.length > 0
@@ -301,6 +311,9 @@
 			</p>
 		{:else}
 			<p><label>{tm('new.jpdbId')} <input bind:value={jpdbId} required /></label></p>
+			{#if jpdbId.trim() !== '' && deckId === null}
+				<p role="alert">{tm('new.jpdbIdInvalid')}</p>
+			{/if}
 		{/if}
 
 		<fieldset>

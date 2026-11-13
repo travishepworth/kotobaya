@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+import urllib.error
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
@@ -17,13 +18,13 @@ from kotobaya_worker.importers.jpdb_deck.client import (
     parse_vocab_list_html,
 )
 from kotobaya_worker.importers.jpdb_deck.client.api import ApiSchemaMismatch
+from kotobaya_worker.importers.jpdb_deck.client.pages import normalize_deck_id
 
 FIX = Path(__file__).resolve().parents[5] / "fixtures" / "jpdb" / "deck"
 BASE = "https://jpdb.io"
 DECK = "anime/9999"
 LIST = f"{BASE}/{DECK}/vocabulary-list"
 ROUTES = {
-    f"{BASE}/{DECK}": "deck.html",
     f"{LIST}?sort_by=by-frequency-local": "vocabulary-list-1.html",
     f"{LIST}?sort_by=by-frequency-local&offset=50": "vocabulary-list-2.html",
     f"{LIST}?sort_by=by-frequency-local&offset=100": "vocabulary-list-3.html",
@@ -58,6 +59,8 @@ class FakeOpener:
 
     def __call__(self, req: Any, timeout: float = 0) -> FakeResp:
         self.urls.append(req.full_url)
+        if req.full_url not in self.routes:
+            raise urllib.error.HTTPError(req.full_url, 404, "Not Found", None, None)  # type: ignore[arg-type]
         return FakeResp(self.routes[req.full_url])
 
 
@@ -109,9 +112,9 @@ def test_pages_parser_on_fixtures() -> None:
 def test_paging_follows_next_links_and_cache_hit_makes_no_network_call(tmp_path: Path) -> None:
     f, op = make(tmp_path, page_routes())
     deck = PagesDeckSource(f).fetch_deck(DECK)
-    assert deck.title == "Sample Anime Deck"
+    assert deck.title == DECK  # fixture list page has no title: falls back to the id
     assert deck.raw_rows == 9 and len(deck.words) == 8 and len(deck.skipped) == 1
-    assert len(op.urls) == 4
+    assert len(op.urls) == 3
     # second run, fresh fetcher, same cache dir: zero network calls
     f2, op2 = make(tmp_path, {})
     deck2 = PagesDeckSource(f2).fetch_deck(DECK)
@@ -119,7 +122,7 @@ def test_paging_follows_next_links_and_cache_hit_makes_no_network_call(tmp_path:
     # refresh=True refetches
     f3, op3 = make(tmp_path, page_routes(), refresh=True)
     PagesDeckSource(f3).fetch_deck(DECK)
-    assert len(op3.urls) == 4
+    assert len(op3.urls) == 3
 
 
 def test_max_age_expires_cache(tmp_path: Path) -> None:
@@ -128,12 +131,12 @@ def test_max_age_expires_cache(tmp_path: Path) -> None:
     f = CachedFetcher(
         tmp_path, opener=op, max_age=60, min_interval=0, wall=lambda: now[0], sleeper=lambda s: None
     )
-    f.get(f"{BASE}/{DECK}")
+    f.get(f"{LIST}?sort_by=by-frequency-local")
     now[0] += 30
-    f.get(f"{BASE}/{DECK}")
+    f.get(f"{LIST}?sort_by=by-frequency-local")
     assert len(op.urls) == 1
     now[0] += 60
-    f.get(f"{BASE}/{DECK}")
+    f.get(f"{LIST}?sort_by=by-frequency-local")
     assert len(op.urls) == 2
 
 
@@ -149,7 +152,7 @@ def test_rate_limiter_spaces_calls(tmp_path: Path) -> None:
 
     f._opener = stamped
     PagesDeckSource(f).fetch_deck(DECK)
-    assert len(times) == 4
+    assert len(times) == 3
     assert all(b - a >= 2.0 for a, b in itertools.pairwise(times))
 
 
@@ -167,10 +170,7 @@ def test_api_key_never_in_cache(tmp_path: Path) -> None:
 
 
 def test_api_source_maps_mocked_response(tmp_path: Path) -> None:
-    routes = {
-        "https://jpdb.io/api/v1/deck/list-vocabulary": fx("api-response.json"),
-        f"{BASE}/deck/42": "<h1>unused</h1>",
-    }
+    routes = {"https://jpdb.io/api/v1/deck/list-vocabulary": fx("api-response.json")}
     f, op = make(tmp_path, routes)
     deck = ApiDeckSource(f, SECRET, PagesDeckSource(f)).fetch_deck("42")
     assert deck.title == "Sample Anime Deck (API)"
@@ -197,16 +197,58 @@ def test_api_schema_mismatch_falls_back_to_pages(
 ) -> None:
     routes = page_routes()
     routes["https://jpdb.io/api/v1/deck/list-vocabulary"] = json.dumps({"unexpected": []})
-    routes[f"{BASE}/deck/42/vocabulary-list?sort_by=by-frequency-local"] = fx(
+    routes[f"{BASE}/anime/42/vocabulary-list?sort_by=by-frequency-local"] = fx(
         "vocabulary-list-3.html"
     )
-    routes[f"{BASE}/deck/42"] = fx("deck.html")
     f, _ = make(tmp_path, routes)
     with caplog.at_level(logging.WARNING):
-        deck = ApiDeckSource(f, SECRET, PagesDeckSource(f)).fetch_deck("42")
+        deck = ApiDeckSource(f, SECRET, PagesDeckSource(f)).fetch_deck("anime/42")
     assert [w.vid for w in deck.words] == [1000007, 1000008]
-    assert "falling back" in caplog.text and "vocabulary" in caplog.text
+    assert "falling back" in caplog.text
     # non-numeric id (cannot use API) also falls back
     f2, _ = make(tmp_path / "b", routes)
     deck2 = ApiDeckSource(f2, SECRET, PagesDeckSource(f2)).fetch_deck(DECK)
     assert len(deck2.words) == 8
+
+
+def test_title_from_list_page_and_no_bare_deck_request(tmp_path: Path) -> None:
+    page = "<html><head><title>Steins;Gate - jpdb</title></head><body><h1>Steins;Gate</h1></body></html>"
+    list_url = f"{BASE}/visual-novel/3913/vocabulary-list?sort_by=by-frequency-local"
+    f, op = make(tmp_path, {list_url: page + fx("vocabulary-list-3.html")})
+    deck = PagesDeckSource(f).fetch_deck("visual-novel/3913")
+    assert deck.title == "Steins;Gate"
+    assert op.urls == [list_url]  # no request to the bare /visual-novel/<id> URL
+
+
+def test_title_parse_failure_falls_back_to_id(tmp_path: Path) -> None:
+    list_url = f"{BASE}/visual-novel/3913/vocabulary-list?sort_by=by-frequency-local"
+    f, _ = make(tmp_path, {list_url: "<html><title></title></html>"})
+    assert PagesDeckSource(f).fetch_deck("visual-novel/3913").title == "visual-novel/3913"
+    f2, _ = make(tmp_path / "b", {})  # list page 404s -> clear error naming the URL
+    with pytest.raises(RuntimeError, match="vocabulary-list"):
+        PagesDeckSource(f2).fetch_deck("visual-novel/3913")
+    assert PagesDeckSource(f2).fetch_title("visual-novel/3913") is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "want"),
+    [
+        ("https://jpdb.io/visual-novel/3913/vocabulary-list", "visual-novel/3913"),
+        ("https://jpdb.io/visual-novel/3913", "visual-novel/3913"),
+        ("https://jpdb.io/anime/5370/vocabulary-list?sort_by=x#a", "anime/5370"),
+        ("jpdb.io/novel/12/", None),
+        ("https://jpdb.io/novel/12/vocabulary-list", "novel/12"),
+        ("https://jpdb.io/web-novel/7/vocabulary-list", "web-novel/7"),
+        ("anime/5370", "anime/5370"),
+        ("/live-action/9/vocabulary-list", "live-action/9"),
+        ("28", None),
+        ("", None),
+        ("https://jpdb.io/vocabulary/1234/x", None),
+    ],
+)
+def test_normalize_deck_id(raw: str, want: str | None) -> None:
+    if want is None:
+        with pytest.raises(ValueError):
+            normalize_deck_id(raw)
+    else:
+        assert normalize_deck_id(raw) == want

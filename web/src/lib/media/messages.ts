@@ -53,7 +53,9 @@ const en = {
 	'new.cutAudio': 'Cut sentence audio from the audio files',
 	'new.url': 'Page URL',
 	'new.text': 'Text',
-	'new.jpdbId': 'jpdb deck id (for example anime/5370)',
+	'new.jpdbId': 'jpdb deck URL (for example https://jpdb.io/visual-novel/3913/vocabulary-list)',
+	'new.jpdbIdInvalid':
+		'Enter the deck URL from jpdb.io or a path like anime/5370; a bare number is not enough.',
 	'new.jpdbTitle': 'Title override (optional)',
 	'new.deckOptions': 'Deck options',
 	'new.priority': 'Priority',

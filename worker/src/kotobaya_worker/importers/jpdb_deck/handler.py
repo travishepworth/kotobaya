@@ -29,6 +29,7 @@ from kotobaya_worker.importers.jpdb_deck.client import (
     default_cache_dir,
 )
 from kotobaya_worker.importers.jpdb_deck.client.api import ApiDeckSource
+from kotobaya_worker.importers.jpdb_deck.client.pages import normalize_deck_id
 from kotobaya_worker.importers.jpdb_deck.plan import DeckPlan, plan_deck, pos_class
 from kotobaya_worker.importers.jpdb_deck.repo import DeckRepo, PgDeckRepo
 from kotobaya_worker.importers.jpdb_history.handler import Context
@@ -106,6 +107,7 @@ class DeckJob:
         if not isinstance(media_id, str):
             raise TypeError("jpdb-deck-import payload needs media_id (set by the server)")
         uuid.UUID(media_id)
+        jpdb_id = normalize_deck_id(jpdb_id)
         d = p.get("deck") or {}
         title = p.get("title")
         return DeckJob(

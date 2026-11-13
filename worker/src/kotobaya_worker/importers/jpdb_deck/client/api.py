@@ -92,7 +92,7 @@ class ApiDeckSource:
     def _try_title(self, jpdb_id: str) -> str | None:
         try:
             return self._fallback.fetch_title(jpdb_id)
-        except OSError:
+        except Exception:  # noqa: BLE001
             return None
 
 
