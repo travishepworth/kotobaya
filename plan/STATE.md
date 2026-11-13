@@ -20,7 +20,7 @@ Updated: RUN17
 | C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
 
 ## Queued
-BUG-10, UI-FOUND-WEB (ready; next free slots) · UI-FOUND-APP (after BUG-8) · UI-DS
+TEST-1 (jsdom human-approved; small), BUG-10, UI-FOUND-WEB (ready; next free slots in that order) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
 (none)

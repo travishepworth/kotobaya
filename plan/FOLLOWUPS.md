@@ -372,4 +372,4 @@
 - FEAT-1 (run 15): 'other users' decks' case untestable (single-user schema); deck dropdown lists smart decks (empty page per contract); clickable kanji in review cards/Android still out of scope.
 - AND-SEARCH (run 15): word/{seq} not a nav route (NavRoute.content has no args; detail is in-screen state); is:hot + live smart-deck terms not compiled on device; no 'Add to my words'; API card fallback first 100 only.
 - AND-SETTINGS (run 15): QR scanner launch not exercised in tests (Robolectric renders Devices/Scan QR only) -> HUMAN_CHECKS device check; no licences screen for About link.
-- HOTFIX-0.1.7 (run 17): preview effect-loop regression vitest (mount CardPreview + NoteEditor with dict-backed note, bounded effect runs) NOT added: adding devDependency jsdom was denied by the permission classifier. Needs human OK for jsdom/happy-dom (see HUMAN_CHECKS), then a small web ticket.
+- HOTFIX-0.1.7 (run 17): preview effect-loop regression vitest (mount CardPreview + NoteEditor with dict-backed note, bounded effect runs) NOT added: adding devDependency jsdom was denied by the permission classifier. Human approved jsdom 2026-11-13 -> TEST-1.

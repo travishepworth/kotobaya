@@ -687,6 +687,9 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - model: haiku (writer-light) · risk: low · deps: — · status: MERGED a5c4e3a (vitest deferred: jsdom dep denied → FOLLOWUPS) · ships as 0.1.7
 - paths: web/src/lib/cards/, web/src/lib/notes/, deploy/helm/kotobaya/ (ticket: plan/tickets/HOTFIX-0.1.7.md)
 
+### TEST-1 — Regression vitest for preview $effect loop (jsdom approved by human 2026-11-13)
+- model: haiku (writer-light) · risk: low · deps: HOTFIX-0.1.7 · status: TODO (ticket: plan/tickets/TEST-1.md)
+
 ### BUG-8 — Android first sync slow + ANR: main-thread DB, single connection, per-op costs (I-4, I-7)
 - model: opus · risk: high (reviewer + architect) · deps: HOTFIX-0.1.7 · status: TODO
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
