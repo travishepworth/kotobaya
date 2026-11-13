@@ -37,7 +37,24 @@ class StruggleModule(private val db: Database, private val clock: () -> Instant 
     val handlers: Map<String, OperationHandler> = mapOf(
         "listHotWords" to { hotWords(this) },
         "listLeeches" to { leeches(this) },
+        "listHotKanji" to { hotKanji(this) },
     )
+
+    /**
+     * `listHotKanji`: the hot-word scores of every live vocab note, summed per kanji of the note's entry
+     * (`ref.entry_kanji`). Contract reading: `word_count` is the number of hot notes containing the kanji; notes without
+     * an entry link contribute nothing (no kanji known). Ordered by score desc, then literal.
+     */
+    private suspend fun hotKanji(call: io.ktor.server.application.ApplicationCall) {
+        val e = Errors()
+        val limit = call.request.queryParameters["limit"]?.let { v ->
+            v.toIntOrNull()?.takeIf { it in 1..200 } ?: run { e.add("/limit", "out_of_range", "Must be 1 to 200."); null }
+        } ?: 20
+        e.throwIfAny()
+        val now = clock().toEpochMilli()
+        val items = db.tx { dsl -> HotWords(dsl, now).kanji(limit) }
+        call.respondJson(mapOf("items" to items))
+    }
 
     private suspend fun hotWords(call: io.ktor.server.application.ApplicationCall) {
         val e = Errors()
@@ -79,7 +96,49 @@ private class HotWords(private val dsl: DSLContext, private val now: Long) {
     private val config = HotConfig.DEFAULT
     private val since = now - config.windowDays * DAY_MS
 
-    fun list(limit: Int): List<Map<String, Any?>> {
+    fun list(limit: Int): List<Map<String, Any?>> =
+        scoredNotes().take(limit).map { render(it.noteId, it.score, it.failures) }
+
+    fun kanji(limit: Int): List<Map<String, Any?>> {
+        val hot = scoredNotes()
+        if (hot.isEmpty()) return emptyList()
+        val rows = dsl.fetch(
+            "select n.id::text, k.literal from app.note n join ref.entry_kanji k on k.seq = n.entry_seq " +
+                "where n.id = any(?::uuid[])",
+            hot.map { it.noteId }.toTypedArray(),
+        )
+        val scoreOf = hot.associate { it.noteId to it.score }
+        val score = HashMap<String, Double>()
+        val count = HashMap<String, Int>()
+        for (r in rows) {
+            val lit = r.get(1, String::class.java)
+            score.merge(lit, scoreOf.getValue(r.get(0, String::class.java)), Double::plus)
+            count.merge(lit, 1, Int::plus)
+        }
+        val top = score.entries.filter { it.value > 0.0 }
+            .sortedWith(compareByDescending<Map.Entry<String, Double>> { it.value }.thenBy { it.key }).take(limit)
+        if (top.isEmpty()) return emptyList()
+        val lits = top.map { it.key }.toTypedArray()
+        val meanings = dsl.fetch("select literal, meanings from ref.kanji where literal = any(?::text[])", lits)
+            .associate { it.get(0, String::class.java) to it.get(1, Array<String>::class.java).toList() }
+        val notes = dsl.fetch(
+            "select distinct on (kanji_literal) kanji_literal, id::text from app.note " +
+                "where type = 'kanji' and deleted_at is null and merged_into_id is null and kanji_literal = any(?::text[]) " +
+                "order by kanji_literal, created_at, id",
+            lits,
+        ).associate { it.get(0, String::class.java) to it.get(1, String::class.java) }
+        return top.map {
+            linkedMapOf(
+                "literal" to it.key, "score" to it.value, "word_count" to count.getValue(it.key),
+                "meanings" to meanings[it.key].orEmpty(), "note_id" to notes[it.key],
+            )
+        }
+    }
+
+    private class Scored(val noteId: String, val score: Double, val failures: Int)
+
+    /** Every hot live vocab note, hottest first (ties by note id). */
+    private fun scoredNotes(): List<Scored> {
         // Live cards of live vocab notes, by note.
         val cardRows = dsl.fetch(
             "select c.id::text, c.note_id::text, c.difficulty, c.reps, c.lapses, c.preset_id::text " +
@@ -106,7 +165,6 @@ private class HotWords(private val dsl: DSLContext, private val now: Long) {
             HotHistory.hotReviews(history[id].orEmpty(), params)
         }
 
-        class Scored(val noteId: String, val score: Double, val failures: Int)
         val scored = cardsByNote.mapNotNull { (noteId, rows) ->
             val reviews = rows.flatMap { hotByCard[it.get(0, String::class.java)].orEmpty() }
             if (reviews.isEmpty()) return@mapNotNull null
@@ -116,8 +174,8 @@ private class HotWords(private val dsl: DSLContext, private val now: Long) {
             val s = DefaultHotScorer.scoreNote(reviews, cards, now, config)
             if (!s.hot || s.score <= 0.0) return@mapNotNull null
             Scored(noteId, s.score, failuresIn(reviews))
-        }.sortedWith(compareByDescending<Scored> { it.score }.thenBy { it.noteId }).take(limit)
-        return scored.map { render(it.noteId, it.score, it.failures) }
+        }.sortedWith(compareByDescending<Scored> { it.score }.thenBy { it.noteId })
+        return scored
     }
 
     private fun failuresIn(reviews: List<HotReview>): Int =

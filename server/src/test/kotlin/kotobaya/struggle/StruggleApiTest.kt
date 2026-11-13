@@ -122,4 +122,42 @@ class StruggleApiTest : SyncFixture() {
         assertEquals(403, client.call(HttpMethod.Get, "/words/hot", bearer = noRead).status.value)
         assertEquals(403, client.call(HttpMethod.Get, "/words/leeches", bearer = noRead).status.value)
     }
+
+    @Test
+    fun hotKanjiRollsUpHotWordScoresPerKanji() = struggleApp {
+        val t = token()
+        db.txBlocking { dsl ->
+            dsl.execute("insert into ref.dict_release (id, version, built_at) values (1, 'hk', now()) on conflict do nothing")
+            for ((seq, head) in listOf(9001L to "績績", 9002L to "績x", 9003L to "果")) {
+                dsl.execute(
+                    "insert into ref.dict_entry (seq, headword, headword_reading, readings, senses, added_release_id) " +
+                        "values (?, ?, 'あ', '[{\"text\":\"あ\"}]'::jsonb, '[]'::jsonb, 1)",
+                    seq, head,
+                )
+            }
+            dsl.execute("insert into ref.entry_kanji (seq, literal) values (9001,'績'),(9002,'績'),(9003,'果')")
+            dsl.execute("insert into ref.kanji (literal, meanings) values ('績', array['achievement'])")
+        }
+        val a = note(t, "wordA")
+        val b = note(t, "wordB")
+        val c = note(t, "wordC")
+        for ((card, seq) in listOf(a to 9001L, b to 9002L, c to 9003L)) {
+            db.txBlocking { it.execute("update app.note set entry_seq = ? where id = (select note_id from app.card where id = ?::uuid)", seq, card) }
+            review(card, 5, 1)
+            review(card, 4, 1)
+        }
+        val r = client.call(HttpMethod.Get, "/kanji/hot", bearer = t)
+        assertEquals(200, r.status.value)
+        val items = r.json()["items"]
+        assertEquals(listOf("績", "果"), items.map { it["literal"].asText() })
+        assertEquals(2, items[0]["word_count"].asInt())
+        assertEquals(1, items[1]["word_count"].asInt())
+        assertTrue(items[0]["score"].asDouble() > items[1]["score"].asDouble())
+        assertEquals(listOf("achievement"), items[0]["meanings"].map { it.asText() })
+        assertTrue(items[1]["meanings"].isEmpty)
+        assertTrue(items[0]["note_id"].isNull)
+        assertEquals(1, client.call(HttpMethod.Get, "/kanji/hot?limit=1", bearer = t).json()["items"].size())
+        assertEquals(422, client.call(HttpMethod.Get, "/kanji/hot?limit=0", bearer = t).status.value)
+        assertEquals(401, client.call(HttpMethod.Get, "/kanji/hot").status.value)
+    }
 }

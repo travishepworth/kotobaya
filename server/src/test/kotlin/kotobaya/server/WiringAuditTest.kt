@@ -28,7 +28,6 @@ class WiringAuditTest {
     /** Deliberately unwired until W-5 (parse/sentences/coverage handlers are in flight in other tickets). */
     private val unwiredUntilW5: Set<String> = setOf(
         // Every other entry has no handler in this tree yet (later tickets); remove entries as they land.
-        "listHotKanji",
     )
 
     @Test

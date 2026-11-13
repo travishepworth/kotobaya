@@ -183,8 +183,19 @@ class JobsModule(
                     }
                 }
             }
+        } catch (e: io.ktor.utils.io.ClosedWriteChannelException) {
+            streamLog.debug("events stream: client disconnected")
+        } catch (e: java.io.IOException) {
+            // Netty reports a peer that went away mid-write as "Cannot write to a channel" (ChannelWriteException).
+            if (e.message?.contains("Cannot write to a channel") == true || e.javaClass.simpleName == "ChannelWriteException") {
+                streamLog.debug("events stream: client disconnected ({})", e.message)
+            } else {
+                throw e
+            }
         } finally {
             hub.unsubscribe(sub)
         }
     }
 }
+
+private val streamLog = org.slf4j.LoggerFactory.getLogger("kotobaya.events.stream")
