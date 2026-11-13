@@ -17,6 +17,7 @@ import kotobaya.cards.CardsModule
 import kotobaya.dict.dictHandlers
 import kotobaya.review.ReviewModule
 import kotobaya.decks.DecksModule
+import kotobaya.grammar.GrammarModule
 import kotobaya.imports.ImportsModule
 import kotobaya.jobs.JobsModule
 import kotobaya.coverage.CoverageModule
@@ -110,7 +111,7 @@ fun composeApp(
     // One OpApply for every writer: they share its advisory lock, HLC and card cache.
     val imports = ImportsModule(db, sync.opApply)
     val handlers = auth.handlers + dictHandlers(db) + jobs.handlers + sync.handlers +
-        NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
+        NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + GrammarModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
         ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +
