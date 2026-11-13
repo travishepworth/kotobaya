@@ -10,10 +10,15 @@ import java.util.UUID
  * Loads the seed stubs (`grammar-seed/grammar-seed.json`, a copy of `fixtures/grammar-seed/`) as `grammar.created`
  * ops with `is_stub = true`. Ids are derived from (jlpt, pattern, title), so seeding twice mints nothing, and a seed
  * point the user deleted stays deleted (the tombstoned row still holds the id).
- * Call from a one-off step: `GrammarSeeder.seed(opApply)`; it returns the number of points created.
+ * Trigger: env `GRAMMAR_SEED_ON_START=true` ([requestedByEnv]; `main` calls `ComposedApp.seedGrammar`), or call
+ * `GrammarSeeder.seed(opApply)` directly; it returns the number of points created.
  */
 object GrammarSeeder {
     private const val RESOURCE = "/grammar-seed/grammar-seed.json"
+
+    /** `GRAMMAR_SEED_ON_START=true` (or 1/yes): `main` loads the seed once after startup. Idempotent, so it may stay set. */
+    fun requestedByEnv(env: Map<String, String> = System.getenv()): Boolean =
+        env["GRAMMAR_SEED_ON_START"]?.lowercase() in setOf("1", "true", "yes")
 
     data class Stub(val title: String, val pattern: String, val jlpt: Int) {
         val id: String get() = UUID.nameUUIDFromBytes("kotobaya-grammar-seed|$jlpt|$pattern|$title".toByteArray(Charsets.UTF_8)).toString()

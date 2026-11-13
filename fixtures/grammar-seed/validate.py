@@ -23,6 +23,7 @@ def validate(entries: object) -> list[str]:
         errors.append(f"count {len(entries)} is below the minimum {MIN_COUNT}")
 
     seen: dict[tuple[str, int], int] = {}
+    seen_titles: dict[tuple[str, int], int] = {}
     for index, entry in enumerate(entries):
         where = f"entry {index}"
         if not isinstance(entry, dict):
@@ -56,6 +57,15 @@ def validate(entries: object) -> list[str]:
                 )
             else:
                 seen[key] = index
+
+        if isinstance(title, str) and isinstance(jlpt, int) and not isinstance(jlpt, bool):
+            title_key = (title.strip().casefold(), jlpt)
+            if title_key in seen_titles:
+                errors.append(
+                    f"{where}: duplicate (title, jlpt) {(title, jlpt)!r}, first at entry {seen_titles[title_key]}"
+                )
+            else:
+                seen_titles[title_key] = index
 
     return errors
 

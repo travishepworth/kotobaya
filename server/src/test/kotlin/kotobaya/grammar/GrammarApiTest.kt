@@ -68,7 +68,8 @@ class GrammarApiTest : SyncFixture() {
         val stubs = GrammarSeeder.load()
         assertTrue(stubs.size >= 250)
         assertEquals(stubs.size, stubs.map { it.id }.toSet().size)
-        assertEquals(stubs.size, stubs.map { it.jlpt to it.pattern }.toSet().size, "unique patterns per level (3 title pairs repeat, see HANDOFF)")
+        assertEquals(stubs.size, stubs.map { it.jlpt to it.pattern }.toSet().size, "unique patterns per level")
+        assertEquals(stubs.size, stubs.map { it.jlpt to it.title.trim().lowercase() }.toSet().size, "seed titles are unique per JLPT level")
 
         val first = runBlocking { GrammarSeeder.seed(sync.opApply) }
         assertEquals(stubs.size, first)

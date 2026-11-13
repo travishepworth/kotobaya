@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import kotobaya.auth.Auth
 import kotobaya.auth.AuthConfig
 import kotobaya.auth.AuthEvents
@@ -75,7 +76,13 @@ fun main(args: Array<String>) {
     app.confusables?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
-    embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
+    embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = false)
+    if (kotobaya.grammar.GrammarSeeder.requestedByEnv()) {
+        // Opt-in: idempotent (ids are derived), so leaving the flag set across restarts mints nothing new.
+        val n = runCatching { runBlocking { app.seedGrammar() } }.onFailure { log.error("grammar seed failed", it) }.getOrNull()
+        log.info("grammar seed: {} stubs created", n)
+    }
+    Thread.currentThread().join()
 }
 
 /**
@@ -88,6 +95,8 @@ class ComposedApp(
     val imports: ImportsModule,
     val mediaPublish: MediaPublishRunner? = null,
     val confusables: ConfusableSuggester? = null,
+    /** Loads the grammar seed stubs (T507/F-20); main calls it once after startup when `GRAMMAR_SEED_ON_START` is set. */
+    val seedGrammar: suspend () -> Int = { 0 },
 )
 
 /**
@@ -138,7 +147,8 @@ fun composeApp(
         startup = startup,
         bucketInit = bucketInit,
     )
-    return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply))
+    return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply),
+        seedGrammar = { kotobaya.grammar.GrammarSeeder.seed(sync.opApply) })
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()
