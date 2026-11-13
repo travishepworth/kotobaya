@@ -368,3 +368,16 @@ def test_equal_spans_after_a_stale_replan_publish_nothing() -> None:
     assert env.run() == {
         "media_id": MEDIA_ID, "changed": False, "content_version": 2, "spans": 2, "invalid_rules": 0,
     }  # fmt: skip
+
+
+def test_detect_counts_budget_give_ups() -> None:
+    from kotobaya_worker.grammar.detect import detect
+
+    text = "ね" * 40
+    toks = [
+        {"s": i, "e": i + 1, "surface": "ね", "lemma": "ね", "reading": "ネ", "pos": ["助詞"], "cform": None}
+        for i in range(40)
+    ]
+    rule = "ね{0,10} ね{0,10} ね{0,10} ね{0,10} ね{0,10} [surface=x]"
+    res = detect([PointRules(GP_ZARU, [{"rule": rule, "draft": False}])], [DetectSentence("s", text, toks)])
+    assert res.spans == () and res.give_ups > 0
