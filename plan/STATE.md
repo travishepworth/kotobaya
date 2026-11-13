@@ -17,6 +17,8 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
+| T501 | writer | 1 | t/T501-struggle |
+| T505a | writer-light | 1 | t/T505a-grammar-seed |
 
 ## Parked
 (none)

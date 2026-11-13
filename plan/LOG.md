@@ -666,3 +666,5 @@
 2026-11-13T04:55:43Z - make test GREEN all modules (incl. acceptance, cli); 13 GB free
 2026-11-13T04:55:43Z GATE-P4 GATE_CLOSE deferred → HUMAN_CHECKS; phase P5
 2026-11-13T04:55:43Z T505 SPLIT T505a (fixtures, haiku) + T505b (server CRUD, deps T505a)
+2026-11-13T04:56:05Z T501 DISPATCH writer (core+server, Gradle slot)
+2026-11-13T04:56:05Z T505a DISPATCH writer-light (fixtures)
