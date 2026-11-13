@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import http.client
+import ipaddress
 import re
-import urllib.error
-import urllib.request
+import socket
+import ssl
 from collections.abc import Callable, Mapping
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from kotobaya_worker.extract.html.tree import (
     DROP,
@@ -124,43 +126,124 @@ def extract_html(
     return [ExtractedSegment("whole", title, tuple(sentences))]
 
 
-class _SafeRedirect(urllib.request.HTTPRedirectHandler):
-    def __init__(self) -> None:
-        self.count = 0
+def is_blocked_address(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True for anything that is not a plain public unicast address."""
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            return is_blocked_address(ip.ipv4_mapped)
+        if ip in _NAT64:
+            return is_blocked_address(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
+        if ip in _SIXTO4:
+            return is_blocked_address(ipaddress.IPv4Address((int(ip) >> 80) & 0xFFFFFFFF))
+    return (
+        not ip.is_global
+        or ip.is_multicast
+        or ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_unspecified
+        or (isinstance(ip, ipaddress.IPv4Address) and ip in _CGNAT)
+    )
 
-    def redirect_request(
-        self,
-        req: urllib.request.Request,
-        fp: object,
-        code: int,
-        msg: str,
-        headers: object,
-        newurl: str,
-    ) -> urllib.request.Request | None:
-        check_url(newurl)
-        self.count += 1
-        if self.count > MAX_REDIRECTS:
-            raise FetchError("too many redirects")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)  # type: ignore[arg-type]
+
+_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_SIXTO4 = ipaddress.ip_network("2002::/16")
+
+
+def _resolve(host: str, port: int) -> list[str]:
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    return [str(i[4][0]) for i in infos]
+
+
+def _create_connection(ip: str, port: int, timeout: float) -> socket.socket:
+    return socket.create_connection((ip, port), timeout)
+
+
+def resolve_public(host: str, port: int) -> str:
+    """Resolve `host` and return one address, refusing if any candidate is non-public."""
+    try:
+        addrs = _resolve(host, port)
+    except OSError as e:
+        raise FetchError(f"cannot resolve {host!r}: {e}") from e
+    if not addrs:
+        raise FetchError(f"cannot resolve {host!r}")
+    for a in addrs:
+        try:
+            ip = ipaddress.ip_address(a.split("%", 1)[0])
+        except ValueError as e:
+            raise FetchError(f"bad address {a!r} for {host!r}") from e
+        if is_blocked_address(ip):
+            raise FetchError(f"refusing to fetch {host!r}: resolves to non-public address {a}")
+    return addrs[0]
+
+
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    """Connects to a pre-checked IP; Host header and TLS SNI keep the hostname."""
+
+    def __init__(self, host: str, port: int, ip: str, timeout: float) -> None:
+        super().__init__(host, port, timeout=timeout)
+        self._ip = ip
+
+    def connect(self) -> None:
+        self.sock = _create_connection(self._ip, self.port, self.timeout or TIMEOUT_S)
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, host: str, port: int, ip: str, timeout: float) -> None:
+        super().__init__(host, port, timeout=timeout, context=ssl.create_default_context())
+        self._ip = ip
+
+    def connect(self) -> None:
+        sock = _create_connection(self._ip, self.port, self.timeout or TIMEOUT_S)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)  # type: ignore[attr-defined]
 
 
 def check_url(url: str) -> None:
     parts = urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.netloc:
+    if parts.scheme not in ("http", "https") or not parts.netloc or not parts.hostname:
         raise FetchError(f"only http/https URLs are allowed: {url!r}")
 
 
 def default_fetcher(url: str, max_bytes: int, timeout: float) -> bytes:
-    opener = urllib.request.build_opener(_SafeRedirect())
-    req = urllib.request.Request(url, headers={"User-Agent": "kotobaya-worker"})
-    try:
-        with opener.open(req, timeout=timeout) as resp:
+    """GET with manual redirects; every hop is scheme-checked, resolved and IP-pinned."""
+    for _ in range(MAX_REDIRECTS + 1):
+        check_url(url)
+        parts = urlsplit(url)
+        host = parts.hostname or ""
+        https = parts.scheme == "https"
+        try:
+            port = parts.port or (443 if https else 80)
+        except ValueError as e:
+            raise FetchError(f"bad port in {url!r}") from e
+        ip = resolve_public(host, port)
+        conn: http.client.HTTPConnection = (
+            _PinnedHTTPSConnection(host, port, ip, timeout)
+            if https
+            else _PinnedHTTPConnection(host, port, ip, timeout)
+        )
+        try:
+            target = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+            conn.request("GET", target, headers={"User-Agent": "kotobaya-worker"})
+            resp = conn.getresponse()
+            if resp.status in (301, 302, 303, 307, 308):
+                loc = resp.getheader("Location")
+                if not loc:
+                    raise FetchError(f"redirect without Location from {url!r}")
+                url = urljoin(url, loc)
+                continue
+            if resp.status != 200:
+                raise FetchError(f"HTTP {resp.status} from {url!r}")
             body: bytes = resp.read(max_bytes + 1)
-    except urllib.error.URLError as e:
-        raise FetchError(str(e)) from e
-    if len(body) > max_bytes:
-        raise FetchError(f"response larger than {max_bytes} bytes")
-    return body
+        except (OSError, http.client.HTTPException) as e:
+            raise FetchError(str(e)) from e
+        finally:
+            conn.close()
+        if len(body) > max_bytes:
+            raise FetchError(f"response larger than {max_bytes} bytes")
+        return body
+    raise FetchError("too many redirects")
 
 
 def extract_url(

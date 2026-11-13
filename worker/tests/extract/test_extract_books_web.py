@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from kotobaya_worker.extract import extract, extract_url
-from kotobaya_worker.extract.html import FetchError, _SafeRedirect
+from kotobaya_worker.extract.html import FetchError
 
 MEDIA = Path(__file__).resolve().parents[3] / "fixtures" / "media"
 
@@ -135,10 +136,106 @@ def test_url_size_cap_enforced() -> None:
         extract_url("https://example.com/", fetch=big, max_bytes=100)
 
 
-def test_redirect_to_other_scheme_refused() -> None:
-    import urllib.request
+@pytest.fixture
+def net(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Any]]:
+    """Fake DNS table plus a connector that records IPs and talks to a local server."""
+    import http.server
+    import socket
+    import threading
 
-    h = _SafeRedirect()
-    req = urllib.request.Request("https://example.com/")
-    with pytest.raises(FetchError):
-        h.redirect_request(req, None, 302, "Found", {}, "file:///etc/passwd")
+    from kotobaya_worker.extract import html as h
+
+    state: dict[str, Any] = {"dns": {}, "connected": [], "redirect": None, "body": b"ok"}
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if state["redirect"]:
+                self.send_response(302)
+                self.send_header("Location", state["redirect"])
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            else:
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(state["body"])))
+                self.end_headers()
+                self.wfile.write(state["body"])
+
+        def log_message(self, *a: object) -> None:
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+    def create(ip: str, port: int, timeout: float) -> socket.socket:
+        state["connected"].append(ip)
+        return socket.create_connection(("127.0.0.1", srv.server_port), timeout)
+
+    monkeypatch.setattr(h, "_resolve", lambda host, port: state["dns"].get(host, [host]))
+    monkeypatch.setattr(h, "_create_connection", create)
+    yield state
+    srv.shutdown()
+    srv.server_close()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/",
+        "http://10.0.0.5/",
+        "http://192.168.1.1/",
+        "http://172.16.0.1/",
+        "http://169.254.169.254/latest/meta-data",
+        "http://100.64.0.1/",
+        "http://224.0.0.1/",
+        "http://0.0.0.0/",
+        "http://[::1]/",
+        "http://[fd00::1]/",
+        "http://[fe80::1]/",
+        "http://[::ffff:127.0.0.1]/",
+        "http://[::ffff:169.254.169.254]/",
+    ],
+)
+def test_ssrf_private_literal_refused(net: dict[str, Any], url: str) -> None:
+    with pytest.raises(FetchError, match="non-public"):
+        extract_url(url)
+    assert net["connected"] == []
+
+
+def test_ssrf_hostname_resolving_to_private_refused(net: dict[str, Any]) -> None:
+    net["dns"]["evil.example"] = ["93.184.216.34", "10.1.2.3"]
+    with pytest.raises(FetchError, match="non-public"):
+        extract_url("http://evil.example/")
+    assert net["connected"] == []
+
+
+def test_ssrf_redirect_to_private_refused(net: dict[str, Any]) -> None:
+    net["dns"]["good.example"] = ["93.184.216.34"]
+    net["redirect"] = "http://169.254.169.254/latest"
+    with pytest.raises(FetchError, match="non-public"):
+        extract_url("http://good.example/")
+    assert net["connected"] == ["93.184.216.34"]
+
+
+def test_redirect_to_other_scheme_refused(net: dict[str, Any]) -> None:
+    net["dns"]["good.example"] = ["93.184.216.34"]
+    net["redirect"] = "file:///etc/passwd"
+    with pytest.raises(FetchError, match="http/https"):
+        extract_url("http://good.example/")
+
+
+def test_redirect_loop_capped(net: dict[str, Any]) -> None:
+    net["dns"]["good.example"] = ["93.184.216.34"]
+    net["redirect"] = "http://good.example/again"
+    with pytest.raises(FetchError, match="too many redirects"):
+        extract_url("http://good.example/")
+
+
+def test_public_address_allowed_and_pinned(net: dict[str, Any]) -> None:
+    net["dns"]["good.example"] = ["93.184.216.34"]
+    net["body"] = "<html><body><article><p>今日は猫です。</p></article></body></html>".encode()
+    segs = extract_url("http://good.example/x")
+    assert net["connected"] == ["93.184.216.34"]
+    assert segs[0].sentences[0].text == "今日は猫です。"
+    net["dns"]["v6.example"] = ["2606:4700::1111"]
+    extract_url("http://v6.example/")
+    assert net["connected"][-1] == "2606:4700::1111"
