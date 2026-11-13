@@ -672,3 +672,4 @@
 2026-11-13T05:07:33Z T501 MERGE CHECK_GREEN core+server; 1 attempt (med)
 2026-11-13T05:08:19Z T505b DISPATCH writer (server, Gradle slot)
 2026-11-13T05:16:41Z T505b MERGE CHECK_GREEN server; 1 attempt (low); minors → FOLLOWUPS F-20
+2026-11-13T05:17:21Z T506 SPLIT T506a (worker DSL/matcher/tagging, opus high) + T506b (server rule tester/examples/spans); DSL spec lives in worker (single impl), no contract
