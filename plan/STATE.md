@@ -30,7 +30,6 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| C-15 | reviewer | run 9 |
 
 ## Blocked
 | Ticket | Reason | Needs |

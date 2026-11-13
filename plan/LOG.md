@@ -712,3 +712,4 @@
 2026-11-13T06:42:26Z T508a MERGE CHECK_GREEN web; 1 attempt (low)
 2026-11-13T06:48:14Z C-15 HANDOFF DONE contracts green; QueueItem.grammar_sentence (additive); reviewer dispatched
 2026-11-13T06:48:14Z T504b DISPATCH writer (android, Gradle slot)
+2026-11-13T06:48:50Z C-15 MERGE REVIEW_APPROVE (3 minors → F-25) contracts green; 1 attempt (high)

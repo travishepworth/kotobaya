@@ -304,3 +304,4 @@
 
 ## F-25 (from T507, run 8) — wire grammar card sentence rotation into review (med; before GATE-P5)
 - server grammar/cards/GrammarCardSentenceSource (rotation, i+0) has no caller: no API op returns the per-review sentence for a grammar card, so clients still show a fixed sentence. Add the op (C-ticket if openapi lacks it) and use it in web/Android review. Tatoeba sentences have no spans → excluded for now.
+- F-25 additions (C-15 review, run 9): (a) core GrammarCardSentences.pick with rotation=reps + exclude lastShown skips sentences (A,B,C → A,C,A,C; drills alternate 2) — rotate over full tier stepping past lastShown; (b) order candidates by (sentence_id, start_offset, end_offset) for server/Android agreement; (c) C-15 notes live in contracts/api/SUMMARY.md (no contracts/SUMMARY.md).
