@@ -635,3 +635,8 @@
 2026-11-13T04:07:56Z T401b MERGE CHECK_GREEN worker (443); 1 attempt (med). F-14 DISPATCH writer; F-15+F-16 DISPATCH writer
 2026-11-13T04:08:21Z F-17/F-18 NEW human-reported (listEntryExamples 501 stub; web dict page hides entry when examples fail)
 2026-11-13T04:08:33Z F-18 DISPATCH writer-light (web); F-17 queued for next server slot (≤3 gradle-heavy)
+2026-11-13T04:14:32Z - RESUME run 6 after machine crash; MAX_PARALLEL_WRITERS=3, 1 Gradle-heavy at a time
+2026-11-13T04:14:32Z F-18 HANDOFF DONE (found after crash); rebased, check web running
+2026-11-13T04:14:32Z F-14 DISPATCH writer (resume in crashed worktree, uncommitted work kept)
+2026-11-13T04:14:32Z T403b DISPATCH writer-senior (resume in crashed worktree)
+2026-11-13T04:14:57Z F-18 CHECK_GREEN web; MERGE 1 attempt (low)

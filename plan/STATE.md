@@ -15,7 +15,12 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 - Server test suite: test heap 2g (F-11); docker volumes: Postgres tmpfs everywhere (F-9/F-10). Check `df -h /` before big batches.
 
 ## Running
-(none)
+| Ticket | Agent | Attempt | Branch | Started |
+|---|---|---|---|---|
+| F-14 | writer (resumed) | 1 | t/F-14-seaweedfs-blob-put (wt agent-af00baf874fb21e11) | run 6 |
+| T403b | writer-senior (resumed) | 1 | t/T403b-parse-matching (wt agent-a916bbd5a76a60c04) | run 6 |
+
+Queued (Gradle slot, serial): F-15+F-16 (wt agent-aa893aced2b0ba95a, uncommitted server work) → F-17 → T403c+T408a (wt agent-aa2a58c8d4cb2a04d, uncommitted server work)
 
 ## Parked
 | Ticket | Branch | State | Next |
@@ -35,7 +40,7 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 - Disk: root fs filled during make test (Docker anon volumes ~22 GB; prune denied → HUMAN_CHECKS). Merged worktrees now removed after each merge (works). Check `df -h /` before Gradle/Testcontainers-heavy batches.
 - PUSH main BEFORE dispatching worktree writers: worktrees are cut from origin/main (T304b/T305b got a stale base on 2026-11-13).
 - Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
-- MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.
+- MAX_PARALLEL_WRITERS=3 (crash 2026-11-13); 1 Gradle-heavy writer at a time; never two Gradle make checks at once (count reviewers). Human (go hard): up to 3 concurrent reviewers allowed.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 - Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.
 - Review rounds (human, 2026-11-12): loop while findings are REAL — blocker/major with a concrete failure scenario (inputs → wrong result/data loss/divergence). Minors and style never block (→ FOLLOWUPS). Re-reviews verify prior findings + only genuinely new majors. Safety cap: §9 (5 attempts → BLOCKED_HUMAN).
@@ -51,6 +56,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-18 web dict page keeps entry when examples fail/empty (run 6)
 - F-7 parse fixture 200 sentences + JMdict_parse_extra (hand-authored segmentation)
 - T405a web media library + import wizard (UUIDv7 import_id retry)
 - T411a blobs API (BlobsModule PUT/GET/query, S3BlobStore + in-memory; not wired until W-5)
