@@ -25,3 +25,8 @@
 
 ## Out of scope
 Visual changes (UI-DS / UI-APP); sync engine (BUG-8, merged).
+
+## Notes from BUG-8 review (fix while restructuring; minors)
+- DbThreadGuard wraps only the sync/app driver (SYNC_DRIVER): wrap the dictionary DB driver too so main-thread dict access is detected.
+- SyncStatusRepository (~:80-91): onProgress (sync thread) and refresh() both read-then-set state.value; use state.update {} in both. read{} is not one snapshot (display-only; document in the ViewModel).
+- PairingFeature (~:338): unpair() launched on IO and not awaited before `paired = false`; do withContext(IO) { unpair() } then set paired=false.
