@@ -379,3 +379,7 @@
 - BUG-8 review (run 17, minor): DeviceOpApplier.open is a plain shared field, safe only because batches run inside the single SQLite writer tx; add comment or @Volatile + assertion.
 - BUG-8 review (run 17, minors 2-5): DbThreadGuard wraps only SYNC_DRIVER (dict DB / SharedPreferences main-thread access undetected); SyncStatusRepository read{} not one snapshot (display only); onProgress vs refresh race on state.value (chip may step back; use state.update); PairingFeature unpair() launched on IO not awaited before paired=false. -> folded into UI-FOUND-APP ticket.
 - UI-FOUND-WEB (run 17): view rewrite (~45 files) has no e2e coverage; eslint now parses .svelte.ts and surfaces existing prefer-svelte-reactivity errors (lint not a gate); screenshot harness needs CHROMIUM_PATH (system Chromium).
+
+## UI-WEB (run 19, writer notes)
+- Confusable headwords in API (UI-WEB state gap; needs server/API change)
+- Deck colour + due count in Deck API/state (UI-WEB state gap)

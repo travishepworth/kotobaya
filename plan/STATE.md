@@ -15,7 +15,7 @@ Updated: run 19
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | UI-APP | writer-senior | 1 | t/UI-APP-rebuild | run 19 |
-| UI-WEB | writer-senior | 1 | t/UI-WEB-rebuild | run 19 |
+| UI-WEB | writer-senior | 1b (scope amendment: fieldRegions state, load-error flags, dead code, pre-paint) | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
 FOLLOWUPS
