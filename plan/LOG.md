@@ -884,3 +884,5 @@
 2026-11-13T16:06:48Z UI-APP DISPATCH writer-senior attempt 1 (high; bar + screenshot matrix verbatim)
 2026-11-13T16:43:30Z UI-WEB HANDOFF CONTRACT_CHANGE_REQUEST (additive state: PreviewInput.fieldRegions); rest DONE, 688 PNGs
 2026-11-13T16:43:30Z UI-WEB DECIDE scope amended: + web/src/lib/state/{preview,notes,cards}.svelte.ts fieldRegions, load-error flags, dead lib/<feature>/*.svelte + legacy tokens + Toaster removal, app.html pre-paint; fresh writer-senior attempt 1b same branch
+2026-11-13T16:48:48Z UI-APP HANDOFF DONE; 660 PNGs, 176 curated; glue edits outside ui/nav accepted (theme switch, Media route removal); state-layer requests -> APP-STATE-1
+2026-11-13T16:48:48Z UI-APP REVIEW dispatched reviewer (screenshots + bar)

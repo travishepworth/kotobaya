@@ -383,3 +383,10 @@
 ## UI-WEB (run 19, writer notes)
 - Confusable headwords in API (UI-WEB state gap; needs server/API change)
 - Deck colour + due count in Deck API/state (UI-WEB state gap)
+
+## UI-APP (run 19, state-layer requests -> candidate ticket APP-STATE-1, android ViewModels)
+- ReviewMeta: remaining count + deck name ("12 of 85") and next-due time
+- HomeUiState: overall due/new counts, 14-day activity
+- Stats ViewModel (Android has no stats screen yet)
+- WordDetail: pitch + kanji readings
+- Deck colour (shared with the web gap)
