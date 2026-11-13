@@ -2,6 +2,11 @@ package kotobaya.android.review
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotobaya.android.review.ui.ReviewScreen
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.media.BlobStore
@@ -67,9 +72,25 @@ val reviewFeature = FeatureEntry(
     ),
 )
 
+/**
+ * The review screen's glue: a [ReviewViewModel] per [key] (the Review tab uses none; a deck's study page passes one
+ * per visit), the session started while composed and ended when it leaves, like the old composition-scoped one.
+ * [onSessionEnd] null tells the sync triggers a session ended (the Review tab).
+ */
 @Composable
-private fun ReviewRoute() {
+fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -> Unit)? = null) {
     val koin = getKoin()
-    val backend = koin.getOrNull<ReviewBackend<*>>()
-    ReviewScreen(backend, onSessionEnd = { koin.getOrNull<SyncTriggers>()?.reviewSessionEnded() })
+    val vm: ReviewViewModel = viewModel(key = key) {
+        ReviewViewModel(
+            koin.getOrNull<ReviewBackend<*>>(),
+            deckId,
+            onSessionEnd ?: { koin.getOrNull<SyncTriggers>()?.reviewSessionEnded(); Unit },
+        )
+    }
+    DisposableEffect(vm) {
+        vm.enter()
+        onDispose { vm.leave() }
+    }
+    val state by vm.state.collectAsState()
+    ReviewScreen(state, vm)
 }

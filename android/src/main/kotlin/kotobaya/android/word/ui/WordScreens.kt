@@ -1,7 +1,5 @@
-package kotobaya.android.word
+package kotobaya.android.word.ui
 
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -10,32 +8,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.i18n.T
-import kotobaya.android.search.cardStateRes
-import kotobaya.android.search.statusRes
-import org.koin.compose.koinInject
+import kotobaya.android.search.ui.cardStateRes
+import kotobaya.android.search.ui.statusRes
+import kotobaya.android.word.NoteLoad
+import kotobaya.android.word.NoteView
+import kotobaya.android.word.WordDetail
+import kotobaya.android.word.WordLoad
 
-/** Word detail for `word/{seq}`: entry data plus the user's notes, cards and status for it. */
+/** Word detail: entry data plus the user's notes, cards and status for it. [load] null while loading. */
 @Composable
-fun WordDetailScreen(seq: Long, onBack: () -> Unit) {
-    val repo = koinInject<WordRepository>()
-    var load by remember(seq) { mutableStateOf<WordLoad?>(null) }
-    LaunchedEffect(seq) { load = withContext(Dispatchers.IO) { repo.load(seq) } }
+fun WordDetailScreen(load: WordLoad?, onBack: () -> Unit) {
     Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         OutlinedButton(onClick = onBack) { Text(T(R.string.word_back)) }
-        when (val l = load) {
+        when (load) {
             null -> Text(T(R.string.word_loading))
             WordLoad.NotFound -> Text(T(R.string.word_not_found))
-            is WordLoad.Failed -> Text(T(if (l.offline) R.string.word_needs_connection else R.string.word_failed))
-            is WordLoad.Found -> WordBody(l.detail)
+            is WordLoad.Failed -> Text(T(if (load.offline) R.string.word_needs_connection else R.string.word_failed))
+            is WordLoad.Found -> WordBody(load.detail)
         }
     }
 }
@@ -66,22 +59,19 @@ private fun NoteBlock(n: NoteView) {
     }
 }
 
-/** Detail of a note that has no dictionary entry (reached from a card result). */
+/** Detail of a note that has no dictionary entry (reached from a card result). [load] null while loading. */
 @Composable
-fun NoteDetailScreen(noteId: String, onBack: () -> Unit) {
-    val repo = koinInject<WordRepository>()
-    var load by remember(noteId) { mutableStateOf<NoteLoad?>(null) }
-    LaunchedEffect(noteId) { load = withContext(Dispatchers.IO) { repo.loadNote(noteId) } }
+fun NoteDetailScreen(load: NoteLoad?, onBack: () -> Unit) {
     Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         OutlinedButton(onClick = onBack) { Text(T(R.string.word_back)) }
         Text(T(R.string.note_title), style = MaterialTheme.typography.titleLarge)
-        when (val l = load) {
+        when (load) {
             null -> Text(T(R.string.word_loading))
             NoteLoad.Unavailable -> Text(T(R.string.note_unavailable))
             is NoteLoad.Found -> {
-                NoteBlock(l.note)
-                if (l.mnemonic.isNotEmpty()) Text(T(R.string.note_mnemonic, l.mnemonic))
-                if (l.tags.isNotEmpty()) Text(T(R.string.note_tags, l.tags.joinToString(", ")))
+                NoteBlock(load.note)
+                if (load.mnemonic.isNotEmpty()) Text(T(R.string.note_mnemonic, load.mnemonic))
+                if (load.tags.isNotEmpty()) Text(T(R.string.note_tags, load.tags.joinToString(", ")))
             }
         }
     }

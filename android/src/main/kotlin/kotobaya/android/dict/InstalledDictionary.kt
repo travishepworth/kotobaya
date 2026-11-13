@@ -67,7 +67,11 @@ data class ExampleSentence(val id: Long, val text: String, val translation: Stri
  * `/dict/search` (kana, kanji, romaji, English gloss; same grading and ordering) over the entries the device
  * package holds. Supersedes the `db.DictionaryProvider` seam of T301a (nothing reads that one).
  */
-class InstalledDictionary(private val store: DictStore) {
+class InstalledDictionary(
+    private val store: DictStore,
+    /** Reports reads on the main thread (BUG-8); null in tests that build it alone. */
+    private val guard: kotobaya.android.db.DbThreadGuard? = null,
+) {
     private var handle: SQLiteDatabase? = null
     private var handleGeneration = -1L
 
@@ -75,6 +79,7 @@ class InstalledDictionary(private val store: DictStore) {
     fun info(): PackageInfo? = withDb { PackageFile.info(it) }
 
     private fun <T> withDb(block: (SQLiteDatabase) -> T?): T? = synchronized(this) {
+        guard?.check("dictionary read")
         val gen = store.generation.value
         if (handle != null && (gen != handleGeneration || handle?.isOpen != true)) {
             handle?.close()

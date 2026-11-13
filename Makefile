@@ -1,4 +1,4 @@
-.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web tokens tokens-check
+.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web screenshots-app tokens tokens-check
 
 MODULES := core server worker web android deploy contracts acceptance cli
 GRADLE := ./gradlew --no-daemon -q
@@ -87,6 +87,13 @@ screenshots-web:
 	cd web && pnpm install --frozen-lockfile && rm -rf screenshots/default screenshots/empty screenshots/due900 \
 		&& CHROMIUM_PATH=$(CHROMIUM_PATH) pnpm exec playwright test --config playwright.config.ts
 	@find web/screenshots -name '*.png' -not -path '*/.results/*' | wc -l | xargs echo "screenshots:"
+
+# Screenshot matrix of every Android screen into android/screenshots/ (UI-FOUND-APP; Roborazzi on Robolectric):
+# demo dataset x phone/foldable/tablet x light/dark x font 1.0/2.0. Design feedback loop, not a gate.
+screenshots-app:
+	rm -rf android/screenshots/default android/screenshots/empty
+	$(GRADLE) :android:testAnkidroidDebugUnitTest -Pscreenshots --tests 'kotobaya.android.screenshots.*'
+	@find android/screenshots -name '*.png' | wc -l | xargs echo "screenshots:"
 
 # Release artefacts (T002). Images: $(REGISTRY)/{api,worker,web,backup}:$(VERSION).
 # DRY_RUN=1 prints the commands instead of running them.

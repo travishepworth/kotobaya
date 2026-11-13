@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- UI-FOUND-APP: the debug "demo data" switch (debug builds only) -->
+    <string name="demo_section_title">Demo data (debug)</string>
+    <string name="demo_enable">Show the demo dataset instead of this device\'s data</string>
+    <string name="demo_scenario">Scenario</string>
+    <string name="demo_scenario_default">Lived-in</string>
+    <string name="demo_scenario_due900">900 due</string>
+    <string name="demo_scenario_empty">New account</string>
+    <string name="demo_note">Changing this restarts the app. Demo mode never writes to your data or the server: answers and edits stay in memory until the next restart.</string>
+    <string name="demo_unavailable">This build does not include the demo dataset.</string>
+</resources>

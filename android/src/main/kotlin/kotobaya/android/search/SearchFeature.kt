@@ -1,6 +1,12 @@
 package kotobaya.android.search
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import app.cash.sqldelight.db.SqlDriver
+import kotobaya.android.search.ui.SearchScreen
+import org.koin.compose.getKoin
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.dict.InstalledDictionary
@@ -49,6 +55,7 @@ private val searchModule = module {
             usable,
         )
     }
+    single<SearchPort> { AppSearchPort(get(), get(), get()) }
     single {
         val koin = getKoin()
         WordRepository(
@@ -62,5 +69,13 @@ private val searchModule = module {
 val searchFeature = FeatureEntry(
     id = "search",
     module = searchModule,
-    routes = listOf(NavRoute(Routes.SEARCH, R.string.nav_search, topLevel = true) { SearchScreen() }),
+    routes = listOf(NavRoute(Routes.SEARCH, R.string.nav_search, topLevel = true) { SearchRoute() }),
 )
+
+@Composable
+private fun SearchRoute() {
+    val koin = getKoin()
+    val vm: SearchViewModel = viewModel { SearchViewModel(koin.get<SearchPort>()) }
+    val state by vm.state.collectAsState()
+    SearchScreen(state, vm)
+}

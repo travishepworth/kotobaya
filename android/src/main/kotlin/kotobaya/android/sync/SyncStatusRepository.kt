@@ -4,6 +4,7 @@ import kotobaya.sync.client.protocol.PullProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotobaya.sync.client.protocol.CycleResult
 import kotobaya.sync.client.protocol.SyncSnapshot
 import kotobaya.sync.client.protocol.SyncStatus
@@ -60,7 +61,7 @@ class SyncStatusRepository(
     val status: StateFlow<SyncStatusView?> = state.asStateFlow()
 
     /** The current status, computed now. */
-    fun current(): SyncStatusView = compute().also { state.value = it }
+    fun current(): SyncStatusView = compute().also { publish(it) }
 
     /** Records the last sync outcome (as a [CycleResult], null for "nothing to report"). */
     fun onOutcome(result: CycleResult?, unreachable: Boolean = false) {
@@ -79,12 +80,21 @@ class SyncStatusRepository(
     /** Records pull progress (after each committed chunk). Updates the published view without a database read. */
     fun onProgress(p: PullProgress) {
         progress = p
-        state.value?.let { state.value = it.copy(progress = p) }
+        // atomic: a refresh() publishing from another thread at the same moment cannot drop this progress
+        state.update { it?.copy(progress = p) }
     }
 
     /** Recomputes from the store. Never throws (a failed read keeps the previous value). */
     fun refresh() {
-        runCatching { compute() }.onSuccess { state.value = it }
+        runCatching { compute() }.onSuccess { publish(it) }
+    }
+
+    /**
+     * Publishes [computed], atomically, with the newest pull progress: [onProgress] (sync thread) and [refresh]
+     * (any thread) both go through [MutableStateFlow.update], so neither overwrites the other's newer progress.
+     */
+    private fun publish(computed: SyncStatusView) {
+        state.update { computed.copy(progress = if (running) progress else null) }
     }
 
     private fun compute(): SyncStatusView {

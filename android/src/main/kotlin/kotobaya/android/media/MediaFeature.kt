@@ -2,6 +2,12 @@ package kotobaya.android.media
 
 import android.content.Context
 import android.net.ConnectivityManager
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotobaya.android.media.ui.MediaSettingsSection
+import org.koin.compose.getKoin
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.Constraints
@@ -68,5 +74,13 @@ private val mediaModule = module {
 val mediaFeature = FeatureEntry(
     id = "media",
     module = mediaModule,
-    settingsSections = listOf(SettingsSection("media", R.string.media_section_title) { MediaSettings() }),
+    settingsSections = listOf(SettingsSection("media", R.string.media_section_title) { MediaSettingsRoute() }),
 )
+
+@Composable
+private fun MediaSettingsRoute() {
+    val koin = getKoin()
+    val vm: MediaSettingsViewModel = viewModel { MediaSettingsViewModel(AppMediaSettingsPort(koin.get(), koin.get(), koin.get())) }
+    val state by vm.state.collectAsState()
+    MediaSettingsSection(state, vm)
+}

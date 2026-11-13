@@ -5,25 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.IBinder
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotobaya.android.ankiconnect.ui.AnkiConnectSettings
+import org.koin.compose.getKoin
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,10 +19,8 @@ import kotobaya.android.R
 import kotobaya.android.ankiapi.store.TakobotoAnkiStore
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.di.SettingsSection
-import kotobaya.android.i18n.T
 import kotobaya.android.media.BlobStore
 import kotobaya.android.sync.SqlLearningTables
-import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
 
@@ -142,57 +127,20 @@ private val ankiConnectModule = module {
 }
 
 @Composable
-private fun AnkiConnectSettings() {
-    val prefs: AnkiConnectPrefs = koinInject()
-    val controller: AnkiConnectController = koinInject()
-    val context: Context = koinInject()
-    val status by controller.status.collectAsState()
-    var enabled by remember { mutableStateOf(prefs.enabled) }
-    var port by remember { mutableStateOf(prefs.port.toString()) }
-    var key by remember { mutableStateOf(prefs.apiKey) }
-    var origins by remember { mutableStateOf(prefs.origins) }
-    Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = enabled, onCheckedChange = {
-                enabled = it
-                prefs.enabled = it
-                controller.apply(context)
-            })
-            Text(T(R.string.ankiconnect_enable), Modifier.padding(start = 8.dp))
-        }
-        OutlinedTextField(
-            port,
-            { v ->
-                port = v.filter(Char::isDigit).take(5)
-                port.toIntOrNull()?.takeIf { it in 1..65535 }?.let { prefs.port = it }
-            },
-            Modifier.fillMaxWidth(),
-            label = { Text(T(R.string.ankiconnect_port)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            key, { key = it; prefs.apiKey = it }, Modifier.fillMaxWidth(),
-            label = { Text(T(R.string.ankiconnect_api_key)) }, singleLine = true,
-        )
-        OutlinedTextField(
-            origins, { origins = it; prefs.origins = it }, Modifier.fillMaxWidth(),
-            label = { Text(T(R.string.ankiconnect_origins)) },
-        )
-        Text(
-            when (val s = status) {
-                AnkiConnectStatus.Stopped -> T(R.string.ankiconnect_status_stopped)
-                is AnkiConnectStatus.Running -> T(R.string.ankiconnect_status_running, s.port)
-                is AnkiConnectStatus.Failed -> T(R.string.ankiconnect_status_failed, s.message)
-            },
-        )
-        Text(T(R.string.ankiconnect_hint, prefs.port))
+private fun AnkiConnectSettingsRoute() {
+    val koin = getKoin()
+    val vm: AnkiConnectSettingsViewModel = viewModel {
+        val controller = koin.get<AnkiConnectController>()
+        val context = koin.get<Context>()
+        AnkiConnectSettingsViewModel(koin.get(), controller.status, apply = { controller.apply(context) })
     }
+    val state by vm.state.collectAsState()
+    AnkiConnectSettings(state, vm)
 }
 
 /** THE registration for featureEntries. */
 val ankiConnectFeature = FeatureEntry(
     id = "ankiconnect",
     module = ankiConnectModule,
-    settingsSections = listOf(SettingsSection("ankiconnect", R.string.ankiconnect_section_title) { AnkiConnectSettings() }),
+    settingsSections = listOf(SettingsSection("ankiconnect", R.string.ankiconnect_section_title) { AnkiConnectSettingsRoute() }),
 )

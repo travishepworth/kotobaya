@@ -1,4 +1,4 @@
-package kotobaya.android.struggle
+package kotobaya.android.struggle.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,46 +14,31 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotobaya.android.R
+import kotobaya.android.grammar.ui.CaptureEntrySlot
 import kotobaya.android.i18n.T
 import kotobaya.android.media.browse.Loaded
-import org.koin.compose.koinInject
+import kotobaya.android.struggle.HotWordView
+import kotobaya.android.struggle.StruggleConfusablesState
+import kotobaya.android.struggle.StruggleDrillState
+import kotobaya.android.struggle.StruggleHomeState
+import kotobaya.android.struggle.StruggleIntents
+import kotobaya.android.struggle.StruggleLeechesState
+import kotobaya.android.struggle.StrugglePage
+import kotobaya.android.struggle.StruggleUiState
+import kotobaya.android.struggle.StruggleWordState
 
-private sealed interface Page {
-    data object Home : Page
-    data class Word(val word: HotWordView) : Page
-    data object Leeches : Page
-    data object Confusables : Page
-    data class Drill(val source: String) : Page
-}
-
+/** The struggle screen: the page in [state]; [captureEntry] is each sentence's grammar capture. */
 @Composable
-fun StruggleScreen() {
-    val source = koinInject<StruggleSource>()
-    var page by remember { mutableStateOf<Page>(Page.Home) }
-    val pending by StruggleDeepLink.pending.collectAsState()
-    LaunchedEffect(pending) {
-        val seq = pending ?: return@LaunchedEffect
-        StruggleDeepLink.consume()
-        val hot = (source.hotWords() as? Loaded.Data)?.value?.firstOrNull { it.entrySeq == seq }
-        if (hot != null) page = Page.Word(hot)
-    }
-    when (val p = page) {
-        Page.Home -> HomePage(source, onOpen = { page = it })
-        is Page.Word -> WordPage(source, p.word) { page = Page.Home }
-        Page.Leeches -> LeechesPage(source, onDrill = { page = Page.Drill("leeches") }) { page = Page.Home }
-        Page.Confusables -> ConfusablesPage(source, onDrill = { page = Page.Drill("confusables") }) { page = Page.Home }
-        is Page.Drill -> DrillPage(source, p.source) { page = Page.Home }
+fun StruggleScreen(state: StruggleUiState, intents: StruggleIntents, captureEntry: CaptureEntrySlot) {
+    when (val p = state.page) {
+        StrugglePage.Home -> HomePage(state.home, intents)
+        is StrugglePage.Word -> WordPage(p.word, state.word, intents, captureEntry)
+        StrugglePage.Leeches -> LeechesPage(state.leeches, intents)
+        StrugglePage.Confusables -> ConfusablesPage(state.confusables, intents)
+        is StrugglePage.Drill -> DrillPage(state.drill, intents)
     }
 }
 
@@ -77,31 +62,25 @@ private fun BackButton(onBack: () -> Unit) {
 }
 
 @Composable
-private fun HomePage(source: StruggleSource, onOpen: (Page) -> Unit) {
-    var words by remember { mutableStateOf<Loaded<List<HotWordView>>?>(null) }
-    var kanji by remember { mutableStateOf<Loaded<List<HotKanjiView>>?>(null) }
-    LaunchedEffect(Unit) {
-        words = source.hotWords()
-        kanji = source.hotKanji()
-    }
+private fun HomePage(state: StruggleHomeState, intents: StruggleIntents) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
             Text(T(R.string.struggle_title), style = MaterialTheme.typography.titleLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { onOpen(Page.Leeches) }) { Text(T(R.string.struggle_leeches)) }
-                OutlinedButton(onClick = { onOpen(Page.Confusables) }) { Text(T(R.string.struggle_confusables)) }
+                OutlinedButton(onClick = { intents.open(StrugglePage.Leeches) }) { Text(T(R.string.struggle_leeches)) }
+                OutlinedButton(onClick = { intents.open(StrugglePage.Confusables) }) { Text(T(R.string.struggle_confusables)) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onOpen(Page.Drill("hot_words")) }) { Text(T(R.string.struggle_drill_hot)) }
+                Button(onClick = { intents.open(StrugglePage.Drill("hot_words")) }) { Text(T(R.string.struggle_drill_hot)) }
             }
             Text(T(R.string.struggle_drill_note), style = MaterialTheme.typography.bodySmall)
             Text(T(R.string.struggle_hot_words), style = MaterialTheme.typography.titleMedium)
         }
-        val w = words
+        val w = state.words
         if (w is Loaded.Data) {
             if (w.value.isEmpty()) item { Text(T(R.string.struggle_hot_words_none)) }
             items(w.value, key = { it.noteId }) { hw ->
-                Column(Modifier.fillMaxWidth().clickable { onOpen(Page.Word(hw)) }.padding(vertical = 4.dp)) {
+                Column(Modifier.fillMaxWidth().clickable { intents.open(StrugglePage.Word(hw)) }.padding(vertical = 4.dp)) {
                     Text(hw.headword, style = MaterialTheme.typography.titleMedium)
                     Text("${hw.reading} ${hw.glosses.take(3).joinToString("; ")}".trim())
                     Text(
@@ -114,7 +93,7 @@ private fun HomePage(source: StruggleSource, onOpen: (Page) -> Unit) {
             item { LoadedBlock(w) {} }
         }
         item { Text(T(R.string.struggle_hot_kanji), style = MaterialTheme.typography.titleMedium) }
-        val k = kanji
+        val k = state.kanji
         if (k is Loaded.Data) {
             if (k.value.isEmpty()) item { Text(T(R.string.struggle_hot_kanji_none)) }
             items(k.value, key = { it.literal }) { hk ->
@@ -133,23 +112,10 @@ private fun HomePage(source: StruggleSource, onOpen: (Page) -> Unit) {
 }
 
 @Composable
-private fun WordPage(source: StruggleSource, word: HotWordView, onBack: () -> Unit) {
-    var sentences by remember { mutableStateOf<Loaded<List<SentenceItem>>?>(null) }
-    var partners by remember { mutableStateOf<Loaded<List<ConfusableView>>?>(null) }
-    var mnemonic by remember { mutableStateOf(word.mnemonic) }
-    var message by remember { mutableStateOf<Int?>(null) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(word.noteId) {
-        val seq = word.entrySeq ?: return@LaunchedEffect
-        sentences = source.sentences(seq)
-        partners = source.wordConfusables(seq)
-    }
-    fun report(r: Result<Unit>, ok: Int) {
-        message = if (r.isSuccess) ok else R.string.struggle_write_failed
-    }
+private fun WordPage(word: HotWordView, state: StruggleWordState, intents: StruggleIntents, captureEntry: CaptureEntrySlot) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
-            BackButton(onBack)
+            BackButton(intents::home)
             Text(word.headword, style = MaterialTheme.typography.headlineMedium)
             Text("${word.reading} ${word.glosses.joinToString("; ")}".trim())
             Text(
@@ -157,22 +123,22 @@ private fun WordPage(source: StruggleSource, word: HotWordView, onBack: () -> Un
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(T(R.string.struggle_extra_drill_note), style = MaterialTheme.typography.bodySmall)
-            message?.let { Text(T(it)) }
+            state.message?.let { Text(T(it)) }
             Text(T(R.string.struggle_mnemonic), style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(mnemonic, { mnemonic = it }, Modifier.fillMaxWidth())
-            Button(onClick = { scope.launch { report(source.saveMnemonic(word.noteId, mnemonic), R.string.struggle_mnemonic_saved) } }) {
+            OutlinedTextField(state.mnemonic, intents::setMnemonic, Modifier.fillMaxWidth())
+            Button(onClick = intents::saveMnemonic) {
                 Text(T(R.string.struggle_mnemonic_save))
             }
             Text(T(R.string.struggle_sentences), style = MaterialTheme.typography.titleMedium)
         }
-        val s = sentences
+        val s = state.sentences
         if (s is Loaded.Data) {
             if (s.value.isEmpty()) item { Text(T(R.string.struggle_sentences_none)) }
             items(s.value, key = { it.id }) { sent ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Text(sent.text)
-                    kotobaya.android.grammar.GrammarCaptureEntry(sent.id, sent.mediaId, sent.text)
-                    OutlinedButton(onClick = { scope.launch { report(source.makeSentenceCard(sent), R.string.struggle_card_created) } }) {
+                    captureEntry(sent.id, sent.mediaId, sent.text)
+                    OutlinedButton(onClick = { intents.makeSentenceCard(sent) }) {
                         Text(T(R.string.struggle_make_card))
                     }
                 }
@@ -181,7 +147,7 @@ private fun WordPage(source: StruggleSource, word: HotWordView, onBack: () -> Un
             item { LoadedBlock(s) {} }
         }
         item { Text(T(R.string.struggle_partners), style = MaterialTheme.typography.titleMedium) }
-        val p = partners
+        val p = state.partners
         if (p is Loaded.Data) {
             if (p.value.isEmpty()) item { Text(T(R.string.struggle_partners_none)) }
             items(p.value, key = { "${it.noteAId}/${it.noteBId}/${it.reason}" }) { c ->
@@ -189,37 +155,23 @@ private fun WordPage(source: StruggleSource, word: HotWordView, onBack: () -> Un
             }
         }
         item {
-            Button(onClick = onBack) { Text(T(R.string.struggle_back)) }
+            Button(onClick = intents::home) { Text(T(R.string.struggle_back)) }
         }
     }
 }
 
 @Composable
-private fun LeechesPage(source: StruggleSource, onDrill: () -> Unit, onBack: () -> Unit) {
-    var rows by remember { mutableStateOf<List<LeechView>>(emptyList()) }
-    var cursor by remember { mutableStateOf<String?>(null) }
-    var state by remember { mutableStateOf<Loaded<*>?>(null) }
-    val scope = rememberCoroutineScope()
-    suspend fun load(more: Boolean) {
-        val r = source.leeches(if (more) cursor else null)
-        state = r
-        if (r is Loaded.Data) {
-            val merged = if (more) rows + r.value.first else r.value.first
-            rows = merged.associateBy { it.cardId }.values.toList()
-            cursor = r.value.second
-        }
-    }
-    LaunchedEffect(Unit) { load(false) }
+private fun LeechesPage(state: StruggleLeechesState, intents: StruggleIntents) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
-            BackButton(onBack)
+            BackButton(intents::home)
             Text(T(R.string.struggle_leeches), style = MaterialTheme.typography.titleLarge)
-            Button(onClick = onDrill) { Text(T(R.string.struggle_drill_leeches)) }
+            Button(onClick = { intents.open(StrugglePage.Drill("leeches")) }) { Text(T(R.string.struggle_drill_leeches)) }
             Text(T(R.string.struggle_drill_note), style = MaterialTheme.typography.bodySmall)
-            if (state !is Loaded.Data) LoadedBlock(state) {}
-            if (state is Loaded.Data && rows.isEmpty()) Text(T(R.string.struggle_leeches_none))
+            if (state.load !is Loaded.Data) LoadedBlock(state.load) {}
+            if (state.load is Loaded.Data && state.rows.isEmpty()) Text(T(R.string.struggle_leeches_none))
         }
-        items(rows, key = { it.cardId }) { l ->
+        items(state.rows, key = { it.cardId }) { l ->
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text(l.label, style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -228,27 +180,23 @@ private fun LeechesPage(source: StruggleSource, onDrill: () -> Unit, onBack: () 
                 )
             }
         }
-        if (cursor != null) {
-            item { OutlinedButton(onClick = { scope.launch { load(true) } }) { Text(T(R.string.struggle_more)) } }
+        if (state.cursor != null) {
+            item { OutlinedButton(onClick = intents::moreLeeches) { Text(T(R.string.struggle_more)) } }
         }
     }
 }
 
 @Composable
-private fun ConfusablesPage(source: StruggleSource, onDrill: () -> Unit, onBack: () -> Unit) {
-    var state by remember { mutableStateOf<Loaded<List<ConfusableView>>?>(null) }
-    var message by remember { mutableStateOf<Int?>(null) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { state = source.confusables() }
+private fun ConfusablesPage(state: StruggleConfusablesState, intents: StruggleIntents) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
-            BackButton(onBack)
+            BackButton(intents::home)
             Text(T(R.string.struggle_confusables), style = MaterialTheme.typography.titleLarge)
-            Button(onClick = onDrill) { Text(T(R.string.struggle_drill_confusables)) }
+            Button(onClick = { intents.open(StrugglePage.Drill("confusables")) }) { Text(T(R.string.struggle_drill_confusables)) }
             Text(T(R.string.struggle_drill_note), style = MaterialTheme.typography.bodySmall)
-            message?.let { Text(T(it)) }
+            state.message?.let { Text(T(it)) }
         }
-        val s = state
+        val s = state.pairs
         if (s is Loaded.Data) {
             if (s.value.isEmpty()) item { Text(T(R.string.struggle_confusables_none)) }
             items(s.value, key = { "${it.noteAId}/${it.noteBId}/${it.reason}" }) { c ->
@@ -259,13 +207,7 @@ private fun ConfusablesPage(source: StruggleSource, onDrill: () -> Unit, onBack:
                         listOf("confirmed" to R.string.struggle_confirm, "rejected" to R.string.struggle_reject).forEach { (st, label) ->
                             OutlinedButton(
                                 enabled = c.status != st,
-                                onClick = {
-                                    scope.launch {
-                                        val r = source.setConfusable(c, st)
-                                        message = if (r.isSuccess) R.string.struggle_pair_updated else R.string.struggle_write_failed
-                                        if (r.isSuccess) state = source.confusables()
-                                    }
-                                },
+                                onClick = { intents.setConfusable(c, st) },
                             ) { Text(T(label)) }
                         }
                     }
@@ -279,43 +221,31 @@ private fun ConfusablesPage(source: StruggleSource, onDrill: () -> Unit, onBack:
 
 /** Flip-through drill; every answer is logged with `mode = drill`, so scheduling is untouched. */
 @Composable
-private fun DrillPage(source: StruggleSource, kind: String, onBack: () -> Unit) {
-    var state by remember { mutableStateOf<Loaded<List<DrillItem>>?>(null) }
-    var index by remember { mutableStateOf(0) }
-    var revealed by remember { mutableStateOf(false) }
-    var failed by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(kind) { state = source.drill(kind) }
+private fun DrillPage(state: StruggleDrillState, intents: StruggleIntents) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BackButton(onBack)
+        BackButton(intents::home)
         Text(T(R.string.struggle_drill_title), style = MaterialTheme.typography.titleLarge)
         Text(T(R.string.struggle_drill_note), style = MaterialTheme.typography.bodySmall)
-        val s = state
+        val s = state.items
         if (s !is Loaded.Data) {
             LoadedBlock(s) {}
             return@Column
         }
-        val item = s.value.getOrNull(index)
+        val item = s.value.getOrNull(state.index)
         if (item == null) {
             Text(T(R.string.struggle_drill_done))
             return@Column
         }
-        Text(T(R.string.struggle_drill_progress, index + 1, s.value.size))
+        Text(T(R.string.struggle_drill_progress, state.index + 1, s.value.size))
         Text(item.front, style = MaterialTheme.typography.headlineLarge)
-        if (failed) Text(T(R.string.struggle_write_failed))
-        if (!revealed) {
-            Button(onClick = { revealed = true }) { Text(T(R.string.struggle_drill_show)) }
+        if (state.failed) Text(T(R.string.struggle_write_failed))
+        if (!state.revealed) {
+            Button(onClick = intents::reveal) { Text(T(R.string.struggle_drill_show)) }
         } else {
             Text(item.back)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(1 to R.string.struggle_again, 3 to R.string.struggle_good).forEach { (rating, label) ->
-                    Button(onClick = {
-                        scope.launch {
-                            failed = source.answerDrill(item.cardId, rating).isFailure
-                            revealed = false
-                            index += 1
-                        }
-                    }) { Text(T(label)) }
+                    Button(onClick = { intents.answerDrill(rating) }) { Text(T(label)) }
                 }
             }
         }

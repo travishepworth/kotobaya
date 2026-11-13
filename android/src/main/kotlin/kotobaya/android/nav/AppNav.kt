@@ -22,7 +22,10 @@ import kotobaya.android.ui.HomeScreen
 import kotobaya.android.struggle.STRUGGLE_ROUTE
 import kotobaya.android.struggle.StruggleDeepLink
 import kotobaya.android.ui.PlaceholderScreen
-import kotobaya.android.settings.ui.rememberIsUnpaired
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotobaya.android.home.HomeViewModel
+import kotobaya.android.pairing.DevicesPort
+import org.koin.compose.getKoin
 
 /**
  * One navigation destination. [topLevel] routes appear in the bottom bar; others are pushed
@@ -45,7 +48,7 @@ object Routes {
 }
 
 private fun shellRoutes(registry: FeatureRegistry, navigate: (String) -> Unit): List<NavRoute> = listOf(
-    NavRoute(Routes.HOME, R.string.nav_home, topLevel = true) { HomeScreen(registry.homeStatusChips, unpaired = rememberIsUnpaired(), onPair = { navigate(Routes.SETTINGS) }) },
+    NavRoute(Routes.HOME, R.string.nav_home, topLevel = true) { HomeRoute(registry, onPair = { navigate(Routes.SETTINGS) }) },
     NavRoute(Routes.REVIEW, R.string.nav_review, topLevel = true) { PlaceholderScreen(R.string.nav_review) },
     NavRoute(Routes.SEARCH, R.string.nav_search, topLevel = true) { PlaceholderScreen(R.string.nav_search) },
     NavRoute(Routes.DECKS, R.string.nav_decks, topLevel = true) { PlaceholderScreen(R.string.nav_decks) },
@@ -60,6 +63,15 @@ fun allRoutes(registry: FeatureRegistry, navigate: (String) -> Unit = {}): List<
     val byRoute = LinkedHashMap<String, NavRoute>()
     (shellRoutes(registry, navigate) + registry.routes).forEach { byRoute[it.route] = it }
     return byRoute.values.toList()
+}
+
+/** Home glue: its ViewModel, plus every feature's status chip in the chip slot. */
+@Composable
+private fun HomeRoute(registry: FeatureRegistry, onPair: () -> Unit) {
+    val koin = getKoin()
+    val vm: HomeViewModel = viewModel { HomeViewModel({ koin.get<DevicesPort>().isPaired() }) }
+    val state by vm.state.collectAsState()
+    HomeScreen(registry.homeStatusChips, unpaired = state.unpaired, onPair = onPair)
 }
 
 @Composable

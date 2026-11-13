@@ -22,6 +22,10 @@ import kotobaya.sync.client.mint.MintResult
 import kotobaya.sync.client.mint.OpMinter
 import kotobaya.sync.client.store.DeviceStore
 
+/** Builds the toolbar actions over a backend's store and minter. */
+fun <L : LearningTables> kotobaya.android.review.ReviewBackend<L>.newActions(): ReviewActions<L> =
+    ReviewActions(store, minter, clock, nextStudyDayStart)
+
 /** What the toolbar shows for a card. */
 data class CardActionState(
     val suspended: Boolean,

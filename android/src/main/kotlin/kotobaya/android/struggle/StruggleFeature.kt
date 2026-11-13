@@ -2,6 +2,13 @@ package kotobaya.android.struggle
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotobaya.android.grammar.captureEntry
+import kotobaya.android.struggle.ui.StruggleScreen
+import org.koin.compose.getKoin
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,5 +58,15 @@ private val struggleModule = module {
 val struggleFeature = FeatureEntry(
     id = "struggle",
     module = struggleModule,
-    routes = listOf(NavRoute(STRUGGLE_ROUTE, R.string.nav_struggle, topLevel = true) { StruggleScreen() }),
+    routes = listOf(NavRoute(STRUGGLE_ROUTE, R.string.nav_struggle, topLevel = true) { StruggleRoute() }),
 )
+
+@Composable
+private fun StruggleRoute() {
+    val koin = getKoin()
+    val vm: StruggleViewModel = viewModel {
+        StruggleViewModel(koin.get<StruggleSource>(), StruggleDeepLink.pending, StruggleDeepLink::consume)
+    }
+    val state by vm.state.collectAsState()
+    StruggleScreen(state, vm, captureEntry)
+}

@@ -28,15 +28,24 @@ data class DeckWord(val itemKey: String, val label: String)
  * Read-only view of decks over the local replica. Counts come from [LocalQueueLoader.load] with the deck filter,
  * the same builder a "Study this deck" session uses; this class applies no queue rule itself.
  */
-class DeckRepository(private val driver: SqlDriver, private val loader: LocalQueueLoader) {
+/** What the Decks screen reads (blocking; the ViewModel calls it on IO). */
+interface DeckSource {
+    fun decks(): List<DeckSummary>
+
+    fun deck(id: String): DeckSummary?
+
+    fun words(deckId: String, limit: Int, offset: Int): List<DeckWord>
+}
+
+class DeckRepository(private val driver: SqlDriver, private val loader: LocalQueueLoader) : DeckSource {
     private class Row(val id: String, val name: String, val type: String, val enabled: Boolean, val query: String?)
 
-    fun decks(): List<DeckSummary> = rows().map { summary(it) }
+    override fun decks(): List<DeckSummary> = rows().map { summary(it) }
 
-    fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it) }
+    override fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it) }
 
     /** Live items of [deckId] in the deck's order, [limit] from [offset]. */
-    fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> = query(
+    override fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> = query(
         "SELECT di.item_key, (SELECT n.fields FROM note n WHERE n.deleted_at IS NULL AND " +
             "(n.entry_seq = di.entry_seq OR n.id = di.note_id) LIMIT 1) " +
             "FROM deck_item di WHERE di.deck_id = ? AND di.deleted_at IS NULL ORDER BY di.position, di.item_key LIMIT ? OFFSET ?",

@@ -1,4 +1,4 @@
-package kotobaya.android.settings.ui
+package kotobaya.android.settings
 
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject

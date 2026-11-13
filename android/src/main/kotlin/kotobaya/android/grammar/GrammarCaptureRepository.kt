@@ -22,25 +22,38 @@ data class RuleTestView(val scanned: Int, val truncated: Boolean, val matches: L
  * "Saw something weird" server calls (grammar library, rule tester, manual span). Online only:
  * the API handlers emit the sync ops (rule 8). Mirrors the web flow (T508a).
  */
+/** What the capture panel calls; every call may throw [kotobaya.android.net.ApiError]. */
+interface GrammarCapturePort {
+    suspend fun search(q: String): List<GrammarPointView>
+
+    suspend fun createPoint(id: String, title: String, pattern: String, rule: String)
+
+    suspend fun testRule(pointId: String, rule: String): RuleTestView
+
+    suspend fun putSpan(pointId: String, sentenceId: String, start: Int, end: Int, mediaId: String?)
+
+    suspend fun appendRule(point: GrammarPointView, rule: String)
+}
+
 class GrammarCaptureRepository(
     private val baseUrl: () -> String?,
     private val token: () -> String?,
     private val http: OkHttpClient = ApiClient.defaultHttp(),
-) {
-    suspend fun search(q: String): List<GrammarPointView> {
+) : GrammarCapturePort {
+    override suspend fun search(q: String): List<GrammarPointView> {
         val enc = URLEncoder.encode(q, "UTF-8")
         val items = call("GET", "/grammar?q=$enc&limit=10", null).optJSONArray("items") ?: JSONArray()
         return (0 until items.length()).map { parsePoint(items.getJSONObject(it)) }
     }
 
     /** Idempotent on [id]: a retry returns the existing point. */
-    suspend fun createPoint(id: String, title: String, pattern: String, rule: String) {
+    override suspend fun createPoint(id: String, title: String, pattern: String, rule: String) {
         val body = JSONObject().put("id", id).put("title", title).put("pattern", pattern)
             .put("detection_rules", JSONArray().apply { if (rule.isNotBlank()) put(draft(rule)) })
         call("POST", "/grammar", body)
     }
 
-    suspend fun testRule(pointId: String, rule: String): RuleTestView {
+    override suspend fun testRule(pointId: String, rule: String): RuleTestView {
         val body = JSONObject().put("rules", JSONArray().put(draft(rule))).put("limit", 20)
         val j = call("POST", "/grammar/$pointId/rules/test", body)
         val ms = j.optJSONArray("matches") ?: JSONArray()
@@ -59,13 +72,13 @@ class GrammarCaptureRepository(
         )
     }
 
-    suspend fun putSpan(pointId: String, sentenceId: String, start: Int, end: Int, mediaId: String?) {
+    override suspend fun putSpan(pointId: String, sentenceId: String, start: Int, end: Int, mediaId: String?) {
         val body = JSONObject().apply { if (mediaId != null) put("media_id", mediaId) }
         call("PUT", "/grammar/$pointId/spans/$sentenceId/$start/$end", body)
     }
 
     /** Attach mode: appends a draft rule to the chosen point's existing rules (whole-array write). */
-    suspend fun appendRule(point: GrammarPointView, rule: String) {
+    override suspend fun appendRule(point: GrammarPointView, rule: String) {
         val all = JSONArray().apply {
             point.rules.forEach { put(it) }
             put(draft(rule))

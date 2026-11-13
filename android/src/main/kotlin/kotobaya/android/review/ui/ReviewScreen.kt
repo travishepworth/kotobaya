@@ -1,8 +1,7 @@
-package kotobaya.android.review
+package kotobaya.android.review.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.media.MediaPlayer
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -14,6 +13,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,32 +24,33 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
+import java.io.File
 import kotobaya.android.R
 import kotobaya.android.i18n.T
+import kotobaya.android.review.CardPage
+import kotobaya.android.review.IntervalLabel
+import kotobaya.android.review.PageRequest
+import kotobaya.android.review.ReviewIntents
+import kotobaya.android.review.ReviewPrefs
+import kotobaya.android.review.ReviewState
+import kotobaya.android.review.ReviewUiState
+import kotobaya.android.review.SessionStats
+import kotobaya.android.review.ShownCard
 import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.render.CardSide
 import kotobaya.sync.client.mint.MintRefusal
-import java.io.ByteArrayInputStream
 
 /** The one reused WebView of the review screen: local assets only, no JS, every other URL blocked. */
 @SuppressLint("SetJavaScriptEnabled")
-internal class CardWebView(context: Context, private val blobs: BlobResolver) {
+internal class CardWebView(context: Context, private val mediaFile: (String) -> File?) {
     val view: WebView = WebView(context).apply {
         settings.javaScriptEnabled = false
         settings.allowFileAccess = false
@@ -81,7 +82,7 @@ internal class CardWebView(context: Context, private val blobs: BlobResolver) {
         } catch (e: java.io.IOException) {
             blocked(404)
         }
-        is PageRequest.Media -> blobs.file(r.sha256)?.takeIf { it.isFile }?.let {
+        is PageRequest.Media -> mediaFile(r.sha256)?.takeIf { it.isFile }?.let {
             WebResourceResponse("application/octet-stream", null, it.inputStream())
         } ?: blocked(404)
         PageRequest.Blocked -> blocked(403)
@@ -100,31 +101,8 @@ internal class CardWebView(context: Context, private val blobs: BlobResolver) {
     }
 }
 
-/** Plays one cached blob at a time; false when the blob is not on the device (the no-audio state). */
-internal class AudioPlayer(private val blobs: BlobResolver) {
-    private var player: MediaPlayer? = null
-
-    fun play(sha256: String): Boolean {
-        val file = blobs.file(sha256)?.takeIf { it.isFile } ?: return false
-        blobs.played(sha256)
-        release()
-        player = MediaPlayer().apply {
-            setDataSource(file.path)
-            setOnCompletionListener { release() }
-            prepare()
-            start()
-        }
-        return true
-    }
-
-    fun release() {
-        player?.release()
-        player = null
-    }
-}
-
 @StringRes
-private fun buttonLabel(b: Button): Int = when (b) {
+internal fun buttonLabel(b: Button): Int = when (b) {
     Button.AGAIN -> R.string.review_button_again
     Button.HARD -> R.string.review_button_hard
     Button.GOOD -> R.string.review_button_good
@@ -142,73 +120,55 @@ private fun blockedMessage(r: MintRefusal): Int = when (r) {
     else -> R.string.review_blocked_other
 }
 
-/** The review route: [backend] null means the sync store is not wired yet. */
+/** The review screen: [state] from the ReviewViewModel, every action through [intents]. */
 @Composable
-fun ReviewScreen(backend: ReviewBackend<*>?, onSessionEnd: () -> Unit = {}, deckId: String? = null) {
-    if (backend == null) {
+fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
+    if (!state.available) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(T(R.string.review_not_ready)) }
         return
     }
     val context = LocalContext.current
-    val session = remember(backend, deckId) { backend.newSession(deckId) }
-    val scope = rememberCoroutineScope()
-    val audio = remember(backend) { AudioPlayer(backend.blobs) }
-    val web = remember(backend) { CardWebView(context, backend.blobs) }
-    val state by session.state.collectAsState()
-    val meta by session.meta.collectAsState()
-    val prefs = backend.prefs()
-    DisposableEffect(session) { onDispose { audio.release(); web.view.destroy(); if (session.meta.value.answered > 0) onSessionEnd() } }
-    LaunchedEffect(session) {
-        withContext(Dispatchers.IO) {
-            backend.awaitReady()
-            session.start()
-        }
-    }
-    // Autoplay the front's audio once per displayed card.
-    val shownToken = (state as? ReviewState.Showing)?.card?.token
-    LaunchedEffect(shownToken) {
-        val s = state as? ReviewState.Showing ?: return@LaunchedEffect
-        if (prefs.autoplay) s.card.front.audio.firstOrNull()?.let { audio.play(it) }
-    }
-    fun io(block: () -> Unit) = scope.launch(Dispatchers.IO) { block() }
+    val web = remember { CardWebView(context, intents::mediaFile) }
+    DisposableEffect(web) { onDispose { web.view.destroy() } }
+    val meta = state.meta
+    val prefs = state.prefs
 
     Column(Modifier.fillMaxSize().padding(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(T(R.string.review_furigana))
-                Switch(checked = meta.furigana, onCheckedChange = { io { session.toggleFurigana() } })
+                Switch(checked = meta.furigana, onCheckedChange = { intents.toggleFurigana() })
             }
-            TextButton(onClick = { io { session.undo() } }, enabled = meta.canUndo) { Text(T(R.string.review_undo)) }
+            TextButton(onClick = intents::undo, enabled = meta.canUndo) { Text(T(R.string.review_undo)) }
         }
-        (state as? ReviewState.Showing)?.card?.let { kotobaya.android.review.actions.ReviewActionsBar(backend, session, it.cardId) }
-        if (meta.pendingOps >= ReviewSession.SYNC_PROMPT_AT) {
+        (state.review as? ReviewState.Showing)?.card?.let { ReviewActionsBar(state.actions, it.cardId, intents) }
+        if (state.syncPrompt) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(T(R.string.review_sync_prompt, meta.pendingOps), Modifier.weight(1f))
-                backend.syncNow?.let { sync -> TextButton(onClick = sync) { Text(T(R.string.review_sync_now)) } }
+                if (state.canSync) TextButton(onClick = intents::syncNow) { Text(T(R.string.review_sync_now)) }
             }
         }
-        when (val s = state) {
+        when (val s = state.review) {
             ReviewState.Loading -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text(T(R.string.review_loading)) }
             ReviewState.Empty -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text(T(R.string.review_empty_title)) }
             is ReviewState.Summary -> Summary(s.stats, prefs)
             is ReviewState.Blocked -> {
                 Text(T(blockedMessage(s.reason)))
-                s.card?.let { CardBody(web, it, CardSide.FRONT, prefs, audio, session, ::io) }
+                s.card?.let { CardBody(web, it, CardSide.FRONT, prefs, state.audioMissing, intents) }
             }
-            is ReviewState.Showing -> CardBody(web, s.card, s.side, prefs, audio, session, ::io)
+            is ReviewState.Showing -> CardBody(web, s.card, s.side, prefs, state.audioMissing, intents)
         }
     }
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.CardBody(
+private fun ColumnScope.CardBody(
     web: CardWebView,
     card: ShownCard,
     side: CardSide,
     prefs: ReviewPrefs,
-    audio: AudioPlayer,
-    session: ReviewSession<*>,
-    io: (() -> Unit) -> Unit,
+    audioMissing: Boolean,
+    intents: ReviewIntents,
 ) {
     val rendered = if (side == CardSide.FRONT) card.front else card.back
     var dragged = 0f
@@ -216,7 +176,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.CardBody(
         Modifier
             .weight(1f)
             .fillMaxWidth()
-            .clickable { io { session.flip() } }
+            .clickable { intents.flip() }
             .pointerInput(card.token, side, prefs) {
                 detectHorizontalDragGestures(
                     onDragStart = { dragged = 0f },
@@ -224,7 +184,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.CardBody(
                     onDragEnd = {
                         // Swiping grades only once the answer side is visible.
                         if (side == CardSide.BACK && kotlin.math.abs(dragged) > SWIPE_PX) {
-                            prefs.swipeButton(right = dragged > 0)?.let { b -> io { session.answer(card.token, b) } }
+                            prefs.swipeButton(right = dragged > 0)?.let { b -> intents.answer(card.token, b) }
                         }
                     },
                 )
@@ -236,18 +196,16 @@ private fun androidx.compose.foundation.layout.ColumnScope.CardBody(
         Text(T(R.string.review_no_example_sentence))
         if (pattern.isNotEmpty()) Text(T(R.string.review_no_example_pattern, pattern))
     }
-    val hasAudio = rendered.audio.isNotEmpty()
-    var missing by remember(card.token, side) { mutableStateOf(false) }
-    if (hasAudio) {
+    if (rendered.audio.isNotEmpty()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { missing = !audio.play(rendered.audio.first()) }) { Text(T(R.string.review_play_audio)) }
-            if (missing) Text(T(R.string.review_no_audio))
+            TextButton(onClick = { intents.playAudio(rendered.audio.first()) }) { Text(T(R.string.review_play_audio)) }
+            if (audioMissing) Text(T(R.string.review_no_audio))
         }
     }
     if (side == CardSide.FRONT) {
-        MButton(onClick = { io { session.flip() } }, modifier = Modifier.fillMaxWidth()) { Text(T(R.string.review_show_answer)) }
+        MButton(onClick = intents::flip, modifier = Modifier.fillMaxWidth()) { Text(T(R.string.review_show_answer)) }
     } else {
-        GradingBar(card, prefs) { b -> io { session.answer(card.token, b) } }
+        GradingBar(card, prefs) { b -> intents.answer(card.token, b) }
     }
 }
 
@@ -268,7 +226,7 @@ private fun GradingBar(card: ShownCard, prefs: ReviewPrefs, onGrade: (Button) ->
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.Summary(stats: SessionStats, prefs: ReviewPrefs) {
+private fun ColumnScope.Summary(stats: SessionStats, prefs: ReviewPrefs) {
     Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(T(R.string.review_summary_title))
         Text(T(R.string.review_summary_answered, stats.answered))
