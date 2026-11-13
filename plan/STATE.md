@@ -5,7 +5,7 @@ Updated: 2026-11-13T02:03:36Z (context handover)
 
 
 ## RESUME HERE (updated 2026-11-13, orchestrator run 2)
-- P3 nearly done. Merged this run: T303b, T303c, T303d, T303e, T304b, T304c+W-4, T305b, T305c, T310, F-5.
+- P3 nearly done. Merged this run: T303b, T303c, T303d, T303e, T304b, T304c+W-4, T305b, T305c, T306+T311, T310, F-5, F-6.
 - In flight at handover: NONE. T313 is READY_FOR_REVIEW (see table): run `make check MODULE=acceptance` in its worktree, reviewer + architect, merge (flag: Makefile/settings.gradle.kts lines; CLAUDE.md module table needs acceptance/ — human).
 - After those: P3 complete → `make test` (all modules) → GATE-P3 deferred into HUMAN_CHECKS (device checks: Takoboto 5 words, offline review, sync chip, AnkiConnect/Yomitan) → start P4 per BACKLOG.
 - T313 high risk → reviewer + architect. T311 med, T306 low, F-6 med → no review.
