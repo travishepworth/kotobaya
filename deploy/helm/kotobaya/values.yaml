@@ -29,7 +29,9 @@ api:
   replicas: 1
   port: 8080
   # Extra plain env vars (e.g. a "backups disabled" switch if T112 defines one).
-  env: {}
+  # JAVA_TOOL_OPTIONS (I-1 stopgap): the JVM otherwise sizes its heap at 25% of the 1Gi limit (256 MB), too small for
+  # the stats replay. Map key, so setting api.env.JAVA_TOOL_OPTIONS replaces this default (no duplicate env name).
+  env: { JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70" }
   # AUTH_TRUSTED_PROXIES: CIDR(s) of the ingress/pod network whose X-Forwarded-For is trusted by the
   # login rate limiter. Empty = variable not set. k3s default pod CIDR is 10.42.0.0/16.
   trustedProxies: ""

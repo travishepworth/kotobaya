@@ -53,6 +53,14 @@ has external.yaml 'path: /api/v1/events'
 has external.yaml 'AUTH_TRUSTED_PROXIES'
 has external.yaml 'http://s3.example.invalid'
 
+# API heap (I-1 stopgap): JAVA_TOOL_OPTIONS defaults to 70% of the container limit; api.env overrides it, never duplicates it
+has default.yaml 'name: JAVA_TOOL_OPTIONS, value: "-XX:MaxRAMPercentage=70"'
+[ "$(grep -c 'name: JAVA_TOOL_OPTIONS' "$tmp/default.yaml")" = 1 ] || { echo "FAIL: JAVA_TOOL_OPTIONS must be rendered once" >&2; exit 1; }
+render jvm-override.yaml --set api.env.JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50
+has jvm-override.yaml 'name: JAVA_TOOL_OPTIONS, value: "-XX:MaxRAMPercentage=50"'
+lacks jvm-override.yaml 'MaxRAMPercentage=70'
+[ "$(grep -c 'name: JAVA_TOOL_OPTIONS' "$tmp/jvm-override.yaml")" = 1 ] || { echo "FAIL: a user JAVA_TOOL_OPTIONS must replace the default, not duplicate it" >&2; exit 1; }
+
 render jpdb.yaml --set worker.jpdbApiKey.enabled=true
 has jpdb.yaml 'name: JPDB_API_KEY'
 # traefik: no extra events ingress; everything optional off
