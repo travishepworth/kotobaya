@@ -25,7 +25,8 @@ must parse in the token-pattern language (`422` with the rule's pointer otherwis
 `related_ids` are soft references and are not checked. Creating the point does not create
 a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty
 `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect`
-job, C-13; see `Job`); media parse and import jobs also detect.
+job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with
+non-empty rules enqueues it too.
 
 
 ### Example

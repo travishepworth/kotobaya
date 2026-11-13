@@ -66,7 +66,7 @@ class GrammarApi:
     ) -> GrammarPoint:
         """Create a grammar point.
 
-        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. 
+        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
 
         :param grammar_point_create: (required)
         :type grammar_point_create: GrammarPointCreate
@@ -136,7 +136,7 @@ class GrammarApi:
     ) -> ApiResponse[GrammarPoint]:
         """Create a grammar point.
 
-        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. 
+        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
 
         :param grammar_point_create: (required)
         :type grammar_point_create: GrammarPointCreate
@@ -206,7 +206,7 @@ class GrammarApi:
     ) -> RESTResponseType:
         """Create a grammar point.
 
-        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. 
+        Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule's pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
 
         :param grammar_point_create: (required)
         :type grammar_point_create: GrammarPointCreate

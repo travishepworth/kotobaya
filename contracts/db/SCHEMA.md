@@ -378,25 +378,31 @@ change. It is a public `JobKind` like `media-parse` (the worker claims it; `list
 worker→server hand-off. It is never started through the API and never forwarded to ntfy.
 Payload `JobPayloadGrammarDetect`, result `JobResultGrammarDetect` (`openapi.yaml`).
 
-- **Fan-out enqueue (server).** In the op-apply transaction of an op that sets or advances the
-  `detection_rules` clock of a grammar point (a winning `grammar.updated` register write,
-  including one forwarded to a merge survivor; a `grammar.created` with non-empty
-  `detection_rules`), whatever the op's emitter, the server runs
+- **Fan-out enqueue (server).** In the op-apply transaction (which holds
+  `pg_advisory_xact_lock(7033001)` from before the op's writes until commit) of an op that
+  sets or advances the `detection_rules` clock of a grammar point (a winning `grammar.updated`
+  register write, including one forwarded to a merge survivor; a `grammar.created` with
+  non-empty `detection_rules`), or that tombstones a point (`deleted_at` changes from NULL) whose
+  `detection_rules` is non-empty, whatever the op's emitter, the server MUST run
   `INSERT INTO app.job (id, kind, payload, dedupe_key) VALUES (<UUIDv7>, 'grammar-detect', '{}',
-  'grammar-detect:all') ON CONFLICT DO NOTHING` and, if a row was inserted, sends its
+  'grammar-detect:all') ON CONFLICT DO NOTHING` and, if a row was inserted, send its
   `job.updated` after commit. A re-pushed op (already in `change`) is not applied again and
-  enqueues nothing. A losing write enqueues nothing. `grammar.deleted` MAY enqueue (readers
-  already hide spans of deleted points).
-- **Fan-out run (worker), in this order:** (1) release the key: `UPDATE app.job SET dedupe_key =
-  NULL WHERE id = <own id>`, committed; (2) read the rules and compute `rules_digest` over the
-  live points' `detection_rules`; (3) for each eligible media (live, `content_version > 0`,
-  `source <> 'jpdb'`), `INSERT … ('grammar-detect', {"media_id": <id>}, dedupe_key
-  'grammar-detect:<media id>:<rules_digest>') ON CONFLICT DO NOTHING`, notifying `job.updated`
-  for inserted rows; honour cancellation between inserts. Step 1 before step 2 is what makes
-  edits never lost: an edit committed before the release collapses into this job, which reads
-  the rules afterwards; an edit committed after it finds no queued key and enqueues a new
-  fan-out. Per-media jobs are independent public jobs, not children: cancelling the fan-out
-  stops further inserts only.
+  enqueues nothing. A losing write enqueues nothing; neither does a `grammar.deleted` on an
+  already tombstoned point. Deletion enqueues because the deleted point's detected spans must
+  leave the media content (readers hiding them is not enough: archives and devices keep them).
+- **Fan-out run (worker), in this order:** (1) release the key in its own transaction:
+  `BEGIN; SELECT pg_advisory_xact_lock(7033001); UPDATE app.job SET dedupe_key = NULL WHERE id
+  = <own id>; COMMIT;` (2) only after that commit, read the rules (a new transaction/snapshot)
+  and compute `rules_digest` over the live points' `detection_rules`; (3) for each eligible
+  media (live, `content_version > 0`, `source <> 'jpdb'`), `INSERT … ('grammar-detect',
+  {"media_id": <id>}, dedupe_key 'grammar-detect:<media id>:<rules_digest>') ON CONFLICT DO
+  NOTHING`, notifying `job.updated` for inserted rows; honour cancellation between inserts.
+  Why no edit is lost: `ON CONFLICT DO NOTHING` takes no row lock, so the advisory lock is what
+  orders the release against edits. An op-apply transaction whose enqueue collided with this
+  job's key holds 7033001 until it commits, so step 1 waits for it and step 2's snapshot sees
+  its rules; an op-apply transaction that takes 7033001 after step 1 commits finds no key and
+  enqueues a new fan-out. Step 1 holds the lock only for one indexed update. Per-media jobs are
+  independent public jobs, not children: cancelling the fan-out stops further inserts only.
 - **Per-media run (worker).** Follows `MEDIA_PIPELINE.md` 3.2 with these refinements:
   - Step 1 (an earlier attempt already published): result `{media_id, changed: true,
     content_version: <the child's>}`.

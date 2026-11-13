@@ -3384,7 +3384,8 @@ paths:
         `related_ids` are soft references and are not checked. Creating the point does not create
         a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty
         `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect`
-        job, C-13; see `Job`); media parse and import jobs also detect.
+        job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with
+        non-empty rules enqueues it too.
       x-emits-ops: [grammar.created]
       security:
         - bearerAuth: [write]
@@ -4906,8 +4907,9 @@ paths:
 
         **ntfy forwarding.** The server posts the same `Event` JSON as the message body to the
         `push_topic` of every non-revoked device for: `job.updated` with a terminal status
-        (except kind `grammar-detect`, C-13: one rule edit can end hundreds of them), and `sync.changed` (coalesced to at most one per minute per device, and not to the
-        device that originated the change).
+        (except kind `grammar-detect`, C-13: one rule edit can end hundreds of them), and
+        `sync.changed` (coalesced to at most one per minute per device, and not to the device
+        that originated the change).
       security:
         - bearerAuth: [read]
         - sessionCookie: [read]

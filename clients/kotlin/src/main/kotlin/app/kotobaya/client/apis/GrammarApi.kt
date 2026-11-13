@@ -59,7 +59,7 @@ import java.text.DateFormat
         /**
         * POST /grammar
         * Create a grammar point.
-        * Server emits &#x60;grammar.created&#x60;. Only &#x60;title&#x60; is required. Each &#x60;detection_rules[].rule&#x60; must parse in the token-pattern language (&#x60;422&#x60; with the rule&#39;s pointer otherwise). &#x60;related_ids&#x60; are soft references and are not checked. Creating the point does not create a grammar note or card: do that with &#x60;POST /notes&#x60; (&#x60;grammar_point_id&#x60;). Non-empty &#x60;detection_rules&#x60; make the server enqueue re-detection of all media (a &#x60;grammar-detect&#x60; job, C-13; see &#x60;Job&#x60;); media parse and import jobs also detect. 
+        * Server emits &#x60;grammar.created&#x60;. Only &#x60;title&#x60; is required. Each &#x60;detection_rules[].rule&#x60; must parse in the token-pattern language (&#x60;422&#x60; with the rule&#39;s pointer otherwise). &#x60;related_ids&#x60; are soft references and are not checked. Creating the point does not create a grammar note or card: do that with &#x60;POST /notes&#x60; (&#x60;grammar_point_id&#x60;). Non-empty &#x60;detection_rules&#x60; make the server enqueue re-detection of all media (a &#x60;grammar-detect&#x60; job, C-13; see &#x60;Job&#x60;); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
          * @param grammarPointCreate  
          * @return GrammarPoint
         */

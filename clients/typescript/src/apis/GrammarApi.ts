@@ -256,7 +256,7 @@ export class GrammarApi extends runtime.BaseAPI {
     }
 
     /**
-     * Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule\'s pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. 
+     * Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule\'s pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
      * Create a grammar point.
      */
     async createGrammarPointRaw(requestParameters: CreateGrammarPointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GrammarPoint>> {
@@ -267,7 +267,7 @@ export class GrammarApi extends runtime.BaseAPI {
     }
 
     /**
-     * Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule\'s pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. 
+     * Server emits `grammar.created`. Only `title` is required. Each `detection_rules[].rule` must parse in the token-pattern language (`422` with the rule\'s pointer otherwise). `related_ids` are soft references and are not checked. Creating the point does not create a grammar note or card: do that with `POST /notes` (`grammar_point_id`). Non-empty `detection_rules` make the server enqueue re-detection of all media (a `grammar-detect` job, C-13; see `Job`); media parse and import jobs also detect. Deleting a point with non-empty rules enqueues it too. 
      * Create a grammar point.
      */
     async createGrammarPoint(requestParameters: CreateGrammarPointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GrammarPoint> {

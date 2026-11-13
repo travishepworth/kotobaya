@@ -44,8 +44,9 @@ data: <one line of JSON: the Event object>
 
 **ntfy forwarding.** The server posts the same `Event` JSON as the message body to the
 `push_topic` of every non-revoked device for: `job.updated` with a terminal status
-(except kind `grammar-detect`, C-13: one rule edit can end hundreds of them), and `sync.changed` (coalesced to at most one per minute per device, and not to the
-device that originated the change).
+(except kind `grammar-detect`, C-13: one rule edit can end hundreds of them), and
+`sync.changed` (coalesced to at most one per minute per device, and not to the device
+that originated the change).
 
 
 ### Example
