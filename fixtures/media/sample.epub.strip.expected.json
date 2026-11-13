@@ -1,0 +1,49 @@
+[
+ {
+  "kind": "chapter",
+  "title": "第一章",
+  "sentences": [
+   {
+    "text": "朝、私は駅まで歩いた。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"cfi\":\"/6/2!/p[1]\"}",
+    "reading_hints": []
+   },
+   {
+    "text": "空はよく晴れていて、風が心地よかった。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"cfi\":\"/6/2!/p[2]\"}",
+    "reading_hints": []
+   },
+   {
+    "text": "「おはよう」と友達が言った。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"cfi\":\"/6/2!/p[3]\"}",
+    "reading_hints": []
+   }
+  ]
+ },
+ {
+  "kind": "chapter",
+  "title": "第二章",
+  "sentences": [
+   {
+    "text": "夜になって、雨が降り始めた。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"cfi\":\"/6/4!/p[1]\"}",
+    "reading_hints": []
+   },
+   {
+    "text": "私は家で静かに本を読んだ。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"cfi\":\"/6/4!/p[2]\"}",
+    "reading_hints": []
+   }
+  ]
+ }
+]

@@ -1,0 +1,57 @@
+[
+ {
+  "kind": "whole",
+  "title": "猫と散歩",
+  "sentences": [
+   {
+    "text": "今日は猫と散歩に行った。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": [
+     [
+      0,
+      2,
+      "きょう"
+     ],
+     [
+      3,
+      4,
+      "ねこ"
+     ],
+     [
+      5,
+      7,
+      "さんぽ"
+     ]
+    ]
+   },
+   {
+    "text": "天気がよかった。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": [
+     [
+      0,
+      2,
+      "てんき"
+     ]
+    ]
+   },
+   {
+    "text": "「公園に行こう」と私は言った。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": [
+     [
+      1,
+      3,
+      "こうえん"
+     ]
+    ]
+   }
+  ]
+ }
+]

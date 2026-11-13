@@ -78,7 +78,16 @@ def test_detect_format() -> None:
 
 
 def test_implemented_formats_are_extractable() -> None:
-    assert set(FORMATS_IMPLEMENTED) == {"srt", "ass", "vtt", "txt", "texthooker"}
+    assert set(FORMATS_IMPLEMENTED) == {
+        "srt",
+        "ass",
+        "vtt",
+        "txt",
+        "texthooker",
+        "epub",
+        "mokuro",
+        "html",
+    }
 
 
 def test_splitter() -> None:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from kotobaya_worker.extract.epub import extract_epub
+from kotobaya_worker.extract.html import extract_html, extract_url
 from kotobaya_worker.extract.model import (
     ExtractedSegment,
     ExtractedSentence,
@@ -11,16 +13,19 @@ from kotobaya_worker.extract.model import (
     ReadingHint,
     detect_format,
 )
+from kotobaya_worker.extract.mokuro import extract_mokuro
 from kotobaya_worker.extract.subs import extract_ass, extract_srt, extract_vtt
 from kotobaya_worker.extract.text import extract_texthooker, extract_txt
 
-# Formats implemented so far; T402b adds epub, mokuro, html.
 EXTRACTORS: dict[str, Extractor] = {
     "srt": extract_srt,
     "ass": extract_ass,
     "vtt": extract_vtt,
     "txt": extract_txt,
     "texthooker": extract_texthooker,
+    "epub": extract_epub,
+    "mokuro": extract_mokuro,
+    "html": extract_html,
 }
 
 
@@ -46,4 +51,5 @@ __all__ = [
     "ReadingHint",
     "detect_format",
     "extract",
+    "extract_url",
 ]

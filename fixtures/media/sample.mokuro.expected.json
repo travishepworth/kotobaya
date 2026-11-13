@@ -1,0 +1,36 @@
+[
+ {
+  "kind": "volume",
+  "title": "第1巻",
+  "sentences": [
+   {
+    "text": "おはよう。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"page\":1,\"box\":[700,100,200,400]}",
+    "reading_hints": []
+   },
+   {
+    "text": "今日もいい天気だね。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"page\":1,\"box\":[700,100,200,400]}",
+    "reading_hints": []
+   },
+   {
+    "text": "散歩に行こうか。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"page\":1,\"box\":[200,600,160,300]}",
+    "reading_hints": []
+   },
+   {
+    "text": "猫が窓の外を見ている。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": "{\"page\":2,\"box\":[500,200,140,500]}",
+    "reading_hints": []
+   }
+  ]
+ }
+]
