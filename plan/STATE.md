@@ -14,7 +14,6 @@ Updated: run 15 start
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| FEAT-1 | writer | 1 | t/FEAT-1-kanji-words | run 15 |
 | AND-SEARCH | writer | 1 | t/AND-SEARCH-search-tab | run 15 |
 | AND-SETTINGS | writer | 1 | t/AND-SETTINGS-settings-tab | run 15 |
 
@@ -44,6 +43,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- FEAT-1 (run 15): listKanjiWords server (keyset, mine/deck_id, decks[]) + web clickable kanji panel (Most frequent / In my decks)
 - AND-DECKS (run 15): Android Decks tab (replica counts = LocalQueueLoader, deck study via ReviewScreen deckId); read-only, gaps -> FOLLOWUPS
 - C-17 (run 15): listKanjiWords GET /kanji/{literal}/words (deck_id, mine, cursor bound to filters) + clients regen
 - BUG-6 (run 14): jpdb imported passes graduate (re)learning cards in replay; core SCHEDULER_VERSION fsrs6-2 (startup re-replay); server reads import_source; reviewer + architect APPROVE
