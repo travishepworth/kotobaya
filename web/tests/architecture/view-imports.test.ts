@@ -101,7 +101,7 @@ describe('view import rule', () => {
 		expect(violation(f, 'qrcode-generator')).not.toBeNull();
 		expect(violation(f, '../../lib/state/cards.svelte')).toBeNull();
 		expect(violation(f, '../../lib/cards/messages')).toBeNull();
-		expect(violation(f, '../../lib/cards/CardTable.svelte')).toBeNull();
+		expect(violation(f, '../../lib/ui/Button.svelte')).toBeNull();
 		expect(importSpecifiers("import type { X } from '../a';\nimport '../b.css';\nconst m = import('../c');")).toEqual([
 			'../a',
 			'../b.css',

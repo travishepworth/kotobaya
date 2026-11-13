@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
+// Mounts the rebuilt route component (UI-WEB); the POC lib/cards/CardPreview.svelte is gone.
 // Regression for HOTFIX-0.1.7: the preview effect must not read the state it writes (it looped forever).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
-import CardPreview from '../../src/lib/cards/CardPreview.svelte';
+import CardDetail from '../../src/routes/cards/CardDetail.svelte';
 import { tc } from '../../src/lib/cards/messages';
 import { CAT_SEQ, previewCard, stubPreviewFetch, vocabNoteType } from '../support/previews';
 
@@ -29,7 +30,7 @@ const mounted: Array<ReturnType<typeof mount>> = [];
 let target: HTMLElement;
 
 function render(card: ReturnType<typeof previewCard>): HTMLElement {
-	mounted.push(mount(CardPreview, { target, props: { card, noteType: vocabNoteType } }));
+	mounted.push(mount(CardDetail, { target, props: { card, noteType: vocabNoteType, onheadword: () => {} } }));
 	flushSync();
 	return target;
 }
@@ -54,7 +55,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe('CardPreview bounded effect', () => {
+describe('CardDetail preview bounded effect', () => {
 	it('dictionary-backed note: the entry effect runs at most twice and loading settles', async () => {
 		render(previewCard({ entrySeq: CAT_SEQ }));
 		await settle();

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+// Mounts the rebuilt route component (UI-WEB); the POC lib/notes/NoteEditor.svelte is gone.
 // Regression for HOTFIX-0.1.7: the dictionary effect must not read the state it writes (it looped forever,
 // and each pass re-ran onentry, which re-rendered the note table).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
-import NoteEditor from '../../src/lib/notes/NoteEditor.svelte';
+import NoteEditor from '../../src/routes/notes/NoteEditor.svelte';
 import { tn } from '../../src/lib/notes/messages';
 import { CAT_SEQ, stubPreviewFetch, vocabNoteType } from '../support/previews';
 import type { Note } from '../../src/lib/api/generated';

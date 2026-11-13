@@ -1,6 +1,6 @@
 // Theme preference: follow the system (default) or force light/dark. The choice is per browser (localStorage) and
-// is applied as data-theme on <html>; tokens.css and card.css switch on it. UI-WEB should also apply the stored
-// value from an inline script in app.html before first paint to avoid a flash (see docs/DESIGN.md › Theme).
+// is applied as data-theme on <html>; tokens.css and card.css switch on it. An inline script in app.html applies
+// the stored value (key below; keep them in sync) before first paint, so there is no flash (docs/DESIGN.md › Theme).
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 const KEY = 'kb-theme';

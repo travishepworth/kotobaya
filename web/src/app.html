@@ -3,6 +3,22 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
+		<script>
+			// Theme pre-paint: set data-theme before the first paint so dark mode never flashes light. The stored
+			// override wins (key "kb-theme", lib/ui/theme.svelte.ts), else the system preference. initTheme() on
+			// mount takes over (it clears the attribute again for "system", where the CSS media query applies).
+			(function () {
+				var t = null;
+				try {
+					t = localStorage.getItem('kb-theme');
+				} catch (e) {}
+				if (t !== 'light' && t !== 'dark') {
+					t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				}
+				document.documentElement.dataset.theme = t;
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body>

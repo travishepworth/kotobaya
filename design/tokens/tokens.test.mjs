@@ -94,12 +94,12 @@ test('card.css: every --kb-card-* variable a rule uses is generated, light and d
 	assert.match(css, /--kb-font: "Noto Sans JP Variable", "Noto Sans JP"/);
 });
 
-test('web CSS: themes are switchable per subtree and keep the legacy POC tokens unchanged', () => {
+test('web CSS: themes are switchable per subtree and carry no legacy POC tokens', () => {
 	const css = readFileSync(join(ROOT, OUT.webCss), 'utf8');
 	assert.match(css, /^\[data-theme='dark'\] \{$/m);
 	assert.match(css, /^\[data-theme='light'\] \{$/m);
-	const legacy = readFileSync(join(ROOT, 'design/tokens/web-legacy.css'), 'utf8');
-	assert.ok(css.endsWith(legacy.trimEnd() + '\n'), 'legacy block must be carried verbatim (screens are not restyled)');
+	// UI-WEB rebuilt every screen on the design tokens and dropped the POC block (--kb-bg, --kb-text, .kb-btn …).
+	assert.doesNotMatch(css, /--kb-bg:|--kb-text:|\.kb-btn\b/);
 	for (const n of Object.keys(tokens.color)) assert.ok(css.includes(`--kb-color-${n}:`), n);
 });
 

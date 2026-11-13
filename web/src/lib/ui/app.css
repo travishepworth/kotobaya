@@ -1,7 +1,12 @@
 /*
- * App-wide base styles on the design tokens (docs/DESIGN.md). Imported once by the root layout, after tokens.css,
- * so these win over the legacy POC base rules that tokens.css still carries.
+ * App-wide base styles on the design tokens (docs/DESIGN.md). Imported once by the root layout, after tokens.css.
  */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
 html {
 	font-family: var(--kb-family-sans);
 	font: var(--kb-type-body);
@@ -19,7 +24,7 @@ body {
 	min-height: 100dvh;
 }
 
-/* The card stylesheet still reads the legacy family variable: point it at the design-system stack. */
+/* The card stylesheet reads --kb-font / --kb-font-serif: point them at the design-system stack. */
 :root {
 	--kb-font: var(--kb-family-sans);
 	--kb-font-serif: var(--kb-family-serif);

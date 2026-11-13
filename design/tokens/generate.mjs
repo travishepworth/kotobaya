@@ -84,7 +84,6 @@ export function webCss(tokens) {
 			.map((k) => `\t\t--kb-distance-${k}: 0px;`)
 			.join('\n')}\n\t}\n}`
 	);
-	out.push(read('design/tokens/web-legacy.css').trimEnd());
 	return out.join('\n\n') + '\n';
 }
 
