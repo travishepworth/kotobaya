@@ -13,6 +13,8 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] Read `contracts/SUMMARY.md`, especially "3 choices most worth a second look". Changes you want
       become `C-*` tickets (breaking ones with a migration).
 
+- AnkiConnect (T311): default allowed origins include moz-extension://* and chrome-extension://* (loopback + API key). Confirm acceptable; server must be re-toggled after app restart.
+
 ## Provisional decisions
 - ADR-013: Takoboto note type id is a name-derived UUIDv8 (SCHEMA says UUIDv7 unless stated). Confirm or ask for a contract note.
 - ADR-012: Android calls the API through a hand-written client (generated Kotlin client needs a newer Kotlin than the app).

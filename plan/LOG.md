@@ -568,3 +568,6 @@
 2026-11-13T01:52:36Z T305c MERGE 1 attempt
 2026-11-13T01:52:36Z T306+T311 DISPATCH writer(sonnet) batched
 2026-11-13T01:54:26Z F-6 CHECK_GREEN android after rebase; MERGE 1 attempt
+2026-11-13T02:03:36Z T306+T311 HANDOFF DONE; CHECK_GREEN android after rebase; MERGE 1 attempt
+2026-11-13T02:03:36Z T313 HANDOFF DONE (100 seeds 0 lost reviews, no bugs); READY_FOR_REVIEW — handed over (context budget)
+2026-11-13T02:03:36Z - HANDOVER context budget: nothing in flight; next T313 check+reviews+merge, then make test, GATE-P3 deferred, P4

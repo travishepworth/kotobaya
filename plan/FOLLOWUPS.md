@@ -225,3 +225,8 @@
 - Takoboto debug screen runs store.read in remember{} on main thread.
 - ADR-013 (provisional) UUIDv8 note-type id.
 - (F-6) T305c's workaround plain query in ankiapi/store/ is now redundant — delete.
+
+## T306+T311 (2026-11-13)
+- AnkiConnect allowDuplicate not honoured; storeMediaFile writes blob cache only (no upload/renderer convention); url/path media refused; server not auto-restarted at app start.
+## T313
+- CLAUDE.md module table: acceptance/ row exists; add `make check MODULE=acceptance` note (human edit).
