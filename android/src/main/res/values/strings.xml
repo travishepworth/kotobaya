@@ -126,5 +126,23 @@
     <string name="media_days_option">%1$d d</string>
     <string name="media_budget">Audio storage budget</string>
     <string name="media_budget_option">%1$d MB</string>
+    <string name="nav_media">Media</string>
+    <string name="browse_empty">No media yet.</string>
+    <string name="browse_row_meta">%1$s, %2$s</string>
+    <string name="browse_back">Back</string>
+    <string name="browse_loading">Loading…</string>
+    <string name="browse_needs_connection">Needs a connection: coverage is not available offline yet.</string>
+    <string name="browse_error">Could not load this media.</string>
+    <string name="browse_updated_stamp">Last updated %1$s</string>
+    <string name="browse_cached_stamp">Offline copy, last updated %1$s</string>
+    <string name="browse_token_pct">Token coverage: %1$.1f%% known</string>
+    <string name="browse_unique_counts">Unique words: %1$d known, %2$d learning, %3$d unknown</string>
+    <string name="browse_token_counts">Tokens: %1$d known, %2$d learning, %3$d unknown</string>
+    <string name="browse_curve_title">Learn top unknown words to raise coverage</string>
+    <string name="browse_segments_title">Segments</string>
+    <string name="browse_segment_row">%1$s: %2$.1f%% known, %3$d unknown words</string>
+    <string name="browse_sentences_title">i+1 sentences</string>
+    <string name="browse_generated">Generated example</string>
+    <string name="browse_play">Play</string>
     <string name="media_allow_metered">Download on mobile data</string>
 </resources>

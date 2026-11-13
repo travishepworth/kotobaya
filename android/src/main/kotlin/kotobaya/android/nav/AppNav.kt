@@ -36,6 +36,7 @@ object Routes {
     const val SEARCH = "search"
     const val DECKS = "decks"
     const val SETTINGS = "settings"
+    const val MEDIA = "media"
 }
 
 private fun shellRoutes(registry: FeatureRegistry): List<NavRoute> = listOf(

@@ -42,6 +42,7 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.widget.widgetFeature,
     kotobaya.android.push.pushFeature,
     kotobaya.android.media.mediaFeature,
+    kotobaya.android.media.browse.mediaBrowseFeature,
     kotobaya.android.review.reviewFeature,
     kotobaya.android.notes.notesFeature,
     kotobaya.android.ankiapi.takoboto.takobotoFeature,
