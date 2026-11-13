@@ -214,3 +214,13 @@
 - Open: any server/worker job matching entry-less vocab notes by expression would merge forced duplicates — confirm none does.
 - client.note_request.* sync_state keys never pruned.
 - (reviewer T305b) non-vocab base noteType skips §4 kanji_literal/grammar_point_id duplicate check; kanjiType deleted_at not checked in add_kanji path; retry returns empty kanjiNoteIds.
+
+## T305c (reviewer, 2026-11-13)
+- bulkInsert: ankiapi.db map/counters written before sync-DB outer commit → orphan map rows + inflated counts if a later note throws.
+- NoteTypeEnsurer: after fixed-id type deleted, each device mints random UUIDv7 replacement → multiple "Takoboto Vocab" types; derive deterministically (hash(name,kind,"gen2")).
+- csum duplicate query does a dictionary lookup per matched note without fields.expression → O(n) per Takoboto call on large collections.
+- AnkiIdMap note ids AUTOINCREMENT from 1, not synced → reused after reinstall; Takoboto cached ids may point to other notes; use created_at ms + bump.
+- Duplicate add silently drops the new sentence/meaning; log or append via note.updated.
+- DuplicateCheck expression fallback misses UI-created matched notes (entry only) when dictionary missing.
+- Takoboto debug screen runs store.read in remember{} on main thread.
+- ADR-013 (provisional) UUIDv8 note-type id.

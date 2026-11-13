@@ -15,7 +15,8 @@ Updated: 2026-11-13T01:34:25Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T313 | writer-senior (opus) | 1 | t/T313-offline-chaos | 2026-11-13T01:34:25Z |
-| T305c | writer-senior (opus) | 1 | t/T305c-takoboto-store | 2026-11-13T01:27:29Z |
+| T305c | — (in review) | 1 | t/T305c-takoboto-store | 2026-11-13T01:50:06Z |
+| F-6 | writer (sonnet) | 1 | t/F-6-sync-db-first-use | 2026-11-13T01:50:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - T306+T311 (batch, sonnet) — after T305c (DuplicateCheck overlap)
@@ -23,6 +24,7 @@ Updated: 2026-11-13T01:34:25Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T305c | reviewer (opus) | 2026-11-13T01:50:06Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

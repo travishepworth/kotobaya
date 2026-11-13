@@ -14,6 +14,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
       become `C-*` tickets (breaking ones with a migration).
 
 ## Provisional decisions
+- ADR-013: Takoboto note type id is a name-derived UUIDv8 (SCHEMA says UUIDv7 unless stated). Confirm or ask for a contract note.
 - ADR-012: Android calls the API through a hand-written client (generated Kotlin client needs a newer Kotlin than the app).
 - jpdb re-import (T207c): notes you deleted after an import are NOT recreated on re-run; they are skipped and counted.
 - C-8: a word status set offline during a clock-skew window is re-minted at its estimated time and can beat another device's earlier status for the same word.

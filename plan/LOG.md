@@ -562,3 +562,6 @@
 2026-11-13T01:34:25Z T313 DISPATCH writer-senior(opus)
 2026-11-13T01:49:50Z T305c HANDOFF DONE; reviewer dispatched
 2026-11-13T01:49:50Z F-6 created+DISPATCH writer(sonnet): sync DB schema missing if first use is a tx (found by T305c)
+2026-11-13T01:50:14Z T305c CHECK_GREEN android after rebase
+2026-11-13T01:52:36Z T305c REVIEW_APPROVE reviewer (8 minors → FOLLOWUPS)
+2026-11-13T01:52:36Z DECIDE ADR-013 provisional: Takoboto note type UUIDv8 fixed id
