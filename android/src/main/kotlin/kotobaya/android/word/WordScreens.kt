@@ -1,5 +1,7 @@
 package kotobaya.android.word
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +28,7 @@ import org.koin.compose.koinInject
 fun WordDetailScreen(seq: Long, onBack: () -> Unit) {
     val repo = koinInject<WordRepository>()
     var load by remember(seq) { mutableStateOf<WordLoad?>(null) }
-    LaunchedEffect(seq) { load = repo.load(seq) }
+    LaunchedEffect(seq) { load = withContext(Dispatchers.IO) { repo.load(seq) } }
     Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         OutlinedButton(onClick = onBack) { Text(T(R.string.word_back)) }
         when (val l = load) {
@@ -69,7 +71,7 @@ private fun NoteBlock(n: NoteView) {
 fun NoteDetailScreen(noteId: String, onBack: () -> Unit) {
     val repo = koinInject<WordRepository>()
     var load by remember(noteId) { mutableStateOf<NoteLoad?>(null) }
-    LaunchedEffect(noteId) { load = repo.loadNote(noteId) }
+    LaunchedEffect(noteId) { load = withContext(Dispatchers.IO) { repo.loadNote(noteId) } }
     Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         OutlinedButton(onClick = onBack) { Text(T(R.string.word_back)) }
         Text(T(R.string.note_title), style = MaterialTheme.typography.titleLarge)

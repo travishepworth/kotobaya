@@ -1,5 +1,6 @@
 package kotobaya.android.sync
 
+import kotobaya.sync.client.protocol.PullProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,8 @@ data class SyncStatusView(
     val consecutiveFailures: Int,
     /** The last outcome was "network up, server did not answer" (the coordinator's probe), not an HTTP/protocol error. */
     val unreachable: Boolean = false,
+    /** While a cycle pulls: how far (BUG-8, "Syncing N of M"); null otherwise. */
+    val progress: PullProgress? = null,
 )
 
 /**
@@ -50,6 +53,9 @@ class SyncStatusRepository(
     @Volatile
     private var running: Boolean = false
 
+    @Volatile
+    private var progress: PullProgress? = null
+
     /** The status; null until the first [refresh] (the bootstrap runs one after the startup replay). */
     val status: StateFlow<SyncStatusView?> = state.asStateFlow()
 
@@ -66,7 +72,14 @@ class SyncStatusRepository(
     /** Records whether a cycle runs. */
     fun onRunning(value: Boolean) {
         running = value
+        if (!value) progress = null
         refresh()
+    }
+
+    /** Records pull progress (after each committed chunk). Updates the published view without a database read. */
+    fun onProgress(p: PullProgress) {
+        progress = p
+        state.value?.let { state.value = it.copy(progress = p) }
     }
 
     /** Recomputes from the store. Never throws (a failed read keeps the previous value). */
@@ -84,6 +97,7 @@ class SyncStatusRepository(
             upgradeRequired = snapshot.upgradeRequired,
             consecutiveFailures = failures(),
             unreachable = lastUnreachable,
+            progress = if (running) progress else null,
         )
     }
 

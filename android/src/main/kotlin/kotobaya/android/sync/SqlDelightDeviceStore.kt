@@ -29,6 +29,13 @@ import kotobaya.sync.client.store.SyncStateTable
  *
  * Thread use: a transaction belongs to the thread that opened it; the block never suspends.
  * [onCommit] is called after each outermost commit (the status repository refreshes on it).
+ *
+ * Reads (BUG-8): [read] opens no transaction and issues no PRAGMA, so on the WAL database each of its
+ * statements runs on one of the driver's reader connections (Android's pool gives a read-only
+ * statement outside a transaction a non-primary connection): it never waits for a writer (a sync
+ * chunk) and never sees uncommitted rows. Each statement sees the last commit at its start; a [read]
+ * block with several statements is not one snapshot. A [read] refuses writes ([IllegalStateException]);
+ * inside a [transaction] on the same thread it joins that transaction instead.
  */
 class SqlDelightDeviceStore(
     private val driver: SqlDriver,
@@ -45,12 +52,18 @@ class SqlDelightDeviceStore(
 
     override fun <R> transaction(block: (StoreTransaction<SqlLearningTables>) -> R): R = run(true, block)
 
-    /** A [transaction] that does not call the [onCommit] listeners (for readers such as the status). */
-    fun <R> read(block: (StoreTransaction<SqlLearningTables>) -> R): R = run(false, block)
+    /**
+     * Reads without a transaction, on a reader connection (see the class comment); writes throw. Joins
+     * the calling thread's open [transaction] if there is one. Never call it on the main thread.
+     */
+    fun <R> read(block: (StoreTransaction<SqlLearningTables>) -> R): R {
+        active.get()?.let { return block(it) }
+        return block(Tx(readOnly = true))
+    }
 
     private fun <R> run(notify: Boolean, block: (StoreTransaction<SqlLearningTables>) -> R): R {
         active.get()?.let { return block(it) }
-        val tx = Tx()
+        val tx = Tx(readOnly = false)
         // re-assert durability on the connection about to write (cannot change inside a transaction)
         driver.execute(null, "PRAGMA synchronous = FULL", 0)
         val result = try {
@@ -63,22 +76,36 @@ class SqlDelightDeviceStore(
         return result
     }
 
-    private inner class Tx : StoreTransaction<SqlLearningTables> {
-        override val learning: SqlLearningTables = SqlLearningTables(driver, schema)
-        override val outbox: OutboxTable = SqlOutbox(driver)
+    private inner class Tx(private val readOnly: Boolean) : StoreTransaction<SqlLearningTables> {
+        override val learning: SqlLearningTables = SqlLearningTables(driver, schema, readOnly)
+        override val outbox: OutboxTable = SqlOutbox(driver, readOnly)
         override val syncState: SyncStateTable = object : SyncStateTable {
             override fun get(key: String): String? = db.syncOpsQueries.getSyncState(key).executeAsOneOrNull()
 
-            override fun put(key: String, value: String) = db.syncOpsQueries.putSyncState(key, value)
+            override fun put(key: String, value: String) {
+                if (readOnly) readOnlyWrite()
+                db.syncOpsQueries.putSyncState(key, value)
+            }
 
-            override fun remove(key: String) = db.metaLimitsQueries.deleteSyncState(key)
+            override fun remove(key: String) {
+                if (readOnly) readOnlyWrite()
+                db.metaLimitsQueries.deleteSyncState(key)
+            }
         }
     }
 }
 
-/** `pending_op` (Local.sq) as T303a's [OutboxTable]. */
-internal class SqlOutbox(private val driver: SqlDriver) : OutboxTable {
+/** A write attempted inside [SqlDelightDeviceStore.read]: outside a transaction it would autocommit on its own. */
+internal fun readOnlyWrite(): Nothing = throw IllegalStateException("write inside SqlDelightDeviceStore.read; use transaction")
+
+/** `pending_op` (Local.sq) as T303a's [OutboxTable]. [readOnly]: every write throws ([SqlDelightDeviceStore.read]). */
+internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Boolean = false) : OutboxTable {
+    private fun writable() {
+        if (readOnly) readOnlyWrite()
+    }
+
     override fun insert(row: PendingOpRow) {
+        writable()
         check(get(row.opId) == null) { "pending_op ${row.opId} already exists" }
         driver.execute(
             null,
@@ -111,33 +138,39 @@ internal class SqlOutbox(private val driver: SqlDriver) : OutboxTable {
         }
 
     override fun markAcked(opId: Uuid, seq: Long) {
+        writable()
         update("state = 'acked', acked_seq = ?", opId) { bindLong(0, seq) }
     }
 
     override fun markRejected(opId: Uuid, lastError: String) {
+        writable()
         update("state = 'rejected', last_error = ?, acked_seq = NULL", opId) { bindString(0, lastError) }
     }
 
     override fun markPending(opId: Uuid, attempts: Int) {
+        writable()
         update("state = 'pending', acked_seq = NULL, attempts = ?", opId) { bindLong(0, attempts.toLong()) }
     }
 
     override fun setAttempts(opId: Uuid, attempts: Int) {
+        writable()
         update("attempts = ?", opId) { bindLong(0, attempts.toLong()) }
     }
 
     override fun incrementAttempts(opIds: Collection<Uuid>) {
+        writable()
         for (id in opIds) {
             driver.execute(null, "UPDATE pending_op SET attempts = attempts + 1 WHERE op_id = ?", 1) { bindString(0, id) }
         }
     }
 
     override fun delete(opId: Uuid) {
+        writable()
         driver.execute(null, "DELETE FROM pending_op WHERE op_id = ?", 1) { bindString(0, opId) }
     }
 
     override fun deleteAckedThrough(maxSeq: Long): Int =
-        driver.execute(null, "DELETE FROM pending_op WHERE state = 'acked' AND acked_seq <= ?", 1) {
+        if (readOnly) readOnlyWrite() else driver.execute(null, "DELETE FROM pending_op WHERE state = 'acked' AND acked_seq <= ?", 1) {
             bindLong(0, maxSeq)
         }.value.toInt()
 

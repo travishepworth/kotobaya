@@ -25,6 +25,8 @@ data class ChipModel(
     val count: Int? = null,
     val timeMs: Long? = null,
     val httpStatus: Int? = null,
+    /** "Syncing N of M": N and M ([textRes] takes both). */
+    val progress: Pair<Long, Long>? = null,
 ) {
     /** True when the user should act (the chip is drawn in the error colour). */
     val needsAction: Boolean
@@ -46,7 +48,9 @@ fun chipFor(view: SyncStatusView): ChipModel {
     val phase = s.phase
     return when {
         !view.paired -> ChipModel(ChipKind.NOT_PAIRED, R.string.sync_chip_not_paired)
-        phase is SyncPhase.Syncing -> ChipModel(ChipKind.SYNCING, R.string.sync_chip_syncing)
+        phase is SyncPhase.Syncing -> view.progress?.takeIf { it.total > 0 }?.let { p ->
+            ChipModel(ChipKind.SYNCING, R.string.sync_chip_syncing_progress, progress = p.done to p.total)
+        } ?: ChipModel(ChipKind.SYNCING, R.string.sync_chip_syncing)
         phase is SyncPhase.ClockWrong -> ChipModel(ChipKind.CLOCK_WRONG, R.string.sync_chip_clock)
         phase is SyncPhase.UpgradeRequired -> ChipModel(ChipKind.UPDATE_REQUIRED, R.string.sync_chip_update_required)
         phase is SyncPhase.AuthRequired -> ChipModel(ChipKind.AUTH_REQUIRED, R.string.sync_chip_auth)

@@ -1,5 +1,7 @@
 package kotobaya.android.media.browse
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import java.io.File
@@ -82,7 +84,9 @@ class MediaBrowseRepository(
     suspend fun sentences(mediaId: String): Loaded<List<SentenceView>> =
         load("sentences-$mediaId", "/media/$mediaId/sentences?filter=i%2B1&limit=50", ::parseSentences)
 
-    private suspend fun <T> load(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> {
+    private suspend fun <T> load(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> = withContext(Dispatchers.IO) { loadOnIo(key, path, parse) }
+
+    private suspend fun <T> loadOnIo(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> {
         try {
             val body = api.get(path).body
             val value = parse(body)

@@ -1,5 +1,9 @@
 package kotobaya.android.sync
 
+import kotobaya.sync.client.protocol.PullProgress
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.yield
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
@@ -13,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotobaya.android.db.GuardedDriver
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.media.AudioPrefetchWork
 import kotobaya.android.media.MediaPrefs
@@ -51,12 +56,20 @@ class SyncClient(
     transport: SyncTransport,
     clock: Clock = Clock { System.currentTimeMillis() },
     diagnosticsSink: (DeviceDiagnostics.Refusal) -> Unit = {},
+    /** After every committed pull chunk (BUG-8: the "Syncing N of M" chip); the engine then yields. */
+    onPullProgress: (PullProgress) -> Unit = {},
 ) {
     val diagnostics: DeviceDiagnostics = DeviceDiagnostics(diagnosticsSink)
     val cache: DeviceCardCache = DeviceCardCache(diagnostics = diagnostics)
     val startup: StartupReplay = StartupReplay(cache)
     val applier: DeviceOpApplier<SqlLearningTables> = DeviceOpApplier(cache, startup)
-    val engine: SyncEngine<SqlLearningTables> = SyncEngine(store, transport, applier, clock)
+    val engine: SyncEngine<SqlLearningTables> = SyncEngine(
+        store, transport, applier, clock,
+        onPullProgress = { p ->
+            onPullProgress(p)
+            yield() // between chunks: cancellation point, and other work on the dispatcher runs
+        },
+    )
     val rebuild: Rebuild<SqlLearningTables> = Rebuild(store, engine, applier)
     val cycle: DeviceSyncCycle<SqlLearningTables> = DeviceSyncCycle(store, engine, rebuild, startup)
     val minter: OpMinter<SqlLearningTables> = OpMinter(store, applier, clock, UuidV7Source(SecureRandom().asKotlinRandom()))
@@ -127,7 +140,11 @@ class SyncBootstrap(
             runCatching { workManager()?.let(SyncWork::ensurePeriodic) }
         }
         scope.launch { coordinator.running.collect { status.onRunning(it) } }
-        client.store.onCommit { scope.launch { status.refresh() } } // off the committing thread
+        // off the committing thread, and conflated: a pull commits every chunk (BUG-8), the status
+        // needs only the latest state, so a refresh still running absorbs the commits behind it
+        val commits = MutableStateFlow(0L)
+        client.store.onCommit { commits.update { it + 1 } }
+        scope.launch { commits.collect { status.refresh() } }
         network.register { triggers.background(SyncTrigger.CONNECTIVITY) }
         app.registerActivityLifecycleCallbacks(this)
     }
@@ -156,7 +173,8 @@ private val SYNC_SCOPE = named("syncScope")
 
 val syncModule = module {
     single<CoroutineScope>(SYNC_SCOPE) { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
-    single<SqlDriver>(SYNC_DRIVER) { DurableDriver.open(androidContext()) }
+    // every statement on the main thread is reported (BUG-8, db/DbThreadGuard)
+    single<SqlDriver>(SYNC_DRIVER) { GuardedDriver(DurableDriver.open(androidContext()), get()) }
     // Replaces appModule's AppDatabase so that every feature and the sync store share ONE driver,
     // opened with WAL + synchronous=FULL (T303c; see HANDOFF).
     single<AppDatabase> { AppDatabase(get<SqlDriver>(SYNC_DRIVER)) }
@@ -167,9 +185,12 @@ val syncModule = module {
         HttpSyncTransport({ settings.serverBaseUrl }, { tokens.token }, HttpSyncTransport.storedLimits(get<MetaLimitsStore>()))
     }
     single {
-        SyncClient(get(), get<HttpSyncTransport>(), diagnosticsSink = { r ->
-            Log.e("KotobayaSync", "replay refused for card ${r.cardId}: ${r.error}")
-        })
+        val koin = getKoin()
+        SyncClient(
+            get(), get<HttpSyncTransport>(),
+            diagnosticsSink = { r -> Log.e("KotobayaSync", "replay refused for card ${r.cardId}: ${r.error}") },
+            onPullProgress = { p -> koin.get<SyncStatusRepository>().onProgress(p) },
+        )
     }
     single { get<SyncClient>().minter }
     single { NetworkMonitor(androidContext()) }

@@ -14,7 +14,9 @@ class DueReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> Unit
             else -> return
         }
-        koin.get<DueTrigger>().fire()
+        // onReceive runs on the main thread: the recompute reads the database (BUG-8)
+        val pending: PendingResult? = goAsync() // null when called directly (tests)
+        koin.get<DueTrigger>().fireInBackground { pending?.finish() }
     }
 
     companion object {

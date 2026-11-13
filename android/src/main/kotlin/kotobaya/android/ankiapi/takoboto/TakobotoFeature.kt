@@ -1,5 +1,7 @@
 package kotobaya.android.ankiapi.takoboto
 
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.produceState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -96,20 +98,25 @@ private fun TakobotoDebug() {
     val map: AnkiIdMap = koinInject()
     val store: SqlDelightDeviceStore = koinInject()
     var refresh by remember { mutableIntStateOf(0) }
-    val snapshot = remember(refresh) { ProviderCallLog.snapshot() }
-    val counts = remember(refresh) {
-        Triple(map.counter(AnkiIds.COUNT_ADDED), map.counter(AnkiIds.COUNT_DUPLICATE), map.counter(AnkiIds.COUNT_REFUSED))
-    }
-    val ready = remember(refresh) {
-        runCatching {
-            store.read { tx ->
-                tx.learning.all(LearningTable.NOTE_TYPE).any {
-                    it["name"] == kotobaya.contracts.sync.JsonString(TakobotoVocab.NAME) &&
-                        (it["deleted_at"] ?: kotobaya.contracts.sync.JsonNull) == kotobaya.contracts.sync.JsonNull
+    // BUG-8: both databases are read on IO, never in composition (the sync writer may hold the app one)
+    val loaded by produceState<TakobotoDebugData?>(null, refresh) {
+        value = withContext(Dispatchers.IO) {
+            val counts = Triple(map.counter(AnkiIds.COUNT_ADDED), map.counter(AnkiIds.COUNT_DUPLICATE), map.counter(AnkiIds.COUNT_REFUSED))
+            val ready = runCatching {
+                store.read { tx ->
+                    tx.learning.all(LearningTable.NOTE_TYPE).any {
+                        it["name"] == kotobaya.contracts.sync.JsonString(TakobotoVocab.NAME) &&
+                            (it["deleted_at"] ?: kotobaya.contracts.sync.JsonNull) == kotobaya.contracts.sync.JsonNull
+                    }
                 }
-            }
-        }.getOrDefault(false)
+            }.getOrDefault(false)
+            TakobotoDebugData(ProviderCallLog.snapshot(), counts, ready)
+        }
     }
+    val data = loaded ?: TakobotoDebugData(emptyList(), Triple(0L, 0L, 0L), false)
+    val snapshot = data.snapshot
+    val counts = data.counts
+    val ready = data.ready
     val unknown = snapshot.filter { ProviderCallLog.UNKNOWN_MARK in it }
     Column(Modifier.padding(16.dp)) {
         Text(T(R.string.ankiapi_counts, counts.first, counts.second, counts.third))
@@ -125,6 +132,8 @@ private fun TakobotoDebug() {
 }
 
 private const val DEBUG_LINES = 30
+
+private class TakobotoDebugData(val snapshot: List<String>, val counts: Triple<Long, Long, Long>, val ready: Boolean)
 
 /** THE registration for featureEntries. */
 val takobotoFeature = FeatureEntry(

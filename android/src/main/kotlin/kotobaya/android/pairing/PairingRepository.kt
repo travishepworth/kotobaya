@@ -1,5 +1,7 @@
 package kotobaya.android.pairing
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.security.SecureRandom
 import kotobaya.android.net.ApiClient
 import kotobaya.android.net.ApiError
@@ -33,7 +35,10 @@ class PairingRepository(
     val isPaired: Boolean get() = tokens.token != null && settings.serverBaseUrl != null
     val serverBaseUrl: String? get() = settings.serverBaseUrl
 
-    suspend fun pair(target: PairingTarget): PairResult {
+    /** Main-safe: runs on [Dispatchers.IO] (it reads and writes `sync_state`, BUG-8). */
+    suspend fun pair(target: PairingTarget): PairResult = withContext(Dispatchers.IO) { pairOnIo(target) }
+
+    private suspend fun pairOnIo(target: PairingTarget): PairResult {
         val client = clientFor(target.serverBaseUrl)
         var id = deviceId ?: newDeviceId().also { q.putSyncState(KEY_DEVICE_ID, it) }
         var regressedOnce = false

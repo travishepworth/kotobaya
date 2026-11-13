@@ -1,5 +1,7 @@
 package kotobaya.android.search
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,14 +76,14 @@ fun SearchScreen() {
                 val prev = state as? ResultState.Words
                 val after = if (append) prev?.next else null
                 if (!append) state = ResultState.Busy
-                state = when (val r = words.search(q, after)) {
+                state = when (val r = withContext(Dispatchers.IO) { words.search(q, after) }) {
                     is WordSearchOutcome.Page ->
                         ResultState.Words((if (append) prev?.items.orEmpty() else emptyList()) + r.page.items, r.page.next)
                     is WordSearchOutcome.Failed -> ResultState.Failed(r.offline)
                 }
             } else {
                 state = ResultState.Busy
-                state = when (val r = cards.search(q)) {
+                state = when (val r = withContext(Dispatchers.IO) { cards.search(q) }) {
                     is CardSearchOutcome.Results -> ResultState.Cards(r.hits, PAGE, r.fromServer)
                     is CardSearchOutcome.ParseError -> ResultState.Invalid(r.errors)
                     is CardSearchOutcome.Failed -> ResultState.Failed(r.offline)

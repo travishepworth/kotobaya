@@ -97,6 +97,8 @@ internal class LearningSchema private constructor(private val columns: Map<Learn
 class SqlLearningTables internal constructor(
     private val driver: SqlDriver,
     private val schema: LearningSchema,
+    /** True inside [SqlDelightDeviceStore.read]: every write throws (it would autocommit on its own). */
+    private val readOnly: Boolean = false,
 ) : LearningTables {
     override fun get(table: LearningTable, key: List<JsonValue>): Row? {
         val (where, keyCols) = keyClause(table, key)
@@ -105,6 +107,7 @@ class SqlLearningTables internal constructor(
     }
 
     override fun put(table: LearningTable, row: Row) {
+        if (readOnly) readOnlyWrite()
         val cols = row.keys.map { schema.column(table, it) }
         val key = table.keyOf(row)
         check(key.none { it == JsonNull }) { "${table.sqlName}: key column is NULL in $row" }
@@ -133,6 +136,7 @@ class SqlLearningTables internal constructor(
     }
 
     override fun delete(table: LearningTable, key: List<JsonValue>) {
+        if (readOnly) readOnlyWrite()
         if (key.any { it == JsonNull }) return
         val (where, keyCols) = keyClause(table, key)
         driver.execute(null, "DELETE FROM ${table.sqlName} WHERE $where", keyCols.size) { bindAll(this, 0, keyCols, key) }
@@ -147,6 +151,7 @@ class SqlLearningTables internal constructor(
     override fun all(table: LearningTable): List<Row> = select(table, "", 0) {}
 
     override fun clear(table: LearningTable) {
+        if (readOnly) readOnlyWrite()
         driver.execute(null, "DELETE FROM ${table.sqlName}", 0)
     }
 

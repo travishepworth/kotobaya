@@ -1,5 +1,8 @@
 package kotobaya.android.pairing
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.produceState
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -116,11 +119,12 @@ private fun DevicesSection() {
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Text(T(R.string.devices_title))
         Text(T(R.string.devices_this_device))
-        repo.deviceId?.let { Text(T(R.string.devices_id, it)) }
+        val deviceId by produceState<String?>(null, paired) { value = withContext(Dispatchers.IO) { repo.deviceId } }
+        deviceId?.let { Text(T(R.string.devices_id, it)) }
         if (paired) {
             Text(T(R.string.devices_paired, repo.serverBaseUrl.orEmpty()))
             Text(T(R.string.devices_unpair_note))
-            OutlinedButton(onClick = { repo.unpair(); paired = false; message = null }) {
+            OutlinedButton(onClick = { scope.launch(Dispatchers.IO) { repo.unpair() }; paired = false; message = null }) {
                 Text(T(R.string.devices_unpair))
             }
         } else {

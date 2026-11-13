@@ -217,9 +217,12 @@ fun later(hlc: String, ms: Long): String {
 
 // ------------------------------------------------------------------------------------------- DB
 
-/** A database file reopened like a process restart: each [open] is a new JDBC driver (WAL, synchronous=FULL). */
-class DbFile {
-    val file: File = File.createTempFile("kotobaya-sync", ".db").also {
+/**
+ * A database file reopened like a process restart: each [open] is a new JDBC driver (WAL, synchronous=FULL).
+ * In [dir] (created if needed) or the default temp directory.
+ */
+class DbFile(dir: File? = null) {
+    val file: File = File.createTempFile("kotobaya-sync", ".db", dir?.also { it.mkdirs() }).also {
         it.delete()
         it.deleteOnExit()
         File(it.path + "-wal").deleteOnExit()
@@ -294,8 +297,9 @@ class SqlDevice(
     clockMs: Long,
     private val seed: Int = 1,
     private val engine: ReplayEngine = DefaultReplayEngine,
+    dbDir: File? = null,
 ) : DeviceApi {
-    val db = DbFile()
+    val db = DbFile(dbDir)
     val clock = TestClock(clockMs)
     val transport = TestTransport(server)
     lateinit var driver: SqlDriver

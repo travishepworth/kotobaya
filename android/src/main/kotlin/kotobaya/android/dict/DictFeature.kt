@@ -1,5 +1,7 @@
 package kotobaya.android.dict
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -123,10 +125,11 @@ private fun DictSettings() {
     val generation by store.generation.collectAsState()
     var chosen by remember { mutableStateOf(settings.dictionaryScope) }
     var info by remember { mutableStateOf<PackageInfo?>(null) }
+    var bytes by remember { mutableStateOf(0L) }
     LaunchedEffect(generation) {
         installer.startup()
         DictWork.ensurePeriodic(ctx)
-        info = store.info()
+        withContext(Dispatchers.IO) { store.info() to store.installedBytes() }.let { (i, b) -> info = i; bytes = b }
     }
     Column(Modifier.padding(8.dp)) {
         val i = info
@@ -134,7 +137,7 @@ private fun DictSettings() {
             if (i == null) T(R.string.dict_not_installed)
             else T(R.string.dict_installed, i.version, i.releaseId, i.scope),
         )
-        Text(T(R.string.dict_size, mb(store.installedBytes())))
+        Text(T(R.string.dict_size, mb(bytes)))
         Text(T(R.string.dict_scope_label))
         Row {
             for ((value, label) in listOf("top60k" to R.string.dict_scope_top60k, "all" to R.string.dict_scope_all)) {
@@ -146,12 +149,14 @@ private fun DictSettings() {
             }
         }
         Button(
-            onClick = { scope.launch { installer.run(); info = store.info() } },
+            onClick = { scope.launch { installer.run(); info = withContext(Dispatchers.IO) { store.info() } } },
             enabled = state !is InstallState.Running,
         ) { Text(T(R.string.dict_update_now)) }
         Text(statusText(state))
     }
-    LaunchedEffect(state) { if (state is InstallState.Finished) { info = store.info(); dictionary.info() } }
+    LaunchedEffect(state) {
+        if (state is InstallState.Finished) info = withContext(Dispatchers.IO) { store.info().also { dictionary.info() } }
+    }
 }
 
 @Composable

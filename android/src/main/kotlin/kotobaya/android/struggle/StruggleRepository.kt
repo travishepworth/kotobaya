@@ -87,7 +87,9 @@ class StruggleRepository(
 
     private fun newId(): String = UUID.randomUUID().toString()
 
-    private suspend fun <T> load(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> {
+    private suspend fun <T> load(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> = withContext(Dispatchers.IO) { loadOnIo(key, path, parse) }
+
+    private suspend fun <T> loadOnIo(key: String, path: String, parse: (JSONObject) -> T): Loaded<T> {
         try {
             val body = api.get(path).body
             val value = parse(body)

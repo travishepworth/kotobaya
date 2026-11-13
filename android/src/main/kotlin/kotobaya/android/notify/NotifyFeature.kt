@@ -46,7 +46,7 @@ internal class AppOpenHook(app: Application, private val trigger: DueTrigger) : 
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (started++ == 0) trigger.fire()
+        if (started++ == 0) trigger.fireInBackground() // runs on the main thread (BUG-8)
     }
 
     override fun onActivityStopped(activity: Activity) {

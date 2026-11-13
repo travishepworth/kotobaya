@@ -45,6 +45,7 @@ private fun formatTime(ms: Long): String = DateFormat.getDateTimeInstance(DateFo
 /** The text the chip shows. */
 @Composable
 fun chipText(m: ChipModel): String = when {
+    m.progress != null -> T(m.textRes, m.progress.first, m.progress.second)
     m.count != null -> T(m.textRes, m.count)
     m.timeMs != null -> T(m.textRes, formatTime(m.timeMs))
     m.httpStatus != null -> T(m.textRes, m.httpStatus)

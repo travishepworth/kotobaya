@@ -1,5 +1,6 @@
 package kotobaya.android.notify
 
+import org.koin.dsl.module
 import android.app.AlarmManager
 import android.app.Application
 import android.app.Notification
@@ -38,7 +39,9 @@ class DueNotificationsTest {
         stopKoin()
         startKoin {
             androidContext(context)
-            modules(appModule, queueFeature.module!!, notifyModule)
+            // the receiver hands the recompute to a background thread (BUG-8); here it runs inline, so its
+            // effects are visible when onReceive returns
+            modules(appModule, queueFeature.module!!, notifyModule, module { single { DueTrigger({ it.run() }) { getAll<DueListener>() } } })
         }
     }
 
