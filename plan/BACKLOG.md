@@ -577,12 +577,16 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `server/src/main/kotlin/kotobaya/export/`
 
 ### T609 — Security hardening review
-- model: opus · risk: high · deps: T601–T608 · status: TODO
+- model: opus · risk: high · deps: T601–T608 · status: RUNNING
 - paths: `deploy/`, `docs/SECURITY.md` (findings become new tickets)
 
 ### T610 — Runbook and restore drill docs
 - model: haiku · risk: low · deps: T609 · status: TODO
 - paths: `docs/RUNBOOK.md`
+
+### F-28 — Worker image: CPU-only torch
+- model: sonnet · risk: low · deps: T606 · status: RUNNING
+- paths: `worker/pyproject.toml`, `worker/uv.lock`, `worker/Dockerfile` (ticket: plan/tickets/F-28.md; from T606 HUMAN_CHECK)
 
 → **GATE-DONE**: human sign-off.
 

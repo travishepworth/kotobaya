@@ -745,3 +745,6 @@
 2026-11-13T08:18:44Z T605 MERGE CHECK_GREEN server+web after rebase (Main.kt/WiringAudit conflicts resolved by orchestrator)
 2026-11-13T08:22:07Z T608 MERGE CHECK_GREEN server after rebase (WiringAudit conflict resolved by orchestrator); new dep sqlite-jdbc 3.47.1.0
 2026-11-13T08:26:27Z T606 MERGE CHECK_GREEN worker+server after rebase; review APPROVE. RUN 10 END: 7 merges, stopped for context
+2026-11-13T08:27:23Z RUN11 START main 5eca45d; disk /home 41G free
+2026-11-13T08:27:23Z F-28 DISPATCH sonnet writer (filed from T606 torch HUMAN_CHECK)
+2026-11-13T08:27:23Z T609 DISPATCH writer-senior (opus/high)
