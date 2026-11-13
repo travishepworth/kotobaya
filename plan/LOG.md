@@ -705,3 +705,7 @@
 2026-11-13T06:35:45Z T607 DECIDE DEFERRED by human (LLM assist); P6 complete without it
 2026-11-13T06:38:26Z T507 MERGE CHECK_GREEN core+server; 1 attempt (med); sentence source unexposed → F-25
 2026-11-13T06:38:26Z - HANDOVER run 8: 6 merged; context budget; next F-25, T504b, T508
+2026-11-13T06:39:27Z - RESUME run 9: clean state; disk 32 GB free
+2026-11-13T06:39:27Z T508 SPLIT T508a web, T508b android
+2026-11-13T06:39:27Z C-15 DISPATCH architect (contracts; for F-25 grammar card sentence op)
+2026-11-13T06:39:27Z T508a DISPATCH writer (web)
