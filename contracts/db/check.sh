@@ -5,8 +5,11 @@
 #   SKIP_GRADLE=1 contracts/db/check.sh   # skip the SQLDelight compile (slow first run)
 #
 # Steps:
-#   1. V1__init.sql applies cleanly to a throwaway postgres:17 container and
-#      test/smoke.sql passes against it.                      (needs docker)
+#   0. media/validate.py: the snapshot archive formats, the media-publish payload,
+#      their worked examples and negative cases (SNAPSHOT.md, MEDIA_PIPELINE.md).
+#                                                              (needs python3 + jsonschema, or uv)
+#   1. V1__init.sql then V2__jpdb_vocab.sql apply cleanly to a throwaway postgres:17
+#      container and test/smoke.sql, test/smoke_v2.sql pass.  (needs docker)
 #   2. The .sq files load into SQLite and the device schema matches the server
 #      schema (same tables/columns, identical seed rows).     (needs sqlite3, python3)
 #   3. The .sq files compile with the SQLDelight Gradle plugin. (needs JDK + network on first run)
@@ -25,9 +28,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# ---------------------------------------------------------------- 0. Snapshot formats
+echo "== media/validate.py: snapshot formats and examples"
+if python3 -c 'import jsonschema, referencing' >/dev/null 2>&1; then
+  python3 "$here/media/validate.py" >"$work/snapshot.out" || { cat "$work/snapshot.out" >&2; exit 1; }
+elif command -v uv >/dev/null 2>&1; then
+  uv run --no-project --with 'jsonschema>=4.18' --with 'zstandard>=0.25.0' python "$here/media/validate.py" >"$work/snapshot.out" \
+    || { cat "$work/snapshot.out" >&2; exit 1; }
+else
+  echo "contracts/db/check.sh: need python3 with the jsonschema package (>= 4.18), or uv" >&2
+  exit 1
+fi
+tail -n 1 "$work/snapshot.out"
+
 # ---------------------------------------------------------------- 1. Postgres
 echo "== postgres:17: apply V1__init.sql"
-docker run -d --name "$container" -e POSTGRES_PASSWORD=contract postgres:17 >/dev/null
+# Data directory on tmpfs: throwaway, faster, and independent of free space on the docker root.
+docker run -d --name "$container" --tmpfs /var/lib/postgresql/data -e POSTGRES_PASSWORD=contract postgres:17 >/dev/null
 for _ in $(seq 1 60); do
   if docker exec "$container" psql -U postgres -Atc 'select 1' >/dev/null 2>&1; then break; fi
   sleep 1
@@ -42,6 +59,10 @@ psql_in <"$here/V1__init.sql"
 echo "== postgres:17: test/smoke.sql"
 psql_in <"$here/test/smoke.sql" >"$work/smoke.out"
 grep -q '^smoke.sql: ok$' "$work/smoke.out"
+echo "== postgres:17: apply V2__jpdb_vocab.sql, test/smoke_v2.sql"
+psql_in <"$here/V2__jpdb_vocab.sql"
+psql_in <"$here/test/smoke_v2.sql" >"$work/smoke_v2.out"
+grep -q '^smoke_v2.sql: ok$' "$work/smoke_v2.out"
 
 echo "== postgres:17: migration refuses a C-ctype database"
 psql_in -c "CREATE DATABASE c_ctype TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'"
@@ -87,7 +108,8 @@ def sqlite_columns(path):
 # Tables that exist only on the device.
 DEVICE_ONLY_TABLES = {"pending_op", "sync_state", "blob_cache"}
 # Server tables deliberately absent from the device.
-SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override", "server_state"}
+SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override", "server_state",
+                      "jpdb_vocab", "jpdb_vocab_media"}
 # Per-table column differences: (extra on device, missing on device).
 DIFF = {
     "note": (set(), {"search_text"}),

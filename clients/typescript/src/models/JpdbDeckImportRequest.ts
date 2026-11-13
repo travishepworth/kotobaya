@@ -51,6 +51,10 @@ export interface JpdbDeckImportRequest {
      */
     mediaId?: string;
     /**
+     * Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`).
+     */
+    remapOnly?: boolean;
+    /**
      * Title override. Default - the title jpdb reports.
      */
     title?: string;
@@ -80,6 +84,7 @@ export function JpdbDeckImportRequestFromJSONTyped(json: any, ignoreDiscriminato
         'jpdbId': json['jpdb_id'],
         'kind': json['kind'] == null ? undefined : MediaKindFromJSON(json['kind']),
         'mediaId': json['media_id'] == null ? undefined : json['media_id'],
+        'remapOnly': json['remap_only'] == null ? undefined : json['remap_only'],
         'title': json['title'] == null ? undefined : json['title'],
     };
 }
@@ -99,6 +104,7 @@ export function JpdbDeckImportRequestToJSONTyped(value?: JpdbDeckImportRequest |
         'jpdb_id': value['jpdbId'],
         'kind': MediaKindToJSON(value['kind']),
         'media_id': value['mediaId'],
+        'remap_only': value['remapOnly'],
         'title': value['title'],
     };
 }

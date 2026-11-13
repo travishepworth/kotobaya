@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/db/media/content.v1.schema.json",
+  "title": "kotobaya-media-content v1: one line (record)",
+  "description": "Every line of a media content snapshot (SNAPSHOT.md section 3) is exactly one of these records, chosen by its `record` member. Producer schema: closed records, every member present (nullable ones as null). Readers ignore unknown members (SNAPSHOT.md 6). Cross-record rules (counts, order, references, sums) are checked by validate.py, not by this schema.",
+  "type": "object",
+  "required": ["record"],
+  "properties": {"record": {"enum": ["header", "segment", "sentence", "occurrence", "grammar_span"]}},
+  "oneOf": [
+    {"$ref": "#/$defs/header"},
+    {"$ref": "#/$defs/segment"},
+    {"$ref": "#/$defs/sentence"},
+    {"$ref": "#/$defs/occurrence"},
+    {"$ref": "#/$defs/grammar_span"}
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Canonical lowercase UUID."
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Lowercase hex SHA-256 (a blob hash)."},
+    "int4_nonneg": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+    "entry_seq": {"type": "integer", "minimum": 1, "maximum": 9007199254740991, "description": "JMdict seq (soft reference)."},
+    "text": {"type": "string", "pattern": "^[^\\u0000]*$", "description": "Unicode text without U+0000 (SCHEMA.md 2.10)."},
+    "header": {
+      "type": "object",
+      "description": "First line, exactly once.",
+      "additionalProperties": false,
+      "required": ["record", "format", "format_version", "media_id", "content_version", "counts"],
+      "properties": {
+        "record": {"const": "header"},
+        "format": {"const": "kotobaya-media-content"},
+        "format_version": {"const": 1},
+        "media_id": {"$ref": "#/$defs/uuid", "description": "The media every record belongs to (app.media.id)."},
+        "content_version": {"type": "integer", "minimum": 1, "maximum": 2147483647, "description": "The media.content_version this archive is published as."},
+        "counts": {
+          "type": "object",
+          "description": "Number of records of each kind that follow. A reader that sees a different number rejects the archive (truncation).",
+          "additionalProperties": false,
+          "required": ["segment", "sentence", "occurrence", "grammar_span"],
+          "properties": {
+            "segment": {"type": "integer", "minimum": 1, "maximum": 10000},
+            "sentence": {"type": "integer", "minimum": 0, "maximum": 5000000},
+            "occurrence": {"type": "integer", "minimum": 0, "maximum": 50000000},
+            "grammar_span": {"type": "integer", "minimum": 0, "maximum": 50000000}
+          }
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "description": "One app.media_segment row (media_id from the header).",
+      "additionalProperties": false,
+      "required": ["record", "id", "ordinal", "kind", "title", "sentence_count", "token_count", "unmapped_token_count"],
+      "properties": {
+        "record": {"const": "segment"},
+        "id": {"$ref": "#/$defs/uuid"},
+        "ordinal": {"type": "integer", "minimum": 0, "maximum": 9999},
+        "kind": {"enum": ["episode", "chapter", "volume", "page", "whole"]},
+        "title": {"allOf": [{"$ref": "#/$defs/text"}], "maxLength": 300},
+        "sentence_count": {"$ref": "#/$defs/int4_nonneg"},
+        "token_count": {"$ref": "#/$defs/int4_nonneg"},
+        "unmapped_token_count": {"$ref": "#/$defs/int4_nonneg"}
+      }
+    },
+    "sentence": {
+      "type": "object",
+      "description": "One app.sentence row (media_id from the header; unknown_count is server-only and never in a snapshot).",
+      "additionalProperties": false,
+      "required": ["record", "id", "segment_id", "ordinal", "text", "tokens", "origin", "start_ms", "end_ms", "audio_blob_hash", "image_blob_hash", "location"],
+      "properties": {
+        "record": {"const": "sentence"},
+        "id": {"$ref": "#/$defs/uuid"},
+        "segment_id": {"$ref": "#/$defs/uuid"},
+        "ordinal": {"$ref": "#/$defs/int4_nonneg"},
+        "text": {"allOf": [{"$ref": "#/$defs/text"}], "minLength": 1},
+        "tokens": {
+          "type": "array",
+          "description": "Parser tokens exactly as app.sentence.tokens (a JSON array, not a string). Element shape is owned by the parser contract (C-12); this schema only requires objects.",
+          "items": {"type": "object"}
+        },
+        "origin": {"enum": ["media", "generated"]},
+        "start_ms": {"oneOf": [{"$ref": "#/$defs/int4_nonneg"}, {"type": "null"}]},
+        "end_ms": {"oneOf": [{"$ref": "#/$defs/int4_nonneg"}, {"type": "null"}]},
+        "audio_blob_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "image_blob_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "location": {"oneOf": [{"type": "object"}, {"type": "null"}], "description": "As app.sentence.location (a JSON object, not a string), or null."}
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "description": "One app.occurrence row (media_id from the header).",
+      "additionalProperties": false,
+      "required": ["record", "segment_id", "entry_seq", "count", "pos_class", "sentence_ids"],
+      "properties": {
+        "record": {"const": "occurrence"},
+        "segment_id": {"$ref": "#/$defs/uuid"},
+        "entry_seq": {"$ref": "#/$defs/entry_seq"},
+        "count": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+        "pos_class": {"enum": ["content", "particle", "auxiliary", "name", "other"]},
+        "sentence_ids": {"type": "array", "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/uuid"}}
+      }
+    },
+    "grammar_span": {
+      "type": "object",
+      "description": "One DETECTED app.sentence_grammar_span row (origin = detected, media_id from the header, deleted_at and hlc NULL, created_at = install time). Manual spans are never in a snapshot. Empty until Phase 5.",
+      "additionalProperties": false,
+      "required": ["record", "sentence_id", "grammar_point_id", "start_offset", "end_offset", "rule_index"],
+      "properties": {
+        "record": {"const": "grammar_span"},
+        "sentence_id": {"$ref": "#/$defs/uuid"},
+        "grammar_point_id": {"$ref": "#/$defs/uuid"},
+        "start_offset": {"$ref": "#/$defs/int4_nonneg"},
+        "end_offset": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+        "rule_index": {"type": "integer", "minimum": 0, "maximum": 32767}
+      }
+    }
+  }
+}

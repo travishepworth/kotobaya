@@ -2464,7 +2464,14 @@ paths:
           rest of the body says. Without `import_id` a retry after a lost `202` imports twice
           (a second media and deck); clients that may retry MUST send it. An `import_id` used by
           a job of another kind is `409 already_exists` (`existing_id` = that job).
-      x-emits-ops: []
+        - **Execution (C-11).** The worker builds snapshot archives and hands them to the server
+          through the internal `media-publish` job; the server creates the rows and mints the
+          ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled
+          first import leaves no media.
+        - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,
+          `media.content_published` with `parse_status = parsing` (same version and hash) unless
+          the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request.
+      x-emits-ops: [media.content_published]
       security:
         - bearerAuth: [import]
         - sessionCookie: [import]
@@ -2517,7 +2524,16 @@ paths:
         one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is
         listed in the job result (`unmapped`), never silently dropped.
         An equivalent queued or running job is returned with `200`.
-      x-emits-ops: []
+
+        **C-11.** Execution through the internal `media-publish` job as for `importMedia`
+        (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits
+        `media.content_published` (`parse_status = parsing`) with the job insert, unless the
+        media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections
+        (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic
+        mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5).
+        `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it
+        (`422`).
+      x-emits-ops: [media.content_published]
       security:
         - bearerAuth: [import]
         - sessionCookie: [import]
@@ -2738,6 +2754,120 @@ paths:
               examples: {default: {$ref: '#/components/examples/JobJpdbHistory'}}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         default: {$ref: '#/components/responses/Problem'}
+  /import/jpdb/vocab:
+    get:
+      operationId: listJpdbVocab
+      tags: [media]
+      summary: The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+      description: |
+        Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary
+        that a jpdb deck import could not map automatically, with the user's resolution.
+        Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over
+        that order; totals change when decks are re-imported, so a page boundary may skip or
+        repeat a row).
+        - `status=unresolved` (default) is the review queue: only rows with at least one live
+          media (`occurrence_total > 0`).
+        - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted
+          (`occurrence_total = 0`, `media = []`), so a correction can still be cleared.
+        Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`.
+      security:
+        - bearerAuth: [read]
+        - sessionCookie: [read]
+      parameters:
+        - name: status
+          in: query
+          description: Which rows. Default `unresolved`.
+          schema:
+            type: string
+            enum: [unresolved, mapped, ignored, all]
+            default: unresolved
+          example: unresolved
+        - name: media_id
+          in: query
+          description: Only vocabulary occurring in this (live) media.
+          schema: {$ref: '#/components/schemas/Uuid'}
+          example: 0193a1b2-0008-7000-8000-000000000001
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200':
+          description: One page of jpdb vocabulary.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JpdbVocabPage'}
+              examples: {default: {$ref: '#/components/examples/JpdbVocabPage'}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /import/jpdb/vocab/{jpdb_vid}/resolution:
+    parameters:
+      - name: jpdb_vid
+        in: path
+        required: true
+        description: jpdb vocabulary id (a row of the review queue).
+        schema: {type: integer, format: int64, minimum: 1}
+        example: 9300003
+    put:
+      operationId: putJpdbVocabResolution
+      tags: [media]
+      summary: Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+      description: |
+        Stores the correction (server-only import configuration, not an op; C-11,
+        `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that
+        contains the vid from the importer's cache: per media one `jpdb-deck-import` job with
+        `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for
+        that media is reused and listed instead). For each job actually enqueued the server
+        emits `media.content_published` (`parse_status = parsing`) unless the media is already
+        `parsing`.
+        - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,
+          pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`).
+        - Unknown vid (never seen unmapped) - `404`.
+        - Same resolution as stored - `200` with `jobs: []`, nothing written.
+        Corrections persist across re-imports and apply to every jpdb deck containing the vid.
+      x-emits-ops: [media.content_published]
+      security:
+        - bearerAuth: [import]
+        - sessionCookie: [import]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/JpdbVocabResolutionPut'}
+            examples:
+              mapped: {value: {resolution: mapped, entry_seq: 1612400}}
+              ignored: {value: {resolution: ignored}}
+      responses:
+        '200':
+          description: The row as stored and the re-publish jobs.
+          headers: {Kotobaya-Seq: {$ref: '#/components/headers/Seq'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JpdbVocabResolutionResult'}
+              examples: {default: {$ref: '#/components/examples/JpdbVocabResolutionResult'}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      operationId: clearJpdbVocabResolution
+      tags: [media]
+      summary: Clear a correction - the vocabulary item goes back to the review queue.
+      description: |
+        Sets the row back to `unresolved` and re-publishes affected media exactly like
+        `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown
+        vid - `404`.
+      x-emits-ops: [media.content_published]
+      security:
+        - bearerAuth: [import]
+        - sessionCookie: [import]
+      responses:
+        '200':
+          description: The row as stored and the re-publish jobs.
+          headers: {Kotobaya-Seq: {$ref: '#/components/headers/Seq'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JpdbVocabResolutionResult'}
+              examples: {default: {$ref: '#/components/examples/JpdbVocabResolutionCleared'}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
   /media/{media_id}:
     parameters:
       - {$ref: '#/components/parameters/MediaId'}
@@ -2825,7 +2955,11 @@ paths:
         SCHEMA.md requires and makes the server emit `media.content_published` and
         `deck.content_published`. Media with `source = jpdb` has nothing to parse:
         `409 not_applicable`.
-      x-emits-ops: []
+        When a job is enqueued (`202`) the request emits `media.content_published` with
+        `parse_status = parsing` (same version and hash) in the same transaction, unless the
+        media is already `parsing`; if the job then fails or is cancelled the server sets
+        `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11).
+      x-emits-ops: [media.content_published]
       security:
         - bearerAuth: [import]
         - sessionCookie: [import]
@@ -9293,6 +9427,12 @@ components:
           description: Set by the server in the job payload; clients must not send it (`422`).
         deck:
           $ref: '#/components/schemas/MediaDeckOptions'
+        remap_only:
+          type: boolean
+          default: false
+          description: 'Set by the server in jobs that re-publish an existing jpdb media after a mapping correction
+            (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only
+            what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`).'
     JpdbHistoryImportRequest:
       type: object
       description: jpdb export to import. Also the payload of `jpdb-history-import` jobs.
@@ -10679,7 +10819,7 @@ components:
         | `dict-refresh` | `JobPayloadDictRefresh` | `JobResultDictRefresh` |
         | `media-import` | `MediaImportRequest` (with `media_id`) | `JobResultMedia` |
         | `media-parse` | `JobPayloadMediaParse` | `JobResultMedia` |
-        | `jpdb-deck-import` | `JpdbDeckImportRequest` (with `media_id`) | `JobResultMedia` |
+        | `jpdb-deck-import` | `JpdbDeckImportRequest` (with `media_id`; `remap_only` for correction re-publishes) | `JobResultMedia` |
         | `jpdb-history-import` | `JpdbHistoryImportRequest` | `JobResultJpdbHistory` |
         | `fsrs-optimize` | `JobPayloadFsrsOptimize` | `JobResultFsrsOptimize` |
         | `tts` | `TtsRequest` | `JobResultTts` |
@@ -10688,8 +10828,9 @@ components:
         **Server-internal jobs (C-9).** An `app.job` row whose `kind` is not a `JobKind` value
         is *server-internal*: a hand-off between the worker and the server inside one public
         job (its *parent*). The registered internal kinds are listed in
-        `contracts/db/SCHEMA.md` ("Jobs"); today only `jpdb-history-apply` (see
-        `importJpdbHistory`, "Execution"). Rules:
+        `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
+        "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
+        `jpdb-deck-import`; `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
         - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
           cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
           answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`
@@ -10909,8 +11050,10 @@ components:
           description: Distinct entries (= deck items).
         unmapped:
           type: array
-          description: jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing
-            is dropped silently.
+          description: jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction
+            (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise.
+            Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing
+            is dropped silently (C-11).
           items:
             type: object
             required:
@@ -10932,6 +11075,107 @@ components:
                 type: integer
                 minimum: 0
                 description: Occurrences in the deck.
+    JpdbVocabResolution:
+      type: string
+      enum: [unresolved, mapped, ignored]
+      description: unresolved = in the review queue; mapped = imports map the vid to `entry_seq`; ignored = imports
+        keep it unmapped and out of `JobResultMedia.unmapped`.
+    JpdbVocabMedia:
+      type: object
+      description: One live media whose jpdb deck contains the vid.
+      required: [media_id, title, occurrence_count]
+      properties:
+        media_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The media.
+        title:
+          type: string
+          description: Its title.
+        occurrence_count:
+          type: integer
+          minimum: 0
+          description: Occurrences of the vid in that media's jpdb deck, as of its latest import.
+    JpdbVocab:
+      type: object
+      description: A jpdb vocabulary item that the automatic mapper could not map (`app.jpdb_vocab`, C-11).
+      required: [jpdb_vid, spelling, reading, resolution, entry_seq, occurrence_total, media, first_seen_at, resolved_at]
+      properties:
+        jpdb_vid:
+          type: integer
+          format: int64
+          minimum: 1
+          description: jpdb vocabulary id.
+        spelling:
+          type: string
+          description: Spelling as jpdb gives it (latest import).
+        reading:
+          type: string
+          description: Reading as jpdb gives it (latest import).
+        resolution:
+          $ref: '#/components/schemas/JpdbVocabResolution'
+        entry_seq:
+          oneOf:
+          - $ref: '#/components/schemas/EntrySeq'
+          - type: 'null'
+          description: The JMdict entry it is mapped to; set iff `resolution` is `mapped`.
+        occurrence_total:
+          type: integer
+          minimum: 0
+          description: Sum of `media[].occurrence_count` (live media only).
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/JpdbVocabMedia'
+          description: Live media containing it, by `occurrence_count` descending then `media_id`.
+        first_seen_at:
+          $ref: '#/components/schemas/Timestamp'
+          description: When an import first reported it.
+        resolved_at:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+          description: When the current resolution was set; null iff unresolved.
+    JpdbVocabPage:
+      type: object
+      description: A page of jpdb vocabulary.
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/JpdbVocab'
+          description: Rows, by `occurrence_total` descending then `jpdb_vid`.
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          description: Cursor of the next page, or null.
+    JpdbVocabResolutionPut:
+      type: object
+      description: A correction. `entry_seq` is required for `mapped` and forbidden for `ignored` (`422`).
+      additionalProperties: false
+      required: [resolution]
+      properties:
+        resolution:
+          type: string
+          enum: [mapped, ignored]
+          description: What imports do with the vid.
+        entry_seq:
+          $ref: '#/components/schemas/EntrySeq'
+          description: The JMdict entry (`mapped` only); must exist and not be retired.
+    JpdbVocabResolutionResult:
+      type: object
+      description: Outcome of setting or clearing a correction.
+      required: [vocab, jobs]
+      properties:
+        vocab:
+          $ref: '#/components/schemas/JpdbVocab'
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+          description: One `jpdb-deck-import` re-publish job (`remap_only`) per affected live media - newly enqueued
+            or already waiting; empty when nothing changed or no live media contains the vid.
     JobResultJpdbHistory:
       type: object
       description: |-
@@ -13670,6 +13914,64 @@ components:
         created_at: '2026-11-12T09:30:00.000Z'
         started_at: null
         finished_at: null
+    JpdbVocabPage:
+      value:
+        items:
+          - jpdb_vid: 9300001
+            spelling: フリーレン
+            reading: ふりーれん
+            resolution: unresolved
+            entry_seq: null
+            occurrence_total: 312
+            media:
+              - {media_id: 0193a1b2-0008-7000-8000-000000000001, title: 葬送のフリーレン, occurrence_count: 312}
+            first_seen_at: '2026-11-12T09:00:00.000Z'
+            resolved_at: null
+        next_cursor: null
+    JpdbVocabResolutionResult:
+      value:
+        vocab:
+          jpdb_vid: 9300003
+          spelling: 魔族
+          reading: まぞく
+          resolution: mapped
+          entry_seq: 1612400
+          occurrence_total: 75
+          media:
+            - {media_id: 0193a1b2-0008-7000-8000-000000000001, title: 葬送のフリーレン, occurrence_count: 75}
+          first_seen_at: '2026-11-12T09:00:00.000Z'
+          resolved_at: '2026-11-13T08:01:00.000Z'
+        jobs:
+          - id: 0193a1b2-0009-7000-8000-000000000003
+            kind: jpdb-deck-import
+            status: queued
+            payload:
+              jpdb_id: anime/5370
+              media_id: 0193a1b2-0008-7000-8000-000000000001
+              remap_only: true
+            result: null
+            progress: 0
+            progress_message: null
+            error: null
+            attempts: 0
+            max_attempts: 3
+            created_at: '2026-11-13T08:00:00.000Z'
+            started_at: null
+            finished_at: null
+    JpdbVocabResolutionCleared:
+      value:
+        vocab:
+          jpdb_vid: 9300002
+          spelling: ヒンメル
+          reading: ひんめる
+          resolution: unresolved
+          entry_seq: null
+          occurrence_total: 40
+          media:
+            - {media_id: 0193a1b2-0008-7000-8000-000000000001, title: 葬送のフリーレン, occurrence_count: 40}
+          first_seen_at: '2026-11-12T09:00:00.000Z'
+          resolved_at: null
+        jobs: []
     JobJpdbHistory:
       value:
         id: 01931f42-0000-7000-8000-000000000b01

@@ -42,6 +42,7 @@ class TestJpdbDeckImportRequest(unittest.TestCase):
                 jpdb_id = 'g6bUUGjjNSwg0_bs9ZayIMrKdgNvb0',
                 kind = 'anime',
                 media_id = 'bf325375-e030-fccb-a009-17317c574773',
+                remap_only = True,
                 title = '0'
             )
         else:

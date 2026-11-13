@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "parent_job_id": "0193a1b2-0009-7000-8000-000000000001",
+  "media_id": "0193a1b2-0007-7000-8000-000000000001",
+  "base_content_version": 0,
+  "create": {
+    "title": "葬送のフリーレン",
+    "kind": "anime",
+    "source": "file",
+    "jpdb_id": null,
+    "deck": {"priority": 5, "enabled": true, "new_cards_per_day": 10}
+  },
+  "content": {"blob_hash": "9587585c69222de449f9a53376cfb763b6b96091f25848ba09ba0ef5852c1af7", "size_bytes": 1011},
+  "deck_items": {"blob_hash": "4242e9e7841d43c8ffa92e8431ffaba5d3d7cef96ad9f5c4167ffdac17365fad", "size_bytes": 216},
+  "unmapped": [],
+  "jpdb": null
+}

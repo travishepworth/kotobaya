@@ -11,6 +11,7 @@ Name | Type
 `jpdbId` | string
 `kind` | [MediaKind](MediaKind.md)
 `mediaId` | string
+`remapOnly` | boolean
 `title` | string
 
 ## Example
@@ -24,6 +25,7 @@ const example = {
   "jpdbId": null,
   "kind": null,
   "mediaId": null,
+  "remapOnly": null,
   "title": null,
 } satisfies JpdbDeckImportRequest
 

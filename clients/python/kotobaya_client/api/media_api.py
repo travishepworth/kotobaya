@@ -22,6 +22,9 @@ from kotobaya_client.models.coverage import Coverage
 from kotobaya_client.models.job import Job
 from kotobaya_client.models.jpdb_deck_import_request import JpdbDeckImportRequest
 from kotobaya_client.models.jpdb_history_import_request import JpdbHistoryImportRequest
+from kotobaya_client.models.jpdb_vocab_page import JpdbVocabPage
+from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut
+from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
 from kotobaya_client.models.media import Media
 from kotobaya_client.models.media_import_request import MediaImportRequest
 from kotobaya_client.models.media_kind import MediaKind
@@ -46,6 +49,275 @@ class MediaApi:
         if api_client is None:
             api_client = ApiClient.get_default()
         self.api_client = api_client
+
+
+    @validate_call
+    def clear_jpdb_vocab_resolution(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> JpdbVocabResolutionResult:
+        """Clear a correction - the vocabulary item goes back to the review queue.
+
+        Sets the row back to `unresolved` and re-publishes affected media exactly like `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown vid - `404`. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._clear_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def clear_jpdb_vocab_resolution_with_http_info(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[JpdbVocabResolutionResult]:
+        """Clear a correction - the vocabulary item goes back to the review queue.
+
+        Sets the row back to `unresolved` and re-publishes affected media exactly like `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown vid - `404`. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._clear_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def clear_jpdb_vocab_resolution_without_preload_content(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Clear a correction - the vocabulary item goes back to the review queue.
+
+        Sets the row back to `unresolved` and re-publishes affected media exactly like `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown vid - `404`. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._clear_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _clear_jpdb_vocab_resolution_serialize(
+        self,
+        jpdb_vid,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if jpdb_vid is not None:
+            _path_params['jpdb_vid'] = jpdb_vid
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='DELETE',
+            resource_path='/import/jpdb/vocab/{jpdb_vid}/resolution',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
 
 
     @validate_call
@@ -1197,7 +1469,7 @@ class MediaApi:
     ) -> Job:
         """Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 
-        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`. 
+        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`.  **C-11.** Execution through the internal `media-publish` job as for `importMedia` (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits `media.content_published` (`parse_status = parsing`) with the job insert, unless the media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5). `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it (`422`). 
 
         :param jpdb_deck_import_request: (required)
         :type jpdb_deck_import_request: JpdbDeckImportRequest
@@ -1267,7 +1539,7 @@ class MediaApi:
     ) -> ApiResponse[Job]:
         """Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 
-        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`. 
+        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`.  **C-11.** Execution through the internal `media-publish` job as for `importMedia` (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits `media.content_published` (`parse_status = parsing`) with the job insert, unless the media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5). `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it (`422`). 
 
         :param jpdb_deck_import_request: (required)
         :type jpdb_deck_import_request: JpdbDeckImportRequest
@@ -1337,7 +1609,7 @@ class MediaApi:
     ) -> RESTResponseType:
         """Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 
-        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`. 
+        Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`.  **C-11.** Execution through the internal `media-publish` job as for `importMedia` (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits `media.content_published` (`parse_status = parsing`) with the job insert, unless the media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5). `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it (`422`). 
 
         :param jpdb_deck_import_request: (required)
         :type jpdb_deck_import_request: JpdbDeckImportRequest
@@ -1767,7 +2039,7 @@ class MediaApi:
     ) -> Job:
         """Import your own file(s), a URL or pasted text as media (worker job).
 
-        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). 
+        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal `media-publish` job; the server creates the rows and mints the   ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled   first import leaves no media. - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,   `media.content_published` with `parse_status = parsing` (same version and hash) unless   the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request. 
 
         :param media_import_request: (required)
         :type media_import_request: MediaImportRequest
@@ -1839,7 +2111,7 @@ class MediaApi:
     ) -> ApiResponse[Job]:
         """Import your own file(s), a URL or pasted text as media (worker job).
 
-        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). 
+        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal `media-publish` job; the server creates the rows and mints the   ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled   first import leaves no media. - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,   `media.content_published` with `parse_status = parsing` (same version and hash) unless   the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request. 
 
         :param media_import_request: (required)
         :type media_import_request: MediaImportRequest
@@ -1911,7 +2183,7 @@ class MediaApi:
     ) -> RESTResponseType:
         """Import your own file(s), a URL or pasted text as media (worker job).
 
-        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). 
+        Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request's);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job's `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal `media-publish` job; the server creates the rows and mints the   ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled   first import leaves no media. - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,   `media.content_published` with `parse_status = parsing` (same version and hash) unless   the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request. 
 
         :param media_import_request: (required)
         :type media_import_request: MediaImportRequest
@@ -2024,6 +2296,328 @@ class MediaApi:
         return self.api_client.param_serialize(
             method='POST',
             resource_path='/media/import',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_jpdb_vocab(
+        self,
+        status: Annotated[Optional[StrictStr], Field(description="Which rows. Default `unresolved`.")] = None,
+        media_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only vocabulary occurring in this (live) media.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> JpdbVocabPage:
+        """The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+
+        Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user's resolution. Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - `status=unresolved` (default) is the review queue: only rows with at least one live   media (`occurrence_total > 0`). - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted   (`occurrence_total = 0`, `media = []`), so a correction can still be cleared. Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`. 
+
+        :param status: Which rows. Default `unresolved`.
+        :type status: str
+        :param media_id: Only vocabulary occurring in this (live) media.
+        :type media_id: str
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_jpdb_vocab_serialize(
+            status=status,
+            media_id=media_id,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabPage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def list_jpdb_vocab_with_http_info(
+        self,
+        status: Annotated[Optional[StrictStr], Field(description="Which rows. Default `unresolved`.")] = None,
+        media_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only vocabulary occurring in this (live) media.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[JpdbVocabPage]:
+        """The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+
+        Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user's resolution. Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - `status=unresolved` (default) is the review queue: only rows with at least one live   media (`occurrence_total > 0`). - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted   (`occurrence_total = 0`, `media = []`), so a correction can still be cleared. Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`. 
+
+        :param status: Which rows. Default `unresolved`.
+        :type status: str
+        :param media_id: Only vocabulary occurring in this (live) media.
+        :type media_id: str
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_jpdb_vocab_serialize(
+            status=status,
+            media_id=media_id,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabPage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def list_jpdb_vocab_without_preload_content(
+        self,
+        status: Annotated[Optional[StrictStr], Field(description="Which rows. Default `unresolved`.")] = None,
+        media_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Only vocabulary occurring in this (live) media.")] = None,
+        limit: Annotated[Optional[Annotated[int, Field(le=500, strict=True, ge=1)]], Field(description="Page size.")] = None,
+        cursor: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=1024)]], Field(description="Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+
+        Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user's resolution. Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - `status=unresolved` (default) is the review queue: only rows with at least one live   media (`occurrence_total > 0`). - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted   (`occurrence_total = 0`, `media = []`), so a correction can still be cleared. Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`. 
+
+        :param status: Which rows. Default `unresolved`.
+        :type status: str
+        :param media_id: Only vocabulary occurring in this (live) media.
+        :type media_id: str
+        :param limit: Page size.
+        :type limit: int
+        :param cursor: Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+        :type cursor: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_jpdb_vocab_serialize(
+            status=status,
+            media_id=media_id,
+            limit=limit,
+            cursor=cursor,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabPage",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _list_jpdb_vocab_serialize(
+        self,
+        status,
+        media_id,
+        limit,
+        cursor,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        if status is not None:
+            
+            _query_params.append(('status', status))
+            
+        if media_id is not None:
+            
+            _query_params.append(('media_id', media_id))
+            
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if cursor is not None:
+            
+            _query_params.append(('cursor', cursor))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/import/jpdb/vocab',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -3157,6 +3751,306 @@ class MediaApi:
 
 
     @validate_call
+    def put_jpdb_vocab_resolution(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        jpdb_vocab_resolution_put: JpdbVocabResolutionPut,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> JpdbVocabResolutionResult:
+        """Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+
+        Stores the correction (server-only import configuration, not an op; C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that contains the vid from the importer's cache: per media one `jpdb-deck-import` job with `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits `media.content_published` (`parse_status = parsing`) unless the media is already `parsing`. - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,   pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`). - Unknown vid (never seen unmapped) - `404`. - Same resolution as stored - `200` with `jobs: []`, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param jpdb_vocab_resolution_put: (required)
+        :type jpdb_vocab_resolution_put: JpdbVocabResolutionPut
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._put_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            jpdb_vocab_resolution_put=jpdb_vocab_resolution_put,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def put_jpdb_vocab_resolution_with_http_info(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        jpdb_vocab_resolution_put: JpdbVocabResolutionPut,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[JpdbVocabResolutionResult]:
+        """Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+
+        Stores the correction (server-only import configuration, not an op; C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that contains the vid from the importer's cache: per media one `jpdb-deck-import` job with `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits `media.content_published` (`parse_status = parsing`) unless the media is already `parsing`. - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,   pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`). - Unknown vid (never seen unmapped) - `404`. - Same resolution as stored - `200` with `jobs: []`, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param jpdb_vocab_resolution_put: (required)
+        :type jpdb_vocab_resolution_put: JpdbVocabResolutionPut
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._put_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            jpdb_vocab_resolution_put=jpdb_vocab_resolution_put,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def put_jpdb_vocab_resolution_without_preload_content(
+        self,
+        jpdb_vid: Annotated[int, Field(strict=True, ge=1, description="jpdb vocabulary id (a row of the review queue).")],
+        jpdb_vocab_resolution_put: JpdbVocabResolutionPut,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+
+        Stores the correction (server-only import configuration, not an op; C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that contains the vid from the importer's cache: per media one `jpdb-deck-import` job with `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits `media.content_published` (`parse_status = parsing`) unless the media is already `parsing`. - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,   pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`). - Unknown vid (never seen unmapped) - `404`. - Same resolution as stored - `200` with `jobs: []`, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+
+        :param jpdb_vid: jpdb vocabulary id (a row of the review queue). (required)
+        :type jpdb_vid: int
+        :param jpdb_vocab_resolution_put: (required)
+        :type jpdb_vocab_resolution_put: JpdbVocabResolutionPut
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._put_jpdb_vocab_resolution_serialize(
+            jpdb_vid=jpdb_vid,
+            jpdb_vocab_resolution_put=jpdb_vocab_resolution_put,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "JpdbVocabResolutionResult",
+            '404': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _put_jpdb_vocab_resolution_serialize(
+        self,
+        jpdb_vid,
+        jpdb_vocab_resolution_put,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if jpdb_vid is not None:
+            _path_params['jpdb_vid'] = jpdb_vid
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if jpdb_vocab_resolution_put is not None:
+            _body_params = jpdb_vocab_resolution_put
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            self.api_client._set_header(_header_params, 'Content-Type', _content_type)
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                self.api_client._set_header(_header_params, 'Content-Type', _default_content_type)
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='PUT',
+            resource_path='/import/jpdb/vocab/{jpdb_vid}/resolution',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
     def reparse_media(
         self,
         media_id: Annotated[str, Field(strict=True, description="Media id.")],
@@ -3175,7 +4069,7 @@ class MediaApi:
     ) -> Job:
         """Re-parse a media (after parse overrides or a dictionary refresh).
 
-        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. 
+        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. When a job is enqueued (`202`) the request emits `media.content_published` with `parse_status = parsing` (same version and hash) in the same transaction, unless the media is already `parsing`; if the job then fails or is cancelled the server sets `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11). 
 
         :param media_id: Media id. (required)
         :type media_id: str
@@ -3247,7 +4141,7 @@ class MediaApi:
     ) -> ApiResponse[Job]:
         """Re-parse a media (after parse overrides or a dictionary refresh).
 
-        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. 
+        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. When a job is enqueued (`202`) the request emits `media.content_published` with `parse_status = parsing` (same version and hash) in the same transaction, unless the media is already `parsing`; if the job then fails or is cancelled the server sets `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11). 
 
         :param media_id: Media id. (required)
         :type media_id: str
@@ -3319,7 +4213,7 @@ class MediaApi:
     ) -> RESTResponseType:
         """Re-parse a media (after parse overrides or a dictionary refresh).
 
-        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. 
+        Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. When a job is enqueued (`202`) the request emits `media.content_published` with `parse_status = parsing` (same version and hash) in the same transaction, unless the media is already `parsing`; if the job then fails or is cancelled the server sets `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11). 
 
         :param media_id: Media id. (required)
         :type media_id: str

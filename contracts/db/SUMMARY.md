@@ -102,7 +102,7 @@
   grammar highlight.
 - `review_log.utc_offset_min` is empty when unknown (imports) rather than pretending UTC.
 - No table yet for: the web password hash / TOTP secret (assumed to come from a Kubernetes
-  Secret), the jpdb "unmapped vocabulary" review queue, a TTS cache index, cached coverage
+  Secret), a TTS cache index, cached coverage
   numbers. Each can be added by the ticket that needs it as an additive migration.
 - The sync log (`change`) is never pruned in v1.
 
@@ -167,3 +167,34 @@
   `jpdb-history-apply` (worker plans, server applies through OpApply).
 - Alternative rejected: a `parent_job_id` column or an `internal` flag. Both need DDL in an
   applied migration; a payload member and the "not in `JobKind`" rule need none.
+
+## C-11 changes (media pipeline; additive: `V2__jpdb_vocab.sql`, new documents)
+- **Snapshot archives defined** (`SNAPSHOT.md`): a media's content and a deck's items are each
+  one zstd-compressed JSON Lines file: a header line (which media or deck, which version, how
+  many records follow) and then one line per row, in a fixed order. Records match the table
+  columns. `media/validate.py` checks an archive against per-record JSON Schemas plus every
+  cross-row rule (counts add up, occurrences are exactly what the tokens say, a media deck's items
+  are exactly the media's words). Worked examples are checked in under `media/examples/`.
+- **Only the server writes media rows.** The worker builds the archives, uploads them, and hands
+  them to the server through a second internal job kind, `media-publish`. The server creates
+  the media and its deck (first import), installs segments, sentences, occurrences and deck
+  items, and announces the new version, all in one transaction (`MEDIA_PIPELINE.md` 3).
+  Devices install the same archives with the same rule. (Refines ADR-014.)
+- **Concurrent publishes of one media** (an append import during a re-parse): the second one is
+  refused as stale and its worker rebuilds on top of the first, so nothing is lost.
+- **`parse_status`**: a new media appears already `parsed`. For an existing one, the request
+  that queues work sets `parsing`; the publish sets `parsed`; a server reconciler sets `failed`
+  (or back to `parsed` after a cancel) when the work ended without publishing.
+- **jpdb review queue**: two server-only tables (`jpdb_vocab`, `jpdb_vocab_media`) hold the jpdb
+  words that did not map, which media contain them, and your fix (map to an entry, or ignore).
+  A fix is import configuration, not learning data: no op, not synced, so no app update is
+  needed. Each fix re-publishes the affected jpdb decks from the importer's cache. (Refines
+  ADR-015.)
+- Deck items from a snapshot get `added_at` = the deck's creation time, so every replica holds
+  identical rows.
+- `check.sh` runs Postgres on a tmpfs data directory (it previously failed when the Docker disk
+  was full) and applies V2 after V1.
+- Worth a second look: (1) media decks list every word, particles included (`unique_entries`
+  already meant that); (2) the snapshot integrity rule that occurrences equal the token
+  aggregation ties the formats to the token shape C-12 finalises; (3) corrections are not in
+  exports or the sync log, so a device restore cannot recover them (the server backup does).

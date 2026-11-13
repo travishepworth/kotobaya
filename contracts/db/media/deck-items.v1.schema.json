@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/db/media/deck-items.v1.schema.json",
+  "title": "kotobaya-deck-items v1: one line (record)",
+  "description": "Every line of a deck-item snapshot (SNAPSHOT.md section 4) is exactly one of these records. Producer schema: closed records. Readers ignore unknown members (SNAPSHOT.md 6). Order, uniqueness, positions and the media-deck pairing rules are checked by validate.py.",
+  "type": "object",
+  "required": ["record"],
+  "properties": {"record": {"enum": ["header", "item"]}},
+  "oneOf": [
+    {"$ref": "#/$defs/header"},
+    {"$ref": "#/$defs/item"}
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "header": {
+      "type": "object",
+      "description": "First line, exactly once.",
+      "additionalProperties": false,
+      "required": ["record", "format", "format_version", "deck_id", "deck_type", "content_version", "counts"],
+      "properties": {
+        "record": {"const": "header"},
+        "format": {"const": "kotobaya-deck-items"},
+        "format_version": {"const": 1},
+        "deck_id": {"$ref": "#/$defs/uuid", "description": "app.deck.id (for a media deck = its media id)."},
+        "deck_type": {"enum": ["media", "list"], "description": "Must equal app.deck.type of deck_id."},
+        "content_version": {"type": "integer", "minimum": 1, "maximum": 2147483647, "description": "The deck.content_version this archive is published as."},
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["item"],
+          "properties": {"item": {"type": "integer", "minimum": 0, "maximum": 1000000}}
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "description": "One app.deck_item row of the deck: item_key = \"e:<entry_seq>\", note_id NULL, hlc NULL, deleted_at NULL, added_at = the deck's created_at (SNAPSHOT.md 4.3).",
+      "additionalProperties": false,
+      "required": ["record", "entry_seq", "position", "occurrence_count"],
+      "properties": {
+        "record": {"const": "item"},
+        "entry_seq": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "position": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "occurrence_count": {"type": "integer", "minimum": 0, "maximum": 2147483647}
+      }
+    }
+  }
+}

@@ -188,6 +188,12 @@ __all__ = [
     "JobStatus",
     "JpdbDeckImportRequest",
     "JpdbHistoryImportRequest",
+    "JpdbVocab",
+    "JpdbVocabMedia",
+    "JpdbVocabPage",
+    "JpdbVocabResolution",
+    "JpdbVocabResolutionPut",
+    "JpdbVocabResolutionResult",
     "Kanji",
     "LoginRequest",
     "Media",
@@ -483,6 +489,12 @@ from kotobaya_client.models.job_result_tts import JobResultTts as JobResultTts
 from kotobaya_client.models.job_status import JobStatus as JobStatus
 from kotobaya_client.models.jpdb_deck_import_request import JpdbDeckImportRequest as JpdbDeckImportRequest
 from kotobaya_client.models.jpdb_history_import_request import JpdbHistoryImportRequest as JpdbHistoryImportRequest
+from kotobaya_client.models.jpdb_vocab import JpdbVocab as JpdbVocab
+from kotobaya_client.models.jpdb_vocab_media import JpdbVocabMedia as JpdbVocabMedia
+from kotobaya_client.models.jpdb_vocab_page import JpdbVocabPage as JpdbVocabPage
+from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution as JpdbVocabResolution
+from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut as JpdbVocabResolutionPut
+from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult as JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji as Kanji
 from kotobaya_client.models.login_request import LoginRequest as LoginRequest
 from kotobaya_client.models.media import Media as Media

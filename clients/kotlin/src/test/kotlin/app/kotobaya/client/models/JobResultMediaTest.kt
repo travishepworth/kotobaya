@@ -70,7 +70,7 @@ class JobResultMediaTest : ShouldSpec() {
             //modelInstance.uniqueEntries shouldBe ("TODO")
         }
 
-        // to test the property `unmapped` - jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing is dropped silently.
+        // to test the property `unmapped` - jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11).
         should("test unmapped") {
             // uncomment below to test the property
             //modelInstance.unmapped shouldBe ("TODO")

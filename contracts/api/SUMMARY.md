@@ -130,15 +130,14 @@ import; TTS; hot kanji; a "today" stats summary and FSRS calibration; job cancel
 
 ## Known gaps (not defined here)
 
-- **Snapshot archive formats** (media content, deck items, dictionary builds). This spec only
-  says they are blobs fetched by hash. Someone must define the file format before P1.
+- ~~Snapshot archive formats~~ — closed: dictionary builds by C-3 (`contracts/db/DICT_PACKAGE.md`),
+  media content and deck items by C-11 (`contracts/db/SNAPSHOT.md`).
 - **Pairing codes and login rate limits have no table.** The spec allows in-memory state
   (restart invalidates outstanding codes). Fine for one API replica; needs an additive migration
   for more.
 - **Who produces `confusable.suggested`** and when. No job kind or endpoint triggers it yet.
-- **The jpdb "unmapped vocabulary" review queue.** Unmapped items are returned in job results
-  (nothing is dropped silently), but there is no endpoint to resolve them one by one; the
-  database contract deferred the table.
+- ~~The jpdb "unmapped vocabulary" review queue~~ — closed by C-11: `listJpdbVocab`,
+  `putJpdbVocabResolution`, `clearJpdbVocabResolution` (`contracts/db/MEDIA_PIPELINE.md` 5).
 - **Backup status** for the settings screen: backups run outside the API, which has no knowledge
   of them.
 - **LLM assist** endpoints (off by default in the spec).
@@ -217,6 +216,7 @@ Everything else (additions):
 | Notes and cards | `getNote`, `bulkScheduleCards`, `createCard`, `getCard`, `updateCard`, `deleteCard`, `listCardReviews` |
 | Decks | `listDeckLists`, `getDeck`, `deleteDeck`, `addDeckItems`, `putDeckItem`, `removeDeckItem` |
 | Media | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `reparseMedia`, `importJpdbHistory`, `listSentences`, `getSentence` |
+| jpdb mapping review queue (C-11) | `listJpdbVocab`, `putJpdbVocabResolution`, `clearJpdbVocabResolution` |
 | Words | `getWordStatus`, `clearWordStatus`, `listHotKanji`, `listConfusables`, `setConfusable` |
 | Grammar | `getGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`, `putGrammarSpan`, `removeGrammarSpan` |
 | Stats | `getStatsSummary`, `getStatsCalibration` |
@@ -249,7 +249,7 @@ operation starts; "(consequence)" = emitted by the op-apply path. Every op also 
 | `sentence_grammar_span` | `grammar.span_put`, `grammar.span_removed` | `putGrammarSpan`, `removeGrammarSpan`, `listGrammarExamples`, `testGrammarRules` |
 | `settings` | `settings.set` | `listSettings`, `updateSettings` |
 | `fsrs_params` | `fsrs_params.created/updated/deleted`; `fsrs_params.published` (job) | `listPresets`, `getPreset`, `createPreset`, `updatePreset`, `deletePreset`, `optimizePreset` |
-| `media` | `media.updated/deleted`; `media.created`, `media.content_published` (job) | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `importMedia`, `importJpdbDeck`, `reparseMedia` |
+| `media` | `media.updated/deleted`; `media.created`, `media.content_published` (job); `media.content_published` `parsing` (request, C-11) | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `importMedia`, `importJpdbDeck`, `reparseMedia`, `putJpdbVocabResolution`, `clearJpdbVocabResolution` |
 | `parse_override` | `parse_override.put`, `parse_override.deleted` | `listParseOverrides`, `putParseOverride`, `deleteParseOverride`, `parseText` |
 
 ## Verifying
@@ -304,3 +304,23 @@ attempt 1 is gone). Needs node and python3; network on first run.
   This matches the T207b code, but adding a kind to `JobKind` later exposes it. (2) Collisions
   count inside bucket 8 instead of getting their own bucket. (3) The parent reports no partial
   counts on cancel.
+
+## C-11 changes (additive)
+- **Media pipeline.** Media imports, re-parses and jpdb deck imports publish through a second
+  server-internal job kind, `media-publish`: the worker builds two snapshot archives (media
+  content, deck items; `contracts/db/SNAPSHOT.md`) and the server installs them and mints
+  `media.created`, `deck.created`, `media.content_published`, `deck.content_published` in one
+  transaction (`contracts/db/MEDIA_PIPELINE.md`). The worker no longer writes media rows.
+- **`parse_status`.** `importMedia` (append), `importJpdbDeck` (known deck) and `reparseMedia` now
+  emit `media.content_published` with `parsing` when they enqueue a job for an existing media;
+  a server reconciler turns a stuck `parsing` into `failed` or back to `parsed`. Their
+  `x-emits-ops` lists `media.content_published`.
+- **jpdb mapping review queue.** `GET /import/jpdb/vocab` (`listJpdbVocab`), `PUT` / `DELETE
+  /import/jpdb/vocab/{jpdb_vid}/resolution` (`putJpdbVocabResolution`,
+  `clearJpdbVocabResolution`, scope `import`): map an unmapped jpdb word to a dictionary entry or
+  ignore it. Stored server-side (not an op, not synced); each change re-publishes the affected
+  jpdb media from the importer's cache (`jpdb-deck-import` jobs with the new server-set
+  `JpdbDeckImportRequest.remap_only`).
+- Worth a second look: (1) corrections are not synced and not in exports; (2) `parsing` is
+  emitted by the request, not the job, so a crashed job relies on the reconciler; (3) the remap
+  job clears its own dedupe key on start so later corrections can queue another remap.

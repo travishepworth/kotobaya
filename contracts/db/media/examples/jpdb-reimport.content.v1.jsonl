@@ -1,0 +1,6 @@
+{"content_version":4,"counts":{"grammar_span":0,"occurrence":4,"segment":1,"sentence":0},"format":"kotobaya-media-content","format_version":1,"media_id":"0193a1b2-0008-7000-8000-000000000001","record":"header"}
+{"id":"0193a1b2-0008-7000-8000-0000000005a0","kind":"whole","ordinal":0,"record":"segment","sentence_count":0,"title":"","token_count":1504,"unmapped_token_count":352}
+{"count":57,"entry_seq":1358280,"pos_class":"content","record":"occurrence","segment_id":"0193a1b2-0008-7000-8000-0000000005a0","sentence_ids":[]}
+{"count":120,"entry_seq":1520850,"pos_class":"content","record":"occurrence","segment_id":"0193a1b2-0008-7000-8000-0000000005a0","sentence_ids":[]}
+{"count":75,"entry_seq":1612400,"pos_class":"content","record":"occurrence","segment_id":"0193a1b2-0008-7000-8000-0000000005a0","sentence_ids":[]}
+{"count":900,"entry_seq":2028920,"pos_class":"particle","record":"occurrence","segment_id":"0193a1b2-0008-7000-8000-0000000005a0","sentence_ids":[]}

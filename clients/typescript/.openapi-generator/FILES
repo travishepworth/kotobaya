@@ -151,6 +151,12 @@ docs/JobStatus.md
 docs/JobsApi.md
 docs/JpdbDeckImportRequest.md
 docs/JpdbHistoryImportRequest.md
+docs/JpdbVocab.md
+docs/JpdbVocabMedia.md
+docs/JpdbVocabPage.md
+docs/JpdbVocabResolution.md
+docs/JpdbVocabResolutionPut.md
+docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
 docs/LoginRequest.md
 docs/Media.md
@@ -445,6 +451,12 @@ src/models/JobResultTts.ts
 src/models/JobStatus.ts
 src/models/JpdbDeckImportRequest.ts
 src/models/JpdbHistoryImportRequest.ts
+src/models/JpdbVocab.ts
+src/models/JpdbVocabMedia.ts
+src/models/JpdbVocabPage.ts
+src/models/JpdbVocabResolution.ts
+src/models/JpdbVocabResolutionPut.ts
+src/models/JpdbVocabResolutionResult.ts
 src/models/Kanji.ts
 src/models/LoginRequest.ts
 src/models/Media.ts

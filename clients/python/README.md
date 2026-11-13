@@ -360,6 +360,7 @@ Class | Method | HTTP request | Description
 *JobsApi* | [**get_job**](docs/JobsApi.md#get_job) | **GET** /jobs/{job_id} | One job with progress, result or error.
 *JobsApi* | [**list_jobs**](docs/JobsApi.md#list_jobs) | **GET** /jobs | List background jobs (imports, parses, optimizer runs, ...).
 *JobsApi* | [**synthesize_speech**](docs/JobsApi.md#synthesize_speech) | **POST** /tts | Synthesize Japanese speech (VOICEVOX) into an audio blob.
+*MediaApi* | [**clear_jpdb_vocab_resolution**](docs/MediaApi.md#clear_jpdb_vocab_resolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue.
 *MediaApi* | [**delete_media**](docs/MediaApi.md#delete_media) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content.
 *MediaApi* | [**get_media**](docs/MediaApi.md#get_media) | **GET** /media/{media_id} | One media with its segments.
 *MediaApi* | [**get_media_coverage**](docs/MediaApi.md#get_media_coverage) | **GET** /media/{media_id}/coverage | Coverage of a media (or one segment) by your word statuses.
@@ -367,9 +368,11 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**import_jpdb_deck**](docs/MediaApi.md#import_jpdb_deck) | **POST** /media/import/jpdb | Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 *MediaApi* | [**import_jpdb_history**](docs/MediaApi.md#import_jpdb_history) | **POST** /import/jpdb/history | Import jpdb review history and word statuses from a jpdb export file.
 *MediaApi* | [**import_media**](docs/MediaApi.md#import_media) | **POST** /media/import | Import your own file(s), a URL or pasted text as media (worker job).
+*MediaApi* | [**list_jpdb_vocab**](docs/MediaApi.md#list_jpdb_vocab) | **GET** /import/jpdb/vocab | The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
 *MediaApi* | [**list_media**](docs/MediaApi.md#list_media) | **GET** /media | List the media library.
 *MediaApi* | [**list_media_sentences**](docs/MediaApi.md#list_media_sentences) | **GET** /media/{media_id}/sentences | Sentences of a media, optionally only i+1 sentences.
 *MediaApi* | [**list_sentences**](docs/MediaApi.md#list_sentences) | **GET** /sentences | Search sentences across all media.
+*MediaApi* | [**put_jpdb_vocab_resolution**](docs/MediaApi.md#put_jpdb_vocab_resolution) | **PUT** /import/jpdb/vocab/{jpdb_vid}/resolution | Map a jpdb vocabulary item to a JMdict entry, or ignore it.
 *MediaApi* | [**reparse_media**](docs/MediaApi.md#reparse_media) | **POST** /media/{media_id}/reparse | Re-parse a media (after parse overrides or a dictionary refresh).
 *MediaApi* | [**update_media**](docs/MediaApi.md#update_media) | **PATCH** /media/{media_id} | Change a media&#39;s title, kind or cover.
 *MetaApi* | [**get_health**](docs/MetaApi.md#get_health) | **GET** /health | Liveness and readiness probe.
@@ -563,6 +566,12 @@ Class | Method | HTTP request | Description
  - [JobStatus](docs/JobStatus.md)
  - [JpdbDeckImportRequest](docs/JpdbDeckImportRequest.md)
  - [JpdbHistoryImportRequest](docs/JpdbHistoryImportRequest.md)
+ - [JpdbVocab](docs/JpdbVocab.md)
+ - [JpdbVocabMedia](docs/JpdbVocabMedia.md)
+ - [JpdbVocabPage](docs/JpdbVocabPage.md)
+ - [JpdbVocabResolution](docs/JpdbVocabResolution.md)
+ - [JpdbVocabResolutionPut](docs/JpdbVocabResolutionPut.md)
+ - [JpdbVocabResolutionResult](docs/JpdbVocabResolutionResult.md)
  - [Kanji](docs/Kanji.md)
  - [LoginRequest](docs/LoginRequest.md)
  - [Media](docs/Media.md)

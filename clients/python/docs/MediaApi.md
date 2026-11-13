@@ -4,6 +4,7 @@ All URIs are relative to */api/v1*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**clear_jpdb_vocab_resolution**](MediaApi.md#clear_jpdb_vocab_resolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue.
 [**delete_media**](MediaApi.md#delete_media) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content.
 [**get_media**](MediaApi.md#get_media) | **GET** /media/{media_id} | One media with its segments.
 [**get_media_coverage**](MediaApi.md#get_media_coverage) | **GET** /media/{media_id}/coverage | Coverage of a media (or one segment) by your word statuses.
@@ -11,12 +12,104 @@ Method | HTTP request | Description
 [**import_jpdb_deck**](MediaApi.md#import_jpdb_deck) | **POST** /media/import/jpdb | Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 [**import_jpdb_history**](MediaApi.md#import_jpdb_history) | **POST** /import/jpdb/history | Import jpdb review history and word statuses from a jpdb export file.
 [**import_media**](MediaApi.md#import_media) | **POST** /media/import | Import your own file(s), a URL or pasted text as media (worker job).
+[**list_jpdb_vocab**](MediaApi.md#list_jpdb_vocab) | **GET** /import/jpdb/vocab | The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
 [**list_media**](MediaApi.md#list_media) | **GET** /media | List the media library.
 [**list_media_sentences**](MediaApi.md#list_media_sentences) | **GET** /media/{media_id}/sentences | Sentences of a media, optionally only i+1 sentences.
 [**list_sentences**](MediaApi.md#list_sentences) | **GET** /sentences | Search sentences across all media.
+[**put_jpdb_vocab_resolution**](MediaApi.md#put_jpdb_vocab_resolution) | **PUT** /import/jpdb/vocab/{jpdb_vid}/resolution | Map a jpdb vocabulary item to a JMdict entry, or ignore it.
 [**reparse_media**](MediaApi.md#reparse_media) | **POST** /media/{media_id}/reparse | Re-parse a media (after parse overrides or a dictionary refresh).
 [**update_media**](MediaApi.md#update_media) | **PATCH** /media/{media_id} | Change a media&#39;s title, kind or cover.
 
+
+# **clear_jpdb_vocab_resolution**
+> JpdbVocabResolutionResult clear_jpdb_vocab_resolution(jpdb_vid)
+
+Clear a correction - the vocabulary item goes back to the review queue.
+
+Sets the row back to `unresolved` and re-publishes affected media exactly like
+`putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown
+vid - `404`.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.MediaApi(api_client)
+    jpdb_vid = 9300003 # int | jpdb vocabulary id (a row of the review queue).
+
+    try:
+        # Clear a correction - the vocabulary item goes back to the review queue.
+        api_response = api_instance.clear_jpdb_vocab_resolution(jpdb_vid)
+        print("The response of MediaApi->clear_jpdb_vocab_resolution:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling MediaApi->clear_jpdb_vocab_resolution: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jpdb_vid** | **int**| jpdb vocabulary id (a row of the review queue). | 
+
+### Return type
+
+[**JpdbVocabResolutionResult**](JpdbVocabResolutionResult.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | The row as stored and the re-publish jobs. |  * Kotobaya-Seq -  <br>  |
+**404** | No such resource. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **delete_media**
 > delete_media(media_id)
@@ -392,6 +485,15 @@ one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict 
 listed in the job result (`unmapped`), never silently dropped.
 An equivalent queued or running job is returned with `200`.
 
+**C-11.** Execution through the internal `media-publish` job as for `importMedia`
+(`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits
+`media.content_published` (`parse_status = parsing`) with the job insert, unless the
+media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections
+(`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic
+mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5).
+`remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it
+(`422`).
+
 
 ### Example
 
@@ -761,6 +863,13 @@ variant.
   rest of the body says. Without `import_id` a retry after a lost `202` imports twice
   (a second media and deck); clients that may retry MUST send it. An `import_id` used by
   a job of another kind is `409 already_exists` (`existing_id` = that job).
+- **Execution (C-11).** The worker builds snapshot archives and hands them to the server
+  through the internal `media-publish` job; the server creates the rows and mints the
+  ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled
+  first import leaves no media.
+- **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,
+  `media.content_published` with `parse_status = parsing` (same version and hash) unless
+  the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request.
 
 
 ### Example
@@ -842,6 +951,109 @@ Name | Type | Description  | Notes
 **202** | Import job queued. |  -  |
 **404** | No such resource. |  -  |
 **409** | A natural-key collision; &#x60;existing_id&#x60; names the row that holds the key. |  -  |
+**422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_jpdb_vocab**
+> JpdbVocabPage list_jpdb_vocab(status=status, media_id=media_id, limit=limit, cursor=cursor)
+
+The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+
+Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary
+that a jpdb deck import could not map automatically, with the user's resolution.
+Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over
+that order; totals change when decks are re-imported, so a page boundary may skip or
+repeat a row).
+- `status=unresolved` (default) is the review queue: only rows with at least one live
+  media (`occurrence_total > 0`).
+- `status=mapped` / `ignored` / `all` also list rows whose media were all deleted
+  (`occurrence_total = 0`, `media = []`), so a correction can still be cleared.
+Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.jpdb_vocab_page import JpdbVocabPage
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.MediaApi(api_client)
+    status = 'unresolved' # str | Which rows. Default `unresolved`. (optional)
+    media_id = '0193a1b2-0008-7000-8000-000000000001' # str | Only vocabulary occurring in this (live) media. (optional)
+    limit = 50 # int | Page size. (optional) (default to 50)
+    cursor = 'eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19' # str | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`. (optional)
+
+    try:
+        # The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+        api_response = api_instance.list_jpdb_vocab(status=status, media_id=media_id, limit=limit, cursor=cursor)
+        print("The response of MediaApi->list_jpdb_vocab:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling MediaApi->list_jpdb_vocab: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **status** | **str**| Which rows. Default &#x60;unresolved&#x60;. | [optional] 
+ **media_id** | **str**| Only vocabulary occurring in this (live) media. | [optional] 
+ **limit** | **int**| Page size. | [optional] [default to 50]
+ **cursor** | **str**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] 
+
+### Return type
+
+[**JpdbVocabPage**](JpdbVocabPage.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | One page of jpdb vocabulary. |  -  |
 **422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
 **0** | Any other error. See the error table in the API description. |  -  |
 
@@ -1151,6 +1363,109 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **put_jpdb_vocab_resolution**
+> JpdbVocabResolutionResult put_jpdb_vocab_resolution(jpdb_vid, jpdb_vocab_resolution_put)
+
+Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+
+Stores the correction (server-only import configuration, not an op; C-11,
+`contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that
+contains the vid from the importer's cache: per media one `jpdb-deck-import` job with
+`remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for
+that media is reused and listed instead). For each job actually enqueued the server
+emits `media.content_published` (`parse_status = parsing`) unless the media is already
+`parsing`.
+- `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,
+  pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`).
+- Unknown vid (never seen unmapped) - `404`.
+- Same resolution as stored - `200` with `jobs: []`, nothing written.
+Corrections persist across re-imports and apply to every jpdb deck containing the vid.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut
+from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.MediaApi(api_client)
+    jpdb_vid = 9300003 # int | jpdb vocabulary id (a row of the review queue).
+    jpdb_vocab_resolution_put = {"resolution":"ignored"} # JpdbVocabResolutionPut | 
+
+    try:
+        # Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+        api_response = api_instance.put_jpdb_vocab_resolution(jpdb_vid, jpdb_vocab_resolution_put)
+        print("The response of MediaApi->put_jpdb_vocab_resolution:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling MediaApi->put_jpdb_vocab_resolution: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jpdb_vid** | **int**| jpdb vocabulary id (a row of the review queue). | 
+ **jpdb_vocab_resolution_put** | [**JpdbVocabResolutionPut**](JpdbVocabResolutionPut.md)|  | 
+
+### Return type
+
+[**JpdbVocabResolutionResult**](JpdbVocabResolutionResult.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | The row as stored and the re-publish jobs. |  * Kotobaya-Seq -  <br>  |
+**404** | No such resource. |  -  |
+**422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **reparse_media**
 > Job reparse_media(media_id)
 
@@ -1161,6 +1476,10 @@ queued or running job is returned with `200`. The job keeps segment and sentence
 SCHEMA.md requires and makes the server emit `media.content_published` and
 `deck.content_published`. Media with `source = jpdb` has nothing to parse:
 `409 not_applicable`.
+When a job is enqueued (`202`) the request emits `media.content_published` with
+`parse_status = parsing` (same version and hash) in the same transaction, unless the
+media is already `parsing`; if the job then fails or is cancelled the server sets
+`failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11).
 
 
 ### Example

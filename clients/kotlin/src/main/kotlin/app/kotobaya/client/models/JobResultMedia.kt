@@ -36,7 +36,7 @@ import com.google.gson.annotations.SerializedName
  * @param sentences Sentences now in the media.
  * @param tokens Word tokens.
  * @param uniqueEntries Distinct entries (= deck items).
- * @param unmapped jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing is dropped silently.
+ * @param unmapped jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11).
  * @param unmappedTokens Tokens that matched no entry.
  */
 
@@ -67,7 +67,7 @@ data class JobResultMedia (
     @SerializedName("unique_entries")
     val uniqueEntries: kotlin.Int,
 
-    /* jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing is dropped silently. */
+    /* jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11). */
     @SerializedName("unmapped")
     val unmapped: kotlin.collections.List<JobResultMediaUnmappedInner>,
 

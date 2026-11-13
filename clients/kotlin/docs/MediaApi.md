@@ -4,6 +4,7 @@ All URIs are relative to */api/v1*
 
 | Method | HTTP request | Description |
 | ------------- | ------------- | ------------- |
+| [**clearJpdbVocabResolution**](MediaApi.md#clearJpdbVocabResolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue. |
 | [**deleteMedia**](MediaApi.md#deleteMedia) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content. |
 | [**getMedia**](MediaApi.md#getMedia) | **GET** /media/{media_id} | One media with its segments. |
 | [**getMediaCoverage**](MediaApi.md#getMediaCoverage) | **GET** /media/{media_id}/coverage | Coverage of a media (or one segment) by your word statuses. |
@@ -11,12 +12,67 @@ All URIs are relative to */api/v1*
 | [**importJpdbDeck**](MediaApi.md#importJpdbDeck) | **POST** /media/import/jpdb | Import a pre-parsed jpdb media deck (vocabulary with occurrence counts). |
 | [**importJpdbHistory**](MediaApi.md#importJpdbHistory) | **POST** /import/jpdb/history | Import jpdb review history and word statuses from a jpdb export file. |
 | [**importMedia**](MediaApi.md#importMedia) | **POST** /media/import | Import your own file(s), a URL or pasted text as media (worker job). |
+| [**listJpdbVocab**](MediaApi.md#listJpdbVocab) | **GET** /import/jpdb/vocab | The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry. |
 | [**listMedia**](MediaApi.md#listMedia) | **GET** /media | List the media library. |
 | [**listMediaSentences**](MediaApi.md#listMediaSentences) | **GET** /media/{media_id}/sentences | Sentences of a media, optionally only i+1 sentences. |
 | [**listSentences**](MediaApi.md#listSentences) | **GET** /sentences | Search sentences across all media. |
+| [**putJpdbVocabResolution**](MediaApi.md#putJpdbVocabResolution) | **PUT** /import/jpdb/vocab/{jpdb_vid}/resolution | Map a jpdb vocabulary item to a JMdict entry, or ignore it. |
 | [**reparseMedia**](MediaApi.md#reparseMedia) | **POST** /media/{media_id}/reparse | Re-parse a media (after parse overrides or a dictionary refresh). |
 | [**updateMedia**](MediaApi.md#updateMedia) | **PATCH** /media/{media_id} | Change a media&#39;s title, kind or cover. |
 
+
+<a id="clearJpdbVocabResolution"></a>
+# **clearJpdbVocabResolution**
+> JpdbVocabResolutionResult clearJpdbVocabResolution(jpdbVid)
+
+Clear a correction - the vocabulary item goes back to the review queue.
+
+Sets the row back to &#x60;unresolved&#x60; and re-publishes affected media exactly like &#x60;putJpdbVocabResolution&#x60; (C-11). Already unresolved - &#x60;200&#x60; with &#x60;jobs: []&#x60;. Unknown vid - &#x60;404&#x60;. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = MediaApi()
+val jpdbVid : kotlin.Long = 9300003 // kotlin.Long | jpdb vocabulary id (a row of the review queue).
+try {
+    val result : JpdbVocabResolutionResult = apiInstance.clearJpdbVocabResolution(jpdbVid)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling MediaApi#clearJpdbVocabResolution")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling MediaApi#clearJpdbVocabResolution")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **jpdbVid** | **kotlin.Long**| jpdb vocabulary id (a row of the review queue). | |
+
+### Return type
+
+[**JpdbVocabResolutionResult**](JpdbVocabResolutionResult.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
 
 <a id="deleteMedia"></a>
 # **deleteMedia**
@@ -239,7 +295,7 @@ ApiClient.accessToken = ""
 
 Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
 
-Enqueues a job of kind &#x60;jpdb-deck-import&#x60; (dedupe key &#x60;jpdb-deck-import:&lt;jpdb_id&gt;&#x60;) and returns it with &#x60;202&#x60;. If a live media with this &#x60;jpdb_id&#x60; exists the job updates it (same &#x60;media_id&#x60;, new content version); otherwise &#x60;media_id&#x60; is pre-allocated as in &#x60;POST /media/import&#x60;. The job emits, as server ops, &#x60;media.created&#x60; and &#x60;deck.created&#x60; (first import only), &#x60;media.content_published&#x60;, &#x60;deck.content_published&#x60;. The result has one segment of kind &#x60;whole&#x60; and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (&#x60;unmapped&#x60;), never silently dropped. An equivalent queued or running job is returned with &#x60;200&#x60;. 
+Enqueues a job of kind &#x60;jpdb-deck-import&#x60; (dedupe key &#x60;jpdb-deck-import:&lt;jpdb_id&gt;&#x60;) and returns it with &#x60;202&#x60;. If a live media with this &#x60;jpdb_id&#x60; exists the job updates it (same &#x60;media_id&#x60;, new content version); otherwise &#x60;media_id&#x60; is pre-allocated as in &#x60;POST /media/import&#x60;. The job emits, as server ops, &#x60;media.created&#x60; and &#x60;deck.created&#x60; (first import only), &#x60;media.content_published&#x60;, &#x60;deck.content_published&#x60;. The result has one segment of kind &#x60;whole&#x60; and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (&#x60;unmapped&#x60;), never silently dropped. An equivalent queued or running job is returned with &#x60;200&#x60;.  **C-11.** Execution through the internal &#x60;media-publish&#x60; job as for &#x60;importMedia&#x60; (&#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 3). For a known &#x60;jpdb_id&#x60; the request emits &#x60;media.content_published&#x60; (&#x60;parse_status &#x3D; parsing&#x60;) with the job insert, unless the media is already &#x60;parsing&#x60; (MEDIA_PIPELINE.md 4). Stored mapping corrections (&#x60;putJpdbVocabResolution&#x60;) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (&#x60;listJpdbVocab&#x60;; MEDIA_PIPELINE.md 5). &#x60;remap_only&#x60; is server-set (mapping-correction re-publish jobs); clients must not send it (&#x60;422&#x60;). 
 
 ### Example
 ```kotlin
@@ -345,7 +401,7 @@ ApiClient.accessToken = ""
 
 Import your own file(s), a URL or pasted text as media (worker job).
 
-Enqueues a job of kind &#x60;media-import&#x60; and returns it with &#x60;202&#x60;. Files are uploaded first with &#x60;PUT /blobs/{hash}&#x60; (kind &#x60;upload&#x60;) and referenced by hash; there is no multipart variant.  - &#x60;source: file&#x60; - &#x60;files&#x60; required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every &#x60;blob_hash&#x60; must   exist (&#x60;422&#x60; naming the element otherwise). - &#x60;source: url&#x60; - &#x60;url&#x60; required (http/https); fetched by the worker with readability   extraction; one segment. - &#x60;source: paste&#x60; - &#x60;text&#x60; required (1 to 1,000,000 characters); one segment. - New media: &#x60;title&#x60; and &#x60;kind&#x60; required. The server pre-allocates &#x60;media_id&#x60; (returned   in &#x60;job.payload.media_id&#x60;); the job creates the &#x60;media&#x60; row, its deck (&#x60;deck.id&#x60; &#x3D;   &#x60;media_id&#x60;) and all content, emitting as server ops &#x60;media.created&#x60;, &#x60;deck.created&#x60;,   &#x60;media.content_published&#x60;, &#x60;deck.content_published&#x60;. &#x60;GET /media/{media_id}&#x60; is &#x60;404&#x60;   until the job has created the row. - Existing media: pass &#x60;media_id&#x60; (must be live, with &#x60;source&#x60; equal to this request&#39;s);   the new segments are appended after the existing ones and a new content version is   published. &#x60;title&#x60;/&#x60;kind&#x60;/&#x60;deck&#x60; must then be absent. - Dedupe key &#x60;media-import:&lt;media_id&gt;&#x60;: a second import into the same media while one is   queued or running is &#x60;409 already_exists&#x60; (&#x60;existing_id&#x60; &#x3D; the job id). - **Idempotent retry: &#x60;import_id&#x60;.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job&#39;s &#x60;id&#x60;, and for new media   also the new &#x60;media_id&#x60; (and so the deck id). If a job with this id already exists   (any status), or - for new media - a &#x60;media&#x60; row with this id exists (live or deleted),   the server enqueues nothing and answers &#x60;200&#x60; with that job (or, if the job row is   gone, the most recent &#x60;media-import&#x60; job for that media; &#x60;404&#x60; if none), whatever the   rest of the body says. Without &#x60;import_id&#x60; a retry after a lost &#x60;202&#x60; imports twice   (a second media and deck); clients that may retry MUST send it. An &#x60;import_id&#x60; used by   a job of another kind is &#x60;409 already_exists&#x60; (&#x60;existing_id&#x60; &#x3D; that job). 
+Enqueues a job of kind &#x60;media-import&#x60; and returns it with &#x60;202&#x60;. Files are uploaded first with &#x60;PUT /blobs/{hash}&#x60; (kind &#x60;upload&#x60;) and referenced by hash; there is no multipart variant.  - &#x60;source: file&#x60; - &#x60;files&#x60; required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every &#x60;blob_hash&#x60; must   exist (&#x60;422&#x60; naming the element otherwise). - &#x60;source: url&#x60; - &#x60;url&#x60; required (http/https); fetched by the worker with readability   extraction; one segment. - &#x60;source: paste&#x60; - &#x60;text&#x60; required (1 to 1,000,000 characters); one segment. - New media: &#x60;title&#x60; and &#x60;kind&#x60; required. The server pre-allocates &#x60;media_id&#x60; (returned   in &#x60;job.payload.media_id&#x60;); the job creates the &#x60;media&#x60; row, its deck (&#x60;deck.id&#x60; &#x3D;   &#x60;media_id&#x60;) and all content, emitting as server ops &#x60;media.created&#x60;, &#x60;deck.created&#x60;,   &#x60;media.content_published&#x60;, &#x60;deck.content_published&#x60;. &#x60;GET /media/{media_id}&#x60; is &#x60;404&#x60;   until the job has created the row. - Existing media: pass &#x60;media_id&#x60; (must be live, with &#x60;source&#x60; equal to this request&#39;s);   the new segments are appended after the existing ones and a new content version is   published. &#x60;title&#x60;/&#x60;kind&#x60;/&#x60;deck&#x60; must then be absent. - Dedupe key &#x60;media-import:&lt;media_id&gt;&#x60;: a second import into the same media while one is   queued or running is &#x60;409 already_exists&#x60; (&#x60;existing_id&#x60; &#x3D; the job id). - **Idempotent retry: &#x60;import_id&#x60;.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job&#39;s &#x60;id&#x60;, and for new media   also the new &#x60;media_id&#x60; (and so the deck id). If a job with this id already exists   (any status), or - for new media - a &#x60;media&#x60; row with this id exists (live or deleted),   the server enqueues nothing and answers &#x60;200&#x60; with that job (or, if the job row is   gone, the most recent &#x60;media-import&#x60; job for that media; &#x60;404&#x60; if none), whatever the   rest of the body says. Without &#x60;import_id&#x60; a retry after a lost &#x60;202&#x60; imports twice   (a second media and deck); clients that may retry MUST send it. An &#x60;import_id&#x60; used by   a job of another kind is &#x60;409 already_exists&#x60; (&#x60;existing_id&#x60; &#x3D; that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal &#x60;media-publish&#x60; job; the server creates the rows and mints the   ops in one transaction (&#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 3). A failed or cancelled   first import leaves no media. - **&#x60;parse_status&#x60; (C-11).** Appending to an existing media emits, with the job insert,   &#x60;media.content_published&#x60; with &#x60;parse_status &#x3D; parsing&#x60; (same version and hash) unless   the media is already &#x60;parsing&#x60; (MEDIA_PIPELINE.md 4). New media: no op in the request. 
 
 ### Example
 ```kotlin
@@ -390,6 +446,65 @@ ApiClient.accessToken = ""
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+<a id="listJpdbVocab"></a>
+# **listJpdbVocab**
+> JpdbVocabPage listJpdbVocab(status, mediaId, limit, cursor)
+
+The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+
+Lists &#x60;app.jpdb_vocab&#x60; rows (C-11, &#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user&#39;s resolution. Ordered by &#x60;occurrence_total&#x60; descending, then &#x60;jpdb_vid&#x60; ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - &#x60;status&#x3D;unresolved&#x60; (default) is the review queue: only rows with at least one live   media (&#x60;occurrence_total &gt; 0&#x60;). - &#x60;status&#x3D;mapped&#x60; / &#x60;ignored&#x60; / &#x60;all&#x60; also list rows whose media were all deleted   (&#x60;occurrence_total &#x3D; 0&#x60;, &#x60;media &#x3D; []&#x60;), so a correction can still be cleared. Resolve one with &#x60;putJpdbVocabResolution&#x60;; candidates come from &#x60;searchDictionary&#x60;. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = MediaApi()
+val status : kotlin.String = unresolved // kotlin.String | Which rows. Default `unresolved`.
+val mediaId : kotlin.String = 0193a1b2-0008-7000-8000-000000000001 // kotlin.String | Only vocabulary occurring in this (live) media.
+val limit : kotlin.Int = 50 // kotlin.Int | Page size.
+val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+try {
+    val result : JpdbVocabPage = apiInstance.listJpdbVocab(status, mediaId, limit, cursor)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling MediaApi#listJpdbVocab")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling MediaApi#listJpdbVocab")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **status** | **kotlin.String**| Which rows. Default &#x60;unresolved&#x60;. | [optional] [enum: unresolved, mapped, ignored, all] |
+| **mediaId** | **kotlin.String**| Only vocabulary occurring in this (live) media. | [optional] |
+| **limit** | **kotlin.Int**| Page size. | [optional] [default to 50] |
+| **cursor** | **kotlin.String**| Opaque &#x60;next_cursor&#x60; from the previous page. Absent &#x3D; first page. A malformed or foreign cursor is &#x60;422&#x60;. | [optional] |
+
+### Return type
+
+[**JpdbVocabPage**](JpdbVocabPage.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json, application/problem+json
 
 <a id="listMedia"></a>
@@ -587,13 +702,68 @@ ApiClient.accessToken = ""
  - **Content-Type**: Not defined
  - **Accept**: application/json, application/problem+json
 
+<a id="putJpdbVocabResolution"></a>
+# **putJpdbVocabResolution**
+> JpdbVocabResolutionResult putJpdbVocabResolution(jpdbVid, jpdbVocabResolutionPut)
+
+Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+
+Stores the correction (server-only import configuration, not an op; C-11, &#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 5.4) and re-publishes every live jpdb media that contains the vid from the importer&#39;s cache: per media one &#x60;jpdb-deck-import&#x60; job with &#x60;remap_only: true&#x60; (dedupe key &#x60;jpdb-deck-remap:&lt;media_id&gt;&#x60;; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits &#x60;media.content_published&#x60; (&#x60;parse_status &#x3D; parsing&#x60;) unless the media is already &#x60;parsing&#x60;. - &#x60;resolution: mapped&#x60; requires &#x60;entry_seq&#x60;, a non-retired dictionary entry (&#x60;422&#x60;,   pointer &#x60;/entry_seq&#x60;, otherwise); &#x60;ignored&#x60; must not carry &#x60;entry_seq&#x60; (&#x60;422&#x60;). - Unknown vid (never seen unmapped) - &#x60;404&#x60;. - Same resolution as stored - &#x60;200&#x60; with &#x60;jobs: []&#x60;, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+
+### Example
+```kotlin
+// Import classes:
+//import app.kotobaya.client.infrastructure.*
+//import app.kotobaya.client.models.*
+
+val apiInstance = MediaApi()
+val jpdbVid : kotlin.Long = 9300003 // kotlin.Long | jpdb vocabulary id (a row of the review queue).
+val jpdbVocabResolutionPut : JpdbVocabResolutionPut = {"resolution":"ignored"} // JpdbVocabResolutionPut | 
+try {
+    val result : JpdbVocabResolutionResult = apiInstance.putJpdbVocabResolution(jpdbVid, jpdbVocabResolutionPut)
+    println(result)
+} catch (e: ClientException) {
+    println("4xx response calling MediaApi#putJpdbVocabResolution")
+    e.printStackTrace()
+} catch (e: ServerException) {
+    println("5xx response calling MediaApi#putJpdbVocabResolution")
+    e.printStackTrace()
+}
+```
+
+### Parameters
+| Name | Type | Description  | Notes |
+| ------------- | ------------- | ------------- | ------------- |
+| **jpdbVid** | **kotlin.Long**| jpdb vocabulary id (a row of the review queue). | |
+| **jpdbVocabResolutionPut** | [**JpdbVocabResolutionPut**](JpdbVocabResolutionPut.md)|  | |
+
+### Return type
+
+[**JpdbVocabResolutionResult**](JpdbVocabResolutionResult.md)
+
+### Authorization
+
+
+Configure sessionCookie:
+    ApiClient.apiKey["kotobaya_session"] = ""
+    ApiClient.apiKeyPrefix["kotobaya_session"] = ""
+Configure bearerAuth statically:
+```kotlin
+ApiClient.accessToken = ""
+```
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
 <a id="reparseMedia"></a>
 # **reparseMedia**
 > Job reparseMedia(mediaId)
 
 Re-parse a media (after parse overrides or a dictionary refresh).
 
-Enqueues a job of kind &#x60;media-parse&#x60; (dedupe key &#x60;media-parse:&lt;media_id&gt;&#x60;); an equivalent queued or running job is returned with &#x60;200&#x60;. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit &#x60;media.content_published&#x60; and &#x60;deck.content_published&#x60;. Media with &#x60;source &#x3D; jpdb&#x60; has nothing to parse: &#x60;409 not_applicable&#x60;. 
+Enqueues a job of kind &#x60;media-parse&#x60; (dedupe key &#x60;media-parse:&lt;media_id&gt;&#x60;); an equivalent queued or running job is returned with &#x60;200&#x60;. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit &#x60;media.content_published&#x60; and &#x60;deck.content_published&#x60;. Media with &#x60;source &#x3D; jpdb&#x60; has nothing to parse: &#x60;409 not_applicable&#x60;. When a job is enqueued (&#x60;202&#x60;) the request emits &#x60;media.content_published&#x60; with &#x60;parse_status &#x3D; parsing&#x60; (same version and hash) in the same transaction, unless the media is already &#x60;parsing&#x60;; if the job then fails or is cancelled the server sets &#x60;failed&#x60; or back to &#x60;parsed&#x60; (&#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 4, C-11). 
 
 ### Example
 ```kotlin

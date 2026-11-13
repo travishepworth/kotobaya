@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 **jpdb_id** | **str** | jpdb deck identifier: the path of the deck page after &#x60;jpdb.io/&#x60; without the trailing &#x60;/vocabulary-list&#x60;, e.g. &#x60;anime/5370&#x60;, or a numeric deck id. | 
 **kind** | [**MediaKind**](MediaKind.md) |  | [optional] 
 **media_id** | **str** | Set by the server in the job payload; clients must not send it (&#x60;422&#x60;). | [optional] 
+**remap_only** | **bool** | Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, &#x60;contracts/db/MEDIA_PIPELINE.md&#x60; 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; &#x60;title&#x60;, &#x60;kind&#x60;, &#x60;deck&#x60; are not used. Clients must not send it (&#x60;422&#x60;). | [optional] [default to False]
 **title** | **str** | Title override. Default - the title jpdb reports. | [optional] 
 
 ## Example

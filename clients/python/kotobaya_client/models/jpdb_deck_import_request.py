@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.media_deck_options import MediaDeckOptions
@@ -34,8 +34,9 @@ class JpdbDeckImportRequest(BaseModel):
     jpdb_id: Annotated[str, Field(min_length=1, strict=True, max_length=200)] = Field(description="jpdb deck identifier: the path of the deck page after `jpdb.io/` without the trailing `/vocabulary-list`, e.g. `anime/5370`, or a numeric deck id.")
     kind: Optional[MediaKind] = None
     media_id: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="Set by the server in the job payload; clients must not send it (`422`).")
+    remap_only: Optional[StrictBool] = Field(default=False, description="Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`).")
     title: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=300)]] = Field(default=None, description="Title override. Default - the title jpdb reports.")
-    __properties: ClassVar[List[str]] = ["deck", "jpdb_id", "kind", "media_id", "title"]
+    __properties: ClassVar[List[str]] = ["deck", "jpdb_id", "kind", "media_id", "remap_only", "title"]
 
     @field_validator('jpdb_id', mode="before")
     def jpdb_id_validate_regular_expression(cls, value):
@@ -112,6 +113,7 @@ class JpdbDeckImportRequest(BaseModel):
             "jpdb_id": obj.get("jpdb_id"),
             "kind": obj.get("kind"),
             "media_id": obj.get("media_id"),
+            "remap_only": obj.get("remap_only") if obj.get("remap_only") is not None else False,
             "title": obj.get("title")
         })
         return _obj

@@ -59,6 +59,12 @@ class JpdbDeckImportRequestTest : ShouldSpec() {
             //modelInstance.mediaId shouldBe ("TODO")
         }
 
+        // to test the property `remapOnly` - Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`).
+        should("test remapOnly") {
+            // uncomment below to test the property
+            //modelInstance.remapOnly shouldBe ("TODO")
+        }
+
         // to test the property `title` - Title override. Default - the title jpdb reports.
         should("test title") {
             // uncomment below to test the property

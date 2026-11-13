@@ -34,6 +34,21 @@ import {
     JpdbHistoryImportRequestToJSON,
 } from '../models/JpdbHistoryImportRequest';
 import {
+    type JpdbVocabPage,
+    JpdbVocabPageFromJSON,
+    JpdbVocabPageToJSON,
+} from '../models/JpdbVocabPage';
+import {
+    type JpdbVocabResolutionPut,
+    JpdbVocabResolutionPutFromJSON,
+    JpdbVocabResolutionPutToJSON,
+} from '../models/JpdbVocabResolutionPut';
+import {
+    type JpdbVocabResolutionResult,
+    JpdbVocabResolutionResultFromJSON,
+    JpdbVocabResolutionResultToJSON,
+} from '../models/JpdbVocabResolutionResult';
+import {
     type Media,
     MediaFromJSON,
     MediaToJSON,
@@ -73,6 +88,13 @@ import {
     SentencePageFromJSON,
     SentencePageToJSON,
 } from '../models/SentencePage';
+
+export interface ClearJpdbVocabResolutionRequest {
+    /**
+     * jpdb vocabulary id (a row of the review queue).
+     */
+    jpdbVid: number;
+}
 
 export interface DeleteMediaRequest {
     /**
@@ -138,6 +160,25 @@ export interface ImportMediaRequest {
      * 
      */
     mediaImportRequest: MediaImportRequest;
+}
+
+export interface ListJpdbVocabRequest {
+    /**
+     * Which rows. Default `unresolved`.
+     */
+    status?: ListJpdbVocabStatusEnum;
+    /**
+     * Only vocabulary occurring in this (live) media.
+     */
+    mediaId?: string;
+    /**
+     * Page size.
+     */
+    limit?: number;
+    /**
+     * Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+     */
+    cursor?: string;
 }
 
 export interface ListMediaRequest {
@@ -243,6 +284,17 @@ export interface ListSentencesRequest {
     cursor?: string;
 }
 
+export interface PutJpdbVocabResolutionRequest {
+    /**
+     * jpdb vocabulary id (a row of the review queue).
+     */
+    jpdbVid: number;
+    /**
+     * 
+     */
+    jpdbVocabResolutionPut: JpdbVocabResolutionPut;
+}
+
 export interface ReparseMediaRequest {
     /**
      * Media id.
@@ -265,6 +317,61 @@ export interface UpdateMediaRequest {
  * 
  */
 export class MediaApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for clearJpdbVocabResolution without sending the request
+     */
+    async clearJpdbVocabResolutionRequestOpts(requestParameters: ClearJpdbVocabResolutionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['jpdbVid'] == null) {
+            throw new runtime.RequiredError(
+                'jpdbVid',
+                'Required parameter "jpdbVid" was null or undefined when calling clearJpdbVocabResolution().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["import"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/import/jpdb/vocab/{jpdb_vid}/resolution`;
+        urlPath = urlPath.replace('{jpdb_vid}', encodeURIComponent(String(requestParameters['jpdbVid'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Sets the row back to `unresolved` and re-publishes affected media exactly like `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown vid - `404`. 
+     * Clear a correction - the vocabulary item goes back to the review queue.
+     */
+    async clearJpdbVocabResolutionRaw(requestParameters: ClearJpdbVocabResolutionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JpdbVocabResolutionResult>> {
+        const requestOptions = await this.clearJpdbVocabResolutionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JpdbVocabResolutionResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Sets the row back to `unresolved` and re-publishes affected media exactly like `putJpdbVocabResolution` (C-11). Already unresolved - `200` with `jobs: []`. Unknown vid - `404`. 
+     * Clear a correction - the vocabulary item goes back to the review queue.
+     */
+    async clearJpdbVocabResolution(requestParameters: ClearJpdbVocabResolutionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JpdbVocabResolutionResult> {
+        const response = await this.clearJpdbVocabResolutionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for deleteMedia without sending the request
@@ -533,7 +640,7 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`. 
+     * Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`.  **C-11.** Execution through the internal `media-publish` job as for `importMedia` (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits `media.content_published` (`parse_status = parsing`) with the job insert, unless the media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5). `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it (`422`). 
      * Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
      */
     async importJpdbDeckRaw(requestParameters: ImportJpdbDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Job>> {
@@ -544,7 +651,7 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`. 
+     * Enqueues a job of kind `jpdb-deck-import` (dedupe key `jpdb-deck-import:<jpdb_id>`) and returns it with `202`. If a live media with this `jpdb_id` exists the job updates it (same `media_id`, new content version); otherwise `media_id` is pre-allocated as in `POST /media/import`. The job emits, as server ops, `media.created` and `deck.created` (first import only), `media.content_published`, `deck.content_published`. The result has one segment of kind `whole` and no sentences. Vocabulary that maps to no JMdict entry is listed in the job result (`unmapped`), never silently dropped. An equivalent queued or running job is returned with `200`.  **C-11.** Execution through the internal `media-publish` job as for `importMedia` (`contracts/db/MEDIA_PIPELINE.md` 3). For a known `jpdb_id` the request emits `media.content_published` (`parse_status = parsing`) with the job insert, unless the media is already `parsing` (MEDIA_PIPELINE.md 4). Stored mapping corrections (`putJpdbVocabResolution`) are applied before automatic mapping; vocabulary the automatic mapper cannot map enters the review queue (`listJpdbVocab`; MEDIA_PIPELINE.md 5). `remap_only` is server-set (mapping-correction re-publish jobs); clients must not send it (`422`). 
      * Import a pre-parsed jpdb media deck (vocabulary with occurrence counts).
      */
     async importJpdbDeck(requestParameters: ImportJpdbDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Job> {
@@ -647,7 +754,7 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request\'s);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job\'s `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). 
+     * Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request\'s);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job\'s `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal `media-publish` job; the server creates the rows and mints the   ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled   first import leaves no media. - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,   `media.content_published` with `parse_status = parsing` (same version and hash) unless   the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request. 
      * Import your own file(s), a URL or pasted text as media (worker job).
      */
     async importMediaRaw(requestParameters: ImportMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Job>> {
@@ -658,11 +765,74 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request\'s);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job\'s `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). 
+     * Enqueues a job of kind `media-import` and returns it with `202`. Files are uploaded first with `PUT /blobs/{hash}` (kind `upload`) and referenced by hash; there is no multipart variant.  - `source: file` - `files` required (1 to 500). Each file becomes one segment in array   order (an EPUB becomes one segment per chapter, in book order). Every `blob_hash` must   exist (`422` naming the element otherwise). - `source: url` - `url` required (http/https); fetched by the worker with readability   extraction; one segment. - `source: paste` - `text` required (1 to 1,000,000 characters); one segment. - New media: `title` and `kind` required. The server pre-allocates `media_id` (returned   in `job.payload.media_id`); the job creates the `media` row, its deck (`deck.id` =   `media_id`) and all content, emitting as server ops `media.created`, `deck.created`,   `media.content_published`, `deck.content_published`. `GET /media/{media_id}` is `404`   until the job has created the row. - Existing media: pass `media_id` (must be live, with `source` equal to this request\'s);   the new segments are appended after the existing ones and a new content version is   published. `title`/`kind`/`deck` must then be absent. - Dedupe key `media-import:<media_id>`: a second import into the same media while one is   queued or running is `409 already_exists` (`existing_id` = the job id). - **Idempotent retry: `import_id`.** Optional client-generated UUIDv7, minted once per   user action and reused on every retry; it becomes the job\'s `id`, and for new media   also the new `media_id` (and so the deck id). If a job with this id already exists   (any status), or - for new media - a `media` row with this id exists (live or deleted),   the server enqueues nothing and answers `200` with that job (or, if the job row is   gone, the most recent `media-import` job for that media; `404` if none), whatever the   rest of the body says. Without `import_id` a retry after a lost `202` imports twice   (a second media and deck); clients that may retry MUST send it. An `import_id` used by   a job of another kind is `409 already_exists` (`existing_id` = that job). - **Execution (C-11).** The worker builds snapshot archives and hands them to the server   through the internal `media-publish` job; the server creates the rows and mints the   ops in one transaction (`contracts/db/MEDIA_PIPELINE.md` 3). A failed or cancelled   first import leaves no media. - **`parse_status` (C-11).** Appending to an existing media emits, with the job insert,   `media.content_published` with `parse_status = parsing` (same version and hash) unless   the media is already `parsing` (MEDIA_PIPELINE.md 4). New media: no op in the request. 
      * Import your own file(s), a URL or pasted text as media (worker job).
      */
     async importMedia(requestParameters: ImportMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Job> {
         const response = await this.importMediaRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listJpdbVocab without sending the request
+     */
+    async listJpdbVocabRequestOpts(requestParameters: ListJpdbVocabRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        if (requestParameters['mediaId'] != null) {
+            queryParameters['media_id'] = requestParameters['mediaId'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["read"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/import/jpdb/vocab`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user\'s resolution. Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - `status=unresolved` (default) is the review queue: only rows with at least one live   media (`occurrence_total > 0`). - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted   (`occurrence_total = 0`, `media = []`), so a correction can still be cleared. Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`. 
+     * The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+     */
+    async listJpdbVocabRaw(requestParameters: ListJpdbVocabRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JpdbVocabPage>> {
+        const requestOptions = await this.listJpdbVocabRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JpdbVocabPageFromJSON(jsonValue));
+    }
+
+    /**
+     * Lists `app.jpdb_vocab` rows (C-11, `contracts/db/MEDIA_PIPELINE.md` 5): jpdb vocabulary that a jpdb deck import could not map automatically, with the user\'s resolution. Ordered by `occurrence_total` descending, then `jpdb_vid` ascending (keyset cursor over that order; totals change when decks are re-imported, so a page boundary may skip or repeat a row). - `status=unresolved` (default) is the review queue: only rows with at least one live   media (`occurrence_total > 0`). - `status=mapped` / `ignored` / `all` also list rows whose media were all deleted   (`occurrence_total = 0`, `media = []`), so a correction can still be cleared. Resolve one with `putJpdbVocabResolution`; candidates come from `searchDictionary`. 
+     * The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+     */
+    async listJpdbVocab(requestParameters: ListJpdbVocabRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JpdbVocabPage> {
+        const response = await this.listJpdbVocabRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -896,6 +1066,71 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for putJpdbVocabResolution without sending the request
+     */
+    async putJpdbVocabResolutionRequestOpts(requestParameters: PutJpdbVocabResolutionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['jpdbVid'] == null) {
+            throw new runtime.RequiredError(
+                'jpdbVid',
+                'Required parameter "jpdbVid" was null or undefined when calling putJpdbVocabResolution().'
+            );
+        }
+
+        if (requestParameters['jpdbVocabResolutionPut'] == null) {
+            throw new runtime.RequiredError(
+                'jpdbVocabResolutionPut',
+                'Required parameter "jpdbVocabResolutionPut" was null or undefined when calling putJpdbVocabResolution().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["import"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/import/jpdb/vocab/{jpdb_vid}/resolution`;
+        urlPath = urlPath.replace('{jpdb_vid}', encodeURIComponent(String(requestParameters['jpdbVid'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: JpdbVocabResolutionPutToJSON(requestParameters['jpdbVocabResolutionPut']),
+        };
+    }
+
+    /**
+     * Stores the correction (server-only import configuration, not an op; C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that contains the vid from the importer\'s cache: per media one `jpdb-deck-import` job with `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits `media.content_published` (`parse_status = parsing`) unless the media is already `parsing`. - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,   pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`). - Unknown vid (never seen unmapped) - `404`. - Same resolution as stored - `200` with `jobs: []`, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+     * Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+     */
+    async putJpdbVocabResolutionRaw(requestParameters: PutJpdbVocabResolutionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JpdbVocabResolutionResult>> {
+        const requestOptions = await this.putJpdbVocabResolutionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => JpdbVocabResolutionResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Stores the correction (server-only import configuration, not an op; C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4) and re-publishes every live jpdb media that contains the vid from the importer\'s cache: per media one `jpdb-deck-import` job with `remap_only: true` (dedupe key `jpdb-deck-remap:<media_id>`; a remap already waiting for that media is reused and listed instead). For each job actually enqueued the server emits `media.content_published` (`parse_status = parsing`) unless the media is already `parsing`. - `resolution: mapped` requires `entry_seq`, a non-retired dictionary entry (`422`,   pointer `/entry_seq`, otherwise); `ignored` must not carry `entry_seq` (`422`). - Unknown vid (never seen unmapped) - `404`. - Same resolution as stored - `200` with `jobs: []`, nothing written. Corrections persist across re-imports and apply to every jpdb deck containing the vid. 
+     * Map a jpdb vocabulary item to a JMdict entry, or ignore it.
+     */
+    async putJpdbVocabResolution(requestParameters: PutJpdbVocabResolutionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JpdbVocabResolutionResult> {
+        const response = await this.putJpdbVocabResolutionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for reparseMedia without sending the request
      */
     async reparseMediaRequestOpts(requestParameters: ReparseMediaRequest): Promise<runtime.RequestOpts> {
@@ -931,7 +1166,7 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. 
+     * Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. When a job is enqueued (`202`) the request emits `media.content_published` with `parse_status = parsing` (same version and hash) in the same transaction, unless the media is already `parsing`; if the job then fails or is cancelled the server sets `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11). 
      * Re-parse a media (after parse overrides or a dictionary refresh).
      */
     async reparseMediaRaw(requestParameters: ReparseMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Job>> {
@@ -942,7 +1177,7 @@ export class MediaApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. 
+     * Enqueues a job of kind `media-parse` (dedupe key `media-parse:<media_id>`); an equivalent queued or running job is returned with `200`. The job keeps segment and sentence ids as SCHEMA.md requires and makes the server emit `media.content_published` and `deck.content_published`. Media with `source = jpdb` has nothing to parse: `409 not_applicable`. When a job is enqueued (`202`) the request emits `media.content_published` with `parse_status = parsing` (same version and hash) in the same transaction, unless the media is already `parsing`; if the job then fails or is cancelled the server sets `failed` or back to `parsed` (`contracts/db/MEDIA_PIPELINE.md` 4, C-11). 
      * Re-parse a media (after parse overrides or a dictionary refresh).
      */
     async reparseMedia(requestParameters: ReparseMediaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Job> {
@@ -1028,6 +1263,16 @@ export const GetMediaCoverageHideEnum = {
     Unmapped: 'unmapped',
 } as const;
 export type GetMediaCoverageHideEnum = typeof GetMediaCoverageHideEnum[keyof typeof GetMediaCoverageHideEnum];
+/**
+ * @export
+ */
+export const ListJpdbVocabStatusEnum = {
+    Unresolved: 'unresolved',
+    Mapped: 'mapped',
+    Ignored: 'ignored',
+    All: 'all',
+} as const;
+export type ListJpdbVocabStatusEnum = typeof ListJpdbVocabStatusEnum[keyof typeof ListJpdbVocabStatusEnum];
 /**
  * @export
  */

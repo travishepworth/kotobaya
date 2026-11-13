@@ -36,7 +36,7 @@ import {
  * | `dict-refresh` | `JobPayloadDictRefresh` | `JobResultDictRefresh` |
  * | `media-import` | `MediaImportRequest` (with `media_id`) | `JobResultMedia` |
  * | `media-parse` | `JobPayloadMediaParse` | `JobResultMedia` |
- * | `jpdb-deck-import` | `JpdbDeckImportRequest` (with `media_id`) | `JobResultMedia` |
+ * | `jpdb-deck-import` | `JpdbDeckImportRequest` (with `media_id`; `remap_only` for correction re-publishes) | `JobResultMedia` |
  * | `jpdb-history-import` | `JpdbHistoryImportRequest` | `JobResultJpdbHistory` |
  * | `fsrs-optimize` | `JobPayloadFsrsOptimize` | `JobResultFsrsOptimize` |
  * | `tts` | `TtsRequest` | `JobResultTts` |
@@ -45,8 +45,9 @@ import {
  * **Server-internal jobs (C-9).** An `app.job` row whose `kind` is not a `JobKind` value
  * is *server-internal*: a hand-off between the worker and the server inside one public
  * job (its *parent*). The registered internal kinds are listed in
- * `contracts/db/SCHEMA.md` ("Jobs"); today only `jpdb-history-apply` (see
- * `importJpdbHistory`, "Execution"). Rules:
+ * `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
+ * "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
+ * `jpdb-deck-import`; `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
  * - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
  *   cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
  *   answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`

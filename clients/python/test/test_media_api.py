@@ -26,6 +26,13 @@ class TestMediaApi(unittest.TestCase):
     def tearDown(self) -> None:
         pass
 
+    def test_clear_jpdb_vocab_resolution(self) -> None:
+        """Test case for clear_jpdb_vocab_resolution
+
+        Clear a correction - the vocabulary item goes back to the review queue.
+        """
+        pass
+
     def test_delete_media(self) -> None:
         """Test case for delete_media
 
@@ -75,6 +82,13 @@ class TestMediaApi(unittest.TestCase):
         """
         pass
 
+    def test_list_jpdb_vocab(self) -> None:
+        """Test case for list_jpdb_vocab
+
+        The jpdb mapping review queue - jpdb vocabulary that did not map to a JMdict entry.
+        """
+        pass
+
     def test_list_media(self) -> None:
         """Test case for list_media
 
@@ -93,6 +107,13 @@ class TestMediaApi(unittest.TestCase):
         """Test case for list_sentences
 
         Search sentences across all media.
+        """
+        pass
+
+    def test_put_jpdb_vocab_resolution(self) -> None:
+        """Test case for put_jpdb_vocab_resolution
+
+        Map a jpdb vocabulary item to a JMdict entry, or ignore it.
         """
         pass
 

@@ -35,6 +35,7 @@ import com.google.gson.annotations.SerializedName
  * @param deck
  * @param kind
  * @param mediaId Set by the server in the job payload; clients must not send it (`422`).
+ * @param remapOnly Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`).
  * @param title Title override. Default - the title jpdb reports.
  */
 
@@ -54,6 +55,10 @@ data class JpdbDeckImportRequest (
     /* Set by the server in the job payload; clients must not send it (`422`). */
     @SerializedName("media_id")
     val mediaId: kotlin.String? = null,
+
+    /* Set by the server in jobs that re-publish an existing jpdb media after a mapping correction (C-11, `contracts/db/MEDIA_PIPELINE.md` 5.4): use cached jpdb responses regardless of age, fetch only what the cache lacks; `title`, `kind`, `deck` are not used. Clients must not send it (`422`). */
+    @SerializedName("remap_only")
+    val remapOnly: kotlin.Boolean? = false,
 
     /* Title override. Default - the title jpdb reports. */
     @SerializedName("title")

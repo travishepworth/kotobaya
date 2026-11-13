@@ -31,6 +31,9 @@ import app.kotobaya.client.models.Coverage
 import app.kotobaya.client.models.Job
 import app.kotobaya.client.models.JpdbDeckImportRequest
 import app.kotobaya.client.models.JpdbHistoryImportRequest
+import app.kotobaya.client.models.JpdbVocabPage
+import app.kotobaya.client.models.JpdbVocabResolutionPut
+import app.kotobaya.client.models.JpdbVocabResolutionResult
 import app.kotobaya.client.models.Media
 import app.kotobaya.client.models.MediaImportRequest
 import app.kotobaya.client.models.MediaKind
@@ -44,6 +47,14 @@ class MediaApiTest : ShouldSpec() {
     init {
         // uncomment below to create an instance of MediaApi
         //val apiInstance = MediaApi()
+
+        // to test clearJpdbVocabResolution
+        should("test clearJpdbVocabResolution") {
+            // uncomment below to test clearJpdbVocabResolution
+            //val jpdbVid : kotlin.Long = 9300003 // kotlin.Long | jpdb vocabulary id (a row of the review queue).
+            //val result : JpdbVocabResolutionResult = apiInstance.clearJpdbVocabResolution(jpdbVid)
+            //result shouldBe ("TODO")
+        }
 
         // to test deleteMedia
         should("test deleteMedia") {
@@ -103,6 +114,17 @@ class MediaApiTest : ShouldSpec() {
             //result shouldBe ("TODO")
         }
 
+        // to test listJpdbVocab
+        should("test listJpdbVocab") {
+            // uncomment below to test listJpdbVocab
+            //val status : kotlin.String = unresolved // kotlin.String | Which rows. Default `unresolved`.
+            //val mediaId : kotlin.String = 0193a1b2-0008-7000-8000-000000000001 // kotlin.String | Only vocabulary occurring in this (live) media.
+            //val limit : kotlin.Int = 50 // kotlin.Int | Page size.
+            //val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
+            //val result : JpdbVocabPage = apiInstance.listJpdbVocab(status, mediaId, limit, cursor)
+            //result shouldBe ("TODO")
+        }
+
         // to test listMedia
         should("test listMedia") {
             // uncomment below to test listMedia
@@ -142,6 +164,15 @@ class MediaApiTest : ShouldSpec() {
             //val limit : kotlin.Int = 50 // kotlin.Int | Page size.
             //val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
             //val result : SentencePage = apiInstance.listSentences(mediaId, filter, segmentId, q, entrySeq, grammarPointId, limit, cursor)
+            //result shouldBe ("TODO")
+        }
+
+        // to test putJpdbVocabResolution
+        should("test putJpdbVocabResolution") {
+            // uncomment below to test putJpdbVocabResolution
+            //val jpdbVid : kotlin.Long = 9300003 // kotlin.Long | jpdb vocabulary id (a row of the review queue).
+            //val jpdbVocabResolutionPut : JpdbVocabResolutionPut = {"resolution":"ignored"} // JpdbVocabResolutionPut | 
+            //val result : JpdbVocabResolutionResult = apiInstance.putJpdbVocabResolution(jpdbVid, jpdbVocabResolutionPut)
             //result shouldBe ("TODO")
         }
 

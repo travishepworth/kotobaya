@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "parent_job_id": "0193a1b2-0009-7000-8000-000000000002",
+  "media_id": "0193a1b2-0008-7000-8000-000000000001",
+  "base_content_version": 3,
+  "create": null,
+  "content": {"blob_hash": "57b273d802fa1a7beb44c9ed10451b2f00f35c1e4bed9f61d8fb2fa3298e20c4", "size_bytes": 324},
+  "deck_items": {"blob_hash": "a69f5c59b3abcfd91f790dcea3c80b1a0b13dd21c095f8dc8749eafcd26512cb", "size_bytes": 215},
+  "unmapped": [
+    {"jpdb_vid": 9300001, "spelling": "フリーレン", "reading": "ふりーれん", "occurrence_count": 312}
+  ],
+  "jpdb": {
+    "jpdb_id": "anime/5370",
+    "vocab": [
+      {"jpdb_vid": 9300001, "spelling": "フリーレン", "reading": "ふりーれん", "occurrence_count": 312, "resolution": "unresolved", "entry_seq": null},
+      {"jpdb_vid": 9300003, "spelling": "魔族", "reading": "まぞく", "occurrence_count": 75, "resolution": "mapped", "entry_seq": 1612400},
+      {"jpdb_vid": 9300002, "spelling": "ヒンメル", "reading": "ひんめる", "occurrence_count": 40, "resolution": "ignored", "entry_seq": null}
+    ]
+  }
+}

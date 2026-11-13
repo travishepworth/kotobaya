@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/db/media/media-publish.v1.schema.json",
+  "title": "media-publish job payload v1",
+  "description": "app.job.payload of the server-internal job kind `media-publish` (MEDIA_PIPELINE.md 3). Written by the worker, read by the server's MediaPublishRunner, never by the API. Closed: the runner fails the child on any payload that does not validate (`invalid_payload`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "parent_job_id", "media_id", "base_content_version", "create", "content", "deck_items", "unmapped", "jpdb"],
+  "properties": {
+    "format_version": {"const": 1, "description": "Payload version. The runner fails the child (`unsupported_format`) on any other value."},
+    "parent_job_id": {"$ref": "#/$defs/uuid", "description": "The public parent job (kind media-import, media-parse or jpdb-deck-import)."},
+    "media_id": {"$ref": "#/$defs/uuid", "description": "The media (= its deck id). Equals the parent payload's media_id."},
+    "base_content_version": {
+      "type": "integer", "minimum": 0, "maximum": 2147483646,
+      "description": "app.media.content_version the worker built on (0 = new media). The snapshots are published as base_content_version + 1; the runner rejects the child with `stale_base` if the media's current version differs."
+    },
+    "create": {
+      "description": "Non-null iff base_content_version = 0 (first publish of a new media): values for media.created and the media deck's deck.created. Null for every later publish.",
+      "oneOf": [{"$ref": "#/$defs/create"}, {"type": "null"}]
+    },
+    "content": {"$ref": "#/$defs/blob_ref", "description": "The kotobaya-media-content archive (SNAPSHOT.md 3)."},
+    "deck_items": {"$ref": "#/$defs/blob_ref", "description": "The kotobaya-deck-items archive of the media deck (SNAPSHOT.md 4)."},
+    "unmapped": {
+      "type": "array",
+      "description": "Copied unchanged into JobResultMedia.unmapped. jpdb: exactly the jpdb.vocab entries with resolution unresolved, same order, same four members. Other sources: [].",
+      "items": {"$ref": "#/$defs/unmapped_item"}
+    },
+    "jpdb": {
+      "description": "jpdb media only (media.source = jpdb), else null.",
+      "oneOf": [{"$ref": "#/$defs/jpdb"}, {"type": "null"}]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"base_content_version": {"const": 0}}},
+      "then": {"properties": {"create": {"$ref": "#/$defs/create"}}},
+      "else": {"properties": {"create": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "text": {"type": "string", "pattern": "^[^\\u0000]*$"},
+    "blob_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blob_hash", "size_bytes"],
+      "properties": {
+        "blob_hash": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the compressed bytes = object key; an app.blob row (kind snapshot, origin build) exists before the child is enqueued."},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 536870912, "description": "Length of the compressed bytes."}
+      }
+    },
+    "create": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "kind", "source", "jpdb_id", "deck"],
+      "properties": {
+        "title": {"allOf": [{"$ref": "#/$defs/text"}], "minLength": 1, "maxLength": 300, "description": "media.created title; the deck name is this title cut to its first 200 code points."},
+        "kind": {"enum": ["anime", "novel", "vn", "manga", "web", "other"]},
+        "source": {"enum": ["jpdb", "file", "url", "paste"]},
+        "jpdb_id": {
+          "description": "Set iff source = jpdb.",
+          "oneOf": [{"allOf": [{"$ref": "#/$defs/text"}], "minLength": 1, "maxLength": 200}, {"type": "null"}]
+        },
+        "deck": {
+          "type": "object",
+          "description": "The parent request's MediaDeckOptions with defaults filled in.",
+          "additionalProperties": false,
+          "required": ["priority", "enabled", "new_cards_per_day"],
+          "properties": {
+            "priority": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
+            "enabled": {"type": "boolean"},
+            "new_cards_per_day": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 9999}, {"type": "null"}]}
+          }
+        }
+      }
+    },
+    "unmapped_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jpdb_vid", "spelling", "reading", "occurrence_count"],
+      "properties": {
+        "jpdb_vid": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "spelling": {"$ref": "#/$defs/text"},
+        "reading": {"$ref": "#/$defs/text"},
+        "occurrence_count": {"type": "integer", "minimum": 0, "maximum": 2147483647}
+      }
+    },
+    "jpdb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jpdb_id", "vocab"],
+      "properties": {
+        "jpdb_id": {"allOf": [{"$ref": "#/$defs/text"}], "minLength": 1, "maxLength": 200},
+        "vocab": {
+          "type": "array",
+          "description": "Every fetched deck row with a vid that the AUTOMATIC mapper could not map, one per vid (rows repeating a vid merged, counts summed), whatever the stored resolution; ordered by occurrence_count descending, then jpdb_vid ascending. The runner replaces the media's app.jpdb_vocab_media rows with exactly this list (MEDIA_PIPELINE.md 5.2).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["jpdb_vid", "spelling", "reading", "occurrence_count", "resolution", "entry_seq"],
+            "properties": {
+              "jpdb_vid": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+              "spelling": {"$ref": "#/$defs/text"},
+              "reading": {"$ref": "#/$defs/text"},
+              "occurrence_count": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+              "resolution": {"enum": ["unresolved", "mapped", "ignored"], "description": "The resolution the worker applied (read from app.jpdb_vocab when it mapped; unresolved if no row)."},
+              "entry_seq": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 9007199254740991}, {"type": "null"}], "description": "Set iff resolution = mapped: the seq the vid was mapped to."}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,7 +8,12 @@ Frozen interface. Files:
 | `sqldelight/app/kotobaya/db/app/*.sq` | On-device learning database (`AppDatabase`, package `kotobaya.db.app`). |
 | `sqldelight/ref/kotobaya/db/ref/Dict.sq` | On-device dictionary file (`RefDatabase`, package `kotobaya.db.ref`), built by the worker. |
 | `DICT_PACKAGE.md` | Dictionary device package, diff format, blob keys, device update algorithm (section 5.4). |
+| `V2__jpdb_vocab.sql` | Additive migration (C-11): the server-only jpdb mapping-correction tables (4.4). |
+| `SNAPSHOT.md` | Media content and deck-item snapshot archives: format, integrity rules, install rule (C-11). |
+| `MEDIA_PIPELINE.md` | The `media-publish` hand-off, `parse_status` transitions, jpdb mapping corrections (C-11). |
+| `media/` | Record schemas, `media-publish` payload schema, worked example archives and `validate.py` for the two documents above. |
 | `test/smoke.sql` | One worked example row per table plus the constraints you may rely on. Read it for examples. |
+| `test/smoke_v2.sql` | The same for `V2__jpdb_vocab.sql`. |
 | `check.sh` | Verifies all of the above (see section 8). |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
 
@@ -63,7 +68,12 @@ Implementers: if something you need is missing or wrong here, do not work around
 8. **Text offsets** into sentence text are UTF-16 code units, half-open `[start, end)`. Python
    code must convert from code points.
 9. **Writes.** Learning-data tables are written only by the op-apply path (server) or the local
-   apply function (device). Media bulk tables and `ref.*` are written only by worker jobs.
+   apply function (device). Media bulk tables (`media_segment`, `sentence`, `occurrence`,
+   detected `sentence_grammar_span`) and the `deck_item` rows of media decks are written only by
+   the server's `media-publish` runner, which installs them from worker-built snapshot archives
+   inside its publish transaction (`MEDIA_PIPELINE.md` 1, 3.3; C-11), and deleted by the
+   `media.deleted` apply path; devices install the same archives (`SNAPSHOT.md` 7). The worker
+   writes none of them. `ref.*` is written only by the `dict-refresh` worker job.
 10. **Storable values (C-6).** Every limit a column puts on values that ops write (no U+0000 in
     `text`/`jsonb`, the `integer` range, btree index entry size, RFC 3339-renderable instants) is
     mirrored by a bound in the op schemas (`contracts/sync/SYNC.md` 2.1, "Storable values"), so
@@ -285,7 +295,8 @@ Adding a vocab note's word to a deck uses the entry form (`e:<seq>`) when the no
 from the snapshot in `deck.content_blob_hash`: on `deck.content_published {deck_id,
 content_version, content_blob_hash}` a replica downloads the blob and replaces all items of that
 deck in one transaction (device then sets `installed_content_version`). Until then it keeps the
-old items.
+old items. Archive format, `added_at` (= the deck's `created_at`) and the install rule:
+`SNAPSHOT.md` 4, 7 (C-11). A media deck's `content_version` always equals its media's.
 
 **Confusables.** Pair is stored once per reason with `note_a_id < note_b_id`. If either note is
 deleted the row stays and is hidden by readers; if either note is merged, readers resolve through
@@ -296,12 +307,12 @@ deleted the row stays and is hidden by readers; if either note is merged, reader
 | Table | Sides | Written by | Notes |
 |---|---|---|---|
 | `media` | S D | `media.created` *(server, from an import job)*, `media.updated`, `media.deleted`, `media.content_published` *(server)* | `parse_status`, `content_version`, `content_blob_hash` change only via `media.content_published`. |
-| `media_segment` | S D* | worker (parse/import job) → snapshot | D* = optional on device, installed from the media snapshot. |
-| `sentence` | S D* | worker → snapshot | Ids stable across re-parses (see column comment). |
-| `occurrence` | S D* | worker → snapshot | |
-| `sentence_grammar_span` (detected rows) | S D* | worker → snapshot | Replaced per media: `DELETE … WHERE media_id = ? AND origin = 'detected'`, then insert. Manual rows are learning data (4.1) and are never touched by the worker. |
+| `media_segment` | S D* | server `media-publish` runner, from the content archive built by the worker (`MEDIA_PIPELINE.md` 3.3) | D* = optional on device, installed from the same archive (`SNAPSHOT.md` 7). |
+| `sentence` | S D* | as `media_segment` | Ids stable across re-parses: a producer obligation, `SNAPSHOT.md` 3.4. |
+| `occurrence` | S D* | as `media_segment` | |
+| `sentence_grammar_span` (detected rows) | S D* | as `media_segment` | Replaced per media: `DELETE … WHERE media_id = ? AND origin = 'detected'`, then insert. Manual rows are learning data (4.1) and are never touched by an install. |
 | `parse_override` | S | `parse_override.put`, `parse_override.deleted` | Server only; devices ignore these ops. |
-| `blob` | S | API/worker after storing the object | Device tracks its own copies in `blob_cache`. |
+| `blob` | S | API/worker after storing the object | Device tracks its own copies in `blob_cache`. Snapshot archives: `kind = snapshot`, `origin = build` (`SNAPSHOT.md` 2.6). |
 
 Deleting a media (`media.deleted`): server tombstones the `media` row, tombstones its deck
 (emitting `deck.deleted`), then hard-deletes that media's segments, sentences, occurrences and
@@ -328,6 +339,7 @@ A jpdb-imported media has exactly one segment (`kind = 'whole'`, `ordinal = 0`),
 | `api_token` | S | auth endpoints | |
 | `change` | S | op-apply only | See below. |
 | `job` | S | API enqueues, worker updates; internal kinds: worker enqueues, server updates | `kind` is a public `JobKind` (openapi) or a **server-internal kind** (C-9; list below). The `V1__init.sql` comment on `job.kind` predates C-9 and is left unchanged so the applied migration's checksum stays valid; the `CHECK` (`^[a-z][a-z0-9_-]*$`) already admits internal kinds, so no DDL changed. This row is authoritative. |
+| `jpdb_vocab`, `jpdb_vocab_media` | S | `media-publish` runner (rows, links), API (`putJpdbVocabResolution`, `clearJpdbVocabResolution`: resolution, under `pg_advisory_xact_lock(7033011)`) | jpdb mapping corrections: server-only import configuration, no op, not synced, not exported (`V2__jpdb_vocab.sql`, `MEDIA_PIPELINE.md` 5; C-11). |
 | `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, and so does the server while backups are disabled (C-8, never lowering it); the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
 
@@ -340,6 +352,7 @@ Its payload carries `parent_job_id`; its `dedupe_key` is `<kind>:<parent id>`. R
 | Kind | Parent kind | Enqueued by | Claimed by | Payload | Result | Protocol |
 |---|---|---|---|---|---|---|
 | `jpdb-history-apply` | `jpdb-history-import` | worker | server (`JpdbHistoryApplyRunner`) | `{"parent_job_id": uuid, "plan": <ImportPlan v1>}`; `plan` removed when the row ends | `JobResultJpdbHistory` | `importJpdbHistory` "Execution" |
+| `media-publish` | `media-import`, `media-parse`, `jpdb-deck-import` | worker | server (`MediaPublishRunner`) | `media/media-publish.v1.schema.json` (`parent_job_id`, `media_id`, `base_content_version`, `create`, two archive blobs, `unmapped`, `jpdb`); kept when the row ends; `max_attempts = 1` | `JobResultMedia` | `MEDIA_PIPELINE.md` 3 (C-11) |
 
 A new internal kind is added here by a contract ticket; it must not equal a `JobKind` value.
 
@@ -407,7 +420,8 @@ Example: Postgres `tags = '{anime,frieren}'` ⇔ SQLite `tags = '["anime","frier
 | `dict_entry_gloss` | Extra `gloss_lower` | Prefix search without `pg_trgm`. |
 | `freq_list` | No `entry_count`, `source` | |
 
-Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_override`, `server_state`.
+Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_override`, `server_state`,
+`jpdb_vocab`, `jpdb_vocab_media`.
 `check.sh` fails if the two schemas drift apart in any way not listed in its allow-list.
 
 ### 5.3 Device-only tables (`Local.sq`)
@@ -587,7 +601,9 @@ submitting the listed op(s) through the op-apply path.
 contracts/db/check.sh
 ```
 
-Starts a throwaway `postgres:17` container, applies `V1__init.sql`, runs `test/smoke.sql`,
+Validates the snapshot formats (`media/validate.py`: examples and negative cases), starts a
+throwaway `postgres:17` container, applies `V1__init.sql`, runs `test/smoke.sql`, applies
+`V2__jpdb_vocab.sql` and runs `test/smoke_v2.sql`,
 confirms the migration refuses an `LC_CTYPE=C` database, loads the `.sq` files into `sqlite3`,
 compares device and server columns and seed rows, and compiles the `.sq` files with the
 SQLDelight Gradle plugin (`verify/`). The container is removed on exit.

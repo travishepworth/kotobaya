@@ -35,7 +35,7 @@ class JobResultMedia(BaseModel):
     sentences: Annotated[int, Field(strict=True, ge=0)] = Field(description="Sentences now in the media.")
     tokens: Annotated[int, Field(strict=True, ge=0)] = Field(description="Word tokens.")
     unique_entries: Annotated[int, Field(strict=True, ge=0)] = Field(description="Distinct entries (= deck items).")
-    unmapped: List[JobResultMediaUnmappedInner] = Field(description="jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing is dropped silently.")
+    unmapped: List[JobResultMediaUnmappedInner] = Field(description="jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (`listJpdbVocab` status `unresolved`), by `occurrence_count` descending then `jpdb_vid`; empty otherwise. Items the user marked `ignored` are not listed but their tokens still count in `unmapped_tokens`. Nothing is dropped silently (C-11).")
     unmapped_tokens: Annotated[int, Field(strict=True, ge=0)] = Field(description="Tokens that matched no entry.")
     __properties: ClassVar[List[str]] = ["content_version", "media_id", "segments", "sentences", "tokens", "unique_entries", "unmapped", "unmapped_tokens"]
 

@@ -151,6 +151,12 @@ from kotobaya_client.models.job_result_tts import JobResultTts
 from kotobaya_client.models.job_status import JobStatus
 from kotobaya_client.models.jpdb_deck_import_request import JpdbDeckImportRequest
 from kotobaya_client.models.jpdb_history_import_request import JpdbHistoryImportRequest
+from kotobaya_client.models.jpdb_vocab import JpdbVocab
+from kotobaya_client.models.jpdb_vocab_media import JpdbVocabMedia
+from kotobaya_client.models.jpdb_vocab_page import JpdbVocabPage
+from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution
+from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut
+from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji
 from kotobaya_client.models.login_request import LoginRequest
 from kotobaya_client.models.media import Media

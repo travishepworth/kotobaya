@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 **sentences** | **int** | Sentences now in the media. | 
 **tokens** | **int** | Word tokens. | 
 **unique_entries** | **int** | Distinct entries (&#x3D; deck items). | 
-**unmapped** | [**List[JobResultMediaUnmappedInner]**](JobResultMediaUnmappedInner.md) | jpdb deck import only - vocabulary that maps to no JMdict entry (empty otherwise). Nothing is dropped silently. | 
+**unmapped** | [**List[JobResultMediaUnmappedInner]**](JobResultMediaUnmappedInner.md) | jpdb deck import only - vocabulary that maps to no JMdict entry and has no stored correction (&#x60;listJpdbVocab&#x60; status &#x60;unresolved&#x60;), by &#x60;occurrence_count&#x60; descending then &#x60;jpdb_vid&#x60;; empty otherwise. Items the user marked &#x60;ignored&#x60; are not listed but their tokens still count in &#x60;unmapped_tokens&#x60;. Nothing is dropped silently (C-11). | 
 **unmapped_tokens** | **int** | Tokens that matched no entry. | 
 
 ## Example
