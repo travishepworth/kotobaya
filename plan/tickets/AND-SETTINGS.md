@@ -3,7 +3,7 @@
 - Phase: P8 · Model: sonnet · Risk: med
 - Deps: none
 - Branch: t/AND-SETTINGS-settings-tab
-- Owned paths (only edit these): `android/src/main/kotlin/kotobaya/android/settings/ui/` (new), `android/src/main/res/values/strings_settings.xml`, `android/src/test/kotlin/kotobaya/android/settings/ui/`, one line in `android/src/main/kotlin/kotobaya/android/di/FeatureModules.kt`, additive lines in `android/src/main/kotlin/kotobaya/android/i18n/T.kt`, additive methods in `android/src/main/kotlin/kotobaya/android/net/ApiClient.kt`. Small additive public accessors (no behaviour change) in `settings/SettingsStore.kt`, `notify/NotifyPrefs.kt`, `media/MediaSettings.kt`, `ankiapi/takoboto/TakobotoFeature.kt`, `ankiconnect/AnkiConnectFeature.kt`, `pairing/`, `sync/SyncFeature.kt` only if a setting has no public API; list each in HANDOFF.
+- Owned paths (only edit these): `android/src/main/kotlin/kotobaya/android/settings/ui/` (new), `android/src/main/res/values/strings_settings.xml`, `android/src/test/kotlin/kotobaya/android/settings/ui/`, one line in `android/src/main/kotlin/kotobaya/android/di/FeatureModules.kt`, additive lines in `android/src/main/kotlin/kotobaya/android/i18n/T.kt`, additive methods in `android/src/main/kotlin/kotobaya/android/net/ApiClient.kt`. Small additive public accessors (no behaviour change) in `settings/SettingsStore.kt`, `notify/NotifyPrefs.kt`, `media/MediaSettings.kt`, `ankiapi/takoboto/TakobotoFeature.kt`, `ankiconnect/AnkiConnectFeature.kt`, `pairing/`, `sync/SyncFeature.kt` only if a setting has no public API; list each in HANDOFF. For the unpaired first-launch route: minimal edits in `pairing/` and the Home/start screen file (one hook), listed in HANDOFF.
 - Module(s) for CI: android
 
 ## Read
@@ -11,20 +11,19 @@
 - Contracts: contracts/sync settings ops (settings.set / FSRS preset ops), contracts/db settings keys (SCHEMA 6.1), contracts/api health/version
 - Existing code: `android/src/main/kotlin/kotobaya/android/nav/AppNav.kt` (Routes.SETTINGS="settings", SettingsSection in `di/FeatureModules.kt`), `settings/SettingsStore.kt`, `sync/SyncFeature.kt` (`syncNow()`), `sync/ui/SyncUiFeature.kt` + `SyncContent.kt`, `pairing/PairingFeature.kt`, `pairing/TokenStore.kt`, `notify/NotifyPrefs.kt`, `notify/NotifyFeature.kt`, `media/MediaSettings.kt`, `ankiapi/takoboto/TakobotoFeature.kt`, `ankiconnect/AnkiConnectFeature.kt`, core OpMinter
 
-## Do
-A Settings tab at route `settings`, sections:
-1. **Server**: base URL, paired device name, connection status; **Re-pair** (opens the existing pairing flow; clears the token only after confirmation).
-2. **Sync**: last sync, pending/rejected counts, **Sync now** (`syncNow()`), link to the existing Sync screen.
-3. **Study**: daily new/review limits and day-boundary (rollover hour) — read from the replica's settings; changes **mint settings ops** via OpMinter (no direct table writes); validate ranges per SCHEMA 6.1.
-4. **Notifications**: the NotifyPrefs toggles/times; reschedule alarms on change (reuse NotifyFeature).
-5. **Audio / TTS**: MediaSettings (auto-play, prefetch, storage budget, TTS on/off if present).
-6. **Integrations**: Takoboto stand-in and AnkiConnect server toggles (API key display/regenerate if the feature exposes it).
-7. **About**: app version, flavor, server version (health), licences/attribution link if one exists.
-Use existing SettingsSection entries if features already contribute sections; don't duplicate them.
+## Do (REVISED by user requirement, run 15 — this replaces the earlier list)
+Context: 8 features already register settings UI as `FeatureEntry.settingsSections` (pairing "devices" = DevicesSection with the ML Kit GmsBarcodeScanning QR scanner; sync; dict; media; push; notify; ankiconnect; takoboto). Nothing renders them because the Settings tab is a PlaceholderScreen, so QR pairing is unreachable in the app today.
+1. The Settings tab at route `settings` **renders every registered `settingsSections` entry from the FeatureRegistry** (stable order, e.g. Devices/pairing first, then sync, then the rest), each as a section or a sub-screen. Do **not** re-implement what those sections already do.
+2. Add only what is missing, as its own section(s) in `settings/ui/`:
+   - **Study**: daily new/review limits and day boundary (rollover hour), read from the replica's settings; changes **mint settings ops** via OpMinter (no direct table writes); validate ranges per SCHEMA 6.1.
+   - **About**: app version, flavor, server version (health), licences/attribution link if one exists.
+   - Anything else in the original list (server status/re-pair, sync now, notifications, TTS, Takoboto/AnkiConnect) only if no registered section already covers it.
+3. **Unpaired first launch** must offer a clear route to pairing: e.g. a status chip on the Home/start screen or a first-run prompt that opens Settings → Devices (or the pairing flow directly). Keep this a minimal hook.
 
 ## Acceptance
-- [ ] Test: changing the daily new limit and the day boundary mints exactly one settings op each with the correct key and value (and nothing is written to replica tables directly); an out-of-range value mints nothing.
-- [ ] The Settings tab replaces the placeholder; Sync now triggers syncNow (no UI tests required).
+- [ ] Settings → Devices → "Scan QR" opens the scanner and pairs. Verify on a device/emulator if available; otherwise a Robolectric/compose test that the Settings tab renders every registered settingsSections entry (assert the Devices section with its Scan QR action is present).
+- [ ] Unpaired first launch shows the route to pairing (Robolectric/compose test or a clear manual check listed in HANDOFF).
+- [ ] Test: changing the daily new limit and the day boundary mints exactly one settings op each with the correct key and value (no direct replica writes); an out-of-range value mints nothing.
 - [ ] `make check MODULE=android` green.
 
 ## Out of scope
