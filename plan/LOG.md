@@ -630,3 +630,5 @@
 2026-11-13T04:00:12Z C-12 HANDOFF attempt 2 DONE; CHECK_GREEN contracts; reviewer + architect re-check dispatched
 2026-11-13T04:00:34Z C-12 REVIEW_APPROVE reviewer (both majors fixed; 1 minor → FOLLOWUPS)
 2026-11-13T04:00:50Z C-12 MERGE reviewer + architect APPROVE; 2 attempts
+2026-11-13T04:01:08Z T403b DISPATCH writer-senior; T403c+T408a DISPATCH writer (batched server); T401b DISPATCH writer
+2026-11-13T04:07:15Z F-14/F-15/F-16 NEW human-reported live 0.1.1 bugs (blob PUT MD5, unregistered modules 501, health version); queued ahead of P4
