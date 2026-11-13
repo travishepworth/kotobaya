@@ -624,6 +624,16 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - model: opus (architect) · risk: high (+architect second pass) · deps: — · status: RUNNING
 - paths: contracts/sync/, core replay/decide + scheduler version, tests (ticket: plan/tickets/BUG-6.md)
 
+## Phase 8 — Features (requested 2026-11-13)
+
+### C-17 — Contract: GET /kanji/{literal}/words (by frequency, deck membership; additive)
+- model: opus (architect) · risk: med · deps: — · status: TODO
+- paths: contracts/api/, clients/ (regen) (ticket: plan/tickets/C-17.md)
+
+### FEAT-1 — Clickable kanji in dictionary: words by frequency + in my decks
+- model: sonnet · risk: med · deps: C-17 · status: TODO
+- paths: server dict/ + tests, server routing, web dictionary (ticket: plan/tickets/FEAT-1.md)
+
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
 - C-4 status: MERGED · C-10 MERGED · C-9 MERGED · T207c MERGED · F-1 MERGED · W-3 MERGED · W-2 MERGED · C-8 MERGED · F-2 MERGED · F-3 MERGED · F-4 MERGED · C-7 MERGED (settings keys + QueueInput) · T202d MERGED · C-6 MERGED (storable values: U+0000, int4 max, instant cap; BREAKING, no data yet) · C-5 MERGED (ECMA pattern semantics, depth limit; from T202a review) · T201a MERGED · T201b MERGED · T202a MERGED · T202b MERGED · T202c MERGED · T203 MERGED · T204 MERGED · T205 MERGED · T206 MERGED · T207a MERGED · T207b MERGED · T208 MERGED · T209 MERGED · T210a MERGED · T210b MERGED · T211 MERGED · T212 MERGED (web half) · T212b MERGED · T213a MERGED · T213b MERGED · T214 MERGED

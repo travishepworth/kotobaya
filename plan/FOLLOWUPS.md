@@ -360,3 +360,11 @@
 - Tests: assert hardening headers on 404/416 (StatusPages path) and Content-Disposition on 304. (low)
 - getBlob contract could document the security headers (C-ticket, doc only). (low)
 - docs/SECURITY.md: mark S-01 (SEC-1) and S-02 (SEC-2) fixed. (low)
+
+## BUG-1 review minors (run 13)
+- StatsPerfTest asserts < 1000 ms hard (known-day ~590 ms); consider < 2000 ms assert + log vs 1 s target to avoid flaky fails on slow hosts.
+- StatsModule streak `fetchSize(500)` only pages with autocommit off; pin the transaction (explicit tx or test).
+- StatsQueries.loadHistory passes all roots in one uuid[] (~10k); unbounded — chunk if it grows.
+
+## BUG-6 architect note (run 13)
+- Rolling deploy with 2 server pods: old pod could run a jpdb import after new pod stored fsrs6-2, writing old-rule caches under the new version. Single replica today; use Recreate strategy (or re-check) to rule it out.

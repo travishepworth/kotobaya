@@ -778,3 +778,13 @@
 2026-11-13T09:56:38Z BUG-1 DISPATCH writer-senior attempt 2 (same worktree)
 2026-11-13T09:58:29Z BUG-6 DECIDE ADR-021 PROVISIONAL jpdb import graduation (fsrs6-2); HUMAN_CHECKS line
 2026-11-13T09:58:34Z BUG-6 DISPATCH architect (opus) attempt 2: server import_source + replay equality test
+2026-11-13T10:07:37Z BUG-1 HANDOFF DONE: summary 153ms (was 19.7s), queue 48ms, all stats <600ms @90k/10k
+2026-11-13T10:07:37Z BUG-1 REVIEW dispatched reviewer (high)
+2026-11-13T10:08:45Z BUG-1 REVIEW_APPROVE (3 minors -> FOLLOWUPS); rebased onto 914e2a4, re-checking server+web
+2026-11-13T10:10:00Z BUG-6 HANDOFF DONE 8f52b5f: server import_source + ImportReplayServerTest; contracts/core/server green
+2026-11-13T10:10:00Z BUG-6 REVIEW dispatched reviewer + architect second pass
+2026-11-13T10:10:47Z BUG-6 REVIEW_APPROVE architect (1 note -> FOLLOWUPS)
+2026-11-13T10:11:13Z BUG-6 REVIEW_APPROVE reviewer (2 minors; day-boundary note added to ADR-021)
+2026-11-13T10:11:27Z BUG-1 NOTE coordinator: web queue slow -> covered; GET /review/queue load+build 48/37ms @89.8k/10k (StatsPerfTest.reviewQueueLoadsWithinOneSecond)
+2026-11-13T10:12:54Z BUG-1 MERGE e9b8350 CHECK_GREEN server+web after rebase (review APPROVE)
+2026-11-13T10:12:54Z BUG-6 REBASE conflict StatsQueries (1 hunk) -> writer resolving
