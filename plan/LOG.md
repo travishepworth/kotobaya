@@ -843,3 +843,5 @@
 2026-11-13T12:25:27Z BUG-9 HANDOFF DONE 9fe3e5e; stats 7-607ms on 89,775 reviews, peak heap 335MB; no -Xmx256m run
 2026-11-13T12:25:27Z TEST-1 DISPATCH writer-light (haiku, low; jsdom human-approved)
 2026-11-13T12:25:56Z BUG-9 MERGE ac0765f CHECK_GREEN server (med, no review); for 0.1.8
+2026-11-13T12:26:16Z BUG-10 DISPATCH writer (sonnet, med)
+2026-11-13T12:26:16Z C-19 HANDOFF DONE 617299d; core+contracts+web green per writer

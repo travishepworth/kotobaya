@@ -17,12 +17,13 @@ Updated: RUN17
 |---|---|---|---|---|
 | BUG-8 | writer-senior | 1 | t/BUG-8-android-sync-perf | RUN17 |
 | TEST-1 | writer-light | 1 | t/TEST-1-preview-loop-vitest | RUN17 |
-| C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
+| BUG-10 | writer | 1 | t/BUG-10-hot-queries | RUN17 |
 
 ## Queued
 BUG-10, UI-FOUND-WEB (ready; next free slots in that order) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
+C-19: HANDOFF DONE 617299d (additive RenderOptions.fieldRegions); post-rebase checks running
 
 ## Blocked
 (none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
