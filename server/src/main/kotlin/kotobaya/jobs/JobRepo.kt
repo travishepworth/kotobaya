@@ -16,7 +16,7 @@ import java.util.UUID
 /** The closed `JobKind` enum of the API. Server-internal kinds in `app.job` are never read or exposed. */
 val API_JOB_KINDS: List<String> = listOf(
     "dict-refresh", "media-import", "media-parse", "jpdb-deck-import", "jpdb-history-import",
-    "fsrs-optimize", "tts", "deck-build",
+    "fsrs-optimize", "tts", "deck-build", "grammar-detect",
 )
 val JOB_STATUSES: List<String> = listOf("queued", "running", "succeeded", "failed", "cancelled")
 private val TERMINAL = setOf("succeeded", "failed", "cancelled")

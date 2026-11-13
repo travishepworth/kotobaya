@@ -110,6 +110,7 @@ class NtfySink(
                 val job = event.path("data")
                 val status = job.path("status").asText()
                 if (status != "succeeded" && status != "failed") return
+                if (job.path("kind").asText() == "grammar-detect") return // C-13: background re-detection never notifies
                 if (!deliveredJobs.add(job.path("id").asText() + ":" + status)) return
                 if (deliveredJobs.size > 500) deliveredJobs.remove(deliveredJobs.first())
                 title = job.path("kind").asText("job") + if (status == "succeeded") " finished" else " failed"

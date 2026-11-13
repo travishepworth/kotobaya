@@ -30,9 +30,6 @@ class WiringAuditTest {
         // Every other entry has no handler in this tree yet (later tickets); remove entries as they land.
         "listHotKanji",
         "testGrammarRules",
-        "listGrammarExamples",
-        "putGrammarSpan",
-        "removeGrammarSpan",
         "getStatsSummary",
         "getStatsHeatmap",
         "getStatsRetention",

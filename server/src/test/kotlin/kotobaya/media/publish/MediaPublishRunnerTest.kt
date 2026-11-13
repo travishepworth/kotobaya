@@ -219,6 +219,21 @@ class MediaPublishRunnerTest : SyncFixture() {
         assertEquals(listOf("parsed@1", "parsing@1", "parsed@2"), statuses)
     }
 
+    @Test
+    fun grammarDetectParentKeepsParseStatusAndRefusesCreate() {
+        grammarPoint()
+        publishV1(parent(MEDIA, "grammar-detect")).let { assertJob("failed", it, "invalid_payload") }
+        assertEquals(0, count("select count(*) from app.media"), "a grammar-detect publish never creates")
+
+        publishV1()
+        emit(OpType.MEDIA_CONTENT_PUBLISHED, """{"media_id":"$MEDIA","parse_status":"parsing","parse_error":null,"content_version":1,"content_blob_hash":"$CONTENT_V1"}""")
+        publishV2(parent(MEDIA, "grammar-detect")).let { assertJob("succeeded", it) }
+        val media = row("media", "id" to MEDIA)!!
+        assertEquals(2, media["content_version"].asInt())
+        assertEquals("parsing", media["parse_status"].asText(), "detection is not a parse")
+        assertEquals("parsing", ops().last { it.type == "media.content_published" }.payload["parse_status"].asText())
+    }
+
     // ------------------------------------------------------------------ ids across re-publish, manual spans
 
     @Test

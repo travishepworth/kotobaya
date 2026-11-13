@@ -137,6 +137,9 @@ class MediaPublishRunner(
             val deckSummary = snapshot { Files.newInputStream(deck).buffered().use { SnapshotReader.readDeckItems(it) } }
             snapshot { SnapshotReader.checkPair(contentSummary, deckSummary) }
             checkPublish(payload, contentSummary)
+            if (parentKind(payload.parentJobId) == GRAMMAR_DETECT && (payload.create != null || payload.jpdb != null)) {
+                throw PublishFailure(PublishFailure.INVALID_PAYLOAD, "a grammar-detect publish must have create and jpdb null")
+            }
             val result = result(payload, contentSummary, deckSummary)
             faults("fetched")
             val outcome = opApply.transactionBlocking(null) { tx ->
@@ -170,6 +173,9 @@ class MediaPublishRunner(
 
     private fun parentStatus(parent: UUID): String? =
         db.txBlocking { it.fetchValue("select status from app.job where id = ?", parent) as String? }
+
+    private fun parentKind(parent: UUID): String? =
+        db.txBlocking { it.fetchValue("select kind from app.job where id = ?", parent) as String? }
 
     /** Downloads [ref] to a temp file, checking the `app.blob` row, length and SHA-256 (3.3 step 3). */
     private fun fetch(ref: BlobRef, files: MutableList<Path>): Path {
@@ -264,7 +270,9 @@ class MediaPublishRunner(
         // 4. The claim is still ours and the parent still running.
         val child = dsl.fetchOptional("select status, locked_by from app.job where id = ? for update", id).orElse(null)
         if (child == null || child.get(0, String::class.java) != "running" || child.get(1, String::class.java) != token) throw LostClaim()
-        val parent = dsl.fetchValue("select status from app.job where id = ? for update", p.parentJobId) as String?
+        val parentRow = dsl.fetchOptional("select status, kind from app.job where id = ? for update", p.parentJobId).orElse(null)
+        val parent = parentRow?.get(0, String::class.java)
+        val detection = parentRow?.get(1, String::class.java) == GRAMMAR_DETECT
         if (parent != "running") {
             endInTx(tx, id, token, "cancelled")
             return Outcome.Cancelled
@@ -273,7 +281,7 @@ class MediaPublishRunner(
 
         // 5. The media, its deck, and the archive's references.
         val media = dsl.fetchOptional(
-            "select content_version, content_blob_hash, deleted_at is not null, source, jpdb_id from app.media where id = ?::uuid for update",
+            "select content_version, content_blob_hash, deleted_at is not null, source, jpdb_id, parse_status, parse_error from app.media where id = ?::uuid for update",
             p.mediaId,
         ).orElse(null)
         val deck = dsl.fetchOptional(
@@ -288,6 +296,7 @@ class MediaPublishRunner(
             return Outcome.Done
         }
         val create = p.create
+        if (detection && (create != null || p.jpdb != null)) fail(PublishFailure.INVALID_PAYLOAD, "a grammar-detect publish must have create and jpdb null")
         if (create != null) {
             if (media != null) fail(PublishFailure.STALE_BASE, "media ${p.mediaId} already exists (base_content_version 0)")
             if (deck != null) fail(PublishFailure.DECK_ID_TAKEN, "a ${deck.get(0, String::class.java)} deck already has id ${p.mediaId}")
@@ -328,7 +337,8 @@ class MediaPublishRunner(
         tx.emit(
             OpType.MEDIA_CONTENT_PUBLISHED,
             obj(
-                "media_id" to JsonString(p.mediaId), "parse_status" to JsonString("parsed"), "parse_error" to JsonNull,
+                "media_id" to JsonString(p.mediaId), "parse_status" to JsonString(if (detection) media?.get(5, String::class.java) ?: "parsed" else "parsed"),
+                "parse_error" to (if (detection) media?.get(6, String::class.java)?.let(::JsonString) ?: JsonNull else JsonNull),
                 "content_version" to JsonNumber(p.version.toDouble()), "content_blob_hash" to JsonString(p.content.blobHash),
             ),
         )
@@ -472,6 +482,7 @@ class MediaPublishRunner(
     }
 
     companion object {
+        private const val GRAMMAR_DETECT = "grammar-detect"
         const val KIND = "media-publish"
         const val DECK_NAME_MAX = 200
 

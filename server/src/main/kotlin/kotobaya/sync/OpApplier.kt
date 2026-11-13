@@ -161,8 +161,8 @@ internal class OpApplier(
             CONFUSABLE_CONFIRMED -> confusable(p, h, "confirmed")
             CONFUSABLE_REJECTED -> confusable(p, h, "rejected")
             GRAMMAR_CREATED -> grammarCreated(p, h)
-            GRAMMAR_UPDATED -> registers("grammar_point", p.reqStr("id"), h, setWrites(p.reqObj("set")))
-            GRAMMAR_DELETED -> deleted("grammar_point", p.reqStr("id"), h).let { none() }
+            GRAMMAR_UPDATED -> grammarUpdated(p, h)
+            GRAMMAR_DELETED -> grammarDeleted(p.reqStr("id"), h)
             GRAMMAR_SPAN_PUT -> span(p, h, removed = false)
             GRAMMAR_SPAN_REMOVED -> span(p, h, removed = true)
             SETTINGS_SET -> settings(p, h)
@@ -656,7 +656,39 @@ internal class OpApplier(
             if (v != d) stamp(row, c, h)
         }
         rows.insert("grammar_point", row)
+        if ((p.members["detection_rules"] as? JsonArray)?.items?.isNotEmpty() == true) enqueueGrammarDetect()
         return none()
+    }
+
+    private fun grammarUpdated(p: JsonObject, h: String): List<FollowUp> {
+        val ed = editor("grammar_point", p.reqStr("id"))
+        var rulesWon = false
+        for (w in setWrites(p.reqObj("set"))) {
+            if (ed.register(w.name, h, w.write) && w.name == "detection_rules") rulesWon = true
+        }
+        rows.update("grammar_point", ID, ed.row, ed.dirty)
+        if (rulesWon) enqueueGrammarDetect()
+        return none()
+    }
+
+    private fun grammarDeleted(id: String, h: String): List<FollowUp> {
+        val ed = editor("grammar_point", id)
+        val wasLive = ed.row["deleted_at"].let { it == null || it.isNull }
+        val hadRules = ed.row["detection_rules"]?.let { it.isArray && it.size() > 0 } == true
+        ed.register("deleted", h) { it.set("deleted_at", instant(wall(h))) }
+        rows.update("grammar_point", ID, ed.row, ed.dirty)
+        if (wasLive && hadRules && !ed.row["deleted_at"].isNull) enqueueGrammarDetect()
+        return none()
+    }
+
+    /** C-13: one deduped `grammar-detect` fan-out per burst of rule edits; `job.updated` is delivered at commit (pg_notify). */
+    private fun enqueueGrammarDetect() {
+        val id = dsl.fetchOptional(
+            "insert into app.job (id, kind, payload, dedupe_key) values (?::uuid, 'grammar-detect', '{}'::jsonb, 'grammar-detect:all') " +
+                "on conflict do nothing returning id::text",
+            kotobaya.server.Uuid7.generate().toString(),
+        ).map { it.get(0, String::class.java) }.orElse(null) ?: return
+        dsl.execute("select pg_notify('kotobaya_events', ?)", """{"type":"job.updated","data":{"id":"$id"}}""")
     }
 
     private fun span(p: JsonObject, h: String, removed: Boolean): List<FollowUp> {
