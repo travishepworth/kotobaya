@@ -56,4 +56,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.settings.settingsUiFeature,
     kotobaya.android.grammar.grammarCaptureFeature,
     kotobaya.android.demo.demoFeature,
+    kotobaya.android.styleguide.styleguideFeature, // UI-DS-APP: debug-only (src/debug; src/release has an empty entry)
 )

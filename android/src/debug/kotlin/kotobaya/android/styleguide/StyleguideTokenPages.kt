@@ -363,6 +363,3 @@ private fun EasingCurve(name: String, easing: Easing) {
         Text(name, style = KbTheme.type.caption, color = c.textMuted)
     }
 }
-
-/** Fills the width; used by the page frame. */
-val SgPageModifier: Modifier = Modifier.fillMaxWidth()

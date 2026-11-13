@@ -370,9 +370,9 @@ fun FeedbackPage() {
         Toast(KbFeedback.Danger, R.string.sg_toast_error, R.string.sg_retry)
     }
     SgGroup(R.string.sg_group_empty) {
-        EmptyState(ensō = true, R.string.sg_empty_done_title, R.string.sg_empty_done_body, R.string.sg_empty_done_action, error = false)
-        EmptyState(ensō = false, R.string.sg_empty_decks_title, R.string.sg_empty_decks_body, R.string.sg_empty_decks_action, error = false)
-        EmptyState(ensō = false, R.string.sg_error_title, R.string.sg_error_body, R.string.sg_retry, error = true)
+        EmptyState(enso = true, R.string.sg_empty_done_title, R.string.sg_empty_done_body, R.string.sg_empty_done_action, error = false)
+        EmptyState(enso = false, R.string.sg_empty_decks_title, R.string.sg_empty_decks_body, R.string.sg_empty_decks_action, error = false)
+        EmptyState(enso = false, R.string.sg_error_title, R.string.sg_error_body, R.string.sg_retry, error = true)
     }
     SgGroup(R.string.sg_group_loading) {
         // Static skeletons (the real pulse stops under reduced motion; a still frame is what a screenshot shows).
@@ -429,14 +429,14 @@ private fun Toast(kind: KbFeedback, message: Int, action: Int?) {
 }
 
 @Composable
-private fun EmptyState(ensō: Boolean, title: Int, body: Int, action: Int, error: Boolean) {
+private fun EmptyState(enso: Boolean, title: Int, body: Int, action: Int, error: Boolean) {
     val c = KbTheme.colors
     Column(
         Modifier.fillMaxWidth().background(c.surface, KbTheme.shapes.lg).border(1.dp, c.border, KbTheme.shapes.lg).padding(KbTheme.space.s6),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(KbTheme.space.s2),
     ) {
-        if (ensō) {
+        if (enso) {
             Enso(Modifier.size(64.dp))
         } else {
             val tone = if (error) c.feedback(KbFeedback.Danger) else c.feedback(KbFeedback.Info)
@@ -454,7 +454,7 @@ private fun EmptyState(ensō: Boolean, title: Int, body: Int, action: Int, error
     }
 }
 
-/** The vermilion ensō, reserved for "review finished": an open brush circle. */
+/** The vermilion enso, reserved for "review finished": an open brush circle. */
 @Composable
 fun Enso(modifier: Modifier) {
     val brand = KbTheme.colors.brand
