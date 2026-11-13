@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,13 +37,12 @@ fun SgGroup(@StringRes title: Int, content: @Composable ColumnScope.() -> Unit) 
 /** Items that wrap onto as many lines as the width needs. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SgFlow(content: @Composable FlowRowScope.() -> Unit) {
+fun SgFlow(content: @Composable () -> Unit) {
     FlowRow(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(KbTheme.space.s2),
         verticalArrangement = Arrangement.spacedBy(KbTheme.space.s2),
-        content = content,
-    )
+    ) { content() }
 }
 
 /** A token name and its value in caption type (identifiers, not prose, so not translated). */
