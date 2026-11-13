@@ -17,9 +17,16 @@ import kotlin.test.assertTrue
 
 class ServerTest {
     @Test
-    fun flywayAppliesV1AndReadyzIsOkOnceStartupFinished() = testApplication {
+    fun flywayAppliesAllContractMigrationsAndReadyzIsOkOnceStartupFinished() = testApplication {
         val db = TestPg.freshDatabaseUrl().let { Database.connect(it) }
-        assertEquals(1, Migrations.migrate(db.dataSource))
+        val versions = java.io.File("../contracts/db").listFiles().orEmpty()
+            .mapNotNull { Regex("""V(\d+)__.+\.sql""").matchEntire(it.name)?.groupValues?.get(1)?.toInt() }
+        assertTrue(versions.isNotEmpty())
+        assertEquals(versions.size, Migrations.migrate(db.dataSource))
+        val applied = db.dataSource.connection.use { c ->
+            c.createStatement().executeQuery("select max(version::int) from flyway_schema_history where success").use { r -> r.next(); r.getInt(1) }
+        }
+        assertEquals(versions.max(), applied)
         val startup = StartupSequence(db)
         application { kotobayaModule(AppDeps(db, startup = startup)) }
         // not ready until the startup sequence has committed

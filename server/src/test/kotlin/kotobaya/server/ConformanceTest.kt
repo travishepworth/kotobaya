@@ -15,6 +15,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+private val HTTP_METHODS = setOf("get", "put", "post", "delete", "patch", "head", "options", "trace")
+
+/** Counts operations straight from the frozen contract file, independent of [ApiSpec]. */
+private fun contractOperationCount(): Int {
+    val root = com.fasterxml.jackson.databind.ObjectMapper(com.fasterxml.jackson.dataformat.yaml.YAMLFactory())
+        .readTree(java.io.File("../contracts/api/openapi.yaml"))
+    return root.path("paths").elements().asSequence().sumOf { item -> item.fieldNames().asSequence().count { it in HTTP_METHODS } }
+}
+
 /** OpenAPI conformance: the routing table equals the spec, and implemented operations answer as declared. */
 class ConformanceTest {
     private fun leaves(route: Route, out: MutableSet<String> = linkedSetOf()): Set<String> {
@@ -41,7 +50,7 @@ class ConformanceTest {
         }
         val expected = deps.spec.operations.map { "${it.method.value} ${deps.spec.basePath}${it.path}" }.toSet() +
             setOf("GET /healthz", "GET /readyz", "GET /metrics")
-        assertEquals(117, deps.spec.operations.size, "contract has 117 operations")
+        assertEquals(contractOperationCount(), deps.spec.operations.size, "operations in contracts/api/openapi.yaml")
         assertEquals(expected.sorted(), routes.sorted())
         db.close()
     }
