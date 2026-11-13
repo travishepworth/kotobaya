@@ -268,79 +268,79 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ## Phase 2 — Review loop (web)
 
 ### T201 — Notes, note types, card generation
-- model: sonnet · risk: med · deps: GATE-P1 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P1 · status: SPLIT (all parts MERGED)
 - paths: `core/src/commonMain/kotlin/kotobaya/cards/`, `server/src/main/kotlin/kotobaya/notes/`, tests
 - do: Built-in note types (vocab, kanji, phrase, grammar, sentence, custom) with templates; `CardGenerator`; notes CRUD writing ops; template field substitution (sanitised HTML). Full card rendering is T213.
 - accept: Creating each note type yields the spec's default cards; optional kinds toggle correctly.
 
 ### T202 — Op log, sync push/pull (server)
-- model: fable · risk: high · deps: GATE-P1 · status: TODO
+- model: fable · risk: high · deps: GATE-P1 · status: SPLIT (all parts MERGED)
 - paths: `server/src/main/kotlin/kotobaya/sync/`, `core/src/commonMain/kotlin/kotobaya/sync/`, tests
 - do: HLC implementation; op validation against `contracts/sync`; idempotent apply; server sequence; push/pull endpoints; tombstones; same-entry merge.
 - accept: Every worked example in `contracts/sync/SYNC.md` is a passing test; fuzz test: random op interleavings from 3 simulated devices converge to identical state.
 
 ### T203 — Replay engine
-- model: fable · risk: high · deps: T107, T202 · status: TODO
+- model: fable · risk: high · deps: T107, T202 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/replay/`, tests
 - do: Rebuild card state from `review_log` (ordered by HLC), incremental replay for out-of-order inserts, drill/cram exclusion, parameter changes trigger full recompute.
 - accept: Incremental and full replay always agree (property test).
 
 ### T204 — Decks and deck items
-- model: sonnet · risk: med · deps: T201 · status: TODO
+- model: sonnet · risk: med · deps: T201 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/decks/`, tests
 - do: Deck types (user, media, list, smart), priorities, limits, ordering, deck_item CRUD via ops.
 - accept: Smart deck query uses T108; reorder ops converge under concurrency.
 
 ### T205 — Queue builder
-- model: opus · risk: high · deps: T203, T204 · status: TODO
+- model: opus · risk: high · deps: T203, T204 · status: MERGED
 - paths: `core/src/commonMain/kotlin/kotobaya/queue/`, tests
 - do: Daily limits (global, per deck), deck priority for new cards, sibling burying, interleaving, new-per-session cap, kanji-before-vocab option, day boundary in user's time zone.
 - accept: Deterministic for a given seed and clock; table-driven tests for every rule in Scheduling › Queue building.
 
 ### T206 — Review endpoints
-- model: sonnet · risk: med · deps: T205 · status: TODO
+- model: sonnet · risk: med · deps: T205 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/review/`, tests
 - do: `/review/queue`, `/review/answer` (4- and 5-button modes), `/review/undo`, word-status updates, never-forget / blacklist.
 - accept: Undo restores exact prior state; 5-button mapping logged as specified.
 
 ### T207 — jpdb history import
-- model: opus · risk: high · deps: T203, T206, S02 · status: TODO
+- model: opus · risk: high · deps: T203, T206, S02 · status: SPLIT (all parts MERGED)
 - paths: `worker/kotobaya_worker/importers/jpdb_history/`, `server/src/main/kotlin/kotobaya/imports/`, tests
 - do: Parse jpdb export; map words (using S02 mapping); create notes/cards; convert reviews to `review.logged` ops; replay; carry over known / never-forget / blacklisted; report unmapped items.
 - accept: On the private sample: ≥ 95% mapped; replay produces due dates; report lists every unmapped item.
 
 ### T208 — Web shell
-- model: sonnet · risk: low · deps: T110, T105 · status: TODO
+- model: sonnet · risk: low · deps: T110, T105 · status: MERGED
 - paths: `web/src/lib/`, `web/src/routes/+layout*`, `web/src/routes/login/`
 - do: Auth flow, layout, nav, design tokens (light/dark), Japanese font stack, generated TS client wiring, error toasts, SSE hook.
 - accept: Login/logout works against the dev stack (manual).
 
 ### T209 — Web review screen
-- model: sonnet · risk: med · deps: T206, T208, T213 · status: TODO
+- model: sonnet · risk: med · deps: T206, T208, T213 · status: MERGED
 - paths: `web/src/routes/review/`, `web/src/lib/review/`
 - do: Card display via `renderCard` from `web/src/lib/core/` (no TS re-implementation), furigana toggle, keyboard-first (1–4 / 1–5, space, u), undo, edit note inline, bury/suspend/never-forget.
 - accept: A full session works keyboard-only (manual).
 
 ### T210 — Web card browser and bulk ops
-- model: sonnet · risk: med · deps: T108, T208, T213 · status: TODO
+- model: sonnet · risk: med · deps: T108, T208, T213 · status: SPLIT (all parts MERGED)
 - paths: `web/src/routes/cards/`, `server/src/main/kotlin/kotobaya/cards/bulk/`
 - do: Search box (query language; validation and autocomplete via `parseQuery`/`completeQuery` from core, client-side), virtualised table, bulk tag/move/suspend/reschedule.
 - accept: Bulk op runs as one job with progress.
 
 ### T211 — Web decks, note types, templates
-- model: sonnet · risk: low · deps: T204, T208, T213 · status: TODO
+- model: sonnet · risk: low · deps: T204, T208, T213 · status: MERGED
 - paths: `web/src/routes/decks/`, `web/src/routes/note-types/`
 - do: Template editor live preview renders client-side with `renderCard`.
 - accept: Preview and review use the same rendering component.
 
 ### T212 — Web settings, devices, tokens
-- model: sonnet · risk: med · deps: T105, T208 · status: TODO
+- model: sonnet · risk: med · deps: T105, T208 · status: SPLIT (all parts MERGED)
 - paths: `web/src/routes/settings/`
 - do: Settings, device list + QR pairing, PAT create/revoke with scopes, backup status, attribution page.
 - accept: Token shown once; revoke works.
 
 ### T213 — Shared card renderer and core JS facade
-- model: opus · risk: med · deps: T201, T108, T107 · status: TODO
+- model: opus · risk: med · deps: T201, T108, T107 · status: SPLIT (all parts MERGED)
 - paths: `core/src/commonMain/kotlin/kotobaya/render/`, `core/src/jsMain/`, `core/src/commonTest/kotlin/kotobaya/render/`, `assets/card/`, `web/src/lib/core/`
 - spec: Scheduling › Card kinds per note type, Clients (Review screens), Public API › Card search language
 - do: Implement `CardRenderer`: templates → HTML fragment with `<ruby>` furigana, pitch-accent spans (CardRenderer contract strips svg) from `entry_pitch`, audio placeholders the host fills, front/back; `assets/card/card.css` (light/dark via CSS variables, Japanese font stack). Implement the `CoreJs` facade (`@JsExport`) and a thin typed wrapper in `web/src/lib/core/` (`renderCard`, `parseQuery`, `completeQuery`, `previewIntervals`). One renderer for web review, template preview, and Android (WebView).
@@ -353,72 +353,72 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ## Phase 3 — Android and offline
 
 ### T301 — Android shell and local DB
-- model: sonnet · risk: med · deps: GATE-P2 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P2 · status: SPLIT (all parts MERGED)
 - paths: `android/app/src/main/` (excluding feature packages below), `android/app/src/test/`
 - do: Compose app, navigation, DI (per DECISIONS), SQLDelight DB from contracts, pairing via QR scan, settings store.
 - accept: Pairs with the dev server.
 
 ### T302 — On-device dictionary package
-- model: sonnet · risk: med · deps: T103, T301 · status: TODO
+- model: sonnet · risk: med · deps: T103, T301 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/dict/`
 - accept: Downloads, verifies, applies diffs; search works offline; storage shown in settings.
 
 ### T303 — Sync client
-- model: opus · risk: high · deps: T202, T203, T301 · status: TODO
+- model: opus · risk: high · deps: T202, T203, T301 · status: SPLIT (all parts MERGED)
 - paths: `android/app/src/main/kotlin/kotobaya/android/sync/`, `core/src/commonMain/kotlin/kotobaya/sync/client/`
 - do: Op outbox, batching, push/pull, local replay, WorkManager background sync with backoff, connectivity + server-reachability detection, status UI data.
 - accept: Shares the T202 convergence fuzz harness (client side); kill-app-mid-push test loses nothing.
 
 ### T304 — Android review UI
-- model: sonnet · risk: med · deps: T205, T301, T213 · status: TODO
+- model: sonnet · risk: med · deps: T205, T301, T213 · status: SPLIT (all parts MERGED)
 - paths: `android/app/src/main/kotlin/kotobaya/android/review/`
 - do: Card display = `CardRenderer` (JVM) output in a WebView loading `assets/card/` locally (no network; one reused WebView, JS off unless needed for audio); native Compose for the grading bar, toolbar, and gestures. Furigana toggle, pitch graph (from the renderer), audio, swipe/tap grading (4/5), undo, edit, bury/suspend/never-forget.
 - accept: Grading and undo work (manual on device).
 
 ### T305 — AnkiDroid stand-in (production)
-- model: opus · risk: high · deps: GATE-S01, T303 · status: TODO
+- model: opus · risk: high · deps: GATE-S01, T303 · status: SPLIT (all parts MERGED)
 - paths: `android/app/src/main/kotlin/kotobaya/android/ankiapi/`, `android/app/src/main/AndroidManifest.xml` (provider entries only)
 - do: Productionise S01 against the real DB: Takoboto Vocab note type, field mapping, JMdict matching, duplicate detection, offline insert → ops. Build both product flavors: own app ID and `com.ichi2.anki`. In single-session mode the `com.ichi2.anki` flavor is the default; in gated mode, use the GATE-S01 decision.
 - accept: Instrumented test replays the S01 call log and produces the expected notes. → **GATE-T305** (human: add 5 words from Takoboto).
 
 ### T306 — Share sheet, PROCESS_TEXT, deep links
-- model: haiku · risk: low · deps: T301 · status: TODO
+- model: haiku · risk: low · deps: T301 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/intake/`
 - accept: Each intent works (manual).
 
 ### T307 — Home-screen widget and Quick Settings tile
-- model: sonnet · risk: low · deps: T205, T301 · status: TODO
+- model: sonnet · risk: low · deps: T205, T301 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/widget/`
 - accept: Three sizes render from local DB with no network; tile launches review.
 
 ### T308 — Notifications and due alarms
-- model: sonnet · risk: med · deps: T205, T301 · status: TODO
+- model: sonnet · risk: med · deps: T205, T301 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/notify/`
 - do: Channels per spec; next-due inexact alarm batching (≥ 15 min); boot/time/timezone receivers; widget refresh from the same trigger; permission onboarding.
 - accept: Unit test for the next-alarm calculation given synthetic due times.
 
 ### T309 — ntfy / UnifiedPush
-- model: sonnet · risk: low · deps: T109, T301 · status: TODO
+- model: sonnet · risk: low · deps: T109, T301 · status: MERGED
 - paths: `server/src/main/kotlin/kotobaya/push/`, `android/app/src/main/kotlin/kotobaya/android/push/`, `deploy/helm/templates/ntfy*`
 - accept: Job completion produces an Android notification in k3d + emulator.
 
 ### T310 — Audio prefetch and storage budget
-- model: sonnet · risk: low · deps: T303 · status: TODO
+- model: sonnet · risk: low · deps: T303 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/media/`
 - accept: Prefetch respects budget and N-day window; LRU eviction test.
 
 ### T311 — On-device AnkiConnect server
-- model: sonnet · risk: med · deps: T305 · status: TODO
+- model: sonnet · risk: med · deps: T305 · status: MERGED
 - paths: `android/app/src/main/kotlin/kotobaya/android/ankiconnect/`
 - accept: Yomitan-compatible request fixtures pass; bound to localhost only.
 
 ### T312 — Android release pipeline
-- model: haiku · risk: low · deps: T002, T301 · status: TODO
+- model: haiku · risk: low · deps: T002, T301 · status: MERGED
 - paths: `.github/workflows/android-release*`, `android/signing/README.md`
 - accept: Tag → signed APK release consumable by Obtainium.
 
 ### T313 — Offline chaos suite
-- model: opus · risk: high · deps: T303, T305 · status: TODO
+- model: opus · risk: high · deps: T303, T305 · status: IN_REVIEW
 - paths: `acceptance/offline/`
 - do: Simulated two-device offline week: reviews, adds, edits, deletes, clock skew ±10 min; then sync in random orders.
 - accept: Converges with zero lost reviews across 100 randomised runs (JVM simulation, no devices).
@@ -428,6 +428,9 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 ### Phase 3 splits and additions (2026-11-13, planner)
 T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: store seam, mint, outbox, push/pull)/T303b(core: device apply, replay, rebuild, log reset, refused cache)/T303c(Android: SQLDelight store, WorkManager, connectivity)/T303d(core: rejected ops, Retry/Discard, Re-mint, discard list)/T303e(UI); T304→T304a(queue loader)/T304b(review screen)/T304c(toolbar actions); T305→T305a(flavors, provider)/T305b(note creation service, new)/T305c(Takoboto note type, real store). Real deps differ from the parent rows (e.g. T304b needs T303c, T305b needs T302+T303c, T307 needs T308, T313 needs T303a/b/d + T305b). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded. Android paths use the real module layout `android/src/main/...` (not `android/app/`). T313 adds an `acceptance` Gradle module.
 - T301a status: MERGED · T301b MERGED · T302 MERGED · T303a MERGED · T303b MERGED · T303c MERGED · T303d MERGED · T303e MERGED · T304a MERGED · T304b MERGED · T304c MERGED · T305a MERGED · T305b MERGED · T305c MERGED · T306 MERGED · T307 MERGED · T308 MERGED · T309 MERGED · T310 MERGED · T311 MERGED · T312 MERGED · T313 READY_FOR_REVIEW
+- W-4 MERGED (sonnet, low) Android media wiring — deps T310, T304b, T303e (ticket plan/tickets/W-4.md)
+- F-5 MERGED (sonnet, med) server auto_status derivation — deps T304b (plan/tickets/F-5.md)
+- F-6 MERGED (sonnet, med) sync DB first-use-in-transaction schema bug (plan/tickets/F-6.md)
 
 ---
 
@@ -582,6 +585,3 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
 - C-4 status: MERGED · C-10 MERGED · C-9 MERGED · T207c MERGED · F-1 MERGED · W-3 MERGED · W-2 MERGED · C-8 MERGED · F-2 MERGED · F-3 MERGED · F-4 MERGED · C-7 MERGED (settings keys + QueueInput) · T202d MERGED · C-6 MERGED (storable values: U+0000, int4 max, instant cap; BREAKING, no data yet) · C-5 MERGED (ECMA pattern semantics, depth limit; from T202a review) · T201a MERGED · T201b MERGED · T202a MERGED · T202b MERGED · T202c MERGED · T203 MERGED · T204 MERGED · T205 MERGED · T206 MERGED · T207a MERGED · T207b MERGED · T208 MERGED · T209 MERGED · T210a MERGED · T210b MERGED · T211 MERGED · T212 MERGED (web half) · T212b MERGED · T213a MERGED · T213b MERGED · T214 MERGED
-- W-4 MERGED (sonnet, low) Android media wiring — deps T310, T304b, T303e (ticket plan/tickets/W-4.md)
-- F-5 MERGED (sonnet, med) server auto_status derivation — deps T304b (plan/tickets/F-5.md)
-- F-6 MERGED (sonnet, med) sync DB first-use-in-transaction schema bug (plan/tickets/F-6.md)

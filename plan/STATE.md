@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T02:03:36Z (context handover)
+Updated: 2026-11-13 (orchestrator run 3)
 
 
 ## RESUME HERE (updated 2026-11-13, orchestrator run 2)
@@ -15,14 +15,12 @@ Updated: 2026-11-13T02:03:36Z (context handover)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-
-## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- none
+| P4 planning | planner (opus) | 1 | — (plan/tickets/T4*) | run 3 |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T313 | READY_FOR_REVIEW: HANDOFF DONE (worktree .claude/worktrees/agent-aab208ee6462112b4, branch t/T313-offline-chaos). Next: make check MODULE=acceptance (Docker; ~3 min) + reviewer + architect (opus) | 2026-11-13T02:03:36Z |
+| T313 | reviewer + architect (opus); make check acceptance running (rebased on main) | run 3 |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -42,7 +40,7 @@ Updated: 2026-11-13T02:03:36Z (context handover)
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 25/27 (T313 in review; 27 incl. W-4/F-5/F-6) · attempts 35 · escalations 0
+P3: merged 24/25 (22 planned leaf tickets + W-4/F-5/F-6; T313 in review) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

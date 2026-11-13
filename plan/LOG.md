@@ -571,3 +571,6 @@
 2026-11-13T02:03:36Z T306+T311 HANDOFF DONE; CHECK_GREEN android after rebase; MERGE 1 attempt
 2026-11-13T02:03:36Z T313 HANDOFF DONE (100 seeds 0 lost reviews, no bugs); READY_FOR_REVIEW — handed over (context budget)
 2026-11-13T02:03:36Z - HANDOVER context budget: nothing in flight; next T313 check+reviews+merge, then make test, GATE-P3 deferred, P4
+2026-11-13T02:05:20Z T313 rebased on main; make check acceptance; reviewer + architect(opus) DISPATCH
+2026-11-13T02:05:20Z - BOARD reconciled: P2/P3 parent rows SPLIT/MERGED; W-4/F-5/F-6 moved to P3; P3 = 25 tickets
+2026-11-13T02:05:20Z P4 DISPATCH planner(opus) for ticket files/splits
