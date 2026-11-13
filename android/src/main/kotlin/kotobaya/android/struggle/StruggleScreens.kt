@@ -171,6 +171,7 @@ private fun WordPage(source: StruggleSource, word: HotWordView, onBack: () -> Un
             items(s.value, key = { it.id }) { sent ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Text(sent.text)
+                    kotobaya.android.grammar.GrammarCaptureEntry(sent.id, sent.mediaId, sent.text)
                     OutlinedButton(onClick = { scope.launch { report(source.makeSentenceCard(sent), R.string.struggle_card_created) } }) {
                         Text(T(R.string.struggle_make_card))
                     }

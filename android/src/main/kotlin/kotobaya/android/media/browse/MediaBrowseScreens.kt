@@ -92,6 +92,7 @@ private fun MediaDetail(row: MediaRow, onBack: () -> Unit) {
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Text(sent.text)
                     if (sent.isGenerated) Text(T(R.string.browse_generated))
+                    kotobaya.android.grammar.GrammarCaptureEntry(sent.id, row.id, sent.text)
                     val hash = sent.audioBlobHash
                     if (hash != null) {
                         OutlinedButton(onClick = { scope.launch { player.play(hash) } }) { Text(T(R.string.browse_play)) }

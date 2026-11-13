@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gc_open">Saw something weird</string>
+    <string name="gc_title">Saw something weird</string>
+    <string name="gc_select">Select the part of the sentence that looks like grammar.</string>
+    <string name="gc_no_span">Nothing selected yet.</string>
+    <string name="gc_span">Selected: %1$s</string>
+    <string name="gc_mode_new">New point</string>
+    <string name="gc_mode_existing">Existing point</string>
+    <string name="gc_field_title">Title</string>
+    <string name="gc_field_pattern">Pattern</string>
+    <string name="gc_field_rule">Draft rule</string>
+    <string name="gc_search">Search grammar points</string>
+    <string name="gc_no_results">No matching points.</string>
+    <string name="gc_test">Test rule</string>
+    <string name="gc_testing">Testing…</string>
+    <string name="gc_test_result">%1$d matches in %2$d sentences scanned.</string>
+    <string name="gc_test_truncated">Scan stopped early; there may be more.</string>
+    <string name="gc_rule_error">Rule problem: %1$s</string>
+    <string name="gc_need_span">Select a span first.</string>
+    <string name="gc_need_title">Enter a title.</string>
+    <string name="gc_need_point">Choose a grammar point.</string>
+    <string name="gc_needs_connection">Needs a connection.</string>
+    <string name="gc_failed">Could not save this.</string>
+    <string name="gc_save">Save example</string>
+    <string name="gc_saving">Saving…</string>
+    <string name="gc_saved">Saved.</string>
+    <string name="gc_cancel">Cancel</string>
+    <string name="gc_close">Close</string>
+</resources>
