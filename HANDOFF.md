@@ -1,28 +1,23 @@
 # HANDOFF UI-WEB
 
-STATUS: CONTRACT_CHANGE_REQUEST (state layer, for FEAT-x region clicks; everything else is done)
+STATUS: DONE
 BRANCH: t/UI-WEB-rebuild
-CHECK: `make check MODULE=web` → green · `make screenshots-web` → 172 passed, 688 PNGs, no sideways scroll except /styleguide at 200 %
+CHECK: `make check MODULE=web` → green · `make screenshots-web` → 172 passed, curated set unchanged
 
 ## Changed (≤ 6 lines)
-- Every route rebuilt on lib/ui. New primitives: Page, Panel, Menu, Banner, Select, Switch, TextArea, charts, VirtualTable, QueryField, CardFrame, Stepper, FileDrop. AppShell has an immersive mode. GradeBar takes option lists (5 buttons, drill).
-- Review: thumb-zone grade bar with intervals, Space/1–5/U/E/? shortcuts, reveal animation, finished, drill and 900-due states.
-- FEAT-x: /notes field boxes (From dictionary / Your override / Reset); overridden regions are marked in the card.
-- Fixed a bug: coverage "unknown words" was queried with the media id instead of the coverage deckId.
-- 176 curated screenshots in docs/design-screenshots/web/screens/. Full matrix in web/screenshots/.
+- Earlier round: every route rebuilt on lib/ui, FEAT-x boxes on /notes, coverage deckId fix, 176 curated shots.
+- FEAT-x: `PreviewInput.fieldRegions` added; notes and cards previews pass true. A region click opens the box on /notes; in /cards it goes to `/notes?note=&field=`.
+- `loadFailed` + `retry()` added to ReviewPage, Cards, Notes, DecksList, NoteTypesList, MediaList, Struggle, Leeches, Confusables, Mapping and Sentences. New `lib/ui/LoadError` renders them.
+- Deleted 24 dead lib/<feature>/*.svelte, Toaster and the legacy token block (it lives in design/tokens/web-legacy.css; generator and one tokens.test assertion edited).
+- app.html sets data-theme before first paint. 12 `--error` shots were curated.
 
 ## Acceptance → tests
-- make check green → existing 37 tests. UI is untested per CLAUDE.md; screen quality was checked on the screenshot matrix.
+- Loop regressions now mount routes/notes/NoteEditor and routes/cards/CardDetail.
+- Region clicks, retry and pre-paint passed a one-off Playwright run (not committed).
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Outside my paths (follow-up): delete dead lib/<feature>/*.svelte (two tests use them), the legacy tokens block, and Toaster; add the app.html theme pre-paint.
-- State gaps: ReviewPage and the list pages have no load-error flag; confusables have no headwords; Deck has no colour or due count.
-
-## If CONTRACT_CHANGE_REQUEST
-CONTRACT: web/src/lib/state/preview.svelte.ts (+ notes.svelte.ts, cards.svelte.ts)
-CHANGE: `PreviewInput.fieldRegions?: boolean`, passed to `options`; NoteEditorState and CardPreviewState pass `true`.
-WHY: without it the card has no `data-field` regions, so clicking a field in the card does nothing (the field list still works).
-ADDITIVE: yes
+- Follow-ups: confusable headwords, deck colour and due count (both need API changes). DeckItems and UnknownWords still have no error flag.
+- Existing bug: client-side nav from /cards to /notes shows id-prefix labels in the notes list (a full load is fine).
