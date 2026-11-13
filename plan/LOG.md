@@ -681,3 +681,6 @@
 2026-11-13T05:35:30Z T506a HANDOFF CONTRACT_CHANGE_REQUEST (grammar-detect JobKind); BLOCKED_CONTRACT; C-13 opened; reviewer on code meanwhile
 2026-11-13T05:37:09Z T506a REVIEW_APPROVE 3 minors → F-22; awaiting C-13 for registry line
 2026-11-13T05:41:53Z C-13 REVIEW_CHANGES major: fan-out key release races op-apply enqueue (lost rule edit); attempt 2 to architect
+2026-11-13T05:45:53Z C-13 MERGE REVIEW_APPROVE (re-review) CHECK_GREEN contracts; 2 attempts
+2026-11-13T05:45:53Z T506a DISPATCH writer-senior attempt 2 (resume: registry line, C-13 key/snapshot rules, detection in parse/import publishes)
+2026-11-13T05:45:53Z W-6 DISPATCH writer (server, Gradle slot)

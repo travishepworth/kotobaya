@@ -17,8 +17,8 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
-| C-13 | architect (opus) | 1 | t/C-13-grammar-detect-kind |
-| T506a | reviewer | 1 | t/T506a-grammar-dsl (BLOCKED_CONTRACT on C-13; code done) |
+| T506a | writer-senior | 2 | t/T506a-grammar-dsl (C-13 follow-through + F-22.1) |
+| W-6 | writer | 1 | t/W-6-grammar-detect-server |
 
 ## Parked
 (none)
@@ -51,6 +51,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- C-13 `grammar-detect` JobKind (additive; fan-out lock 7033001 race fix) — reviewer APPROVE after 2 attempts (run 7)
 - T502 confusables: server-side suggester (homophone/look-alike/meaning, every 6h via ops) + list/set API (run 7)
 - T503 drill selection (hot/leech/confusable pairs, seeded) + DrillApi sources; drill replay never changes schedule (run 7)
 - T505b grammar CRUD via ops + GrammarSeeder (not yet invoked → F-20) (run 7)
