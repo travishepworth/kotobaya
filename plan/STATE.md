@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (end of orchestrator run 4)
+Updated: 2026-11-13 (run 7 in progress)
 
 
 ## RESUME HERE (updated 2026-11-13, end of orchestrator run 6 — post-crash recovery)
@@ -15,7 +15,10 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 - BACKLOG status column is stale for P4 (STATE/LOG are authoritative).
 
 ## Running
-(none)
+| Ticket | Agent | Attempt | Branch |
+|---|---|---|---|
+| W-5 | writer | 1 | t/W-5-wiring |
+| T604 | writer-light | 1 | t/T604-cli |
 
 ## Parked
 (none)
