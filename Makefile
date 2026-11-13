@@ -1,6 +1,6 @@
 .PHONY: check test fmt dev-up dev-down
 
-MODULES := core server worker web android deploy contracts acceptance
+MODULES := core server worker web android deploy contracts acceptance cli
 GRADLE := ./gradlew --no-daemon -q
 ANDROID_SDK := $(or $(ANDROID_HOME),$(ANDROID_SDK_ROOT))
 
@@ -20,6 +20,9 @@ check-server:
 
 check-worker:
 	cd worker && uv run --frozen pytest -q && uv run --frozen mypy && uv run --frozen ruff check .
+
+check-cli:
+	cd cli && uv run --frozen pytest -q && uv run --frozen mypy && uv run --frozen ruff check .
 
 check-web:
 	$(GRADLE) :core:npmPackage
