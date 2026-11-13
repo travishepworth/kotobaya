@@ -4,6 +4,11 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 6, 2026-11-13) — 0.1.2
+- [ ] **Build and push 0.1.2** from main: F-14 (SeaweedFS blob PUT: temp-file spool with known length; copy via get+put since SeaweedFS 3.80 CopyObject also 500s), F-15 (MediaApiModule registered → GET /import/jpdb/vocab no longer 501; WiringAuditTest pins the remaining 501 allowlist), F-16+F-19 (/health reports the build version: `make images VERSION=0.1.2` passes `--build-arg KOTOBAYA_VERSION`; if you build the api image by hand, add `--build-arg KOTOBAYA_VERSION=0.1.2`, else health says "dev"), F-18 (web dictionary page keeps the entry when examples fail).
+- [ ] After deploy: retry the live jpdb import; check `/health` version; upload a blob through the UI to confirm the SeaweedFS fix live (tested only against chrislusf/seaweedfs:3.80 in Testcontainers).
+- Still 501 until W-5: coverage, sentences, parse, stats, grammar, confusables, leeches, hot words/kanji, TTS, export.
+
 ## Ready now (run 4, 2026-11-13)
 - [ ] **Build and push 0.1.1**: W-5a is merged (main). putBlob/getBlob/queryBlobs are wired with S3BlobStore (S3_* env already in the Helm Deployment), and getDictRelease/refreshDictionary are implemented (dedupe key `dict-refresh`). Then retry the jpdb history import from the web app.
 - [ ] Also in 0.1.1: Helm `httpRoute.enabled` + `httpRoute.parentRefs/hostnames` (D-1), so the hand-written gateway.yaml can go. Worker memory defaults to 1Gi request / 3Gi limit. A resumed dict refresh now rebuilds the device package (F-12). EDRDG files are no longer checksum-pinned (F-13/ADR-020); if your values set EDRDG `sha256` in DICT_SOURCES_JSON, drop them.
