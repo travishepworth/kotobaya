@@ -22,7 +22,6 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| F-25b | writer | 1 | t/F-25b-grammar-sentence-android | run 9 |
 
 ## Parked
 (none)
