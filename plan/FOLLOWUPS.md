@@ -261,3 +261,4 @@
 - MEDIA_PIPELINE.md §5.4:272 — re-sending the same resolution after a permanently failed remap returns jobs: []; enqueue remap when the media's latest remap job failed.
 - MEDIA_PIPELINE.md §5.3 — a `mapped` correction whose entry_seq is later retired by dict-refresh: treat as unresolved at import time or list in `unmapped`.
 - (if not taken in C-11 attempt 2) stale-heartbeat requeue fencing (FOR UPDATE + status/locked_by guard); reparseMedia `parsing` version read under 7033001.
+- MEDIA_PIPELINE.md: state that deleteMedia's job cancellation takes 7033001 before updating job rows (else waits on runner child-row lock while runner waits on 7033001).
