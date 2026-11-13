@@ -604,3 +604,5 @@
 2026-11-13T03:18:29Z F-8+F-9 CHECK_GREEN server+worker; MERGE 1 attempt
 2026-11-13T03:20:58Z C-11 REVIEW_APPROVE reviewer+architect (attempt 2)
 2026-11-13T03:22:15Z C-11 CHECK_GREEN contracts; MERGE 2 attempts
+2026-11-13T03:23:08Z T404c CHECK_RED again: server test JVM OOM (default 512m heap + uncached ApiSpec.load) — pre-existing; F-11 created; T404c waits on F-11
+2026-11-13T03:23:08Z C-12,T411c,T411b,T404a,T407 DISPATCH (architect-opus, writer-senior, writer×2, writer-light)
