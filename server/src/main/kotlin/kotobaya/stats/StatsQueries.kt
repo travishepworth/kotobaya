@@ -34,21 +34,60 @@ internal class ScheduledReview(
 
 internal fun msOf(col: String) = "(extract(epoch from $col) * 1000)::bigint"
 
+/**
+ * Card id -> replay root (the merge survivor, or the card itself). Joined on `c.id` (the primary key); the root is a computed
+ * column that later joins hash on, never a `coalesce()` inside a join predicate.
+ */
+private const val ROOT_CTE = "root as (select c.id, coalesce(c.merged_into_id, c.id) as root_id from app.card c)"
+
+/**
+ * [dayRows] query. Parameters: `lo, hi` (touched roots), `lo, hi` (schedule-feeding rows), `lo, hi` (drill/cram rows).
+ * `introduced` uses LAG over each root's schedule-feeding history in replay order `(reviewed_at, hlc, id)`; only roots with a
+ * scheduled/learning row in the window are sorted. Drill and cram rows are never `introduced`, so they skip the window.
+ */
+internal const val DAY_ROWS_SQL =
+    "with $ROOT_CTE, " +
+        "touched as (select distinct root.root_id from app.review_log r join root on root.id = r.card_id " +
+        "  where r.undone_at is null and r.review_type in ('scheduled', 'learning') " +
+        "  and r.reviewed_at >= ?::timestamptz and r.reviewed_at < ?::timestamptz), " +
+        "hist as (select p.reviewed_at, p.utc_offset_min, p.review_type, p.rating, p.duration_ms, " +
+        "  lag(p.id) over w as prev_id, lag(p.manual_action) over w as prev_action " +
+        "  from app.review_log p join root on root.id = p.card_id join touched t on t.root_id = root.root_id " +
+        "  where p.undone_at is null and p.review_type in ('scheduled', 'learning', 'manual') " +
+        "  window w as (partition by root.root_id order by p.reviewed_at, p.hlc, p.id)) " +
+        "select (extract(epoch from h.reviewed_at) * 1000)::bigint, h.utc_offset_min, h.review_type, h.rating, coalesce(h.duration_ms, 0), " +
+        "  (h.prev_id is null or h.prev_action = 'reset') " +
+        "from hist h where h.review_type <> 'manual' and h.reviewed_at >= ?::timestamptz and h.reviewed_at < ?::timestamptz " +
+        "union all " +
+        "select (extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, coalesce(r.duration_ms, 0), false " +
+        "from app.review_log r join app.card c on c.id = r.card_id " +
+        "where r.undone_at is null and r.review_type in ('drill', 'cram') and r.reviewed_at >= ?::timestamptz and r.reviewed_at < ?::timestamptz"
+
+/** Roots with a non-undone scheduled review in `[lo, hi)`. */
+internal const val SURVIVORS_SQL =
+    "select distinct coalesce(c.merged_into_id, c.id)::text from app.review_log r join app.card c on c.id = r.card_id " +
+        "where r.undone_at is null and r.review_type = 'scheduled' and r.reviewed_at >= ?::timestamptz and r.reviewed_at < ?::timestamptz"
+
+/** Every non-undone row of the given roots (and their merge losers), tagged with the root. Parameter: `uuid[]` of roots. */
+internal const val HISTORY_SQL =
+    "with $ROOT_CTE " +
+        "select root.root_id::text, r.id::text, r.card_id::text, r.hlc::text, " +
+        "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
+        "(extract(epoch from r.manual_due_at) * 1000)::bigint " +
+        "from app.review_log r join root on root.id = r.card_id join unnest(?::uuid[]) as s(id) on s.id = root.root_id " +
+        "where r.undone_at is null"
+
+/** Streak input, newest first (backward scan of `review_log_reviewed_idx`); read in pages so a short streak reads little. */
+internal const val STREAK_SQL =
+    "select (extract(epoch from reviewed_at) * 1000)::bigint, utc_offset_min from app.review_log " +
+        "where undone_at is null and review_type <> 'manual' order by reviewed_at desc"
+
 /** Non-undone, non-manual reviews with study day in `[from, to]`. `introduced`: the card's first schedule-feeding row (or first after a reset). */
 internal fun dayRows(dsl: DSLContext, from: LocalDate, to: LocalDate, zone: ZoneId, hour: Int): List<DayRow> {
     val (lo, hi) = windowMs(from, to)
-    return dsl.fetch(
-        "select ${msOf("r.reviewed_at")}, r.utc_offset_min, r.review_type, r.rating, coalesce(r.duration_ms, 0), " +
-            "(r.review_type in ('scheduled', 'learning') and (prev.id is null or prev.manual_action = 'reset')) " +
-            "from app.review_log r join app.card c on c.id = r.card_id " +
-            "left join lateral (select p.id, p.manual_action from app.review_log p join app.card pc on pc.id = p.card_id " +
-            "  where coalesce(pc.merged_into_id, pc.id) = coalesce(c.merged_into_id, c.id) and p.undone_at is null " +
-            "  and p.review_type in ('scheduled', 'learning', 'manual') and (p.reviewed_at, p.hlc, p.id) < (r.reviewed_at, r.hlc, r.id) " +
-            "  order by p.reviewed_at desc, p.hlc desc, p.id desc limit 1) prev on true " +
-            "where r.undone_at is null and r.review_type <> 'manual' " +
-            "and r.reviewed_at >= ?::timestamptz and r.reviewed_at < ?::timestamptz",
-        java.sql.Timestamp(lo), java.sql.Timestamp(hi),
-    ).mapNotNull { r ->
+    val l = java.sql.Timestamp(lo)
+    val h = java.sql.Timestamp(hi)
+    return dsl.fetch(DAY_ROWS_SQL, l, h, l, h, l, h).mapNotNull { r ->
         val day = studyDayOfReview((r.get(0) as Number).toLong(), (r.get(1) as Number?)?.toInt(), zone, hour)
         if (day < from || day > to) null
         else DayRow(day, r.get(2, String::class.java), (r.get(3) as Number?)?.toInt(), (r.get(4) as Number).toLong(), r.get(5, Boolean::class.java))
@@ -72,22 +111,13 @@ private fun replayReview(r: Record, survivorId: String): ReplayReview {
     )
 }
 
-/** Every non-undone `review_log` row of each survivor card (and its merge losers), by survivor id. */
+/** Every non-undone `review_log` row of each survivor card (and its merge losers), by survivor id. One hash-joined query. */
 private fun loadHistory(dsl: DSLContext, survivors: Collection<String>): Map<String, List<ReplayReview>> {
     val out = HashMap<String, MutableList<ReplayReview>>()
-    for (chunk in survivors.chunked(2000)) {
-        val rows = dsl.fetch(
-            "select coalesce(c.merged_into_id, c.id)::text, r.id::text, r.card_id::text, r.hlc::text, " +
-                "${msOf("r.reviewed_at")}, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
-                "${msOf("r.manual_due_at")} " +
-                "from app.review_log r join app.card c on c.id = r.card_id " +
-                "where r.undone_at is null and coalesce(c.merged_into_id, c.id) = any(?::uuid[])",
-            chunk.toTypedArray(),
-        )
-        for (r in rows) {
-            val sid = r.get(0, String::class.java)
-            out.getOrPut(sid) { mutableListOf() } += replayReview(r, sid)
-        }
+    if (survivors.isEmpty()) return out
+    for (r in dsl.fetch(HISTORY_SQL, survivors.toTypedArray())) {
+        val sid = r.get(0, String::class.java)
+        out.getOrPut(sid) { mutableListOf() } += replayReview(r, sid)
     }
     return out
 }
@@ -103,11 +133,8 @@ private fun paramsFor(presetId: String, presets: Map<String, PresetRow>): Schedu
  */
 internal fun scheduledReviews(dsl: DSLContext, from: LocalDate, to: LocalDate, zone: ZoneId, hour: Int, presetFilter: String?): List<ScheduledReview> {
     val (lo, hi) = windowMs(from, to)
-    val survivors = dsl.fetch(
-        "select distinct coalesce(c.merged_into_id, c.id)::text from app.review_log r join app.card c on c.id = r.card_id " +
-            "where r.undone_at is null and r.review_type = 'scheduled' and r.reviewed_at >= ?::timestamptz and r.reviewed_at < ?::timestamptz",
-        java.sql.Timestamp(lo), java.sql.Timestamp(hi),
-    ).map { it.get(0, String::class.java) }
+    val survivors = dsl.fetch(SURVIVORS_SQL, java.sql.Timestamp(lo), java.sql.Timestamp(hi))
+        .map { it.get(0, String::class.java) }.sorted()
     if (survivors.isEmpty()) return emptyList()
     val info = HashMap<String, CardInfo>()
     for (chunk in survivors.chunked(2000)) {
@@ -194,7 +221,7 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
                     val noteId = noteOfEntry[seq]
                     if (noteId == null) false else {
                         val states = cardsOfNote[noteId].orEmpty().map { (cid, _) ->
-                            val s = snaps[cid].orEmpty().lastOrNull { it.at <= end }
+                            val s = snaps[cid].orEmpty().let { l -> lastAtOrBefore(l.size, end) { l[it].at }?.let(l::get) }
                             WordCardState(s?.state ?: CardState.NEW, s?.interval)
                         }
                         DefaultWordStatusRules.autoStatus(true, states) == WordStatus.KNOWN
@@ -203,4 +230,15 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
             }
         }
     }
+}
+
+/** Index of the last element whose key is <= [end] in a list of [size] elements sorted by non-decreasing [key]; null if none. */
+internal inline fun lastAtOrBefore(size: Int, end: Long, key: (Int) -> Long): Int? {
+    var lo = 0
+    var hi = size
+    while (lo < hi) {
+        val mid = (lo + hi) ushr 1
+        if (key(mid) <= end) lo = mid + 1 else hi = mid
+    }
+    return if (lo == 0) null else lo - 1
 }

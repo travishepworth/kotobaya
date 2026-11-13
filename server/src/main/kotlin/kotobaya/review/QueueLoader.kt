@@ -139,17 +139,8 @@ internal class QueueLoader(private val dsl: DSLContext) {
      */
     private fun loadToday(startMs: Long, nowMs: Long): List<TodayRow> =
         dsl.fetch(
-            "select coalesce(c.merged_into_id, c.id)::text, sc.note_id::text, r.review_type, " +
-                "(r.review_type = 'learning' and (prev.id is null or prev.manual_action = 'reset')) " +
-                "from app.review_log r join app.card c on c.id = r.card_id " +
-                "join app.card sc on sc.id = coalesce(c.merged_into_id, c.id) " +
-                "left join lateral (select p.id, p.manual_action from app.review_log p join app.card pc on pc.id = p.card_id " +
-                "  where coalesce(pc.merged_into_id, pc.id) = coalesce(c.merged_into_id, c.id) and p.undone_at is null " +
-                "  and p.review_type in ('scheduled', 'learning', 'manual') and (p.reviewed_at, p.hlc, p.id) < (r.reviewed_at, r.hlc, r.id) " +
-                "  order by p.reviewed_at desc, p.hlc desc, p.id desc limit 1) prev on true " +
-                "where r.undone_at is null and r.review_type in ('scheduled', 'learning', 'drill', 'cram') " +
-                "and r.reviewed_at >= ?::timestamptz and r.reviewed_at <= ?::timestamptz",
-            java.sql.Timestamp(startMs), java.sql.Timestamp(nowMs),
+            TODAY_SQL,
+            java.sql.Timestamp(startMs), java.sql.Timestamp(nowMs), java.sql.Timestamp(startMs), java.sql.Timestamp(nowMs),
         ).map { r ->
             val type = ReviewType.entries.first { it.wire == r.get(2, String::class.java) }
             TodayRow(
@@ -211,6 +202,29 @@ internal class QueueLoader(private val dsl: DSLContext) {
     }
 
     companion object {
+        /**
+         * [loadToday] query. Parameters: `start, now` (roots with a learning row today), `start, now` (today's rows).
+         * The previous schedule-feeding row of a learning row comes from LAG over its replay root's history in replay order
+         * `(reviewed_at, hlc, id)`; the card -> root map is a computed column joined by hash, never `coalesce()` in a join
+         * predicate (BUG-1: the per-row LATERAL it replaces was quadratic in review_log). Only roots with a learning row today
+         * are windowed, since only learning rows can be `introducedNew`.
+         */
+        internal const val TODAY_SQL =
+            "with root as (select c.id, coalesce(c.merged_into_id, c.id) as root_id from app.card c), " +
+                "touched as (select distinct root.root_id from app.review_log r join root on root.id = r.card_id " +
+                "  where r.undone_at is null and r.review_type = 'learning' " +
+                "  and r.reviewed_at >= ?::timestamptz and r.reviewed_at <= ?::timestamptz), " +
+                "hist as (select p.id, lag(p.id) over w as prev_id, lag(p.manual_action) over w as prev_action " +
+                "  from app.review_log p join root on root.id = p.card_id join touched t on t.root_id = root.root_id " +
+                "  where p.undone_at is null and p.review_type in ('scheduled', 'learning', 'manual') " +
+                "  window w as (partition by root.root_id order by p.reviewed_at, p.hlc, p.id)) " +
+                "select root.root_id::text, sc.note_id::text, r.review_type, " +
+                "(r.review_type = 'learning' and (h.prev_id is null or h.prev_action = 'reset')) " +
+                "from app.review_log r join root on root.id = r.card_id join app.card sc on sc.id = root.root_id " +
+                "left join hist h on h.id = r.id " +
+                "where r.undone_at is null and r.review_type in ('scheduled', 'learning', 'drill', 'cram') " +
+                "and r.reviewed_at >= ?::timestamptz and r.reviewed_at <= ?::timestamptz"
+
         /** `QueueLimits.learnAheadMs` default of the contract: 20 minutes. */
         const val LEARN_AHEAD_MS: Long = 1_200_000
     }

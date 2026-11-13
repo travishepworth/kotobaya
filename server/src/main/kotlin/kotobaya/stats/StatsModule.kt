@@ -132,9 +132,8 @@ class StatsModule(
     private fun streak(dsl: DSLContext, today: LocalDate, s: ReviewSettings): Int {
         var last: LocalDate? = null
         var n = 0
-        dsl.fetchLazy(
-            "select ${msOf("reviewed_at")}, utc_offset_min from app.review_log where undone_at is null and review_type <> 'manual' order by reviewed_at desc",
-        ).use { cur ->
+        // fetchSize streams (we are inside a transaction), so a short streak reads a few pages instead of the whole log.
+        dsl.resultQuery(STREAK_SQL).fetchSize(500).fetchLazy().use { cur ->
             while (cur.hasNext()) {
                 val r = cur.fetchNext() ?: break
                 val d = studyDayOfReview((r.get(0) as Number).toLong(), (r.get(1) as Number?)?.toInt(), s.timezone, s.dayRolloverHour)

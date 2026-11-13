@@ -23,7 +23,7 @@ const en = {
 	'stats.calibrationHelp': 'Predicted recall (x) against actual pass rate (y). The diagonal is perfect calibration.',
 	'stats.calibrationPoint': 'Predicted {p}, actual {a}, {n} reviews',
 	'stats.none': 'No data yet.',
-	'stats.error': 'Could not load stats.'
+	'stats.panelError': 'Could not load this panel.'
 } as const;
 
 export type StatsMessageKey = keyof typeof en;
