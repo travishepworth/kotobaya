@@ -2,6 +2,7 @@
 	// The media's unknown words, most useful first, with one-tap status marks.
 	import Button from '../../../lib/ui/Button.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import Panel from '../../../lib/ui/Panel.svelte';
 	import SegmentedControl from '../../../lib/ui/SegmentedControl.svelte';
 	import Skeleton from '../../../lib/ui/Skeleton.svelte';
@@ -31,6 +32,8 @@
 	{/snippet}
 	{#if !vm.loaded}
 		<div class="pad"><Skeleton shape="row" count={5} /></div>
+	{:else if vm.loadFailed && vm.items.length === 0}
+		<LoadError onretry={() => vm.retry()} />
 	{:else if vm.items.length === 0}
 		<EmptyState art="success" title={tc('cov.noWords')} />
 	{:else}
@@ -55,7 +58,9 @@
 				</li>
 			{/each}
 		</ul>
-		{#if vm.cursor}
+		{#if vm.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>
+		{:else if vm.cursor}
 			<div class="more"><Button variant="quiet" onclick={() => vm.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -110,6 +115,9 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--kb-space-1);
+	}
+	.more-error {
+		padding: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

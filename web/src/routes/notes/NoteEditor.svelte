@@ -2,11 +2,13 @@
 	// Note editor with the WYSIWYG card (FEAT-x): the rendered card on top; under it every field as a box that says
 	// where its value comes from (dictionary / your override / your text). "Override" turns a dictionary value into
 	// your own text, "Reset to dictionary" clears it again; overridden regions are marked in the card. Clicking a
-	// field region in the card (C-19 regions) opens that field.
+	// field region in the card (C-19 regions) only points at that field: only the explicit Override button creates
+	// an override, and a field whose text equals the dictionary value is never saved as one.
 	import Button from '../../lib/ui/Button.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
 	import TextArea from '../../lib/ui/TextArea.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
+	import { kindLabel } from '../../lib/ui/cardState';
 	import { ut } from '../../lib/ui/messages';
 	import { tn } from '../../lib/notes/messages';
 	import { NoteEditorState, type DictEntry, type Note, type NoteType } from '../../lib/state/notes.svelte';
@@ -31,9 +33,12 @@
 	);
 
 	let editing = $state<string | null>(null);
+	// A dictionary field pointed at from the card (region click, deep link): highlighted, not overridden.
+	let focused = $state<string | null>(null);
 	$effect(() => {
 		void note.id;
 		editing = null;
+		focused = null;
 	});
 
 	type Source = 'dictionary' | 'override' | 'note' | 'empty';
@@ -57,20 +62,40 @@
 	}
 	function override(key: string): void {
 		if ((s.fields[key] ?? '') === '') s.fields[key] = s.dictValues[key] ?? '';
+		focused = null;
 		editing = key;
 	}
 	function reset(key: string): void {
 		s.fields[key] = '';
 		if (editing === key) editing = null;
 	}
+	// Region click / deep link: open the field if it is the note's own text; a dictionary field is only
+	// shown and highlighted (its Override button gets focus), never turned into an override.
 	function openField(key: string): void {
 		if (!s.fieldKeys.includes(key)) return;
-		if (sourceOf(key) === 'dictionary') override(key);
-		else editing = key;
-		requestAnimationFrame(() => document.getElementById(`field-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+		if (sourceOf(key) === 'dictionary') {
+			editing = null;
+			focused = key;
+		} else {
+			focused = null;
+			editing = key;
+		}
+		requestAnimationFrame(() => {
+			const box = document.getElementById(`field-${key}`);
+			box?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			if (focused === key) box?.querySelector<HTMLElement>('.field-actions button')?.focus({ preventScroll: true });
+		});
+	}
+	/** An override that equals the dictionary value is no override: store "" so later dictionary fixes reach the note. */
+	function dropRedundantOverrides(): void {
+		for (const k of s.fieldKeys) {
+			const own = (s.fields[k] ?? '').trim();
+			const dict = (s.dictValues[k] ?? '').trim();
+			if (own !== '' && own === dict) s.fields[k] = '';
+		}
 	}
 
-	// Open the deep-linked field once, after the dictionary values arrived (so it opens as an override).
+	// Open the deep-linked field once, after the dictionary values arrived (so a dictionary field is recognised).
 	let pendingField = $state<string | null>(null);
 	$effect.pre(() => {
 		void note.id;
@@ -86,6 +111,7 @@
 	function save(e: Event): void {
 		e.preventDefault();
 		if (!s.tagsValid) return;
+		dropRedundantOverrides();
 		void s.save();
 	}
 	const notice = $derived(s.ref.loading ? tn('notes.dictLoading') : s.ref.failed ? tn('notes.dictFailed') : null);
@@ -99,13 +125,13 @@
 		bind:side={s.side}
 		kinds={s.kinds}
 		kind={s.activeKind}
-		kindLabel={(k) => s.kindLabel(k)}
+		kindLabel={kindLabel}
 		onkind={(k) => (s.kind = k)}
 		errorTitle={nx('nx.previewFailed')}
 		{notice}
 		onfield={openField}
 		{overridden}
-		activeField={editing}
+		activeField={editing ?? focused}
 	/>
 
 	<section class="fields" aria-labelledby="fields-h">
@@ -116,7 +142,7 @@
 		{#each s.fieldKeys as key (key)}
 			{@const src = sourceOf(key)}
 			{@const value = src === 'dictionary' ? (s.dictValues[key] ?? '') : (s.fields[key] ?? '')}
-			<div class="field {src}" class:open={editing === key} id="field-{key}">
+			<div class="field {src}" class:open={editing === key} class:focused={focused === key} id="field-{key}">
 				<div class="field-head">
 					<span class="label">{s.labelOf(key)}</span>
 					{#if src === 'dictionary'}
@@ -173,9 +199,15 @@
 
 <style>
 	.editor {
+		/* Height of the sticky Delete/Save bar: whatever is scrolled or focused into view clears it. */
+		--bar-h: calc(var(--kb-size-control) + 2 * var(--kb-space-3) + 1px);
 		display: flex;
 		flex-direction: column;
 		gap: var(--kb-space-6);
+	}
+	.editor :global(textarea),
+	.editor :global(input) {
+		scroll-margin-bottom: calc(var(--bar-h) + var(--kb-space-3));
 	}
 	.title {
 		font: var(--kb-type-title);
@@ -207,12 +239,14 @@
 		border-radius: var(--kb-radius-md);
 		background: var(--kb-color-surface);
 		scroll-margin: var(--kb-space-6);
+		scroll-margin-bottom: calc(var(--bar-h) + var(--kb-space-3));
 	}
 	.field.override {
 		border-style: dashed;
 		border-color: var(--kb-color-primary);
 	}
-	.field.open {
+	.field.open,
+	.field.focused {
 		border-color: var(--kb-color-focus);
 		box-shadow: 0 0 0 1px var(--kb-color-focus);
 	}

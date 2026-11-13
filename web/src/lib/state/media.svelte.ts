@@ -213,6 +213,9 @@ export class UnknownWordsState {
 	items = $state<DeckItem[]>([]);
 	cursor = $state<string | null>(null);
 	loaded = $state(false);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	readonly #deckId: () => string;
 
 	constructor(deckId: () => string) {
@@ -235,11 +238,17 @@ export class UnknownWordsState {
 			});
 			this.items = more ? [...this.items, ...p.items] : p.items;
 			this.cursor = p.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			/* toast shown */
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = more;
 		} finally {
 			this.loaded = true;
 		}
+	}
+
+	retry(): void {
+		void this.load(this.retryMore);
 	}
 
 	async mark(item: DeckItem, status: 'known' | 'ignored' | 'never_forget', onchanged: () => void): Promise<void> {

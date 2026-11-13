@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Review: the product. A full-height card, the answer reveal, and the grade bar in the thumb zone.
 	// Keyboard-first on desktop (Space, 1-4/5, U, E, ?), one-handed on phones.
+	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Banner from '../../lib/ui/Banner.svelte';
@@ -24,12 +25,52 @@
 	const s = new ReviewPage();
 	let frame: CardFrame | undefined = $state();
 	let helpOpen = $state(false);
+	let body: HTMLDivElement | undefined = $state();
+	// True while part of the card is below the fold: a fade at the bottom says the card scrolls.
+	let moreBelow = $state(false);
 
 	const drillSource = $derived(page.url.searchParams.get('drill'));
 
 	// (Re)load whenever the drill source changes; start() reads no state, so this runs once per source.
 	$effect(() => {
 		s.start(drillSource);
+	});
+
+	/* ---------- answer in view ---------- */
+
+	function measure(): void {
+		if (!body) return;
+		moreBelow = body.scrollTop + body.clientHeight < body.scrollHeight - 2;
+	}
+
+	// Large text or a short window can push the answer below the fold. On flip, scroll just far
+	// enough to show the answer (never past the divider), so nobody grades without seeing it.
+	function bringAnswerIntoView(el: HTMLDivElement): void {
+		const divider = el.querySelector('.kb-divider');
+		const overflow = el.scrollHeight - el.clientHeight;
+		if (!divider || overflow <= 0) return;
+		const pad = 16; // --kb-space-4
+		const dividerTop = divider.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - pad;
+		const top = Math.max(0, Math.min(dividerTop, overflow));
+		if (top <= el.scrollTop) return;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		el.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+	}
+
+	$effect(() => {
+		const flipped = s.flipped;
+		void s.rendered;
+		const el = body;
+		if (!el) return;
+		void tick().then(() => {
+			if (flipped) bringAnswerIntoView(el);
+			measure();
+		});
+		if (typeof ResizeObserver === 'undefined') return;
+		const ro = new ResizeObserver(measure);
+		ro.observe(el);
+		for (const child of el.children) ro.observe(child);
+		return () => ro.disconnect();
 	});
 
 	/* ---------- header figures ---------- */
@@ -259,8 +300,8 @@
 			</div>
 		{:else}
 			{#key s.current.card.id}
-				<article class="card enter" class:flipped={s.flipped} aria-live="polite">
-					<div class="card-body">
+				<article class="card enter" class:flipped={s.flipped} class:more-below={moreBelow} aria-live="polite">
+					<div class="card-body" bind:this={body} onscroll={measure}>
 						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
 						{#if s.rendered === null}
 							<!-- unreachable: current is set -->
@@ -449,6 +490,23 @@
 		border-radius: var(--kb-radius-lg);
 		background: var(--kb-color-surface);
 		box-shadow: var(--kb-elevation-1);
+		/* Card-relative units (cqh) let the revealed card fit its own height, whatever the text size. */
+		container-type: size;
+	}
+	/* More below: a fade over the bottom edge says the card scrolls. */
+	.card::after {
+		content: '';
+		position: absolute;
+		inset: auto 0 0;
+		height: var(--kb-space-12);
+		border-radius: 0 0 var(--kb-radius-lg) var(--kb-radius-lg);
+		background: linear-gradient(to bottom, transparent, var(--kb-color-surface));
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity var(--kb-duration-fast) var(--kb-ease-standard);
+	}
+	.card.more-below::after {
+		opacity: 1;
 	}
 	.card-body {
 		flex: 1;
@@ -497,6 +555,20 @@
 	}
 	.card-body :global(.kb-literal) {
 		font-size: clamp(4.5rem, 3.4rem + 4.5vw, 7rem);
+	}
+	/* Revealed: the question steps back so the answer fits. The top padding and the headword are
+	   capped by the card's own height, so at 200 % text the answer stays on screen. */
+	.flipped .card-body {
+		padding-top: min(clamp(24px, 12dvh, 112px), 8cqh);
+	}
+	.flipped .card-body :global(.kb-expression) {
+		font-size: min(clamp(3rem, 2.25rem + 3.2vw, 5rem), max(2rem, 13cqh));
+	}
+	.flipped .card-body :global(.kb-literal) {
+		font-size: min(clamp(4.5rem, 3.4rem + 4.5vw, 7rem), max(2.5rem, 18cqh));
+	}
+	.flipped .card-body :global(.kb-divider) {
+		margin: min(1rem, 3cqh) 0;
 	}
 
 	/* ---------- finished ---------- */
@@ -560,7 +632,7 @@
 	.hints span {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--kb-space-1-5, 6px);
+		gap: var(--kb-space-2);
 	}
 	/* Key hints: keyboard devices with room for them. */
 	@media (hover: hover) and (pointer: fine) and (min-width: 600px) {

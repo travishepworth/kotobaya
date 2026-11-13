@@ -6,11 +6,10 @@
 	import Chip from '../../lib/ui/Chip.svelte';
 	import type { CardState } from '../../lib/ui/kinds';
 	import { tc } from '../../lib/cards/messages';
-	import { tn } from '../../lib/notes/messages';
 	import { CardPreviewState, type Card, type NoteType } from '../../lib/state/cards.svelte';
 	import PreviewPane from './PreviewPane.svelte';
 	import { tb } from './messages';
-	import { stateOf, stateLabel } from '../../lib/ui/cardState';
+	import { kindLabel, stateOf, stateLabel } from '../../lib/ui/cardState';
 
 	interface Props {
 		card: Card;
@@ -38,7 +37,7 @@
 		bind:side={s.side}
 		kinds={s.kinds}
 		kind={s.activeKind}
-		kindLabel={(k) => (k === 'meaning' || k === 'reading' ? tn(`notes.kind.${k}`) : k)}
+		kindLabel={kindLabel}
 		onkind={(k) => (s.kind = k)}
 		errorTitle={tc('cards.previewFailed', { detail: '' }).replace(/[:\s]+$/, '')}
 		{notice}

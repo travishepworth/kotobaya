@@ -165,6 +165,9 @@ export class DeckItemsState {
 	entrySeq = $state('');
 	noteId = $state('');
 	busy = $state(false);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 
 	readonly #deck: () => Deck;
 	readonly editable = $derived.by(() => this.#deck().type === 'user');
@@ -185,11 +188,17 @@ export class DeckItemsState {
 			const page = await decksApi.listDeckItems({ deckId, limit: 50, cursor: cursor ?? undefined });
 			this.items = cursor !== null ? [...this.items, ...page.items] : page.items;
 			this.cursor = page.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			/* toast shown */
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = cursor !== null;
 		} finally {
 			this.loaded = true;
 		}
+	}
+
+	retry(): void {
+		void this.load(this.retryMore);
 	}
 
 	async load(more: boolean): Promise<void> {

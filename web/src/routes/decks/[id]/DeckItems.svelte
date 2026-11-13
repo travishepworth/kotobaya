@@ -2,6 +2,7 @@
 	// The items of a user or list deck as rows (headword, reading, gloss); user decks can add and remove items.
 	import Button from '../../../lib/ui/Button.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import IconButton from '../../../lib/ui/IconButton.svelte';
 	import Panel from '../../../lib/ui/Panel.svelte';
 	import Skeleton from '../../../lib/ui/Skeleton.svelte';
@@ -26,6 +27,8 @@
 <Panel flush>
 	{#if !s.loaded}
 		<div class="pad"><Skeleton shape="row" count={6} /></div>
+	{:else if s.loadFailed && s.items.length === 0}
+		<LoadError onretry={() => s.retry()} />
 	{:else if s.items.length === 0}
 		<EmptyState art="decks" title={dk('dk.itemsEmpty')} body={deck.type === 'list' ? td('decks.itemsListZero') : undefined} />
 	{:else}
@@ -49,7 +52,9 @@
 				</li>
 			{/each}
 		</ul>
-		{#if s.cursor !== null}
+		{#if s.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => s.retry()} /></div>
+		{:else if s.cursor !== null}
 			<div class="more"><Button variant="quiet" onclick={() => void s.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -121,6 +126,9 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.more-error {
+		padding: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

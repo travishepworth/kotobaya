@@ -8,9 +8,8 @@
 	import LoadError from '../../lib/ui/LoadError.svelte';
 	import QueryField from '../../lib/ui/QueryField.svelte';
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
-	import { stateLabel, stateOf } from '../../lib/ui/cardState';
+	import { kindLabel, stateLabel, stateOf } from '../../lib/ui/cardState';
 	import type { TableColumn } from '../../lib/ui/kinds';
-	import { tn } from '../../lib/notes/messages';
 	import { CardsPage, rowLabel, type Card } from '../../lib/state/cards.svelte';
 	import BrowseLayout from './BrowseLayout.svelte';
 	import BulkBar from './BulkBar.svelte';
@@ -23,7 +22,7 @@
 	const columns: TableColumn[] = [
 		{ key: 'word', label: tb('br.col.word'), lang: 'ja' },
 		{ key: 'kind', label: tb('br.col.kind'), width: '7.5rem', optional: true },
-		{ key: 'state', label: tb('br.col.state'), width: 'max-content' },
+		{ key: 'state', label: tb('br.col.state'), width: '8.5rem' },
 		{ key: 'due', label: tb('br.col.due'), width: '7.5rem', optional: true },
 		{ key: 'lapses', label: tb('br.col.lapses'), width: '5.5rem', align: 'end', optional: true }
 	];
@@ -33,9 +32,6 @@
 	function due(c: Card): string {
 		if (!c.dueAt) return '–';
 		return c.dueAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-	}
-	function kindLabel(k: string): string {
-		return k === 'meaning' || k === 'reading' ? tn(`notes.kind.${k}`) : k;
 	}
 	// Dictionary-backed notes are named by their headword; others by their first field.
 	function label(c: Card): string {

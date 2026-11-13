@@ -18,6 +18,40 @@
 	let { options, value = $bindable(), label, onchange, full = false }: Props = $props();
 
 	let buttons: HTMLButtonElement[] = $state([]);
+	let root: HTMLDivElement | undefined = $state();
+	// When the labels do not fit in one row (phones, large text, long labels) the control becomes a
+	// stacked radio list instead of cutting the labels off. `overflowAt` is the container width at which
+	// they stopped fitting: the row comes back only once there is more room than that.
+	let stacked = $state(false);
+	let overflowAt = 0;
+
+	$effect(() => {
+		const el = root;
+		const host = el?.parentElement;
+		if (!el || !host) return;
+		void options.map((o) => o.label).join();
+		const check = (): void => {
+			const avail = host.clientWidth;
+			if (avail === 0) return;
+			if (stacked) {
+				if (avail > overflowAt) stacked = false;
+				return;
+			}
+			const cut =
+				el.scrollWidth > el.clientWidth + 1 ||
+				[...el.querySelectorAll<HTMLElement>('.lbl')].some((l) => l.scrollWidth > l.clientWidth + 1);
+			if (cut) {
+				overflowAt = avail;
+				stacked = true;
+			}
+		};
+		check();
+		if (typeof ResizeObserver === 'undefined') return;
+		const ro = new ResizeObserver(check);
+		ro.observe(host);
+		ro.observe(el);
+		return () => ro.disconnect();
+	});
 
 	function choose(v: T): void {
 		value = v;
@@ -44,7 +78,7 @@
 	}
 </script>
 
-<div class="seg" class:full role="radiogroup" aria-label={label}>
+<div class="seg" class:full class:stacked bind:this={root} role="radiogroup" aria-label={label}>
 	{#each options as o, i (o.value)}
 		<button
 			bind:this={buttons[i]}
@@ -56,7 +90,7 @@
 			onkeydown={(e) => onkeydown(e, i)}
 		>
 			{#if o.icon}<Icon name={o.icon} size={18} />{/if}
-			<span>{o.label}</span>
+			<span class="lbl">{o.label}</span>
 		</button>
 	{/each}
 </div>
@@ -110,10 +144,50 @@
 		outline: 2px solid var(--kb-color-focus);
 		outline-offset: 1px;
 	}
-	span {
+	.lbl {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	/* Stacked radio list: every label in full, one option per line. */
+	.stacked {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		gap: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+	}
+	.stacked button,
+	.stacked button[aria-checked='true'] {
+		justify-content: flex-start;
+		gap: var(--kb-space-3);
+		min-height: var(--kb-size-touch-min);
+		padding: var(--kb-space-2) var(--kb-space-1);
+		background: transparent;
+		box-shadow: none;
+		color: var(--kb-color-text);
+		font: var(--kb-type-body);
+		text-align: start;
+		white-space: normal;
+	}
+	.stacked button::before {
+		content: '';
+		flex: none;
+		width: 1.125rem;
+		height: 1.125rem;
+		border: 2px solid var(--kb-color-border-strong);
+		border-radius: 50%;
+		background: var(--kb-color-surface);
+	}
+	.stacked button[aria-checked='true']::before {
+		border-color: var(--kb-color-primary);
+		box-shadow: inset 0 0 0 3px var(--kb-color-surface);
+		background: var(--kb-color-primary);
+	}
+	.stacked .lbl {
+		overflow: visible;
 	}
 	/* Tight (phones at large text sizes): less padding before labels ellipsize. */
 	@media (max-width: 599.98px) {

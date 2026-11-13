@@ -9,6 +9,7 @@
 	import Panel from '../../lib/ui/Panel.svelte';
 	import SegmentedControl from '../../lib/ui/SegmentedControl.svelte';
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
+	import { kindLabel } from '../../lib/ui/cardState';
 	import { ut } from '../../lib/ui/messages';
 	import { iso, StatsPage } from '../../lib/state/stats.svelte';
 	import { ts, type StatsMessageKey } from './messages';
@@ -74,10 +75,6 @@
 		(vm.known?.series ?? []).map((p) => ({ key: iso(p.date), label: fmtDay(p.date), short: fmtDay(p.date), value: p.known }))
 	);
 
-	function kindName(k: string): string {
-		const key = `stats.kind.${k}` as StatsMessageKey;
-		return k === 'meaning' || k === 'reading' ? ts(key) : k;
-	}
 </script>
 
 <svelte:head><title>{ts('stats.title')} · Kotobaya</title></svelte:head>
@@ -158,7 +155,7 @@
 						{#each groups as g (g.key)}
 							<li>
 								<div class="meter-head">
-									<span class="mk">{g.key === 'overall' ? ts('stats.overall') : kindName(g.key)}</span>
+									<span class="mk">{g.key === 'overall' ? ts('stats.overall') : kindLabel(g.key)}</span>
 									<span class="mv kb-num">{pct(g.retention)}</span>
 								</div>
 								<div class="track" aria-hidden="true"><div class="fill" class:overall={g.key === 'overall'} style:width="{(g.retention ?? 0) * 100}%"></div></div>

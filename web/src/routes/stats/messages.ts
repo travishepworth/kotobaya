@@ -55,9 +55,7 @@ const en = {
 	'stats.tot.leeches': 'Leeches',
 	'stats.emptyTitle': 'Stats appear after your first reviews',
 	'stats.emptyBody': 'Review a few cards and come back: your activity, retention and forecast will show up here.',
-	'stats.startReview': 'Start reviewing',
-	'stats.kind.meaning': 'Meaning',
-	'stats.kind.reading': 'Reading'
+	'stats.startReview': 'Start reviewing'
 } as const;
 
 export type StatsMessageKey = keyof typeof en;
