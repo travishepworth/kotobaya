@@ -15,7 +15,13 @@ import kotobaya.db.app.AppDatabase
  */
 object DurableDriver {
     /** The Android driver for [APP_DB_FILE] (same file and schema as `db/openAppDatabase`), WAL + FULL. */
-    fun open(context: Context): SqlDriver = AndroidSqliteDriver(
+    fun open(context: Context): SqlDriver = create(context).also { driver ->
+        // AndroidSqliteDriver opens (and creates/migrates the schema) lazily on first use; force it now, outside
+        // any caller transaction, so a first-use `store.transaction` never meets a missing schema (F-6).
+        driver.executeQuery(null, "SELECT count(*) FROM sqlite_master", { c -> c.next(); QueryResult.Value(c.getLong(0)) }, 0).value
+    }
+
+    private fun create(context: Context): SqlDriver = AndroidSqliteDriver(
         schema = AppDatabase.Schema,
         context = context,
         name = APP_DB_FILE,

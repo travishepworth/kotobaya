@@ -51,6 +51,8 @@ class SqlDelightDeviceStore(
     private fun <R> run(notify: Boolean, block: (StoreTransaction<SqlLearningTables>) -> R): R {
         active.get()?.let { return block(it) }
         val tx = Tx()
+        // re-assert durability on the connection about to write (cannot change inside a transaction)
+        driver.execute(null, "PRAGMA synchronous = FULL", 0)
         val result = try {
             active.set(tx)
             db.transactionWithResult { block(tx) }
