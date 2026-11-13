@@ -22,7 +22,6 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T504b | writer | 1 | t/T504b-struggle-android | run 9 (Gradle) |
 | F-25 | writer | 1 | t/F-25-grammar-sentence-review | run 9 (Gradle after T504b) |
 
 ## Parked
