@@ -798,3 +798,5 @@
 2026-11-13T10:38:30Z AND-SEARCH,AND-DECKS,AND-SETTINGS FILED (tickets); UI-1 HUMAN-GATED entry
 2026-11-13T10:38:30Z AND-SEARCH DISPATCH writer (sonnet, med)
 2026-11-13T10:38:30Z AND-DECKS DISPATCH writer (sonnet, med)
+2026-11-13T10:42:34Z C-17 MERGE CHECK_GREEN contracts (med, no review); listKanjiWords + clients regen
+2026-11-13T10:42:34Z FEAT-1 DISPATCH writer (sonnet, med)

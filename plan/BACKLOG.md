@@ -627,11 +627,11 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 8 — Features (requested 2026-11-13)
 
 ### C-17 — Contract: GET /kanji/{literal}/words (by frequency, deck membership; additive)
-- model: opus (architect) · risk: med · deps: — · status: RUNNING
+- model: opus (architect) · risk: med · deps: — · status: MERGED
 - paths: contracts/api/, clients/ (regen) (ticket: plan/tickets/C-17.md)
 
 ### FEAT-1 — Clickable kanji in dictionary: words by frequency + in my decks
-- model: sonnet · risk: med · deps: C-17 · status: TODO
+- model: sonnet · risk: med · deps: C-17 · status: RUNNING
 - paths: server dict/ + tests, server routing, web dictionary (ticket: plan/tickets/FEAT-1.md)
 
 ### AND-SEARCH — Android Search tab (core parser, offline dict/replica, API fallback; word detail route)
