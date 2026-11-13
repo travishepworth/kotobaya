@@ -17,13 +17,12 @@ Updated: 2026-11-13 (orchestrator run 3)
 |---|---|---|---|---|
 | C-11 | architect (opus) | 1 | t/C-11-media-pipeline | run 3 |
 | F-7 | writer (sonnet) | 1 | t/F-7-parse-fixture-200 | run 3 |
-| T401a | writer (sonnet) | 1 | t/T401a-jpdb-deck-client | run 3 |
-| T402a | writer (sonnet) | 1 | t/T402a-extract-subs-text | run 3 |
 | T404c | writer-senior (opus) | 1 | t/T404c-coverage-engine | run 3 |
-| T411a | writer (sonnet) | 1 | t/T411a-blobs-api | run 3 |
+| T402b+T409 | writer (sonnet) | 1 | t/T402b+T409-extract-audio | run 3 |
+| T405a | writer (sonnet) | 1 | t/T405a-media-library | run 3 |
 
 ## Queued (ready; waiting for a slot)
-- T405a (web, no deps) — next free slot
+- none (next unlocks: C-11 → T404a, T407, T411b, T411c, C-12; F-7 → T403a)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -46,13 +45,16 @@ Updated: 2026-11-13 (orchestrator run 3)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P4: merged 0/25 (planner split; ticket files plan/tickets/) · attempts 6 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
+P4: merged 3/25 (T402a, T401a, T411a) · attempts 8 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T411a blobs API (BlobsModule PUT/GET/query, S3BlobStore + in-memory; not wired until W-5)
+- T401a jpdb deck client (Pages + API source, disk cache, rate limit; API layout assumed → HUMAN_CHECKS)
+- T402a extractors SRT/ASS/VTT/TXT/text-hooker + sentence splitter
 - T313 offline chaos suite (acceptance/: real core client devices vs real server on Postgres, 100 seeds 0 lost reviews, §12 examples + 16 scenario files) — reviewer + architect APPROVE, 1 attempt
 - T306+T311 share sheet/PROCESS_TEXT/deep-link intake + loopback AnkiConnect v6 server over TakobotoAnkiStore (API key, origin allowlist)
 - F-6 sync DB schema forced open outside any tx (first-use-in-transaction bug) + synchronous=FULL re-asserted per outer tx
