@@ -25,12 +25,14 @@ import kotobaya.sync.merge.CoreCardCache
 import kotobaya.sync.merge.DuplicateMerge
 import kotobaya.sync.restore.CoreSchedulerReplay
 import org.testcontainers.containers.PostgreSQLContainer
+import kotobaya.sync.client.store.UuidV7Source
 import java.sql.DriverManager
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.random.Random
 
 /**
  * One Postgres container for the whole test JVM, a migrated template database, and one database per
@@ -75,7 +77,7 @@ object Pg {
  * Backups are database copies; [restoreLatestBackup] follows the T112 restore script (load the backup,
  * write `restore_pending`, start the server, whose [StartupSequence] finalizes the restore, SYNC.md 6.3).
  */
-class PgSimServer(startMs: Long, private val pageSize: Int = 500) : SimServer {
+class PgSimServer(startMs: Long, private val pageSize: Int = 500, seed: Int = 1) : SimServer {
     override val kind: String = "postgres"
     private val now = AtomicReference(Instant.ofEpochMilli(startMs))
     private val cache = CoreCardCache()
@@ -84,6 +86,8 @@ class PgSimServer(startMs: Long, private val pageSize: Int = 500) : SimServer {
     private var module: SyncModule
     private val backups = ArrayList<String>()
     private val devices = HashSet<String>()
+    /** Ids of cards the merge creates on a survivor: seeded, so a run is reproducible (op ids stay random). */
+    private val cardIds = UuidV7Source(Random(seed))
 
     init {
         startup()
@@ -101,7 +105,7 @@ class PgSimServer(startMs: Long, private val pageSize: Int = 500) : SimServer {
 
     private fun module() = SyncModule(
         db,
-        SyncConfig(clock = { now.get() }, cardCache = cache, autoStatus = CoreAutoStatusHook(), merge = DuplicateMerge(), backupsDisabled = false),
+        SyncConfig(clock = { now.get() }, cardCache = cache, autoStatus = CoreAutoStatusHook(), merge = DuplicateMerge { cardIds.newOpId(now.get().toEpochMilli()) }, backupsDisabled = false),
     )
 
     private fun principal(id: String): Principal {

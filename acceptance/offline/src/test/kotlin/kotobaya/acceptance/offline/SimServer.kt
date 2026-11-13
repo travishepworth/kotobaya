@@ -53,8 +53,8 @@ interface SimServer : AutoCloseable {
 
     companion object {
         /** The Postgres server when Docker is reachable (and not overridden), else the in-memory one. */
-        fun create(startMs: Long, pageSize: Int = 500): SimServer =
-            if (usePostgres) PgSimServer(startMs, pageSize) else MemSimServer(startMs, pageSize)
+        fun create(startMs: Long, pageSize: Int = 500, seed: Int = 1): SimServer =
+            if (usePostgres) PgSimServer(startMs, pageSize, seed) else MemSimServer(startMs, pageSize, seed)
 
         val usePostgres: Boolean by lazy {
             when (System.getProperty("kotobaya.server")) {
