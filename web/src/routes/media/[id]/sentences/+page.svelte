@@ -8,6 +8,8 @@
 	import { uuidv7 } from '../../../../lib/review/model';
 	import { buildSentenceNote, buildVocabNote, sentenceReading } from '../../../../lib/sentences/noteRequest';
 	import { ts } from '../../../../lib/sentences/messages';
+	import GrammarCapture from '../../../../lib/grammar-capture/GrammarCapture.svelte';
+	import { tg } from '../../../../lib/grammar-capture/messages';
 	import { pushToast } from '../../../../lib/toasts.svelte';
 
 	type Filter = 'all' | 'i+1' | 'i+0';
@@ -29,6 +31,7 @@
 
 	// Card form state.
 	let editing = $state<Sentence | null>(null);
+	let capturing = $state<string | null>(null);
 	let formSentence = $state('');
 	let formReading = $state('');
 	let formTranslation = $state('');
@@ -193,6 +196,8 @@
 				<button type="button" onclick={() => play(hash)}>{ts('sn.play')}</button>
 			{/if}
 			<button type="button" onclick={() => open(s)}>{ts('sn.make')}</button>
+			<button type="button" onclick={() => (capturing = capturing === s.id ? null : s.id)}>{tg('gc.open')}</button>
+			{#if capturing === s.id}<GrammarCapture sentence={s} onclose={() => (capturing = null)} />{/if}
 			{#if editing?.id === s.id}
 				<form
 					class="card-form"

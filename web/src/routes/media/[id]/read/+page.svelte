@@ -3,6 +3,8 @@
 	import { apiConfig } from '../../../../lib/api/client';
 	import { MediaApi } from '../../../../lib/api/generated';
 	import type { MediaSegment, Sentence, WordStatusValue } from '../../../../lib/api/generated';
+	import GrammarCapture from '../../../../lib/grammar-capture/GrammarCapture.svelte';
+	import { tg } from '../../../../lib/grammar-capture/messages';
 	import { pushToast } from '../../../../lib/toasts.svelte';
 	import { formatMs, pieces } from '../../../../lib/reader/format';
 	import { tr } from '../../../../lib/reader/messages';
@@ -19,6 +21,7 @@
 	let cursor = $state<string | null>(null);
 	let loaded = $state(false);
 	let furigana = $state(false);
+	let capturing = $state<string | null>(null);
 	let selected = $state<{ sentenceId: string; index: number } | null>(null);
 	let overridesVersion = $state(0);
 	let showBanner = $state(false);
@@ -145,6 +148,7 @@
 	{#each sentences as s (s.id)}
 		<p class="sentence">
 			<small class="loc">{locationLabel(s)}</small>
+			<button type="button" onclick={() => (capturing = capturing === s.id ? null : s.id)}>{tg('gc.open')}</button>
 			{#each pieces(s) as piece, i (i)}
 				{#if piece.tokenIndex === null}{piece.text}{:else}
 					{@const tok = s.tokens[piece.tokenIndex]}
@@ -164,6 +168,7 @@
 				{/if}
 			{/each}
 		</p>
+		{#if capturing === s.id}<GrammarCapture sentence={s} onclose={() => (capturing = null)} />{/if}
 		{#if selSentence && selSentence.id === s.id && selected}
 			<TokenPopup
 				sentence={s}

@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import type { DictEntry, DictEntrySummary, EntryExamples } from '../../lib/api/generated';
 	import { dictionaryApi, noteTypesApi, notesApi } from '../../lib/dictionary/api';
+	import GrammarCapture from '../../lib/grammar-capture/GrammarCapture.svelte';
+	import { tg } from '../../lib/grammar-capture/messages';
 	import { td } from '../../lib/dictionary/messages';
 	import { pushToast } from '../../lib/toasts.svelte';
 
@@ -16,6 +18,7 @@
 	let searched = $state(false);
 	let selectedSeq = $state<number | null>(null);
 	let entry = $state<DictEntry | null>(null);
+	let capturing = $state<string | null>(null);
 	let examples = $state<EntryExamples | null>(null);
 	let loadingEntry = $state(false);
 	let adding = $state(false);
@@ -249,7 +252,15 @@
 				{#if examples.media.length > 0}
 					<h4>{td('dict.examplesMedia')}</h4>
 					<ul>
-						{#each examples.media as s (s.id)}<li lang="ja">{s.text}</li>{/each}
+						{#each examples.media as s (s.id)}
+							<li>
+								<span lang="ja">{s.text}</span>
+								<button type="button" onclick={() => (capturing = capturing === s.id ? null : s.id)}
+									>{tg('gc.open')}</button
+								>
+								{#if capturing === s.id}<GrammarCapture sentence={s} onclose={() => (capturing = null)} />{/if}
+							</li>
+						{/each}
 					</ul>
 				{/if}
 				{#if examples.tatoeba.length > 0}
