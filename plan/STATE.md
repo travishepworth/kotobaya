@@ -4,7 +4,7 @@ Phase: P9 UI rewrite (+ SYNC-T1)   Gate: none open (B2 approved 2026-11-14); GAT
 Updated: run 19
 
 ## RESUME HERE (run 19 in progress)
-- Run 19 dispatched SYNC-T1 (attempt 2, existing worktree .claude/worktrees/agent-a8129782ee98b2f5a), UI-DS-APP (attempt 2, fresh), UI-WEB (attempt 1). UI-APP dispatches when UI-DS-APP merges.
+- Run 19 merged SYNC-T1 4dce8ba. Running: UI-DS-APP (attempt 2, fresh), UI-WEB (attempt 1). UI-APP dispatches when UI-DS-APP merges.
 - UI-FOUND-APP worktree + branch removed.
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
@@ -14,7 +14,6 @@ Updated: run 19
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| SYNC-T1 | writer-senior | 2 | t/SYNC-T1-chunked-pull-tests | run 19 |
 | UI-DS-APP | writer-senior | 2 | t/UI-DS-APP-styleguide | run 19 |
 | UI-WEB | writer-senior | 1 | t/UI-WEB-rebuild | run 19 |
 
@@ -48,6 +47,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- SYNC-T1 (run 19, 4dce8ba): chunked pull per-chunk pull_seq + log_epoch checks (Failed PROTOCOL), skew on first chunk only, open @Volatile, failure-path tests + fuzz chunk 1..5
 - C-20 (run 18, 6814485): SYNC.md 6.1 sub-pages (one tx each, pull_seq = last seq; since from stored sync_state; purge/last_sync_at after last sub-page), 9.3 replay deferrable to tx end; xrefs 7.8/10.3/11/17; model.py unchanged
 - UI-FOUND-APP (run 18, b0683c1): per-screen ViewModels (StateViewModel, ports), ui/ purity test, debug demo-data mode (fixtures/demo), Roborazzi 1.40.1 matrix (516 PNGs, make screenshots-app), buildConfig on; BUG-8 touch-ups (dict DbThreadGuard, SyncStatus update{}, unpair awaited)
 - UI-DS (run 17, 3007499): tokens.json -> tokens.css/card.css/Tokens.kt (drift + WCAG AA tests), 18 web ui primitives, /styleguide, docs/DESIGN.md (both platforms), docs/design-screenshots/web; B2 gate

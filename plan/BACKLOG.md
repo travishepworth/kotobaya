@@ -695,7 +695,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
 
 ### SYNC-T1 — Chunked pull failure-path tests + hardening (BUG-8 review minors)
-- model: opus · risk: med · deps: BUG-8 · status: RUNNING (run 19, attempt 2, resumed from partial worktree) (ticket: plan/tickets/SYNC-T1.md)
+- model: opus · risk: med · deps: BUG-8 · status: MERGED 4dce8ba (ticket: plan/tickets/SYNC-T1.md)
 
 ### C-20 — SYNC.md 6.1: client MAY apply a page as consecutive sub-pages (each commits pull_seq = its last seq; 9.3 replays at end of that tx). Wording only, matches BUG-8.
 - model: opus (architect) · risk: low · deps: BUG-8 · status: MERGED 6814485 (ticket: plan/tickets/C-20.md)
