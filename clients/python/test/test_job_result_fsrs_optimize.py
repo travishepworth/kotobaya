@@ -35,9 +35,12 @@ class TestJobResultFsrsOptimize(unittest.TestCase):
         model = JobResultFsrsOptimize()
         if include_optional:
             return JobResultFsrsOptimize(
+                holdout_review_count = 0,
                 log_loss = 1.337,
+                log_loss_before = 1.337,
                 preset_id = 'bf325375-e030-fccb-a009-17317c574773',
                 published = True,
+                reason = 'too_few_reviews',
                 review_count = 0,
                 rmse_bins = 1.337,
                 weights_version = 0

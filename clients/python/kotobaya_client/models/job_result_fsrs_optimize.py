@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional, Union
 from typing_extensions import Annotated
 from typing import Optional, Set
@@ -26,21 +26,34 @@ from pydantic_core import to_jsonable_python
 
 class JobResultFsrsOptimize(BaseModel):
     """
-    Result of an optimizer run.
+    Result of an optimizer run (`contracts/db/FSRS_PUBLISH.md`). `log_loss_before`, `holdout_review_count` and `reason` were added by C-16 and are not required: results stored before it lack them (treat absent as null). 
     """ # noqa: E501
-    log_loss: Optional[Union[StrictFloat, StrictInt]] = Field(description="Log loss of the new weights.")
+    holdout_review_count: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16)")
+    log_loss: Optional[Union[StrictFloat, StrictInt]] = Field(description="Log loss of the new weights on the held-out reviews. null when no weights were evaluated (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training).")
+    log_loss_before: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, description="Log loss, on the same held-out reviews, of the weights the preset had when the run started (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` < `log_loss_before`. null when it was not computed. (C-16)")
     preset_id: Annotated[str, Field(strict=True)] = Field(description="The preset.")
-    published: StrictBool = Field(description="false when there were too few reviews or the new weights were not better; the preset is then unchanged.")
-    review_count: Annotated[int, Field(strict=True, ge=0)] = Field(description="Reviews used.")
-    rmse_bins: Optional[Union[StrictFloat, StrictInt]] = Field(description="RMSE (bins) of the new weights.")
-    weights_version: Annotated[int, Field(strict=True, ge=0)] = Field(description="The preset's `weights_version` after the run.")
-    __properties: ClassVar[List[str]] = ["log_loss", "preset_id", "published", "review_count", "rmse_bins", "weights_version"]
+    published: StrictBool = Field(description="true iff this run minted an `fsrs_params.published` op. false when there were too few reviews or the new weights were not better (see `reason`); the preset is then unchanged.")
+    reason: Optional[StrictStr] = Field(default=None, description="Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16)")
+    review_count: Annotated[int, Field(strict=True, ge=0)] = Field(description="Reviews used (training and held-out together).")
+    rmse_bins: Optional[Union[StrictFloat, StrictInt]] = Field(description="RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is.")
+    weights_version: Annotated[int, Field(strict=True, ge=0)] = Field(description="The preset's `weights_version` after the run (when not published, the version the run read).")
+    __properties: ClassVar[List[str]] = ["holdout_review_count", "log_loss", "log_loss_before", "preset_id", "published", "reason", "review_count", "rmse_bins", "weights_version"]
 
     @field_validator('preset_id', mode="before")
     def preset_id_validate_regular_expression(cls, value):
         """Validates the regular expression"""
         if isinstance(value, str) and not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", value):
             raise ValueError(r"must validate the regular expression /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/")
+        return value
+
+    @field_validator('reason')
+    def reason_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        if value not in set(['too_few_reviews', 'not_improved', 'out_of_bounds', 'preset_deleted']):
+            raise ValueError("must be one of enum values ('too_few_reviews', 'not_improved', 'out_of_bounds', 'preset_deleted')")
         return value
 
     model_config = ConfigDict(
@@ -87,6 +100,16 @@ class JobResultFsrsOptimize(BaseModel):
         if self.log_loss is None and "log_loss" in self.model_fields_set:
             _dict['log_loss'] = None
 
+        # set to None if log_loss_before (nullable) is None
+        # and model_fields_set contains the field
+        if self.log_loss_before is None and "log_loss_before" in self.model_fields_set:
+            _dict['log_loss_before'] = None
+
+        # set to None if reason (nullable) is None
+        # and model_fields_set contains the field
+        if self.reason is None and "reason" in self.model_fields_set:
+            _dict['reason'] = None
+
         # set to None if rmse_bins (nullable) is None
         # and model_fields_set contains the field
         if self.rmse_bins is None and "rmse_bins" in self.model_fields_set:
@@ -104,9 +127,12 @@ class JobResultFsrsOptimize(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "holdout_review_count": obj.get("holdout_review_count"),
             "log_loss": obj.get("log_loss"),
+            "log_loss_before": obj.get("log_loss_before"),
             "preset_id": obj.get("preset_id"),
             "published": obj.get("published"),
+            "reason": obj.get("reason"),
             "review_count": obj.get("review_count"),
             "rmse_bins": obj.get("rmse_bins"),
             "weights_version": obj.get("weights_version")

@@ -27,20 +27,23 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Result of an optimizer run.
+ * Result of an optimizer run (`contracts/db/FSRS_PUBLISH.md`). `log_loss_before`, `holdout_review_count` and `reason` were added by C-16 and are not required: results stored before it lack them (treat absent as null). 
  *
- * @param logLoss Log loss of the new weights.
+ * @param logLoss Log loss of the new weights on the held-out reviews. null when no weights were evaluated (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training).
  * @param presetId The preset.
- * @param published false when there were too few reviews or the new weights were not better; the preset is then unchanged.
- * @param reviewCount Reviews used.
- * @param rmseBins RMSE (bins) of the new weights.
- * @param weightsVersion The preset's `weights_version` after the run.
+ * @param published true iff this run minted an `fsrs_params.published` op. false when there were too few reviews or the new weights were not better (see `reason`); the preset is then unchanged.
+ * @param reviewCount Reviews used (training and held-out together).
+ * @param rmseBins RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is.
+ * @param weightsVersion The preset's `weights_version` after the run (when not published, the version the run read).
+ * @param holdoutReviewCount How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16)
+ * @param logLossBefore Log loss, on the same held-out reviews, of the weights the preset had when the run started (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` < `log_loss_before`. null when it was not computed. (C-16)
+ * @param reason Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16)
  */
 
 
 data class JobResultFsrsOptimize (
 
-    /* Log loss of the new weights. */
+    /* Log loss of the new weights on the held-out reviews. null when no weights were evaluated (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training). */
     @SerializedName("log_loss")
     val logLoss: java.math.BigDecimal?,
 
@@ -48,24 +51,47 @@ data class JobResultFsrsOptimize (
     @SerializedName("preset_id")
     val presetId: kotlin.String,
 
-    /* false when there were too few reviews or the new weights were not better; the preset is then unchanged. */
+    /* true iff this run minted an `fsrs_params.published` op. false when there were too few reviews or the new weights were not better (see `reason`); the preset is then unchanged. */
     @SerializedName("published")
     val published: kotlin.Boolean,
 
-    /* Reviews used. */
+    /* Reviews used (training and held-out together). */
     @SerializedName("review_count")
     val reviewCount: kotlin.Int,
 
-    /* RMSE (bins) of the new weights. */
+    /* RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is. */
     @SerializedName("rmse_bins")
     val rmseBins: java.math.BigDecimal?,
 
-    /* The preset's `weights_version` after the run. */
+    /* The preset's `weights_version` after the run (when not published, the version the run read). */
     @SerializedName("weights_version")
-    val weightsVersion: kotlin.Int
+    val weightsVersion: kotlin.Int,
+
+    /* How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16) */
+    @SerializedName("holdout_review_count")
+    val holdoutReviewCount: kotlin.Int? = null,
+
+    /* Log loss, on the same held-out reviews, of the weights the preset had when the run started (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` < `log_loss_before`. null when it was not computed. (C-16) */
+    @SerializedName("log_loss_before")
+    val logLossBefore: java.math.BigDecimal? = null,
+
+    /* Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16) */
+    @SerializedName("reason")
+    val reason: JobResultFsrsOptimize.Reason? = null
 
 ) {
 
+    /**
+     * Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16)
+     *
+     * Values: TOO_FEW_REVIEWS,NOT_IMPROVED,OUT_OF_BOUNDS,PRESET_DELETED
+     */
+    enum class Reason(val value: kotlin.String) {
+        @SerializedName(value = "too_few_reviews") TOO_FEW_REVIEWS("too_few_reviews"),
+        @SerializedName(value = "not_improved") NOT_IMPROVED("not_improved"),
+        @SerializedName(value = "out_of_bounds") OUT_OF_BOUNDS("out_of_bounds"),
+        @SerializedName(value = "preset_deleted") PRESET_DELETED("preset_deleted");
+    }
 
 }
 

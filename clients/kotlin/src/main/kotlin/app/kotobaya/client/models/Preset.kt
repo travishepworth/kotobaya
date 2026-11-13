@@ -40,7 +40,7 @@ import com.google.gson.annotations.SerializedName
  * @param maximumIntervalDays Cap on scheduled intervals.
  * @param name Display name.
  * @param optimizedAt When weights were last published.
- * @param optimizerStats Metrics of the last optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}`.
+ * @param optimizerStats Metrics of the last published optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}` and, since C-16, `\"log_loss_before\"` (held-out log loss of the weights it replaced) and `\"holdout_review_count\"`; each key may be absent.
  * @param relearningStepsS Relearning steps in seconds.
  * @param updatedAt Last change.
  * @param weights Optimized FSRS weights, or null = the core's defaults.
@@ -94,7 +94,7 @@ data class Preset (
     @SerializedName("optimized_at")
     val optimizedAt: java.time.OffsetDateTime?,
 
-    /* Metrics of the last optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}`. */
+    /* Metrics of the last published optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}` and, since C-16, `\"log_loss_before\"` (held-out log loss of the weights it replaced) and `\"holdout_review_count\"`; each key may be absent. */
     @SerializedName("optimizer_stats")
     val optimizerStats: kotlin.collections.Map<kotlin.String, kotlin.Any>?,
 

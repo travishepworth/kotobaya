@@ -15,7 +15,7 @@
 | **maximumIntervalDays** | **kotlin.Int** | Cap on scheduled intervals. |  |
 | **name** | **kotlin.String** | Display name. |  |
 | **optimizedAt** | [**java.time.OffsetDateTime**](java.time.OffsetDateTime.md) | When weights were last published. |  |
-| **optimizerStats** | [**kotlin.collections.Map&lt;kotlin.String, kotlin.Any&gt;**](kotlin.Any.md) | Metrics of the last optimizer run: &#x60;{\&quot;review_count\&quot;, \&quot;log_loss\&quot;, \&quot;rmse_bins\&quot;}&#x60;. |  |
+| **optimizerStats** | [**kotlin.collections.Map&lt;kotlin.String, kotlin.Any&gt;**](kotlin.Any.md) | Metrics of the last published optimizer run: &#x60;{\&quot;review_count\&quot;, \&quot;log_loss\&quot;, \&quot;rmse_bins\&quot;}&#x60; and, since C-16, &#x60;\&quot;log_loss_before\&quot;&#x60; (held-out log loss of the weights it replaced) and &#x60;\&quot;holdout_review_count\&quot;&#x60;; each key may be absent. |  |
 | **relearningStepsS** | **kotlin.collections.List&lt;kotlin.Int&gt;** | Relearning steps in seconds. |  |
 | **updatedAt** | [**java.time.OffsetDateTime**](java.time.OffsetDateTime.md) | Last change. |  |
 | **weights** | [**kotlin.collections.List&lt;java.math.BigDecimal&gt;**](java.math.BigDecimal.md) | Optimized FSRS weights, or null &#x3D; the core&#39;s defaults. |  |

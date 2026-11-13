@@ -1,0 +1,36 @@
+{
+  "stored_weights_version": 3,
+  "op": {
+    "op_type": "fsrs_params.published",
+    "op_version": 1,
+    "entity_type": "fsrs_params",
+    "entity_id": "0193a1b2-0006-7000-8000-000000000001",
+    "device_id": "00000000-0000-7000-8000-000000000001",
+    "caused_by_op_id": null,
+    "payload": {
+      "id": "0193a1b2-0006-7000-8000-000000000001",
+      "weights_version": 4,
+      "fsrs_version": "6",
+      "weights": [0.3021, 1.4102, 2.9984, 9.1045, 6.2011, 0.7912, 2.8843, 0.0125, 1.9034, 0.1502, 0.8123, 1.5127, 0.0733, 0.2811, 1.7034, 0.5822, 1.9241, 0.5102, 0.1033, 0.0712, 0.1688],
+      "optimized_at": 1762657212000,
+      "optimizer_stats": {
+        "review_count": 18422,
+        "log_loss": 0.3312,
+        "rmse_bins": 0.0241,
+        "log_loss_before": 0.3371,
+        "holdout_review_count": 3684
+      }
+    }
+  },
+  "result": {
+    "preset_id": "0193a1b2-0006-7000-8000-000000000001",
+    "published": true,
+    "weights_version": 4,
+    "review_count": 18422,
+    "log_loss": 0.3312,
+    "rmse_bins": 0.0241,
+    "log_loss_before": 0.3371,
+    "holdout_review_count": 3684,
+    "reason": null
+  }
+}

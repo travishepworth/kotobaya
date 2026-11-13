@@ -904,6 +904,16 @@ paths:
         returned with `200` instead of creating another. When the job succeeds the worker
         publishes the weights: the server emits `fsrs_params.published` (not this request).
         The weekly schedule enqueues the same job for every live preset.
+
+        **Execution (C-16).** The worker trains on the preset's reviews and compares, on a
+        held-out set of reviews, the log loss of the preset's current weights with that of the
+        new ones. Only when the new weights are strictly better (and within the weight bounds)
+        does it hand them to the server through the server-internal job kind
+        `fsrs-params-publish` (rules for internal jobs: `Job`); the server checks the same
+        condition again and mints one `fsrs_params.published` with `weights_version` + 1.
+        Otherwise the job still ends `succeeded`, with `published: false` and a `reason`, and
+        the preset is unchanged. A retried or repeated job never publishes the same result
+        twice. Normative protocol: `contracts/db/FSRS_PUBLISH.md`.
       x-emits-ops: []
       security:
         - bearerAuth: [import]
@@ -6494,7 +6504,9 @@ components:
           type:
           - object
           - 'null'
-          description: 'Metrics of the last optimizer run: `{"review_count", "log_loss", "rmse_bins"}`.'
+          description: 'Metrics of the last published optimizer run: `{"review_count", "log_loss", "rmse_bins"}` and,
+            since C-16, `"log_loss_before"` (held-out log loss of the weights it replaced) and `"holdout_review_count"`;
+            each key may be absent.'
           additionalProperties: true
         created_at:
           $ref: '#/components/schemas/Timestamp'
@@ -11067,7 +11079,8 @@ components:
         job (its *parent*). The registered internal kinds are listed in
         `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
         "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
-        `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
+        `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3),
+        and `fsrs-params-publish` (C-16; parent `fsrs-optimize`; `contracts/db/FSRS_PUBLISH.md`). Rules:
         - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
           cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
           answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`
@@ -11663,7 +11676,10 @@ components:
                 description: Reviews this record had.
     JobResultFsrsOptimize:
       type: object
-      description: Result of an optimizer run.
+      description: |
+        Result of an optimizer run (`contracts/db/FSRS_PUBLISH.md`). `log_loss_before`,
+        `holdout_review_count` and `reason` were added by C-16 and are not required: results
+        stored before it lack them (treat absent as null).
       required:
       - preset_id
       - published
@@ -11677,26 +11693,66 @@ components:
           description: The preset.
         published:
           type: boolean
-          description: false when there were too few reviews or the new weights were not better; the preset is then
-            unchanged.
+          description: true iff this run minted an `fsrs_params.published` op. false when there were too few reviews
+            or the new weights were not better (see `reason`); the preset is then unchanged.
         weights_version:
           type: integer
           minimum: 0
-          description: The preset's `weights_version` after the run.
+          description: The preset's `weights_version` after the run (when not published, the version the run read).
+          examples:
+          - 4
         review_count:
           type: integer
           minimum: 0
-          description: Reviews used.
+          description: Reviews used (training and held-out together).
+          examples:
+          - 18422
         log_loss:
           type:
           - number
           - 'null'
-          description: Log loss of the new weights.
+          description: Log loss of the new weights on the held-out reviews. null when no weights were evaluated
+            (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training).
+          examples:
+          - 0.3312
         rmse_bins:
           type:
           - number
           - 'null'
-          description: RMSE (bins) of the new weights.
+          description: RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is.
+          examples:
+          - 0.0241
+        log_loss_before:
+          type:
+          - number
+          - 'null'
+          description: Log loss, on the same held-out reviews, of the weights the preset had when the run started
+            (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` <
+            `log_loss_before`. null when it was not computed. (C-16)
+          examples:
+          - 0.3371
+        holdout_review_count:
+          type: integer
+          minimum: 0
+          description: How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16)
+          examples:
+          - 3684
+        reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - too_few_reviews
+          - not_improved
+          - out_of_bounds
+          - preset_deleted
+          - null
+          description: Why nothing was published; null iff `published` is true. `too_few_reviews` = below the
+            optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds`
+            = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted
+            before publication. (C-16)
+          examples:
+          - not_improved
     JobResultTts:
       type: object
       description: Result of a TTS job.

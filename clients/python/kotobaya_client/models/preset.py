@@ -40,7 +40,7 @@ class Preset(BaseModel):
     maximum_interval_days: Annotated[int, Field(strict=True, ge=1)] = Field(description="Cap on scheduled intervals.")
     name: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Display name.")
     optimized_at: Optional[datetime] = Field(description="When weights were last published.")
-    optimizer_stats: Optional[Dict[str, Any]] = Field(description="Metrics of the last optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}`.")
+    optimizer_stats: Optional[Dict[str, Any]] = Field(description="Metrics of the last published optimizer run: `{\"review_count\", \"log_loss\", \"rmse_bins\"}` and, since C-16, `\"log_loss_before\"` (held-out log loss of the weights it replaced) and `\"holdout_review_count\"`; each key may be absent.")
     relearning_steps_s: List[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Relearning steps in seconds.")
     updated_at: datetime = Field(description="Last change.")
     weights: Optional[List[Union[StrictFloat, StrictInt]]] = Field(description="Optimized FSRS weights, or null = the core's defaults.")

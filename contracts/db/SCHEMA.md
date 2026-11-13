@@ -12,6 +12,8 @@ Frozen interface. Files:
 | `SNAPSHOT.md` | Media content and deck-item snapshot archives: format, integrity rules, install rule (C-11). |
 | `MEDIA_PIPELINE.md` | The `media-publish` hand-off, `parse_status` transitions, jpdb mapping corrections (C-11). |
 | `media/` | Record schemas, `media-publish` payload schema, worked example archives and `validate.py` for the two documents above. |
+| `FSRS_PUBLISH.md` | The `fsrs-optimize` → `fsrs-params-publish` hand-off: how optimizer weights become an `fsrs_params.published` op (C-16). |
+| `optimizer/` | `fsrs-params-publish` payload schema, worked examples and `validate.py` for `FSRS_PUBLISH.md`. |
 | `test/smoke.sql` | One worked example row per table plus the constraints you may rely on. Read it for examples. |
 | `test/smoke_v2.sql` | The same for `V2__jpdb_vocab.sql`. |
 | `check.sh` | Verifies all of the above (see section 8). |
@@ -366,6 +368,7 @@ Its payload carries `parent_job_id`; its `dedupe_key` is `<kind>:<parent id>`. R
 |---|---|---|---|---|---|---|
 | `jpdb-history-apply` | `jpdb-history-import` | worker | server (`JpdbHistoryApplyRunner`) | `{"parent_job_id": uuid, "plan": <ImportPlan v1>}`; `plan` removed when the row ends | `JobResultJpdbHistory` | `importJpdbHistory` "Execution" |
 | `media-publish` | `media-import`, `media-parse`, `jpdb-deck-import`, `grammar-detect` (C-13) | worker | server (`MediaPublishRunner`) | `media/media-publish.v1.schema.json` (`parent_job_id`, `media_id`, `base_content_version`, `create`, two archive blobs, `unmapped`, `jpdb`); kept when the row ends; `max_attempts = 1` | `JobResultMedia` | `MEDIA_PIPELINE.md` 3 (C-11) |
+| `fsrs-params-publish` (C-16) | `fsrs-optimize` | worker | server (`FsrsParamsPublishRunner`) | `optimizer/fsrs-params-publish.v1.schema.json` (`parent_job_id`, `preset_id`, `base_weights_version`, `fsrs_version`, `weights`, `optimized_at`, `review_count`, `holdout_review_count`, `log_loss_before`, `log_loss_after`, `rmse_bins`); kept when the row ends; `max_attempts = 1` | `JobResultFsrsOptimize` | `FSRS_PUBLISH.md` (C-16) |
 
 A new internal kind is added here by a contract ticket; it must not equal a `JobKind` value.
 The parent-kind column is authoritative; the parent lists in `MEDIA_PIPELINE.md` 2 and in the
@@ -678,7 +681,8 @@ submitting the listed op(s) through the op-apply path.
 contracts/db/check.sh
 ```
 
-Validates the snapshot formats (`media/validate.py`: examples and negative cases), starts a
+Validates the snapshot formats (`media/validate.py`: examples and negative cases) and the
+`fsrs-params-publish` hand-off (`optimizer/validate.py`, C-16), starts a
 throwaway `postgres:17` container, applies `V1__init.sql`, runs `test/smoke.sql`, applies
 `V2__jpdb_vocab.sql` and runs `test/smoke_v2.sql`,
 confirms the migration refuses an `LC_CTYPE=C` database, loads the `.sq` files into `sqlite3`,

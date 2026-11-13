@@ -14,36 +14,64 @@
 
 import { mapValues } from '../runtime';
 /**
- * Result of an optimizer run.
+ * Result of an optimizer run (`contracts/db/FSRS_PUBLISH.md`). `log_loss_before`,
+ * `holdout_review_count` and `reason` were added by C-16 and are not required: results
+ * stored before it lack them (treat absent as null).
+ * 
  * @export
  * @interface JobResultFsrsOptimize
  */
 export interface JobResultFsrsOptimize {
     /**
-     * Log loss of the new weights.
+     * How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16)
+     */
+    holdoutReviewCount?: number;
+    /**
+     * Log loss of the new weights on the held-out reviews. null when no weights were evaluated (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training).
      */
     logLoss: number | null;
+    /**
+     * Log loss, on the same held-out reviews, of the weights the preset had when the run started (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` < `log_loss_before`. null when it was not computed. (C-16)
+     */
+    logLossBefore?: number | null;
     /**
      * The preset.
      */
     presetId: string;
     /**
-     * false when there were too few reviews or the new weights were not better; the preset is then unchanged.
+     * true iff this run minted an `fsrs_params.published` op. false when there were too few reviews or the new weights were not better (see `reason`); the preset is then unchanged.
      */
     published: boolean;
     /**
-     * Reviews used.
+     * Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16)
+     */
+    reason?: JobResultFsrsOptimizeReasonEnum | null;
+    /**
+     * Reviews used (training and held-out together).
      */
     reviewCount: number;
     /**
-     * RMSE (bins) of the new weights.
+     * RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is.
      */
     rmseBins: number | null;
     /**
-     * The preset's `weights_version` after the run.
+     * The preset's `weights_version` after the run (when not published, the version the run read).
      */
     weightsVersion: number;
 }
+
+
+/**
+ * @export
+ */
+export const JobResultFsrsOptimizeReasonEnum = {
+    TooFewReviews: 'too_few_reviews',
+    NotImproved: 'not_improved',
+    OutOfBounds: 'out_of_bounds',
+    PresetDeleted: 'preset_deleted',
+} as const;
+export type JobResultFsrsOptimizeReasonEnum = typeof JobResultFsrsOptimizeReasonEnum[keyof typeof JobResultFsrsOptimizeReasonEnum];
+
 
 /**
  * Check if a given object implements the JobResultFsrsOptimize interface.
@@ -68,9 +96,12 @@ export function JobResultFsrsOptimizeFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
+        'holdoutReviewCount': json['holdout_review_count'] == null ? undefined : json['holdout_review_count'],
         'logLoss': json['log_loss'],
+        'logLossBefore': json['log_loss_before'] === undefined ? undefined : json['log_loss_before'] === null ? null : json['log_loss_before'],
         'presetId': json['preset_id'],
         'published': json['published'],
+        'reason': json['reason'] === undefined ? undefined : json['reason'] === null ? null : json['reason'],
         'reviewCount': json['review_count'],
         'rmseBins': json['rmse_bins'],
         'weightsVersion': json['weights_version'],
@@ -88,9 +119,12 @@ export function JobResultFsrsOptimizeToJSONTyped(value?: JobResultFsrsOptimize |
 
     return {
         
+        'holdout_review_count': value['holdoutReviewCount'],
         'log_loss': value['logLoss'],
+        'log_loss_before': value['logLossBefore'],
         'preset_id': value['presetId'],
         'published': value['published'],
+        'reason': value['reason'],
         'review_count': value['reviewCount'],
         'rmse_bins': value['rmseBins'],
         'weights_version': value['weightsVersion'],

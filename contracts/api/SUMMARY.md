@@ -422,3 +422,18 @@ attempt 1 is gone). Needs node and python3; network on first run.
   `lastShown`); (2) only the latest review's `sentence_id` is consulted, so a review answered
   without `sentence_id` lets the previous sentence repeat once; (3) `translation` is always null
   until mined sentences get translations, so `{{cloze:translation}}`/hint stay empty.
+
+## C-16 changes (additive): FSRS optimizer result and publication
+- **`optimizePreset`** gains an "Execution" paragraph: the weights are published only when they
+  beat the current ones on held-out reviews; the hand-off to the server is the new
+  server-internal job kind `fsrs-params-publish` (hidden from `listJobs`, `getJob`, `cancelJob`
+  and the event stream like the other two). Protocol: `contracts/db/FSRS_PUBLISH.md`.
+- **`JobResultFsrsOptimize`** gains three optional members: `log_loss_before` (held-out log loss
+  of the weights being replaced), `holdout_review_count`, and `reason` (`too_few_reviews`,
+  `not_improved`, `out_of_bounds`, `preset_deleted`; null when published). Not `required`, so
+  results already stored stay valid.
+- **`Preset.optimizer_stats`** (description only): publications now also carry
+  `log_loss_before` and `holdout_review_count`.
+- No new operation, no new public `JobKind`, no new op. Cross-check row unchanged:
+  `fsrs_params` ↔ `fsrs_params.published` ↔ `optimizePreset` (job, `x-emits-ops: []`).
+- Worth a second look: see `contracts/db/SUMMARY.md` "C-16 changes".

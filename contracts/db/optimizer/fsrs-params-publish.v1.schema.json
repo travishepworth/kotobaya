@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/db/optimizer/fsrs-params-publish.v1.schema.json",
+  "title": "fsrs-params-publish job payload v1",
+  "description": "app.job.payload of the server-internal job kind `fsrs-params-publish` (FSRS_PUBLISH.md, C-16). Written by the worker's `fsrs-optimize` job, read by the server's FsrsParamsPublishRunner, never by the API. Closed: the runner fails a payload with an unknown member (`invalid_payload`). The schema cannot express three cross-member rules, which the runner also checks (FSRS_PUBLISH.md 2.2): log_loss_after < log_loss_before; holdout_review_count < review_count; weights within the per-index bounds of contracts/sync/ops/fsrs_params.published.schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format_version",
+    "parent_job_id",
+    "preset_id",
+    "base_weights_version",
+    "fsrs_version",
+    "weights",
+    "optimized_at",
+    "review_count",
+    "holdout_review_count",
+    "log_loss_before",
+    "log_loss_after",
+    "rmse_bins"
+  ],
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "description": "Payload format; 1. Any other value fails the child with `unsupported_format` (checked before the rest of the schema)."
+    },
+    "parent_job_id": {
+      "$ref": "#/$defs/uuid",
+      "description": "Id of the public `fsrs-optimize` job (the parent) whose worker inserted this row."
+    },
+    "preset_id": {
+      "$ref": "#/$defs/uuid",
+      "description": "The preset (app.fsrs_params.id) the weights are for. Equals the parent's payload.preset_id."
+    },
+    "base_weights_version": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483646,
+      "description": "The preset's weights_version the worker read in its planning snapshot; `log_loss_before` was measured with the weights of that version (version 0 = the built-in default weights). The op is minted with weights_version = base_weights_version + 1, and only if the stored version still equals this value (else `stale_base`)."
+    },
+    "fsrs_version": {
+      "const": "6",
+      "description": "FSRS algorithm version of `weights`; copied to the op. Only \"6\" in format 1."
+    },
+    "weights": {
+      "type": "array",
+      "minItems": 21,
+      "maxItems": 21,
+      "items": {
+        "type": "number"
+      },
+      "description": "The 21 FSRS-6 weights w[0]..w[20], exactly the values `log_loss_after` and `rmse_bins` were measured with (after any clamping or rounding the worker does). The runner copies them to the op unchanged. Per-index bounds are those of the op schema (C-1); the runner enforces them by validating the op it builds (`weights_out_of_bounds`)."
+    },
+    "optimized_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 253402300799999,
+      "description": "When the optimizer run finished: integer milliseconds since the Unix epoch, UTC (worker clock). Copied to the op's optimized_at; never compared with another clock."
+    },
+    "review_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2147483647,
+      "description": "review_log rows the run used in total (training + held-out)."
+    },
+    "holdout_review_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483646,
+      "description": "How many of those rows form the held-out set both log losses were measured on. Strictly less than review_count (cross-member rule)."
+    },
+    "log_loss_before": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Mean binary log loss on the held-out set with the preset's weights as of base_weights_version."
+    },
+    "log_loss_after": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Mean binary log loss on the same held-out set with `weights`. Strictly less than log_loss_before (cross-member rule): the publish-only-if-better gate."
+    },
+    "rmse_bins": {
+      "type": "number",
+      "minimum": 0,
+      "description": "RMSE (bins) of `weights` on the held-out set."
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "UUID in canonical lowercase 8-4-4-4-12 form."
+    }
+  }
+}

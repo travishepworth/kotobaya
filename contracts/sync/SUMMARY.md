@@ -355,3 +355,9 @@
   working around it); comparing only `log_epoch` (loses the backwards-log safety net).
 - **Worth a second look:** (1) a log reset now also hides any "n changes to download" count until
   the rebuild's pull, which is cosmetic.
+
+## C-16 (note only; no schema, op or model change)
+- `fsrs_params.published` in OPS.md now names its only minter (the server's
+  `fsrs-params-publish` runner, `contracts/db/FSRS_PUBLISH.md`) and the two extra
+  `optimizer_stats` keys it writes (`log_loss_before`, `holdout_review_count`). The op schema is
+  unchanged: `optimizer_stats` was already an open object.

@@ -56,7 +56,8 @@ import {
  * job (its *parent*). The registered internal kinds are listed in
  * `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
  * "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
- * `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3). Rules:
+ * `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3),
+ * and `fsrs-params-publish` (C-16; parent `fsrs-optimize`; `contracts/db/FSRS_PUBLISH.md`). Rules:
  * - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
  *   cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
  *   answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`

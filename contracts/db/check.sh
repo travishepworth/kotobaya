@@ -7,6 +7,8 @@
 # Steps:
 #   0. media/validate.py: the snapshot archive formats, the media-publish payload,
 #      their worked examples and negative cases (SNAPSHOT.md, MEDIA_PIPELINE.md).
+#      optimizer/validate.py: the fsrs-params-publish payload, its worked examples and
+#      negative cases (FSRS_PUBLISH.md, C-16).
 #                                                              (needs python3 + jsonschema, or uv)
 #   1. V1__init.sql then V2__jpdb_vocab.sql apply cleanly to a throwaway postgres:17
 #      container and test/smoke.sql, test/smoke_v2.sql pass.  (needs docker)
@@ -40,6 +42,15 @@ else
   exit 1
 fi
 tail -n 1 "$work/snapshot.out"
+
+echo "== optimizer/validate.py: fsrs-params-publish payload and examples"
+if python3 -c 'import jsonschema, referencing' >/dev/null 2>&1; then
+  python3 "$here/optimizer/validate.py" >"$work/optimizer.out" || { cat "$work/optimizer.out" >&2; exit 1; }
+else
+  uv run --no-project --with 'jsonschema>=4.18' python "$here/optimizer/validate.py" >"$work/optimizer.out" \
+    || { cat "$work/optimizer.out" >&2; exit 1; }
+fi
+tail -n 1 "$work/optimizer.out"
 
 # ---------------------------------------------------------------- 1. Postgres
 echo "== postgres:17: apply V1__init.sql"

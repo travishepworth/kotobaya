@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **maximum_interval_days** | **int** | Cap on scheduled intervals. | 
 **name** | **str** | Display name. | 
 **optimized_at** | **datetime** | When weights were last published. | 
-**optimizer_stats** | **Dict[str, object]** | Metrics of the last optimizer run: &#x60;{\&quot;review_count\&quot;, \&quot;log_loss\&quot;, \&quot;rmse_bins\&quot;}&#x60;. | 
+**optimizer_stats** | **Dict[str, object]** | Metrics of the last published optimizer run: &#x60;{\&quot;review_count\&quot;, \&quot;log_loss\&quot;, \&quot;rmse_bins\&quot;}&#x60; and, since C-16, &#x60;\&quot;log_loss_before\&quot;&#x60; (held-out log loss of the weights it replaced) and &#x60;\&quot;holdout_review_count\&quot;&#x60;; each key may be absent. | 
 **relearning_steps_s** | **List[int]** | Relearning steps in seconds. | 
 **updated_at** | **datetime** | Last change. | 
 **weights** | **List[float]** | Optimized FSRS weights, or null &#x3D; the core&#39;s defaults. | 

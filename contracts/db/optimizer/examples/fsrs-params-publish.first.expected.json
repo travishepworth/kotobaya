@@ -1,0 +1,36 @@
+{
+  "stored_weights_version": 0,
+  "op": {
+    "op_type": "fsrs_params.published",
+    "op_version": 1,
+    "entity_type": "fsrs_params",
+    "entity_id": "00000000-0000-7000-8000-000000000010",
+    "device_id": "00000000-0000-7000-8000-000000000001",
+    "caused_by_op_id": null,
+    "payload": {
+      "id": "00000000-0000-7000-8000-000000000010",
+      "weights_version": 1,
+      "fsrs_version": "6",
+      "weights": [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542],
+      "optimized_at": 1733584666631,
+      "optimizer_stats": {
+        "review_count": 5321,
+        "log_loss": 0.3412,
+        "rmse_bins": 0.0312,
+        "log_loss_before": 0.3655,
+        "holdout_review_count": 1064
+      }
+    }
+  },
+  "result": {
+    "preset_id": "00000000-0000-7000-8000-000000000010",
+    "published": true,
+    "weights_version": 1,
+    "review_count": 5321,
+    "log_loss": 0.3412,
+    "rmse_bins": 0.0312,
+    "log_loss_before": 0.3655,
+    "holdout_review_count": 1064,
+    "reason": null
+  }
+}

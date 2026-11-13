@@ -198,3 +198,32 @@
   already meant that); (2) the snapshot integrity rule that occurrences equal the token
   aggregation ties the formats to the token shape C-12 finalises; (3) corrections are not in
   exports or the sync log, so a device restore cannot recover them (the server backup does).
+
+## C-16 changes (FSRS weights publication; additive, no DDL)
+- **What was missing:** the optimizer runs in the worker, but only the server may change learning
+  data, and there was no defined way to pass the result across. T606 could not be built.
+- **Decided:** a third server-internal job kind, `fsrs-params-publish` (`FSRS_PUBLISH.md`). The
+  worker's `fsrs-optimize` job trains, measures the old and the new weights on reviews it kept
+  out of training, and only if the new ones are strictly better hands them over. The server
+  checks that rule and the weight bounds again, then mints one `fsrs_params.published` with the
+  next `weights_version`, all in one transaction with marking the hand-off done.
+- **Not publishing is a success, not a failure:** too few reviews, no improvement, weights out
+  of range, or a deleted preset end the job `succeeded` with `published: false` and a `reason`.
+- **Never twice:** a retried job finds its earlier hand-off and reuses the result; a second
+  hand-off for the same job is a no-op; and every hand-off names the `weights_version` it was
+  measured against, so one that arrives after the preset moved on is refused (`stale_base`).
+- **Stats:** `optimizer_stats` gains `log_loss_before` and `holdout_review_count` (the object
+  was already open, so the op schema and devices are unchanged).
+- `optimizer/validate.py` is the server's decision as a small reference function with two worked
+  examples and 24 negative cases each; `check.sh` runs it.
+- Alternatives rejected: (a) the worker writes its numbers into the parent job's `result` and the
+  server watches for finished `fsrs-optimize` jobs: the public result would double as a private
+  protocol and "succeeded" would be visible before the weights exist; (b) an internal HTTP
+  endpoint on the server for the worker: a new authenticated surface, where C-9/C-11 already
+  give a queue with retries; (c) a deterministic op id derived from the parent job: op ids are
+  UUIDv7 everywhere else, and the same-transaction rule already gives exactly-once.
+- Worth a second look: (1) the comparison is strict (`<`) with no minimum margin, so a 0.0001
+  improvement publishes and triggers a replay of the preset's cards; (2) how reviews are selected
+  and split, and the minimum count, are left to T606 as worker configuration; the contract
+  only requires the held-out reviews to be unseen in training; (3) a job cancelled in the last
+  instant can end `cancelled` with the weights already published (not reverted).

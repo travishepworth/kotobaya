@@ -1171,7 +1171,7 @@ class PresetsApi:
     ) -> Job:
         """Queue an FSRS optimizer run for this preset.
 
-        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset. 
+        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset.  **Execution (C-16).** The worker trains on the preset's reviews and compares, on a held-out set of reviews, the log loss of the preset's current weights with that of the new ones. Only when the new weights are strictly better (and within the weight bounds) does it hand them to the server through the server-internal job kind `fsrs-params-publish` (rules for internal jobs: `Job`); the server checks the same condition again and mints one `fsrs_params.published` with `weights_version` + 1. Otherwise the job still ends `succeeded`, with `published: false` and a `reason`, and the preset is unchanged. A retried or repeated job never publishes the same result twice. Normative protocol: `contracts/db/FSRS_PUBLISH.md`. 
 
         :param preset_id: Preset id (`fsrs_params.id`). (required)
         :type preset_id: str
@@ -1242,7 +1242,7 @@ class PresetsApi:
     ) -> ApiResponse[Job]:
         """Queue an FSRS optimizer run for this preset.
 
-        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset. 
+        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset.  **Execution (C-16).** The worker trains on the preset's reviews and compares, on a held-out set of reviews, the log loss of the preset's current weights with that of the new ones. Only when the new weights are strictly better (and within the weight bounds) does it hand them to the server through the server-internal job kind `fsrs-params-publish` (rules for internal jobs: `Job`); the server checks the same condition again and mints one `fsrs_params.published` with `weights_version` + 1. Otherwise the job still ends `succeeded`, with `published: false` and a `reason`, and the preset is unchanged. A retried or repeated job never publishes the same result twice. Normative protocol: `contracts/db/FSRS_PUBLISH.md`. 
 
         :param preset_id: Preset id (`fsrs_params.id`). (required)
         :type preset_id: str
@@ -1313,7 +1313,7 @@ class PresetsApi:
     ) -> RESTResponseType:
         """Queue an FSRS optimizer run for this preset.
 
-        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset. 
+        Enqueues a job of kind `fsrs-optimize` (payload `JobPayloadFsrsOptimize`, dedupe key `fsrs-optimize:<preset id>`). If a queued or running job with that key exists it is returned with `200` instead of creating another. When the job succeeds the worker publishes the weights: the server emits `fsrs_params.published` (not this request). The weekly schedule enqueues the same job for every live preset.  **Execution (C-16).** The worker trains on the preset's reviews and compares, on a held-out set of reviews, the log loss of the preset's current weights with that of the new ones. Only when the new weights are strictly better (and within the weight bounds) does it hand them to the server through the server-internal job kind `fsrs-params-publish` (rules for internal jobs: `Job`); the server checks the same condition again and mints one `fsrs_params.published` with `weights_version` + 1. Otherwise the job still ends `succeeded`, with `published: false` and a `reason`, and the preset is unchanged. A retried or repeated job never publishes the same result twice. Normative protocol: `contracts/db/FSRS_PUBLISH.md`. 
 
         :param preset_id: Preset id (`fsrs_params.id`). (required)
         :type preset_id: str

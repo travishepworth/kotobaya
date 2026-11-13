@@ -33,7 +33,7 @@ class JobResultFsrsOptimizeTest : ShouldSpec() {
         // uncomment below to create an instance of JobResultFsrsOptimize
         //val modelInstance = JobResultFsrsOptimize()
 
-        // to test the property `logLoss` - Log loss of the new weights.
+        // to test the property `logLoss` - Log loss of the new weights on the held-out reviews. null when no weights were evaluated (`reason` `too_few_reviews`, `out_of_bounds`, or `preset_deleted` found before training).
         should("test logLoss") {
             // uncomment below to test the property
             //modelInstance.logLoss shouldBe ("TODO")
@@ -45,28 +45,46 @@ class JobResultFsrsOptimizeTest : ShouldSpec() {
             //modelInstance.presetId shouldBe ("TODO")
         }
 
-        // to test the property `published` - false when there were too few reviews or the new weights were not better; the preset is then unchanged.
+        // to test the property `published` - true iff this run minted an `fsrs_params.published` op. false when there were too few reviews or the new weights were not better (see `reason`); the preset is then unchanged.
         should("test published") {
             // uncomment below to test the property
             //modelInstance.published shouldBe ("TODO")
         }
 
-        // to test the property `reviewCount` - Reviews used.
+        // to test the property `reviewCount` - Reviews used (training and held-out together).
         should("test reviewCount") {
             // uncomment below to test the property
             //modelInstance.reviewCount shouldBe ("TODO")
         }
 
-        // to test the property `rmseBins` - RMSE (bins) of the new weights.
+        // to test the property `rmseBins` - RMSE (bins) of the new weights on the held-out reviews; null exactly when `log_loss` is.
         should("test rmseBins") {
             // uncomment below to test the property
             //modelInstance.rmseBins shouldBe ("TODO")
         }
 
-        // to test the property `weightsVersion` - The preset's `weights_version` after the run.
+        // to test the property `weightsVersion` - The preset's `weights_version` after the run (when not published, the version the run read).
         should("test weightsVersion") {
             // uncomment below to test the property
             //modelInstance.weightsVersion shouldBe ("TODO")
+        }
+
+        // to test the property `holdoutReviewCount` - How many of the `review_count` reviews formed the held-out set; 0 when there was none. (C-16)
+        should("test holdoutReviewCount") {
+            // uncomment below to test the property
+            //modelInstance.holdoutReviewCount shouldBe ("TODO")
+        }
+
+        // to test the property `logLossBefore` - Log loss, on the same held-out reviews, of the weights the preset had when the run started (the built-in defaults for a never-optimized preset). `published` is true only if `log_loss` < `log_loss_before`. null when it was not computed. (C-16)
+        should("test logLossBefore") {
+            // uncomment below to test the property
+            //modelInstance.logLossBefore shouldBe ("TODO")
+        }
+
+        // to test the property `reason` - Why nothing was published; null iff `published` is true. `too_few_reviews` = below the optimizer's minimum; `not_improved` = held-out log loss not strictly lower than before; `out_of_bounds` = the optimizer produced a weight outside the FSRS-6 bounds; `preset_deleted` = the preset was deleted before publication. (C-16)
+        should("test reason") {
+            // uncomment below to test the property
+            //modelInstance.reason shouldBe ("TODO")
         }
 
     }

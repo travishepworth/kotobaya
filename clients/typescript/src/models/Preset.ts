@@ -64,7 +64,7 @@ export interface Preset {
      */
     optimizedAt: Date | null;
     /**
-     * Metrics of the last optimizer run: `{"review_count", "log_loss", "rmse_bins"}`.
+     * Metrics of the last published optimizer run: `{"review_count", "log_loss", "rmse_bins"}` and, since C-16, `"log_loss_before"` (held-out log loss of the weights it replaced) and `"holdout_review_count"`; each key may be absent.
      */
     optimizerStats: { [key: string]: any; } | null;
     /**
