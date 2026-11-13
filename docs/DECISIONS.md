@@ -29,7 +29,7 @@ Delete and replace a default to change it; the orchestrator appends ADRs below t
 - Phone dictionary scope: [referenced + top 60k] | full JMdict
 - Phone dictionary size budget: [150 MB]
 - Frequency lists to load (Yomitan format), in priority order:
-- LLM assist: [off] | local model on cluster | API provider (which)
+- LLM assist: **off** (human, 2026-11-13: deferred; T607 paused, not implemented for now)
 - App name: **Kotobaya (言葉屋)** — settled. Package `kotobaya`, CLI `kotobaya`, deep links `kotobaya://`.
 - Day rollover hour: [4:00 local]
 
