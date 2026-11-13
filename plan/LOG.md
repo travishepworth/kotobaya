@@ -702,3 +702,4 @@
 2026-11-13T06:20:55Z D-3 DISPATCH writer (volumes 195→216 after D-2; remaining leak source)
 2026-11-13T06:26:48Z D-3 MERGE CHECK_GREEN worker; 1 attempt (low); worker pg_server fixture tmpfs; volumes stable
 2026-11-13T06:26:48Z T507 DISPATCH writer (core+server, Gradle slot; F-20 folded in)
+2026-11-13T06:35:45Z T607 DECIDE DEFERRED by human (LLM assist); P6 complete without it

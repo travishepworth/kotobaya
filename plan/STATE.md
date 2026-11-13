@@ -45,6 +45,7 @@ Updated: 2026-11-13 (orchestrator run 8 in progress)
 - Review rounds (human, 2026-11-12): loop while findings are REAL — blocker/major with a concrete failure scenario (inputs → wrong result/data loss/divergence). Minors and style never block (→ FOLLOWUPS). Re-reviews verify prior findings + only genuinely new majors. Safety cap: §9 (5 attempts → BLOCKED_HUMAN).
 
 ## Pending human questions
+- (answered run 8) LLM assist DEFERRED: T607 not dispatched; P6 is complete without it.
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats

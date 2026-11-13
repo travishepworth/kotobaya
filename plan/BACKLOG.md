@@ -568,7 +568,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - accept: Parameters published only if they improve log-loss on a held-out split.
 
 ### T607 — Optional LLM assist
-- model: sonnet · risk: med · deps: GATE-P5 · status: TODO
+- model: sonnet · risk: med · deps: GATE-P5 · status: DEFERRED (human, run 8: LLM assist deferred — DECISIONS.md; do not dispatch; P6 complete without it)
 - paths: `server/src/main/kotlin/kotobaya/llm/`
 - do: Pluggable provider per DECISIONS; outputs labelled generated; off by default.
 
