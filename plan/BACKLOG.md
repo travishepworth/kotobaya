@@ -613,7 +613,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: worker optimizer/ + tests (ticket: plan/tickets/BUG-3.md)
 
 ### BUG-4 — VOICEVOX gosu crash-loop + readOnlyRootFilesystem override
-- model: sonnet · risk: low · deps: — · status: RUNNING
+- model: sonnet · risk: low · deps: — · status: MERGED
 - paths: deploy/helm voicevox (ticket: plan/tickets/BUG-4.md)
 
 ### BUG-5 — /kanji/hot 501 + 501 audit + SSE ChannelWriteException
@@ -621,7 +621,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: server struggle/, jobs SSE, Main.kt wiring, tests (ticket: plan/tickets/BUG-5.md)
 
 ### BUG-6 — jpdb import replay: Hard never graduates (re)learning cards (~1,100 stuck)
-- model: opus (architect) · risk: high (+architect second pass) · deps: — · status: TODO (next free slot, ahead of BUG-5)
+- model: opus (architect) · risk: high (+architect second pass) · deps: — · status: RUNNING
 - paths: contracts/sync/, core replay/decide + scheduler version, tests (ticket: plan/tickets/BUG-6.md)
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
