@@ -693,3 +693,4 @@
 2026-11-13T05:58:36Z D-2 DISPATCH writer (volume leak; Gradle slot)
 2026-11-13T05:58:36Z T504 SPLIT T504a web, T504b android+widget
 2026-11-13T05:58:36Z T504a DISPATCH writer (web)
+2026-11-13T06:01:54Z T504a MERGE CHECK_GREEN web; 1 attempt (low); hot-word extra drill = all hot words (F-21)
