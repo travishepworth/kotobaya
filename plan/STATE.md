@@ -1,9 +1,9 @@
 # STATE
 Mode: single-session
 Phase: P7 live bug BUG-7 (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T11:12:40Z (run 16 BUG-7b merged)
+Updated: 2026-11-13T11:19:46Z (run 16 BUG-7c dispatch)
 
-## RESUME HERE (run 16 IN PROGRESS: BUG-7 + BUG-7b MERGED. Running: C-18 (architect) t/C-18-dict-headwords. Then BUG-7c (server+web batch wiring; notes map = HeadwordMap in routes/notes/+page.svelte, see plan/handoffs/BUG-7b.md). Reconcile per §2.)
+## RESUME HERE (run 16 IN PROGRESS: BUG-7, BUG-7b, C-18 MERGED. Running: BUG-7c (writer, server+web, Gradle) t/BUG-7c-batch-headwords. After merge: make test, handover. Reconcile per §2.)
 
 ### Run 15 handover
 - Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
@@ -15,10 +15,10 @@ Updated: 2026-11-13T11:12:40Z (run 16 BUG-7b merged)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-18 | architect (opus, med) | 1 | t/C-18-dict-headwords | 2026-11-13T11:08:06Z |
+| BUG-7c | writer (sonnet, low) | 1 | t/BUG-7c-batch-headwords | 2026-11-13T11:19:46Z |
 
 ## Queued
-- BUG-7c (sonnet, low; server+web batch wiring) after C-18 + BUG-7b
+(none)
 
 ## Ready for review / In review
 (none)
@@ -44,6 +44,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- C-18 (run 16): listDictHeadwords GET /dict/headwords?seq= (<=500; headword, headword_reading, glosses[]) + clients regen; 501-allowlisted until BUG-7c
 - BUG-7b (run 16): /notes rowLabel + Reading/Meaning cols, Preview|Edit (default Preview), kind switcher (notes + cards), Kanji fetch->toKanji, 'From dictionary' field values
 - BUG-7 (run 16): /cards row click + Enter opens preview, rowLabel fallback (fields→headword→kanji→id), preview fetches DictEntry/Kanji (toDictionary/toKanji)
 - AND-SETTINGS (run 15): Settings tab renders all registered settingsSections (QR pairing reachable), Study limits/rollover via settings.set ops, About; unpaired Home pairing prompt

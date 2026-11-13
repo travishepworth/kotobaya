@@ -672,7 +672,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 (Orchestrator: BUG-7 had already merged when this arrived; the addendum ships as BUG-7b. Batch wiring for both tables is BUG-7c after C-18.)
 
 ### C-18 — Contract: batch dictionary headword/reading/gloss per entry_seq (additive; BUG-7 CCR + addendum)
-- model: opus (architect) · risk: med · deps: BUG-7 · status: TODO
+- model: opus (architect) · risk: med · deps: BUG-7 · status: MERGED
 - paths: contracts/api/openapi.yaml, clients/ (regen) (ticket: plan/tickets/C-18.md)
 
 ### BUG-7b — Notes page: readable list, preview-first, dictionary values (BUG-7 addendum)
@@ -680,7 +680,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: web/src/lib/notes/, web/src/routes/notes/, web/src/lib/cards/ (model.ts, model.test.ts, messages.ts, CardPreview.svelte, api.ts), web/src/routes/cards/, web/src/routes/review/, web/src/lib/review/ (ticket: plan/tickets/BUG-7b.md; includes BUG-7 addendum 2, kanji preview)
 
 ### BUG-7c — Batch headword/reading/gloss in /cards and /notes tables
-- model: sonnet · risk: low · deps: C-18, BUG-7b · status: TODO
+- model: sonnet · risk: low · deps: C-18, BUG-7b · status: RUNNING
 - paths: server dictionary handler + tests, web/src/lib/cards/, web/src/routes/cards/, web/src/lib/notes/, web/src/routes/notes/ (ticket: plan/tickets/BUG-7c.md)
 
 ## Phase 8 — Features (requested 2026-11-13)

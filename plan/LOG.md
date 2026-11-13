@@ -823,3 +823,6 @@
 2026-11-13T11:10:54Z FEAT-x NOTE filed HUMAN-GATED next to UI-1 (WYSIWYG note view; needs core render-contract C-xx first)
 2026-11-13T11:12:40Z BUG-7b HANDOFF DONE; addendum 1+2 covered; /review kanji already correct (no change)
 2026-11-13T11:12:40Z BUG-7b MERGE CHECK_GREEN web (low, no review); notes Preview|Edit, kind switcher both pages, kanji fetch, dict field values
+2026-11-13T11:19:46Z C-18 HANDOFF DONE; listDictHeadwords GET /dict/headwords?seq= (<=500), 501 stub allowlisted for BUG-7c
+2026-11-13T11:19:46Z C-18 MERGE CHECK_GREEN contracts+server (med, additive, no review); clients regen
+2026-11-13T11:19:46Z BUG-7c DISPATCH writer (sonnet, low; server+web batch headwords)
