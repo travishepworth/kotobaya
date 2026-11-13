@@ -250,3 +250,9 @@
 ## T403a / C-11 (handoff notes)
 - T403a: fixture suspects (F-7 hand-authored): s131 (富士山 missing from dict fixture), s84/s85/s148/s153/s162/s174/s198 kana lemmas.
 - C-11 provisional refinements of ADR-014/015: only server writes media rows; REST jpdb corrections, remap jobs clear dedupe key under advisory lock 7033011; API emits `parsing`, reconciler repairs; deck_item.added_at = deck.created_at.
+
+## T403a (reviewer minors, 2026-11-13)
+- parse/deinflect/__init__.py:109 volitional split misses katakana surface (half-width ｲｺｳ → イコウ); test fold_katakana(surface), take tail reading from m.reading.
+- parse/normalize.py:405 is_kana(prev) includes ・/゠ and maps ‐/− to ー after them; use hiragana/katakana/ー check.
+- parse/segment.py:505 ASCII 名詞 lemma lowercased by Sudachi (A4サイズ → a); keep width-folded case.
+- W-5: sudachidict-full is a large runtime dep of the worker image — size the Docker image accordingly.
