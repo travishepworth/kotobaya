@@ -1,27 +1,27 @@
 # STATE
 Mode: single-session
 Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (orchestrator run 4)
+Updated: 2026-11-13 (end of orchestrator run 4)
 
 
-## RESUME HERE (updated 2026-11-13, orchestrator run 4)
-- Run 4 merged: T402b+T409, T403a, F-8+F-9 (all V*.sql shipped; tmpfs Postgres in tests, worker dict conftest leaked volumes), C-11 (2 attempts; lock-order fix).
-- Human-reported gaps (coordinator): W-5a URGENT (blobs unwired + dict refresh/release never implemented) → then human pushes 0.1.1. Tickets D-1, F-12+F-13 (batch), T412+T413 (batch web), ADR-020.
-- QUEUE ORDER for free slots: W-5a > T404c re-check (after F-11) > D-1 > F-12+F-13 > T412+T413 > F-10 > (after C-12) T403b/T403c/T408a; (after T404c) T405b.
-- Server full test suite OOMs in test JVM (default 512m heap) → F-11 running; T404c (code fine, coverage tests 11/11) waits on F-11 then re-run make check server → merge (med).
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 4)
+- Run 4 merged (17): T402b+T409, T403a, F-8+F-9, C-11 (2 att.), T407, T404a, D-1, F-11, W-5a (URGENT human gap: blobs wired + dict refresh/release), T404c, T412+T413, F-12+F-13, T405b, T411b, F-10.
+- Human can build/push 0.1.1 now (HUMAN_CHECKS "Ready now").
+- Nothing in flight. Merge helper: rebase in worktree → make check → ff-merge → git mv HANDOFF.md plan/handoffs/<ID>.md → `git worktree remove -f -f` (agents lock worktrees) → branch -D → LOG → push.
+- QUEUE ORDER next run:
+  1. T411c READY_FOR_REVIEW (high): branch t/T411c-media-publish-runner, worktree .claude/worktrees/agent-ab15c9dc9c0e549aa, targeted 23/23; full suite only failed on stale counts F-11 fixed → rebase, make check server, then reviewer (+architect: mints server ops). Writer notes: OpApplier.mediaCreated still emits deck.created with default options (runner patches with deck.updated; follow-up: return none() and runner emits deck.created per MEDIA_PIPELINE 3.3 step 6); re-claimed child whose archives already published succeeds with no ops instead of contract's stale_base.
+  2. C-12 attempt 2 (architect on opus) in worktree .claude/worktrees/agent-aa2662cbf7fbe2df5, branch t/C-12-parser-contract — 2 majors + minors recorded in plan/tickets/C-12.md "Notes from previous attempts"; then reviewer + architect re-check.
+  3. After C-12: T403b (opus, high), T403c, T408a, T401b. After T408a: T408b, T410; after T403c+T408a+T405b: T406. After T403b+T404a+T402b+T409: T404b. Last: W-5 (wire media/parse/sentences/coverage in Main.kt; add api→worker:8082 NetworkPolicy allow).
+- Server test suite: test heap 2g (F-11); docker volumes: Postgres tmpfs everywhere (F-9/F-10). Check `df -h /` before big batches.
 
 ## Running
-| Ticket | Agent | Attempt | Branch |
-|---|---|---|---|
-| C-12 | architect(opus) | 1 | t/C-12-parser-contract |
-| T411c | writer-senior | 1 | t/T411c-media-publish-runner |
-| T411b | writer | 1 | t/T411b-media-api |
-| T404a | writer | 1 | t/T404a-media-publish-kit |
-| T407 | writer-light | 1 | t/T407-web-jpdb-mapping |
-| F-11 | writer | 1 | t/F-11-server-test-heap |
+(none)
 
 ## Parked
-| T404c | t/T404c-coverage-engine (worktree agent-a512c8249968d8273) | rebased; waits F-11 | re-run make check server → merge |
+| Ticket | Branch | State | Next |
+|---|---|---|---|
+| T411c | t/T411c-media-publish-runner | DONE, needs check+review | see queue 1 |
+| C-12 | t/C-12-parser-contract | CHANGES (2 majors) | see queue 2 |
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -44,7 +44,7 @@ Updated: 2026-11-13 (orchestrator run 4)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P4: merged 10/32 (T402a, T401a, T411a, T405a, F-7, T402b, T409, T403a, C-11, F-8, F-9) · attempts 9 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
+P4: merged 23/37 (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).

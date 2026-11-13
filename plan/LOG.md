@@ -622,3 +622,4 @@
 2026-11-13T03:43:31Z C-12 REVIEW_CHANGES reviewer (+readiness-probe major, sync-path override validation); parked for attempt 2
 2026-11-13T03:43:46Z T411b CHECK_GREEN server; MERGE 1 attempt (med; not wired until W-5)
 2026-11-13T03:48:29Z F-10 MERGE CHECK_GREEN acceptance; 1 attempt (tmpfs, no volume leak)
+2026-11-13T03:48:41Z - HANDOVER run 4: 17 merged; T411c awaiting review, C-12 attempt 2 queued; nothing in flight
