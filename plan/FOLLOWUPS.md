@@ -287,7 +287,7 @@
 ## F-21 (from T503, run 7) — dedupe hot-word loading (low)
 - server drill/DrillSources.kt duplicates StruggleModule's private HotWords loading/scoring; extract one shared server helper. Also `DrillSelector.word` is unused (request schema has no single-word source; hot word page "extra drill" may need it → C-ticket if T504 needs it).
 
-## F-22 (from T506a review, run 7) — grammar detection gaps (med-ish; do before GATE-P5)
+## F-22 (from T506a review, run 7) — grammar detection gaps (med-ish; do before GATE-P5) — DONE run 9
 - media-parse/media-import publish no `grammar_spans` → a re-parse wipes detected spans and new media get none until a rule edit fan-out (V1 comment: replaced "on every (re-)parse"). Fix: call `detect_spans` in media-parse `plan_request`.
 - matcher.py `to_mtoken` drops every `*` in pos (also middle levels) → deep `[pos:A-B-C]` rules mis-match. Drop trailing `*` only / treat as wildcard.
 - matcher backtracking budget exhaustion silently = no match; count and report in job result.

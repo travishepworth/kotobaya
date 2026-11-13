@@ -719,3 +719,5 @@
 2026-11-13T07:07:52Z F-25 MERGE CHECK_GREEN core+server+web; 1 attempt (med); picker steps past lastShown (full coverage)
 2026-11-13T07:07:52Z F-25b NEW android half of F-25 (after T508b)
 2026-11-13T07:08:10Z F-22 DISPATCH writer (worker; items 2-3)
+2026-11-13T07:13:00Z T508b MERGE CHECK_GREEN android; 1 attempt (low); online-only, no dict-example hook (no such view)
+2026-11-13T07:13:00Z F-22 MERGE CHECK_GREEN worker (759); items 2-3 already done, tests added; T508 complete
