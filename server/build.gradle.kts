@@ -38,6 +38,8 @@ dependencies {
     // --- end T105a
     // T411c: zstd for media snapshot archives (contracts/db/SNAPSHOT.md 2.8; same artifact as the Android dict installer).
     implementation("com.github.luben:zstd-jni:1.5.6-4")
+    // T608: writes the Anki `collection.anki21` SQLite file of the .apkg export (same driver family as the Android app's SQLite).
+    implementation("org.xerial:sqlite-jdbc:3.47.1.0")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")

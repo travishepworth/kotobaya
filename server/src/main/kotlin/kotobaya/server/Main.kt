@@ -143,7 +143,8 @@ fun composeApp(
         kotobaya.tts.TtsModule(db).handlers + StruggleModule(db).handlers + StatsModule(db, sync.opApply.config.clock).handlers + ConfusableModule(db, sync.opApply).handlers +
         // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
         (SentencesModule(db).handlers - "listEntryExamples") +
-        (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())
+        (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap()) +
+        kotobaya.export.ExportModule(db, blobStore).handlers
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,
