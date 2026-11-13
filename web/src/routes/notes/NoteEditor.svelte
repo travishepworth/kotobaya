@@ -121,7 +121,7 @@
 					</span>
 				</div>
 				{#if editing === key}
-					<TextArea label={s.labelOf(key)} hideLabel bind:value={s.fields[key]} rows={2} lang="ja" />
+					<TextArea label={s.labelOf(key)} hideLabel value={s.fields[key] ?? ''} oninput={(e) => (s.fields[key] = (e.currentTarget as HTMLTextAreaElement).value)} rows={2} lang="ja" />
 					{#if src === 'override'}<p class="hint">{nx('nx.dictWas', { value: plain(s.dictValues[key] ?? '') })}</p>{/if}
 				{:else if value !== ''}
 					<p class="value" lang="ja">{plain(value)}</p>

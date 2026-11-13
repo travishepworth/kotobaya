@@ -51,7 +51,7 @@
 							<legend>{ts('presets.easyDays')}</legend>
 							<div class="day-grid">
 								{#each DAYS as day, i (day)}
-									<TextField label={ts(day)} inputmode="decimal" bind:value={d.easyDays[i]} />
+									<TextField label={ts(day)} inputmode="decimal" value={d.easyDays[i] ?? ''} oninput={(e) => (d.easyDays[i] = (e.currentTarget as HTMLInputElement).value)} />
 								{/each}
 							</div>
 						</fieldset>

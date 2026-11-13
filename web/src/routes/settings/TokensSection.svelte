@@ -65,7 +65,7 @@
 				<Switch
 					label={ts(`scope.${s}` as SettingsMessageKey)}
 					description={ts(`scope.${s}.desc` as SettingsMessageKey)}
-					bind:checked={vm.scopes[s]}
+					checked={vm.scopes[s] === true} onchange={(v) => (vm.scopes[s] = v)}
 				/>
 			{/each}
 		</fieldset>

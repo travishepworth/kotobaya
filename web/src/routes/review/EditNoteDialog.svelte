@@ -35,7 +35,7 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<form id="review-edit" class="form" onsubmit={save} {onkeydown}>
 		{#each s.keys as f (f.key)}
-			<TextArea label={f.label} bind:value={s.fields[f.key]} rows={2} />
+			<TextArea label={f.label} value={s.fields[f.key] ?? ''} oninput={(e) => (s.fields[f.key] = (e.currentTarget as HTMLTextAreaElement).value)} rows={2} />
 		{/each}
 		<TextArea label={rv('rv.edit.mnemonic')} hint={rv('rv.edit.mnemonicHint')} bind:value={s.mnemonic} rows={3} />
 	</form>
