@@ -12,7 +12,7 @@ Delete and replace a default to change it; the orchestrator appends ADRs below t
 - FSRS version and reference implementation for golden vectors: [latest FSRS; py-fsrs pinned to a specific version]
 - CI host: [GitHub Actions] | Gitea/Forgejo Actions
 
-- MAX_PARALLEL_WRITERS: 6 (human, 2026-11-12: more than 4 allowed; capped by this machine — 8 cores / 30 GB; at most 3 concurrent Gradle-heavy writers)
+- MAX_PARALLEL_WRITERS: 3 (human, 2026-11-13: lowered from 6 after a machine crash; 8 cores / 30 GB; at most 1 Gradle-heavy writer (server/core/android/acceptance) at a time, and never run two `make check` Gradle builds concurrently)
 
 ## Cluster
 - Architecture: amd64 | arm64 | mixed

@@ -634,3 +634,4 @@
 2026-11-13T04:07:15Z F-14/F-15/F-16 NEW human-reported live 0.1.1 bugs (blob PUT MD5, unregistered modules 501, health version); queued ahead of P4
 2026-11-13T04:07:56Z T401b MERGE CHECK_GREEN worker (443); 1 attempt (med). F-14 DISPATCH writer; F-15+F-16 DISPATCH writer
 2026-11-13T04:08:21Z F-17/F-18 NEW human-reported (listEntryExamples 501 stub; web dict page hides entry when examples fail)
+2026-11-13T04:08:33Z F-18 DISPATCH writer-light (web); F-17 queued for next server slot (≤3 gradle-heavy)
