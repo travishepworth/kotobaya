@@ -713,3 +713,4 @@
 2026-11-13T06:48:14Z C-15 HANDOFF DONE contracts green; QueueItem.grammar_sentence (additive); reviewer dispatched
 2026-11-13T06:48:14Z T504b DISPATCH writer (android, Gradle slot)
 2026-11-13T06:48:50Z C-15 MERGE REVIEW_APPROVE (3 minors → F-25) contracts green; 1 attempt (high)
+2026-11-13T06:49:05Z F-25 DISPATCH writer (core+server+web; Gradle after T504b)
