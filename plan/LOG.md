@@ -613,3 +613,4 @@
 2026-11-13T03:29:05Z T404a MERGE CHECK_GREEN worker; 1 attempt (med; ruff-format touch in jobs/dict_refresh.py)
 2026-11-13T03:29:15Z D-1 MERGE CHECK_GREEN deploy; 1 attempt (HTTPRoute toggle, worker mem 1Gi/3Gi)
 2026-11-13T03:29:44Z F-11 MERGE CHECK_GREEN server; 2 attempts (heap 2g, cached spec, derived counts)
+2026-11-13T03:33:40Z W-5a MERGE CHECK_GREEN server; 1 attempt (URGENT: blobs wired, dict refresh/release)
