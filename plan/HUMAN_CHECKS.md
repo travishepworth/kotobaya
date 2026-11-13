@@ -4,6 +4,12 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 16, 2026-11-13) — BUG-7 card/notes viewing (no migrations, no new env/config)
+- Deploy new server + web images (server adds GET /dict/headwords; Netty maxInitialLineLength 16384).
+- /cards: click a jpdb vocab row (or Enter) -> preview shows dictionary front/back; table label shows the word; kind switcher works. Checkbox only toggles bulk.
+- /notes: jpdb notes list as word/reading/meaning; selecting one shows the rendered card first; empty fields show "From dictionary: ..."; kanji note writing card front = keyword, back = kanji + on/kun; keyword card the reverse.
+- FEAT-x (WYSIWYG per-field override) filed HUMAN-GATED with UI-1.
+
 ## Ready now (run 15, 2026-11-13) — Phase 8 (no migrations, no new env/config)
 - Deploy: new server + web images (FEAT-1 adds GET /kanji/{literal}/words; no DB migration, no new env). New Android APK (Search, Decks, Settings tabs).
 - Android on device: Settings → Devices → "Scan QR" opens the ML Kit scanner and pairs (tests only render the section); an unpaired first launch shows the Home "Pair this device" prompt.

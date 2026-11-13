@@ -1,21 +1,19 @@
 # STATE
 Mode: single-session
-Phase: P7 live bug BUG-7 (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T11:19:46Z (run 16 BUG-7c dispatch)
+Phase: P7 live bugs DONE (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13T11:34:21Z (run 16 end)
 
-## RESUME HERE (run 16 IN PROGRESS: BUG-7, BUG-7b, C-18 MERGED. Running: BUG-7c (writer, server+web, Gradle) t/BUG-7c-batch-headwords. After merge: make test, handover. Reconcile per §2.)
+## RESUME HERE (run 16 END: BUG-7 family done)
+- Run 16 merged 4: BUG-7 (/cards row click+Enter, headword label fallback, dict-backed preview), BUG-7b (/notes: rowLabel, Reading/Meaning cols, Preview|Edit default Preview, kind switcher on notes+cards, Kanji fetch->toKanji, 'From dictionary' field values; user addenda 1+2), C-18 (contract listDictHeadwords GET /dict/headwords?seq=, <=500, additive), BUG-7c (server handler + Netty maxInitialLineLength 16384; both tables batch-filled). make test rc=0 at the BUG-7c merge.
+- /review kanji rendering checked: already correct (QueueItem.kanji -> toKanji).
+- Nothing in flight. No t/* or worktree-agent-* branches/worktrees. Deploy: no migrations, no new env/config; new server + web images (no APK change).
+- NEXT: nothing runnable except FOLLOWUPS. UI-1 and FEAT-x (WYSIWYG note view, needs core render-contract C-xx) are HUMAN-GATED: never dispatch.
+- Lesson: an addendum arriving while a sibling writer owns the same files -> SendMessage it to that writer (widen paths) instead of a parallel ticket.
 
-### Run 15 handover
-- Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
-- AND-SETTINGS (user requirement): the Settings tab renders every FeatureEntry.settingsSections entry, so Devices → Scan QR pairing is reachable. Unpaired Home shows a "Pair this device" prompt. The real scanner/pair flow is a device check in HUMAN_CHECKS (run 15).
-- Nothing in flight. No t/* or worktree-agent-* branches or worktrees. Deploy: no migrations, no new env/config; new server/web images + APK.
-- NEXT: nothing runnable in BACKLOG except FOLLOWUPS (run 15 added AND-*/FEAT-1 gaps: deck CRUD on Android, smart-deck counts on device, word/{seq} nav route). UI-1 is HUMAN-GATED: never dispatch.
-- Orchestrator lessons: (1) commit plan edits BEFORE rebasing a writer branch, or rebase again right before ff-merge; my plan commits made ff fail twice. (2) Chain merge+cleanup with && (zsh ignored set -e here), or a failed ff deletes the branch (recovered from the commit sha both times). (3) Sibling Android tabs conflict in FeatureModules.kt and AppStartsTest; send the rebase back to the writer with "keep all lines".
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| BUG-7c | writer (sonnet, low) | 1 | t/BUG-7c-batch-headwords | 2026-11-13T11:19:46Z |
 
 ## Queued
 (none)
@@ -39,11 +37,13 @@ Updated: 2026-11-13T11:19:46Z (run 16 BUG-7c dispatch)
 - UI-1 and FEAT-x are HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- BUG-7c (run 16): listDictHeadwords server (one query, 422 rules), Netty initial line 16384, /cards + /notes tables batch-filled (chunks of 500); 501 allowlist empty
 - C-18 (run 16): listDictHeadwords GET /dict/headwords?seq= (<=500; headword, headword_reading, glosses[]) + clients regen; 501-allowlisted until BUG-7c
 - BUG-7b (run 16): /notes rowLabel + Reading/Meaning cols, Preview|Edit (default Preview), kind switcher (notes + cards), Kanji fetch->toKanji, 'From dictionary' field values
 - BUG-7 (run 16): /cards row click + Enter opens preview, rowLabel fallback (fields→headword→kanji→id), preview fetches DictEntry/Kanji (toDictionary/toKanji)

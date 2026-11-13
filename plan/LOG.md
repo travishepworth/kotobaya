@@ -828,3 +828,4 @@
 2026-11-13T11:19:46Z BUG-7c DISPATCH writer (sonnet, low; server+web batch headwords)
 2026-11-13T11:28:47Z BUG-7c HANDOFF DONE; listDictHeadwords server + Netty initial line 16384; both tables batch-filled
 2026-11-13T11:28:47Z BUG-7c MERGE CHECK_GREEN server+web (low, no review); 501 allowlist empty again
+2026-11-13T11:34:21Z RUN16 END make test rc=0; 4 merges (BUG-7, BUG-7b, C-18, BUG-7c); FEAT-x HUMAN-GATED
