@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T01:12:09Z
+Updated: 2026-11-13T01:16:06Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -16,10 +16,10 @@ Updated: 2026-11-13T01:12:09Z
 |---|---|---|---|---|
 | T304b | writer (sonnet) | 1 | t/T304b-review-ui | 2026-11-13T01:10:04Z |
 | T305b | writer-senior (opus) | 1 | t/T305b-note-creator | 2026-11-13T01:10:04Z |
-| T310 | writer (sonnet) | 1 (rebase fix) | t/T310-audio-prefetch | 2026-11-13T01:14:48Z |
+| T303e | writer (sonnet) | 1 | t/T303e-sync-ui | 2026-11-13T01:16:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- T303e (sonnet, med) — android sync UI; next free Gradle slot
+- none (W-4 waits on T304b, T303e)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -42,11 +42,12 @@ Updated: 2026-11-13T01:12:09Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 14/23 · attempts 19 · escalations 0
+P3: merged 15/24 · attempts 21 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T310 audio prefetch (planner, Range-resume downloader w/ SHA-256, BlobStore on durable driver, WorkManager) — wiring gaps → W-4
 - T303d core rejected ops (Retry/Discard/clock repair) + Re-mint §10.4 (1a/1b/1c, E order, 6a re-key, atomic rollback), 4 scenario files + 110-seed fuzz — reviewer + architect APPROVE, 1 attempt
 - T303c Android sync: SQLDelight DeviceStore/LearningTables, DurableDriver (WAL+FULL), HttpSyncTransport, SyncCoordinator, WorkManager, startup-replay gate — reviewer + architect APPROVE, 1 attempt
 - T303b core device apply (all op types, append-only review_log, refused cache, startup replay, merge readers, rebuild 0–3, auto-retry; 112-seed fuzz) — 2 attempts (1 cut off); reviewer + architect APPROVE
