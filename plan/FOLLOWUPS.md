@@ -374,3 +374,4 @@
 - AND-SETTINGS (run 15): QR scanner launch not exercised in tests (Robolectric renders Devices/Scan QR only) -> HUMAN_CHECKS device check; no licences screen for About link.
 - HOTFIX-0.1.7 (run 17): preview effect-loop regression vitest (mount CardPreview + NoteEditor with dict-backed note, bounded effect runs) NOT added: adding devDependency jsdom was denied by the permission classifier. Human approved jsdom 2026-11-13 -> TEST-1 MERGED b43dbca (done).
 - BUG-9 (run 17): no constrained -Xmx256m test run (server/build.gradle.kts maxHeapSize 2g outside paths); bound shown by chunked design + 335 MB peak in 2 GB test JVM. known-words?interval=day slowest (607 ms).
+- BUG-10 (run 17): /kanji/{lit}/words 1.4 s not reproduced on seed (18-37 ms) -> verify live after 0.1.8; /words/hot?limit=200 209 ms warm (target 200); perf test bound 1 s (cold JIT).

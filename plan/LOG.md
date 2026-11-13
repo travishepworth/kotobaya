@@ -848,3 +848,4 @@
 2026-11-13T12:29:07Z C-19 MERGE 578985c CHECK_GREEN contracts+core+web (med additive, no review)
 2026-11-13T12:30:21Z TEST-1 MERGE b43dbca CHECK_GREEN web (low, no review); jsdom@31.0.0
 2026-11-13T12:30:21Z UI-FOUND-WEB DISPATCH writer-senior (opus, med)
+2026-11-13T12:37:30Z BUG-10 HANDOFF DONE; hot words 7221->110ms warm, hot kanji ~7.7s->94ms; kanji words not reproduced

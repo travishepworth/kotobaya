@@ -17,12 +17,12 @@ Updated: RUN17
 |---|---|---|---|---|
 | BUG-8 | writer-senior | 1 | t/BUG-8-android-sync-perf | RUN17 |
 | UI-FOUND-WEB | writer-senior | 1 | t/UI-FOUND-WEB-state-harness | RUN17 |
-| BUG-10 | writer | 1 | t/BUG-10-hot-queries | RUN17 |
 
 ## Queued
 (none ready) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
+BUG-10: HANDOFF DONE (hot words 7.2s->110ms warm, hot kanji ->94ms; no migration); server re-check running
 
 ## Blocked
 (none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
