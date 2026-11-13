@@ -15,10 +15,11 @@ Updated: RUN17
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-FOUND-WEB | writer-senior | 1 | t/UI-FOUND-WEB-state-harness | RUN17 |
+| UI-DS | writer-senior | 1 | t/UI-DS-design-system | RUN17 |
+| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 |
 
 ## Queued
-UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-DS + UI-FOUND-APP)
+UI-DS-APP (after UI-DS + UI-FOUND-APP) · SYNC-T1, C-20 (next run; merge budget)
 
 ## Ready for review / In review
 
@@ -38,13 +39,14 @@ UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-
 - UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Run 17: merged 6 · attempts 8 · escalations 0
+Run 17: merged 7 · attempts 9 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- UI-FOUND-WEB (run 17, 2056faa): web/src/lib/state/* per screen, views import only state/ui (architecture test), fixtures/demo (CC0, scenarios default/empty/due900), make dev-ui, make screenshots-web (672 PNGs; @playwright/test 1.65, CHROMIUM_PATH)
 - BUG-8 (run 17, dcc3216): Android sync 200-op chunked pull tx, deferred replay per chunk, verdict-only SyncSchemas (equivalence-tested), WAL reader read{}, no main-thread DB (StrictMode + DbThreadGuard), Syncing N of M chip; 100k pull 55.8 s bench; reviewer + architect APPROVE (0.1.8, new APK)
 - BUG-10 (run 17, 4ce6632): HotWords.loadHistory via card pk/merged_into + review_log_card_idx (7.2s->110ms warm), settings loaded once; no migration (0.1.8)
 - TEST-1 (run 17, b43dbca): jsdom@31 devDep (human-approved), CardPreview/NoteEditor bounded-effect vitests (fail on pre-fix code)

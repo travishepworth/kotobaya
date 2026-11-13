@@ -744,7 +744,7 @@ Order (human direction 2026-11-13): UI-FOUND-WEB → UI-DS → HARD HUMAN GATE (
 UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/ViewModel code BUG-8 changes.
 
 ### UI-FOUND-WEB — Web state modules, demo dataset, mock-server mode, Playwright screenshot matrix (B1 web)
-- model: opus · risk: med · deps: HOTFIX-0.1.7 · status: TODO (ticket: plan/tickets/UI-FOUND-WEB.md)
+- model: opus · risk: med · deps: HOTFIX-0.1.7 · status: MERGED 2056faa (ticket: plan/tickets/UI-FOUND-WEB.md)
 
 ### UI-FOUND-APP — Android ViewModels/UiState, demo switch, Roborazzi screenshot matrix (B1 app)
 - model: opus · risk: med · deps: BUG-8, UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-FOUND-APP.md)
