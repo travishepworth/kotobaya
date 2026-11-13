@@ -224,3 +224,4 @@
 - DuplicateCheck expression fallback misses UI-created matched notes (entry only) when dictionary missing.
 - Takoboto debug screen runs store.read in remember{} on main thread.
 - ADR-013 (provisional) UUIDv8 note-type id.
+- (F-6) T305c's workaround plain query in ankiapi/store/ is now redundant — delete.

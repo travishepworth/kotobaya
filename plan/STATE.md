@@ -1,12 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T01:52:36Z
+Updated: 2026-11-13T01:54:26Z
 
 
 ## RESUME HERE (updated 2026-11-13, orchestrator run 2)
 - P3 nearly done. Merged this run: T303b, T303c, T303d, T303e, T304b, T304c+W-4, T305b, T305c, T310, F-5.
-- In flight at handover (see Running): T313 (writer-senior), F-6 (writer), T306+T311 (writer). If a branch has HANDOFF.md → validate/check/merge; else TODO, redispatch (worktree may hold partial work).
+- In flight at handover (see Running): T313 (writer-senior), T306+T311 (writer). If a branch has HANDOFF.md → validate/check/merge; else TODO, redispatch (worktree may hold partial work).
 - After those: P3 complete → `make test` (all modules) → GATE-P3 deferred into HUMAN_CHECKS (device checks: Takoboto 5 words, offline review, sync chip, AnkiConnect/Yomitan) → start P4 per BACKLOG.
 - T313 high risk → reviewer + architect. T311 med, T306 low, F-6 med → no review.
 - PUSH main before dispatching worktree writers (worktrees cut from origin/main). Tell Android writers to `git rebase main` right before HANDOFF (FeatureModules.kt conflicts; keep all lines; syncFeature/syncUiFeature last).
@@ -17,7 +17,6 @@ Updated: 2026-11-13T01:52:36Z
 |---|---|---|---|---|
 | T313 | writer-senior (opus) | 1 | t/T313-offline-chaos | 2026-11-13T01:34:25Z |
 | T306+T311 | writer (sonnet) | 1 | t/T306+T311-share-ankiconnect | 2026-11-13T01:52:36Z |
-| F-6 | writer (sonnet) | 1 | t/F-6-sync-db-first-use | 2026-11-13T01:50:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -44,11 +43,12 @@ Updated: 2026-11-13T01:52:36Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 22/27 · attempts 32 · escalations 0
+P3: merged 23/27 · attempts 33 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-6 sync DB schema forced open outside any tx (first-use-in-transaction bug) + synchronous=FULL re-asserted per outer tx
 - T305c Takoboto note type (fixed id, ADR-013) + op-backed AnkiStore (AnkiIdMap ankiapi.db, NoteCreator/DuplicateCheck, eager AnkiStoreHolder), S01 replay test — reviewer APPROVE
 - F-5 server auto_status via core DefaultWordStatusRules (CoreAutoStatusHook; OpApplier re-derives after review/preset/merge/fsrs_params) — server = device test
 - T304c+W-4 review actions (suspend/bury/flag/never-forget/blacklist/edit, undo) + media wiring (CardAudioNeeds, MediaSettings, prefetch after sync)

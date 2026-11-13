@@ -567,3 +567,4 @@
 2026-11-13T01:52:36Z DECIDE ADR-013 provisional: Takoboto note type UUIDv8 fixed id
 2026-11-13T01:52:36Z T305c MERGE 1 attempt
 2026-11-13T01:52:36Z T306+T311 DISPATCH writer(sonnet) batched
+2026-11-13T01:54:26Z F-6 CHECK_GREEN android after rebase; MERGE 1 attempt
