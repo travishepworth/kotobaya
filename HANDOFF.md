@@ -8,7 +8,7 @@ CHECK: `make check MODULE=android` → green
 - `android/.../notes/EntryMatcher.kt`: matches word+reading, then word alone, then reading alone. Ties go to: headword, common, freq rank, seq.
 - `notes/DuplicateCheck.kt`: finds a live local note by `entry_seq`, or an entry-less note by its expression. Used by T305c/T311.
 - `notes/NoteCreator.kt`: matches, checks duplicates, picks card kinds (deck `card_kinds`, skips empty fronts), adds kanji notes per deck `add_kanji`, then mints everything in one transaction. Request ids are stored in sync_state under `client.note_request.*`.
-- `notes/NotesFeature.kt` (Koin). **Also added one line to `di/FeatureModules.kt`** (`notesFeature`, before `syncFeature`). Rebased on main b744a92.
+- `notes/NotesFeature.kt` (Koin). **Also added one line to `di/FeatureModules.kt`** (`notesFeature`, right before `syncFeature`; main keeps T303e `syncUiFeature` after `syncFeature`, left as is). Rebased on main e71bf0c.
 
 ## Acceptance → tests
 - Matching → `EntryMatcherTest` (3 tests)
