@@ -92,9 +92,10 @@ class StruggleModule(private val db: Database, private val clock: () -> Instant 
     }
 }
 
-private class HotWords(private val dsl: DSLContext, private val now: Long) {
+internal class HotWords(private val dsl: DSLContext, private val now: Long) {
     private val config = HotConfig.DEFAULT
     private val since = now - config.windowDays * DAY_MS
+    private val leechThreshold by lazy { ReviewSettings.load(dsl).leechThreshold }
 
     fun list(limit: Int): List<Map<String, Any?>> =
         scoredNotes().take(limit).map { render(it.noteId, it.score, it.failures) }
@@ -182,26 +183,36 @@ private class HotWords(private val dsl: DSLContext, private val now: Long) {
         reviews.count { it.rating == Rating.AGAIN && it.reviewedAt > since && it.reviewedAt <= now }
 
     /** Every `review_log` row of each survivor card (and its merge losers), by survivor id. */
-    private fun loadHistory(survivors: List<String>): Map<String, List<ReplayReview>> {
+    internal fun loadHistory(survivors: List<String>): Map<String, List<ReplayReview>> {
         val out = HashMap<String, MutableList<ReplayReview>>()
+        // Survivors and their merge losers by card id (card pk and merged_into index), then review_log by card_id index. Filtering
+        // on `coalesce(merged_into_id, id) = any(...)` instead cannot use an index and scanned every review row per survivor.
+        val survivorOf = HashMap<String, String>()
+        val ids = survivors.toTypedArray()
+        for (r in dsl.fetch(
+            "select id::text, coalesce(merged_into_id, id)::text from app.card where id = any(?::uuid[]) or merged_into_id = any(?::uuid[])",
+            ids, ids,
+        )) survivorOf[r.get(0, String::class.java)] = r.get(1, String::class.java)
         val rows = dsl.fetch(
-            "select coalesce(c.merged_into_id, c.id)::text, r.id::text, r.card_id::text, r.hlc::text, " +
+            "select r.card_id::text, r.id::text, r.card_id::text, r.hlc::text, " +
                 "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
                 "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.undone_hlc::text, r.import_source " +
-                "from app.review_log r join app.card c on c.id = r.card_id " +
-                "where r.undone_at is null and coalesce(c.merged_into_id, c.id) = any(?::uuid[])",
-            survivors.toTypedArray(),
+                "from app.review_log r where r.undone_at is null and r.card_id = any(?::uuid[])",
+            survivorOf.keys.toTypedArray(),
         )
-        for (r in rows) out.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += replayReview(r)
+        for (r in rows) {
+            val survivor = survivorOf.getValue(r.get(0, String::class.java))
+            out.getOrPut(survivor) { mutableListOf() } += replayReview(r, survivor)
+        }
         return out
     }
 
-    private fun replayReview(r: Record): ReplayReview {
+    private fun replayReview(r: Record, survivor: String): ReplayReview {
         val type = r.get(6, String::class.java)
         val action = r.get(8, String::class.java)
         return ReplayReview(
             id = r.get(1, String::class.java),
-            cardId = r.get(0, String::class.java),
+            cardId = survivor,
             hlc = r.get(3, String::class.java),
             reviewedAt = (r.get(4) as Number).toLong(),
             utcOffsetMin = (r.get(5) as Number?)?.toInt(),
@@ -220,7 +231,7 @@ private class HotWords(private val dsl: DSLContext, private val now: Long) {
                 "order by c.created_at, c.id",
             noteId,
         ).map { it.get(0, String::class.java) }
-        val views = ReviewViews(dsl, ReviewSettings.load(dsl).leechThreshold).cards(ids)
+        val views = ReviewViews(dsl, leechThreshold).cards(ids)
         val cards = ids.mapNotNull { views[it]?.json }
         val note = checkNotNull(cards.firstOrNull()?.get("note")) { "hot note $noteId without cards" }
         val seq = note["entry_seq"]?.takeUnless { it.isNull }?.asLong()
