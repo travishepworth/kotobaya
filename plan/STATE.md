@@ -16,13 +16,13 @@ Updated: run 15 start
 |---|---|---|---|---|
 | FEAT-1 | writer | 1 | t/FEAT-1-kanji-words | run 15 |
 | AND-SEARCH | writer | 1 | t/AND-SEARCH-search-tab | run 15 |
-| AND-DECKS | writer | 1 | t/AND-DECKS-decks-tab | run 15 |
+| AND-SETTINGS | writer | 1 | t/AND-SETTINGS-settings-tab | run 15 |
 
 ## Queued
-- AND-SETTINGS (next free slot)
+(none)
 
 ## Ready for review / In review
-(none)
+- AND-DECKS: handoff DONE, rebased, re-check running
 
 ## Blocked
 (none)

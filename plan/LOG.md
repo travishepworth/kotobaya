@@ -801,3 +801,5 @@
 2026-11-13T10:42:34Z C-17 MERGE CHECK_GREEN contracts (med, no review); listKanjiWords + clients regen
 2026-11-13T10:42:34Z FEAT-1 DISPATCH writer (sonnet, med)
 2026-11-13T10:43:27Z AND-SETTINGS DECIDE coordinator: render all FeatureEntry.settingsSections (QR pairing reachable), add only limits/day boundary/about; unpaired first-launch route
+2026-11-13T10:45:22Z AND-DECKS HANDOFF DONE 908589e; AppStartsTest stopKoin edit outside paths accepted (test fix)
+2026-11-13T10:45:22Z AND-SETTINGS DISPATCH writer (sonnet, med; revised ticket)
