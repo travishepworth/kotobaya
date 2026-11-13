@@ -213,3 +213,4 @@
 - DuplicateCheck with no dict match only checks entry-less notes; misses matched note of same expression (§4 MUST NOT knowingly duplicate) — compare expression of matched notes too.
 - Open: any server/worker job matching entry-less vocab notes by expression would merge forced duplicates — confirm none does.
 - client.note_request.* sync_state keys never pruned.
+- (reviewer T305b) non-vocab base noteType skips §4 kanji_literal/grammar_point_id duplicate check; kanjiType deleted_at not checked in add_kanji path; retry returns empty kanjiNoteIds.
