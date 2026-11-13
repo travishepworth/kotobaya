@@ -67,7 +67,12 @@ class ApiSpec(val root: JsonNode) {
     }
 
     companion object {
-        fun load(): ApiSpec {
+        private val cached: ApiSpec by lazy { parse() }
+
+        /** Parsed once per JVM; the spec is immutable. */
+        fun load(): ApiSpec = cached
+
+        private fun parse(): ApiSpec {
             val stream = ApiSpec::class.java.getResourceAsStream("/contracts/openapi.yaml")
                 ?: error("contracts/openapi.yaml missing from the classpath (processResources copies it)")
             return stream.use { ApiSpec(ObjectMapper(YAMLFactory()).readTree(it)) }

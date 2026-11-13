@@ -56,6 +56,7 @@ tasks.processResources {
 
 tasks.test {
     useJUnitPlatform()
+    maxHeapSize = "2g"
     // pgjdbc sends the JVM zone to Postgres; legacy ids such as "Japan" are rejected by the postgres image.
     systemProperty("user.timezone", "UTC")
 }
