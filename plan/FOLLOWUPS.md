@@ -246,3 +246,7 @@
 ## T411a (handoff notes)
 - Unsatisfiable Range → 416 `range_not_satisfiable`, not in contract error table → add via next C-ticket (C-12 or later).
 - S3BlobStore untested against SeaweedFS (tests use in-memory fake); no 302 pre-signed redirects (GET streams).
+
+## T403a / C-11 (handoff notes)
+- T403a: fixture suspects (F-7 hand-authored): s131 (富士山 missing from dict fixture), s84/s85/s148/s153/s162/s174/s198 kana lemmas.
+- C-11 provisional refinements of ADR-014/015: only server writes media rows; REST jpdb corrections, remap jobs clear dedupe key under advisory lock 7033011; API emits `parsing`, reconciler repairs; deck_item.added_at = deck.created_at.

@@ -4,13 +4,13 @@ Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts fr
 Updated: 2026-11-13 (orchestrator run 3)
 
 
-## RESUME HERE (updated 2026-11-13, orchestrator run 2)
-- P3 nearly done. Merged this run: T303b, T303c, T303d, T303e, T304b, T304c+W-4, T305b, T305c, T306+T311, T310, F-5, F-6.
-- In flight at handover: NONE. T313 is READY_FOR_REVIEW (see table): run `make check MODULE=acceptance` in its worktree, reviewer + architect, merge (flag: Makefile/settings.gradle.kts lines; CLAUDE.md module table needs acceptance/ — human).
-- After those: P3 complete → `make test` (all modules) → GATE-P3 deferred into HUMAN_CHECKS (device checks: Takoboto 5 words, offline review, sync chip, AnkiConnect/Yomitan) → start P4 per BACKLOG.
-- T313 high risk → reviewer + architect. T311 med, T306 low, F-6 med → no review.
-- PUSH main before dispatching worktree writers (worktrees cut from origin/main). Tell Android writers to `git rebase main` right before HANDOFF (FeatureModules.kt conflicts; keep all lines; syncFeature/syncUiFeature last).
-- Conventions: architect-role → model opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy, ≤3 reviewers. Review loop only on real majors.
+## RESUME HERE (updated 2026-11-13, orchestrator run 3)
+- STOPPED: host root disk 100% full. Docker anonymous volumes (Testcontainers Postgres leftovers, one per test run) grew to ~35 GB/179 volumes; `docker volume prune -f` was denied by the permission classifier. Human must prune (HUMAN_CHECKS top item) before any module check can run.
+- Run 3 merged: T313 (P3 complete; make test green per module; GATE-P3 deferred into HUMAN_CHECKS), T402a, T401a, T411a, T405a, F-7. Board reconciled. P4 planned (25 tickets, ADR-014..019). 66 merged worktrees removed.
+- On resume (after prune): T402b+T409 HANDOFF DONE (branch t/T402b+T409-extract-audio, path-clean) → `make check MODULE=worker` then merge (low). C-11, T404c, T403a were told to stop with BLOCKED (disk) — check their branches/HANDOFF.md; resume each in its worktree (same tier, attempt counts unchanged) and re-run checks. C-11 and T403a are high risk → reviewer (+architect for C-11).
+- Then: C-11 unlocks T404a, T407, T411b, T411c, C-12; C-12 unlocks T403b/T403c/T408a.
+- Merge helper used this run: diffstat → `git rebase main` in worktree → make check → ff-merge → archive HANDOFF → `git worktree remove` + branch delete → push (removal works now).
+- Conventions: architect-role → model opus (never Fable). MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy, ≤3 reviewers. Review loop only on real majors. Check `df -h /` before dispatching Testcontainers-heavy work.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |

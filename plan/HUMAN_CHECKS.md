@@ -31,7 +31,8 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - P2: bulk card operations (tag/move/suspend/reschedule) run synchronously, up to 5000 cards per call, as the frozen API contract says. The backlog said "one job with progress". Fine for a personal collection; a C-ticket could add a job variant later.
 <!-- orchestrator appends: ADR id, one line, how to reverse. Confirm or reverse each. -->
 
-## Disk space (2026-11-13)
+## Disk space (2026-11-13) — BLOCKS THE BUILD
+- [ ] **URGENT:** root fs hit 100% again during P4 (179 anonymous Docker volumes, ~35 GB, from Testcontainers). Run `docker volume prune -f` (and optionally `docker builder prune -f`, 8 GB), then resume the orchestrator. Consider allowing `docker volume prune` for the orchestrator, or configuring Testcontainers/ryuk to remove volumes.
 - [ ] Root fs at 95% (5.3 GB free); `make test` hit Postgres DiskFull in worker dict tests. 131 unused anonymous Docker volumes (~22 GB, Testcontainers leftovers) — run `docker volume prune -f` (anonymous only; keeps named volumes). Orchestrator's prune was denied by the permission classifier. Merged worktrees were removed 2026-11-13 (10 GB free after). Still recommended: prune before P4 (Testcontainers volumes accumulate per run).
 
 ## Deploy

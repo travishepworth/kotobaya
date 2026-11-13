@@ -592,3 +592,7 @@
 2026-11-13T02:26:01Z T405a CHECK_GREEN web; MERGE 1 attempt
 2026-11-13T02:26:01Z F-7 CHECK_GREEN worker+fixtures/tools; MERGE 1 attempt (hand-authored segmentation; spot-check → HUMAN_CHECKS)
 2026-11-13T02:26:13Z T403a DISPATCH writer-senior(opus)
+2026-11-13T02:41:32Z - BLOCK host disk 100% (Docker anon volumes 35 GB; prune denied) → HUMAN_CHECKS; writers C-11/T404c/T403a told to stop BLOCKED
+2026-11-13T02:42:11Z T403a,T404c,C-11 BLOCK disk full (work done; parked); T402b+T409 HANDOFF DONE (check pending)
+2026-11-13T02:42:11Z F-8 created: server Flyway copies only V1 (C-11 adds V2)
+2026-11-13T02:42:11Z - HANDOVER: disk full blocks all checks; nothing in flight
