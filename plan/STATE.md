@@ -4,20 +4,18 @@ Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts fr
 Updated: 2026-11-13 (end of orchestrator run 4)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 4)
-- Run 4 merged (17): T402b+T409, T403a, F-8+F-9, C-11 (2 att.), T407, T404a, D-1, F-11, W-5a (URGENT human gap: blobs wired + dict refresh/release), T404c, T412+T413, F-12+F-13, T405b, T411b, F-10.
-- Human can build/push 0.1.1 now (HUMAN_CHECKS "Ready now").
-- Nothing in flight. Merge helper: rebase in worktree → make check → ff-merge → git mv HANDOFF.md plan/handoffs/<ID>.md → `git worktree remove -f -f` (agents lock worktrees) → branch -D → LOG → push.
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 6 — post-crash recovery)
+- Run 6 merged (10): F-18, F-14, T403b (reviewer APPROVE), F-15+F-16, F-19 (new: image passes KOTOBAYA_VERSION build-arg), F-17, T403c+T408a, T404b, T406+T408b, T410. All 5 crashed worktrees salvaged (resumed in place), removed; no worktrees or t/* branches left.
+- **0.1.2 is ready to build** from main (HUMAN_CHECKS "Ready now (run 6)"): blob PUT on SeaweedFS, jpdb vocab 501, health version, dict examples.
+- Nothing in flight. Merge helper: rebase in worktree → make check → ff-merge → git mv HANDOFF.md plan/handoffs/<ID>.md → `git worktree remove -f -f` → branch -D (also the auto `worktree-agent-*` branch) → LOG → push.
 - QUEUE ORDER next run:
-  1. T411c READY_FOR_REVIEW (high): branch t/T411c-media-publish-runner, worktree .claude/worktrees/agent-ab15c9dc9c0e549aa, targeted 23/23; full suite only failed on stale counts F-11 fixed → rebase, make check server, then reviewer (+architect: mints server ops). Writer notes: OpApplier.mediaCreated still emits deck.created with default options (runner patches with deck.updated; follow-up: return none() and runner emits deck.created per MEDIA_PIPELINE 3.3 step 6); re-claimed child whose archives already published succeeds with no ops instead of contract's stale_base.
-  2. C-12 attempt 2 (architect on opus) in worktree .claude/worktrees/agent-aa2662cbf7fbe2df5, branch t/C-12-parser-contract — 2 majors + minors recorded in plan/tickets/C-12.md "Notes from previous attempts"; then reviewer + architect re-check.
-  3. After C-12: T403b (opus, high), T403c, T408a, T401b. After T408a: T408b, T410; after T403c+T408a+T405b: T406. After T403b+T404a+T402b+T409: T404b. Last: W-5 (wire media/parse/sentences/coverage in Main.kt; add api→worker:8082 NetworkPolicy allow).
-- Server test suite: test heap 2g (F-11); docker volumes: Postgres tmpfs everywhere (F-9/F-10). Check `df -h /` before big batches.
+  1. W-5 (server, sonnet, med; all deps merged): wire media/parse/sentences/coverage modules in Main.kt + PARSER_URL in Config.kt; api→worker:8082 NetworkPolicy allow. NOTE: listEntryExamples is implemented twice (F-17 dict/EntryExamples.kt is registered; T408a SentencesModule also provides it) — register only one, and drop wired ops from WiringAuditTest's 501 allowlist. Also start worker parse service (T403b `start_parse_service()`).
+  2. After W-5: P4 complete → `make test` (modules serially; check `df -h /` ≥10 GB first) → GATE-P4 deferred to HUMAN_CHECKS → P5 tickets.
+- RESOURCES (human, after crash): MAX_PARALLEL_WRITERS=3; exactly 1 Gradle-heavy (server/core/android/acceptance) writer at a time; never two Gradle `make check`s concurrently (count orchestrator re-checks and reviewers). Writers often don't see `make check` -q result → orchestrator re-runs it with `; echo exit=$?`.
+- BACKLOG status column is stale for P4 (STATE/LOG are authoritative).
 
 ## Running
-| Ticket | Agent | Attempt | Branch | Started |
-|---|---|---|---|---|
-Next: W-5 (server, Gradle; deps all merged; waits for Gradle slot after T410). W-5 note: F-17 dict/EntryExamples and T408a SentencesModule both implement listEntryExamples — register only one.
+(none)
 
 ## Parked
 (none)
@@ -43,7 +41,7 @@ Next: W-5 (server, Gradle; deps all merged; waits for Gradle slot after T410). W
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P4: merged 23/37 (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
+P4: merged 33+/37 (run 6: F-14, F-15, F-16, F-17, F-18, F-19, T403b, T403c, T408a, T404b, T406, T408b, T410; left: W-5) (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
