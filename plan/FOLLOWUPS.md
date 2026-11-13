@@ -230,3 +230,15 @@
 - AnkiConnect allowDuplicate not honoured; storeMediaFile writes blob cache only (no upload/renderer convention); url/path media refused; server not auto-restarted at app start.
 ## T313
 - CLAUDE.md module table: acceptance/ row exists; add `make check MODULE=acceptance` note (human edit).
+
+## T313 (reviewer, minors)
+- Sim.kt Ledger.expected(): also require undone (not discarded/replaced) reviews present with undone_at set.
+- ScenarioFilesTest: oracle runs with empty ledger (lost-review check vacuous there); record injected review.logged ops in the ledger.
+- ScenarioFilesTest: dead `after_seq` skip branch — delete or fail if hit.
+- PgSimServer: server-minted op ids random → Pg runs not fully seed-reproducible; seed the op-id source.
+- OfflineWeekChaosTest COVERAGE: add minted.review.logged and non-empty expected set.
+## T313 (architect, minors)
+- ScenarioFilesTest: server verdicts compared only as (op_type, caused); §13 wants equal payloads modulo op_id/hlc/seq/server card id.
+- ScenarioFilesTest: `after_seq` rejected entries skipped and examples/remint-scenarios/ not played; judge against server restored to after_seq.
+- SimDevice.mint doesn't catch Killed: KILL_AT_COMMIT can fire inside a mint (overlapping action blocks) → spurious failure on other seeds; kill-during-mint/Re-mint untested. Catch, reboot, ledger untouched.
+- Reference replica shares DeviceOpApplier with devices; consider tools/validate.py as an independent model over scenario logs.

@@ -574,3 +574,5 @@
 2026-11-13T02:05:20Z T313 rebased on main; make check acceptance; reviewer + architect(opus) DISPATCH
 2026-11-13T02:05:20Z - BOARD reconciled: P2/P3 parent rows SPLIT/MERGED; W-4/F-5/F-6 moved to P3; P3 = 25 tickets
 2026-11-13T02:05:20Z P4 DISPATCH planner(opus) for ticket files/splits
+2026-11-13T02:05:44Z T313 REVIEW_APPROVE reviewer (5 minors → FOLLOWUPS)
+2026-11-13T02:06:10Z T313 REVIEW_APPROVE architect (4 new minors → FOLLOWUPS)
