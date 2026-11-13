@@ -17,8 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotobaya.android.R
 import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.ui.DeckCounts
@@ -58,7 +61,8 @@ private const val TODAY_DECKS = 6
 /**
  * Today (DESIGN §5.2): today at a glance. A hero panel with Start review in thumb reach, the decks with work, the
  * Struggle entry and the sync status. One column under 840 dp, two from 840 dp. [decks] null while loading;
- * [statusChips] is the sync chip slot.
+ * [statusChips] is the sync chip slot. [studyDate] names the overline (the study day, which changes at the
+ * configured rollover hour, not at midnight); null falls back to the calendar day of [nowMs].
  */
 @Composable
 fun TodayScreen(
@@ -67,6 +71,7 @@ fun TodayScreen(
     statusChips: List<@Composable () -> Unit>,
     intents: TodayIntents,
     nowMs: Long = System.currentTimeMillis(),
+    studyDate: LocalDate? = null,
 ) {
     val c = KbTheme.colors
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -77,7 +82,8 @@ fun TodayScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = KbTheme.size.content).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                val date = remember(nowMs) { DateFormat.getDateInstance(DateFormat.FULL).format(Date(nowMs)) }
+                val day = studyDate ?: Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate()
+                val date = remember(day) { day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)) }
                 Column {
                     KbOverline(date)
                     Text(T(R.string.today_title), style = KbTheme.type.headline, color = c.text)
@@ -137,7 +143,8 @@ private fun Hero(decks: List<DeckSummary>?, intents: TodayIntents) {
             KbSkeleton(Modifier.fillMaxWidth(0.5f), 28.dp)
             KbSkeleton(Modifier.padding(top = 12.dp).fillMaxWidth(0.7f), 16.dp)
         } else {
-            val waiting = decks.filter { it.enabled && it.counts.due + it.counts.learning + it.counts.new > 0 }
+            // Smart decks overlap the user decks, so only user decks are counted (the list below shows those too).
+            val waiting = decks.filter { it.type == "user" && it.enabled && it.counts.due + it.counts.learning + it.counts.new > 0 }
             Text(
                 T(if (waiting.isEmpty()) R.string.today_hero_clear else R.string.today_hero_title),
                 style = KbTheme.type.title,

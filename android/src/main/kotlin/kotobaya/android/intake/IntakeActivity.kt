@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotobaya.android.intake.ui.IntakeSheet
 import kotobaya.android.nav.Appearance
+import kotobaya.android.ui.theme.KbSystemBars
 import kotobaya.android.ui.theme.KotobayaTheme
 
 /**
@@ -27,7 +28,10 @@ class IntakeActivity : ComponentActivity() {
         model = ViewModelProvider(this, viewModelFactory { initializer { IntakeViewModel(IntakeServicesProvider.get(), target) } })[IntakeViewModel::class.java]
         setContent {
             val state by model.state.collectAsState()
-            KotobayaTheme(Appearance.load(this)) { IntakeSheet(state, model, onClose = { finish() }) }
+            KotobayaTheme(Appearance.load(this)) {
+                KbSystemBars(statusBar = false)
+                IntakeSheet(state, model, onClose = { finish() })
+            }
         }
     }
 

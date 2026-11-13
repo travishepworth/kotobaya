@@ -239,7 +239,9 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
             }
         }
         KbGlyphButton("ふ", T(R.string.review_furigana), intents::toggleFurigana, selected = meta.furigana, glyphStyle = KbTheme.type.titleSm.copy(localeList = kotobaya.android.ui.theme.JapaneseLocale))
-        KbIconButton(KbIcons.Undo, T(R.string.review_undo), intents::undo, enabled = meta.canUndo)
+        // On the finished page with nothing to undo the button would be a dead control: hide it.
+        val finished = state.review == ReviewState.Empty || state.review is ReviewState.Summary
+        if (!finished || meta.canUndo) KbIconButton(KbIcons.Undo, T(R.string.review_undo), intents::undo, enabled = meta.canUndo)
         if (card != null) {
             Box {
                 KbIconButton(KbIcons.More, T(R.string.review_actions_menu), { intents.openActions(card.cardId); menu = true })
@@ -492,6 +494,9 @@ private fun Finished(stats: SessionStats?, modifier: Modifier, prefs: ReviewPref
                 }
             }
         }
+        // Not a dead end: a quiet way back to Today (the same exit as the header's close button).
+        val exit = LocalReviewExit.current
+        if (exit != null) KbButton(T(R.string.review_finished_back), exit, Modifier.padding(top = 8.dp), variant = KbButtonVariant.Quiet)
     }
 }
 

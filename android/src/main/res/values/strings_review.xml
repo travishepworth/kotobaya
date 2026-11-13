@@ -33,6 +33,7 @@
     <string name="review_dismiss">Dismiss</string>
     <string name="review_finished_title">All done for today</string>
     <string name="review_finished_body">New cards and reviews will appear here when they are due.</string>
+    <string name="review_finished_back">Back to Today</string>
     <string name="review_summary_body">Everything due is reviewed. Your answers sync in the background.</string>
     <string name="review_stat_answered">Cards</string>
     <string name="review_stat_time">Time</string>

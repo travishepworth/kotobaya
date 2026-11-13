@@ -6,6 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -14,6 +15,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import java.time.LocalDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotobaya.android.R
 import kotobaya.android.decks.DeckSource
 import kotobaya.android.decks.DecksViewModel
@@ -22,15 +26,20 @@ import kotobaya.android.home.HomeViewModel
 import kotobaya.android.home.ui.TodayIntents
 import kotobaya.android.home.ui.TodayScreen
 import kotobaya.android.pairing.DevicesPort
+import kotobaya.android.queue.QueueSettings
+import kotobaya.android.queue.studyDayOf
 import kotobaya.android.review.ReviewRoute
 import kotobaya.android.review.ui.LocalReviewExit
 import kotobaya.android.settings.ui.SettingsScreen
 import kotobaya.android.struggle.STRUGGLE_ROUTE
 import kotobaya.android.struggle.StruggleDeepLink
 import kotobaya.android.sync.SyncStatusRepository
+import kotobaya.android.ui.theme.KbSystemBars
 import kotobaya.android.ui.theme.KotobayaTheme
 import kotobaya.android.ui.theme.ThemeMode
+import kotobaya.db.app.AppDatabase
 import org.koin.compose.getKoin
+import org.koin.core.Koin
 
 /**
  * One navigation destination. [topLevel] routes are the shell's tabs ([Tab]); others are pushed on top (Struggle,
@@ -87,10 +96,12 @@ private fun TodayRoute(registry: FeatureRegistry, navigate: (String) -> Unit) {
         viewModel(key = "today-decks") { DecksViewModel(s, koin.getOrNull<SyncStatusRepository>()?.status) }
     }
     val decksState = decks?.state?.collectAsState()?.value
+    val studyDate by produceState<LocalDate?>(null) { value = withContext(Dispatchers.IO) { currentStudyDate(koin) } }
     TodayScreen(
         unpaired = homeState.unpaired,
         decks = if (decks == null) emptyList() else decksState?.decks,
         statusChips = registry.homeStatusChips,
+        studyDate = studyDate,
         intents = object : TodayIntents {
             override fun startReview() = navigate(Routes.REVIEW)
             override fun studyDeck(deckId: String) = navigate("${Routes.REVIEW_DECK}/$deckId")
@@ -100,6 +111,16 @@ private fun TodayRoute(registry: FeatureRegistry, navigate: (String) -> Unit) {
             override fun pair() = navigate("${Routes.SETTINGS_SECTION}/devices")
         },
     )
+}
+
+/** The study day now, from the replica's `scheduler.timezone` / `day_rollover_hour` (the queue's own rules). Off main. */
+private fun currentStudyDate(koin: Koin): LocalDate? {
+    val db = koin.getOrNull<AppDatabase>() ?: return null
+    return runCatching {
+        val raw = db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ }
+        val st = QueueSettings.from(raw)
+        studyDayOf(System.currentTimeMillis(), st.timezone, st.dayRolloverHour).date
+    }.getOrNull()
 }
 
 /** Settings' glue: every feature's section plus Appearance (stored by [Appearance]). */
@@ -121,7 +142,10 @@ fun AppRoot(registry: FeatureRegistry) {
     val context = LocalContext.current
     val initial = remember { Appearance.load(context) }
     val stored by Appearance.mode.collectAsState()
-    KotobayaTheme(stored ?: initial) { AppNav(registry) }
+    KotobayaTheme(stored ?: initial) {
+        KbSystemBars()
+        AppNav(registry)
+    }
 }
 
 @Composable
