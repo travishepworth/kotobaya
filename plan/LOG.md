@@ -677,3 +677,5 @@
 2026-11-13T05:17:27Z T506a DISPATCH writer-senior (worker, no gradle)
 2026-11-13T05:25:20Z T503 MERGE CHECK_GREEN core+server; 1 attempt (med); minor → F-21
 2026-11-13T05:25:20Z T502 DISPATCH writer (worker+server, Gradle slot)
+2026-11-13T05:35:30Z T502 MERGE CHECK_GREEN server; 1 attempt (low); suggestions server-side (no worker job)
+2026-11-13T05:35:30Z T506a HANDOFF CONTRACT_CHANGE_REQUEST (grammar-detect JobKind); BLOCKED_CONTRACT; C-13 opened; reviewer on code meanwhile
