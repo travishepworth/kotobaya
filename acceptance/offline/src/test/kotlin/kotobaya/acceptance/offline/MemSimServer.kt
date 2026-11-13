@@ -57,6 +57,7 @@ class MemSimServer(override var nowMs: Long, private val pageSize: Int = 500, se
         private set
     private var durableSeq = 0L
     private var backupState: State? = null
+    override val scriptedCardIds = ArrayDeque<String>()
 
     private fun epoch(n: Int) = "0193a1b2-00ee-7000-8000-%012x".format(n)
 
@@ -130,7 +131,7 @@ class MemSimServer(override var nowMs: Long, private val pageSize: Int = 500, se
             val kind = card.str("kind")
             val existing = t.where(LearningTable.CARD, "note_id", JsonString(survivorNote))
                 .filter { live(it) && it.str("kind") == kind }.minByOrNull { it.str("id")!! }
-            val survivorCard = existing?.str("id") ?: ids.newOpId(nowMs).also { id ->
+            val survivorCard = existing?.str("id") ?: (scriptedCardIds.removeFirstOrNull() ?: ids.newOpId(nowMs)).also { id ->
                 mint(OpType.CARD_CREATED, obj("id" to id, "note_id" to survivorNote, "kind" to kind), op.opId)
             }
             mint(OpType.CARD_MERGED, obj("loser_id" to card.str("id"), "survivor_id" to survivorCard), op.opId)

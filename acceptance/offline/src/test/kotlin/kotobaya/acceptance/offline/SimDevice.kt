@@ -201,6 +201,26 @@ class SimDevice(val name: String, val id: String, server: SimServer, world: Worl
     fun count(state: PendingState): Int = store.rows().count { it.state == state }
 
     /**
+     * Puts [op] (an op of this device from a scenario log) in the outbox with its local effect, like
+     * `OpMinter` does, keeping the op byte-identical (no new hlc).
+     */
+    fun inject(op: Op) {
+        val o = op.copy(seq = null, causedByOpId = null)
+        store.transaction { tx ->
+            app.applier.apply(tx, o, ApplyOrigin.LOCAL)
+            tx.outbox.insert(
+                PendingOpRow(
+                    opId = o.opId, opType = o.opType.wire, opVersion = o.opVersion, entityType = o.entityType, entityId = o.entityId,
+                    hlc = o.hlc, payload = DefaultCanonicalJson.encode(o.payload), createdAt = DefaultHlcRules.wall(o.hlc),
+                ),
+            )
+            val bk = tx.bookkeeping
+            val last = bk.hlcLast
+            if (last == null || o.hlc > last) bk.hlcLast = o.hlc
+        }
+    }
+
+    /**
      * Mints like a client **without** the guards G1/G2 and the clock block (SYNC.md 12.6: the HLC still
      * counts on `last`, payload times come from the wrong clock): local effect applied, op queued.
      */

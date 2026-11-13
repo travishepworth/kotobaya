@@ -88,6 +88,7 @@ class PgSimServer(startMs: Long, private val pageSize: Int = 500, seed: Int = 1)
     private val devices = HashSet<String>()
     /** Ids of cards the merge creates on a survivor: seeded, so a run is reproducible (op ids stay random). */
     private val cardIds = UuidV7Source(Random(seed))
+    override val scriptedCardIds = ArrayDeque<String>()
 
     init {
         startup()
@@ -105,7 +106,7 @@ class PgSimServer(startMs: Long, private val pageSize: Int = 500, seed: Int = 1)
 
     private fun module() = SyncModule(
         db,
-        SyncConfig(clock = { now.get() }, cardCache = cache, autoStatus = CoreAutoStatusHook(), merge = DuplicateMerge { cardIds.newOpId(now.get().toEpochMilli()) }, backupsDisabled = false),
+        SyncConfig(clock = { now.get() }, cardCache = cache, autoStatus = CoreAutoStatusHook(), merge = DuplicateMerge { scriptedCardIds.removeFirstOrNull() ?: cardIds.newOpId(now.get().toEpochMilli()) }, backupsDisabled = false),
     )
 
     private fun principal(id: String): Principal {

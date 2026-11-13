@@ -51,6 +51,9 @@ interface SimServer : AutoCloseable {
 
     val logEpoch: String
 
+    /** Ids the next merge-created survivor cards take (scenario playback); a seeded UUIDv7 when empty. */
+    val scriptedCardIds: ArrayDeque<String>
+
     companion object {
         /** The Postgres server when Docker is reachable (and not overridden), else the in-memory one. */
         fun create(startMs: Long, pageSize: Int = 500, seed: Int = 1): SimServer =
