@@ -851,3 +851,5 @@
 2026-11-13T12:37:30Z BUG-10 HANDOFF DONE; hot words 7221->110ms warm, hot kanji ~7.7s->94ms; kanji words not reproduced
 2026-11-13T12:40:54Z BUG-10 MERGE 4ce6632 CHECK_GREEN server (med, no review); for 0.1.8
 2026-11-13T12:44:28Z UI-DS SPLIT human direction: UI-DS deps UI-FOUND-WEB only (theme files only on android); UI-DS-APP filed (deps UI-DS, UI-FOUND-APP; not gated); gate at UI-DS merge
+2026-11-13T13:06:20Z BUG-8 HANDOFF DONE; 100k pull 55.8s bench, 200-op tx chunks, WAL reader, StrictMode+DbThreadGuard
+2026-11-13T13:06:20Z BUG-8 REVIEW dispatched reviewer + architect (high)

@@ -15,13 +15,13 @@ Updated: RUN17
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| BUG-8 | writer-senior | 1 | t/BUG-8-android-sync-perf | RUN17 |
 | UI-FOUND-WEB | writer-senior | 1 | t/UI-FOUND-WEB-state-harness | RUN17 |
 
 ## Queued
 UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-DS + UI-FOUND-APP)
 
 ## Ready for review / In review
+BUG-8: HANDOFF DONE (100k pull 55.8 s bench; schema equivalence; WAL reader; no main-thread DB); IN REVIEW reviewer + architect; post-rebase checks core/android/acceptance/server running
 
 ## Blocked
 (none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
