@@ -91,7 +91,9 @@ const SHOTS: Shot[] = [
 	{ name: 'struggle-word', path: `/struggle/word/${hotNoteId}` },
 	{ name: 'stats', path: '/stats', scenarios: ['default', 'due900', 'empty'] },
 	{ name: 'settings', path: '/settings' },
-	{ name: 'settings-attribution', path: '/settings/attribution' }
+	{ name: 'settings-attribution', path: '/settings/attribution' },
+	// UI-DS: the design system (tokens + components in both themes).
+	{ name: 'styleguide', path: '/styleguide' }
 ];
 
 /** Waits until no API request (other than the event stream) has been in flight for 400 ms. */

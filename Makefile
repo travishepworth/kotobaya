@@ -1,4 +1,4 @@
-.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web
+.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web tokens tokens-check
 
 MODULES := core server worker web android deploy contracts acceptance cli
 GRADLE := ./gradlew --no-daemon -q
@@ -24,7 +24,7 @@ check-worker:
 check-cli:
 	cd cli && uv run --frozen pytest -q && uv run --frozen mypy && uv run --frozen ruff check .
 
-check-web:
+check-web: tokens-check
 	$(GRADLE) :core:npmPackage
 	cd web && pnpm install --frozen-lockfile && pnpm test && pnpm run check && pnpm build
 
@@ -62,6 +62,15 @@ dev-up:
 
 dev-down:
 	docker compose down
+
+# Design tokens (UI-DS): design/tokens/tokens.json → web/src/lib/tokens.css, the token block of
+# assets/card/card.css, web/src/lib/ui/tokens.generated.ts and the Compose theme (android .../ui/theme/Tokens.kt).
+tokens:
+	node design/tokens/generate.mjs
+
+# Drift (outputs match the JSON) + WCAG AA contrast of every semantic pair; part of check-web.
+tokens-check:
+	node --test design/tokens/
 
 # Web UI against the demo dataset (fixtures/demo), no server needed (UI-FOUND-WEB).
 # SCENARIO=default|empty|due900; switch in the browser with /__mock/scenario/<name>.
