@@ -391,3 +391,4 @@
 - WordDetail: pitch + kanji readings
 - Deck colour (shared with the web gap)
 - UI-APP review minors (run 19): settings-notify icon tile squeezes text at 200%; Settings rows reuse one sync icon / single-row groups; deck-detail word rows lack reading/gloss and show sentences as words; "All done" review state needs Study ahead/Browse + next-due (if not done in attempt 2)
+- UI-WEB (run 19): DeckItems + UnknownWords state have no load-error flag; client-side nav /cards -> /notes shows id-prefix labels in the notes list (full load fine)

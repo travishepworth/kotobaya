@@ -888,3 +888,5 @@
 2026-11-13T16:48:48Z UI-APP REVIEW dispatched reviewer (screenshots + bar)
 2026-11-13T16:51:45Z UI-APP REVIEW_CHANGES 2 majors (grammar capture unreachable; system bars ignore in-app theme) + 6 minors
 2026-11-13T16:51:45Z UI-APP DISPATCH writer-senior attempt 2 (majors + minors 6,8; same worktree)
+2026-11-13T16:55:19Z UI-WEB HANDOFF DONE (amendment round); token generator edit accepted (legacy block moved)
+2026-11-13T16:55:19Z UI-WEB REVIEW dispatched reviewer (screenshots + bar)
