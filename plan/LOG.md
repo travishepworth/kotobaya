@@ -680,3 +680,4 @@
 2026-11-13T05:35:30Z T502 MERGE CHECK_GREEN server; 1 attempt (low); suggestions server-side (no worker job)
 2026-11-13T05:35:30Z T506a HANDOFF CONTRACT_CHANGE_REQUEST (grammar-detect JobKind); BLOCKED_CONTRACT; C-13 opened; reviewer on code meanwhile
 2026-11-13T05:37:09Z T506a REVIEW_APPROVE 3 minors → F-22; awaiting C-13 for registry line
+2026-11-13T05:41:53Z C-13 REVIEW_CHANGES major: fan-out key release races op-apply enqueue (lost rule edit); attempt 2 to architect
