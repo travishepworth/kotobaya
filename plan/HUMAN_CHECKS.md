@@ -17,6 +17,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 
 ## Provisional decisions
 - ADR-014..019 (P4 planning): server installs media from worker snapshots; jpdb mapping corrections = server import settings; jpdb cache on PVC; coverage/i+1 per request; Android coverage via API; Sudachi full-dict tests skip offline.
+- ADR-020: EDRDG source files no longer exact-checksum pinned (they change daily); fetched SHA-256 recorded in release provenance; optional pin for reproducible builds (F-13).
 - Blob endpoints were 501 through P2/P3 → the web jpdb history upload (T214) could not work; fixed by T411a (P4). Use `PUT /blobs` path only after T411a merges.
 - ADR-013: Takoboto note type id is a name-derived UUIDv8 (SCHEMA says UUIDv7 unless stated). Confirm or ask for a contract note.
 - ADR-012: Android calls the API through a hand-written client (generated Kotlin client needs a newer Kotlin than the app).
