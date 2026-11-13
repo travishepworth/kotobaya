@@ -581,7 +581,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `deploy/`, `docs/SECURITY.md` (findings become new tickets)
 
 ### T610 — Runbook and restore drill docs
-- model: haiku · risk: low · deps: T609 · status: RUNNING
+- model: haiku · risk: low · deps: T609 · status: MERGED
 - paths: `docs/RUNBOOK.md`
 
 ### F-28 — Worker image: CPU-only torch

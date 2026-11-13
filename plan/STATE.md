@@ -18,7 +18,6 @@ Updated: 2026-11-13 (end of orchestrator run 10)
 |---|---|---|---|---|
 | SEC-1 | writer-senior | 1 | t/SEC-1-blob-xss | run 11 (only Gradle writer) |
 | SEC-2 | writer | 1 | t/SEC-2-worker-ssrf | run 11 |
-| T610 | writer-light | 1 | t/T610-runbook | run 11 |
 
 ## Parked
 (none)
@@ -54,6 +53,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T610 (run 11): docs/RUNBOOK.md (install, checks, backup/restore per SYNC 6.2-6.3, drill table, incidents)
 - T609 (run 11): security review — docs/SECURITY.md (S-01..S-14), chart hardening, egress NetworkPolicies, HTTPRoute headers, ntfy image fix, watchdog/restore fixes; review APPROVE
 - F-28 (run 11): worker torch CPU-only index (uv.lock no nvidia/triton; Dockerfile pins torch==2.15.0 CPU; image 2.04 GB)
 - T606 (run 10): FSRS optimizer (worker py-fsrs training + holdout gate, server FsrsParamsPublishRunner, helm cron default off); review APPROVE

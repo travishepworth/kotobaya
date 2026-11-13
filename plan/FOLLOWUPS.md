@@ -350,3 +350,7 @@
 - SEC-5 (C-ticket): AnkiConnect contract drift (`url` media unsupported; OPTIONS preflight). (low)
 - SEC-7 web: nginx.conf with CSP/nosniff/Referrer-Policy (ingress deployments). (low)
 - SEC-10: try voicevox readOnlyRootFilesystem with emptyDirs. (info)  SEC-13: emptyDir sizeLimits. (info)
+
+## T610 runbook gaps (run 11)
+- No FSRS weight reset/rollback path in the contract (bad optimizer publish). (med)
+- Chart renders no job-stuck or disk alert; no dictionary-refresh CronJob. (low)
