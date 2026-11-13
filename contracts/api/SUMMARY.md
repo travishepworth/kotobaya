@@ -333,8 +333,9 @@ attempt 1 is gone). Needs node and python3; network on first run.
   1-4 without `*`), `cform` (Sudachi form verbatim, e.g. `連用形-一般`, or null), `seq` (null =
   unmapped), `class`, `override`. Punctuation and whitespace are gaps, never tokens. The same value
   is stored, snapshotted, served by the API and returned by the worker. `SentenceToken` now lists
-  all ten as required (response-only schema; still open to unknown members); examples use
-  hiragana readings and verbatim forms.
+  all ten as required: a **tightening** of a response-only schema (still open to unknown members),
+  acceptable because no merged code consumes it yet; examples use hiragana readings and verbatim
+  forms.
 - **`class` table** (`PARSER.md` 2): Sudachi 助詞 → particle, 助動詞 → auxiliary, 固有名詞 →
   name; then JMdict POS refinements (entry only `n-pr` → name, only `prt` → particle, only
   auxiliary tags → auxiliary); 数詞 → other; ordinary word classes → content; the rest → other.
@@ -344,11 +345,16 @@ attempt 1 is gone). Needs node and python3; network on first run.
   cut a parser token; candidates sorted by scope (sentence > media > global), longest
   `match_text`, newest `hlc`, `id`, leftmost; greedy non-overlapping acceptance. Missing
   `lemma`/`reading`/`pos`/`cform`/`class` come from a same-span parser token, else from analysing
-  the surface alone; absent `seq` = null. `OverrideToken` gains optional `reading` and `class`.
-  `/parse` applies global overrides only.
+  the surface alone; absent `seq` = null. `OverrideToken` gains optional `reading` (hiragana; the
+  API rejects katakana) and `class`. Rows arriving via the `parse_override.put` sync op are
+  sanitised when read: katakana readings folded, invalid `lemma`/`reading`/`class`/`seq` treated
+  as absent, so no stored override can make a parse invalid. `/parse` applies global overrides
+  only.
 - **Worker parse service** (`worker-parse.yaml`, `PARSER.md` 5): `POST /internal/parse` and
-  `GET /internal/health` (readiness) on worker port `PARSER_PORT` (8082), no auth, NetworkPolicy
-  only; ≤ `PARSER_MAX_CONCURRENCY` (4) in flight else `503 busy`. API env `PARSER_URL`,
+  `GET /internal/health` (readiness = Sudachi loaded only; a missing dictionary release or an
+  unreachable database is a per-request `503 not_ready` and shows as `dict_release: null`, so a
+  fresh install's `helm --wait` does not hang) on worker port `PARSER_PORT` (8082), no auth,
+  NetworkPolicy only, never host-exposed; ≤ `PARSER_MAX_CONCURRENCY` (4) in flight else `503 busy`. API env `PARSER_URL`,
   `PARSER_TIMEOUT_MS` (10 s). Everything but worker `200`/`413` becomes public `503 unavailable`.
 - **Versioning**: optional `parser_version` (opaque) in the worker response, `ParseResult` and
   `JobResultMedia`. Follow-up for the snapshot owner: an optional `parser_version` header member in
@@ -360,4 +366,5 @@ attempt 1 is gone). Needs node and python3; network on first run.
 - Worth a second look: (1) no auth on the internal parse port, relying on NetworkPolicy; (2)
   `cform` stored verbatim (`連用形-一般`), so the Phase 5 grammar matcher must compare the part
   before `-`; (3) tie-break prefers `content`, so a word used equally as particle and content is
-  never hidden by "hide particles".
+  never hidden by "hide particles". HUMAN_CHECKS candidate: the `SentenceToken` required-list
+  tightening.

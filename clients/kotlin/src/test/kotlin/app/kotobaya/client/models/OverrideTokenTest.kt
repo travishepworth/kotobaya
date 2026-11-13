@@ -57,7 +57,7 @@ class OverrideTokenTest : ShouldSpec() {
             //modelInstance.lemma shouldBe ("TODO")
         }
 
-        // to test the property `reading` - Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+        // to test the property `reading` - Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4).
         should("test reading") {
             // uncomment below to test the property
             //modelInstance.reading shouldBe ("TODO")

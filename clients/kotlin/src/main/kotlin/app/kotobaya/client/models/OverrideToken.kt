@@ -33,7 +33,7 @@ import com.google.gson.annotations.SerializedName
  * @param surface Surface text.
  * @param propertyClass Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).
  * @param lemma Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).
- * @param reading Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+ * @param reading Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4).
  */
 
 
@@ -55,7 +55,7 @@ data class OverrideToken (
     @SerializedName("lemma")
     val lemma: kotlin.String? = null,
 
-    /* Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4). */
+    /* Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4). */
     @SerializedName("reading")
     val reading: kotlin.String? = null
 

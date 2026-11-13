@@ -10740,8 +10740,9 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-          pattern: ^[^\u0000]*$
-          description: Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+          pattern: ^[^\u0000\u30a1-\u30f6]*$
+          description: Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is
+            rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4).
           examples:
           - たべ
         class:

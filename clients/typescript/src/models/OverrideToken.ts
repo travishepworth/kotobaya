@@ -28,7 +28,7 @@ export interface OverrideToken {
      */
     lemma?: string;
     /**
-     * Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).
+     * Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4).
      */
     reading?: string;
     /**

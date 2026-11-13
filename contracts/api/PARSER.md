@@ -44,7 +44,7 @@ members (a later revision may add optional ones, see 6).
 | `class` | `content` \| `particle` \| `auxiliary` \| `name` \| `other` | Coverage filter class (section 2). Same value set as `app.occurrence.pos_class`. | `"content"` |
 | `override` | boolean | true iff a parse override (section 4) produced this token. | `false` |
 
-### 1.2 Array invariants (checked by `check_parser.py` and `contracts/db/media/validate.py` 3.3.4)
+### 1.2 Array invariants (checked by `check_parser.py`, also over the C-11 snapshot examples)
 
 1. Ascending and non-overlapping: for consecutive tokens `a`, `b`: `a.e ≤ b.s`.
 2. `0 ≤ s < e ≤ len16(text)`; neither `s` nor `e` falls between the two halves of a surrogate
@@ -123,9 +123,10 @@ ties go to the class that comes **first** in the fixed order
 `content` > `name` > `particle` > `auxiliary` > `other`.
 
 Rationale: on a tie prefer the class no filter hides (content), so an ambiguous word is never
-silently dropped from coverage. jpdb-imported occurrences (no sentences) are `content` unless the
-jpdb importer has POS evidence of its own (its business; this rule applies only where tokens
-exist). Example: 2 × `content` + 2 × `particle` → `content`; 1 × `name` + 1 × `other` → `name`;
+silently dropped from coverage. jpdb-imported occurrences (no sentences, no tokens): `pos_class`
+= section 2 evaluated with `P = []` and `E` of the occurrence's `seq` in the release the import
+used, so rows 4-6 give `name`/`particle`/`auxiliary` for entries that are only that, and row 9
+gives `content` otherwise. Example: 2 × `content` + 2 × `particle` → `content`; 1 × `name` + 1 × `other` → `name`;
 3 × `particle` + 1 × `content` → `particle`.
 
 ## 3. Pipeline order (where tokens come from)
@@ -176,7 +177,9 @@ apply after sentence ids are assigned (`SNAPSHOT.md` 3.4): a sentence whose text
 new id, so its old sentence-scoped overrides stop applying (they stay stored, soft reference).
 
 A stored row whose token surfaces do not concatenate to `match_text` (impossible through the API
-or op apply, which reject it) is skipped and logged, never an error for the parse.
+or op apply, which reject it) is skipped, never an error for the parse. The worker logs each
+skipped row once per parse at `warn` with its `id` (no text), and a media parse logs the total
+count of skipped rows in its job summary line.
 
 ### 4.2 Matching
 
@@ -227,6 +230,24 @@ Override token members (`ParseOverridePut.tokens[]`, `app.parse_override.tokens`
 (required), `lemma`, `seq`, and, from C-12, optional `reading` (hiragana) and `class`. Unknown
 members are preserved in storage (`OPS.md`) and ignored by the parser.
 
+**Sanitising stored override tokens (MUST, before the table above).** The API validates
+`OverrideToken` strictly, but rows also arrive through the `parse_override.put` sync op, whose
+schema checks only `surface`, `lemma` (string) and `seq` and preserves unknown keys. The parser
+therefore reads each stored override token defensively; a member that fails its rule is treated
+as **absent** (never an error, never a skipped override):
+
+| Member | Rule (else absent) | Then |
+|---|---|---|
+| `lemma` | a string, ≥ 1 code point, no U+0000 | used as is |
+| `reading` | a string, ≥ 1 code point, no U+0000 | katakana U+30A1–U+30F6 folded to hiragana (−0x60), as in 1.1 |
+| `class` | a string, exactly one of the five values | used as is |
+| `seq` | an integer 1 … 2^53−1 | absent = null (above) |
+
+So `{"surface":"食べ","reading":"タベ","class":"foo","lemma":""}` behaves as
+`{"surface":"食べ","reading":"たべ"}`. The result always satisfies `token.schema.json`; a stored
+override can never make a parse (or `/parse`) fail validation. Vector: `examples/parser-cases.json`
+"sync-path override with invalid members".
+
 ### 4.5 Worked example
 
 Base tokens of `食べかけのパンだ。` (step 3): `食べかけ[0,4) seq 1358290 content`, `の[4,5)
@@ -247,7 +268,9 @@ The server answers `POST /parse` synchronously by calling the worker. Machine-re
 ### 5.1 Transport and deployment
 
 - HTTP/1.1, JSON (UTF-8), cluster-internal. The worker process serves it on its own port,
-  `PARSER_PORT` (default **8082**), bound to `PARSER_BIND` (default `0.0.0.0`). The existing
+  `PARSER_PORT` (default **8082**), bound to `PARSER_BIND` (default `0.0.0.0`, needed so the
+  Service can reach the pod; the pod MUST NOT use `hostNetwork` and the port MUST NOT be a
+  `hostPort`/NodePort/LoadBalancer). The existing
   liveness endpoint (`GET /healthz` on 8081) stays separate so a busy parser never fails
   liveness.
 - Paths: `POST /internal/parse`, `GET /internal/health`. Nothing else; any other path is `404`.
@@ -255,7 +278,8 @@ The server answers `POST /parse` synchronously by calling the worker. Machine-re
   allow ingress to `PARSER_PORT` only from the `api` pods, the port is exposed only through a
   ClusterIP Service, and the Ingress MUST NOT route to it. Rationale: the endpoint is read-only
   (stores nothing, writes no log entry with user text at info level) and returns only dictionary
-  data and global overrides. Compose: the port is not published to the host.
+  data and global overrides. Compose: the worker service has no `ports:` entry for 8082 and no
+  `network_mode: host`; only the `api` service reaches it over the compose network.
 - Requests are served concurrently with job processing (own threads; the Sudachi analyzer is
   thread-safe per `kotobaya_worker.parse.sudachi`). At most `PARSER_MAX_CONCURRENCY` (default
   4) parses run at once; a request beyond that is answered at once with `503` code `busy`
@@ -291,12 +315,23 @@ Errors are `application/problem+json` `{type, title, status, code, detail}`:
 | 400 | `invalid_request` | Not JSON, wrong `Content-Type`, missing or non-string `text`, empty text, U+0000. |
 | 413 | `payload_too_large` | `text` over 20,000 code points or body over 256 KiB. |
 | 503 | `busy` | Concurrency limit reached. |
-| 503 | `not_ready` | Sudachi dictionary or dictionary release not loaded yet, or the database is unreachable. |
+| 503 | `not_ready` | No dictionary release loaded yet (fresh install before the first dict refresh), or the database is unreachable for this request. |
 | 500 | `internal` | Anything else. |
 
-`GET /internal/health`: `200 {"status":"ready","parser_version":"…"}` once a parse can be
-served; `503 {"status":"starting","parser_version":null}` before. Helm/compose use it as the
-worker's **readiness** probe.
+`GET /internal/health` is the worker's **readiness** probe (Helm `readinessProbe`, compose
+`healthcheck`). Readiness means only "the process serves HTTP and the Sudachi dictionary is
+loaded"; it MUST NOT depend on a dictionary release being present or on the database, because
+on a fresh install no release exists until the dict-refresh job (run by this same worker) has
+finished, and `helm --wait` / rollouts would otherwise hang, and a database blip would pull every
+worker out of rotation. Those conditions are answered per request with `503 not_ready` and are
+reported in the body:
+
+- `200 {"status":"ready","dict_release":"2026-11-01.1","parser_version":"kp1;…"}`: Sudachi loaded.
+  `dict_release` is the loaded dictionary release id, or null when none is loaded yet (then
+  `parser_version` is null too and `/internal/parse` answers `503 not_ready`).
+- `503 {"status":"starting","dict_release":null,"parser_version":null}`: Sudachi not loaded yet.
+
+The probe never queries the database and never counts against `PARSER_MAX_CONCURRENCY`.
 
 ### 5.3 The server side (`parseText`)
 

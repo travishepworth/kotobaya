@@ -65,6 +65,7 @@
     {
       "name": "sentence scope beats a longer, newer global override; surrogate pair; deleted and foreign-media rows ignored",
       "text": "𠮷野家で食べた。",
+      "note": "Base tokens are synthetic. Real Sudachi (full dict) may tag an OOV 𠮷 as 補助記号 and split it off as a gap; T403b must test its own behaviour on 𠮷 against 1.2, not copy this base.",
       "media_id": "0193a1b2-0c12-7000-8000-0000000000e1",
       "sentence_id": "0193a1b2-0c12-7000-8000-0000000000f2",
       "entry_pos": {"2028980": ["prt"], "1358280": ["v1", "vt"], "2654250": ["aux-v"], "9100003": ["n"], "9100004": ["exp"]},
@@ -168,6 +169,27 @@
         {"s": 0, "e": 2, "surface": "パン", "lemma": "パン", "reading": "ぱん", "pos": ["名詞", "普通名詞", "一般"], "cform": null, "seq": 1101220, "class": "content", "override": false},
         {"s": 2, "e": 3, "surface": "を", "lemma": "を", "reading": "を", "pos": ["助詞", "格助詞"], "cform": null, "seq": 2029010, "class": "particle", "override": false},
         {"s": 3, "e": 6, "surface": "食べる", "lemma": "食べる", "reading": "たべる", "pos": ["動詞", "一般"], "cform": "終止形-一般", "seq": 1358280, "class": "other", "override": true}
+      ]
+    },
+    {
+      "name": "sync-path override with invalid members (PARSER.md 4.4 sanitising): katakana reading folded, bad class/lemma/reading/seq treated as absent",
+      "text": "食べた。",
+      "media_id": null,
+      "sentence_id": null,
+      "entry_pos": {"1358280": ["v1", "vt"], "2654250": ["aux-v"]},
+      "analysis": {},
+      "base": [
+        {"s": 0, "e": 2, "surface": "食べ", "lemma": "食べる", "reading": "たべ", "pos": ["動詞", "一般"], "cform": "連用形-一般", "seq": 1358280, "class": "content", "override": false},
+        {"s": 2, "e": 3, "surface": "た", "lemma": "た", "reading": "た", "pos": ["助動詞"], "cform": "終止形-一般", "seq": 2654250, "class": "auxiliary", "override": false}
+      ],
+      "overrides": [
+        {"id": "0193a1b2-0c12-7000-8000-000000000051", "media_id": null, "sentence_id": null, "match_text": "食べた", "hlc": "0193a1b2c3d4-0000-0193a1b2-0c12-7000-8000-0000000000d1", "deleted": false,
+         "tokens": [{"surface": "食べ", "lemma": "", "reading": "タベ", "class": "foo", "seq": 1358280, "x-extra": 1},
+                    {"surface": "た", "reading": 5, "class": null, "seq": "2654250"}]}
+      ],
+      "expected": [
+        {"s": 0, "e": 2, "surface": "食べ", "lemma": "食べる", "reading": "たべ", "pos": ["動詞", "一般"], "cform": "連用形-一般", "seq": 1358280, "class": "content", "override": true},
+        {"s": 2, "e": 3, "surface": "た", "lemma": "た", "reading": "た", "pos": ["助動詞"], "cform": "終止形-一般", "seq": null, "class": "auxiliary", "override": true}
       ]
     }
   ]

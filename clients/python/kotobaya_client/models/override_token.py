@@ -30,7 +30,7 @@ class OverrideToken(BaseModel):
     """ # noqa: E501
     var_class: Optional[StrictStr] = Field(default=None, description="Optional (C-12). Coverage class for the resulting token, e.g. `name` to hide a name the parser missed. Default - derived from the token's POS and `seq` (PARSER.md 2).", alias="class")
     lemma: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Dictionary form. Default - the lemma of a parser token with exactly this span, else the surface (PARSER.md 4.4).")
-    reading: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Optional (C-12). Hiragana reading for the resulting token. Default - derived (PARSER.md 4.4).")
+    reading: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=200)]] = Field(default=None, description="Optional (C-12). Hiragana reading for the resulting token; katakana U+30A1-U+30F6 is rejected (`422`), the same rule as `SentenceToken.reading`. Default - derived (PARSER.md 4.4).")
     seq: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Entry to map to; null = force \"no entry\". Never re-matched by the parser.")
     surface: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Surface text.")
     __properties: ClassVar[List[str]] = ["class", "lemma", "reading", "seq", "surface"]
@@ -51,8 +51,8 @@ class OverrideToken(BaseModel):
         if value is None:
             return value
 
-        if isinstance(value, str) and not re.match(r"^[^\u0000]*$", value):
-            raise ValueError(r"must validate the regular expression /^[^\u0000]*$/")
+        if isinstance(value, str) and not re.match(r"^[^\u0000\u30a1-\u30f6]*$", value):
+            raise ValueError(r"must validate the regular expression /^[^\u0000\u30a1-\u30f6]*$/")
         return value
 
     model_config = ConfigDict(

@@ -128,6 +128,25 @@ def pos_class(classes: list[str]) -> str:
     return next(c for c in CLASSES if counts.get(c, 0) == best)
 
 
+def sanitise_override_token(ot: dict[str, Any]) -> dict[str, Any]:
+    """PARSER.md 4.4 "Sanitising stored override tokens": invalid members count as absent."""
+    out: dict[str, Any] = {"surface": ot["surface"]}
+
+    def ok_str(v: Any) -> bool:
+        return isinstance(v, str) and v != "" and "\u0000" not in v
+
+    if ok_str(ot.get("lemma")):
+        out["lemma"] = ot["lemma"]
+    if ok_str(ot.get("reading")):
+        out["reading"] = hiragana(ot["reading"])
+    if isinstance(ot.get("class"), str) and ot["class"] in CLASSES:
+        out["class"] = ot["class"]
+    seq = ot.get("seq")
+    if isinstance(seq, int) and not isinstance(seq, bool) and 1 <= seq <= 2**53 - 1:
+        out["seq"] = seq
+    return out
+
+
 def apply_overrides(case: dict[str, Any]) -> list[Token]:
     """PARSER.md 4 over one sentence."""
     text: str = case["text"]
@@ -178,7 +197,8 @@ def apply_overrides(case: dict[str, Any]) -> list[Token]:
     out = [t for t in base if not any(a <= t["s"] and t["e"] <= b for a, b, _ in accepted)]
     for a, _b, o in accepted:  # 4.4
         pos_ = a
-        for ot in o["tokens"]:
+        for raw in o["tokens"]:
+            ot = sanitise_override_token(raw)
             surf = ot["surface"]
             s, e = pos_, pos_ + len16(surf)
             pos_ = e
@@ -303,6 +323,10 @@ def check_openapi(bundle: pathlib.Path, schema: dict[str, Any]) -> None:
         raise Fail("openapi OverrideToken lacks a PARSER.md 4.4 member")
     if ot["class"]["enum"] != schema["properties"]["class"]["enum"]:
         raise Fail("openapi OverrideToken class values differ from token.schema.json")
+    if ot["reading"].get("pattern") != schema["properties"]["reading"]["pattern"]:
+        raise Fail("openapi OverrideToken.reading pattern differs from token.schema.json reading (katakana must be rejected)")
+    if jsonschema.Draft202012Validator({"pattern": ot["reading"]["pattern"]}).is_valid("タベ"):
+        raise Fail("openapi OverrideToken.reading accepts katakana")
     print("  openapi SentenceToken/OverrideToken aligned with token.schema.json")
 
 
@@ -334,6 +358,8 @@ def main(argv: list[str]) -> int:
             except Fail:
                 continue
             raise Fail(f"negative self-test {name!r} was not detected")
+        if sanitise_override_token({"surface": "食べ", "reading": "タベー"}).get("reading") != "たべー":
+            raise Fail("self-test: override reading katakana is not folded to hiragana (PARSER.md 4.4)")
         if not is_low_surrogate_at("𠮷野", 1) or is_low_surrogate_at("𠮷野", 2):
             raise Fail("negative self-test 'split surrogate' was not detected")
     except Fail as e:
