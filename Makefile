@@ -1,4 +1,4 @@
-.PHONY: check test fmt dev-up dev-down
+.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web
 
 MODULES := core server worker web android deploy contracts acceptance cli
 GRADLE := ./gradlew --no-daemon -q
@@ -62,6 +62,22 @@ dev-up:
 
 dev-down:
 	docker compose down
+
+# Web UI against the demo dataset (fixtures/demo), no server needed (UI-FOUND-WEB).
+# SCENARIO=default|empty|due900; switch in the browser with /__mock/scenario/<name>.
+SCENARIO ?= default
+dev-ui:
+	$(GRADLE) :core:npmPackage
+	cd web && pnpm install --frozen-lockfile && KOTOBAYA_MOCK=$(SCENARIO) pnpm exec vite dev
+
+# Screenshot matrix of every web route into web/screenshots/ (design feedback loop, not a gate).
+# Uses a system Chromium when one is on PATH, else Playwright's own (`pnpm exec playwright install chromium`).
+CHROMIUM_PATH ?= $(shell command -v chromium || command -v chromium-browser || command -v google-chrome || true)
+screenshots-web:
+	$(GRADLE) :core:npmPackage
+	cd web && pnpm install --frozen-lockfile && rm -rf screenshots/default screenshots/empty screenshots/due900 \
+		&& CHROMIUM_PATH=$(CHROMIUM_PATH) pnpm exec playwright test --config playwright.config.ts
+	@find web/screenshots -name '*.png' -not -path '*/.results/*' | wc -l | xargs echo "screenshots:"
 
 # Release artefacts (T002). Images: $(REGISTRY)/{api,worker,web,backup}:$(VERSION).
 # DRY_RUN=1 prints the commands instead of running them.

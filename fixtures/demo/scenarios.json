@@ -1,0 +1,44 @@
+{
+ "default": {
+  "description": "A lived-in account: ~70 notes, 32 decks, 6 media, a year of reviews, 53 cards due.",
+  "queue_counts": {
+   "new": 12,
+   "learning": 4,
+   "review": 37
+  },
+  "empty": []
+ },
+ "due900": {
+  "description": "The same account after a long break: 900 cards due today.",
+  "queue_counts": {
+   "new": 20,
+   "learning": 15,
+   "review": 865
+  },
+  "empty": []
+ },
+ "empty": {
+  "description": "A brand-new account: built-in note types, the Default preset and settings only; no notes, cards, decks, media or history.",
+  "queue_counts": {
+   "new": 0,
+   "learning": 0,
+   "review": 0
+  },
+  "empty": [
+   "notes",
+   "decks",
+   "deck_items",
+   "hot_words",
+   "hot_kanji",
+   "confusables",
+   "media",
+   "sentences",
+   "coverage",
+   "parse_overrides",
+   "jpdb_vocab",
+   "grammar_points",
+   "stats",
+   "tokens"
+  ]
+ }
+}

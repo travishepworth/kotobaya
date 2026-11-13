@@ -1,3 +1,6 @@
 node_modules/
 .svelte-kit/
 build/
+# Screenshot harness output (make screenshots-web); only the README is committed
+screenshots/*
+!screenshots/README.md

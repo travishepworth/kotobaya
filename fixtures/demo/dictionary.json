@@ -1,0 +1,4579 @@
+{
+ "entries": [
+  {
+   "seq": 9000001,
+   "language": "ja",
+   "headword": "猫",
+   "headword_reading": "ねこ",
+   "is_common": true,
+   "freq_rank": 1840,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000001",
+   "status": "learning",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 1840
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "猫",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ねこ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "猫"
+   ],
+   "pitch": [
+    {
+     "reading": "ねこ",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "cat"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "shamisen (slang)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "geisha"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000002,
+   "language": "ja",
+   "headword": "日本語",
+   "headword_reading": "にほんご",
+   "is_common": true,
+   "freq_rank": 410,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000002",
+   "status": "known",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 410
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "日本語",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "にほんご",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "日",
+    "本",
+    "語"
+   ],
+   "pitch": [
+    {
+     "reading": "にほんご",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "Japanese (language)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000003,
+   "language": "ja",
+   "headword": "食べる",
+   "headword_reading": "たべる",
+   "is_common": true,
+   "freq_rank": 230,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000003",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 230
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "食べる",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "たべる",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "食"
+   ],
+   "pitch": [
+    {
+     "reading": "たべる",
+     "positions": [
+      2
+     ]
+    }
+   ],
+   "pos": [
+    "v1",
+    "vt"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to eat"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to live on (e.g. a salary)"
+      },
+      {
+       "lang": "eng",
+       "text": "to make a living"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000004,
+   "language": "ja",
+   "headword": "行く",
+   "headword_reading": "いく",
+   "is_common": true,
+   "freq_rank": 60,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000004",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 60
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "行く",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "いく",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "行"
+   ],
+   "pitch": [
+    {
+     "reading": "いく",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "v5k-s",
+    "vi"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "v5k-s",
+      "vi"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to go"
+      },
+      {
+       "lang": "eng",
+       "text": "to move (towards)"
+      },
+      {
+       "lang": "eng",
+       "text": "to head (towards)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5k-s",
+      "vi"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to proceed"
+      },
+      {
+       "lang": "eng",
+       "text": "to take place"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000005,
+   "language": "ja",
+   "headword": "学校",
+   "headword_reading": "がっこう",
+   "is_common": true,
+   "freq_rank": 520,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000005",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 520
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "学校",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "がっこう",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "学",
+    "校"
+   ],
+   "pitch": [
+    {
+     "reading": "がっこう",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "school"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000006,
+   "language": "ja",
+   "headword": "先生",
+   "headword_reading": "せんせい",
+   "is_common": true,
+   "freq_rank": 700,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000006",
+   "status": "learning",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 700
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "先生",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "せんせい",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "先",
+    "生"
+   ],
+   "pitch": [
+    {
+     "reading": "せんせい",
+     "positions": [
+      3
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "suf"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "suf"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "teacher"
+      },
+      {
+       "lang": "eng",
+       "text": "instructor"
+      },
+      {
+       "lang": "eng",
+       "text": "master"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "doctor"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "lawyer, politician or other person of authority (honorific)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000007,
+   "language": "ja",
+   "headword": "時間",
+   "headword_reading": "じかん",
+   "is_common": true,
+   "freq_rank": 150,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000007",
+   "status": "known",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 150
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "時間",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "じかん",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "時",
+    "間"
+   ],
+   "pitch": [
+    {
+     "reading": "じかん",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "ctr",
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "time"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n",
+      "ctr"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "hours"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "period"
+      },
+      {
+       "lang": "eng",
+       "text": "class"
+      },
+      {
+       "lang": "eng",
+       "text": "lesson"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000008,
+   "language": "ja",
+   "headword": "大丈夫",
+   "headword_reading": "だいじょうぶ",
+   "is_common": true,
+   "freq_rank": 900,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000008",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 900
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "大丈夫",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "だいじょうぶ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "大",
+    "丈",
+    "夫"
+   ],
+   "pitch": [
+    {
+     "reading": "だいじょうぶ",
+     "positions": [
+      3
+     ]
+    }
+   ],
+   "pos": [
+    "adj-na",
+    "adv",
+    "int"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "adj-na"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "safe"
+      },
+      {
+       "lang": "eng",
+       "text": "secure"
+      },
+      {
+       "lang": "eng",
+       "text": "sound"
+      },
+      {
+       "lang": "eng",
+       "text": "OK"
+      },
+      {
+       "lang": "eng",
+       "text": "all right"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "adv"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "certainly"
+      },
+      {
+       "lang": "eng",
+       "text": "surely"
+      },
+      {
+       "lang": "eng",
+       "text": "undoubtedly"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "int"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "no thanks"
+      },
+      {
+       "lang": "eng",
+       "text": "I'm good"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000009,
+   "language": "ja",
+   "headword": "勉強",
+   "headword_reading": "べんきょう",
+   "is_common": true,
+   "freq_rank": 640,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000009",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 640
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "勉強",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "べんきょう",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "勉",
+    "強"
+   ],
+   "pitch": [
+    {
+     "reading": "べんきょう",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "vs"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "study"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "diligence"
+      },
+      {
+       "lang": "eng",
+       "text": "working hard"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "experience"
+      },
+      {
+       "lang": "eng",
+       "text": "lesson (for the future)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "discount"
+      },
+      {
+       "lang": "eng",
+       "text": "price reduction"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000010,
+   "language": "ja",
+   "headword": "取る",
+   "headword_reading": "とる",
+   "is_common": true,
+   "freq_rank": 95,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000a",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 95
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "取る",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "とる",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "取"
+   ],
+   "pitch": [
+    {
+     "reading": "とる",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "v5r",
+    "vt"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to take"
+      },
+      {
+       "lang": "eng",
+       "text": "to pick up"
+      },
+      {
+       "lang": "eng",
+       "text": "to grab"
+      },
+      {
+       "lang": "eng",
+       "text": "to catch"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [
+      "Usually written using kana alone in some senses; the long list is the point of this entry."
+     ],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to pass"
+      },
+      {
+       "lang": "eng",
+       "text": "to hand"
+      },
+      {
+       "lang": "eng",
+       "text": "to give"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to get"
+      },
+      {
+       "lang": "eng",
+       "text": "to obtain"
+      },
+      {
+       "lang": "eng",
+       "text": "to acquire"
+      },
+      {
+       "lang": "eng",
+       "text": "to win"
+      },
+      {
+       "lang": "eng",
+       "text": "to receive"
+      },
+      {
+       "lang": "eng",
+       "text": "to earn"
+      },
+      {
+       "lang": "eng",
+       "text": "to take (e.g. a vacation)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to adopt (a method, proposal, etc.)"
+      },
+      {
+       "lang": "eng",
+       "text": "to take (a measure, attitude, etc.)"
+      },
+      {
+       "lang": "eng",
+       "text": "to choose"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to remove"
+      },
+      {
+       "lang": "eng",
+       "text": "to get rid of"
+      },
+      {
+       "lang": "eng",
+       "text": "to take off"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to take away"
+      },
+      {
+       "lang": "eng",
+       "text": "to steal"
+      },
+      {
+       "lang": "eng",
+       "text": "to rob"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to eat"
+      },
+      {
+       "lang": "eng",
+       "text": "to have (a meal)"
+      },
+      {
+       "lang": "eng",
+       "text": "to take (vitamins, etc.)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to pick (e.g. flowers)"
+      },
+      {
+       "lang": "eng",
+       "text": "to gather"
+      },
+      {
+       "lang": "eng",
+       "text": "to extract (e.g. juice)"
+      },
+      {
+       "lang": "eng",
+       "text": "to catch (e.g. fish)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to take up (time, space)"
+      },
+      {
+       "lang": "eng",
+       "text": "to occupy"
+      },
+      {
+       "lang": "eng",
+       "text": "to spare"
+      },
+      {
+       "lang": "eng",
+       "text": "to set aside"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to secure"
+      },
+      {
+       "lang": "eng",
+       "text": "to reserve"
+      },
+      {
+       "lang": "eng",
+       "text": "to save"
+      },
+      {
+       "lang": "eng",
+       "text": "to put aside"
+      },
+      {
+       "lang": "eng",
+       "text": "to keep"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to take (a joke, criticism, etc.)"
+      },
+      {
+       "lang": "eng",
+       "text": "to interpret"
+      },
+      {
+       "lang": "eng",
+       "text": "to understand"
+      },
+      {
+       "lang": "eng",
+       "text": "to make out"
+      },
+      {
+       "lang": "eng",
+       "text": "to grasp"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to record"
+      },
+      {
+       "lang": "eng",
+       "text": "to take down"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to subscribe to (e.g. a newspaper)"
+      },
+      {
+       "lang": "eng",
+       "text": "to take"
+      },
+      {
+       "lang": "eng",
+       "text": "to buy"
+      },
+      {
+       "lang": "eng",
+       "text": "to get"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to order"
+      },
+      {
+       "lang": "eng",
+       "text": "to have delivered"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to charge"
+      },
+      {
+       "lang": "eng",
+       "text": "to fine"
+      },
+      {
+       "lang": "eng",
+       "text": "to take (tax)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to take (e.g. a wife)"
+      },
+      {
+       "lang": "eng",
+       "text": "to take on (e.g. an apprentice)"
+      },
+      {
+       "lang": "eng",
+       "text": "to adopt"
+      },
+      {
+       "lang": "eng",
+       "text": "to accept"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v5r",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to compete (in sumo, cards, etc.)"
+      },
+      {
+       "lang": "eng",
+       "text": "to play"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000011,
+   "language": "ja",
+   "headword": "掛ける",
+   "headword_reading": "かける",
+   "is_common": true,
+   "freq_rank": 480,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000b",
+   "status": "learning",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 480
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "掛ける",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "かける",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "掛"
+   ],
+   "pitch": [
+    {
+     "reading": "かける",
+     "positions": [
+      2
+     ]
+    }
+   ],
+   "pos": [
+    "v1",
+    "vt"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to hang up (e.g. a coat, a picture on the wall)"
+      },
+      {
+       "lang": "eng",
+       "text": "to let hang"
+      },
+      {
+       "lang": "eng",
+       "text": "to suspend (from)"
+      },
+      {
+       "lang": "eng",
+       "text": "to hoist (e.g. a sail)"
+      },
+      {
+       "lang": "eng",
+       "text": "to raise (e.g. a flag)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to put on (e.g. a blanket)"
+      },
+      {
+       "lang": "eng",
+       "text": "to put on top of"
+      },
+      {
+       "lang": "eng",
+       "text": "to cover"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to put on (glasses, etc.)"
+      },
+      {
+       "lang": "eng",
+       "text": "to wear (a necklace, etc.)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to make (a call)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to spend (time, money)"
+      },
+      {
+       "lang": "eng",
+       "text": "to expend"
+      },
+      {
+       "lang": "eng",
+       "text": "to use"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to pour (water, etc.) onto"
+      },
+      {
+       "lang": "eng",
+       "text": "to splash"
+      },
+      {
+       "lang": "eng",
+       "text": "to spray"
+      },
+      {
+       "lang": "eng",
+       "text": "to dash"
+      },
+      {
+       "lang": "eng",
+       "text": "to sprinkle"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to multiply (arithmetic operation)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to secure (e.g. lock)"
+      },
+      {
+       "lang": "eng",
+       "text": "to fasten"
+      },
+      {
+       "lang": "eng",
+       "text": "to tie"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to sit down on"
+      },
+      {
+       "lang": "eng",
+       "text": "to sit on"
+      },
+      {
+       "lang": "eng",
+       "text": "to perch on"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000012,
+   "language": "ja",
+   "headword": "鬱",
+   "headword_reading": "うつ",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000c",
+   "status": "known",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "鬱",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "うつ",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "鬱"
+   ],
+   "pitch": [
+    {
+     "reading": "うつ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "adj-na",
+    "n"
+   ],
+   "misc": [
+    "rare kanji"
+   ],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "depression"
+      },
+      {
+       "lang": "eng",
+       "text": "low spirits"
+      },
+      {
+       "lang": "eng",
+       "text": "melancholy"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "adj-na"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "dense (growth of trees)"
+      },
+      {
+       "lang": "eng",
+       "text": "thick"
+      },
+      {
+       "lang": "eng",
+       "text": "luxuriant"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000013,
+   "language": "ja",
+   "headword": "薔薇",
+   "headword_reading": "ばら",
+   "is_common": false,
+   "freq_rank": 9800,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000d",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 9800
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "薔薇",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ばら",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "薔",
+    "薇"
+   ],
+   "pitch": [
+    {
+     "reading": "ばら",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [
+    "usually written using kana alone"
+   ],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "rose"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000014,
+   "language": "ja",
+   "headword": "齟齬",
+   "headword_reading": "そご",
+   "is_common": false,
+   "freq_rank": 24000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000e",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 24000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "齟齬",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "そご",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "齟",
+    "齬"
+   ],
+   "pitch": [
+    {
+     "reading": "そご",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "vs"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "inconsistency"
+      },
+      {
+       "lang": "eng",
+       "text": "discrepancy"
+      },
+      {
+       "lang": "eng",
+       "text": "contradiction"
+      },
+      {
+       "lang": "eng",
+       "text": "conflict"
+      },
+      {
+       "lang": "eng",
+       "text": "friction"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000015,
+   "language": "ja",
+   "headword": "躊躇",
+   "headword_reading": "ちゅうちょ",
+   "is_common": false,
+   "freq_rank": 15000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000000f",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 15000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "躊躇",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ちゅうちょ",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "躊",
+    "躇"
+   ],
+   "pitch": [
+    {
+     "reading": "ちゅうちょ",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "vs"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "hesitation"
+      },
+      {
+       "lang": "eng",
+       "text": "indecision"
+      },
+      {
+       "lang": "eng",
+       "text": "vacillation"
+      },
+      {
+       "lang": "eng",
+       "text": "wavering"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000016,
+   "language": "ja",
+   "headword": "魑魅魍魎",
+   "headword_reading": "ちみもうりょう",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000010",
+   "status": "learning",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "魑魅魍魎",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ちみもうりょう",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "魑",
+    "魅",
+    "魍",
+    "魎"
+   ],
+   "pitch": [
+    {
+     "reading": "ちみもうりょう",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "yoji"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "yoji"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "evil spirits of rivers and mountains"
+      },
+      {
+       "lang": "eng",
+       "text": "all kinds of monsters (demons, goblins)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n",
+      "yoji"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "people who scheme for their own private gain (fig.)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000017,
+   "language": "ja",
+   "headword": "顰蹙",
+   "headword_reading": "ひんしゅく",
+   "is_common": false,
+   "freq_rank": 30000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000011",
+   "status": "known",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 30000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "顰蹙",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ひんしゅく",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "顰",
+    "蹙"
+   ],
+   "pitch": [
+    {
+     "reading": "ひんしゅく",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "vs"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "vs"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "frowning (with disapproval)"
+      },
+      {
+       "lang": "eng",
+       "text": "displeasure"
+      },
+      {
+       "lang": "eng",
+       "text": "antipathy"
+      },
+      {
+       "lang": "eng",
+       "text": "contempt"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000018,
+   "language": "ja",
+   "headword": "檸檬",
+   "headword_reading": "れもん",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000012",
+   "status": "new",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "檸檬",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "れもん",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "檸",
+    "檬"
+   ],
+   "pitch": [
+    {
+     "reading": "れもん",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [
+    "ateji",
+    "usually written using kana alone"
+   ],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "lemon (Citrus limon)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000019,
+   "language": "ja",
+   "headword": "蟷螂",
+   "headword_reading": "かまきり",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000013",
+   "status": "never_forget",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "蟷螂",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "かまきり",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "蟷",
+    "螂"
+   ],
+   "pitch": [
+    {
+     "reading": "かまきり",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [
+    "usually written using kana alone"
+   ],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "praying mantis"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000020,
+   "language": "ja",
+   "headword": "独立行政法人",
+   "headword_reading": "どくりつぎょうせいほうじん",
+   "is_common": false,
+   "freq_rank": 12000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000014",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 12000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "独立行政法人",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "どくりつぎょうせいほうじん",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "独",
+    "立",
+    "行",
+    "政",
+    "法",
+    "人"
+   ],
+   "pitch": [
+    {
+     "reading": "どくりつぎょうせいほうじん",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "incorporated administrative agency (semi-autonomous body that performs government functions)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000021,
+   "language": "ja",
+   "headword": "国際連合教育科学文化機関",
+   "headword_reading": "こくさいれんごうきょういくかがくぶんかきかん",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000015",
+   "status": "learning",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "国際連合教育科学文化機関",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "こくさいれんごうきょういくかがくぶんかきかん",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "国",
+    "際",
+    "連",
+    "合",
+    "教",
+    "育",
+    "科",
+    "学",
+    "文",
+    "化",
+    "機",
+    "関"
+   ],
+   "pitch": [
+    {
+     "reading": "こくさいれんごうきょういくかがくぶんかきかん",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n",
+    "org"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n",
+      "org"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "United Nations Educational, Scientific and Cultural Organization"
+      },
+      {
+       "lang": "eng",
+       "text": "UNESCO"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000022,
+   "language": "ja",
+   "headword": "東京特許許可局",
+   "headword_reading": "とうきょうとっきょきょかきょく",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000016",
+   "status": "known",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "東京特許許可局",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "とうきょうとっきょきょかきょく",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "東",
+    "京",
+    "特",
+    "許",
+    "可",
+    "局"
+   ],
+   "pitch": [
+    {
+     "reading": "とうきょうとっきょきょかきょく",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "Tokyo Patent Approval Office (fictitious; a famous tongue twister)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000023,
+   "language": "ja",
+   "headword": "ありがとう",
+   "headword_reading": "ありがとう",
+   "is_common": true,
+   "freq_rank": 300,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000017",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 300
+    }
+   ],
+   "kanji_forms": [],
+   "readings": [
+    {
+     "text": "ありがとう",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [],
+   "pitch": [
+    {
+     "reading": "ありがとう",
+     "positions": [
+      2
+     ]
+    }
+   ],
+   "pos": [
+    "int"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "int"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "thank you"
+      },
+      {
+       "lang": "eng",
+       "text": "thanks"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000024,
+   "language": "ja",
+   "headword": "よろしく",
+   "headword_reading": "よろしく",
+   "is_common": true,
+   "freq_rank": 800,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000018",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 800
+    }
+   ],
+   "kanji_forms": [],
+   "readings": [
+    {
+     "text": "よろしく",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [],
+   "pitch": [
+    {
+     "reading": "よろしく",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "adv",
+    "exp"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "adv",
+      "exp"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "well"
+      },
+      {
+       "lang": "eng",
+       "text": "properly"
+      },
+      {
+       "lang": "eng",
+       "text": "suitably"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "exp"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "best regards"
+      },
+      {
+       "lang": "eng",
+       "text": "please remember me"
+      },
+      {
+       "lang": "eng",
+       "text": "please treat me favourably"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000025,
+   "language": "ja",
+   "headword": "見る",
+   "headword_reading": "みる",
+   "is_common": true,
+   "freq_rank": 70,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000019",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 70
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "見る",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "みる",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "見"
+   ],
+   "pitch": [
+    {
+     "reading": "みる",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "v1",
+    "vt"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to see"
+      },
+      {
+       "lang": "eng",
+       "text": "to look"
+      },
+      {
+       "lang": "eng",
+       "text": "to watch"
+      },
+      {
+       "lang": "eng",
+       "text": "to view"
+      },
+      {
+       "lang": "eng",
+       "text": "to observe"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to examine"
+      },
+      {
+       "lang": "eng",
+       "text": "to look over"
+      },
+      {
+       "lang": "eng",
+       "text": "to assess"
+      },
+      {
+       "lang": "eng",
+       "text": "to check"
+      },
+      {
+       "lang": "eng",
+       "text": "to judge"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "v1",
+      "vt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "to look after"
+      },
+      {
+       "lang": "eng",
+       "text": "to keep an eye on"
+      },
+      {
+       "lang": "eng",
+       "text": "to take care of"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000026,
+   "language": "ja",
+   "headword": "電車",
+   "headword_reading": "でんしゃ",
+   "is_common": true,
+   "freq_rank": 1200,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001a",
+   "status": "learning",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 1200
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "電車",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "でんしゃ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "電",
+    "車"
+   ],
+   "pitch": [
+    {
+     "reading": "でんしゃ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "train"
+      },
+      {
+       "lang": "eng",
+       "text": "electric train"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000027,
+   "language": "ja",
+   "headword": "雨",
+   "headword_reading": "あめ",
+   "is_common": true,
+   "freq_rank": 950,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001b",
+   "status": "known",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 950
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "雨",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "あめ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "雨"
+   ],
+   "pitch": [
+    {
+     "reading": "あめ",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "rain"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "rainy day"
+      },
+      {
+       "lang": "eng",
+       "text": "rainy weather"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000028,
+   "language": "ja",
+   "headword": "飴",
+   "headword_reading": "あめ",
+   "is_common": true,
+   "freq_rank": 6000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001c",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 6000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "飴",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "あめ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "飴"
+   ],
+   "pitch": [
+    {
+     "reading": "あめ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "(hard) candy"
+      },
+      {
+       "lang": "eng",
+       "text": "toffee"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000029,
+   "language": "ja",
+   "headword": "橋",
+   "headword_reading": "はし",
+   "is_common": true,
+   "freq_rank": 2100,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001d",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 2100
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "橋",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "はし",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "橋"
+   ],
+   "pitch": [
+    {
+     "reading": "はし",
+     "positions": [
+      2
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "bridge"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000030,
+   "language": "ja",
+   "headword": "箸",
+   "headword_reading": "はし",
+   "is_common": true,
+   "freq_rank": 4800,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001e",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 4800
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "箸",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "はし",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "箸"
+   ],
+   "pitch": [
+    {
+     "reading": "はし",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "chopsticks"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000031,
+   "language": "ja",
+   "headword": "未",
+   "headword_reading": "み",
+   "is_common": true,
+   "freq_rank": 3500,
+   "retired": false,
+   "note_id": null,
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 3500
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "未",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "み",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "未"
+   ],
+   "pitch": [
+    {
+     "reading": "み",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "pref"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "pref"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "not yet"
+      },
+      {
+       "lang": "eng",
+       "text": "un-"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000032,
+   "language": "ja",
+   "headword": "末",
+   "headword_reading": "まつ",
+   "is_common": true,
+   "freq_rank": 1900,
+   "retired": false,
+   "note_id": null,
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 1900
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "末",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "まつ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "末"
+   ],
+   "pitch": [
+    {
+     "reading": "まつ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n-suf"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n-suf"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "the end of"
+      },
+      {
+       "lang": "eng",
+       "text": "close of (the month)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000033,
+   "language": "ja",
+   "headword": "侘び寂び",
+   "headword_reading": "わびさび",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-00000000001f",
+   "status": "new",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "侘び寂び",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "わびさび",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "侘",
+    "寂"
+   ],
+   "pitch": [
+    {
+     "reading": "わびさび",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "wabi-sabi"
+      },
+      {
+       "lang": "eng",
+       "text": "aesthetic sense in Japanese art emphasising quiet simplicity and subdued refinement"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000034,
+   "language": "ja",
+   "headword": "木漏れ日",
+   "headword_reading": "こもれび",
+   "is_common": false,
+   "freq_rank": 20000,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000020",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 20000
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "木漏れ日",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "こもれび",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "木",
+    "漏",
+    "日"
+   ],
+   "pitch": [
+    {
+     "reading": "こもれび",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "sunlight filtering through trees"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000035,
+   "language": "ja",
+   "headword": "寿限無寿限無五劫の擦り切れ",
+   "headword_reading": "じゅげむじゅげむごこうのすりきれ",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000021",
+   "status": "new",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "寿限無寿限無五劫の擦り切れ",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "じゅげむじゅげむごこうのすりきれ",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "寿",
+    "限",
+    "無",
+    "五",
+    "劫",
+    "擦",
+    "切"
+   ],
+   "pitch": [
+    {
+     "reading": "じゅげむじゅげむごこうのすりきれ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "(opening of a famously long rakugo name)"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000036,
+   "language": "ja",
+   "headword": "鰯",
+   "headword_reading": "いわし",
+   "is_common": false,
+   "freq_rank": null,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000022",
+   "status": "learning",
+   "freqs": [],
+   "kanji_forms": [
+    {
+     "text": "鰯",
+     "common": false,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "いわし",
+     "common": false,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "鰯"
+   ],
+   "pitch": [
+    {
+     "reading": "いわし",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "sardine (esp. the Japanese sardine, Sardinops melanostictus)"
+      },
+      {
+       "lang": "eng",
+       "text": "pilchard"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000037,
+   "language": "ja",
+   "headword": "ずつ",
+   "headword_reading": "ずつ",
+   "is_common": true,
+   "freq_rank": 1300,
+   "retired": false,
+   "note_id": null,
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 1300
+    }
+   ],
+   "kanji_forms": [],
+   "readings": [
+    {
+     "text": "ずつ",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [],
+   "pitch": [
+    {
+     "reading": "ずつ",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "prt"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "prt"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "apiece"
+      },
+      {
+       "lang": "eng",
+       "text": "each"
+      },
+      {
+       "lang": "eng",
+       "text": "at a time"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000038,
+   "language": "ja",
+   "headword": "空",
+   "headword_reading": "そら",
+   "is_common": true,
+   "freq_rank": 1100,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000023",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 1100
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "空",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "そら",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "空"
+   ],
+   "pitch": [
+    {
+     "reading": "そら",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "sky"
+      },
+      {
+       "lang": "eng",
+       "text": "the heavens"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "weather"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "(far-off) place"
+      },
+      {
+       "lang": "eng",
+       "text": "location"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "state of mind"
+      },
+      {
+       "lang": "eng",
+       "text": "feeling"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000039,
+   "language": "ja",
+   "headword": "気",
+   "headword_reading": "き",
+   "is_common": true,
+   "freq_rank": 200,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000024",
+   "status": "never_forget",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 200
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "気",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "き",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "気"
+   ],
+   "pitch": [
+    {
+     "reading": "き",
+     "positions": [
+      0
+     ]
+    }
+   ],
+   "pos": [
+    "n"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "spirit"
+      },
+      {
+       "lang": "eng",
+       "text": "mind"
+      },
+      {
+       "lang": "eng",
+       "text": "heart"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "nature"
+      },
+      {
+       "lang": "eng",
+       "text": "disposition"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "motivation"
+      },
+      {
+       "lang": "eng",
+       "text": "intention"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "mood"
+      },
+      {
+       "lang": "eng",
+       "text": "feelings"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  },
+  {
+   "seq": 9000040,
+   "language": "ja",
+   "headword": "本",
+   "headword_reading": "ほん",
+   "is_common": true,
+   "freq_rank": 120,
+   "retired": false,
+   "note_id": "0193a000-000c-7000-8000-000000000025",
+   "status": "new",
+   "freqs": [
+    {
+     "list_id": "demo-freq",
+     "rank": 120
+    }
+   ],
+   "kanji_forms": [
+    {
+     "text": "本",
+     "common": true,
+     "tags": []
+    }
+   ],
+   "readings": [
+    {
+     "text": "ほん",
+     "common": true,
+     "tags": [],
+     "applies_to": []
+    }
+   ],
+   "kanji": [
+    "本"
+   ],
+   "pitch": [
+    {
+     "reading": "ほん",
+     "positions": [
+      1
+     ]
+    }
+   ],
+   "pos": [
+    "ctr",
+    "n",
+    "pref"
+   ],
+   "misc": [],
+   "senses": [
+    {
+     "pos": [
+      "n"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "book"
+      },
+      {
+       "lang": "eng",
+       "text": "volume"
+      },
+      {
+       "lang": "eng",
+       "text": "script"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "pref"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "this"
+      },
+      {
+       "lang": "eng",
+       "text": "present"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    },
+    {
+     "pos": [
+      "ctr"
+     ],
+     "gloss": [
+      {
+       "lang": "eng",
+       "text": "counter for long cylindrical things"
+      }
+     ],
+     "misc": [],
+     "field": [],
+     "dialect": [],
+     "info": [],
+     "xref": [],
+     "applies_to_kanji": [],
+     "applies_to_kana": []
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "literal": "日",
+   "meanings": [
+    "day",
+    "sun",
+    "Japan",
+    "counter for days"
+   ],
+   "on_readings": [
+    "ニチ",
+    "ジツ"
+   ],
+   "kun_readings": [
+    "ひ",
+    "-び",
+    "-か"
+   ],
+   "nanori": [],
+   "stroke_count": 4,
+   "grade": 1,
+   "jlpt": 5,
+   "freq_rank": 1,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "本",
+   "meanings": [
+    "book",
+    "present",
+    "main",
+    "origin",
+    "true",
+    "real",
+    "counter for long cylindrical things"
+   ],
+   "on_readings": [
+    "ホン"
+   ],
+   "kun_readings": [
+    "もと"
+   ],
+   "nanori": [],
+   "stroke_count": 5,
+   "grade": 1,
+   "jlpt": 5,
+   "freq_rank": 10,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "猫",
+   "meanings": [
+    "cat"
+   ],
+   "on_readings": [
+    "ビョウ"
+   ],
+   "kun_readings": [
+    "ねこ"
+   ],
+   "nanori": [],
+   "stroke_count": 11,
+   "grade": null,
+   "jlpt": 2,
+   "freq_rank": 1702,
+   "radical": null,
+   "components": [
+    "犭",
+    "苗"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "語",
+   "meanings": [
+    "word",
+    "speech",
+    "language"
+   ],
+   "on_readings": [
+    "ゴ"
+   ],
+   "kun_readings": [
+    "かた.る",
+    "かた.らう"
+   ],
+   "nanori": [],
+   "stroke_count": 14,
+   "grade": 2,
+   "jlpt": 5,
+   "freq_rank": 301,
+   "radical": null,
+   "components": [
+    "言",
+    "吾"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "食",
+   "meanings": [
+    "eat",
+    "food"
+   ],
+   "on_readings": [
+    "ショク",
+    "ジキ"
+   ],
+   "kun_readings": [
+    "く.う",
+    "く.らう",
+    "た.べる",
+    "は.む"
+   ],
+   "nanori": [],
+   "stroke_count": 9,
+   "grade": 2,
+   "jlpt": 5,
+   "freq_rank": 328,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "取",
+   "meanings": [
+    "take",
+    "fetch",
+    "take up"
+   ],
+   "on_readings": [
+    "シュ"
+   ],
+   "kun_readings": [
+    "と.る",
+    "と.り",
+    "-ど.り"
+   ],
+   "nanori": [],
+   "stroke_count": 8,
+   "grade": 3,
+   "jlpt": 4,
+   "freq_rank": 227,
+   "radical": null,
+   "components": [
+    "耳",
+    "又"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "鬱",
+   "meanings": [
+    "gloom",
+    "depression",
+    "melancholy"
+   ],
+   "on_readings": [
+    "ウツ"
+   ],
+   "kun_readings": [
+    "ふさ.ぐ",
+    "しげ.る"
+   ],
+   "nanori": [],
+   "stroke_count": 29,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [
+    "缶",
+    "木",
+    "冖",
+    "鬯",
+    "彡"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "薔",
+   "meanings": [
+    "rose",
+    "red"
+   ],
+   "on_readings": [
+    "ショウ",
+    "ソウ",
+    "ショク"
+   ],
+   "kun_readings": [
+    "みずたで",
+    "ばら"
+   ],
+   "nanori": [],
+   "stroke_count": 16,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "薇",
+   "meanings": [
+    "bracken",
+    "fernbrake"
+   ],
+   "on_readings": [
+    "ビ"
+   ],
+   "kun_readings": [
+    "ぜんまい"
+   ],
+   "nanori": [],
+   "stroke_count": 16,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "齟",
+   "meanings": [
+    "disagree",
+    "gnash teeth"
+   ],
+   "on_readings": [
+    "ソ",
+    "ショ"
+   ],
+   "kun_readings": [
+    "くいちが.う"
+   ],
+   "nanori": [],
+   "stroke_count": 20,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [
+    "歯",
+    "且"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "魑",
+   "meanings": [
+    "mountain demon"
+   ],
+   "on_readings": [
+    "チ"
+   ],
+   "kun_readings": [],
+   "nanori": [],
+   "stroke_count": 21,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "鰯",
+   "meanings": [
+    "sardine"
+   ],
+   "on_readings": [],
+   "kun_readings": [
+    "いわし"
+   ],
+   "nanori": [],
+   "stroke_count": 21,
+   "grade": null,
+   "jlpt": null,
+   "freq_rank": null,
+   "radical": null,
+   "components": [
+    "魚",
+    "弱"
+   ],
+   "note_id": null
+  },
+  {
+   "literal": "雨",
+   "meanings": [
+    "rain"
+   ],
+   "on_readings": [
+    "ウ"
+   ],
+   "kun_readings": [
+    "あめ",
+    "あま-",
+    "-さめ"
+   ],
+   "nanori": [],
+   "stroke_count": 8,
+   "grade": 1,
+   "jlpt": 5,
+   "freq_rank": 950,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "学",
+   "meanings": [
+    "study",
+    "learning",
+    "science"
+   ],
+   "on_readings": [
+    "ガク"
+   ],
+   "kun_readings": [
+    "まな.ぶ"
+   ],
+   "nanori": [],
+   "stroke_count": 8,
+   "grade": 1,
+   "jlpt": 5,
+   "freq_rank": 63,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  },
+  {
+   "literal": "気",
+   "meanings": [
+    "spirit",
+    "mind",
+    "air",
+    "atmosphere",
+    "mood"
+   ],
+   "on_readings": [
+    "キ",
+    "ケ"
+   ],
+   "kun_readings": [
+    "いき"
+   ],
+   "nanori": [],
+   "stroke_count": 6,
+   "grade": 1,
+   "jlpt": 5,
+   "freq_rank": 113,
+   "radical": null,
+   "components": [],
+   "note_id": null
+  }
+ ],
+ "tatoeba": {
+  "9000001": [
+   {
+    "id": 9101,
+    "text": "猫が窓のそばで寝ている。",
+    "translation": "The cat is sleeping by the window."
+   }
+  ],
+  "9000003": [
+   {
+    "id": 9102,
+    "text": "朝ご飯を食べましたか。",
+    "translation": "Did you eat breakfast?"
+   },
+   {
+    "id": 9103,
+    "text": "辛いものは食べられない。",
+    "translation": "I can't eat spicy food."
+   }
+  ],
+  "9000010": [
+   {
+    "id": 9104,
+    "text": "塩を取ってください。",
+    "translation": "Please pass the salt."
+   },
+   {
+    "id": 9105,
+    "text": "休みを取って、海に行った。",
+    "translation": "I took some time off and went to the sea."
+   }
+  ],
+  "9000027": [
+   {
+    "id": 9106,
+    "text": "明日は雨が降るでしょう。",
+    "translation": "It will probably rain tomorrow."
+   }
+  ]
+ }
+}

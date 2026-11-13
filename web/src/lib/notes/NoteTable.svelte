@@ -1,5 +1,6 @@
 <script lang="ts">
 	// Windowed note table (same windowing as the card table).
+	import { untrack } from 'svelte';
 	import { ROW_HEIGHT, rowLabel, windowRange, type HeadwordMap, type Note } from '../state/notes.svelte';
 	import { tn } from './messages';
 
@@ -41,7 +42,8 @@
 	}
 
 	$effect(() => {
-		if (hasMore && notes.length * ROW_HEIGHT < viewport) onnearend();
+		// untrack: the loader reads and writes its own state, which must not become this effect's dependency
+		if (hasMore && notes.length * ROW_HEIGHT < viewport) untrack(onnearend);
 	});
 </script>
 

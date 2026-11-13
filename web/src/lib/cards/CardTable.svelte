@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Windowed card table: only the rows in (or near) the viewport are in the DOM, between two
 	// spacers, so a 5000-row result costs the same as a 50-row one.
+	import { untrack } from 'svelte';
 	import { ROW_HEIGHT, rowLabel, windowRange, type Card } from '../state/cards.svelte';
 	import { tc, type CardsMessageKey } from './messages';
 
@@ -46,7 +47,8 @@
 
 	// Short results that do not fill the viewport never scroll: ask for more anyway.
 	$effect(() => {
-		if (hasMore && cards.length * ROW_HEIGHT < viewport) onnearend();
+		// untrack: the loader reads and writes its own state, which must not become this effect's dependency
+		if (hasMore && cards.length * ROW_HEIGHT < viewport) untrack(onnearend);
 	});
 
 	function due(c: Card): string {

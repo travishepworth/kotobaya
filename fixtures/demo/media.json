@@ -1,0 +1,5678 @@
+{
+ "media": [
+  {
+   "id": "0193a000-000a-7000-8000-000000000001",
+   "kind": "anime",
+   "source": "file",
+   "title": "Neko no Jikan (demo anime)",
+   "language": "ja",
+   "parse_status": "parsed",
+   "parse_error": null,
+   "content_blob_hash": "7635c4e0d1ca10a37635c4e0d1ca10a37635c4e0d1ca10a37635c4e0d1ca10a3",
+   "content_version": 1,
+   "cover_blob_hash": null,
+   "jpdb_id": null,
+   "created_at": "2026-08-14T09:00:00Z",
+   "updated_at": "2026-10-25T09:00:00Z",
+   "deleted_at": null,
+   "segments": [
+    {
+     "id": "0193a000-000b-7000-8000-00000000000a",
+     "media_id": "0193a000-000a-7000-8000-000000000001",
+     "kind": "episode",
+     "ordinal": 0,
+     "title": "第1話 はじまりの日",
+     "sentence_count": 5,
+     "token_count": 33,
+     "unmapped_token_count": 3
+    },
+    {
+     "id": "0193a000-000b-7000-8000-00000000000b",
+     "media_id": "0193a000-000a-7000-8000-000000000001",
+     "kind": "episode",
+     "ordinal": 1,
+     "title": "第2話 雨の日の橋",
+     "sentence_count": 6,
+     "token_count": 37,
+     "unmapped_token_count": 3
+    },
+    {
+     "id": "0193a000-000b-7000-8000-00000000000c",
+     "media_id": "0193a000-000a-7000-8000-000000000001",
+     "kind": "episode",
+     "ordinal": 2,
+     "title": "第3話 — an episode title long enough to wrap twice on a phone",
+     "sentence_count": 5,
+     "token_count": 27,
+     "unmapped_token_count": 2
+    }
+   ]
+  },
+  {
+   "id": "0193a000-000a-7000-8000-000000000002",
+   "kind": "novel",
+   "source": "file",
+   "title": "木漏れ日の図書館（上）",
+   "language": "ja",
+   "parse_status": "parsed",
+   "parse_error": null,
+   "content_blob_hash": "174f19f68ac4b49e174f19f68ac4b49e174f19f68ac4b49e174f19f68ac4b49e",
+   "content_version": 1,
+   "cover_blob_hash": null,
+   "jpdb_id": null,
+   "created_at": "2026-08-23T09:00:00Z",
+   "updated_at": "2026-10-26T09:00:00Z",
+   "deleted_at": null,
+   "segments": [
+    {
+     "id": "0193a000-000b-7000-8000-000000000014",
+     "media_id": "0193a000-000a-7000-8000-000000000002",
+     "kind": "chapter",
+     "ordinal": 0,
+     "title": "序章",
+     "sentence_count": 4,
+     "token_count": 22,
+     "unmapped_token_count": 4
+    },
+    {
+     "id": "0193a000-000b-7000-8000-000000000015",
+     "media_id": "0193a000-000a-7000-8000-000000000002",
+     "kind": "chapter",
+     "ordinal": 1,
+     "title": "第一章 檸檬",
+     "sentence_count": 4,
+     "token_count": 22,
+     "unmapped_token_count": 5
+    },
+    {
+     "id": "0193a000-000b-7000-8000-000000000016",
+     "media_id": "0193a000-000a-7000-8000-000000000002",
+     "kind": "chapter",
+     "ordinal": 2,
+     "title": "第二章 魑魅魍魎",
+     "sentence_count": 3,
+     "token_count": 18,
+     "unmapped_token_count": 4
+    }
+   ]
+  },
+  {
+   "id": "0193a000-000a-7000-8000-000000000003",
+   "kind": "manga",
+   "source": "file",
+   "title": "Bara to Kamakiri vol. 1",
+   "language": "ja",
+   "parse_status": "parsed",
+   "parse_error": null,
+   "content_blob_hash": "172e81e900581f42172e81e900581f42172e81e900581f42172e81e900581f42",
+   "content_version": 1,
+   "cover_blob_hash": null,
+   "jpdb_id": null,
+   "created_at": "2026-09-01T09:00:00Z",
+   "updated_at": "2026-10-27T09:00:00Z",
+   "deleted_at": null,
+   "segments": [
+    {
+     "id": "0193a000-000b-7000-8000-00000000001e",
+     "media_id": "0193a000-000a-7000-8000-000000000003",
+     "kind": "volume",
+     "ordinal": 0,
+     "title": "Volume 1",
+     "sentence_count": 4,
+     "token_count": 31,
+     "unmapped_token_count": 3
+    }
+   ]
+  },
+  {
+   "id": "0193a000-000a-7000-8000-000000000004",
+   "kind": "web",
+   "source": "url",
+   "title": "A blog post about 独立行政法人 paperwork",
+   "language": "ja",
+   "parse_status": "parsed",
+   "parse_error": null,
+   "content_blob_hash": "eda9aea5c51206e4eda9aea5c51206e4eda9aea5c51206e4eda9aea5c51206e4",
+   "content_version": 1,
+   "cover_blob_hash": null,
+   "jpdb_id": null,
+   "created_at": "2026-09-10T09:00:00Z",
+   "updated_at": "2026-10-28T09:00:00Z",
+   "deleted_at": null,
+   "segments": [
+    {
+     "id": "0193a000-000b-7000-8000-000000000028",
+     "media_id": "0193a000-000a-7000-8000-000000000004",
+     "kind": "whole",
+     "ordinal": 0,
+     "title": "",
+     "sentence_count": 4,
+     "token_count": 31,
+     "unmapped_token_count": 3
+    }
+   ]
+  },
+  {
+   "id": "0193a000-000a-7000-8000-000000000005",
+   "kind": "vn",
+   "source": "paste",
+   "title": "Untitled paste",
+   "language": "ja",
+   "parse_status": "failed",
+   "parse_error": "Could not detect the text encoding (demo failure)",
+   "content_blob_hash": null,
+   "content_version": 0,
+   "cover_blob_hash": null,
+   "jpdb_id": null,
+   "created_at": "2026-09-19T09:00:00Z",
+   "updated_at": "2026-10-29T09:00:00Z",
+   "deleted_at": null,
+   "segments": []
+  },
+  {
+   "id": "0193a000-000a-7000-8000-000000000006",
+   "kind": "anime",
+   "source": "jpdb",
+   "title": "jpdb: Slice of life deck (imported)",
+   "language": "ja",
+   "parse_status": "parsed",
+   "parse_error": null,
+   "content_blob_hash": "a0aa5f262fa90875a0aa5f262fa90875a0aa5f262fa90875a0aa5f262fa90875",
+   "content_version": 1,
+   "cover_blob_hash": null,
+   "jpdb_id": "anime/123456",
+   "created_at": "2026-09-28T09:00:00Z",
+   "updated_at": "2026-10-30T09:00:00Z",
+   "deleted_at": null,
+   "segments": [
+    {
+     "id": "0193a000-000b-7000-8000-00000000003c",
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "kind": "episode",
+     "ordinal": 0,
+     "title": "Episode 1",
+     "sentence_count": 12,
+     "token_count": 69,
+     "unmapped_token_count": 8
+    }
+   ]
+  }
+ ],
+ "sentences": [
+  {
+   "id": "0193a000-0014-7000-8000-000000000001",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000a",
+   "ordinal": 1,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 0,
+   "end_ms": 2400,
+   "audio_blob_hash": "0000000000003b0a0000000000003b0a0000000000003b0a0000000000003b0a",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000002",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000a",
+   "ordinal": 2,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 4100,
+   "end_ms": 6500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000003",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000a",
+   "ordinal": 3,
+   "text": "箸で飴を取るのは難しい。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "箸",
+     "lemma": "箸",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000030,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "飴",
+     "lemma": "飴",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000028,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "取る",
+     "lemma": "取る",
+     "reading": "とる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000010,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "は",
+     "lemma": "は",
+     "reading": "は",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 11,
+     "surface": "難しい",
+     "lemma": "難しい",
+     "reading": "難しい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 12300,
+   "end_ms": 14700,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000004",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000a",
+   "ordinal": 4,
+   "text": "空を見る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "空",
+     "lemma": "空",
+     "reading": "そら",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000038,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "見る",
+     "lemma": "見る",
+     "reading": "みる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000025,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 24600,
+   "end_ms": 27000,
+   "audio_blob_hash": "0000000000003b0d0000000000003b0d0000000000003b0d0000000000003b0d",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000005",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000a",
+   "ordinal": 5,
+   "text": "本を一冊ずつ読む。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "本",
+     "lemma": "本",
+     "reading": "ほん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000040,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "一冊",
+     "lemma": "一冊",
+     "reading": "一冊",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "ずつ",
+     "lemma": "ずつ",
+     "reading": "ずつ",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "読む",
+     "lemma": "読む",
+     "reading": "読む",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 36900,
+   "end_ms": 39300,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000006",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 6,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 600000,
+   "end_ms": 602400,
+   "audio_blob_hash": "0000000000003b0f0000000000003b0f0000000000003b0f0000000000003b0f",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000007",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 7,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 604100,
+   "end_ms": 606500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000008",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 8,
+   "text": "雨の日に橋を渡る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "雨",
+     "lemma": "雨",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000027,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "日",
+     "lemma": "日",
+     "reading": "日",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "橋",
+     "lemma": "橋",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000029,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "渡る",
+     "lemma": "渡る",
+     "reading": "渡る",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 608200,
+   "end_ms": 610600,
+   "audio_blob_hash": "0000000000003b110000000000003b110000000000003b110000000000003b11",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000009",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 9,
+   "text": "学校まで電車で行く。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "学校",
+     "lemma": "学校",
+     "reading": "がっこう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000005,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "まで",
+     "lemma": "まで",
+     "reading": "まで",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "電車",
+     "lemma": "電車",
+     "reading": "でんしゃ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000026,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "行く",
+     "lemma": "行く",
+     "reading": "いく",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000004,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 620500,
+   "end_ms": 622900,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000a",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 10,
+   "text": "鰯を食べる。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "鰯",
+     "lemma": "鰯",
+     "reading": "いわし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000036,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "食べる",
+     "lemma": "食べる",
+     "reading": "たべる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000003,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 632800,
+   "end_ms": 635200,
+   "audio_blob_hash": "00000000001e364e00000000001e364e00000000001e364e00000000001e364e",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 2,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000b",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000b",
+   "ordinal": 11,
+   "text": "躊躇せずに言う。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "躊躇",
+     "lemma": "躊躇",
+     "reading": "ちゅうちょ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000015,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "せず",
+     "lemma": "せず",
+     "reading": "せず",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 7,
+     "surface": "言う",
+     "lemma": "言う",
+     "reading": "言う",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 645100,
+   "end_ms": 647500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000c",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000c",
+   "ordinal": 12,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 1200000,
+   "end_ms": 1202400,
+   "audio_blob_hash": "00000000001e365000000000001e365000000000001e365000000000001e3650",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000d",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000c",
+   "ordinal": 13,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 1204100,
+   "end_ms": 1206500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000e",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000c",
+   "ordinal": 14,
+   "text": "ありがとう、よろしく！",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 5,
+     "surface": "ありがとう",
+     "lemma": "ありがとう",
+     "reading": "ありがとう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000023,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 10,
+     "surface": "よろしく",
+     "lemma": "よろしく",
+     "reading": "よろしく",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000024,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 11,
+     "surface": "！",
+     "lemma": "！",
+     "reading": "！",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 1216400,
+   "end_ms": 1218800,
+   "audio_blob_hash": "00000000001e365200000000001e365200000000001e365200000000001e3652",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000000f",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000c",
+   "ordinal": 15,
+   "text": "時間がない。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "時間",
+     "lemma": "時間",
+     "reading": "じかん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000007,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 5,
+     "surface": "ない",
+     "lemma": "ない",
+     "reading": "ない",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 1228700,
+   "end_ms": 1231100,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000010",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "segment_id": "0193a000-000b-7000-8000-00000000000c",
+   "ordinal": 16,
+   "text": "気にするな。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "気",
+     "lemma": "気",
+     "reading": "き",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000039,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "する",
+     "lemma": "する",
+     "reading": "する",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "な",
+     "lemma": "な",
+     "reading": "な",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 1241000,
+   "end_ms": 1243400,
+   "audio_blob_hash": "00000000001e365400000000001e365400000000001e365400000000001e3654",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000011",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000014",
+   "ordinal": 17,
+   "text": "木漏れ日の中で檸檬を見る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "木漏れ日",
+     "lemma": "木漏れ日",
+     "reading": "こもれび",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000034,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "中",
+     "lemma": "中",
+     "reading": "中",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "檸檬",
+     "lemma": "檸檬",
+     "reading": "れもん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000018,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "見る",
+     "lemma": "見る",
+     "reading": "みる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000025,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 1
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000012",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000014",
+   "ordinal": 18,
+   "text": "魑魅魍魎が跋扈する世界。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "魑魅魍魎",
+     "lemma": "魑魅魍魎",
+     "reading": "ちみもうりょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000016,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 7,
+     "surface": "跋扈",
+     "lemma": "跋扈",
+     "reading": "跋扈",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "する",
+     "lemma": "する",
+     "reading": "する",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 11,
+     "surface": "世界",
+     "lemma": "世界",
+     "reading": "世界",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 2
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000013",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000014",
+   "ordinal": 19,
+   "text": "顰蹙を買う。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "顰蹙",
+     "lemma": "顰蹙",
+     "reading": "ひんしゅく",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000017,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 5,
+     "surface": "買う",
+     "lemma": "買う",
+     "reading": "買う",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 4
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000014",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000014",
+   "ordinal": 20,
+   "text": "薔薇と蟷螂。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "薔薇",
+     "lemma": "薔薇",
+     "reading": "ばら",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000013,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "と",
+     "lemma": "と",
+     "reading": "と",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 5,
+     "surface": "蟷螂",
+     "lemma": "蟷螂",
+     "reading": "かまきり",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000019,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 7
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000015",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000015",
+   "ordinal": 21,
+   "text": "木漏れ日の中で檸檬を見る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "木漏れ日",
+     "lemma": "木漏れ日",
+     "reading": "こもれび",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000034,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "中",
+     "lemma": "中",
+     "reading": "中",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "檸檬",
+     "lemma": "檸檬",
+     "reading": "れもん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000018,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "見る",
+     "lemma": "見る",
+     "reading": "みる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000025,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 1
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000016",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000015",
+   "ordinal": 22,
+   "text": "魑魅魍魎が跋扈する世界。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "魑魅魍魎",
+     "lemma": "魑魅魍魎",
+     "reading": "ちみもうりょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000016,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 7,
+     "surface": "跋扈",
+     "lemma": "跋扈",
+     "reading": "跋扈",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "する",
+     "lemma": "する",
+     "reading": "する",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 11,
+     "surface": "世界",
+     "lemma": "世界",
+     "reading": "世界",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 2
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000017",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000015",
+   "ordinal": 23,
+   "text": "齟齬が生じる。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "齟齬",
+     "lemma": "齟齬",
+     "reading": "そご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000014,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "生じる",
+     "lemma": "生じる",
+     "reading": "生じる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 3
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000018",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000015",
+   "ordinal": 24,
+   "text": "鬱な気分。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "鬱",
+     "lemma": "鬱",
+     "reading": "うつ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000012,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "な",
+     "lemma": "な",
+     "reading": "な",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "気分",
+     "lemma": "気分",
+     "reading": "気分",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 6
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000019",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000016",
+   "ordinal": 25,
+   "text": "木漏れ日の中で檸檬を見る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "木漏れ日",
+     "lemma": "木漏れ日",
+     "reading": "こもれび",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000034,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "中",
+     "lemma": "中",
+     "reading": "中",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "檸檬",
+     "lemma": "檸檬",
+     "reading": "れもん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000018,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "見る",
+     "lemma": "見る",
+     "reading": "みる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000025,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 1
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001a",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000016",
+   "ordinal": 26,
+   "text": "魑魅魍魎が跋扈する世界。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "魑魅魍魎",
+     "lemma": "魑魅魍魎",
+     "reading": "ちみもうりょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000016,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 7,
+     "surface": "跋扈",
+     "lemma": "跋扈",
+     "reading": "跋扈",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "する",
+     "lemma": "する",
+     "reading": "する",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 11,
+     "surface": "世界",
+     "lemma": "世界",
+     "reading": "世界",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 2
+   },
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001b",
+   "media_id": "0193a000-000a-7000-8000-000000000002",
+   "segment_id": "0193a000-000b-7000-8000-000000000016",
+   "ordinal": 27,
+   "text": "侘び寂びを感じる。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 4,
+     "surface": "侘び寂び",
+     "lemma": "侘び寂び",
+     "reading": "わびさび",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000033,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 8,
+     "surface": "感じる",
+     "lemma": "感じる",
+     "reading": "感じる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 5
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001c",
+   "media_id": "0193a000-000a-7000-8000-000000000003",
+   "segment_id": "0193a000-000b-7000-8000-00000000001e",
+   "ordinal": 28,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 1
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001d",
+   "media_id": "0193a000-000a-7000-8000-000000000003",
+   "segment_id": "0193a000-000b-7000-8000-00000000001e",
+   "ordinal": 29,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 2
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001e",
+   "media_id": "0193a000-000a-7000-8000-000000000003",
+   "segment_id": "0193a000-000b-7000-8000-00000000001e",
+   "ordinal": 30,
+   "text": "雨の日に橋を渡る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "雨",
+     "lemma": "雨",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000027,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "日",
+     "lemma": "日",
+     "reading": "日",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "橋",
+     "lemma": "橋",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000029,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "渡る",
+     "lemma": "渡る",
+     "reading": "渡る",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 3
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000001f",
+   "media_id": "0193a000-000a-7000-8000-000000000003",
+   "segment_id": "0193a000-000b-7000-8000-00000000001e",
+   "ordinal": 31,
+   "text": "箸で飴を取るのは難しい。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "箸",
+     "lemma": "箸",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000030,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "飴",
+     "lemma": "飴",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000028,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "取る",
+     "lemma": "取る",
+     "reading": "とる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000010,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "は",
+     "lemma": "は",
+     "reading": "は",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 11,
+     "surface": "難しい",
+     "lemma": "難しい",
+     "reading": "難しい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": {
+    "page": 4
+   },
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000020",
+   "media_id": "0193a000-000a-7000-8000-000000000004",
+   "segment_id": "0193a000-000b-7000-8000-000000000028",
+   "ordinal": 32,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000021",
+   "media_id": "0193a000-000a-7000-8000-000000000004",
+   "segment_id": "0193a000-000b-7000-8000-000000000028",
+   "ordinal": 33,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000022",
+   "media_id": "0193a000-000a-7000-8000-000000000004",
+   "segment_id": "0193a000-000b-7000-8000-000000000028",
+   "ordinal": 34,
+   "text": "雨の日に橋を渡る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "雨",
+     "lemma": "雨",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000027,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "日",
+     "lemma": "日",
+     "reading": "日",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "橋",
+     "lemma": "橋",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000029,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "渡る",
+     "lemma": "渡る",
+     "reading": "渡る",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000023",
+   "media_id": "0193a000-000a-7000-8000-000000000004",
+   "segment_id": "0193a000-000b-7000-8000-000000000028",
+   "ordinal": 35,
+   "text": "箸で飴を取るのは難しい。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "箸",
+     "lemma": "箸",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000030,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "飴",
+     "lemma": "飴",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000028,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "取る",
+     "lemma": "取る",
+     "reading": "とる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000010,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "は",
+     "lemma": "は",
+     "reading": "は",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 11,
+     "surface": "難しい",
+     "lemma": "難しい",
+     "reading": "難しい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": null,
+   "end_ms": null,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000024",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 36,
+   "text": "猫が日本語を勉強している。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "猫",
+     "lemma": "猫",
+     "reading": "ねこ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000001,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "日本語",
+     "lemma": "日本語",
+     "reading": "にほんご",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000002,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "勉強",
+     "lemma": "勉強",
+     "reading": "べんきょう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000009,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 10,
+     "surface": "して",
+     "lemma": "して",
+     "reading": "して",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 12,
+     "surface": "いる",
+     "lemma": "いる",
+     "reading": "いる",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 12,
+     "e": 13,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 0,
+   "end_ms": 2400,
+   "audio_blob_hash": "00000000001e375a00000000001e375a00000000001e375a00000000001e375a",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000025",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 37,
+   "text": "先生、大丈夫ですか？",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "先生",
+     "lemma": "先生",
+     "reading": "せんせい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000006,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 6,
+     "surface": "大丈夫",
+     "lemma": "大丈夫",
+     "reading": "だいじょうぶ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000008,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "です",
+     "lemma": "です",
+     "reading": "です",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "か",
+     "lemma": "か",
+     "reading": "か",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "？",
+     "lemma": "？",
+     "reading": "？",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 4100,
+   "end_ms": 6500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000026",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 38,
+   "text": "雨の日に橋を渡る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "雨",
+     "lemma": "雨",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000027,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "日",
+     "lemma": "日",
+     "reading": "日",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "橋",
+     "lemma": "橋",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000029,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "渡る",
+     "lemma": "渡る",
+     "reading": "渡る",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 8200,
+   "end_ms": 10600,
+   "audio_blob_hash": "00000000001e375c00000000001e375c00000000001e375c00000000001e375c",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000027",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 39,
+   "text": "箸で飴を取るのは難しい。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "箸",
+     "lemma": "箸",
+     "reading": "はし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000030,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "飴",
+     "lemma": "飴",
+     "reading": "あめ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000028,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 4,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "取る",
+     "lemma": "取る",
+     "reading": "とる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000010,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "の",
+     "lemma": "の",
+     "reading": "の",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "は",
+     "lemma": "は",
+     "reading": "は",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 11,
+     "surface": "難しい",
+     "lemma": "難しい",
+     "reading": "難しい",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 11,
+     "e": 12,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 12300,
+   "end_ms": 14700,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000028",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 40,
+   "text": "ありがとう、よろしく！",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 5,
+     "surface": "ありがとう",
+     "lemma": "ありがとう",
+     "reading": "ありがとう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000023,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "、",
+     "lemma": "、",
+     "reading": "、",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 10,
+     "surface": "よろしく",
+     "lemma": "よろしく",
+     "reading": "よろしく",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000024,
+     "override": false
+    },
+    {
+     "s": 10,
+     "e": 11,
+     "surface": "！",
+     "lemma": "！",
+     "reading": "！",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 16400,
+   "end_ms": 18800,
+   "audio_blob_hash": "00000000001e37d700000000001e37d700000000001e37d700000000001e37d7",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-000000000029",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 41,
+   "text": "学校まで電車で行く。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "学校",
+     "lemma": "学校",
+     "reading": "がっこう",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000005,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "まで",
+     "lemma": "まで",
+     "reading": "まで",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "電車",
+     "lemma": "電車",
+     "reading": "でんしゃ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000026,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 7,
+     "surface": "で",
+     "lemma": "で",
+     "reading": "で",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 9,
+     "surface": "行く",
+     "lemma": "行く",
+     "reading": "いく",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000004,
+     "override": false
+    },
+    {
+     "s": 9,
+     "e": 10,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 20500,
+   "end_ms": 22900,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002a",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 42,
+   "text": "空を見る。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "空",
+     "lemma": "空",
+     "reading": "そら",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000038,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "見る",
+     "lemma": "見る",
+     "reading": "みる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000025,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 24600,
+   "end_ms": 27000,
+   "audio_blob_hash": "00000000001e37d900000000001e37d900000000001e37d900000000001e37d9",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002b",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 43,
+   "text": "時間がない。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "時間",
+     "lemma": "時間",
+     "reading": "じかん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000007,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 3,
+     "surface": "が",
+     "lemma": "が",
+     "reading": "が",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 3,
+     "e": 5,
+     "surface": "ない",
+     "lemma": "ない",
+     "reading": "ない",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 28700,
+   "end_ms": 31100,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002c",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 44,
+   "text": "鰯を食べる。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "鰯",
+     "lemma": "鰯",
+     "reading": "いわし",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000036,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 5,
+     "surface": "食べる",
+     "lemma": "食べる",
+     "reading": "たべる",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000003,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 32800,
+   "end_ms": 35200,
+   "audio_blob_hash": "00000000001e37db00000000001e37db00000000001e37db00000000001e37db",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 2,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002d",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 45,
+   "text": "本を一冊ずつ読む。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "本",
+     "lemma": "本",
+     "reading": "ほん",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000040,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "を",
+     "lemma": "を",
+     "reading": "を",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "一冊",
+     "lemma": "一冊",
+     "reading": "一冊",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 6,
+     "surface": "ずつ",
+     "lemma": "ずつ",
+     "reading": "ずつ",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 6,
+     "e": 8,
+     "surface": "読む",
+     "lemma": "読む",
+     "reading": "読む",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 8,
+     "e": 9,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 36900,
+   "end_ms": 39300,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 0,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002e",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 46,
+   "text": "気にするな。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 1,
+     "surface": "気",
+     "lemma": "気",
+     "reading": "き",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000039,
+     "override": false
+    },
+    {
+     "s": 1,
+     "e": 2,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "する",
+     "lemma": "する",
+     "reading": "する",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "な",
+     "lemma": "な",
+     "reading": "な",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 6,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 41000,
+   "end_ms": 43400,
+   "audio_blob_hash": "00000000001e37dd00000000001e37dd00000000001e37dd00000000001e37dd",
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  },
+  {
+   "id": "0193a000-0014-7000-8000-00000000002f",
+   "media_id": "0193a000-000a-7000-8000-000000000006",
+   "segment_id": "0193a000-000b-7000-8000-00000000003c",
+   "ordinal": 47,
+   "text": "躊躇せずに言う。",
+   "tokens": [
+    {
+     "s": 0,
+     "e": 2,
+     "surface": "躊躇",
+     "lemma": "躊躇",
+     "reading": "ちゅうちょ",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": 9000015,
+     "override": false
+    },
+    {
+     "s": 2,
+     "e": 4,
+     "surface": "せず",
+     "lemma": "せず",
+     "reading": "せず",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "auxiliary",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 4,
+     "e": 5,
+     "surface": "に",
+     "lemma": "に",
+     "reading": "に",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "particle",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 5,
+     "e": 7,
+     "surface": "言う",
+     "lemma": "言う",
+     "reading": "言う",
+     "pos": [
+      "名詞"
+     ],
+     "cform": null,
+     "class": "content",
+     "seq": null,
+     "override": false
+    },
+    {
+     "s": 7,
+     "e": 8,
+     "surface": "。",
+     "lemma": "。",
+     "reading": "。",
+     "pos": [
+      "助詞"
+     ],
+     "cform": null,
+     "class": "other",
+     "seq": null,
+     "override": false
+    }
+   ],
+   "start_ms": 45100,
+   "end_ms": 47500,
+   "audio_blob_hash": null,
+   "image_blob_hash": null,
+   "location": null,
+   "origin": "media",
+   "unknown_count": 1,
+   "grammar_spans": []
+  }
+ ],
+ "coverage": {
+  "0193a000-000a-7000-8000-000000000001": {
+   "deck_id": "0193a000-001e-7000-8000-000000000065",
+   "segment_id": null,
+   "computed_at": "2026-11-13T06:00:00Z",
+   "hide": [
+    "ignored"
+   ],
+   "ignored_count": 2,
+   "unique": {
+    "total": 77,
+    "known": 46,
+    "learning": 6,
+    "unknown": 25
+   },
+   "tokens": {
+    "total": 462,
+    "known": 374,
+    "learning": 23,
+    "unknown": 65,
+    "unmapped": 3,
+    "known_pct": 81.0
+   },
+   "curve": [
+    {
+     "words": 0,
+     "known_pct": 60.0
+    },
+    {
+     "words": 10,
+     "known_pct": 67.2
+    },
+    {
+     "words": 25,
+     "known_pct": 75.6
+    },
+    {
+     "words": 50,
+     "known_pct": 85.2
+    },
+    {
+     "words": 100,
+     "known_pct": 94.5
+    },
+    {
+     "words": 200,
+     "known_pct": 99.2
+    },
+    {
+     "words": 400,
+     "known_pct": 99.5
+    }
+   ],
+   "difficulty": {
+    "rank": 1,
+    "of": 5,
+    "unknown_per_1000": 180.0
+   },
+   "segments": [
+    {
+     "segment_id": "0193a000-000b-7000-8000-00000000000a",
+     "ordinal": 0,
+     "title": "第1話 はじまりの日",
+     "unique_total": 20,
+     "unique_unknown": 6,
+     "token_total": 120,
+     "known_pct": 82.0
+    },
+    {
+     "segment_id": "0193a000-000b-7000-8000-00000000000b",
+     "ordinal": 1,
+     "title": "第2話 雨の日の橋",
+     "unique_total": 27,
+     "unique_unknown": 7,
+     "token_total": 160,
+     "known_pct": 78.5
+    },
+    {
+     "segment_id": "0193a000-000b-7000-8000-00000000000c",
+     "ordinal": 2,
+     "title": "第3話 — an episode title long enough to wrap twice on a phone",
+     "unique_total": 34,
+     "unique_unknown": 8,
+     "token_total": 200,
+     "known_pct": 75.0
+    }
+   ]
+  },
+  "0193a000-000a-7000-8000-000000000002": {
+   "deck_id": "0193a000-001e-7000-8000-000000000066",
+   "segment_id": null,
+   "computed_at": "2026-11-13T06:00:00Z",
+   "hide": [
+    "ignored"
+   ],
+   "ignored_count": 4,
+   "unique": {
+    "total": 114,
+    "known": 76,
+    "learning": 9,
+    "unknown": 29
+   },
+   "tokens": {
+    "total": 684,
+    "known": 574,
+    "learning": 34,
+    "unknown": 76,
+    "unmapped": 6,
+    "known_pct": 83.9
+   },
+   "curve": [
+    {
+     "words": 0,
+     "known_pct": 60.0
+    },
+    {
+     "words": 10,
+     "known_pct": 67.2
+    },
+    {
+     "words": 25,
+     "known_pct": 75.6
+    },
+    {
+     "words": 50,
+     "known_pct": 85.2
+    },
+    {
+     "words": 100,
+     "known_pct": 94.5
+    },
+    {
+     "words": 200,
+     "known_pct": 99.2
+    },
+    {
+     "words": 400,
+     "known_pct": 99.5
+    }
+   ],
+   "difficulty": {
+    "rank": 2,
+    "of": 5,
+    "unknown_per_1000": 90.0
+   },
+   "segments": [
+    {
+     "segment_id": "0193a000-000b-7000-8000-000000000014",
+     "ordinal": 0,
+     "title": "序章",
+     "unique_total": 20,
+     "unique_unknown": 6,
+     "token_total": 120,
+     "known_pct": 82.0
+    },
+    {
+     "segment_id": "0193a000-000b-7000-8000-000000000015",
+     "ordinal": 1,
+     "title": "第一章 檸檬",
+     "unique_total": 27,
+     "unique_unknown": 7,
+     "token_total": 160,
+     "known_pct": 78.5
+    },
+    {
+     "segment_id": "0193a000-000b-7000-8000-000000000016",
+     "ordinal": 2,
+     "title": "第二章 魑魅魍魎",
+     "unique_total": 34,
+     "unique_unknown": 8,
+     "token_total": 200,
+     "known_pct": 75.0
+    }
+   ]
+  },
+  "0193a000-000a-7000-8000-000000000003": {
+   "deck_id": "0193a000-001e-7000-8000-000000000067",
+   "segment_id": null,
+   "computed_at": "2026-11-13T06:00:00Z",
+   "hide": [
+    "ignored"
+   ],
+   "ignored_count": 6,
+   "unique": {
+    "total": 151,
+    "known": 110,
+    "learning": 12,
+    "unknown": 29
+   },
+   "tokens": {
+    "total": 906,
+    "known": 788,
+    "learning": 45,
+    "unknown": 73,
+    "unmapped": 9,
+    "known_pct": 87.0
+   },
+   "curve": [
+    {
+     "words": 0,
+     "known_pct": 60.0
+    },
+    {
+     "words": 10,
+     "known_pct": 67.2
+    },
+    {
+     "words": 25,
+     "known_pct": 75.6
+    },
+    {
+     "words": 50,
+     "known_pct": 85.2
+    },
+    {
+     "words": 100,
+     "known_pct": 94.5
+    },
+    {
+     "words": 200,
+     "known_pct": 99.2
+    },
+    {
+     "words": 400,
+     "known_pct": 99.5
+    }
+   ],
+   "difficulty": {
+    "rank": 3,
+    "of": 5,
+    "unknown_per_1000": 60.0
+   },
+   "segments": [
+    {
+     "segment_id": "0193a000-000b-7000-8000-00000000001e",
+     "ordinal": 0,
+     "title": "Volume 1",
+     "unique_total": 20,
+     "unique_unknown": 6,
+     "token_total": 120,
+     "known_pct": 82.0
+    }
+   ]
+  },
+  "0193a000-000a-7000-8000-000000000004": {
+   "deck_id": "0193a000-001e-7000-8000-000000000068",
+   "segment_id": null,
+   "computed_at": "2026-11-13T06:00:00Z",
+   "hide": [
+    "ignored"
+   ],
+   "ignored_count": 8,
+   "unique": {
+    "total": 188,
+    "known": 148,
+    "learning": 15,
+    "unknown": 25
+   },
+   "tokens": {
+    "total": 1128,
+    "known": 1015,
+    "learning": 56,
+    "unknown": 57,
+    "unmapped": 12,
+    "known_pct": 90.0
+   },
+   "curve": [
+    {
+     "words": 0,
+     "known_pct": 60.0
+    },
+    {
+     "words": 10,
+     "known_pct": 67.2
+    },
+    {
+     "words": 25,
+     "known_pct": 75.6
+    },
+    {
+     "words": 50,
+     "known_pct": 85.2
+    },
+    {
+     "words": 100,
+     "known_pct": 94.5
+    },
+    {
+     "words": 200,
+     "known_pct": 99.2
+    },
+    {
+     "words": 400,
+     "known_pct": 99.5
+    }
+   ],
+   "difficulty": {
+    "rank": 4,
+    "of": 5,
+    "unknown_per_1000": 45.0
+   },
+   "segments": [
+    {
+     "segment_id": "0193a000-000b-7000-8000-000000000028",
+     "ordinal": 0,
+     "title": "",
+     "unique_total": 20,
+     "unique_unknown": 6,
+     "token_total": 120,
+     "known_pct": 82.0
+    }
+   ]
+  },
+  "0193a000-000a-7000-8000-000000000006": {
+   "deck_id": "0193a000-001e-7000-8000-00000000006a",
+   "segment_id": null,
+   "computed_at": "2026-11-13T06:00:00Z",
+   "hide": [
+    "ignored"
+   ],
+   "ignored_count": 12,
+   "unique": {
+    "total": 262,
+    "known": 238,
+    "learning": 20,
+    "unknown": 4
+   },
+   "tokens": {
+    "total": 1572,
+    "known": 1509,
+    "learning": 78,
+    "unknown": -15,
+    "unmapped": 18,
+    "known_pct": 96.0
+   },
+   "curve": [
+    {
+     "words": 0,
+     "known_pct": 60.0
+    },
+    {
+     "words": 10,
+     "known_pct": 67.2
+    },
+    {
+     "words": 25,
+     "known_pct": 75.6
+    },
+    {
+     "words": 50,
+     "known_pct": 85.2
+    },
+    {
+     "words": 100,
+     "known_pct": 94.5
+    },
+    {
+     "words": 200,
+     "known_pct": 99.2
+    },
+    {
+     "words": 400,
+     "known_pct": 99.5
+    }
+   ],
+   "difficulty": null,
+   "segments": [
+    {
+     "segment_id": "0193a000-000b-7000-8000-00000000003c",
+     "ordinal": 0,
+     "title": "Episode 1",
+     "unique_total": 20,
+     "unique_unknown": 6,
+     "token_total": 120,
+     "known_pct": 82.0
+    }
+   ]
+  }
+ },
+ "parse_overrides": [
+  {
+   "id": "0193a000-0015-7000-8000-000000000001",
+   "match_text": "日本語",
+   "media_id": null,
+   "sentence_id": null,
+   "tokens": [
+    {
+     "surface": "日本",
+     "seq": null
+    },
+    {
+     "surface": "語",
+     "seq": null
+    }
+   ],
+   "note": "",
+   "created_at": "2026-11-03T09:00:00Z",
+   "updated_at": "2026-11-03T09:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0015-7000-8000-000000000002",
+   "match_text": "一冊ずつ",
+   "media_id": "0193a000-000a-7000-8000-000000000001",
+   "sentence_id": null,
+   "tokens": [
+    {
+     "surface": "一冊",
+     "seq": null
+    },
+    {
+     "surface": "ずつ",
+     "seq": 9000037
+    }
+   ],
+   "note": "",
+   "created_at": "2026-11-09T09:00:00Z",
+   "updated_at": "2026-11-09T09:00:00Z",
+   "deleted_at": null
+  }
+ ],
+ "jpdb_vocab": [
+  {
+   "jpdb_vid": 1000001,
+   "spelling": "取る",
+   "reading": "とる",
+   "entry_seq": null,
+   "resolution": "unresolved",
+   "resolved_at": null,
+   "first_seen_at": "2026-10-14T09:00:00Z",
+   "occurrence_total": 31,
+   "media": [
+    {
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "title": "jpdb: Slice of life deck (imported)",
+     "occurrence_count": 31
+    }
+   ]
+  },
+  {
+   "jpdb_vid": 1000002,
+   "spelling": "あめ",
+   "reading": "あめ",
+   "entry_seq": null,
+   "resolution": "unresolved",
+   "resolved_at": null,
+   "first_seen_at": "2026-10-14T09:00:00Z",
+   "occurrence_total": 12,
+   "media": [
+    {
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "title": "jpdb: Slice of life deck (imported)",
+     "occurrence_count": 12
+    }
+   ]
+  },
+  {
+   "jpdb_vid": 1000003,
+   "spelling": "",
+   "reading": "はし",
+   "entry_seq": null,
+   "resolution": "unresolved",
+   "resolved_at": null,
+   "first_seen_at": "2026-10-14T09:00:00Z",
+   "occurrence_total": 7,
+   "media": [
+    {
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "title": "jpdb: Slice of life deck (imported)",
+     "occurrence_count": 7
+    }
+   ]
+  },
+  {
+   "jpdb_vid": 1000004,
+   "spelling": "一入",
+   "reading": "ひとしお",
+   "entry_seq": null,
+   "resolution": "unresolved",
+   "resolved_at": null,
+   "first_seen_at": "2026-10-14T09:00:00Z",
+   "occurrence_total": 2,
+   "media": [
+    {
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "title": "jpdb: Slice of life deck (imported)",
+     "occurrence_count": 2
+    }
+   ]
+  },
+  {
+   "jpdb_vid": 1000005,
+   "spelling": "魑魅魍魎",
+   "reading": "ちみもうりょう",
+   "entry_seq": null,
+   "resolution": "unresolved",
+   "resolved_at": null,
+   "first_seen_at": "2026-10-14T09:00:00Z",
+   "occurrence_total": 1,
+   "media": [
+    {
+     "media_id": "0193a000-000a-7000-8000-000000000006",
+     "title": "jpdb: Slice of life deck (imported)",
+     "occurrence_count": 1
+    }
+   ]
+  }
+ ],
+ "grammar_points": [
+  {
+   "id": "0193a000-0016-7000-8000-000000000001",
+   "title": "〜ている",
+   "pattern": "Vている",
+   "meaning": "ongoing action or resulting state",
+   "explanation": "",
+   "notes": "",
+   "jlpt": 5,
+   "language": "ja",
+   "is_stub": false,
+   "example_count": 14,
+   "detection_rules": [],
+   "links": [],
+   "related_ids": [],
+   "note_id": null,
+   "created_at": "2026-09-24T09:00:00Z",
+   "updated_at": "2026-11-08T09:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0016-7000-8000-000000000002",
+   "title": "〜ずつ",
+   "pattern": "Nずつ",
+   "meaning": "each; at a time",
+   "explanation": "",
+   "notes": "",
+   "jlpt": 4,
+   "language": "ja",
+   "is_stub": false,
+   "example_count": 3,
+   "detection_rules": [],
+   "links": [],
+   "related_ids": [],
+   "note_id": null,
+   "created_at": "2026-09-24T09:00:00Z",
+   "updated_at": "2026-11-08T09:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0016-7000-8000-000000000003",
+   "title": "〜ずに",
+   "pattern": "Vずに",
+   "meaning": "without doing",
+   "explanation": "",
+   "notes": "",
+   "jlpt": 3,
+   "language": "ja",
+   "is_stub": false,
+   "example_count": 2,
+   "detection_rules": [],
+   "links": [],
+   "related_ids": [],
+   "note_id": null,
+   "created_at": "2026-09-24T09:00:00Z",
+   "updated_at": "2026-11-08T09:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0016-7000-8000-000000000004",
+   "title": "〜に違いない",
+   "pattern": "Vに違いない",
+   "meaning": "must be; no doubt",
+   "explanation": "",
+   "notes": "",
+   "jlpt": 2,
+   "language": "ja",
+   "is_stub": false,
+   "example_count": 0,
+   "detection_rules": [],
+   "links": [],
+   "related_ids": [],
+   "note_id": null,
+   "created_at": "2026-09-24T09:00:00Z",
+   "updated_at": "2026-11-08T09:00:00Z",
+   "deleted_at": null
+  }
+ ]
+}

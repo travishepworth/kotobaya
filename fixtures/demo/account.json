@@ -1,0 +1,537 @@
+{
+ "principal": {
+  "kind": "session",
+  "name": "Demo learner",
+  "scopes": [
+   "read",
+   "write",
+   "review",
+   "import",
+   "admin"
+  ],
+  "token_id": "0193a000-0004-7000-8000-000000000009",
+  "device_id": "0193a000-0003-7000-8000-000000000003",
+  "expires_at": "2026-12-13T09:00:00Z",
+  "totp_enabled": false
+ },
+ "meta": {
+  "api_version": "v1",
+  "server_version": "0.1.7-demo",
+  "core_version": "0.1.7",
+  "server_device_id": "0193a000-0003-7000-8000-000000000001",
+  "server_time": "2026-11-13T09:00:00Z",
+  "high_water_seq": 18234,
+  "log_epoch": "demo",
+  "dict_release": {
+   "id": 3,
+   "version": "demo-2026-11"
+  },
+  "limits": {
+   "max_blob_bytes": 104857600,
+   "max_json_bytes": 1048576,
+   "max_op_bytes": 65536,
+   "max_page_size": 500,
+   "max_pull_ops": 1000,
+   "max_push_ops": 1000,
+   "max_push_bytes": 4194304
+  }
+ },
+ "settings": [
+  {
+   "key": "scheduler.timezone",
+   "value": "Asia/Tokyo",
+   "updated_at": "2026-04-27T09:00:00Z"
+  },
+  {
+   "key": "scheduler.grading_buttons",
+   "value": 4,
+   "updated_at": "2026-04-27T09:00:00Z"
+  },
+  {
+   "key": "scheduler.new_per_day",
+   "value": 15,
+   "updated_at": "2026-10-14T09:00:00Z"
+  }
+ ],
+ "presets": [
+  {
+   "id": "00000000-0000-7000-8000-000000000010",
+   "name": "Default",
+   "desired_retention": 0.9,
+   "maximum_interval_days": 36500,
+   "learning_steps_s": [
+    60,
+    600
+   ],
+   "relearning_steps_s": [
+    600
+   ],
+   "fuzz": true,
+   "easy_days": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "fsrs_version": null,
+   "weights": null,
+   "weights_version": 0,
+   "optimized_at": null,
+   "optimizer_stats": null,
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0002-7000-8000-000000000001",
+   "name": "Gentle (weekends off, 0.85 retention)",
+   "desired_retention": 0.85,
+   "maximum_interval_days": 180,
+   "learning_steps_s": [
+    300,
+    1800,
+    86400
+   ],
+   "relearning_steps_s": [
+    1800
+   ],
+   "fuzz": false,
+   "easy_days": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.5,
+    0
+   ],
+   "fsrs_version": null,
+   "weights": null,
+   "weights_version": 0,
+   "optimized_at": null,
+   "optimizer_stats": null,
+   "created_at": "2026-08-15T09:00:00Z",
+   "updated_at": "2026-11-10T09:00:00Z",
+   "deleted_at": null
+  }
+ ],
+ "note_types": [
+  {
+   "id": "00000000-0000-7000-8000-000000000101",
+   "name": "Vocab",
+   "base_type": "vocab",
+   "builtin": true,
+   "fields": [
+    {
+     "key": "expression",
+     "label": "Expression",
+     "kind": "text"
+    },
+    {
+     "key": "reading",
+     "label": "Reading",
+     "kind": "text"
+    },
+    {
+     "key": "meaning",
+     "label": "Meaning",
+     "kind": "text"
+    },
+    {
+     "key": "sentence",
+     "label": "Sentence",
+     "kind": "text"
+    },
+    {
+     "key": "sentence_translation",
+     "label": "Sentence translation",
+     "kind": "text"
+    },
+    {
+     "key": "audio",
+     "label": "Audio",
+     "kind": "audio"
+    },
+    {
+     "key": "sentence_audio",
+     "label": "Sentence audio",
+     "kind": "audio"
+    },
+    {
+     "key": "image",
+     "label": "Image",
+     "kind": "image"
+    },
+    {
+     "key": "notes",
+     "label": "Notes",
+     "kind": "text"
+    }
+   ],
+   "templates": {
+    "meaning": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "reading": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "listening": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "production": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "pitch": {
+     "default": false,
+     "front": null,
+     "back": null
+    }
+   },
+   "css": "",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "00000000-0000-7000-8000-000000000102",
+   "name": "Kanji",
+   "base_type": "kanji",
+   "builtin": true,
+   "fields": [
+    {
+     "key": "literal",
+     "label": "Kanji",
+     "kind": "text"
+    },
+    {
+     "key": "keyword",
+     "label": "Keyword",
+     "kind": "text"
+    },
+    {
+     "key": "readings",
+     "label": "Readings",
+     "kind": "text"
+    },
+    {
+     "key": "notes",
+     "label": "Notes",
+     "kind": "text"
+    }
+   ],
+   "templates": {
+    "keyword": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "writing": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "components": {
+     "default": false,
+     "front": null,
+     "back": null
+    }
+   },
+   "css": "",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "00000000-0000-7000-8000-000000000103",
+   "name": "Phrase",
+   "base_type": "phrase",
+   "builtin": true,
+   "fields": [
+    {
+     "key": "expression",
+     "label": "Expression",
+     "kind": "text"
+    },
+    {
+     "key": "reading",
+     "label": "Reading",
+     "kind": "text"
+    },
+    {
+     "key": "meaning",
+     "label": "Meaning",
+     "kind": "text"
+    },
+    {
+     "key": "audio",
+     "label": "Audio",
+     "kind": "audio"
+    },
+    {
+     "key": "notes",
+     "label": "Notes",
+     "kind": "text"
+    }
+   ],
+   "templates": {
+    "meaning": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "production": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "listening": {
+     "default": false,
+     "front": null,
+     "back": null
+    }
+   },
+   "css": "",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "00000000-0000-7000-8000-000000000104",
+   "name": "Grammar",
+   "base_type": "grammar",
+   "builtin": true,
+   "fields": [
+    {
+     "key": "pattern",
+     "label": "Pattern",
+     "kind": "text"
+    },
+    {
+     "key": "meaning",
+     "label": "Meaning",
+     "kind": "text"
+    },
+    {
+     "key": "notes",
+     "label": "Notes",
+     "kind": "text"
+    }
+   ],
+   "templates": {
+    "cloze": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "recognition": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "spot": {
+     "default": false,
+     "front": null,
+     "back": null
+    },
+    "production": {
+     "default": false,
+     "front": null,
+     "back": null
+    }
+   },
+   "css": "",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "00000000-0000-7000-8000-000000000105",
+   "name": "Sentence",
+   "base_type": "sentence",
+   "builtin": true,
+   "fields": [
+    {
+     "key": "sentence",
+     "label": "Sentence",
+     "kind": "text"
+    },
+    {
+     "key": "reading",
+     "label": "Reading",
+     "kind": "text"
+    },
+    {
+     "key": "translation",
+     "label": "Translation",
+     "kind": "text"
+    },
+    {
+     "key": "audio",
+     "label": "Audio",
+     "kind": "audio"
+    },
+    {
+     "key": "image",
+     "label": "Image",
+     "kind": "image"
+    },
+    {
+     "key": "notes",
+     "label": "Notes",
+     "kind": "text"
+    }
+   ],
+   "templates": {
+    "comprehension": {
+     "default": true,
+     "front": null,
+     "back": null
+    },
+    "listening": {
+     "default": false,
+     "front": null,
+     "back": null
+    }
+   },
+   "css": "",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  },
+  {
+   "id": "0193a000-0001-7000-8000-000000000001",
+   "name": "Minimal pair (pitch) — a deliberately long custom note-type name",
+   "base_type": "custom",
+   "builtin": false,
+   "fields": [
+    {
+     "key": "word_a",
+     "label": "Word A",
+     "kind": "text"
+    },
+    {
+     "key": "word_b",
+     "label": "Word B",
+     "kind": "text"
+    },
+    {
+     "key": "hint",
+     "label": "Hint",
+     "kind": "text"
+    },
+    {
+     "key": "audio_a",
+     "label": "Audio A",
+     "kind": "audio"
+    }
+   ],
+   "templates": {
+    "pair": {
+     "default": true,
+     "front": "{{word_a}} / {{word_b}}<br>{{hint}}",
+     "back": "{{word_a}}<br>{{audio_a}}"
+    },
+    "reverse": {
+     "default": false,
+     "front": "{{word_b}}",
+     "back": "{{word_a}}"
+    }
+   },
+   "css": ".kb-card .hint { opacity: .7 }",
+   "created_at": "2026-01-01T00:00:00Z",
+   "updated_at": "2026-01-01T00:00:00Z",
+   "deleted_at": null
+  }
+ ],
+ "devices": [
+  {
+   "id": "0193a000-0003-7000-8000-000000000001",
+   "kind": "server",
+   "name": "kotobaya server",
+   "paired_at": "2026-01-01T00:00:00Z",
+   "last_seen_at": "2026-11-13T08:54:00Z",
+   "last_pull_seq": 0,
+   "last_push_at": null,
+   "push_topic": null,
+   "revoked_at": null
+  },
+  {
+   "id": "0193a000-0003-7000-8000-000000000002",
+   "kind": "android",
+   "name": "Pixel 8 (daily driver)",
+   "paired_at": "2026-07-16T09:00:00Z",
+   "last_seen_at": "2026-11-13T07:00:00Z",
+   "last_pull_seq": 18234,
+   "last_push_at": "2026-11-13T07:00:00Z",
+   "push_topic": null,
+   "revoked_at": null
+  },
+  {
+   "id": "0193a000-0003-7000-8000-000000000003",
+   "kind": "web",
+   "name": "Firefox on the very long-named laptop in the living room",
+   "paired_at": "2026-09-14T09:00:00Z",
+   "last_seen_at": null,
+   "last_pull_seq": 0,
+   "last_push_at": null,
+   "push_topic": null,
+   "revoked_at": null
+  },
+  {
+   "id": "0193a000-0003-7000-8000-000000000004",
+   "kind": "android",
+   "name": "Old tablet",
+   "paired_at": "2025-10-09T09:00:00Z",
+   "last_seen_at": "2026-01-17T09:00:00Z",
+   "last_pull_seq": 912,
+   "last_push_at": "2026-01-17T09:00:00Z",
+   "push_topic": null,
+   "revoked_at": "2026-03-08T09:00:00Z"
+  }
+ ],
+ "tokens": [
+  {
+   "id": "0193a000-0004-7000-8000-000000000001",
+   "name": "Yomitan / AnkiConnect",
+   "kind": "personal",
+   "scopes": [
+    "read",
+    "write"
+   ],
+   "token_prefix": "kby_p_3f9a",
+   "device_id": null,
+   "created_at": "2026-08-25T09:00:00Z",
+   "last_used_at": "2026-11-12T09:00:00Z",
+   "expires_at": null,
+   "revoked_at": null,
+   "active": true
+  },
+  {
+   "id": "0193a000-0004-7000-8000-000000000002",
+   "name": "Backup script",
+   "kind": "personal",
+   "scopes": [
+    "read",
+    "admin"
+   ],
+   "token_prefix": "kby_p_77c1",
+   "device_id": null,
+   "created_at": "2026-01-17T09:00:00Z",
+   "last_used_at": null,
+   "expires_at": "2026-11-03T09:00:00Z",
+   "revoked_at": null,
+   "active": false
+  }
+ ]
+}
