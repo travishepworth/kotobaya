@@ -759,3 +759,7 @@
 2026-11-13T09:04:18Z SEC-2 MERGE CHECK_GREEN worker (rebased onto T610)
 2026-11-13T09:06:23Z SEC-1 REVIEW_APPROVE (3 minors -> FOLLOWUPS); MERGE CHECK_GREEN server after rebase
 2026-11-13T09:15:21Z P6 MAKE_TEST green; RUN 11 END: 5 merges (F-28,T609,T610,SEC-2,SEC-1); P6 complete -> GATE-DONE
+2026-11-13T09:33:21Z RUN12 START main d1da50a; disk /home 39G free; bugfix run (0.1.4 live bugs) BUG-1..BUG-5 filed
+2026-11-13T09:33:21Z BUG-1 DISPATCH writer-senior (stats perf, high)
+2026-11-13T09:33:21Z BUG-2+BUG-3 DISPATCH writer (worker batch, med)
+2026-11-13T09:33:21Z BUG-4 DISPATCH writer (deploy voicevox, low)

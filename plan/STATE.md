@@ -1,10 +1,12 @@
 # STATE
 Mode: single-session
-Phase: P6 (Polish) — running; T604 merged, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (end of orchestrator run 10)
+Phase: P7 (live bugfixes, run 12) — P6 complete, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13 (run 12 in progress)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 11)
+## RESUME HERE (run 12 IN PROGRESS: bugfix run BUG-1..5 for 0.1.4 live bugs; see Running)
+
+## Run 11 handover (previous)
 - Run 11 merged (5): F-28 (worker CPU-only torch, image 2.04 GB), T609 (security review: docs/SECURITY.md, chart hardening + egress NetworkPolicies; review APPROVE), T610 (docs/RUNBOOK.md), SEC-2 (worker SSRF guard), SEC-1 (blob XSS headers; review APPROVE). All checks green post-rebase.
 - P6 COMPLETE (T607 DEFERRED). End-of-phase make test: GREEN (all modules, run 11). Next: GATE-DONE human sign-off (HUMAN_CHECKS run 11 section).
 - Remaining work is FOLLOWUPS only (not in BACKLOG): SEC-4/SEC-5 contract C-tickets, SEC-6/7, SEC-1 minors, FSRS weight rollback path (med), T608 mnemonic images in .apkg. HUMAN: SEC-3 Postgres roles, SEC-9 ntfy host, backups off live, kubectl ctx left at `homepage`.
@@ -14,6 +16,9 @@ Updated: 2026-11-13 (end of orchestrator run 10)
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| BUG-1 | writer-senior | 1 | t/BUG-1-stats-perf | run 12 |
+| BUG-2+BUG-3 | writer | 1 | t/BUG-2+BUG-3-worker-fixes | run 12 |
+| BUG-4 | writer | 1 | t/BUG-4-voicevox | run 12 |
 
 ## Parked
 (none)
