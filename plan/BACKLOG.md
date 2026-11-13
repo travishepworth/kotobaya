@@ -601,7 +601,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 ## Phase 7 — Live bugfixes (0.1.4, run 12; ahead of FOLLOWUPS)
 
 ### BUG-1 — Stats endpoints slow (LATERAL per review) + page fails as a whole
-- model: opus · risk: high · deps: — · status: RUNNING
+- model: opus · risk: high · deps: — · status: MERGED
 - paths: server stats/ + tests, web/src/routes/stats/ (ticket: plan/tickets/BUG-1.md)
 
 ### BUG-2 — jpdb deck import title 404 + bare numeric ID mapping
@@ -621,7 +621,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: server struggle/, jobs SSE, Main.kt wiring, tests (ticket: plan/tickets/BUG-5.md)
 
 ### BUG-6 — jpdb import replay: Hard never graduates (re)learning cards (~1,100 stuck)
-- model: opus (architect) · risk: high (+architect second pass) · deps: — · status: RUNNING
+- model: opus (architect) · risk: high (+architect second pass) · deps: — · status: MERGED
 - paths: contracts/sync/, core replay/decide + scheduler version, tests (ticket: plan/tickets/BUG-6.md)
 
 ## Phase 8 — Features (requested 2026-11-13)

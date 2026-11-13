@@ -788,3 +788,8 @@
 2026-11-13T10:11:27Z BUG-1 NOTE coordinator: web queue slow -> covered; GET /review/queue load+build 48/37ms @89.8k/10k (StatsPerfTest.reviewQueueLoadsWithinOneSecond)
 2026-11-13T10:12:54Z BUG-1 MERGE e9b8350 CHECK_GREEN server+web after rebase (review APPROVE)
 2026-11-13T10:12:54Z BUG-6 REBASE conflict StatsQueries (1 hunk) -> writer resolving
+2026-11-13T10:27:49Z RUN13 END: died mid-run (API auth error), no handover; merged BUG-1 (e9b8350, unpushed)
+2026-11-13T10:27:49Z RUN14 START main e9b8350; committed run 13 board state (59985bc)
+2026-11-13T10:27:49Z BUG-6 REBASE onto 59985bc clean; CHECK_GREEN core+server+contracts
+2026-11-13T10:27:49Z BUG-6 MERGE a660c52 (review APPROVE reviewer+architect); worktree+branches removed
+2026-11-13T10:34:40Z RUN14 END make test rc=0 at a660c52; P7 complete; P8 (C-17, FEAT-1) left TODO pending user confirm

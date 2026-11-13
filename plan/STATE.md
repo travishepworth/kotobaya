@@ -1,58 +1,45 @@
 # STATE
 Mode: single-session
-Phase: P7 (live bugfixes, run 12) — P6 complete, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (run 13 in progress)
+Phase: P7 (live bugfixes) COMPLETE; P8 (features) TODO, awaiting user go-ahead   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13T10:34:40Z (run 14 end)
 
+## RESUME HERE (run 14 END: P7 done, release point green)
+- Run 14 took over run 13 (died on an API auth error, no handover). It committed run 13's board state (59985bc), rebased BUG-6 cleanly, and merged it (a660c52) with core, server and contracts checks green. make test rc=0 at a660c52. Pushed.
+- P7 merged: BUG-1..BUG-6. Nothing is in flight, and no t/* or worktree-agent-* branches or worktrees remain.
+- NEXT: Phase 8 (C-17 contract → FEAT-1 clickable kanji). Status TODO and NOT dispatched: wait until the user confirms. Then C-17 goes to the architect (opus); push main before dispatching.
+- BUG-6 deploy: no migration. The new server image re-replays all live cards at startup (core_scheduler_version fsrs6-1→fsrs6-2, one tx, lock 7033001), and /readyz fails until that commits. Android re-replays on first start after update. HUMAN_CHECKS has a line for this (Provisional decisions › ADR-021).
+- Remaining otherwise: FOLLOWUPS only, plus the human items in HUMAN_CHECKS (cluster deploy of a660c52 is manual per memory).
+- Orchestrator lessons: rebase onto main before ff-merge; never pipe git or make through tail; agent worktrees are locked, so run `git worktree unlock` then remove, and also delete the `worktree-agent-*` branch with -d.
 
-## RESUME HERE (run 13 IN PROGRESS: finishing BUG-1 + BUG-6; run 12 died, merged BUG-4, BUG-2+BUG-3, BUG-5 → a0e509e)
-
-## Run 11 handover (previous)
-- Run 11 merged (5): F-28 (worker CPU-only torch, image 2.04 GB), T609 (security review: docs/SECURITY.md, chart hardening + egress NetworkPolicies; review APPROVE), T610 (docs/RUNBOOK.md), SEC-2 (worker SSRF guard), SEC-1 (blob XSS headers; review APPROVE). All checks green post-rebase.
-- P6 COMPLETE (T607 DEFERRED). End-of-phase make test: GREEN (all modules, run 11). Next: GATE-DONE human sign-off (HUMAN_CHECKS run 11 section).
-- Remaining work is FOLLOWUPS only (not in BACKLOG): SEC-4/SEC-5 contract C-tickets, SEC-6/7, SEC-1 minors, FSRS weight rollback path (med), T608 mnemonic images in .apkg. HUMAN: SEC-3 Postgres roles, SEC-9 ntfy host, backups off live, kubectl ctx left at `homepage`.
-- Nothing in flight; no worktrees or t/* branches.
-- Orchestrator lessons: always rebase branch onto main before ff-merge; never pipe git rebase/merge through tail; look worktrees up by path; agent worktree locks need `git worktree remove -f -f` + delete `worktree-agent-*` branch too.
-
-## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
+## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| BUG-1 | writer-senior | 2 (QueueLoader granted) | t/BUG-1-stats-perf | run 13 |
-| BUG-6 | architect (opus) | 2 (server CoreCardCache granted; ADR-021) | t/BUG-6-import-graduation | run 12 |
-
-## Parked
-(none)
 
 ## Ready for review / In review
-| Ticket | Reviewer | Started |
-|---|---|---|
+(none)
 
 ## Blocked
-| Ticket | Reason | Needs |
-|---|---|---|
+(none)
 
 ## Notes
-- Disk: root fs filled during make test (Docker anon volumes ~22 GB; prune denied → HUMAN_CHECKS). Merged worktrees now removed after each merge (works). Check `df -h /` before Gradle/Testcontainers-heavy batches.
-- PUSH main BEFORE dispatching worktree writers: worktrees are cut from origin/main (T304b/T305b got a stale base on 2026-11-13).
-- Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
-- MAX_PARALLEL_WRITERS=3 (crash 2026-11-13); 1 Gradle-heavy writer at a time; never two Gradle make checks at once (count reviewers). Human (go hard): up to 3 concurrent reviewers allowed.
-- Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
-- Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.
-- Review rounds (human, 2026-11-12): loop while findings are REAL — blocker/major with a concrete failure scenario (inputs → wrong result/data loss/divergence). Minors and style never block (→ FOLLOWUPS). Re-reviews verify prior findings + only genuinely new majors. Safety cap: §9 (5 attempts → BLOCKED_HUMAN).
+- Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
+- Disk: / 19G free, /home 37G free (run 14). Check `df -h /` before Testcontainers-heavy batches.
+- PUSH main BEFORE dispatching worktree writers (worktrees are cut from origin/main).
+- MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy writer at a time. Up to 3 concurrent reviewers.
+- Handoffs are archived to plan/handoffs/<ID>.md after merge.
+- Model tiers (ADR-004): `fable` tickets go to Opus in the architect role. No Fable agents.
+- Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- (answered run 8) LLM assist DEFERRED: T607 not dispatched; P6 is complete without it.
-- none blocking. See plan/HUMAN_CHECKS.md.
+- Confirm Phase 8 (C-17, FEAT-1) before dispatch. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P5: merged 14 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a; run 8: T504a, C-14, D-2, T506c, D-3, T507) · attempts 16 · escalations 0 · run 9: T508a, C-15, T504b, F-25, T508b, F-22, F-25b · left: none (make test → GATE-P5)
-P4 DONE: W-5 merged run 7; make test green
-P4: merged 33+/37 (run 6: F-14, F-15, F-16, F-17, F-18, F-19, T403b, T403c, T408a, T404b, T406, T408b, T410; left: W-5) (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
-P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
-P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
-Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
+P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
+P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- BUG-6 (run 14): jpdb imported passes graduate (re)learning cards in replay; core SCHEDULER_VERSION fsrs6-2 (startup re-replay); server reads import_source; reviewer + architect APPROVE
+- BUG-1 (run 13): stats summary 153ms (was 19.7s), review queue 48ms, independent stats panels; reviewer APPROVE
 - BUG-5 (run 12): listHotKanji (hot-note scores rolled up per kanji); 501 allowlist now EMPTY; SSE client-disconnect write errors logged at debug (no test)
 - BUG-2+BUG-3 (run 12): jpdb deck title from vocabulary-list page (id fallback), bare numeric id rejected (UI + worker); optimizer datetimes normalised to aware UTC
 - BUG-4 (run 12): voicevox runs run.py directly (no gosu), per-component readOnlyRootFilesystem wins (set over deepCopy), ~/.local/share emptyDir only; check.sh asserts; smoke OK
