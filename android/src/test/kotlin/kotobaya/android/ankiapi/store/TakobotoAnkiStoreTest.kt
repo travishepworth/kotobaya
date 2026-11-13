@@ -14,18 +14,13 @@ import kotobaya.android.ankiapi.provider.NewNote
 import kotobaya.android.ankiapi.provider.NoteFilter
 import kotobaya.android.ankiapi.takoboto.TakobotoVocab
 import kotobaya.android.notes.CreateResult
-import kotobaya.android.notes.DEVICE_A
 import kotobaya.android.notes.NoteRequest
-import kotobaya.android.notes.T0
-import kotobaya.android.notes.creator
 import kotobaya.android.notes.isLive
 import kotobaya.android.notes.notes
-import kotobaya.android.notes.userDeck
-import kotobaya.android.sync.SqlDevice
-import kotobaya.android.sync.TestServer
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.OpType
+import kotobaya.sync.client.mint.MintResult
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -37,7 +32,13 @@ class TakobotoAnkiStoreTest {
     private val app: Application = ApplicationProvider.getApplicationContext()
     private val mid = AnkiIds.TAKOBOTO_MODEL_ID
 
-    private fun device() = SqlDevice(DEVICE_A, TestServer(T0), T0)
+    private fun device() = RoboDevice(app)
+
+    private fun userDeck(d: Dev, id: String): String {
+        val payload = JsonObject(linkedMapOf("id" to JsonString(id), "name" to JsonString("Mined"), "type" to JsonString("user")))
+        assertIs<MintResult.Minted>(d.minter.mint(OpType.DECK_CREATED, payload))
+        return id
+    }
 
     private fun word(w: String, r: String, meaning: String = "", deck: Long? = AnkiIds.INBOX_DECK_ID, caller: String? = "jp.takoboto") =
         NewNote(mid, listOf(w, r, meaning, "", ""), listOf("takoboto"), deck, caller)
@@ -68,7 +69,7 @@ class TakobotoAnkiStoreTest {
     fun aMatchedNoteMadeElsewhereIsADuplicateByChecksumOfItsHeadword() {
         val d = device()
         // created on this device outside the AnkiDroid API: entry only, no fields.expression
-        val made = assertIs<CreateResult.Created>(creator(d).create(NoteRequest(word = "猫", reading = "ねこ")))
+        val made = assertIs<CreateResult.Created>(noteCreator(d).create(NoteRequest(word = "猫", reading = "ねこ")))
         val s = takobotoStore(d, memoryMap(app))
         val hits = s.findNotes(NoteFilter(mid, setOf(AnkiContract.fieldChecksum("猫"))))
         assertEquals(listOf(made.noteId), hits.map { it.guid })
@@ -135,7 +136,7 @@ class TakobotoAnkiStoreTest {
     @Test
     fun ankiIdsAreStableAcrossRestarts() {
         val file = File(app.filesDir, "ankiapi-restart.db").also { it.delete() }
-        val d = device()
+        val d = RoboDevice(app, name = "learning-restart.db")
         val first = takobotoStore(d, SqliteAnkiIdMap(app, file.path)).add(word("猫", "ねこ")).note.id
         d.restart()
         val s = takobotoStore(d, SqliteAnkiIdMap(app, file.path), seed = 8)

@@ -9,18 +9,15 @@ import kotobaya.android.ankiapi.provider.AnkiContract
 import kotobaya.android.ankiapi.provider.AnkiProvider
 import kotobaya.android.ankiapi.provider.ProviderCallLog
 import kotobaya.android.ankiapi.store.AnkiIds
+import kotobaya.android.ankiapi.store.RoboDevice
 import kotobaya.android.ankiapi.store.memoryMap
 import kotobaya.android.ankiapi.store.pendingOps
 import kotobaya.android.ankiapi.store.takobotoStore
-import kotobaya.android.notes.DEVICE_A
 import kotobaya.android.notes.NoteCreator
-import kotobaya.android.notes.T0
 import kotobaya.android.notes.isLive
 import kotobaya.android.notes.notes
 import kotobaya.android.notes.str
 import kotobaya.android.notes.stringList
-import kotobaya.android.sync.SqlDevice
-import kotobaya.android.sync.TestServer
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -55,8 +52,8 @@ class TakobotoReplayTest {
 
     @Test
     fun s01CallLogReplayCreatesTheExpectedNotesCardsAndOpsOffline() {
-        val server = TestServer(T0)
-        val d = SqlDevice(DEVICE_A, server, T0)
+        val d = RoboDevice(app)
+        val server = d.server
         d.transport.offline = true // no network during the whole session
         val map = memoryMap(app)
         Robolectric.setupContentProvider(AnkiProvider::class.java, AnkiContract.AUTHORITY).attachStore(takobotoStore(d, map))

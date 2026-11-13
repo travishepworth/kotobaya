@@ -1,12 +1,10 @@
 package kotobaya.android.ankiapi.takoboto
 
 import java.security.MessageDigest
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotobaya.android.ankiapi.store.dev
 import kotobaya.android.ankiapi.store.ensurer
 import kotobaya.android.ankiapi.store.pendingOps
 import kotobaya.android.notes.DEVICE_A
@@ -22,8 +20,6 @@ import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.mint.MintResult
 import kotobaya.sync.client.protocol.CycleResult
 
-@RunWith(RobolectricTestRunner::class)
-@Config(application = android.app.Application::class)
 class NoteTypeEnsurerTest {
     private fun takobotoTypes(t: LearningTables) = t.all(LearningTable.NOTE_TYPE).filter { it["name"] == JsonString(TakobotoVocab.NAME) }
 
@@ -40,13 +36,13 @@ class NoteTypeEnsurerTest {
     @Test
     fun creationIsIdempotentOnRepeatedAppStarts() {
         val d = SqlDevice(DEVICE_A, TestServer(T0), T0)
-        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = true), ensurer(d).ensure())
-        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(d).ensure())
+        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = true), ensurer(d.dev()).ensure())
+        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(d.dev()).ensure())
         repeat(3) {
             d.restart()
-            assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(d, seed = it + 10).ensure())
+            assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(d.dev(), seed = it + 10).ensure())
         }
-        assertEquals(1, pendingOps(d).count { it.type == OpType.NOTE_TYPE_CREATED.wire })
+        assertEquals(1, pendingOps(d.dev()).count { it.type == OpType.NOTE_TYPE_CREATED.wire })
         assertEquals(1, takobotoTypes(d.tables()).size)
     }
 
@@ -57,8 +53,8 @@ class NoteTypeEnsurerTest {
         val b = SqlDevice(DEVICE_B, server, T0 + 1_000, seed = 2)
         a.transport.offline = true
         b.transport.offline = true
-        assertIs<EnsureResult.Ready>(ensurer(a, 1).ensure())
-        assertIs<EnsureResult.Ready>(ensurer(b, 2).ensure())
+        assertIs<EnsureResult.Ready>(ensurer(a.dev(), 1).ensure())
+        assertIs<EnsureResult.Ready>(ensurer(b.dev(), 2).ensure())
         a.transport.offline = false
         b.transport.offline = false
         assertIs<CycleResult.Completed>(a.sync())
@@ -68,8 +64,8 @@ class NoteTypeEnsurerTest {
             assertEquals(listOf(JsonString(TakobotoVocab.NOTE_TYPE_ID)), takobotoTypes(t).map { it["id"] })
         }
         // and neither mints again
-        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(a).ensure())
-        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(b).ensure())
+        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(a.dev()).ensure())
+        assertEquals(EnsureResult.Ready(TakobotoVocab.NOTE_TYPE_ID, created = false), ensurer(b.dev()).ensure())
     }
 
     @Test
@@ -77,18 +73,18 @@ class NoteTypeEnsurerTest {
         val d = SqlDevice(DEVICE_A, TestServer(T0), T0)
         val other = "0193a1b2-0009-7000-8000-000000000001"
         assertIs<MintResult.Minted>(d.stack.minter.mint(OpType.NOTE_TYPE_CREATED, TakobotoVocab.createPayload(other)))
-        assertEquals(EnsureResult.Ready(other, created = false), ensurer(d).ensure())
+        assertEquals(EnsureResult.Ready(other, created = false), ensurer(d.dev()).ensure())
     }
 
     @Test
     fun aDeletedFixedTypeIsReplacedByAFreshOne() {
         val d = SqlDevice(DEVICE_A, TestServer(T0), T0)
-        ensurer(d).ensure()
+        ensurer(d.dev()).ensure()
         val del = kotobaya.contracts.sync.JsonObject(mapOf("id" to JsonString(TakobotoVocab.NOTE_TYPE_ID)))
         assertIs<MintResult.Minted>(d.stack.minter.mint(OpType.NOTE_TYPE_DELETED, del))
-        val r = assertIs<EnsureResult.Ready>(ensurer(d).ensure())
+        val r = assertIs<EnsureResult.Ready>(ensurer(d.dev()).ensure())
         assertEquals(true, r.created)
         assertEquals(false, r.noteTypeId == TakobotoVocab.NOTE_TYPE_ID)
-        assertEquals(EnsureResult.Ready(r.noteTypeId, created = false), ensurer(d).ensure())
+        assertEquals(EnsureResult.Ready(r.noteTypeId, created = false), ensurer(d.dev()).ensure())
     }
 }

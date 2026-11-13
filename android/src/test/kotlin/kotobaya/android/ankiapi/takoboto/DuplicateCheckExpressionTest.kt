@@ -1,9 +1,6 @@
 package kotobaya.android.ankiapi.takoboto
 
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -20,8 +17,6 @@ import kotobaya.android.sync.SqlDevice
 import kotobaya.android.sync.TestServer
 
 /** T305b review carry-over: a matched note with `fields.expression` is found when the word itself matches no entry. */
-@RunWith(RobolectricTestRunner::class)
-@Config(application = android.app.Application::class)
 class DuplicateCheckExpressionTest {
     private val taberu = NoteRequest(word = "食べる", reading = "たべる", fields = mapOf("expression" to "食べる", "reading" to "たべる"), origin = "takoboto")
 
