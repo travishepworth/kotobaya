@@ -73,18 +73,26 @@
 		loadingEntry = true;
 		entry = null;
 		examples = null;
+		void loadExamples(seq, gen);
 		try {
-			const [e, ex] = await Promise.all([
-				dictionaryApi.getDictEntry({ seq }),
-				dictionaryApi.listEntryExamples({ seq, limit: 10 })
-			]);
+			const e = await dictionaryApi.getDictEntry({ seq });
 			if (gen !== entryGen) return;
 			entry = e;
-			examples = ex;
 		} catch {
 			/* error toast shown by the client */
 		} finally {
 			if (gen === entryGen) loadingEntry = false;
+		}
+	}
+
+	// Independent of the entry: a failure or empty result only omits the examples section.
+	async function loadExamples(seq: number, gen: number): Promise<void> {
+		try {
+			const ex = await dictionaryApi.listEntryExamples({ seq, limit: 10 });
+			if (gen !== entryGen) return;
+			examples = ex;
+		} catch {
+			/* examples are optional; section stays hidden */
 		}
 	}
 
@@ -236,8 +244,8 @@
 				<h3>{td('dict.kanji')}</h3>
 				<p lang="ja">{e.kanji.join(' ')}</p>
 			{/if}
-			<h3>{td('dict.examples')}</h3>
 			{#if examples && (examples.media.length > 0 || examples.tatoeba.length > 0)}
+				<h3>{td('dict.examples')}</h3>
 				{#if examples.media.length > 0}
 					<h4>{td('dict.examplesMedia')}</h4>
 					<ul>
@@ -256,8 +264,6 @@
 						{/each}
 					</ul>
 				{/if}
-			{:else}
-				<p class="muted">{td('dict.examplesNone')}</p>
 			{/if}
 		{:else}
 			<p class="muted">{td('dict.selectPrompt')}</p>
