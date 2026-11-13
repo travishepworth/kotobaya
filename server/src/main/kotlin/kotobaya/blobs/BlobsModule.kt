@@ -31,6 +31,29 @@ import java.util.UUID
 private val HASH_RE = Regex("^[0-9a-f]{64}$")
 private val UPLOAD_KINDS = setOf("audio", "image", "upload")
 
+/** Raster image subtypes that are safe to render inline; `svg+xml` is deliberately absent (it can carry script). */
+private val INLINE_IMAGE_SUBTYPES = setOf("png", "jpeg", "gif", "webp", "avif")
+
+/** CSP on every blob response (SEC-1): a document opened from a blob URL gets an opaque origin and runs nothing. */
+internal const val BLOB_CSP = "sandbox; default-src 'none'"
+
+/**
+ * Whether a stored content type may be served `inline` (SEC-1): only `audio/` and raster images, which `<audio>` and
+ * `<img>` in the web app and the Android review WebView need. Everything else (SVG, HTML, text, XML, scripts, PDFs,
+ * unknown) is served as `attachment`, so opening the blob URL downloads it instead of rendering it on the app origin.
+ */
+internal fun servesInline(type: ContentType): Boolean {
+    val main = type.contentType.lowercase()
+    val sub = type.contentSubtype.lowercase()
+    return main == "audio" || (main == "image" && sub in INLINE_IMAGE_SUBTYPES)
+}
+
+/** Headers every blob response carries, whatever the status (SEC-1). */
+internal fun ApplicationCall.hardenBlobResponse() {
+    response.header("X-Content-Type-Options", "nosniff")
+    response.header("Content-Security-Policy", BLOB_CSP)
+}
+
 /**
  * Blobs (T411a): `putBlob`, `getBlob`, `queryBlobs`. Objects are keyed by their hash; `app.blob` rows are inserted
  * only after the object is durable at its final key. Wiring (Main.kt, W-5): `handlers += BlobsModule(db, store).handlers`
@@ -192,8 +215,11 @@ class BlobsModule(
         header.split(',').map { it.trim().removePrefix("W/") }.any { it == "*" || it == "\"$hash\"" }
 
     private suspend fun ApplicationCall.get() {
+        hardenBlobResponse()
         val hash = hashParam()
         val meta = findMeta(hash) ?: throw Problems.notFound("No blob $hash.")
+        val type = runCatching { ContentType.parse(meta.contentType) }.getOrDefault(ContentType.Application.OctetStream)
+        response.header(HttpHeaders.ContentDisposition, if (servesInline(type)) "inline" else "attachment; filename=\"$hash\"")
         response.header(HttpHeaders.ETag, "\"$hash\"")
         response.header(HttpHeaders.CacheControl, "private, max-age=31536000, immutable")
         response.header(HttpHeaders.AcceptRanges, "bytes")
@@ -202,7 +228,6 @@ class BlobsModule(
             respond(HttpStatusCode.NotModified)
             return
         }
-        val type = runCatching { ContentType.parse(meta.contentType) }.getOrDefault(ContentType.Application.OctetStream)
         val outStatus: HttpStatusCode
         val offset: Long
         val length: Long

@@ -30,9 +30,15 @@ class BlobsApiTest : AuthFixture() {
 
     private fun blobRows() = db.txBlocking { (it.fetchValue("select count(*) from app.blob") as Number).toInt() }
 
-    private suspend fun ApplicationTestBuilder.put(token: String, h: String = hash, data: ByteArray = bytes, kind: String = "audio"): HttpResponse =
+    private suspend fun ApplicationTestBuilder.put(
+        token: String,
+        h: String = hash,
+        data: ByteArray = bytes,
+        kind: String = "audio",
+        type: String = "audio/ogg",
+    ): HttpResponse =
         client.call(HttpMethod.Put, "/blobs/$h?kind=$kind", bearer = token) {
-            contentType(ContentType.parse("audio/ogg"))
+            contentType(ContentType.parse(type))
             setBody(data)
         }
 
@@ -123,5 +129,91 @@ class BlobsApiTest : AuthFixture() {
         assertEquals(listOf(absent), r.json()["missing"].map { it.asText() })
         assertProblem(client.call(HttpMethod.Post, "/blobs/query", bearer = token, body = mapOf("hashes" to listOf("nope"))), 422, "validation_failed")
         assertProblem(client.call(HttpMethod.Post, "/blobs/query", bearer = token, body = mapOf("hashes" to emptyList<String>())), 422, "validation_failed")
+    }
+
+    // ------------------------------------------------------------ SEC-1: stored XSS through blob serving
+
+    private val csp = "sandbox; default-src 'none'"
+
+    private fun assertHardened(r: HttpResponse, what: String) {
+        assertEquals("nosniff", r.headers["X-Content-Type-Options"], "$what: nosniff")
+        assertEquals(csp, r.headers["Content-Security-Policy"], "$what: CSP")
+    }
+
+    private fun assertAttachment(r: HttpResponse, what: String) {
+        assertHardened(r, what)
+        val cd = r.headers[HttpHeaders.ContentDisposition]
+        assertTrue(cd != null && cd.startsWith("attachment"), "$what: attachment, was $cd")
+    }
+
+    private fun assertInline(r: HttpResponse, what: String) {
+        assertHardened(r, what)
+        val cd = r.headers[HttpHeaders.ContentDisposition]
+        assertTrue(cd == null || cd.startsWith("inline"), "$what: inline, was $cd")
+    }
+
+    private suspend fun ApplicationTestBuilder.uploadAndGet(token: String, type: String, kind: String = "upload"): HttpResponse {
+        val data = "<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>$type".toByteArray()
+        val h = sha(data)
+        assertEquals(201, put(token, h = h, data = data, kind = kind, type = type).status.value, type)
+        return client.call(HttpMethod.Get, "/blobs/$h", bearer = token)
+    }
+
+    @Test
+    fun svgAndHtmlAndOtherActiveTypesAreServedAsAttachmentWithNosniffAndCsp() = blobApp {
+        val token = mint(TokenKind.PERSONAL, listOf("read", "write")).second
+        for (
+            type in listOf(
+                "image/svg+xml", "text/html", "text/html; charset=utf-8", "TEXT/HTML", "application/xhtml+xml", "text/plain",
+                "text/xml", "application/xml", "application/javascript", "application/pdf", "application/octet-stream",
+                "image/bmp", "image/x-icon", "video/mp4", "multipart/x-mixed-replace; boundary=x",
+            )
+        ) {
+            val r = uploadAndGet(token, type)
+            assertEquals(200, r.status.value, type)
+            assertAttachment(r, type)
+        }
+    }
+
+    @Test
+    fun audioAndRasterImagesAreServedInlineWithNosniffAndCsp() = blobApp {
+        val token = mint(TokenKind.PERSONAL, listOf("read", "write")).second
+        for (
+            type in listOf(
+                "audio/ogg", "audio/mpeg", "audio/mp4", "AUDIO/WAV", "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif",
+                "image/PNG; foo=bar",
+            )
+        ) {
+            val r = uploadAndGet(token, type, kind = if (type.lowercase().startsWith("audio")) "audio" else "image")
+            assertEquals(200, r.status.value, type)
+            assertInline(r, type)
+        }
+    }
+
+    @Test
+    fun rangeAndNotModifiedResponsesAreHardenedToo() = blobApp {
+        val token = mint(TokenKind.PERSONAL, listOf("read", "write")).second
+        val data = "<html><script>alert(1)</script></html>".toByteArray()
+        val h = sha(data)
+        put(token, h = h, data = data, kind = "upload", type = "text/html")
+        val part = client.call(HttpMethod.Get, "/blobs/$h", bearer = token) { header(HttpHeaders.Range, "bytes=0-5") }
+        assertEquals(206, part.status.value)
+        assertAttachment(part, "206")
+        val nm = client.call(HttpMethod.Get, "/blobs/$h", bearer = token) { header(HttpHeaders.IfNoneMatch, "\"$h\"") }
+        assertEquals(304, nm.status.value)
+        assertHardened(nm, "304")
+    }
+
+    @Test
+    fun ankiConnectSvgMediaIsServedAsAttachment() = blobApp {
+        val token = mint(TokenKind.PERSONAL, listOf("read")).second
+        val svg = "<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'/>".toByteArray()
+        val h = kotobaya.ankiconnect.AnkiMedia(db, store).store("evil.svg", svg)
+        val r = client.call(HttpMethod.Get, "/blobs/$h", bearer = token)
+        assertEquals(200, r.status.value)
+        assertAttachment(r, "anki svg")
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47)
+        val hp = kotobaya.ankiconnect.AnkiMedia(db, store).store("a.png", png)
+        assertInline(client.call(HttpMethod.Get, "/blobs/$hp", bearer = token), "anki png")
     }
 }
