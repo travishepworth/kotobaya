@@ -518,3 +518,4 @@
 2026-11-12T19:31:41Z T307+T309 HANDOFF DONE (android/server/deploy green); asked writer to wire NtfySink in Main.kt before merge
 2026-11-12T19:31:49Z - HANDOVER usage limit: T303b and T307+T309 (Main.kt wiring) in flight; see STATE.md USAGE-LIMIT STOP
 2026-11-12T19:35:34Z T307+T309 HANDOFF DONE (Main.kt NtfySink wired); CHECK_GREEN android+server+deploy; MERGE
+2026-11-13T00:24:42Z T303b DISPATCH attempt 2 writer-senior(opus) in same worktree (attempt 1 cut off by usage limit, partial uncommitted work kept)

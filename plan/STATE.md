@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-12T19:35:34Z (usage-limit handover)
+Updated: 2026-11-13T00:24:42Z (resumed; T303b attempt 2)
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -17,7 +17,7 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T303b | writer-senior (opus) | 1 | t/T303b-sync-client-apply | 2026-11-12T19:27:01Z |
+| T303b | writer-senior (opus) | 2 (resumed in same worktree) | t/T303b-sync-client-apply | 2026-11-13T00:24:42Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
