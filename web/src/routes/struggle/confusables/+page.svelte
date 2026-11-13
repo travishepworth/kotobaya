@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from '../../../lib/ui/Button.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import Page from '../../../lib/ui/Page.svelte';
 	import SegmentedControl from '../../../lib/ui/SegmentedControl.svelte';
 	import Skeleton from '../../../lib/ui/Skeleton.svelte';
@@ -27,6 +28,8 @@
 
 	{#if !vm.loaded}
 		<Skeleton shape="row" count={5} />
+	{:else if vm.loadFailed && vm.pairs.length === 0}
+		<LoadError onretry={() => vm.retry()} />
 	{:else if vm.pairs.length === 0}
 		<EmptyState art="success" title={tg('st.confusablesNone')} />
 	{:else}
@@ -50,7 +53,9 @@
 				</li>
 			{/each}
 		</ul>
-		{#if vm.cursor}
+		{#if vm.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>
+		{:else if vm.cursor}
 			<div class="more"><Button variant="quiet" loading={vm.busy} onclick={() => vm.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -109,6 +114,9 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--kb-space-2);
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

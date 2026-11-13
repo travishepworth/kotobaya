@@ -38,6 +38,9 @@ export const IMPORT_FORMATS = Object.values(MediaImportRequestFormatEnum);
 /* ---------- /media ---------- */
 
 export class MediaListPage {
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	items = $state<Media[]>([]);
 	cursor = $state<string | null>(null);
 	loading = $state(false);
@@ -45,6 +48,11 @@ export class MediaListPage {
 	q = $state('');
 	editing = $state<string | null>(null);
 	draftTitle = $state('');
+
+	/** Load the failed page again. */
+	retry(): void {
+		void this.load(this.retryMore);
+	}
 
 	async load(more: boolean): Promise<void> {
 		if (this.loading) return;
@@ -58,8 +66,10 @@ export class MediaListPage {
 			});
 			this.items = more ? [...this.items, ...page.items] : page.items;
 			this.cursor = page.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			// The API client already showed an error toast.
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = more;
 		} finally {
 			this.loading = false;
 		}

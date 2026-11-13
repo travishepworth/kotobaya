@@ -18,30 +18,47 @@ export class StrugglePage {
 	words = $state<HotWord[]>([]);
 	kanji = $state<HotKanji[]>([]);
 	loaded = $state(false);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
 
 	start(): void {
+		this.loaded = false;
+		this.loadFailed = false;
 		void (async () => {
 			try {
 				const [w, k] = await Promise.all([wordsApi.listHotWords({ limit: 50 }), wordsApi.listHotKanji({ limit: 30 })]);
 				this.words = w.items;
 				this.kanji = k.items;
 			} catch {
-				/* toast shown */
+				this.loadFailed = true; // the client already toasted
 			} finally {
 				this.loaded = true;
 			}
 		})();
 	}
+	/** Load again after a failure. */
+	retry(): void {
+		this.start();
+	}
+
 }
 
 /** /struggle/leeches */
 export class LeechesPage {
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	cards = $state<Card[]>([]);
 	cursor = $state<string | null>(null);
 	loaded = $state(false);
 	busy = $state(false);
 
 	/** Safe to call from an effect: reads no state before its first await unless `more`. */
+	/** Load the failed page again. */
+	retry(): void {
+		void this.load(this.retryMore);
+	}
+
 	async load(more: boolean): Promise<void> {
 		this.busy = true;
 		try {
@@ -50,8 +67,10 @@ export class LeechesPage {
 			// Cursor paging has no snapshot: de-duplicate by id, last occurrence wins.
 			this.cards = [...new Map(merged.map((c) => [c.id, c])).values()];
 			this.cursor = page.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			/* toast shown */
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = more;
 		} finally {
 			this.busy = false;
 			this.loaded = true;
@@ -72,6 +91,9 @@ export const CONFUSABLE_STATUSES: ConfusableStatus[] = ['suggested', 'confirmed'
 
 /** /struggle/confusables */
 export class ConfusablesPage {
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	pairs = $state<Confusable[]>([]);
 	cursor = $state<string | null>(null);
 	status = $state<ConfusableStatus>('suggested');
@@ -86,6 +108,11 @@ export class ConfusablesPage {
 		});
 	}
 
+	/** Load the failed page again. */
+	retry(): void {
+		void this.load(this.retryMore);
+	}
+
 	async load(more: boolean): Promise<void> {
 		this.busy = true;
 		try {
@@ -96,8 +123,10 @@ export class ConfusablesPage {
 			});
 			this.pairs = more ? [...this.pairs, ...page.items] : page.items;
 			this.cursor = page.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			/* toast shown */
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = more;
 		} finally {
 			this.busy = false;
 			this.loaded = true;

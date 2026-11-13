@@ -5,6 +5,7 @@
 	import Button from '../../../../lib/ui/Button.svelte';
 	import Dialog from '../../../../lib/ui/Dialog.svelte';
 	import EmptyState from '../../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../../lib/ui/LoadError.svelte';
 	import GrammarCapture from '../../../../lib/ui/GrammarCapture.svelte';
 	import IconButton from '../../../../lib/ui/IconButton.svelte';
 	import SegmentedControl from '../../../../lib/ui/SegmentedControl.svelte';
@@ -48,6 +49,8 @@
 
 	{#if !vm.loaded && vm.rows.length === 0}
 		<Skeleton shape="row" count={6} />
+	{:else if vm.loadFailed && vm.rows.length === 0}
+		<LoadError onretry={() => vm.retry()} />
 	{:else if vm.rows.length === 0}
 		<EmptyState art="search" title={ts('sn.empty')} />
 	{:else}
@@ -71,7 +74,7 @@
 				</li>
 			{/each}
 		</ul>
-		{#if vm.cursor}<div class="more"><Button variant="quiet" onclick={() => vm.load(true)}>{ts('sn.more')}</Button></div>{/if}
+		{#if vm.loadFailed}<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>{:else if vm.cursor}<div class="more"><Button variant="quiet" onclick={() => vm.load(true)}>{ts('sn.more')}</Button></div>{/if}
 	{/if}
 </div>
 
@@ -160,6 +163,9 @@
 		margin-inline-end: auto;
 		font: var(--kb-type-caption);
 		color: var(--kb-color-text-muted);
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Button from '../../../lib/ui/Button.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import Page from '../../../lib/ui/Page.svelte';
 	import Panel from '../../../lib/ui/Panel.svelte';
 	import Skeleton from '../../../lib/ui/Skeleton.svelte';
@@ -31,6 +32,8 @@
 
 	{#if !vm.loaded}
 		<Skeleton shape="block" height="12rem" />
+	{:else if vm.loadFailed && vm.items.length === 0}
+		<LoadError size="page" onretry={() => vm.retry()} />
 	{:else if vm.items.length === 0 && vm.cursor === null}
 		<EmptyState size="page" art="success" title={tm('map.empty')} body={tm('map.emptyBody')} />
 	{:else}
@@ -39,7 +42,9 @@
 				<MappingRow vocab={v} onResolved={(res) => vm.resolved(res)} />
 			{/each}
 		</ul>
-		{#if vm.cursor !== null}
+		{#if vm.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>
+		{:else if vm.cursor !== null}
 			<div class="more"><Button variant="quiet" loading={vm.loading} onclick={() => void vm.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -61,6 +66,9 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

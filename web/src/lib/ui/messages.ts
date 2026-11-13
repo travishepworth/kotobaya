@@ -69,6 +69,8 @@ const en = {
 	'app.all': 'All',
 	'app.optional': 'Optional',
 	'app.count': '{n}',
+	'app.loadFailedTitle': 'Could not load this',
+	'app.loadFailedBody': 'The server did not answer. Check the connection and try again.',
 	'app.loadFailed': 'Could not load this. Check the connection and try again.',
 	'app.deckType.user': 'Deck',
 	'app.deckType.smart': 'Smart deck',

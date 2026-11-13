@@ -19,6 +19,8 @@ export interface PreviewInput {
 	kanji: Kanji | null | undefined;
 	side: CardSide;
 	cloze?: ClozeSentence | null;
+	/** Wrap each field in a `data-field` region (C-19), so an editor can make the card clickable. */
+	fieldRegions?: boolean;
 }
 
 /** Render one side of a card through the shared core; a renderer error becomes `{ ok: false }`. */
@@ -36,7 +38,13 @@ export function renderPreview(p: PreviewInput): Rendered {
 				...(p.cloze !== undefined ? { cloze: p.cloze } : {}),
 				side: p.side,
 				// Furigana is switched with a CSS class in CardView, not by re-rendering.
-				options: { furigana: true, pitch: true, showMnemonic: true, mediaUrlTemplate: MEDIA_URL_TEMPLATE }
+				options: {
+					furigana: true,
+					pitch: true,
+					showMnemonic: true,
+					mediaUrlTemplate: MEDIA_URL_TEMPLATE,
+					fieldRegions: p.fieldRegions ?? false
+				}
 			})
 		};
 	} catch (e) {

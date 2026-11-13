@@ -27,19 +27,28 @@ export const DECK_TYPE_KEYS: Record<string, DeckMessageKey> = {
 export class DecksListPage {
 	items = $state<Deck[]>([]);
 	loaded = $state(false);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
 
 	start(): void {
+		this.loaded = false;
+		this.loadFailed = false;
 		void (async () => {
 			try {
 				const all = (await decksApi.listDecks({})).items;
 				this.items = [...all].sort((a, b) => b.priority - a.priority || a.name.localeCompare(b.name));
 			} catch {
-				/* toast shown */
+				this.loadFailed = true; // the client already toasted
 			} finally {
 				this.loaded = true;
 			}
 		})();
 	}
+	/** Load again after a failure. */
+	retry(): void {
+		this.start();
+	}
+
 }
 
 /** The server rejected a smart-deck query (422 invalid_query): its detail, else null. */

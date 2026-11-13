@@ -98,12 +98,20 @@ export function jobStatusLabel(s: string): string {
 }
 
 export class MappingPage {
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	items = $state<JpdbVocab[]>([]);
 	cursor = $state<string | null>(null);
 	loading = $state(false);
 	loaded = $state(false);
 	// Re-publish jobs started by corrections made on this page; statuses are as returned by the API.
 	republish = $state<Republish[]>([]);
+
+	/** Load the failed page again. */
+	retry(): void {
+		void this.load(this.retryMore);
+	}
 
 	async load(more: boolean): Promise<void> {
 		if (this.loading) return;
@@ -119,8 +127,10 @@ export class MappingPage {
 			const fresh = page.items.filter((v) => !seen.has(v.jpdbVid));
 			this.items = more ? [...this.items, ...fresh] : fresh;
 			this.cursor = page.nextCursor;
+			this.loadFailed = false;
 		} catch {
-			// The API client already showed an error toast.
+			this.loadFailed = true; // the client already toasted
+			this.retryMore = more;
 		} finally {
 			this.loading = false;
 			this.loaded = true;

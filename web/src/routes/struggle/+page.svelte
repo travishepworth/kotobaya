@@ -2,6 +2,7 @@
 	// Struggle overview: hot words (with their recent failures), hot kanji, and the ways in: leeches, confusables, drills.
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Page from '../../lib/ui/Page.svelte';
 	import Panel from '../../lib/ui/Panel.svelte';
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
@@ -32,6 +33,8 @@
 
 	{#if !vm.loaded}
 		<div class="grid"><Skeleton shape="block" height="18rem" /><Skeleton shape="block" height="18rem" /></div>
+	{:else if vm.loadFailed}
+		<LoadError size="page" onretry={() => vm.retry()} />
 	{:else if vm.words.length === 0 && vm.kanji.length === 0}
 		<EmptyState size="page" art="success" title={tg('st.calmTitle')} body={tg('st.calmBody')} />
 	{:else}

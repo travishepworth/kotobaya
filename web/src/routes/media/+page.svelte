@@ -4,6 +4,7 @@
 	import Button from '../../lib/ui/Button.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Menu from '../../lib/ui/Menu.svelte';
 	import Page from '../../lib/ui/Page.svelte';
 	import Select from '../../lib/ui/Select.svelte';
@@ -40,6 +41,8 @@
 
 	{#if !loaded}
 		<div class="grid"><Skeleton shape="block" height="9rem" /><Skeleton shape="block" height="9rem" /><Skeleton shape="block" height="9rem" /></div>
+	{:else if vm.loadFailed && vm.items.length === 0}
+		<LoadError size="page" onretry={() => vm.retry()} />
 	{:else if vm.items.length === 0}
 		{#if filtered}
 			<EmptyState art="search" title={mx('mx.noMatch')} />
@@ -89,7 +92,9 @@
 				</li>
 			{/each}
 		</ul>
-		{#if vm.cursor}
+		{#if vm.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>
+		{:else if vm.cursor}
 			<div class="more"><Button variant="quiet" loading={vm.loading} onclick={() => void vm.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -211,6 +216,9 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--kb-space-2);
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

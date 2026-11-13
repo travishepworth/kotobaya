@@ -3,6 +3,7 @@
 	// the list gets long.
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Icon from '../../lib/ui/Icon.svelte';
 	import ListRow from '../../lib/ui/ListRow.svelte';
 	import Page from '../../lib/ui/Page.svelte';
@@ -48,6 +49,8 @@
 
 	{#if !s.loaded}
 		<Skeleton shape="row" count={8} />
+	{:else if s.loadFailed}
+		<LoadError size="page" onretry={() => s.retry()} />
 	{:else if s.items.length === 0}
 		<EmptyState size="page" art="decks" title={dk('dk.emptyTitle')} body={dk('dk.emptyBody')}>
 			{#snippet action()}

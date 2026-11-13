@@ -6,6 +6,7 @@
 	import Button from '../lib/ui/Button.svelte';
 	import Chip from '../lib/ui/Chip.svelte';
 	import EmptyState from '../lib/ui/EmptyState.svelte';
+	import LoadError from '../lib/ui/LoadError.svelte';
 	import Icon from '../lib/ui/Icon.svelte';
 	import ListRow from '../lib/ui/ListRow.svelte';
 	import Page from '../lib/ui/Page.svelte';
@@ -31,7 +32,7 @@
 	const summary = $derived(stats.summary);
 	const loading = $derived(!summary && !stats.summaryP.failed);
 	const due = $derived(summary ? summary.due._new + summary.due.learning + summary.due.review : 0);
-	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && decks.items.length === 0);
+	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && !decks.loadFailed && decks.items.length === 0);
 	// Average answer time today, else ~10 s a card.
 	const etaMin = $derived.by(() => {
 		if (!summary) return 0;
@@ -156,6 +157,8 @@
 				<Panel title={th('home.decks')} link={decks.items.length > 0 ? { href: '/decks', label: th('home.allDecks') } : undefined} flush>
 					{#if !decks.loaded}
 						<div class="pad"><Skeleton shape="row" count={4} /></div>
+					{:else if decks.loadFailed}
+						<LoadError onretry={() => decks.retry()} />
 					{:else if topDecks.length === 0}
 						<EmptyState art="decks" title={th('home.noDecks')} body={th('home.noDecksBody')}>
 							{#snippet action()}<Button variant="tonal" icon="plus" href="/decks/new">{th('home.createDeck')}</Button>{/snippet}

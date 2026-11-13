@@ -19,8 +19,10 @@
 		onentry: (seq: number, entry: DictEntry) => void;
 		onsaved: (n: Note) => void;
 		ondeleted: (id: string) => void;
+		/** Field to open once the note has loaded (deep link from a click in the /cards preview). */
+		initialField?: string | null;
 	}
-	let { note, noteType, onentry, onsaved, ondeleted }: Props = $props();
+	let { note, noteType, onentry, onsaved, ondeleted, initialField = null }: Props = $props();
 
 	const s = new NoteEditorState(
 		() => note,
@@ -67,6 +69,19 @@
 		else editing = key;
 		requestAnimationFrame(() => document.getElementById(`field-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
 	}
+
+	// Open the deep-linked field once, after the dictionary values arrived (so it opens as an override).
+	let pendingField = $state<string | null>(null);
+	$effect.pre(() => {
+		void note.id;
+		pendingField = initialField;
+	});
+	$effect(() => {
+		if (pendingField === null || s.ref.loading || s.fieldKeys.length === 0) return;
+		const key = pendingField;
+		pendingField = null;
+		openField(key);
+	});
 
 	function save(e: Event): void {
 		e.preventDefault();

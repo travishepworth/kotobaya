@@ -29,18 +29,27 @@ export type { FieldKind, NoteTypeDraft } from '../note-types/draft';
 export class NoteTypesListPage {
 	items = $state<NoteType[]>([]);
 	loaded = $state(false);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
 
 	start(): void {
+		this.loaded = false;
+		this.loadFailed = false;
 		void (async () => {
 			try {
 				this.items = (await noteTypesApi.listNoteTypes({})).items;
 			} catch {
-				/* toast shown */
+				this.loadFailed = true; // the client already toasted
 			} finally {
 				this.loaded = true;
 			}
 		})();
 	}
+	/** Load again after a failure. */
+	retry(): void {
+		this.start();
+	}
+
 }
 
 /** /note-types/new */

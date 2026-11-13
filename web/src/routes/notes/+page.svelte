@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Select from '../../lib/ui/Select.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
@@ -15,8 +16,10 @@
 	import NoteEditor from './NoteEditor.svelte';
 
 	const s = new NotesPage();
-	// Deep link from the dictionary: /notes?note=<id>
-	onMount(() => s.start(page.url.searchParams.get('note')));
+	// Deep link from the dictionary: /notes?note=<id>; from a field click in the /cards preview: &field=<key>.
+	const linkedNote = page.url.searchParams.get('note');
+	const linkedField = page.url.searchParams.get('field');
+	onMount(() => s.start(linkedNote));
 
 	const headwordMap = $derived(new Map([...s.headwords.byseq].map(([k, v]) => [k, v.headword])));
 	const typeOptions = [
@@ -101,7 +104,9 @@
 		height="min(40rem, calc(100dvh - 14rem))"
 	>
 		{#snippet empty()}
-			{#if filtered}
+			{#if s.loadFailed}
+				<LoadError onretry={() => s.retry()} />
+			{:else if filtered}
 				<EmptyState art="search" title={tb('br.noNotesTitle')} body={tb('br.noneBody')}>
 					{#snippet action()}<Button variant="outline" onclick={clear}>{tb('br.clearSearch')}</Button>{/snippet}
 				</EmptyState>
@@ -112,6 +117,9 @@
 			{/if}
 		{/snippet}
 	</VirtualTable>
+	{#if s.loadFailed && s.notes.length > 0}
+		<div class="more-error"><LoadError size="banner" onretry={() => s.retry()} /></div>
+	{/if}
 	{#if s.notes.length > 0}
 		<p class="count">{s.cursor !== null ? tb('br.loadedMore', { n: s.notes.length }) : tb('br.loaded', { n: s.notes.length })}</p>
 	{/if}
@@ -125,6 +133,7 @@
 			onentry={(seq, e) => s.entryLoaded(seq, e)}
 			onsaved={(n) => s.saved(n)}
 			ondeleted={(id) => s.deleted(id)}
+			initialField={s.active.id === linkedNote ? linkedField : null}
 		/>
 	{/if}
 {/snippet}
@@ -182,6 +191,9 @@
 	}
 	.muted {
 		color: var(--kb-color-text-muted);
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.count {
 		margin-top: var(--kb-space-2);

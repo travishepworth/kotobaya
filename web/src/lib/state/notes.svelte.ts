@@ -26,6 +26,10 @@ export class NotesPage {
 	loadedOnce = $state(false);
 	noteTypes = $state<Map<string, NoteType>>(new Map());
 	activeId = $state<string | null>(null);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	/** Cursor of a failed "load more", so `retry` asks for the same page again. */
+	private retryCursor: string | null = null;
 	readonly headwords = new HeadwordMap();
 	private generation = 0;
 	private appliedFilter = { q: '', type: '' as NoteBaseType | '', tag: '' };
@@ -68,6 +72,7 @@ export class NotesPage {
 				cursor: reset ? undefined : (this.cursor ?? undefined)
 			});
 			if (gen !== this.generation) return;
+			this.loadFailed = false;
 			this.notes = reset ? res.items : [...this.notes, ...res.items];
 			this.cursor = res.nextCursor;
 			void fetchHeadwords(
@@ -76,6 +81,8 @@ export class NotesPage {
 			);
 		} catch {
 			if (gen !== this.generation) return;
+			this.loadFailed = true;
+			this.retryCursor = reset ? null : this.cursor;
 			this.cursor = null;
 		} finally {
 			if (gen === this.generation) {
@@ -83,6 +90,15 @@ export class NotesPage {
 				this.loadedOnce = true;
 			}
 		}
+	}
+
+	/** Load the failed page again (the first page, or the same "more" page). */
+	retry(): void {
+		if (this.retryCursor !== null) {
+			this.cursor = this.retryCursor;
+			this.retryCursor = null;
+			void this.loadPage(false);
+		} else void this.loadPage(true);
 	}
 
 	search(): void {
@@ -170,7 +186,8 @@ export class NoteEditorState {
 			mnemonic: this.mnemonic,
 			entry: this.ref.entry,
 			kanji: this.ref.kanji,
-			side: this.side
+			side: this.side,
+			fieldRegions: true
 		});
 	});
 

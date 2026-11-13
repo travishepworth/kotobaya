@@ -353,6 +353,9 @@ export class OverrideListState {
 export type SentenceFilter = 'all' | 'i+1' | 'i+0';
 
 export class SentencesPage {
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	private retryMore = false;
 	filter = $state<SentenceFilter>('all');
 	segmentId = $state('');
 	q = $state('');
@@ -415,6 +418,11 @@ export class SentencesPage {
 		}
 	}
 
+	/** Load the failed page again. */
+	retry(): void {
+		void this.load(this.retryMore);
+	}
+
 	async load(more: boolean): Promise<void> {
 		const mine = more ? this.gen : ++this.gen;
 		try {
@@ -430,9 +438,13 @@ export class SentencesPage {
 			if (mine !== this.gen) return;
 			this.rows = more ? [...this.rows, ...p.items] : p.items;
 			this.cursor = p.nextCursor;
+			this.loadFailed = false;
 			for (const s of p.items) void this.findUnknown(s);
 		} catch {
-			/* toast shown */
+			if (mine === this.gen) {
+				this.loadFailed = true; // the client already toasted
+				this.retryMore = more;
+			}
 		} finally {
 			if (mine === this.gen) this.loaded = true;
 		}

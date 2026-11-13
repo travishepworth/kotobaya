@@ -29,6 +29,8 @@ const QUEUE_LIMIT = 20;
  */
 export class ReviewPage {
 	loaded = $state(false);
+	/** The settings or the queue could not be loaded; the view offers `retry`. */
+	loadFailed = $state(false);
 	items = $state<QueueItem[]>([]);
 	counts = $state<ReviewQueueCounts | null>(null);
 	dayEndsAt = $state<Date | null>(null);
@@ -162,23 +164,32 @@ export class ReviewPage {
 			this.items = s.items;
 		} catch (e) {
 			if (e instanceof ResponseError && e.response.status === 501) this.drillUnavailable = true;
+			else throw e;
 		}
 	}
 
 	/** Load settings and the queue (or a drill session for `source`). Reads no state synchronously. */
 	start(source: string | null): void {
 		this.drillSource = source;
+		this.loaded = false;
+		this.loadFailed = false;
+		this.drillUnavailable = false;
 		void (async () => {
 			try {
 				await this.loadStatic();
 				if (source !== null) await this.fetchDrill(source);
 				else await this.fetchQueue();
 			} catch {
-				/* toast shown */
+				this.loadFailed = true; // the client already toasted
 			} finally {
 				this.loaded = true;
 			}
 		})();
+	}
+
+	/** Load again after a failed start (same drill source). */
+	retry(): void {
+		this.start(this.drillSource);
 	}
 
 	async reload(): Promise<void> {

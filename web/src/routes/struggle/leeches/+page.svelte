@@ -2,6 +2,7 @@
 	import Button from '../../../lib/ui/Button.svelte';
 	import Chip from '../../../lib/ui/Chip.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import ListRow from '../../../lib/ui/ListRow.svelte';
 	import Page from '../../../lib/ui/Page.svelte';
 	import Skeleton from '../../../lib/ui/Skeleton.svelte';
@@ -24,6 +25,8 @@
 	{/snippet}
 	{#if !vm.loaded}
 		<Skeleton shape="row" count={6} />
+	{:else if vm.loadFailed && vm.cards.length === 0}
+		<LoadError size="page" onretry={() => vm.retry()} />
 	{:else if vm.cards.length === 0}
 		<EmptyState size="page" art="success" title={tg('st.leechesNone')} body={tg('st.calmBody')} />
 	{:else}
@@ -37,7 +40,9 @@
 				</ListRow>
 			{/each}
 		</div>
-		{#if vm.cursor}
+		{#if vm.loadFailed}
+			<div class="more-error"><LoadError size="banner" onretry={() => vm.retry()} /></div>
+		{:else if vm.cursor}
 			<div class="more"><Button variant="quiet" loading={vm.busy} onclick={() => vm.load(true)}>{ut('app.loadMore')}</Button></div>
 		{/if}
 	{/if}
@@ -60,6 +65,9 @@
 		color: var(--kb-color-on-danger-container);
 		font: var(--kb-type-caption);
 		font-weight: 600;
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.more {
 		display: flex;

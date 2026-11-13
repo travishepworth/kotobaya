@@ -38,6 +38,7 @@ const en = {
 	'rv.done.leeches': 'Browse leeches',
 	'rv.drillDone.title': 'Drill finished',
 	'rv.drillDone.body': 'Drills never change your schedule. Come back whenever these words trip you up.',
+	'rv.loadFailed': 'Could not load your reviews',
 	'rv.drillUnavailable.title': 'This drill is not available yet',
 	'rv.drillUnavailable.body': 'The server does not offer this drill source. Try leeches or confusables from Struggle.',
 	'rv.renderFailed': 'This card could not be shown',

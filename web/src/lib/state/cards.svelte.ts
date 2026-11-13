@@ -24,6 +24,10 @@ export class CardsPage {
 	loading = $state(false);
 	loadedOnce = $state(false);
 	serverError = $state<string | null>(null);
+	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	loadFailed = $state(false);
+	/** Cursor of a failed "load more", so `retry` asks for the same page again. */
+	private retryCursor: string | null = null;
 	vocabulary = $state<SearchVocabulary>(EMPTY_VOCABULARY);
 	userDecks = $state<Deck[]>([]);
 	noteTypes = $state<Map<string, NoteType>>(new Map());
@@ -69,6 +73,7 @@ export class CardsPage {
 			});
 			if (gen !== this.generation) return;
 			this.serverError = null;
+			this.loadFailed = false;
 			this.cards = reset ? page.items : [...this.cards, ...page.items];
 			this.cursor = page.nextCursor;
 			void this.loadHeadwords(page.items);
@@ -76,6 +81,9 @@ export class CardsPage {
 			if (gen !== this.generation) return;
 			if (e instanceof ResponseError && e.response.status === 422) {
 				this.serverError = (await readProblem(e.response))?.detail ?? 'invalid_query';
+			} else {
+				this.loadFailed = true;
+				this.retryCursor = reset ? null : this.cursor;
 			}
 			this.cursor = null;
 		} finally {
@@ -84,6 +92,15 @@ export class CardsPage {
 				this.loadedOnce = true;
 			}
 		}
+	}
+
+	/** Load the failed page again (the first page, or the same "more" page). */
+	retry(): void {
+		if (this.retryCursor !== null) {
+			this.cursor = this.retryCursor;
+			this.retryCursor = null;
+			void this.loadPage(false);
+		} else void this.loadPage(true);
 	}
 
 	/** One batch call for the dictionary notes of a freshly loaded page; failures keep the id fallback. */
@@ -176,7 +193,8 @@ export class CardPreviewState {
 			mnemonic: note.mnemonic,
 			entry: this.ref.entry,
 			kanji: this.ref.kanji,
-			side: this.side
+			side: this.side,
+			fieldRegions: true
 		});
 	});
 

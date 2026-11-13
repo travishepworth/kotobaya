@@ -8,6 +8,7 @@
 	import CardFrame from '../../lib/ui/CardFrame.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import GradeBar from '../../lib/ui/GradeBar.svelte';
 	import IconButton from '../../lib/ui/IconButton.svelte';
 	import Kbd from '../../lib/ui/Kbd.svelte';
@@ -212,6 +213,10 @@
 					<Skeleton shape="block" height="4.5rem" />
 					<Skeleton shape="text" count={2} />
 				</div>
+			</div>
+		{:else if s.loadFailed}
+			<div class="finished">
+				<LoadError size="page" title={rv('rv.loadFailed')} onretry={() => s.retry()} />
 			</div>
 		{:else if s.drillUnavailable}
 			<div class="finished">

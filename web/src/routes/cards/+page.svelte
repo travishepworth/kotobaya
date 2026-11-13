@@ -5,6 +5,7 @@
 	import Button from '../../lib/ui/Button.svelte';
 	import Chip from '../../lib/ui/Chip.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import LoadError from '../../lib/ui/LoadError.svelte';
 	import QueryField from '../../lib/ui/QueryField.svelte';
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
 	import { stateLabel, stateOf } from '../../lib/ui/cardState';
@@ -119,7 +120,9 @@
 		height="min(40rem, calc(100dvh - 16rem))"
 	>
 		{#snippet empty()}
-			{#if s.appliedQuery !== ''}
+			{#if s.loadFailed}
+				<LoadError onretry={() => s.retry()} />
+			{:else if s.appliedQuery !== ''}
 				<EmptyState art="search" title={tb('br.noneTitle')} body={tb('br.noneBody')}>
 					{#snippet action()}<Button variant="outline" onclick={clearSearch}>{tb('br.clearSearch')}</Button>{/snippet}
 				</EmptyState>
@@ -130,6 +133,9 @@
 			{/if}
 		{/snippet}
 	</VirtualTable>
+	{#if s.loadFailed && s.cards.length > 0}
+		<div class="more-error"><LoadError size="banner" onretry={() => s.retry()} /></div>
+	{/if}
 	{#if s.cards.length > 0}
 		<p class="count">{s.cursor !== null ? tb('br.loadedMore', { n: s.cards.length }) : tb('br.loaded', { n: s.cards.length })}</p>
 	{/if}
@@ -185,6 +191,9 @@
 	.hot {
 		color: var(--kb-color-danger);
 		font-weight: 600;
+	}
+	.more-error {
+		margin-top: var(--kb-space-3);
 	}
 	.count {
 		margin-top: var(--kb-space-2);
