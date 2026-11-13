@@ -4,6 +4,12 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 17, 2026-11-13) — 0.1.7 HOTFIX (chart default env change; no migrations)
+- HOTFIX-0.1.7 merged at a5c4e3a. Build + helm 0.1.7 from that pinned SHA: new web image (CardPreview/NoteEditor $effect loop fix, I-3) and chart change.
+- Chart: api.env now defaults JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70 (I-1 stopgap). If ~/repos/kubernetes/kotobaya/values.yaml sets api.env, the maps merge; setting api.env.JAVA_TOOL_OPTIONS there overrides the default. Server image unchanged.
+- After deploy: /cards and /notes, open a preview of a jpdb vocab note and a kanji note: page stays responsive. /stats loads without a 500 (check api pod heap: `kubectl -n kotobaya exec deploy/<api> -- java -XX:+PrintFlagsFinal -version | grep MaxHeapSize`, expect ~700 MB). Also check that the jobs poller is alive after the earlier OOM (restart the api pod if jobs stay queued).
+- Question: the regression vitest for the preview loop needs a DOM test environment devDependency (jsdom or happy-dom). A writer's `pnpm add -D jsdom` was denied by the permission classifier. Approve adding it (or allow it in permissions) and the test gets filed as a small ticket (FOLLOWUPS).
+
 ## Ready now (run 16, 2026-11-13) — BUG-7 card/notes viewing (no migrations, no new env/config)
 - Deploy new server + web images (server adds GET /dict/headwords; Netty maxInitialLineLength 16384).
 - /cards: click a jpdb vocab row (or Enter) -> preview shows dictionary front/back; table label shows the word; kind switcher works. Checkbox only toggles bulk.

@@ -835,3 +835,5 @@
 2026-11-13T12:14:45Z UI-DS,C-19,UI-WEB,UI-APP FILED Phase 9; UI-WEB/UI-APP HUMAN-GATED (B2 gate); INBOX archived plan/handoffs/INBOX-0.1.6.md
 2026-11-13T12:15:03Z HOTFIX-0.1.7 DISPATCH writer-light (haiku, low)
 2026-11-13T12:15:03Z C-19 DISPATCH architect (opus, med, additive)
+2026-11-13T12:18:03Z HOTFIX-0.1.7 HANDOFF BLOCKED-ish: fix done, vitest needs jsdom (dep add denied by classifier) -> FOLLOWUPS + HUMAN_CHECKS
+2026-11-13T12:18:03Z HOTFIX-0.1.7 MERGE a5c4e3a CHECK_GREEN web+deploy (low, no review); ship as 0.1.7

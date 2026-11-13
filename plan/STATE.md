@@ -10,12 +10,11 @@ Updated: RUN17
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
 ## 0.1.7 hotfix status
-- HOTFIX-0.1.7: RUNNING
+- HOTFIX-0.1.7: MERGED at a5c4e3a — READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS top.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| HOTFIX-0.1.7 | writer-light | 1 | t/HOTFIX-0.1.7-preview-loop-heap | RUN17 |
 | C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
 
 ## Queued
@@ -40,13 +39,14 @@ BUG-8, BUG-9, BUG-10, UI-FOUND-WEB (after HOTFIX-0.1.7) · UI-FOUND-APP (after B
 - UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Run 17: merged 0 · attempts 0 · escalations 0
+Run 17: merged 1 · attempts 1 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- HOTFIX-0.1.7 (run 17): preview $effect loop fixed (local busy), chart api.env JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70 default; vitest deferred (jsdom denied)
 - BUG-7c (run 16): listDictHeadwords server (one query, 422 rules), Netty initial line 16384, /cards + /notes tables batch-filled (chunks of 500); 501 allowlist empty
 - C-18 (run 16): listDictHeadwords GET /dict/headwords?seq= (<=500; headword, headword_reading, glosses[]) + clients regen; 501-allowlisted until BUG-7c
 - BUG-7b (run 16): /notes rowLabel + Reading/Meaning cols, Preview|Edit (default Preview), kind switcher (notes + cards), Kanji fetch->toKanji, 'From dictionary' field values

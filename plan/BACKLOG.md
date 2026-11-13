@@ -684,7 +684,7 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: server dictionary handler + tests, web/src/lib/cards/, web/src/routes/cards/, web/src/lib/notes/, web/src/routes/notes/ (ticket: plan/tickets/BUG-7c.md)
 
 ### HOTFIX-0.1.7 — Preview $effect loop hangs browser (I-3) + chart JAVA_TOOL_OPTIONS default (I-1 stopgap)
-- model: haiku (writer-light) · risk: low · deps: — · status: TODO · ships as 0.1.7
+- model: haiku (writer-light) · risk: low · deps: — · status: MERGED a5c4e3a (vitest deferred: jsdom dep denied → FOLLOWUPS) · ships as 0.1.7
 - paths: web/src/lib/cards/, web/src/lib/notes/, deploy/helm/kotobaya/ (ticket: plan/tickets/HOTFIX-0.1.7.md)
 
 ### BUG-8 — Android first sync slow + ANR: main-thread DB, single connection, per-op costs (I-4, I-7)
