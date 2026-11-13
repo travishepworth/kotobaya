@@ -15,10 +15,12 @@ Updated: RUN17
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| BUG-8 | writer-senior | 1 | t/BUG-8-android-sync-perf | RUN17 |
+| BUG-9 | writer | 1 | t/BUG-9-stats-memory | RUN17 |
 | C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
 
 ## Queued
-BUG-8, BUG-9, BUG-10, UI-FOUND-WEB (after HOTFIX-0.1.7) · UI-FOUND-APP (after BUG-8) · UI-DS
+BUG-10, UI-FOUND-WEB (ready; next free slots) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
 (none)
