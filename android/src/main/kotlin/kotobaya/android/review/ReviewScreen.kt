@@ -232,6 +232,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.CardBody(
     ) {
         AndroidView(factory = { web.view }, update = { web.show(CardPage.build(rendered)) }, modifier = Modifier.fillMaxSize())
     }
+    card.noExamplePattern?.let { pattern ->
+        Text(T(R.string.review_no_example_sentence))
+        if (pattern.isNotEmpty()) Text(T(R.string.review_no_example_pattern, pattern))
+    }
     val hasAudio = rendered.audio.isNotEmpty()
     var missing by remember(card.token, side) { mutableStateOf(false) }
     if (hasAudio) {

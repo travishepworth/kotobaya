@@ -2,6 +2,7 @@ package kotobaya.android.review
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotobaya.android.grammar.GrammarSentenceSource
 import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.fsrs.RatingOutcome
 import kotobaya.contracts.fsrs.Scheduler
@@ -49,6 +50,10 @@ data class ShownCard(
     val back: RenderedCard,
     /** One outcome per rating (Again, Hard, Good, Easy) from core's [Scheduler.preview]. */
     val previews: List<RatingOutcome>,
+    /** Grammar cards: the example sentence shown (logged as `review.logged.sentence_id`), else null. */
+    val sentenceId: String? = null,
+    /** Grammar card with no usable example sentence on this device: the point's pattern for the i18n notice; else null. */
+    val noExamplePattern: String? = null,
 )
 
 /** What the screen shows. */
@@ -173,7 +178,7 @@ class ReviewSession<L : LearningTables>(
                 "rating" to JsonNumber(button.rating.value.toDouble()),
                 "button" to JsonString(button.wire),
                 "duration_ms" to JsonNumber(duration.toDouble()),
-            ),
+            ).also { m -> card.sentenceId?.let { m["sentence_id"] = JsonString(it) } },
         )
         when (val r = minter.mint(OpType.REVIEW_LOGGED, payload)) {
             is MintResult.Refused -> {
@@ -247,13 +252,19 @@ class ReviewSession<L : LearningTables>(
             ?: return@transaction null
         val p = prefs()
         val entry = (note["entry_seq"] as? JsonNumber)?.value?.toLong()
+        val cardKind = CardRows.str(card["kind"]) ?: ""
+        val pointId = CardRows.str(note["grammar_point_id"])
+        val grammarPoint = pointId?.takeIf { cardKind != "production" }
+        val cloze = grammarPoint?.let { GrammarSentenceSource.pick(t, cardId, it, (card["reps"] as? JsonNumber)?.value?.toInt() ?: 0) }
+        val pattern = grammarPoint?.takeIf { cloze == null }
+            ?.let { CardRows.str(t.get(LearningTable.GRAMMAR_POINT, listOf(JsonString(it)))?.get("pattern")).orEmpty() }
         fun input(side: CardSide) = RenderInput(
             noteType = CardRows.noteTypeInfo(type),
             kind = CardRows.str(card["kind"]) ?: "",
             fields = CardRows.fieldsOf(note),
             mnemonic = CardRows.str(note["mnemonic"]).orEmpty(),
             dictionary = entry?.let(dictionary::lookup),
-            cloze = null,
+            cloze = cloze,
             side = side,
             options = RenderOptions(furigana = furigana, pitch = p.pitch, showMnemonic = true, mediaUrlTemplate = mediaUrlTemplate),
         )
@@ -261,7 +272,7 @@ class ReviewSession<L : LearningTables>(
         val previews = scheduler.preview(
             CardRows.scheduleOf(card), now, scheduler.paramsOf(CardRows.presetOf(t, card)), null, utcOffsetMin(now),
         )
-        ShownCard(token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews)
+        ShownCard(token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews, cloze?.sentenceId, pattern)
     }
 
     companion object {

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_no_example_sentence">No example sentence yet.</string>
+    <string name="review_no_example_pattern">Pattern: %1$s</string>
+</resources>
