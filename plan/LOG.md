@@ -560,3 +560,5 @@
 2026-11-13T01:34:25Z T304c+W-4 CHECK_GREEN android after rebase; MERGE 1 attempt
 2026-11-13T01:34:25Z F-5 CHECK_GREEN server after rebase; MERGE 1 attempt
 2026-11-13T01:34:25Z T313 DISPATCH writer-senior(opus)
+2026-11-13T01:49:50Z T305c HANDOFF DONE; reviewer dispatched
+2026-11-13T01:49:50Z F-6 created+DISPATCH writer(sonnet): sync DB schema missing if first use is a tx (found by T305c)
