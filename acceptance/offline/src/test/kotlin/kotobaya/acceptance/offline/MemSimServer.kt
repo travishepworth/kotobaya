@@ -85,16 +85,31 @@ class MemSimServer(override var nowMs: Long, private val pageSize: Int = 500, se
         }
         if (DefaultOpCodec.envelopeErrors(op, OpSource.PUSHED).isNotEmpty()) return rejected(op.opId, "schema_invalid", "envelope")
         if (op.deviceId != deviceId) return rejected(op.opId, "device_mismatch", op.deviceId)
-        if (op.opType.emitter == Emitter.SERVER || op.deviceId == Reserved.SERVER_DEVICE_ID) return rejected(op.opId, "server_only", op.opType.wire)
+        if (op.opType.emitter == Emitter.SERVER || op.deviceId == Reserved.SERVER_DEVICE_ID || serverOnlyVariant(op)) return rejected(op.opId, "server_only", op.opType.wire)
         DeviceOpApplier.missingReference(s.tables, op)?.let { return rejected(op.opId, "unknown_reference", "no $it") }
         val wall = DefaultHlcRules.wall(op.hlc)
         val reviewedAt = if (op.opType == OpType.REVIEW_LOGGED) (op.payload.members["reviewed_at"] as JsonNumber).value.toLong() else null
         if (wall > nowMs + Reserved.CLOCK_TOLERANCE_MS + Reserved.CLOCK_EPSILON_MS) return rejected(op.opId, "clock_ahead", "hlc ahead")
         if (reviewedAt != null && reviewedAt > nowMs + Reserved.CLOCK_TOLERANCE_MS) return rejected(op.opId, "clock_ahead", "reviewed_at ahead")
         if (wall < Reserved.CLOCK_FLOOR_MS || (reviewedAt != null && reviewedAt < Reserved.CLOCK_FLOOR_MS)) return rejected(op.opId, "clock_behind", "before 2020")
+        if (op.opType == OpType.NOTE_CREATED) {
+            val base = s.tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(op.p("note_type_id")!!)))?.str("base_type")
+            if (op.payload.members["entry_seq"].let { it != null && it !is kotobaya.contracts.sync.JsonNull } && base != "vocab") return rejected(op.opId, "invalid_value", "entry_seq on a $base note")
+        }
+        val builtin = (op.opType == OpType.FSRS_PARAMS_DELETED && op.p("id") == Reserved.DEFAULT_PRESET_ID) ||
+            (op.opType == OpType.NOTE_TYPE_DELETED && s.tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(op.p("id")!!)))?.get("builtin") == kotobaya.contracts.sync.JsonBool(true))
+        if (builtin) return rejected(op.opId, "immutable", "built-in")
         val seq = append(op, null)
         mergesAfter(op)
         return ok(op.opId, "accepted", seq)
+    }
+
+    /** SYNC.md 5.3 `server_only` variants of client op types. */
+    private fun serverOnlyVariant(op: Op): Boolean = when (op.opType) {
+        OpType.DECK_CREATED -> op.p("type") == "media" || op.p("type") == "list"
+        OpType.REVIEW_LOGGED -> op.p("import_source") != null || op.p("replay_hlc") != null
+        OpType.WORD_STATUS_SET -> op.p("origin") == "jpdb_import"
+        else -> false
     }
 
     private fun append(op: Op, cause: String?): Long {
@@ -136,8 +151,11 @@ class MemSimServer(override var nowMs: Long, private val pageSize: Int = 500, se
             }
             mint(OpType.CARD_MERGED, obj("loser_id" to card.str("id"), "survivor_id" to survivorCard), op.opId)
         }
+        val entrySeqWon = op.opType == OpType.NOTE_UPDATED && ((op.payload.members["set"] as? JsonObject)?.members?.containsKey("entry_seq") == true) &&
+            t.get(LearningTable.NOTE, listOf(JsonString(op.p("id")!!)))?.let { n -> ((n["clocks"] as? JsonObject)?.members?.get("entry_seq") as? JsonString)?.value == op.hlc } == true
         when (op.opType) {
-            OpType.NOTE_CREATED -> {
+            OpType.NOTE_CREATED, OpType.NOTE_UPDATED -> {
+                if (op.opType == OpType.NOTE_UPDATED && !entrySeqWon) return
                 val id = op.p("id")!!
                 val n = t.get(LearningTable.NOTE, listOf(JsonString(id))) ?: return
                 if (!live(n)) return
