@@ -17,6 +17,8 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
+| T503 | writer | 1 | t/T503-drill |
+| T506a | writer-senior | 1 | t/T506a-grammar-dsl |
 
 ## Parked
 (none)
