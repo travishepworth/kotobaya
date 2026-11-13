@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import type { Note, NoteBaseType, NoteType } from '../../lib/api/generated';
 	import { PAGE_SIZE } from '../../lib/cards/model';
+	import { fetchHeadwords } from '../../lib/cards/api';
 	import { noteTypesApi, notesApi } from '../../lib/notes/api';
 	import { HeadwordMap } from '../../lib/notes/headwords.svelte';
 	import { tn } from '../../lib/notes/messages';
@@ -42,6 +43,10 @@
 			if (gen !== generation) return;
 			notes = reset ? res.items : [...notes, ...res.items];
 			cursor = res.nextCursor;
+			void fetchHeadwords(
+				res.items.flatMap((n) => (n.entrySeq != null ? [n.entrySeq] : [])),
+				(found) => headwords.putHeadwords(found)
+			);
 		} catch {
 			if (gen !== generation) return;
 			cursor = null;

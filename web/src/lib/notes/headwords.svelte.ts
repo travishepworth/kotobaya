@@ -1,9 +1,7 @@
 // Page-level headword map: dictionary entry seq -> {headword, reading, gloss}.
-// Filled lazily from entries fetched when a note is opened (NoteEditor -> page `onentry`).
-// BUG-7c: call `putMany(entries)` once with the result of the batch lookup (C-18) for all
-// entry seqs in the loaded notes; the table reads only from this map, never fetches per row.
+// Filled by one batch call per loaded page (`putHeadwords`) and from entries fetched when a note is opened (`onentry`).
 import { SvelteMap } from 'svelte/reactivity';
-import type { DictEntry } from '../api/generated';
+import type { DictEntry, DictHeadword } from '../api/generated';
 import { headwordInfo, type HeadwordInfo } from './dict';
 
 export class HeadwordMap {
@@ -15,6 +13,11 @@ export class HeadwordMap {
 
 	put(seq: number, entry: DictEntry): void {
 		this.byseq.set(seq, headwordInfo(entry));
+	}
+
+	/** Fill from the slim batch shape (listDictHeadwords). */
+	putHeadwords(items: Iterable<DictHeadword>): void {
+		for (const h of items) this.byseq.set(h.seq, { headword: h.headword, reading: h.headwordReading, gloss: h.glosses[0] ?? '' });
 	}
 
 	/** Batch fill: `entries` keyed by seq. */

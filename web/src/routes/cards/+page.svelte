@@ -4,7 +4,7 @@
 	import { ResponseError, readProblem } from '../../lib/api/client';
 	import { EMPTY_VOCABULARY, loadVocabulary } from '../../lib/decks/vocabulary';
 	import type { SearchVocabulary } from '../../lib/core/index';
-	import { cardsApi, decksApi, noteTypesApi } from '../../lib/cards/api';
+	import { cardsApi, decksApi, fetchHeadwords, noteTypesApi } from '../../lib/cards/api';
 	import BulkBar from '../../lib/cards/BulkBar.svelte';
 	import CardPreview from '../../lib/cards/CardPreview.svelte';
 	import CardTable from '../../lib/cards/CardTable.svelte';
@@ -53,6 +53,7 @@
 			serverError = null;
 			cards = reset ? page.items : [...cards, ...page.items];
 			cursor = page.nextCursor;
+			void loadHeadwords(page.items);
 		} catch (e) {
 			if (gen !== generation) return;
 			if (e instanceof ResponseError && e.response.status === 422) {
@@ -65,6 +66,16 @@
 				loadedOnce = true;
 			}
 		}
+	}
+
+	/** One batch call for the dictionary notes of a freshly loaded page; failures keep the id fallback. */
+	async function loadHeadwords(items: Card[]): Promise<void> {
+		const seqs = items.flatMap((c) => (c.note?.entrySeq != null ? [c.note.entrySeq] : []));
+		await fetchHeadwords(seqs, (found) => {
+			const next = new Map(headwords);
+			for (const h of found) next.set(h.seq, h.headword);
+			headwords = next;
+		});
 	}
 
 	function search(): void {

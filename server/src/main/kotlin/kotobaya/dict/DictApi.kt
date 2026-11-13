@@ -25,6 +25,7 @@ fun dictHandlers(db: Database): Map<String, OperationHandler> {
         "searchDictionary" to { api.search(this) },
         "getDictEntry" to { api.entry(this) },
         "getKanji" to { api.kanji(this) },
+        "listDictHeadwords" to { api.headwords(this) },
         "listKanjiWords" to { KanjiWordsApi(db).list(this) },
         "listEntryExamples" to { EntryExamplesApi(db).list(this) },
         "getDictRelease" to { DictReleaseApi.get(db, this) },
@@ -236,6 +237,35 @@ internal class DictApi(private val db: Database) {
             .map { it.get(0, String::class.java) }.orElse("new")
         val id = dsl.fetchValue("select id::text from app.note where entry_seq = ? and deleted_at is null limit 1", seq) as String?
         return status to id
+    }
+
+    // ------------------------------------------------------------------ /dict/headwords (C-18)
+
+    suspend fun headwords(call: ApplicationCall) {
+        val raw = call.request.queryParameters.getAll("seq")
+        val bad = { detail: String -> validationFailed("/seq", "invalid_value", detail) }
+        if (raw == null) throw validationFailed("/seq", "required", "seq is required.")
+        if (raw.size != 1) throw bad("seq must be given exactly once.")
+        val parts = raw[0].split(',')
+        if (parts.size > 500) throw bad("seq holds at most 500 values.")
+        val seqs = parts.map { p ->
+            if (p.isEmpty() || p.length > 19 || !p.all { it in '0' .. '9' }) throw bad("seq values must be integers >= 1, comma-separated.")
+            p.toLongOrNull()?.takeIf { it >= 1 } ?: throw bad("seq values must be integers >= 1, comma-separated.")
+        }.distinct()
+        val rows = db.tx { dsl ->
+            dsl.fetch(
+                "select seq, headword, headword_reading, senses->0->'gloss' as glosses from ref.dict_entry " +
+                    "where seq in (${seqs.joinToString(",") { "?" }}) order by seq",
+                *seqs.toTypedArray(),
+            ).map { r ->
+                linkedMapOf(
+                    "seq" to r.get("seq", Long::class.java), "headword" to r.get("headword", String::class.java),
+                    "headword_reading" to r.get("headword_reading", String::class.java),
+                    "glosses" to glossTexts(r.get("glosses", String::class.java)),
+                )
+            }
+        }
+        call.respondJson(mapOf("items" to rows))
     }
 
     // ------------------------------------------------------------------ /kanji/{literal}

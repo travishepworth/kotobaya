@@ -1,5 +1,6 @@
 package kotobaya.server
 
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +79,7 @@ fun main(args: Array<String>) {
     app.confusables?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
-    embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = false)
+    embeddedServer(Netty, configure = { connector { port = config.port; host = "0.0.0.0" }; configureRequestLimits() }) { kotobayaModule(app.deps) }.start(wait = false)
     if (kotobaya.grammar.GrammarSeeder.requestedByEnv()) {
         // Opt-in: idempotent (ids are derived), so leaving the flag set across restarts mints nothing new.
         val n = runCatching { runBlocking { app.seedGrammar() } }.onFailure { log.error("grammar seed failed", it) }.getOrNull()
@@ -178,4 +179,11 @@ fun migrateCommand(env: Map<String, String> = System.getenv()): Int {
         log.error("migrate failed", e)
         1
     }
+}
+
+/** `listDictHeadwords` with 500 seqs makes a ~5 kB request line; Netty's default is 4096 (BUG-7c). */
+const val MAX_INITIAL_LINE_LENGTH = 16384
+
+fun io.ktor.server.netty.NettyApplicationEngine.Configuration.configureRequestLimits() {
+    maxInitialLineLength = MAX_INITIAL_LINE_LENGTH
 }
