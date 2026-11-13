@@ -22,6 +22,22 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from: [{ namespaceSelector: {} }]
+---
+# The parse service port is reachable from the api pod only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-parser
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "worker") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {{- include "kotobaya.selector" (dict "root" . "component" "api") | nindent 14 }}
+      ports: [{ port: {{ .Values.worker.parserPort }} }]
 {{- if .Values.postgres.enabled }}
 ---
 apiVersion: networking.k8s.io/v1

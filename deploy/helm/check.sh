@@ -23,6 +23,12 @@ has default.yaml 'AUTH_PASSWORD_HASH'
 has default.yaml 'AUTH_TOTP_SECRET'
 lacks default.yaml 'DICT_SOURCES_JSON'
 for v in DATABASE_URL S3_ENDPOINT S3_BUCKET S3_ACCESS_KEY S3_SECRET_KEY S3_REGION; do has default.yaml "name: $v"; done
+has default.yaml 'name: PARSER_URL'
+has default.yaml 'http://t-worker:8082'
+has default.yaml 'name: JPDB_CACHE_DIR'
+has default.yaml 'name: t-allow-parser'
+has default.yaml 'name: t-jpdb-cache'
+lacks default.yaml 'name: JPDB_API_KEY'
 lacks default.yaml 'PodDisruptionBudget'
 lacks default.yaml 'helm.sh/hook'
 
@@ -40,6 +46,8 @@ has external.yaml 'path: /api/v1/events'
 has external.yaml 'AUTH_TRUSTED_PROXIES'
 has external.yaml 'http://s3.example.invalid'
 
+render jpdb.yaml --set worker.jpdbApiKey.enabled=true
+has jpdb.yaml 'name: JPDB_API_KEY'
 # traefik: no extra events ingress; everything optional off
 render dict.yaml --set-string worker.dictSourcesJson='{}'
 has dict.yaml 'kind: ConfigMap'

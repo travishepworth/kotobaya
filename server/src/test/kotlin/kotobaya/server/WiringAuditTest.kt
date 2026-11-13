@@ -27,14 +27,8 @@ class WiringAuditTest {
 
     /** Deliberately unwired until W-5 (parse/sentences/coverage handlers are in flight in other tickets). */
     private val unwiredUntilW5: Set<String> = setOf(
-        // Implemented but left unwired: coverage (CoverageModule), sentences (T408a) and parse (T403c) are wired in W-5.
         // Every other entry has no handler in this tree yet (later tickets); remove entries as they land.
         "listHotKanji",
-        "getDeckCoverage",
-        "getMediaCoverage",
-        "listMediaSentences",
-        "listSentences",
-        "getSentence",
         "listHotWords",
         "listLeeches",
         "listWordConfusables",
@@ -55,10 +49,6 @@ class WiringAuditTest {
         "getStatsForecast",
         "getStatsKnownWords",
         "getStatsCalibration",
-        "parseText",
-        "listParseOverrides",
-        "putParseOverride",
-        "deleteParseOverride",
         "synthesizeSpeech",
         "exportAll",
         "exportAnki",

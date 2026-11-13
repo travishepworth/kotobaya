@@ -8,14 +8,18 @@ import signal
 import threading
 
 from kotobaya_worker import health
+from kotobaya_worker.importers.jpdb_deck.handler import make_jpdb_deck_import
 from kotobaya_worker.importers.jpdb_history.apply import make_apply_plan, make_fetch_blob
 from kotobaya_worker.importers.jpdb_history.handler import make_jpdb_history_import
 from kotobaya_worker.jobs.dict_refresh import make_dict_refresh
+from kotobaya_worker.media.pipeline.import_job import make_media_import
+from kotobaya_worker.media.pipeline.parse_job import make_media_parse
+from kotobaya_worker.parse.service import start_parse_service
 from kotobaya_worker.runner.core import Registry, Runner, RunnerConfig
 
 
 def build_registry() -> Registry:
-    """Later tickets register their handlers here (dict-refresh, media-parse, tts, ...)."""
+    """Later tickets register their handlers here (tts, ...)."""
     reg = Registry()
     database_url = os.environ["DATABASE_URL"]
     reg.register("dict-refresh", make_dict_refresh(database_url))
@@ -23,6 +27,9 @@ def build_registry() -> Registry:
         "jpdb-history-import",
         make_jpdb_history_import(database_url, make_fetch_blob(), make_apply_plan(database_url)),
     )
+    reg.register("media-import", make_media_import(database_url))
+    reg.register("media-parse", make_media_parse(database_url))
+    reg.register("jpdb-deck-import", make_jpdb_deck_import(database_url))
     return reg
 
 
@@ -32,7 +39,12 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     threading.Thread(target=health.serve, daemon=True).start()
-    Runner(RunnerConfig.from_env(), build_registry()).run_forever(stop)
+    # Parse service (C-12): daemon thread on PARSER_PORT (default 8082); Sudachi loads in the background.
+    parse_service = start_parse_service()
+    try:
+        Runner(RunnerConfig.from_env(), build_registry()).run_forever(stop)
+    finally:
+        parse_service.stop()
 
 
 if __name__ == "__main__":

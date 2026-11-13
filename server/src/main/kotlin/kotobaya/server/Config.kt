@@ -12,6 +12,10 @@ data class Config(
     val s3SecretKey: String,
     /** `MIGRATE_ON_START=true` runs Flyway before the startup sequence. Off by default (the Helm hook migrates). */
     val migrateOnStart: Boolean,
+    /** `PARSER_URL`: base URL of the worker parse service (C-12). Absent: `parseText` answers 503. */
+    val parserUrl: String? = null,
+    /** `PARSER_TIMEOUT_MS`: total timeout of one parse call (default 10 s). */
+    val parserTimeoutMs: Long = 10_000,
 ) {
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -26,6 +30,8 @@ data class Config(
                 s3AccessKey = req("S3_ACCESS_KEY"),
                 s3SecretKey = req("S3_SECRET_KEY"),
                 migrateOnStart = env["MIGRATE_ON_START"]?.lowercase() in setOf("1", "true", "yes"),
+                parserUrl = env["PARSER_URL"]?.takeIf { it.isNotBlank() },
+                parserTimeoutMs = env["PARSER_TIMEOUT_MS"]?.toLongOrNull()?.takeIf { it > 0 } ?: 10_000,
             )
         }
 

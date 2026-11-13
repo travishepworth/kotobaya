@@ -10,9 +10,15 @@ from kotobaya_worker.runner.__main__ import build_registry
 SHA = "0" * 64
 
 
-def test_registry_has_dict_refresh_and_jpdb_history(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_registry_has_all_registered_kinds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "jdbc:postgresql://localhost/x")
-    assert build_registry().kinds() == ["dict-refresh", "jpdb-history-import"]
+    assert set(build_registry().kinds()) == {
+        "dict-refresh",
+        "jpdb-history-import",
+        "media-import",
+        "media-parse",
+        "jpdb-deck-import",
+    }
 
 
 def test_sources_json_priority_and_fingerprint() -> None:

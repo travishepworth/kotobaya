@@ -19,7 +19,13 @@ import kotobaya.review.ReviewModule
 import kotobaya.decks.DecksModule
 import kotobaya.imports.ImportsModule
 import kotobaya.jobs.JobsModule
+import kotobaya.coverage.CoverageModule
 import kotobaya.media.api.MediaApiModule
+import kotobaya.media.publish.MediaPublishRunner
+import kotobaya.parse.HttpParserClient
+import kotobaya.parse.ParseModule
+import kotobaya.parse.ParserClient
+import kotobaya.sentences.SentencesModule
 import kotobaya.notes.NotesModule
 import kotobaya.settings.SettingsModule
 import kotobaya.sync.SyncEvents
@@ -56,16 +62,21 @@ fun main(args: Array<String>) {
         exitProcess(2)
     }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config), blobStore = S3BlobStore(s3Client(config), config.s3Bucket))
+    val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config), blobStore = S3BlobStore(s3Client(config), config.s3Bucket),
+        parser = HttpParserClient(config.parserUrl, config.parserTimeoutMs))
     app.jobs.start(scope)
     app.imports.start(scope)
+    app.mediaPublish?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
 }
 
-/** The composed application: [deps] for `kotobayaModule`, and [jobs], and [imports], which the caller must `start(scope)`. */
-class ComposedApp(val deps: AppDeps, val jobs: JobsModule, val imports: ImportsModule)
+/**
+ * The composed application: [deps] for `kotobayaModule`, and [jobs], [imports] and [mediaPublish] (null without a
+ * blob store), which the caller must `start(scope)`.
+ */
+class ComposedApp(val deps: AppDeps, val jobs: JobsModule, val imports: ImportsModule, val mediaPublish: MediaPublishRunner? = null)
 
 /**
  * The one place the modules meet: auth (login, token authenticator), dictionary and jobs/events handlers.
@@ -84,6 +95,8 @@ fun composeApp(
     /** Backs putBlob/getBlob/queryBlobs; `main` always passes the S3 store (S3 config is required at startup). Null leaves them 501. */
     blobStore: BlobStore? = null,
     eventsGuardMs: Long = 5_000,
+    /** Backs `parseText`; the default has no `PARSER_URL`, so it answers 503. */
+    parser: ParserClient = HttpParserClient(null),
 ): ComposedApp {
     val validator = TokenValidator(db)
     val jobs = JobsModule(
@@ -99,6 +112,9 @@ fun composeApp(
         NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
+        ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +
+        // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
+        (SentencesModule(db).handlers - "listEntryExamples") +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())
     val deps = AppDeps(
         db = db,
@@ -107,7 +123,7 @@ fun composeApp(
         startup = startup,
         bucketInit = bucketInit,
     )
-    return ComposedApp(deps, jobs, imports)
+    return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) })
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()

@@ -40,6 +40,7 @@ spec:
             {{- with .Values.api.publicUrl }}
             - { name: PUBLIC_URL, value: {{ . | quote }} }
             {{- end }}
+            - { name: PARSER_URL, value: "http://{{ .Release.Name }}-worker:{{ .Values.worker.parserPort }}" }
             {{- include "kotobaya.ntfyEnv" . | nindent 12 }}
             {{- if and (not .Values.backup.enabled) (not (hasKey .Values.api.env "BACKUPS_DISABLED")) }}
             - { name: BACKUPS_DISABLED, value: "true" }

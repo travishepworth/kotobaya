@@ -41,6 +41,12 @@ worker:
   image: { repository: worker, tag: "0.1.0" }
   replicas: 1
   healthPort: 8081
+  # Parse service (C-12), cluster-internal: the api reaches it at PARSER_URL = http://<release>-worker:<parserPort>.
+  parserPort: 8082
+  # jpdb deck cache (JPDB_CACHE_DIR). Provisional: a small PVC, not object storage.
+  jpdbCache: { storage: 1Gi, storageClassName: "" }
+  # Optional JPDB_API_KEY from a Secret (never in values); off = Pages source only.
+  jpdbApiKey: { enabled: false, secretName: kotobaya-jpdb }
   command: [python, -m, kotobaya_worker.runner]
   # DICT_SOURCES_JSON: pinned dictionary sources + checksums (format: docstring of
   # worker/src/kotobaya_worker/jobs/dict_refresh.py). Rendered into a ConfigMap; empty = not set.

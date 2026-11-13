@@ -15,19 +15,28 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
         runAsUser: 65534
+        fsGroup: 65534
       containers:
         - name: worker
           image: {{ include "kotobaya.image" (dict "root" . "img" .Values.worker.image) }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           command: {{- toYaml .Values.worker.command | nindent 12 }}
-          ports: [{ name: health, containerPort: {{ .Values.worker.healthPort }} }]
+          ports:
+            - { name: health, containerPort: {{ .Values.worker.healthPort }} }
+            - { name: parser, containerPort: {{ .Values.worker.parserPort }} }
           env:
             - { name: HOME, value: /tmp }   # dictionary download cache lives under ~/.cache (read-only rootfs)
             {{- include "kotobaya.appEnv" . | nindent 12 }}
             {{- if .Values.worker.dictSourcesJson }}
             - name: DICT_SOURCES_JSON
               valueFrom: { configMapKeyRef: { name: {{ .Release.Name }}-worker, key: DICT_SOURCES_JSON } }
+            {{- end }}
+            - { name: PARSER_PORT, value: {{ .Values.worker.parserPort | quote }} }
+            - { name: JPDB_CACHE_DIR, value: /var/cache/kotobaya-jpdb }
+            {{- if .Values.worker.jpdbApiKey.enabled }}
+            - name: JPDB_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.worker.jpdbApiKey.secretName }}, key: JPDB_API_KEY, optional: true } }
             {{- end }}
             {{- range $k, $v := .Values.worker.env }}
             - { name: {{ $k }}, value: {{ $v | quote }} }
@@ -38,8 +47,36 @@ spec:
             httpGet: { path: /healthz, port: health }
             periodSeconds: 20
           resources: {{- toYaml .Values.worker.resources | nindent 12 }}
-          volumeMounts: [{ name: tmp, mountPath: /tmp }]
-      volumes: [{ name: tmp, emptyDir: {} }]
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: jpdb-cache, mountPath: /var/cache/kotobaya-jpdb }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - name: jpdb-cache
+          persistentVolumeClaim: { claimName: {{ .Release.Name }}-jpdb-cache }
+---
+# Parse service (C-12): cluster-internal only, no auth; the NetworkPolicy admits the api pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-worker
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "kotobaya.selector" $sel | nindent 4 }}
+  ports: [{ name: parser, port: {{ .Values.worker.parserPort }}, targetPort: parser }]
+---
+# jpdb deck page/API cache (provisional: disk cache, not object storage).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-jpdb-cache
+  labels: {{- include "kotobaya.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.worker.jpdbCache.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources: { requests: { storage: {{ .Values.worker.jpdbCache.storage }} } }
 {{- if .Values.worker.dictSourcesJson }}
 ---
 apiVersion: v1
