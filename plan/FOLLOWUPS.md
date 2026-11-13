@@ -200,3 +200,7 @@
 - remint catches Abort outside its own transaction; called inside an outer tx the in-memory store could commit partial deletes → fail fast in core; T303e must never wrap it.
 - RejectedRows OpFacts.decode catches only IllegalStateException; other decode errors crash list()/preview — catch Exception.
 - (T303b question resolved) weights_version 0 after card.created post fsrs_params.published conforms (§9.3 lazy marker); readers must replay before reading cache.
+- (architect T303d) ClockRepair allows skew == 5 min (<=) but clock_blocked clears only < 5 min → misleading preview (same fix as blockedBy/clock_blocked).
+- (architect T303d) OpFacts.isCreation matches any *.created incl. media.created, not in §10.4 list — restrict or confirm.
+- (architect T303d) lowerBound falls back to FLOOR when device has no card row — comment or contract clarification.
+- (architect T303d) undecodable rows excluded from C → remint_offset deleted even if such a row is clock-rejected (harmless; row stays listed).
