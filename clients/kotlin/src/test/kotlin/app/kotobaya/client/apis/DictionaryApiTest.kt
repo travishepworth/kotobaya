@@ -29,6 +29,7 @@ import io.kotlintest.specs.ShouldSpec
 import app.kotobaya.client.apis.DictionaryApi
 import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.DictEntrySummaryPage
+import app.kotobaya.client.models.DictHeadwordList
 import app.kotobaya.client.models.DictRelease
 import app.kotobaya.client.models.EntryExamples
 import app.kotobaya.client.models.Job
@@ -62,6 +63,14 @@ class DictionaryApiTest : ShouldSpec() {
             // uncomment below to test getKanji
             //val literal : kotlin.String = 績 // kotlin.String | Exactly one kanji (one Unicode code point), percent-encoded UTF-8. The literal path segment `hot` is the separate operation `listHotKanji`.
             //val result : Kanji = apiInstance.getKanji(literal)
+            //result shouldBe ("TODO")
+        }
+
+        // to test listDictHeadwords
+        should("test listDictHeadwords") {
+            // uncomment below to test listDictHeadwords
+            //val seq : kotlin.collections.List<kotlin.Long> = [1358280,1358300,9999999] // kotlin.collections.List<kotlin.Long> | 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.
+            //val result : DictHeadwordList = apiInstance.listDictHeadwords(seq)
             //result shouldBe ("TODO")
         }
 

@@ -84,6 +84,8 @@ docs/DictEntrySensesInner.md
 docs/DictEntrySensesInnerGlossInner.md
 docs/DictEntrySummary.md
 docs/DictEntrySummaryPage.md
+docs/DictHeadword.md
+docs/DictHeadwordList.md
 docs/DictRelease.md
 docs/DictReleaseArtifactsInner.md
 docs/DictReleaseFreqListsInner.md
@@ -403,6 +405,8 @@ kotobaya_client/models/dict_entry_senses_inner.py
 kotobaya_client/models/dict_entry_senses_inner_gloss_inner.py
 kotobaya_client/models/dict_entry_summary.py
 kotobaya_client/models/dict_entry_summary_page.py
+kotobaya_client/models/dict_headword.py
+kotobaya_client/models/dict_headword_list.py
 kotobaya_client/models/dict_release.py
 kotobaya_client/models/dict_release_artifacts_inner.py
 kotobaya_client/models/dict_release_freq_lists_inner.py
@@ -688,6 +692,8 @@ test/test_dict_entry_senses_inner.py
 test/test_dict_entry_senses_inner_gloss_inner.py
 test/test_dict_entry_summary.py
 test/test_dict_entry_summary_page.py
+test/test_dict_headword.py
+test/test_dict_headword_list.py
 test/test_dict_release.py
 test/test_dict_release_artifacts_inner.py
 test/test_dict_release_freq_lists_inner.py

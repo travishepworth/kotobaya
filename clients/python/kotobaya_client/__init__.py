@@ -124,6 +124,8 @@ __all__ = [
     "DictEntrySensesInnerGlossInner",
     "DictEntrySummary",
     "DictEntrySummaryPage",
+    "DictHeadword",
+    "DictHeadwordList",
     "DictRelease",
     "DictReleaseArtifactsInner",
     "DictReleaseFreqListsInner",
@@ -434,6 +436,8 @@ from kotobaya_client.models.dict_entry_senses_inner import DictEntrySensesInner 
 from kotobaya_client.models.dict_entry_senses_inner_gloss_inner import DictEntrySensesInnerGlossInner as DictEntrySensesInnerGlossInner
 from kotobaya_client.models.dict_entry_summary import DictEntrySummary as DictEntrySummary
 from kotobaya_client.models.dict_entry_summary_page import DictEntrySummaryPage as DictEntrySummaryPage
+from kotobaya_client.models.dict_headword import DictHeadword as DictHeadword
+from kotobaya_client.models.dict_headword_list import DictHeadwordList as DictHeadwordList
 from kotobaya_client.models.dict_release import DictRelease as DictRelease
 from kotobaya_client.models.dict_release_artifacts_inner import DictReleaseArtifactsInner as DictReleaseArtifactsInner
 from kotobaya_client.models.dict_release_freq_lists_inner import DictReleaseFreqListsInner as DictReleaseFreqListsInner

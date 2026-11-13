@@ -1190,6 +1190,69 @@ paths:
               examples: {default: {$ref: '#/components/examples/EntryExamples'}}
         '404': {$ref: '#/components/responses/NotFound'}
         default: {$ref: '#/components/responses/Problem'}
+  /dict/headwords:
+    get:
+      operationId: listDictHeadwords
+      tags: [dictionary]
+      summary: Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+      description: |
+        Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of
+        referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`),
+        no paging. Use `getDictEntry` for the full entry.
+
+        **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by
+        commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each
+        value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422`
+        (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing,
+        empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`,
+        trailing comma), not an integer, below 1 or above the int64 range; more than 500
+        elements. The 500 limit counts elements as sent, before de-duplication.
+        Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.
+
+        **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`,
+        ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not
+        an error, and not `404` even when no requested `seq` exists (`items: []`). Retired
+        entries are returned, as in `getDictEntry` (a note may still reference one). Clients
+        match items to their rows by `seq` and keep their fallback label for omitted ones.
+
+        **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for
+        the same entry: `headword` = first kanji form in JMdict order, or the first reading when
+        the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for
+        kana-only entries); `glosses` = English glosses of the first sense, in order (the first
+        element is the short meaning; empty array if the first sense has no English gloss).
+
+        **Request size.** 500 seven-digit values with percent-encoded commas make a request line
+        of about 5 kB. The server and every proxy in front of it MUST accept request lines of at
+        least 8192 bytes for this operation (Netty's default of 4096 is too small).
+
+        The response depends only on the dictionary release, not on the caller; it carries no
+        cache headers in v1.
+      security:
+        - bearerAuth: [read]
+        - sessionCookie: [read]
+      parameters:
+        - name: seq
+          in: query
+          required: true
+          description: 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 500
+            items: {$ref: '#/components/schemas/EntrySeq'}
+          example: [1358280, 1358300, 9999999]
+      responses:
+        '200':
+          description: Headwords of the requested entries that exist, by `seq` ascending. Empty list when none exist.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DictHeadwordList'}
+              examples: {default: {$ref: '#/components/examples/DictHeadwordList'}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
   /dict/release:
     get:
       operationId: getDictRelease
@@ -7066,6 +7129,48 @@ components:
           - string
           - 'null'
           description: Cursor of the next page, or null.
+    DictHeadword:
+      type: object
+      description: The label fields of one dictionary entry (`listDictHeadwords`, C-18). A subset of `DictEntrySummary` with identical values; no caller overlay.
+      required:
+      - seq
+      - headword
+      - headword_reading
+      - glosses
+      properties:
+        seq:
+          $ref: '#/components/schemas/EntrySeq'
+        headword:
+          type: string
+          minLength: 1
+          description: First kanji form, or first reading for kana-only entries.
+          examples:
+          - 食べる
+        headword_reading:
+          type: string
+          minLength: 1
+          description: First reading. Equal to `headword` for kana-only entries.
+          examples:
+          - たべる
+        glosses:
+          type: array
+          items:
+            type: string
+          description: English glosses of the first sense, in order; the first element is the short meaning. Empty when the first sense has no English gloss.
+          examples:
+          - - to eat
+    DictHeadwordList:
+      type: object
+      description: Headwords for a batch of entries (`listDictHeadwords`, C-18). Not paginated.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/DictHeadword'
+          description: One item per distinct requested `seq` that exists, by `seq` ascending. Unknown `seq` values are omitted.
     DictEntry:
       type: object
       description: A full JMdict entry (`ref.dict_entry` and its satellites) with the caller's overlay.
@@ -12738,6 +12843,20 @@ components:
             type: media
             occurrence_count: 12
         next_cursor: eyJrIjpbMTIsMTQwNCwxMzU4MzAwXX0
+    DictHeadwordList:
+      summary: GET /dict/headwords?seq=1358300,1358280,9999999,1358280 (9999999 does not exist; the duplicate collapses; order is by seq)
+      value:
+        items:
+        - seq: 1358280
+          headword: 食べる
+          headword_reading: たべる
+          glosses:
+          - to eat
+        - seq: 1358300
+          headword: 食事
+          headword_reading: しょくじ
+          glosses:
+          - meal
     DictEntry:
       value:
         seq: 1358280

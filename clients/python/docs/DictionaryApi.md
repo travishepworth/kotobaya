@@ -7,6 +7,7 @@ Method | HTTP request | Description
 [**get_dict_entry**](DictionaryApi.md#get_dict_entry) | **GET** /dict/entries/{seq} | One JMdict entry with frequency, pitch, kanji and your status.
 [**get_dict_release**](DictionaryApi.md#get_dict_release) | **GET** /dict/release | The current dictionary release and its downloadable device builds.
 [**get_kanji**](DictionaryApi.md#get_kanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any.
+[**list_dict_headwords**](DictionaryApi.md#list_dict_headwords) | **GET** /dict/headwords | Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
 [**list_entry_examples**](DictionaryApi.md#list_entry_examples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba.
 [**list_kanji_words**](DictionaryApi.md#list_kanji_words) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
 [**refresh_dictionary**](DictionaryApi.md#refresh_dictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release).
@@ -273,6 +274,125 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** | The kanji. |  -  |
 **404** | No such resource. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_dict_headwords**
+> DictHeadwordList list_dict_headwords(seq)
+
+Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+
+Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of
+referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`),
+no paging. Use `getDictEntry` for the full entry.
+
+**`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by
+commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each
+value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422`
+(`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing,
+empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`,
+trailing comma), not an integer, below 1 or above the int64 range; more than 500
+elements. The 500 limit counts elements as sent, before de-duplication.
+Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.
+
+**Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`,
+ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not
+an error, and not `404` even when no requested `seq` exists (`items: []`). Retired
+entries are returned, as in `getDictEntry` (a note may still reference one). Clients
+match items to their rows by `seq` and keep their fallback label for omitted ones.
+
+**Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for
+the same entry: `headword` = first kanji form in JMdict order, or the first reading when
+the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for
+kana-only entries); `glosses` = English glosses of the first sense, in order (the first
+element is the short meaning; empty array if the first sense has no English gloss).
+
+**Request size.** 500 seven-digit values with percent-encoded commas make a request line
+of about 5 kB. The server and every proxy in front of it MUST accept request lines of at
+least 8192 bytes for this operation (Netty's default of 4096 is too small).
+
+The response depends only on the dictionary release, not on the caller; it carries no
+cache headers in v1.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.dict_headword_list import DictHeadwordList
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.DictionaryApi(api_client)
+    seq = [[1358280,1358300,9999999]] # List[int] | 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.
+
+    try:
+        # Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+        api_response = api_instance.list_dict_headwords(seq)
+        print("The response of DictionaryApi->list_dict_headwords:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling DictionaryApi->list_dict_headwords: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **seq** | [**List[int]**](int.md)| 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. | 
+
+### Return type
+
+[**DictHeadwordList**](DictHeadwordList.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Headwords of the requested entries that exist, by &#x60;seq&#x60; ascending. Empty list when none exist. |  -  |
+**401** | Missing, unknown, expired or revoked credential; or wrong login or pairing data. |  -  |
+**422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
 **0** | Any other error. See the error table in the API description. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

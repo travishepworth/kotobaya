@@ -74,6 +74,8 @@ export * from './DictEntrySensesInner';
 export * from './DictEntrySensesInnerGlossInner';
 export * from './DictEntrySummary';
 export * from './DictEntrySummaryPage';
+export * from './DictHeadword';
+export * from './DictHeadwordList';
 export * from './DictRelease';
 export * from './DictReleaseArtifactsInner';
 export * from './DictReleaseFreqListsInner';

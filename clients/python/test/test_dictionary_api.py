@@ -47,6 +47,13 @@ class TestDictionaryApi(unittest.TestCase):
         """
         pass
 
+    def test_list_dict_headwords(self) -> None:
+        """Test case for list_dict_headwords
+
+        Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+        """
+        pass
+
     def test_list_entry_examples(self) -> None:
         """Test case for list_entry_examples
 

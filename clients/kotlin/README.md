@@ -282,6 +282,7 @@ All URIs are relative to */api/v1*
 | *DictionaryApi* | [**getDictEntry**](docs/DictionaryApi.md#getdictentry) | **GET** /dict/entries/{seq} | One JMdict entry with frequency, pitch, kanji and your status. |
 | *DictionaryApi* | [**getDictRelease**](docs/DictionaryApi.md#getdictrelease) | **GET** /dict/release | The current dictionary release and its downloadable device builds. |
 | *DictionaryApi* | [**getKanji**](docs/DictionaryApi.md#getkanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any. |
+| *DictionaryApi* | [**listDictHeadwords**](docs/DictionaryApi.md#listdictheadwords) | **GET** /dict/headwords | Headword, reading and first-sense glosses for up to 500 entries in one call (C-18). |
 | *DictionaryApi* | [**listEntryExamples**](docs/DictionaryApi.md#listentryexamples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba. |
 | *DictionaryApi* | [**listKanjiWords**](docs/DictionaryApi.md#listkanjiwords) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17). |
 | *DictionaryApi* | [**refreshDictionary**](docs/DictionaryApi.md#refreshdictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release). |
@@ -445,6 +446,8 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.DictEntrySensesInnerGlossInner](docs/DictEntrySensesInnerGlossInner.md)
  - [app.kotobaya.client.models.DictEntrySummary](docs/DictEntrySummary.md)
  - [app.kotobaya.client.models.DictEntrySummaryPage](docs/DictEntrySummaryPage.md)
+ - [app.kotobaya.client.models.DictHeadword](docs/DictHeadword.md)
+ - [app.kotobaya.client.models.DictHeadwordList](docs/DictHeadwordList.md)
  - [app.kotobaya.client.models.DictRelease](docs/DictRelease.md)
  - [app.kotobaya.client.models.DictReleaseArtifactsInner](docs/DictReleaseArtifactsInner.md)
  - [app.kotobaya.client.models.DictReleaseFreqListsInner](docs/DictReleaseFreqListsInner.md)

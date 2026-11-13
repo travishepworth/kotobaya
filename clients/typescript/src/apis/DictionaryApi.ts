@@ -24,6 +24,11 @@ import {
     DictEntrySummaryPageToJSON,
 } from '../models/DictEntrySummaryPage';
 import {
+    type DictHeadwordList,
+    DictHeadwordListFromJSON,
+    DictHeadwordListToJSON,
+} from '../models/DictHeadwordList';
+import {
     type DictRelease,
     DictReleaseFromJSON,
     DictReleaseToJSON,
@@ -71,6 +76,13 @@ export interface GetKanjiRequest {
      * Exactly one kanji (one Unicode code point), percent-encoded UTF-8. The literal path segment `hot` is the separate operation `listHotKanji`.
      */
     literal: string;
+}
+
+export interface ListDictHeadwordsRequest {
+    /**
+     * 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.
+     */
+    seq: Array<number>;
 }
 
 export interface ListEntryExamplesRequest {
@@ -292,6 +304,64 @@ export class DictionaryApi extends runtime.BaseAPI {
      */
     async getKanji(requestParameters: GetKanjiRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Kanji> {
         const response = await this.getKanjiRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listDictHeadwords without sending the request
+     */
+    async listDictHeadwordsRequestOpts(requestParameters: ListDictHeadwordsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['seq'] == null) {
+            throw new runtime.RequiredError(
+                'seq',
+                'Required parameter "seq" was null or undefined when calling listDictHeadwords().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['seq'] != null) {
+            queryParameters['seq'] = requestParameters['seq']!.join(runtime.COLLECTION_FORMATS["csv"]);
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["read"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/dict/headwords`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`), no paging. Use `getDictEntry` for the full entry.  **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422` (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing, empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.  **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`, ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not an error, and not `404` even when no requested `seq` exists (`items: []`). Retired entries are returned, as in `getDictEntry` (a note may still reference one). Clients match items to their rows by `seq` and keep their fallback label for omitted ones.  **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for the same entry: `headword` = first kanji form in JMdict order, or the first reading when the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for kana-only entries); `glosses` = English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty\'s default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+     * Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+     */
+    async listDictHeadwordsRaw(requestParameters: ListDictHeadwordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DictHeadwordList>> {
+        const requestOptions = await this.listDictHeadwordsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => DictHeadwordListFromJSON(jsonValue));
+    }
+
+    /**
+     * Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`), no paging. Use `getDictEntry` for the full entry.  **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422` (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing, empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.  **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`, ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not an error, and not `404` even when no requested `seq` exists (`items: []`). Retired entries are returned, as in `getDictEntry` (a note may still reference one). Clients match items to their rows by `seq` and keep their fallback label for omitted ones.  **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for the same entry: `headword` = first kanji form in JMdict order, or the first reading when the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for kana-only entries); `glosses` = English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty\'s default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+     * Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+     */
+    async listDictHeadwords(requestParameters: ListDictHeadwordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DictHeadwordList> {
+        const response = await this.listDictHeadwordsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -16,10 +16,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
 from pydantic import Field, StrictBool, field_validator
-from typing import Optional
+from typing import List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.dict_entry import DictEntry
 from kotobaya_client.models.dict_entry_summary_page import DictEntrySummaryPage
+from kotobaya_client.models.dict_headword_list import DictHeadwordList
 from kotobaya_client.models.dict_release import DictRelease
 from kotobaya_client.models.entry_examples import EntryExamples
 from kotobaya_client.models.job import Job
@@ -822,6 +823,281 @@ class DictionaryApi:
         return self.api_client.param_serialize(
             method='GET',
             resource_path='/kanji/{literal}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_dict_headwords(
+        self,
+        seq: Annotated[List[Annotated[int, Field(strict=True, ge=1)]], Field(min_length=1, max_length=500, description="1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> DictHeadwordList:
+        """Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+
+        Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`), no paging. Use `getDictEntry` for the full entry.  **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422` (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing, empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.  **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`, ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not an error, and not `404` even when no requested `seq` exists (`items: []`). Retired entries are returned, as in `getDictEntry` (a note may still reference one). Clients match items to their rows by `seq` and keep their fallback label for omitted ones.  **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for the same entry: `headword` = first kanji form in JMdict order, or the first reading when the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for kana-only entries); `glosses` = English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty's default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+
+        :param seq: 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. (required)
+        :type seq: List[int]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_dict_headwords_serialize(
+            seq=seq,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "DictHeadwordList",
+            '401': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def list_dict_headwords_with_http_info(
+        self,
+        seq: Annotated[List[Annotated[int, Field(strict=True, ge=1)]], Field(min_length=1, max_length=500, description="1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[DictHeadwordList]:
+        """Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+
+        Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`), no paging. Use `getDictEntry` for the full entry.  **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422` (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing, empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.  **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`, ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not an error, and not `404` even when no requested `seq` exists (`items: []`). Retired entries are returned, as in `getDictEntry` (a note may still reference one). Clients match items to their rows by `seq` and keep their fallback label for omitted ones.  **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for the same entry: `headword` = first kanji form in JMdict order, or the first reading when the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for kana-only entries); `glosses` = English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty's default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+
+        :param seq: 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. (required)
+        :type seq: List[int]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_dict_headwords_serialize(
+            seq=seq,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "DictHeadwordList",
+            '401': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def list_dict_headwords_without_preload_content(
+        self,
+        seq: Annotated[List[Annotated[int, Field(strict=True, ge=1)]], Field(min_length=1, max_length=500, description="1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.")],
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+
+        Batch label lookup for clients that hold only `entry_seq` values (e.g. a page of referenced notes whose `fields` are `{}`). Read-only; no overlay (`status`, `note_id`), no paging. Use `getDictEntry` for the full entry.  **`seq`.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (`seq=1358280,1358300`; a percent-encoded comma `%2C` is the same thing). Each value is a base-10 integer >= 1 with no sign, spaces or decimals. Any of these is `422` (`validation_failed`, pointer `/seq`) and nothing is looked up: the parameter is missing, empty (`seq=`) or given more than once (`seq=1&seq=2`); an element is empty (`1,,2`, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: `seq=5,5` behaves as `seq=5`.  **Result.** One item per distinct requested `seq` that exists in `ref.dict_entry`, ordered by `seq` ascending (not in request order). A `seq` with no row is omitted - not an error, and not `404` even when no requested `seq` exists (`items: []`). Retired entries are returned, as in `getDictEntry` (a note may still reference one). Clients match items to their rows by `seq` and keep their fallback label for omitted ones.  **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for the same entry: `headword` = first kanji form in JMdict order, or the first reading when the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for kana-only entries); `glosses` = English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty's default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+
+        :param seq: 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. (required)
+        :type seq: List[int]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_dict_headwords_serialize(
+            seq=seq,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "DictHeadwordList",
+            '401': "Problem",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _list_dict_headwords_serialize(
+        self,
+        seq,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+            'seq': 'csv',
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        if seq is not None:
+            
+            _query_params.append(('seq', seq))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/dict/headwords',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

@@ -81,6 +81,8 @@ docs/DictEntrySensesInner.md
 docs/DictEntrySensesInnerGlossInner.md
 docs/DictEntrySummary.md
 docs/DictEntrySummaryPage.md
+docs/DictHeadword.md
+docs/DictHeadwordList.md
 docs/DictRelease.md
 docs/DictReleaseArtifactsInner.md
 docs/DictReleaseFreqListsInner.md
@@ -407,6 +409,8 @@ src/main/kotlin/app/kotobaya/client/models/DictEntrySensesInner.kt
 src/main/kotlin/app/kotobaya/client/models/DictEntrySensesInnerGlossInner.kt
 src/main/kotlin/app/kotobaya/client/models/DictEntrySummary.kt
 src/main/kotlin/app/kotobaya/client/models/DictEntrySummaryPage.kt
+src/main/kotlin/app/kotobaya/client/models/DictHeadword.kt
+src/main/kotlin/app/kotobaya/client/models/DictHeadwordList.kt
 src/main/kotlin/app/kotobaya/client/models/DictRelease.kt
 src/main/kotlin/app/kotobaya/client/models/DictReleaseArtifactsInner.kt
 src/main/kotlin/app/kotobaya/client/models/DictReleaseFreqListsInner.kt
@@ -701,6 +705,8 @@ src/test/kotlin/app/kotobaya/client/models/DictEntrySensesInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictEntrySummaryPageTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictEntrySummaryTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictEntryTest.kt
+src/test/kotlin/app/kotobaya/client/models/DictHeadwordListTest.kt
+src/test/kotlin/app/kotobaya/client/models/DictHeadwordTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictReleaseArtifactsInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictReleaseFreqListsInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/DictReleaseTest.kt

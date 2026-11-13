@@ -25,6 +25,7 @@ package app.kotobaya.client.apis
 
 import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.DictEntrySummaryPage
+import app.kotobaya.client.models.DictHeadwordList
 import app.kotobaya.client.models.DictRelease
 import app.kotobaya.client.models.EntryExamples
 import app.kotobaya.client.models.Job
@@ -143,6 +144,41 @@ import java.text.DateFormat
             val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/kanji/{literal}".replace("{" + "literal" + "}", "$literal"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            )
+
+            return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+            ).wrap()
+            }
+
+        /**
+        * GET /dict/headwords
+        * Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+        * Batch label lookup for clients that hold only &#x60;entry_seq&#x60; values (e.g. a page of referenced notes whose &#x60;fields&#x60; are &#x60;{}&#x60;). Read-only; no overlay (&#x60;status&#x60;, &#x60;note_id&#x60;), no paging. Use &#x60;getDictEntry&#x60; for the full entry.  **&#x60;seq&#x60;.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (&#x60;seq&#x3D;1358280,1358300&#x60;; a percent-encoded comma &#x60;%2C&#x60; is the same thing). Each value is a base-10 integer &gt;&#x3D; 1 with no sign, spaces or decimals. Any of these is &#x60;422&#x60; (&#x60;validation_failed&#x60;, pointer &#x60;/seq&#x60;) and nothing is looked up: the parameter is missing, empty (&#x60;seq&#x3D;&#x60;) or given more than once (&#x60;seq&#x3D;1&amp;seq&#x3D;2&#x60;); an element is empty (&#x60;1,,2&#x60;, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: &#x60;seq&#x3D;5,5&#x60; behaves as &#x60;seq&#x3D;5&#x60;.  **Result.** One item per distinct requested &#x60;seq&#x60; that exists in &#x60;ref.dict_entry&#x60;, ordered by &#x60;seq&#x60; ascending (not in request order). A &#x60;seq&#x60; with no row is omitted - not an error, and not &#x60;404&#x60; even when no requested &#x60;seq&#x60; exists (&#x60;items: []&#x60;). Retired entries are returned, as in &#x60;getDictEntry&#x60; (a note may still reference one). Clients match items to their rows by &#x60;seq&#x60; and keep their fallback label for omitted ones.  **Item fields** have exactly the values &#x60;getDictEntry&#x60; and &#x60;searchDictionary&#x60; report for the same entry: &#x60;headword&#x60; &#x3D; first kanji form in JMdict order, or the first reading when the entry has no kanji form; &#x60;headword_reading&#x60; &#x3D; first reading (equal to &#x60;headword&#x60; for kana-only entries); &#x60;glosses&#x60; &#x3D; English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty&#39;s default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+         * @param seq 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. 
+         * @return DictHeadwordList
+        */
+            @Suppress("UNCHECKED_CAST")
+        open suspend fun listDictHeadwords(seq: kotlin.collections.List<kotlin.Long>): HttpResponse<DictHeadwordList> {
+
+            val localVariableAuthNames = listOf<String>("sessionCookie", "bearerAuth")
+
+            val localVariableBody = 
+                    io.ktor.client.utils.EmptyContent
+
+            val localVariableQuery = mutableMapOf<String, List<String>>()
+            seq?.apply { localVariableQuery["seq"] = toMultiValue(this, "csv") }
+
+            val localVariableHeaders = mutableMapOf<String, String>()
+
+            val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/dict/headwords",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

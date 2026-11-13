@@ -341,6 +341,7 @@ Class | Method | HTTP request | Description
 *DictionaryApi* | [**get_dict_entry**](docs/DictionaryApi.md#get_dict_entry) | **GET** /dict/entries/{seq} | One JMdict entry with frequency, pitch, kanji and your status.
 *DictionaryApi* | [**get_dict_release**](docs/DictionaryApi.md#get_dict_release) | **GET** /dict/release | The current dictionary release and its downloadable device builds.
 *DictionaryApi* | [**get_kanji**](docs/DictionaryApi.md#get_kanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any.
+*DictionaryApi* | [**list_dict_headwords**](docs/DictionaryApi.md#list_dict_headwords) | **GET** /dict/headwords | Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
 *DictionaryApi* | [**list_entry_examples**](docs/DictionaryApi.md#list_entry_examples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba.
 *DictionaryApi* | [**list_kanji_words**](docs/DictionaryApi.md#list_kanji_words) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17).
 *DictionaryApi* | [**refresh_dictionary**](docs/DictionaryApi.md#refresh_dictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release).
@@ -503,6 +504,8 @@ Class | Method | HTTP request | Description
  - [DictEntrySensesInnerGlossInner](docs/DictEntrySensesInnerGlossInner.md)
  - [DictEntrySummary](docs/DictEntrySummary.md)
  - [DictEntrySummaryPage](docs/DictEntrySummaryPage.md)
+ - [DictHeadword](docs/DictHeadword.md)
+ - [DictHeadwordList](docs/DictHeadwordList.md)
  - [DictRelease](docs/DictRelease.md)
  - [DictReleaseArtifactsInner](docs/DictReleaseArtifactsInner.md)
  - [DictReleaseFreqListsInner](docs/DictReleaseFreqListsInner.md)

@@ -7,6 +7,7 @@ All URIs are relative to */api/v1*
 | [**getDictEntry**](DictionaryApi.md#getdictentry) | **GET** /dict/entries/{seq} | One JMdict entry with frequency, pitch, kanji and your status. |
 | [**getDictRelease**](DictionaryApi.md#getdictrelease) | **GET** /dict/release | The current dictionary release and its downloadable device builds. |
 | [**getKanji**](DictionaryApi.md#getkanji) | **GET** /kanji/{literal} | One kanji from KANJIDIC2 with components and your kanji note, if any. |
+| [**listDictHeadwords**](DictionaryApi.md#listdictheadwords) | **GET** /dict/headwords | Headword, reading and first-sense glosses for up to 500 entries in one call (C-18). |
 | [**listEntryExamples**](DictionaryApi.md#listentryexamples) | **GET** /dict/entries/{seq}/examples | Example sentences for an entry, from your media and from Tatoeba. |
 | [**listKanjiWords**](DictionaryApi.md#listkanjiwords) | **GET** /kanji/{literal}/words | Dictionary entries whose kanji forms contain this kanji, most frequent first, with your deck membership (C-17). |
 | [**refreshDictionary**](DictionaryApi.md#refreshdictionary) | **POST** /dict/refresh | Queue a dictionary refresh (download sources, build and load a new release). |
@@ -226,6 +227,82 @@ example().catch(console.error);
 |-------------|-------------|------------------|
 | **200** | The kanji. |  -  |
 | **404** | No such resource. |  -  |
+| **0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listDictHeadwords
+
+> DictHeadwordList listDictHeadwords(seq)
+
+Headword, reading and first-sense glosses for up to 500 entries in one call (C-18).
+
+Batch label lookup for clients that hold only &#x60;entry_seq&#x60; values (e.g. a page of referenced notes whose &#x60;fields&#x60; are &#x60;{}&#x60;). Read-only; no overlay (&#x60;status&#x60;, &#x60;note_id&#x60;), no paging. Use &#x60;getDictEntry&#x60; for the full entry.  **&#x60;seq&#x60;.** One query parameter holding 1 to 500 JMdict sequence numbers separated by commas (&#x60;seq&#x3D;1358280,1358300&#x60;; a percent-encoded comma &#x60;%2C&#x60; is the same thing). Each value is a base-10 integer &gt;&#x3D; 1 with no sign, spaces or decimals. Any of these is &#x60;422&#x60; (&#x60;validation_failed&#x60;, pointer &#x60;/seq&#x60;) and nothing is looked up: the parameter is missing, empty (&#x60;seq&#x3D;&#x60;) or given more than once (&#x60;seq&#x3D;1&amp;seq&#x3D;2&#x60;); an element is empty (&#x60;1,,2&#x60;, trailing comma), not an integer, below 1 or above the int64 range; more than 500 elements. The 500 limit counts elements as sent, before de-duplication. Duplicates are allowed and collapse: &#x60;seq&#x3D;5,5&#x60; behaves as &#x60;seq&#x3D;5&#x60;.  **Result.** One item per distinct requested &#x60;seq&#x60; that exists in &#x60;ref.dict_entry&#x60;, ordered by &#x60;seq&#x60; ascending (not in request order). A &#x60;seq&#x60; with no row is omitted - not an error, and not &#x60;404&#x60; even when no requested &#x60;seq&#x60; exists (&#x60;items: []&#x60;). Retired entries are returned, as in &#x60;getDictEntry&#x60; (a note may still reference one). Clients match items to their rows by &#x60;seq&#x60; and keep their fallback label for omitted ones.  **Item fields** have exactly the values &#x60;getDictEntry&#x60; and &#x60;searchDictionary&#x60; report for the same entry: &#x60;headword&#x60; &#x3D; first kanji form in JMdict order, or the first reading when the entry has no kanji form; &#x60;headword_reading&#x60; &#x3D; first reading (equal to &#x60;headword&#x60; for kana-only entries); &#x60;glosses&#x60; &#x3D; English glosses of the first sense, in order (the first element is the short meaning; empty array if the first sense has no English gloss).  **Request size.** 500 seven-digit values with percent-encoded commas make a request line of about 5 kB. The server and every proxy in front of it MUST accept request lines of at least 8192 bytes for this operation (Netty\&#39;s default of 4096 is too small).  The response depends only on the dictionary release, not on the caller; it carries no cache headers in v1. 
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DictionaryApi,
+} from '@kotobaya/api-client';
+import type { ListDictHeadwordsRequest } from '@kotobaya/api-client';
+
+async function example() {
+  console.log("🚀 Testing @kotobaya/api-client SDK...");
+  const config = new Configuration({ 
+    // To configure API key authorization: sessionCookie
+    apiKey: "YOUR API KEY",
+    // Configure HTTP bearer authorization: bearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new DictionaryApi(config);
+
+  const body = {
+    // Array<number> | 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result.
+    seq: [1358280,1358300,9999999],
+  } satisfies ListDictHeadwordsRequest;
+
+  try {
+    const data = await api.listDictHeadwords(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **seq** | `Array<number>` | 1 to 500 JMdict sequence numbers, comma-separated. Duplicates collapse; unknown values are omitted from the result. | |
+
+### Return type
+
+[**DictHeadwordList**](DictHeadwordList.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Headwords of the requested entries that exist, by &#x60;seq&#x60; ascending. Empty list when none exist. |  -  |
+| **401** | Missing, unknown, expired or revoked credential; or wrong login or pairing data. |  -  |
+| **422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
 | **0** | Any other error. See the error table in the API description. |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

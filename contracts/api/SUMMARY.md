@@ -213,7 +213,7 @@ Everything else (additions):
 | Meta | `getHealth`, `getMeta` |
 | Presets | `listPresets`, `createPreset`, `getPreset`, `updatePreset`, `deletePreset`, `optimizePreset` |
 | Note types | `listNoteTypes`, `createNoteType`, `getNoteType`, `updateNoteType`, `deleteNoteType` |
-| Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary`, `listKanjiWords` |
+| Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary`, `listKanjiWords`, `listDictHeadwords` |
 | Notes and cards | `getNote`, `bulkScheduleCards`, `createCard`, `getCard`, `updateCard`, `deleteCard`, `listCardReviews` |
 | Decks | `listDeckLists`, `getDeck`, `deleteDeck`, `addDeckItems`, `putDeckItem`, `removeDeckItem` |
 | Media | `listMedia`, `getMedia`, `updateMedia`, `deleteMedia`, `reparseMedia`, `importJpdbHistory`, `listSentences`, `getSentence` |
@@ -457,3 +457,25 @@ attempt 1 is gone). Needs node and python3; network on first run.
 - Worth a second look: (1) `literal` is matched without NFKC, so a CJK compatibility ideograph
   finds nothing; (2) pages are not a snapshot - clients de-duplicate by `seq`; (3) `mine` ignores
   word status, so a word marked `known` but in no deck and with no note is excluded.
+
+## C-18 changes (additive): batch headword lookup
+- **`listDictHeadwords`** `GET /dict/headwords?seq=1358280,1358300` (tag `dictionary`, scope
+  `read`, read-only, no ops, no overlay, no paging). `seq`: one comma-separated parameter
+  (`style: form`, `explode: false`, like `kinds`/`hide`), 1 to 500 `EntrySeq` values; missing,
+  empty, repeated parameter, bad element or more than 500 is `422`. Duplicates collapse.
+  Responses `200`/`401`/`422`.
+- **Schemas**: `DictHeadwordList {items}`; `DictHeadword {seq, headword, headword_reading,
+  glosses}` - same names and values as `DictEntrySummary`. One item per distinct existing `seq`,
+  by `seq` ascending; unknown `seq` omitted (never `404`); retired entries returned. Example
+  `DictHeadwordList`.
+- No DB change, no sync op, no learning-data table touched (reads `ref.dict_entry` and its
+  satellites only), so the cross-check table is unchanged.
+- Rejected: `headword` on the `Note` returned by `listCards`/`listNotes` (couples note reads to
+  the dictionary and to its refreshes); `{items: DictEntry[]}` (500 full entries is megabytes);
+  a `POST` lookup body (not cacheable, needs `x-emits-ops: []` for a pure read); the ticket's
+  `/dictionary/...`, `reading` and scalar `gloss` names (the spec says `/dict/...`,
+  `headword_reading`, `glosses`; a client wanting one gloss takes `glosses[0]`).
+- Worth a second look: (1) a full 500-value request line is about 5 kB, above Netty's 4096
+  default, so the server (BUG-7c) must raise `maxInitialLineLength` to >= 8192; (2) `glosses` is
+  an array, not the ticket's scalar `gloss`; (3) items come back by `seq`, not in request order,
+  and omitted `seq` values are the only "not found" signal.

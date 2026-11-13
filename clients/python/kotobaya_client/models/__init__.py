@@ -87,6 +87,8 @@ from kotobaya_client.models.dict_entry_senses_inner import DictEntrySensesInner
 from kotobaya_client.models.dict_entry_senses_inner_gloss_inner import DictEntrySensesInnerGlossInner
 from kotobaya_client.models.dict_entry_summary import DictEntrySummary
 from kotobaya_client.models.dict_entry_summary_page import DictEntrySummaryPage
+from kotobaya_client.models.dict_headword import DictHeadword
+from kotobaya_client.models.dict_headword_list import DictHeadwordList
 from kotobaya_client.models.dict_release import DictRelease
 from kotobaya_client.models.dict_release_artifacts_inner import DictReleaseArtifactsInner
 from kotobaya_client.models.dict_release_freq_lists_inner import DictReleaseFreqListsInner

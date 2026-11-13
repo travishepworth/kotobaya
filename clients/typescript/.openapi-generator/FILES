@@ -82,6 +82,8 @@ docs/DictEntrySensesInner.md
 docs/DictEntrySensesInnerGlossInner.md
 docs/DictEntrySummary.md
 docs/DictEntrySummaryPage.md
+docs/DictHeadword.md
+docs/DictHeadwordList.md
 docs/DictRelease.md
 docs/DictReleaseArtifactsInner.md
 docs/DictReleaseFreqListsInner.md
@@ -396,6 +398,8 @@ src/models/DictEntrySensesInner.ts
 src/models/DictEntrySensesInnerGlossInner.ts
 src/models/DictEntrySummary.ts
 src/models/DictEntrySummaryPage.ts
+src/models/DictHeadword.ts
+src/models/DictHeadwordList.ts
 src/models/DictRelease.ts
 src/models/DictReleaseArtifactsInner.ts
 src/models/DictReleaseFreqListsInner.ts
