@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T01:25:40Z
+Updated: 2026-11-13T01:27:29Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -16,15 +16,15 @@ Updated: 2026-11-13T01:25:40Z
 |---|---|---|---|---|
 | T304c+W-4 | writer (sonnet) | 1 | t/T304c+W-4-review-actions-media | 2026-11-13T01:25:40Z |
 | F-5 | writer (sonnet) | 1 | t/F-5-server-auto-status | 2026-11-13T01:25:40Z |
-| T305b | — (in review) | 1 | t/T305b-note-creator | 2026-11-13T01:22:02Z |
+| T305c | writer-senior (opus) | 1 | t/T305c-takoboto-store | 2026-11-13T01:27:29Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
-- none
+- T313 (opus, high) offline chaos suite — next slot
+- T306+T311 (batch, sonnet) — after T305c (DuplicateCheck overlap)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T305b | APPROVED (both); writer fixing rebase conflict | |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -44,11 +44,12 @@ Updated: 2026-11-13T01:25:40Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 17/26 · attempts 25 · escalations 0
+P3: merged 18/26 · attempts 27 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T305b on-device NoteCreator (EntryMatcher, DuplicateCheck, card_kinds/add_kanji, one-tx mint, request-id retry, two-device merge test) — reviewer + architect APPROVE
 - T304b Android review screen (ReviewSession mints via OpMinter, JS-off WebView, undo, durability test, readers gated on startup replay, device auto_status, BlobStore audio) — 2 attempts (stale base)
 - T303e Android sync UI (chip, Sync screen, Rejected list grouped, Re-mint flow hidden on clock wrong, unreachable vs server error) — 1 attempt
 - T310 audio prefetch (planner, Range-resume downloader w/ SHA-256, BlobStore on durable driver, WorkManager) — wiring gaps → W-4

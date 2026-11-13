@@ -555,3 +555,5 @@
 2026-11-13T01:25:40Z T304b CHECK_GREEN core+android after rebase; MERGE 2 attempts
 2026-11-13T01:25:40Z T304c+W-4 DISPATCH writer(sonnet) batched
 2026-11-13T01:25:40Z F-5 DISPATCH writer(sonnet)
+2026-11-13T01:27:29Z T305b CHECK_GREEN android after rebase; MERGE 1 attempt (+2 rebase bounces)
+2026-11-13T01:27:29Z T305c DISPATCH writer-senior(opus)
