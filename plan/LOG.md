@@ -726,3 +726,8 @@
 2026-11-13T07:24:08Z - MAKE_TEST GREEN (all modules) after P5
 2026-11-13T07:24:08Z GATE-P5 GATE_OPEN deferred → HUMAN_CHECKS
 2026-11-13T07:24:08Z - HANDOVER run 9: 7 merged; context budget; P5 done; next: optional followups F-27/F-24/F-23/F-21, finish
+2026-11-13T07:24:55Z - RESUME run 10: STATE corrected (P6 has 6 TODO + T609/T610); T604 marked MERGED in BACKLOG; disk 32 GB
+2026-11-13T07:29:01Z C-16 NEW contract for T606: internal job kind so server mints fsrs_params.published from optimizer result
+2026-11-13T07:29:01Z T601 DISPATCH writer (worker+server+deploy)
+2026-11-13T07:29:01Z T602 DISPATCH writer (core)
+2026-11-13T07:29:01Z C-16 DISPATCH architect (contracts)

@@ -1,6 +1,6 @@
 # STATE
 Mode: single-session
-Phase: P5 DONE → P6 (T604 merged, T607 deferred)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Phase: P6 (Polish) — running; T604 merged, T607 deferred   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
 Updated: 2026-11-13 (end of orchestrator run 9)
 
 
@@ -8,11 +8,11 @@ Updated: 2026-11-13 (end of orchestrator run 9)
 - Run 9 merged (7): T508a (web "saw something weird"), C-15 (QueueItem.grammar_sentence, additive), T504b (android struggle + 4x3 hot-word widget), F-25 (core picker full rotation + server/web grammar sentence), T508b (android grammar capture), F-22 (matcher tests; fixes already present), F-25b (android offline grammar sentence pick).
 - All P5 tickets MERGED. P5 `make test`: GREEN (rc=0, 2026-11-13); GATE-P5 deferred → HUMAN_CHECKS
 - Stopped for context budget. Nothing in flight; no worktrees or t/* branches.
-- NEXT RUN: P6 has no runnable tickets (T604 merged, T607 DEFERRED). Optionally run low followups below, then final make test, finalize HUMAN_CHECKS, notify → ALL_DONE.
+- CORRECTED run 10: P6 TODO = T601, T602, T603, T605, T606, T608 (deps GATE-P5 deferred = satisfied), then T609 (deps T601–T608 excl. T607), then T610. T607 DEFERRED only.
 - Optional low followups: F-27 (android struggle/grammar-capture writes online-only, not ops), F-24 (contract polish, Gradle), F-23 (A→B→A dedupe, contract), F-21.
 - Merge helper unchanged. RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (contracts check uses Gradle too).
 
-## Running
+## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 

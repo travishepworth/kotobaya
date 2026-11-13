@@ -555,7 +555,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `server/src/main/kotlin/kotobaya/ankiconnect/`
 
 ### T604 — CLI
-- model: haiku · risk: low · deps: T110 · status: TODO
+- model: haiku · risk: low · deps: T110 · status: MERGED (run 7)
 - paths: `cli/`
 
 ### T605 — Stats
