@@ -1,6 +1,6 @@
 # STATE
 Mode: single-session
-Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
+Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts frozen
 Updated: 2026-11-13 (orchestrator run 3)
 
 
@@ -26,9 +26,9 @@ Updated: 2026-11-13 (orchestrator run 3)
 |---|---|---|
 
 ## Notes
+- Disk: root fs filled during make test (Docker anon volumes ~22 GB; prune denied → HUMAN_CHECKS). Merged worktrees now removed after each merge (works). Check `df -h /` before Gradle/Testcontainers-heavy batches.
 - PUSH main BEFORE dispatching worktree writers: worktrees are cut from origin/main (T304b/T305b got a stale base on 2026-11-13).
 - Project agent types ARE registered as of the 2026-11-12 restart; dispatch with the named agent types.
-- Stale worktrees (all merged tickets + the 4 stopped runs; old branch names held, hence `-r` branches) still present: removal denied by permission classifier → in HUMAN_CHECKS.
 - MAX_PARALLEL_WRITERS=6; ≤3 Gradle-heavy at once. Human (go hard): up to 3 concurrent reviewers allowed.
 - Handoffs archived to plan/handoffs/<ID>.md after merge (keeps HANDOFF.md off main → no rebase conflicts).
 - Model tiers (ADR-004): `fable` tickets → Opus with architect role; escalation tops out at Opus. No Fable agents at all (human: burns usage). Resumes of old Fable agents are forbidden — restart on Opus in the same worktree. Agents must report tool refusals as BLOCKED, not work around them.
@@ -39,7 +39,7 @@ Updated: 2026-11-13 (orchestrator run 3)
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6); make test pending · attempts 35 · escalations 0
+P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 

@@ -29,6 +29,9 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - P2: bulk card operations (tag/move/suspend/reschedule) run synchronously, up to 5000 cards per call, as the frozen API contract says. The backlog said "one job with progress". Fine for a personal collection; a C-ticket could add a job variant later.
 <!-- orchestrator appends: ADR id, one line, how to reverse. Confirm or reverse each. -->
 
+## Disk space (2026-11-13)
+- [ ] Root fs at 95% (5.3 GB free); `make test` hit Postgres DiskFull in worker dict tests. 131 unused anonymous Docker volumes (~22 GB, Testcontainers leftovers) — run `docker volume prune -f` (anonymous only; keeps named volumes). Orchestrator's prune was denied by the permission classifier. Merged worktrees were removed 2026-11-13 (10 GB free after). Still recommended: prune before P4 (Testcontainers volumes accumulate per run).
+
 ## Deploy
 - [ ] F-4: run the extended restore drill on k3d (`deploy/backup/restore-drill.sh`): confirm the data-loss preflight refuses without `--accept-data-loss` and leaves api/CronJobs untouched.
 - [ ] **P1 — Cluster:** `helm install` on the real cluster (command filled in by orchestrator); open the web app; search the dictionary.
@@ -61,6 +64,15 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
   4. /cards: search (e.g. `deck:Mining is:due`), bulk dry-run then apply a tag; /decks: create a smart deck; /note-types: preview a template; /settings: change limits, create a PAT (shown once), pair a device QR.
   5. Push/pull from a second client (or two browsers) and confirm a duplicate word added on both merges (no 503).
   Web screens were never exercised in a real browser by the build — expect small UI bugs; list them for fix tickets.
+- [ ] **GATE-P3 (deferred; all 25 P3 tickets merged 2026-11-13) — "a real week offline on the phone, then sync, loses nothing":**
+  1. Build/install the APK (`make apk`; default flavor `com.ichi2.anki`, own-ID flavor also built). Pair with the server (QR or manual code), install the offline dictionary.
+  2. Takoboto: add 5 words → notes with correct fields appear (see Takoboto section); share a word from a browser and use PROCESS_TEXT on selected text.
+  3. Review normally for a week in airplane mode (use undo, bury, suspend, edit at least once). Sync chip should show offline/pending, never an error.
+  4. Re-enable network → sync. Review counts on phone and web must match; Sync screen shows no rejected ops (if any appear, note their codes before Retry/Discard).
+  5. Yomitan → on-device AnkiConnect (enable in settings; set API key + origin allowlist), add a card from a browser on the phone.
+  6. Widget sizes, due-count notification, Quick Settings tile, ntfy (only if `NTFY_BASE_URL` set on the server).
+  Automated proxy already green: `make check MODULE=acceptance` (T313: 100 randomised offline-week runs, 0 lost reviews).
+- [ ] **CLAUDE.md:** add `acceptance/` (Kotlin, offline/sync chaos suite, `make check MODULE=acceptance`) to the module map (human-owned file).
 - [ ] **P1 (GATE-P1, deferred; `make test` green 2026-11-12):** `helm install` the chart (k3d: `deploy/k3d/` scripts; set the AUTH_PASSWORD_HASH Secret first), log in, run the dict-refresh job (W-1 item above), then search the dictionary through the API (e.g. `GET /api/v1/dict/search?q=食べる`) and confirm sensible results. Note: login over plain http in k3d dev doesn't resend the Secure cookie — use HTTPS or see FOLLOWUPS.
 - [ ] **P2:** review in the web app for 3 days. Note anything off.
 - [ ] **P3:** pair the phone; review offline (airplane mode) for a week; sync; confirm review counts match on web and phone.
@@ -91,4 +103,3 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - T105b: set `api.publicUrl` (PUBLIC_URL) in the real install, e.g. https://kotobaya.<your-domain>; without it, device pairing returns 500 unless trusted-proxy forwarded headers are set.
 - T112 backups: choose the restic repository target (DECISIONS has none; the drill used an in-cluster bucket), backup frequency, and set backup.enabled=true with the repo Secret. Run deploy/backup/restore-drill.sh once against the real install.
 - Disk: ~14.6 GB of anonymous dangling Docker volumes (origin unknown, may include other projects). `docker volume prune` if safe.
-- Housekeeping: stale merged worktrees (.claude/worktrees/agent-ae408d50204f320d0, agent-af77a050ea16184ff, agent-af5ce7b42729bb029) and branches t/T009-helm, t/T111-helm-workloads, t/T112-backups — removal was denied by the auto-mode classifier. Run `git worktree remove -f -f <path>` and `git branch -D <branch>` when convenient.

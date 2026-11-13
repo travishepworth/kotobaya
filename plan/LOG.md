@@ -577,3 +577,7 @@
 2026-11-13T02:05:44Z T313 REVIEW_APPROVE reviewer (5 minors → FOLLOWUPS)
 2026-11-13T02:06:10Z T313 REVIEW_APPROVE architect (4 new minors → FOLLOWUPS)
 2026-11-13T02:07:05Z T313 CHECK_GREEN acceptance; MERGE 1 attempt — P3 complete
+2026-11-13T02:12:39Z - CHECK_RED make test: worker DiskFull (env, 95% disk); prune denied → HUMAN_CHECKS; rerunning modules individually
+2026-11-13T02:15:38Z - make test green (core, server, acceptance, worker, web, android, deploy, contracts; worker rerun after DiskFull)
+2026-11-13T02:15:38Z GATE-P3 GATE_CLOSE deferred → HUMAN_CHECKS (device week offline, Takoboto, AnkiConnect)
+2026-11-13T02:15:38Z - housekeeping: 66 merged worktrees+branches removed; disk 10G free
