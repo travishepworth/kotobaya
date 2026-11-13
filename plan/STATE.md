@@ -4,14 +4,12 @@ Phase: P6 (Polish) — running; T604 merged, T607 deferred   Gate: GATE-P2..P5 d
 Updated: 2026-11-13 (end of orchestrator run 10)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 10)
-- Run 10 merged (7): T602 (pitch cards), C-16 (fsrs-params-publish contract), T601 (VOICEVOX TTS), T603 (server AnkiConnect, review APPROVE), T605 (stats), T608 (export JSON + .apkg, review APPROVE), T606 (FSRS optimizer, review APPROVE). All checks re-run green post-rebase.
-- P6 remaining: T609 (deps T601–T608 excl. T607: now satisfied, opus/high), then T610. T607 DEFERRED.
-- Stopped for context budget. Nothing in flight; no worktrees or t/* branches.
-- BACKLOG statuses synced run 10 (T406/T407/T409/T410/T501–T508/T601–T608 → MERGED).
-- RESOLVED run 11 by F-28: worker torch now CPU-only (uv.lock 0 nvidia; image 2.04 GB). Optimizer cron + voicevox are helm default-off.
-- FOLLOWUPS added run 10: T601 notes, T603/T606/T608 review minors (priority: T608 mnemonic blob images silently omitted from .apkg).
-- Orchestrator lessons: always rebase branch onto main before ff-merge (concurrent Main.kt/WiringAuditTest edits conflict — both sides only remove their own 501-allowlist entries, so drop the hunk); never pipe git rebase/merge through tail (masks failures); look worktrees up by path, not branch (detached during rebase).
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 11)
+- Run 11 merged (5): F-28 (worker CPU-only torch, image 2.04 GB), T609 (security review: docs/SECURITY.md, chart hardening + egress NetworkPolicies; review APPROVE), T610 (docs/RUNBOOK.md), SEC-2 (worker SSRF guard), SEC-1 (blob XSS headers; review APPROVE). All checks green post-rebase.
+- P6 COMPLETE (T607 DEFERRED). End-of-phase make test: GREEN (all modules, run 11). Next: GATE-DONE human sign-off (HUMAN_CHECKS run 11 section).
+- Remaining work is FOLLOWUPS only (not in BACKLOG): SEC-4/SEC-5 contract C-tickets, SEC-6/7, SEC-1 minors, FSRS weight rollback path (med), T608 mnemonic images in .apkg. HUMAN: SEC-3 Postgres roles, SEC-9 ntfy host, backups off live, kubectl ctx left at `homepage`.
+- Nothing in flight; no worktrees or t/* branches.
+- Orchestrator lessons: always rebase branch onto main before ff-merge; never pipe git rebase/merge through tail; look worktrees up by path; agent worktree locks need `git worktree remove -f -f` + delete `worktree-agent-*` branch too.
 
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
