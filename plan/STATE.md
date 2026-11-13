@@ -17,7 +17,6 @@ Updated: 2026-11-13 (run 12 in progress)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | BUG-1 | writer-senior | 1 | t/BUG-1-stats-perf | run 12 |
-| BUG-5 | writer | 1 | t/BUG-5-kanji-hot (HANDOFF DONE, check running) | run 12 |
 | BUG-6 | architect (opus) | 1 | t/BUG-6-import-graduation | run 12 |
 
 ## Parked
@@ -54,6 +53,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- BUG-5 (run 12): listHotKanji (hot-note scores rolled up per kanji); 501 allowlist now EMPTY; SSE client-disconnect write errors logged at debug (no test)
 - BUG-2+BUG-3 (run 12): jpdb deck title from vocabulary-list page (id fallback), bare numeric id rejected (UI + worker); optimizer datetimes normalised to aware UTC
 - BUG-4 (run 12): voicevox runs run.py directly (no gosu), per-component readOnlyRootFilesystem wins (set over deepCopy), ~/.local/share emptyDir only; check.sh asserts; smoke OK
 - SEC-1 (run 11): getBlob nosniff + CSP sandbox on all responses; inline only audio/* + raster images, else attachment; review APPROVE

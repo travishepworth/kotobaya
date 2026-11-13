@@ -768,3 +768,4 @@
 2026-11-13T09:41:05Z BUG-6 DISPATCH architect (opus, high)
 2026-11-13T09:45:31Z BUG-2+BUG-3 MERGE CHECK_GREEN worker+web (med, no review); web messages.ts edit outside paths accepted
 2026-11-13T09:45:31Z BUG-5 DISPATCH writer; HANDOFF DONE; 501 allowlist empty
+2026-11-13T09:45:43Z BUG-5 MERGE CHECK_GREEN server (med, no review)
