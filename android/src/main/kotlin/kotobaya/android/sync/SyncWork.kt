@@ -64,6 +64,15 @@ object SyncWork {
     fun cancelRetry(wm: WorkManager) {
         wm.cancelUniqueWork(RETRY)
     }
+
+    /** After a cycle: a failure schedules [RETRY] after [retryDelayMs]; a cycle that ran cancels it. */
+    fun applyOutcome(wm: WorkManager, outcome: SyncOutcome, retryDelayMs: Long) {
+        if (outcome.isFailure) {
+            scheduleRetry(wm, retryDelayMs)
+        } else if (outcome is SyncOutcome.Ran) {
+            cancelRetry(wm)
+        }
+    }
 }
 
 /**

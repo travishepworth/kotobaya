@@ -54,8 +54,8 @@ class HttpSyncTransport(
                 if (resp.isSuccessful) {
                     TransportResponse.Ok(text)
                 } else {
-                    val err = ApiClient.mapError(resp.code, text, resp.header("Retry-After")?.toLongOrNull())
-                    TransportResponse.HttpError(resp.code, err.message ?: "http ${resp.code}")
+                    // diagnostic only (the engine decides by status); the problem body as received, bounded
+                    TransportResponse.HttpError(resp.code, "HTTP ${resp.code}" + text.take(MAX_DIAGNOSTIC).let { if (it.isBlank()) "" else ": $it" })
                 }
             }
         } catch (e: IOException) {
@@ -65,6 +65,7 @@ class HttpSyncTransport(
 
     companion object {
         private val JSON = "application/json; charset=utf-8".toMediaType()
+        private const val MAX_DIAGNOSTIC = 300
 
         /**
          * The `limits` reader over T301b's [MetaLimitsStore]: the durable `meta.*` values, or null

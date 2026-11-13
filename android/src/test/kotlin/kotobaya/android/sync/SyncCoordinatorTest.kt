@@ -54,7 +54,7 @@ class SyncCoordinatorTest {
     )
 
     @Test
-    fun concurrentTriggersRunOneSync() = runBlocking {
+    fun concurrentTriggersRunOneSync() = runBlocking<Unit> {
         val c = coordinator()
         gate = CompletableDeferred()
         val calls = SyncTrigger.entries.map { t -> async(Dispatchers.Default) { c.sync(t) } }
@@ -71,7 +71,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun offlineSkipsTheCycleWithStatusOffline() = runBlocking {
+    fun offlineSkipsTheCycleWithStatusOffline() = runBlocking<Unit> {
         online = false
         val c = coordinator()
         assertEquals(SyncOutcome.Offline, c.sync(SyncTrigger.WORKER))
@@ -87,7 +87,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun aReachabilityFailureIsServerUnreachableAndAFailure() = runBlocking {
+    fun aReachabilityFailureIsServerUnreachableAndAFailure() = runBlocking<Unit> {
         probeResult = Reachability.Down(ApiError.Unreachable("ConnectException"))
         val c = coordinator()
         assertIs<SyncOutcome.Unreachable>(c.sync(SyncTrigger.APP_OPEN))
@@ -97,7 +97,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun backoffGrowsPerT303aPolicyAndResetsAfterSuccess() = runBlocking {
+    fun backoffGrowsPerT303aPolicyAndResetsAfterSuccess() = runBlocking<Unit> {
         val c = coordinator()
         cycleResult = CycleResult.Failed(FailureKind.SERVER_ERROR, SyncStep.PUSH, "503", 503)
         repeat(4) { c.sync(SyncTrigger.WORKER) }
@@ -113,7 +113,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun backoffIsCappedAt15Minutes() = runBlocking {
+    fun backoffIsCappedAt15Minutes() = runBlocking<Unit> {
         val c = coordinator()
         cycleResult = CycleResult.Failed(FailureKind.OFFLINE, SyncStep.PULL, "timeout")
         repeat(12) { c.sync(SyncTrigger.WORKER) }
@@ -121,7 +121,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun authFailuresStopWithoutBackoffAndLocalExceptionsAreFailures() = runBlocking {
+    fun authFailuresStopWithoutBackoffAndLocalExceptionsAreFailures() = runBlocking<Unit> {
         val c = coordinator()
         probeResult = Reachability.Reachable(authenticated = false)
         val auth = assertIs<SyncOutcome.Ran>(c.sync(SyncTrigger.WORKER))
@@ -137,7 +137,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun everySyncWaitsForTheStartupReplay() = runBlocking {
+    fun everySyncWaitsForTheStartupReplay() = runBlocking<Unit> {
         val ready = CompletableDeferred<Unit>()
         val c = coordinator { ready.await() }
         val pending = async(Dispatchers.Default) { c.sync(SyncTrigger.APP_OPEN) }
@@ -149,7 +149,7 @@ class SyncCoordinatorTest {
     }
 
     @Test
-    fun notPairedDoesNothing() = runBlocking {
+    fun notPairedDoesNothing() = runBlocking<Unit> {
         val c = SyncCoordinator(scope, { error("must not run") }, { false }, { true }, { probeResult }, counter)
         assertEquals(SyncOutcome.NotPaired, c.sync(SyncTrigger.MANUAL))
         assertEquals(0, counter.failures)

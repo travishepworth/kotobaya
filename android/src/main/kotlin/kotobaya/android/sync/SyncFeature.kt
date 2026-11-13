@@ -195,14 +195,7 @@ val syncModule = module {
             ready = { koin.get<SyncBootstrap>().ready.await() },
             onOutcome = { _, outcome, retryDelayMs ->
                 status.onOutcome(outcome.asCycleResult())
-                val wm = runCatching { WorkManager.getInstance(ctx) }.getOrNull()
-                if (wm != null) {
-                    if (outcome.isFailure) {
-                        SyncWork.scheduleRetry(wm, retryDelayMs)
-                    } else if (outcome is SyncOutcome.Ran) {
-                        SyncWork.cancelRetry(wm)
-                    }
-                }
+                runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result
                 if (r is CycleResult.Completed && r.pulledOps > 0) koin.getOrNull<DueTrigger>()?.fire()
             },
