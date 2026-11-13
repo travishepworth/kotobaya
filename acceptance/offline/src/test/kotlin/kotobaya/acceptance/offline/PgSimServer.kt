@@ -40,7 +40,10 @@ import kotlin.random.Random
  */
 object Pg {
     private val container: PostgreSQLContainer<*> by lazy {
-        PostgreSQLContainer("postgres:17").withEnv("POSTGRES_INITDB_ARGS", "--locale=C.UTF-8").also { it.start() }
+        PostgreSQLContainer("postgres:17")
+            .withEnv("POSTGRES_INITDB_ARGS", "--locale=C.UTF-8")
+            .withTmpFs(mapOf("/var/lib/postgresql/data" to "rw"))
+            .also { it.start() }
     }
     private val counter = AtomicInteger()
 
