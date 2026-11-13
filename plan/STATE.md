@@ -18,7 +18,6 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T404b | writer-senior (worker) | 1 | t/T404b-media-pipeline | run 6 |
-| F-17 | writer (server, holds Gradle slot) | 1 | t/F-17-entry-examples | run 6 |
 Queued for Gradle slot: T403c+T408a (crashed wt .claude/worktrees/agent-aa2a58c8d4cb2a04d, 4 uncommitted server files; resume there)
 
 ## Parked
@@ -52,6 +51,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-17 listEntryExamples implemented (Tatoeba + media sentences; empty when no Tatoeba loaded) (run 6)
 - F-19 API image build passes KOTOBAYA_VERSION build-arg (health shows real version) (run 6)
 - F-15+F-16 MediaApiModule wired (jpdb vocab 501 fixed), WiringAuditTest 501 allowlist, health version from build (run 6)
 - T403b parser matching (ranked JMdict, overrides, parse service; agreement 0.978) — reviewer APPROVE (run 6)
