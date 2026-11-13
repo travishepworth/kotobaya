@@ -185,7 +185,9 @@ public class SyncEngine<L>(
             for ((i, chunk) in chunks.withIndex()) {
                 val last = i == chunks.lastIndex
                 val outcome = try {
-                    store.transaction { tx -> applier.batch(tx) { applyChunk(tx, page, chunk, first = i == 0, last = last) } }
+                    store.transaction { tx ->
+                        applier.batch(tx) { applyChunk(tx, page, chunk, expectedSeq = cursor, first = i == 0, last = last) }
+                    }
                 } catch (e: ProtocolException) {
                     return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, e.message ?: "bad pull page", 200)
                 } catch (e: Exception) {
@@ -291,14 +293,33 @@ public class SyncEngine<L>(
     /**
      * SYNC.md 6.1 client procedure for [ops], one chunk of [page], inside its transaction: the log
      * identity check (6.2) and the page's `seq` order on the [first] chunk; each op observed and applied; `pull_seq` set to the
-     * last applied `seq` (to `next_since` after the [last] chunk); `hlc_last`, server skew and log info
-     * stored. The upgrade-required stop is cleared only after the last chunk of the last page.
+     * last applied `seq` (to `next_since` after the [last] chunk); `hlc_last` and log info stored, the
+     * server skew on the [first] chunk only (`server_time` is the response's instant; later chunks are
+     * applied later). The upgrade-required stop is cleared only after the last chunk of the last page.
+     *
+     * Every chunk first checks that the stored `pull_seq` is still [expectedSeq] (the page's `since`,
+     * or the previous chunk's committed cursor) and, after the first chunk, that the stored `log_epoch`
+     * is still the page's: something else (a log reset, a rebuild) committed between this pull's
+     * transactions, so the rest of the page no longer belongs to the stored log; [ProtocolException]
+     * (nothing of this chunk is applied; the next cycle starts again from the stored state).
      */
-    private fun applyChunk(tx: StoreTransaction<L>, page: WirePullPage, ops: List<kotobaya.contracts.sync.JsonValue>, first: Boolean, last: Boolean): PageOutcome {
+    private fun applyChunk(
+        tx: StoreTransaction<L>,
+        page: WirePullPage,
+        ops: List<kotobaya.contracts.sync.JsonValue>,
+        expectedSeq: Long,
+        first: Boolean,
+        last: Boolean,
+    ): PageOutcome {
         val bk = tx.bookkeeping
+        if (bk.pullSeq != expectedSeq) {
+            throw ProtocolException("pull_seq changed during the pull (expected $expectedSeq, stored ${bk.pullSeq})")
+        }
         if (first) {
             logChange(bk, page.log, SyncStep.PULL)?.let { return PageOutcome.Stop(it) }
             checkAscending(page) // the whole page, before its first op is applied
+        } else if (bk.logEpoch != page.log.logEpoch) {
+            throw ProtocolException("log_epoch changed during the pull (page ${page.log.logEpoch}, stored ${bk.logEpoch})")
         }
         val start = bk.pullSeq
         var cursor = start
@@ -335,7 +356,7 @@ public class SyncEngine<L>(
         if (stop == null && last && page.nextSince > cursor) cursor = page.nextSince
         if (cursor > start) bk.pullSeq = cursor
         if (lastHlc != bk.hlcLast) bk.hlcLast = lastHlc
-        bk.recordServerSkew(page.log.serverTime - clock.nowMs())
+        if (first) bk.recordServerSkew(page.log.serverTime - clock.nowMs())
         storeLogInfo(bk, page.log)
         if (stop != null) {
             bk.upgradeRequired = UpgradeRequiredState.of(stop).encode()

@@ -1,5 +1,6 @@
 package kotobaya.sync.client.apply
 
+import kotlin.concurrent.Volatile
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.sync.JsonArray
 import kotobaya.contracts.sync.JsonBool
@@ -53,7 +54,12 @@ public class DeviceOpApplier<L : LearningTables>(
     /**
      * The open [batch], or null. Only the thread running the batch's transaction uses it: [apply] on
      * any other transaction (a mint on another thread) never sees it as its own ([Batch.tx] identity).
+     * The store is single-writer (one write transaction at a time), so only one batch is ever open and
+     * no two threads write this field concurrently; @Volatile only makes a write visible to a thread
+     * that reads it later (a mint on another thread then compares against the current batch or null,
+     * never a stale one whose transaction it could mistake for its own).
      */
+    @Volatile
     private var open: Batch? = null
 
     /** One [batch]: the row cache, the cards whose full replay is deferred, and the entries to re-derive. */
@@ -85,8 +91,11 @@ public class DeviceOpApplier<L : LearningTables>(
      * - `word_status` is re-derived once per touched entry, after those replays (the derivation reads
      *   only the final rows; `updated_at` gets the wall time of the last op that touched the entry);
      * - rows looked up by key are cached for the batch (writes go through and drop the entry).
-     * The committed rows equal the ones op-by-op [apply] gives, except `word_status.updated_at` when
-     * an entry's status changed and changed back within the batch (not compared, SYNC.md 11 item 4).
+     * The committed rows equal the ones op-by-op [apply] gives, except `word_status.updated_at`: it
+     * differs whenever an entry's status changed and a later op in the batch touches the entry again
+     * (op-by-op stamps the op that changed it, the batch stamps the last op that touched it), and when
+     * the status changed and changed back (op-by-op stamps the change, the batch nothing). Not
+     * compared (SYNC.md 11 item 4).
      * Nothing but [apply] may write `tx.learning` inside [block]. A nested call joins the open batch.
      * If [block] throws, nothing is flushed (the caller's transaction rolls back).
      */

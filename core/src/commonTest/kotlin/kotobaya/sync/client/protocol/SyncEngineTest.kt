@@ -17,6 +17,7 @@ import kotobaya.sync.client.store.OutboxTable
 import kotobaya.sync.client.store.PendingState
 import kotobaya.sync.client.store.StoreTransaction
 import kotobaya.sync.client.store.SyncStateKeys
+import kotobaya.sync.client.store.bookkeeping
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -412,6 +413,142 @@ class SyncEngineTest {
         server.nowMs = NOW + 1_000
         assertIs<CycleResult.Completed>(a.cycle())
         assertIs<MintResult.Minted>(a.minter.mint(OpType.SETTINGS_SET, examplePayload("settings.set.json")))
+    }
+
+    // --- chunked pull (BUG-8 / SYNC-T1): every chunk is a smaller page (SYNC.md 6.1) ---------------
+
+    private fun chunked(d: TestDevice, progress: suspend (PullProgress) -> Unit = {}) =
+        SyncEngine(d.store, d.transport, d.applier, d.clock, pullChunkOps = 2, onPullProgress = progress)
+
+    private fun unknownOp(n: Int): JsonObject = DefaultCanonicalJson.decode(
+        """{"op_id":"0193a1b2-00ff-7000-8000-0000000000e$n","op_type":"thing.done","op_version":1,"entity_type":"thing",
+           "entity_id":"x","device_id":"$DEV_B","hlc":"0193a1b2c001-0000-$DEV_B","payload":{"z":1},"caused_by_op_id":null}""",
+    ).value as JsonObject
+
+    /** A `parse_override.put` (device_applies = false) with its own op id and hlc. */
+    private fun serverOnlyOp(i: Int): Op {
+        val po = DefaultOpCodec.decode(SyncExamplesAccess.op("parse_override.put.json"), kotobaya.contracts.sync.OpSource.PUSHED)
+        val op = assertIs<kotobaya.contracts.sync.OpDecodeResult.Known>(po).op
+        return op.copy(opId = "0193a1b2-00f0-7000-8000-00000000000$i", hlc = "0193a1b2c0f$i-0000-${op.deviceId}")
+    }
+
+    @Test
+    fun chunkedPullUnsupportedOpInChunkTwoCommitsChunkOneAndStopsJustBeforeIt() {
+        val before = (1..3).map { b.setting("k.cu$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        val unknownSeq = server.plantRaw(unknownOp(1)) // seq 4: the second op of chunk 2 ([3, 4])
+        b.setting("k.cu5", 5)
+        assertIs<CycleResult.Completed>(b.push())
+
+        val engine = chunked(a)
+        val r = assertIs<CycleResult.UpgradeRequired>(runSync { engine.pullAll() })
+        assertEquals(4L, unknownSeq)
+        assertEquals(unknownSeq, r.seq)
+        assertEquals("3", a.state(SyncStateKeys.PULL_SEQ)) // the seq just before it
+        assertEquals(before.map { it.opId }, a.store.learning().pulledIds()) // chunk 1 and the op before it in chunk 2
+        // the next pull resumes at the same op and never skips it
+        assertIs<CycleResult.UpgradeRequired>(runSync { engine.pullAll() })
+        assertEquals(before.map { it.opId }, a.store.learning().pulledIds())
+        assertEquals(listOf(0L, 3L), a.transport.pullSinces)
+    }
+
+    @Test
+    fun chunkedPullUnsupportedOpFirstInChunkTwoLeavesPullSeqAtChunkOnesLastSeq() {
+        val before = (1..2).map { b.setting("k.cv$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        assertEquals(3L, server.plantRaw(unknownOp(2)))
+        b.setting("k.cv4", 4)
+        assertIs<CycleResult.Completed>(b.push())
+        assertIs<CycleResult.UpgradeRequired>(runSync { chunked(a).pullAll() })
+        assertEquals("2", a.state(SyncStateKeys.PULL_SEQ))
+        assertEquals(before.map { it.opId }, a.store.learning().pulledIds())
+    }
+
+    @Test
+    fun chunkedPullApplierThrowInChunkTwoKeepsChunkOneAndTheRetryEqualsAOneChunkPull() {
+        val ops = (1..5).map { b.setting("k.ct$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        a.applier.failOn = { it.opId == ops[3].opId } // chunk 2 = seqs [3, 4]
+        val engine = chunked(a)
+        val r = assertIs<CycleResult.Failed>(runSync { engine.pullAll() })
+        assertEquals(FailureKind.LOCAL_APPLY, r.kind)
+        assertEquals("2", a.state(SyncStateKeys.PULL_SEQ)) // chunk 1's last seq; chunk 2 rolled back whole
+        assertEquals(ops.take(2).map { it.opId }, a.store.learning().pulledIds())
+
+        a.applier.failOn = { false }
+        assertIs<CycleResult.Completed>(runSync { engine.pullAll() })
+        // the same rows and bookkeeping as a device that pulled the page in one chunk
+        val c = TestDevice("01931f3e-0000-7000-8000-0000000000c3", server, NOW, seed = 3)
+        assertIs<CycleResult.Completed>(c.pull())
+        assertEquals(c.store.learning().applied, a.store.learning().applied)
+        for (key in listOf(SyncStateKeys.PULL_SEQ, SyncStateKeys.HLC_LAST, SyncStateKeys.LOG_EPOCH, SyncStateKeys.DURABLE_SEQ)) {
+            assertEquals(c.state(key), a.state(key), key)
+        }
+        assertEquals("5", a.state(SyncStateKeys.PULL_SEQ))
+    }
+
+    @Test
+    fun chunkedPullANoOpOnlyChunkAdvancesTheCursorAndObservesItsHlcs() {
+        val first = (1..2).map { b.setting("k.cn$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        val skipped = (1..2).map { serverOnlyOp(it) }
+        skipped.forEach { server.append(it, null) } // seqs 3, 4: chunk 2 has only device_applies = false ops
+        val last = b.setting("k.cn5", 5)
+        assertIs<CycleResult.Completed>(b.push())
+        val progress = ArrayList<PullProgress>()
+        val r = assertIs<CycleResult.Completed>(runSync { chunked(a) { progress.add(it) }.pullAll() })
+        assertEquals(5, r.pulledOps)
+        assertEquals((first + last).map { it.opId }, a.store.learning().pulledIds())
+        assertEquals("5", a.state(SyncStateKeys.PULL_SEQ))
+        assertEquals(listOf(2L, 4L, 5L), progress.map { it.done })
+        assertEquals(listOf(2, 4, 5), progress.map { it.pulledOps })
+        // the no-op chunk's hlcs were observed: hlc_last is the greatest one seen
+        assertEquals((first + skipped + last).maxOf { it.hlc }, a.state(SyncStateKeys.HLC_LAST))
+    }
+
+    @Test
+    fun chunkedPullFailsAsProtocolWhenPullSeqMovesBetweenChunks() {
+        val ops = (1..4).map { b.setting("k.cm$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        var tampered = false
+        val engine = chunked(a) {
+            if (!tampered) {
+                tampered = true
+                a.store.transaction { tx -> tx.bookkeeping.pullSeq = 0 } // e.g. a log reset ran meanwhile
+            }
+        }
+        val r = assertIs<CycleResult.Failed>(runSync { engine.pullAll() })
+        assertEquals(FailureKind.PROTOCOL, r.kind)
+        assertEquals(ops.take(2).map { it.opId }, a.store.learning().pulledIds()) // chunk 2 applied nothing
+        assertEquals("0", a.state(SyncStateKeys.PULL_SEQ))
+    }
+
+    @Test
+    fun chunkedPullFailsAsProtocolWhenTheStoredLogEpochChangesBetweenChunks() {
+        (1..4).forEach { b.setting("k.ce$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        var tampered = false
+        val engine = chunked(a) {
+            if (!tampered) {
+                tampered = true
+                a.store.transaction { tx -> tx.bookkeeping.logEpoch = "0193a1b2-00ee-7000-8000-000000000009" }
+            }
+        }
+        val r = assertIs<CycleResult.Failed>(runSync { engine.pullAll() })
+        assertEquals(FailureKind.PROTOCOL, r.kind)
+        assertEquals(2, a.store.learning().pulledIds().size)
+        assertEquals("2", a.state(SyncStateKeys.PULL_SEQ))
+    }
+
+    @Test
+    fun chunkedPullRecordsServerSkewOnlyOnThePagesFirstChunk() {
+        (1..4).forEach { b.setting("k.cs$it", it) }
+        assertIs<CycleResult.Completed>(b.push())
+        server.nowMs = NOW + 5_000
+        // the device clock moves while chunks are applied; server_time belongs to the moment of the response
+        val engine = chunked(a) { a.clock.now += 60_000 }
+        assertIs<CycleResult.Completed>(runSync { engine.pullAll() })
+        assertEquals("5000", a.state(SyncStateKeys.SERVER_SKEW_MS))
     }
 
     @Test

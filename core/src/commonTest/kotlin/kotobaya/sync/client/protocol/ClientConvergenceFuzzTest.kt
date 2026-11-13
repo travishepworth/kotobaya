@@ -58,7 +58,8 @@ private class FuzzDevice(val id: String, server: TestServer, val rnd: Random, se
     val store = InMemoryDeviceStore(LwwRows()) { it.copy() }
     val transport = TestTransport(server)
     val minter = OpMinter(store, LwwApplier, clock, UuidV7Source(Random(seed)))
-    val engine = SyncEngine(store, transport, LwwApplier, clock)
+    /** SYNC-T1: a random pull chunk size; a chunk is a smaller page, so every size must converge. */
+    val engine = SyncEngine(store, transport, LwwApplier, clock, pullChunkOps = 1 + rnd.nextInt(5))
     val minted = ArrayList<String>()
 
     init {
@@ -85,7 +86,7 @@ private class FuzzDevice(val id: String, server: TestServer, val rnd: Random, se
 
 /**
  * Client-side convergence fuzz (SYNC.md 11): N >= 3 devices with real [OpMinter] / [SyncEngine] and
- * in-memory stores, random offline stretches, sync orders, lost responses, failed sends, replayed
+ * in-memory stores, a random pull chunk size 1..5, random offline stretches, sync orders, lost responses, failed sends, replayed
  * pages, crashes while recording push results, small push bodies (413 / batching) and small pages.
  * After final syncs every replica equals the server's replica, nothing minted is lost or logged
  * twice, and every outbox is empty. Deterministic per seed.
