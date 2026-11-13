@@ -763,3 +763,4 @@
 2026-11-13T09:33:21Z BUG-1 DISPATCH writer-senior (stats perf, high)
 2026-11-13T09:33:21Z BUG-2+BUG-3 DISPATCH writer (worker batch, med)
 2026-11-13T09:33:21Z BUG-4 DISPATCH writer (deploy voicevox, low)
+2026-11-13T09:36:55Z BUG-6 FILED (coordinator update: jpdb Hard never graduates learning); BUG-1/2/4 detail relayed to writers; live main d618d61 chart a0bcd03
