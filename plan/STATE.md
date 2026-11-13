@@ -17,12 +17,12 @@ Updated: RUN17 END
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 (writer still alive in run 18) |
 | SYNC-T1 | writer-senior | 1 | t/SYNC-T1-chunked-pull-tests | RUN18 |
 | C-20 | architect | 1 | t/C-20-sync-subpage-wording | RUN18 |
+| UI-DS-APP | writer-senior | 1 | t/UI-DS-APP-styleguide | RUN18 |
 
 ## Queued
-UI-DS-APP (after UI-FOUND-APP)
+(FOLLOWUPS only)
 
 ## Ready for review / In review
 (none)
@@ -50,6 +50,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- UI-FOUND-APP (run 18, b0683c1): per-screen ViewModels (StateViewModel, ports), ui/ purity test, debug demo-data mode (fixtures/demo), Roborazzi 1.40.1 matrix (516 PNGs, make screenshots-app), buildConfig on; BUG-8 touch-ups (dict DbThreadGuard, SyncStatus update{}, unpair awaited)
 - UI-DS (run 17, 3007499): tokens.json -> tokens.css/card.css/Tokens.kt (drift + WCAG AA tests), 18 web ui primitives, /styleguide, docs/DESIGN.md (both platforms), docs/design-screenshots/web; B2 gate
 - UI-FOUND-WEB (run 17, 2056faa): web/src/lib/state/* per screen, views import only state/ui (architecture test), fixtures/demo (CC0, scenarios default/empty/due900), make dev-ui, make screenshots-web (672 PNGs; @playwright/test 1.65, CHROMIUM_PATH)
 - BUG-8 (run 17, dcc3216): Android sync 200-op chunked pull tx, deferred replay per chunk, verdict-only SyncSchemas (equivalence-tested), WAL reader read{}, no main-thread DB (StrictMode + DbThreadGuard), Syncing N of M chip; 100k pull 55.8 s bench; reviewer + architect APPROVE (0.1.8, new APK)
