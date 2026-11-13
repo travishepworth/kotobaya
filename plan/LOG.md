@@ -519,3 +519,7 @@
 2026-11-12T19:31:49Z - HANDOVER usage limit: T303b and T307+T309 (Main.kt wiring) in flight; see STATE.md USAGE-LIMIT STOP
 2026-11-12T19:35:34Z T307+T309 HANDOFF DONE (Main.kt NtfySink wired); CHECK_GREEN android+server+deploy; MERGE
 2026-11-13T00:24:42Z T303b DISPATCH attempt 2 writer-senior(opus) in same worktree (attempt 1 cut off by usage limit, partial uncommitted work kept)
+2026-11-13T00:42:19Z T303b HANDOFF DONE attempt 2 (+3234 lines, owned paths only); reviewer + architect dispatched; own make check running
+2026-11-13T00:42:26Z T303b CHECK_GREEN core (orchestrator re-run)
+2026-11-13T00:44:45Z T303b REVIEW_APPROVE architect (6 minors → FOLLOWUPS; auto_status re-derivation folded into T304b)
+2026-11-13T00:45:52Z T303b REVIEW_APPROVE reviewer (6 minors → FOLLOWUPS)

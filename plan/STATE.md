@@ -17,7 +17,7 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T303b | writer-senior (opus) | 2 (resumed in same worktree) | t/T303b-sync-client-apply | 2026-11-13T00:24:42Z |
+| T303b | — (in review) | 2 | t/T303b-sync-client-apply | 2026-11-13T00:42:19Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -25,6 +25,7 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T303b | reviewer (opus) + architect (opus) | 2026-11-13T00:42:19Z |
 
 ## Blocked
 | Ticket | Reason | Needs |

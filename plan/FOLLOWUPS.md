@@ -170,3 +170,16 @@
 - T305a: make apk builds both flavors (Makefile apk line not owned); provider call-log debug screen not built (needs FeatureModules line + strings); APK rename uses internal AGP BaseVariantOutputImpl (may break on AGP upgrade).
 - T303a/C-10: name `client.log_reset_epoch` in SYNC 10.5 key list (next C-ticket) so Android key set doesn't drift; transient push failures count toward the unknown_reference auto-retry cap of 10 (may end retries early on flaky network).
 - T307/T309: MainActivity must handle kotobaya://review and kotobaya://word/<seq> VIEW intents; PushSyncTrigger no-op until T303c rebinds; callers fire DueTrigger; hot word = highest-lapse vocab (core HotScorer not wired); ApiClient lacks PATCH (DevicePushApi own call); sync.changed can't skip originating device.
+
+## T303b (architect second pass, 2026-11-13)
+- auto_status not re-derived on device (OPS.md says every replica does; status=coalesce(override,auto,'new') shows 'new' on device) → folded into T304b acceptance.
+- DeviceSyncCycle: auto-retry cap of 10 also counts network-failure attempt bumps from pushAll; flaky network exhausts retries.
+- DeviceSyncCycle: no auto-retry when rebuild returns UpgradeRequired.
+- Rebuild pull after wipe always reports progress → extra retry round on same-epoch rebuild (harmless).
+- Device fuzz lacks server restore and out-of-order delivery; §12.5 covered only by RebuildTest (T313 should cover).
+- DeviceDiagnostics.refusals keeps rolled-back events; UI must count via refusedCacheCards (T303e).
+- Optional contract hardening: pull response echoes `since` (stale page after wipe undetectable; not reachable over HTTP GET).
+- (reviewer) DeviceSyncCycle default StartupReplay() builds its own cache/diagnostics → startup refusals miss applier diagnostics; pass StartupReplay(applier.cache) (T303c wiring).
+- (reviewer) DeviceCardCache.paramsFor runs outside `guarded`: malformed preset fails the pull page instead of refused cache (schema-invalid input only).
+- (reviewer) T303a SyncEngine: reject pull pages not matching requested `since` (stale page after wipe).
+- (reviewer) MergeReaders.visibleDeckItems: tombstone-drop vs duplicate-collapse order unspecified in SYNC 8.5 — ask architect, document.
