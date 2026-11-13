@@ -34,7 +34,24 @@ public class SyncEngine<L>(
     private val clock: Clock,
     private val hlcRules: HlcRules = DefaultHlcRules,
     private val codec: OpCodec = DefaultOpCodec,
+    /**
+     * Ops applied per local transaction when applying a pull page (BUG-8). A page is applied in chunks
+     * of at most this many ops, each committed with the cursor at its last op (so a chunk is exactly
+     * a smaller page as far as SYNC.md 6.1 is concerned), so the writer never holds the database for
+     * a whole page.
+     */
+    private val pullChunkOps: Int = DEFAULT_PULL_CHUNK_OPS,
+    /**
+     * Called after every committed pull chunk (outside any transaction), e.g. to publish progress and
+     * to yield the thread; it may suspend. A [kotlin.coroutines.cancellation.CancellationException] it
+     * throws ends [pullAll] (everything committed so far stays; the next cycle resumes at `pull_seq`).
+     */
+    private val onPullProgress: suspend (PullProgress) -> Unit = {},
 ) {
+    init {
+        require(pullChunkOps >= 1) { "pullChunkOps must be at least 1" }
+    }
+
     /**
      * Sync cycle (SYNC.md 6.1): refresh the `/meta` limits; push until no row is `pending`; if
      * `rebuild_pending` is set stop with [CycleResult.RebuildPending]; otherwise pull until
@@ -137,10 +154,14 @@ public class SyncEngine<L>(
     }
 
     /**
-     * Pull (SYNC.md 6.1) from `pull_seq` until `has_more` is false, one transaction per page. Returns
-     * [CycleResult.Completed] (with `pushedOps = 0`), [CycleResult.LogChanged] (page discarded),
-     * [CycleResult.UpgradeRequired] or [CycleResult.Failed]. Does not look at `rebuild_pending`, so the
-     * rebuild (T303b) uses it to pull from 0.
+     * Pull (SYNC.md 6.1) from `pull_seq` until `has_more` is false. Each page is applied in chunks of
+     * at most [pullChunkOps] ops, one transaction per chunk, each committing the ops, `pull_seq` = the
+     * last applied op's `seq` (the page's `next_since` after its last chunk), `hlc_last` and the log
+     * info: a chunk is a smaller page, so a process killed between chunks resumes after the last
+     * committed one. Returns [CycleResult.Completed] (with `pushedOps = 0`), [CycleResult.LogChanged]
+     * (page discarded; checked before its first chunk), [CycleResult.UpgradeRequired] or
+     * [CycleResult.Failed]. Does not look at `rebuild_pending`, so the rebuild (T303b) uses it to pull
+     * from 0.
      */
     public suspend fun pullAll(): CycleResult {
         var pulled = 0
@@ -159,22 +180,30 @@ public class SyncEngine<L>(
                 }
                 is TransportResponse.NetworkError -> return CycleResult.Failed(FailureKind.OFFLINE, SyncStep.PULL, r.message)
             }
-            val outcome = try {
-                store.transaction { tx -> applyPage(tx, page) }
-            } catch (e: ProtocolException) {
-                return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, e.message ?: "bad pull page", 200)
-            } catch (e: Exception) {
-                return CycleResult.Failed(FailureKind.LOCAL_APPLY, SyncStep.PULL, e.message ?: e.toString())
-            }
-            when (outcome) {
-                is PageOutcome.Stop -> return outcome.result
-                is PageOutcome.Applied -> {
-                    pulled += outcome.count
-                    if (!page.hasMore) return CycleResult.Completed(0, pulled, 0, outcome.cursor > initial)
-                    if (outcome.cursor <= since) {
-                        return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, "has_more without progress at since=$since", 200)
+            val chunks = page.ops.chunked(pullChunkOps).ifEmpty { listOf(emptyList()) }
+            var cursor = since
+            for ((i, chunk) in chunks.withIndex()) {
+                val last = i == chunks.lastIndex
+                val outcome = try {
+                    store.transaction { tx -> applier.batch(tx) { applyChunk(tx, page, chunk, first = i == 0, last = last) } }
+                } catch (e: ProtocolException) {
+                    return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, e.message ?: "bad pull page", 200)
+                } catch (e: Exception) {
+                    if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                    return CycleResult.Failed(FailureKind.LOCAL_APPLY, SyncStep.PULL, e.message ?: e.toString())
+                }
+                when (outcome) {
+                    is PageOutcome.Stop -> return outcome.result
+                    is PageOutcome.Applied -> {
+                        pulled += outcome.count
+                        cursor = outcome.cursor
                     }
                 }
+                onPullProgress(PullProgress(pulled, cursor - initial, maxOf(page.log.highWaterSeq - initial, cursor - initial)))
+            }
+            if (!page.hasMore) return CycleResult.Completed(0, pulled, 0, cursor > initial)
+            if (cursor <= since) {
+                return CycleResult.Failed(FailureKind.PROTOCOL, SyncStep.PULL, "has_more without progress at since=$since", 200)
             }
         }
     }
@@ -249,23 +278,35 @@ public class SyncEngine<L>(
         return Recorded(changed, missing)
     }
 
-    /** SYNC.md 6.1 client procedure for one page, inside its transaction. */
-    private fun applyPage(tx: StoreTransaction<L>, page: WirePullPage): PageOutcome {
-        val bk = tx.bookkeeping
-        logChange(bk, page.log, SyncStep.PULL)?.let { return PageOutcome.Stop(it) }
+    /** Throws [ProtocolException] unless the integer `seq`s of [page] are strictly ascending. */
+    private fun checkAscending(page: WirePullPage) {
         var prev = Long.MIN_VALUE
         for (raw in page.ops) {
             val s = Wire.seqOf(raw) ?: continue
             if (s <= prev) throw ProtocolException("pull page seqs are not strictly ascending ($prev then $s)")
             prev = s
         }
+    }
+
+    /**
+     * SYNC.md 6.1 client procedure for [ops], one chunk of [page], inside its transaction: the log
+     * identity check (6.2) and the page's `seq` order on the [first] chunk; each op observed and applied; `pull_seq` set to the
+     * last applied `seq` (to `next_since` after the [last] chunk); `hlc_last`, server skew and log info
+     * stored. The upgrade-required stop is cleared only after the last chunk of the last page.
+     */
+    private fun applyChunk(tx: StoreTransaction<L>, page: WirePullPage, ops: List<kotobaya.contracts.sync.JsonValue>, first: Boolean, last: Boolean): PageOutcome {
+        val bk = tx.bookkeeping
+        if (first) {
+            logChange(bk, page.log, SyncStep.PULL)?.let { return PageOutcome.Stop(it) }
+            checkAscending(page) // the whole page, before its first op is applied
+        }
         val start = bk.pullSeq
         var cursor = start
         var state = hlcRules.stateOf(bk.hlcLast)
-        var last: HlcString? = bk.hlcLast
+        var lastHlc: HlcString? = bk.hlcLast
         var count = 0
         var stop: CycleResult.UpgradeRequired? = null
-        for (raw in page.ops) {
+        for (raw in ops) {
             val rawSeq = Wire.seqOf(raw)
             if (rawSeq != null && rawSeq <= cursor) continue // already applied: a replayed or overlapping page
             when (val d = codec.decodeTree(raw, OpSource.PULLED)) {
@@ -274,7 +315,7 @@ public class SyncEngine<L>(
                     val observed = hlcRules.observe(state, op.hlc)
                     if (observed != state) {
                         state = observed
-                        last = op.hlc
+                        lastHlc = op.hlc
                     }
                     if (op.opType.deviceApplies) applier.apply(tx, op, ApplyOrigin.PULLED)
                     cursor = op.seq ?: cursor
@@ -291,16 +332,16 @@ public class SyncEngine<L>(
             }
             if (stop != null) break
         }
-        if (stop == null && page.nextSince > cursor) cursor = page.nextSince
+        if (stop == null && last && page.nextSince > cursor) cursor = page.nextSince
         if (cursor > start) bk.pullSeq = cursor
-        if (last != bk.hlcLast) bk.hlcLast = last
+        if (lastHlc != bk.hlcLast) bk.hlcLast = lastHlc
         bk.recordServerSkew(page.log.serverTime - clock.nowMs())
         storeLogInfo(bk, page.log)
         if (stop != null) {
             bk.upgradeRequired = UpgradeRequiredState.of(stop).encode()
             return PageOutcome.Stop(stop)
         }
-        if (!page.hasMore) bk.upgradeRequired = null // the pull got past every op it had stopped at
+        if (last && !page.hasMore) bk.upgradeRequired = null // the pull got past every op it had stopped at
         return PageOutcome.Applied(count, cursor)
     }
 
@@ -322,11 +363,29 @@ public class SyncEngine<L>(
         }
     }
 
-    private companion object {
-        const val HTTP_TOO_LARGE = 413
-        const val STATUS_REJECTED = "rejected"
-        const val CLOCK_AHEAD = "clock_ahead"
-        const val CLOCK_BEHIND = "clock_behind"
-        const val UNKNOWN_REFERENCE = "unknown_reference"
+    /** Constants. */
+    public companion object {
+        /** Default [pullChunkOps]. */
+        public const val DEFAULT_PULL_CHUNK_OPS: Int = 200
+
+        private const val HTTP_TOO_LARGE = 413
+        private const val STATUS_REJECTED = "rejected"
+        private const val CLOCK_AHEAD = "clock_ahead"
+        private const val CLOCK_BEHIND = "clock_behind"
+        private const val UNKNOWN_REFERENCE = "unknown_reference"
     }
 }
+
+/**
+ * Progress of [SyncEngine.pullAll] after a committed chunk, in `seq` units from where the pull started
+ * (`seq` may have gaps, so these are an estimate of ops): [done] of [total], [total] being the server's
+ * `high_water_seq` at the last page. [pulledOps] counts the ops actually applied so far.
+ */
+public data class PullProgress(
+    /** Ops applied so far in this pull. */
+    public val pulledOps: Int,
+    /** `pull_seq` now minus `pull_seq` when the pull started. */
+    public val done: Long,
+    /** `high_water_seq` of the last page minus `pull_seq` when the pull started (never below [done]). */
+    public val total: Long,
+)

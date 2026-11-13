@@ -50,24 +50,85 @@ public class DeviceOpApplier<L : LearningTables>(
     /** Called for each op that was a no-op because a row it needs is missing (SYNC.md 7.7): the op and what is missing. */
     private val onMissing: (Op, String) -> Unit = { _, _ -> },
 ) : OpApplier<L> {
+    /**
+     * The open [batch], or null. Only the thread running the batch's transaction uses it: [apply] on
+     * any other transaction (a mint on another thread) never sees it as its own ([Batch.tx] identity).
+     */
+    private var open: Batch? = null
+
+    /** One [batch]: the row cache, the cards whose full replay is deferred, and the entries to re-derive. */
+    private class Batch(val tx: Any, base: LearningTables) {
+        val tables = RowCachingTables(AppendOnlyReviewLog.unguarded(base))
+        val dirtyCards: MutableSet<String> = LinkedHashSet()
+
+        /** Entry -> wall time of the last op that touched it (stamps `updated_at` as that op would have). */
+        val entries: LinkedHashMap<Long, Long> = LinkedHashMap()
+    }
+
     override fun apply(tx: StoreTransaction<L>, op: Op, origin: ApplyOrigin) {
+        val b = open?.takeIf { it.tx === tx }
+        if (b != null) {
+            // the batch ran the startup check when it opened, in this transaction; nothing since changed it
+            applyIn(b.tables, op, b)
+        } else {
+            startup.ensure(tx)
+            applyTo(tx.learning, op)
+        }
+    }
+
+    /**
+     * BUG-8: [block] applies a run of ops on [tx] (a pull chunk) with the per-op work that only the
+     * final state needs done once, at the end of the batch, still inside [tx] (SYNC.md 9.3: a replay
+     * happens in the transaction that applied the triggering op):
+     * - a card that needs a full replay (9.2) is replayed once, after the last op, instead of once per
+     *   op; until then later reviews of it are not folded (the replay covers them; fold = replay, 9.3);
+     * - `word_status` is re-derived once per touched entry, after those replays (the derivation reads
+     *   only the final rows; `updated_at` gets the wall time of the last op that touched the entry);
+     * - rows looked up by key are cached for the batch (writes go through and drop the entry).
+     * The committed rows equal the ones op-by-op [apply] gives, except `word_status.updated_at` when
+     * an entry's status changed and changed back within the batch (not compared, SYNC.md 11 item 4).
+     * Nothing but [apply] may write `tx.learning` inside [block]. A nested call joins the open batch.
+     * If [block] throws, nothing is flushed (the caller's transaction rolls back).
+     */
+    override fun <R> batch(tx: StoreTransaction<L>, block: () -> R): R {
+        if (open?.tx === tx) return block()
         startup.ensure(tx)
-        applyTo(tx.learning, op)
+        val b = Batch(tx, tx.learning)
+        open = b
+        try {
+            val result = block()
+            val t = AppendOnlyReviewLog.guard(b.tables)
+            cache.replayCards(t, b.dirtyCards)
+            for ((entry, at) in b.entries) AutoStatus.rederive(t, listOf(entry), at)
+            return result
+        } finally {
+            open = null
+        }
     }
 
     /**
      * Applies [op] to [tables] (inside the caller's transaction). Returns false iff the op was a
      * no-op because a referenced row is missing (7.7). Does not run the startup check.
      */
-    public fun applyTo(tables: LearningTables, op: Op): Boolean {
+    public fun applyTo(tables: LearningTables, op: Op): Boolean = applyIn(RowCachingTables(AppendOnlyReviewLog.unguarded(tables)), op, null)
+
+    private fun applyIn(tables: RowCachingTables, op: Op, b: Batch?): Boolean {
         val t = AppendOnlyReviewLog.guard(tables)
         missingReference(t, op)?.let {
             onMissing(op, it)
             return false
         }
         val before = AutoStatus.entriesOf(t, op)
-        Apply(t, AppendOnlyReviewLog(AppendOnlyReviewLog.unguarded(t)), cache, op).run()
-        AutoStatus.rederive(t, before + AutoStatus.entriesOf(t, op), wall(op.hlc))
+        Apply(t, AppendOnlyReviewLog(AppendOnlyReviewLog.unguarded(t)), cache, op, b?.dirtyCards).run()
+        val touched = before + AutoStatus.entriesOf(t, op)
+        if (b == null) {
+            AutoStatus.rederive(t, touched, wall(op.hlc))
+        } else {
+            for (entry in touched) {
+                b.entries.remove(entry) // re-inserted last: the order of last touch
+                b.entries[entry] = wall(op.hlc)
+            }
+        }
         return true
     }
 
@@ -194,6 +255,8 @@ private class Apply(
     private val reviews: AppendOnlyReviewLog,
     private val cache: DeviceCardCache,
     private val op: Op,
+    /** Cards whose full replay is deferred to the end of the batch ([DeviceOpApplier.batch]); null = replay now. */
+    private val defer: MutableSet<String>?,
 ) {
     private val p: Map<String, JsonValue> = op.payload.members
     private val h: String = op.hlc
@@ -215,10 +278,10 @@ private class Apply(
             CARD_FLAG_SET -> registers(LearningTable.CARD, str("id"), listOf(RegWrite("flags") { it.set("flags", node("flags")) }))
             CARD_PRESET_SET -> {
                 val won = registers(LearningTable.CARD, str("id"), listOf(RegWrite("preset_id") { it.set("preset_id", node("preset_id")) }))
-                cache.replayCards(t, won)
+                cache.replayCards(t, won, defer)
             }
             CARD_DELETED -> deleted(LearningTable.CARD, str("id"))
-            CARD_MERGED -> merged(LearningTable.CARD, str("loser_id"), str("survivor_id"))?.let { cache.replayCards(t, listOf(it)) }
+            CARD_MERGED -> merged(LearningTable.CARD, str("loser_id"), str("survivor_id"))?.let { cache.replayCards(t, listOf(it), defer) }
             REVIEW_LOGGED -> reviewLogged()
             REVIEW_UNDONE -> reviewUndone()
             WORD_STATUS_SET -> wordStatus((node("status") as? JsonString)?.value, (p["origin"] as? JsonString)?.value ?: "manual")
@@ -241,9 +304,9 @@ private class Apply(
             FSRS_PARAMS_CREATED -> presetCreated()
             FSRS_PARAMS_UPDATED -> {
                 val won = registerNames(LearningTable.FSRS_PARAMS, str("id"), setWrites(obj("set")))
-                if (won.any { it != "name" }) cache.replayEffectivePreset(t, str("id"))
+                if (won.any { it != "name" }) cache.replayEffectivePreset(t, str("id"), defer)
             }
-            FSRS_PARAMS_DELETED -> if (deleted(LearningTable.FSRS_PARAMS, str("id"))) cache.replayPresetCards(t, str("id"))
+            FSRS_PARAMS_DELETED -> if (deleted(LearningTable.FSRS_PARAMS, str("id"))) cache.replayPresetCards(t, str("id"), defer)
             FSRS_PARAMS_PUBLISHED -> presetPublished()
             MEDIA_CREATED -> mediaCreated()
             MEDIA_UPDATED -> registers(LearningTable.MEDIA, str("id"), setWrites(obj("set")))
@@ -494,7 +557,7 @@ private class Apply(
         row["undone_at"] = JsonNull
         row["undone_hlc"] = JsonNull
         if (!reviews.insert(row)) return // 7.9 rule 1: the first write wins
-        cache.reviewLogged(t, row, targetCard(str("card_id")))
+        cache.reviewLogged(t, row, targetCard(str("card_id")), defer)
     }
 
     private fun reviewUndone() {
@@ -502,7 +565,7 @@ private class Apply(
         val outcome = reviews.undo(id, h) ?: return
         if (outcome.replayTarget) {
             val cardId = (reviews.get(id)?.get("card_id") as? JsonString)?.value ?: return
-            cache.replayCards(t, listOf(targetCard(cardId)))
+            cache.replayCards(t, listOf(targetCard(cardId)), defer)
         }
     }
 
@@ -689,7 +752,7 @@ private class Apply(
         for (c in listOf("weights_version", "fsrs_version", "weights", "optimizer_stats", "optimized_at")) ed.set(c, node(c))
         ed.bumpUpdated(wall(h))
         t.put(LearningTable.FSRS_PARAMS, ed.build())
-        cache.replayEffectivePreset(t, id)
+        cache.replayEffectivePreset(t, id, defer)
     }
 
     // ------------------------------------------------------------------ media

@@ -88,8 +88,15 @@ public class DeviceCardCache(
     /** Where refusals are reported. */
     public val diagnostics: DeviceDiagnostics = DeviceDiagnostics(),
 ) {
-    /** After `review.logged` inserted [review] for target card [targetCardId]: fold or replay as `decide` says (9.2). */
-    public fun reviewLogged(tables: LearningTables, review: Row, targetCardId: Uuid) {
+    /**
+     * After `review.logged` inserted [review] for target card [targetCardId]: fold or replay as `decide` says (9.2).
+     *
+     * With [defer] (a batch of ops in one transaction, BUG-8): a card already in [defer] is left alone
+     * (its full replay at the end of the batch covers this review), and a full replay is not run but
+     * the card is added to [defer]. A fold still happens at once, on a current cache.
+     */
+    public fun reviewLogged(tables: LearningTables, review: Row, targetCardId: Uuid, defer: MutableSet<Uuid>? = null) {
+        if (defer != null && targetCardId in defer) return
         val card = maintained(tables, targetCardId) ?: return
         val rr = toReplayReview(review) ?: return
         val params = paramsFor(tables, card)
@@ -101,21 +108,32 @@ public class DeviceCardCache(
             when (engine.decide(cache, lastFolded, rr, params)) {
                 ReplayDecision.NONE -> Unit
                 ReplayDecision.FOLD -> write(tables, targetCardId, engine.fold(cache, rr, params))
-                ReplayDecision.FULL_REPLAY -> write(tables, targetCardId, engine.replay(replaySet(tables, targetCardId), params))
+                ReplayDecision.FULL_REPLAY -> if (defer != null) {
+                    defer += targetCardId
+                } else {
+                    write(tables, targetCardId, engine.replay(replaySet(tables, targetCardId), params))
+                }
             }
         }
     }
 
-    /** Full replay of each maintained card of [cardIds] (undo, merge, preset change; 9.2). */
-    public fun replayCards(tables: LearningTables, cardIds: Collection<Uuid>) {
+    /**
+     * Full replay of each maintained card of [cardIds] (undo, merge, preset change; 9.2). With [defer]
+     * the maintained ones are added to it instead (replayed once at the end of the batch).
+     */
+    public fun replayCards(tables: LearningTables, cardIds: Collection<Uuid>, defer: MutableSet<Uuid>? = null) {
         for (id in cardIds.distinct().sorted()) {
+            if (defer != null) {
+                if (maintained(tables, id) != null) defer += id
+                continue
+            }
             val card = maintained(tables, id) ?: continue
             replayOne(tables, id, paramsFor(tables, card))
         }
     }
 
     /** Full replay of every card whose effective preset is [presetId] (9.2: `fsrs_params.updated` / `published`). */
-    public fun replayEffectivePreset(tables: LearningTables, presetId: Uuid) {
+    public fun replayEffectivePreset(tables: LearningTables, presetId: Uuid, defer: MutableSet<Uuid>? = null) {
         val presetDeleted = isDeleted(tables.get(LearningTable.FSRS_PARAMS, listOf(JsonString(presetId))))
         val cards = LinkedHashSet<Uuid>()
         if (!presetDeleted) tables.where(LearningTable.CARD, "preset_id", JsonString(presetId)).forEach { cards += idOf(it) }
@@ -127,12 +145,12 @@ public class DeviceCardCache(
                 if (tables.get(LearningTable.FSRS_PARAMS, listOf(c.getValue("preset_id"))) == null) cards += idOf(c)
             }
         }
-        replayCards(tables, cards)
+        replayCards(tables, cards, defer)
     }
 
     /** Full replay of every card whose `preset_id` is [presetId] (9.2: `fsrs_params.deleted`, first transition). */
-    public fun replayPresetCards(tables: LearningTables, presetId: Uuid) {
-        replayCards(tables, tables.where(LearningTable.CARD, "preset_id", JsonString(presetId)).map(::idOf))
+    public fun replayPresetCards(tables: LearningTables, presetId: Uuid, defer: MutableSet<Uuid>? = null) {
+        replayCards(tables, tables.where(LearningTable.CARD, "preset_id", JsonString(presetId)).map(::idOf), defer)
     }
 
     /** Full replay of every maintained card (SYNC.md 10.5). Returns how many caches were written. */

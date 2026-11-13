@@ -26,6 +26,15 @@ public enum class ApplyOrigin {
 public fun interface OpApplier<L> {
     /** Applies [op] to `tx.learning`. */
     public fun apply(tx: StoreTransaction<L>, op: Op, origin: ApplyOrigin)
+
+    /**
+     * Runs [block], a run of [apply] calls on [tx] with nothing else writing `tx.learning` in
+     * between, and returns its result; the implementation may defer per-op work that only the final
+     * state needs to the end of [block], still inside [tx] (BUG-8: a pull chunk). The rows committed
+     * MUST be the ones the same [apply] calls give one by one (up to what SYNC.md 11 does not
+     * compare). Default: just [block].
+     */
+    public fun <R> batch(tx: StoreTransaction<L>, block: () -> R): R = block()
 }
 
 /** The device's physical clock `pt` (SYNC.md 3.2), epoch ms UTC. */
