@@ -14,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotobaya.android.di.FeatureEntry
+import kotobaya.android.media.AudioPrefetchWork
+import kotobaya.android.media.MediaPrefs
 import kotobaya.android.net.MetaLimitsStore
 import kotobaya.android.net.ServerReachability
 import kotobaya.android.notify.DueTrigger
@@ -198,6 +200,9 @@ val syncModule = module {
                 runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result
                 if (r is CycleResult.Completed && r.pulledOps > 0) koin.getOrNull<DueTrigger>()?.fire()
+                prefetchAfterSync(outcome, { koin.get<MediaPrefs>().allowMetered }) { metered ->
+                    runCatching { AudioPrefetchWork.enqueue(ctx, metered) }
+                }
             },
         )
     }
@@ -224,6 +229,11 @@ val syncModule = module {
             workManager = { runCatching { WorkManager.getInstance(ctx) }.getOrNull() },
         )
     }
+}
+
+/** After a successful sync cycle (pulled card changes may name new audio) queue the audio prefetch (T310). */
+internal fun prefetchAfterSync(outcome: SyncOutcome, allowMetered: () -> Boolean, enqueue: (allowMetered: Boolean) -> Unit) {
+    if ((outcome as? SyncOutcome.Ran)?.result is CycleResult.Completed) enqueue(allowMetered())
 }
 
 /** THE registration for featureEntries. */

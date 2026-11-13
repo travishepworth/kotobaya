@@ -116,4 +116,15 @@
     <string name="remint_block_clock_guard">Fix your device clock, then sync.</string>
     <string name="remint_block_mint_refused">The app refused to re-create a change. Fix your device clock, then sync.</string>
     <string name="remint_block_clock_blocked">Fix your device clock, then sync. Re-mint is unavailable until the clock is right.</string>
+    <string name="media_section_title">Offline media</string>
+    <string name="media_audio_size">Card audio: %1$s MB (%2$d files)</string>
+    <string name="media_other_size">Media: %1$s MB, covers: %2$s MB</string>
+    <string name="media_dictionary_size">Dictionary: %1$s MB</string>
+    <string name="media_total_size">Total: %1$s MB</string>
+    <string name="media_clear_cache">Clear cache</string>
+    <string name="media_prefetch_days">Download audio for cards due within</string>
+    <string name="media_days_option">%1$d d</string>
+    <string name="media_budget">Audio storage budget</string>
+    <string name="media_budget_option">%1$d MB</string>
+    <string name="media_allow_metered">Download on mobile data</string>
 </resources>

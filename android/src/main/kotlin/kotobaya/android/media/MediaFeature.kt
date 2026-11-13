@@ -15,7 +15,9 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
+import kotobaya.android.di.SettingsSection
 import kotobaya.android.net.ApiClient
 import kotobaya.android.pairing.TokenStore
 import kotobaya.android.settings.SettingsStore
@@ -48,8 +50,8 @@ class AudioPrefetchWorker(context: Context, params: WorkerParameters) : Coroutin
 private val mediaModule = module {
     single { BlobStore(get<SqlDriver>(named("syncAppDriver")), File(get<Context>().filesDir, "blobs")) }
     single { MediaPrefs(SharedPrefsKeyValue(get<Context>().getSharedPreferences("kotobaya-media", Context.MODE_PRIVATE))) }
-    // Card audio hashes are not derivable from the contract schema yet; until T304b supplies the source, nothing is wanted.
-    single<AudioNeedsSource> { AudioNeedsSource { _, _ -> emptyList() } }
+    // Card audio hashes come from the rendered cards of the card cache (due and soon-due), via the sync store.
+    single<AudioNeedsSource> { CardAudioNeeds(get<kotobaya.android.sync.SyncClient>().store) }
     single {
         val ctx = get<Context>()
         val settings = get<SettingsStore>()
@@ -63,4 +65,8 @@ private val mediaModule = module {
     }
 }
 
-val mediaFeature = FeatureEntry(id = "media", module = mediaModule)
+val mediaFeature = FeatureEntry(
+    id = "media",
+    module = mediaModule,
+    settingsSections = listOf(SettingsSection("media", R.string.media_section_title) { MediaSettings() }),
+)
