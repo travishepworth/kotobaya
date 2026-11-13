@@ -662,3 +662,4 @@
 2026-11-13T04:41:11Z T604 DISPATCH writer-light (cli, no gradle; ticket created, deps T110 only)
 2026-11-13T04:42:03Z T604 DECIDE media import: no deck name in API → --no-deck/--new-per-day, --kind default other, title=file stem; resumed
 2026-11-13T04:46:10Z T604 MERGE CHECK_GREEN cli (30 tests); 1 attempt + 1 decision (low)
+2026-11-13T04:49:22Z W-5 MERGE CHECK_GREEN server+worker+deploy; 1 attempt (med); deploy changes → HUMAN_CHECKS

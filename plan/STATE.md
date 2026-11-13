@@ -17,7 +17,6 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
-| W-5 | writer | 1 | t/W-5-wiring |
 
 ## Parked
 (none)
@@ -50,6 +49,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- W-5 parse/coverage/sentences wired, media-publish runner, worker parse service :8082 + Helm/compose (run 7)
 - T604 `kotobaya` CLI (cli/, health/cards find/media import/jobs; make check MODULE=cli) (run 7)
 - T410 Android media browse: coverage, segments, curve, i+1 sentences (6th bottom tab) (run 6)
 - T406+T408b web reader with parse correction + media sentence lists and sentence cards (run 6)

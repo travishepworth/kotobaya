@@ -4,6 +4,11 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 7, 2026-11-13) — 0.1.3 (DEPLOYMENT CHANGES)
+- W-5 changes deploy: worker now exposes a parse Service on :8082; api gets `PARSER_URL` (absent → parse endpoints 503); new NetworkPolicy api→worker:8082; new jpdb-cache PVC + `JPDB_CACHE_DIR`; optional `JPDB_API_KEY` Secret (`worker.jpdbApiKey.enabled`). Worker image now installs ffmpeg and takes `SUDACHI_DICT` build arg (default full) — image is bigger; rebuild both images and update values in ~/repos/kubernetes/kotobaya.
+- Media/parse/sentences/coverage API live (no more 501s for those ops); media-publish runner starts only when a blob store is configured.
+- New `kotobaya` CLI in `cli/` (`cd cli && uv run kotobaya --help`; needs `KOTOBAYA_URL`, `KOTOBAYA_TOKEN` PAT). `media import` takes `--kind` (default other), `--title` (default file stem), `--no-deck`/`--new-per-day`.
+
 ## Ready now (run 6, 2026-11-13) — 0.1.2
 - [ ] **Build and push 0.1.2** from main: F-14 (SeaweedFS blob PUT: temp-file spool with known length; copy via get+put since SeaweedFS 3.80 CopyObject also 500s), F-15 (MediaApiModule registered → GET /import/jpdb/vocab no longer 501; WiringAuditTest pins the remaining 501 allowlist), F-16+F-19 (/health reports the build version: `make images VERSION=0.1.2` passes `--build-arg KOTOBAYA_VERSION`; if you build the api image by hand, add `--build-arg KOTOBAYA_VERSION=0.1.2`, else health says "dev"), F-18 (web dictionary page keeps the entry when examples fail).
 - [ ] After deploy: retry the live jpdb import; check `/health` version; upload a blob through the UI to confirm the SeaweedFS fix live (tested only against chrislusf/seaweedfs:3.80 in Testcontainers).
