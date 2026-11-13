@@ -747,10 +747,10 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - model: opus · risk: med · deps: HOTFIX-0.1.7 · status: MERGED 2056faa (ticket: plan/tickets/UI-FOUND-WEB.md)
 
 ### UI-FOUND-APP — Android ViewModels/UiState, demo switch, Roborazzi screenshot matrix (B1 app)
-- model: opus · risk: med · deps: BUG-8, UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-FOUND-APP.md)
+- model: opus · risk: med · deps: BUG-8, UI-FOUND-WEB · status: RUNNING at run-17 end (branch t/UI-FOUND-APP-viewmodels-harness; resume per §2) (ticket: plan/tickets/UI-FOUND-APP.md)
 
 ### UI-DS — Design system (tokens JSON → CSS + Compose theme files), DESIGN.md IA + visual plan (both platforms), web /styleguide + Playwright screenshots (B2)
-- model: opus · risk: med · deps: UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-DS.md) · android/: generated theme/token files only (BUG-8 owns the rest)
+- model: opus · risk: med · deps: UI-FOUND-WEB · status: MERGED 3007499 (ticket: plan/tickets/UI-DS.md) · android/: generated theme/token files only (BUG-8 owns the rest)
 - HUMAN GATE fires when UI-DS merges: UI-WEB and UI-APP wait for human approval.
 
 ### UI-DS-APP — Android debug styleguide screen + Roborazzi screenshots (split from UI-DS; NOT part of the human gate)

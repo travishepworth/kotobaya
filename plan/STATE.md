@@ -1,30 +1,32 @@
 # STATE
 Mode: single-session
-Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE pending (after UI-DS merges); GATE-P2..P5 deferred
-Updated: RUN17
+Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE OPEN (UI-DS merged; awaiting human approval); GATE-P2..P5 deferred
+Updated: RUN17 END
 
-## RESUME HERE (run 17: INBOX ticketed + archived to plan/handoffs/INBOX-0.1.6.md)
-- Dispatch order: HOTFIX-0.1.7 (A0, ship as 0.1.7) → BUG-8 (high, reviewer+architect) → BUG-9 → BUG-10; UI-FOUND-WEB → UI-DS (dispatch as soon as UI-FOUND-WEB merges; does NOT wait on BUG-8; human direction 2026-11-13). Android: BUG-8 → UI-FOUND-APP → UI-DS-APP (after UI-DS; not gated).
-- HARD HUMAN GATE fires when UI-DS merges (DESIGN.md + /styleguide + web screenshots): do NOT dispatch UI-WEB/UI-APP; they wait for the human's approval message.
-- Max 3 writers; Gradle builds via flock /tmp/kotobaya-gradle.lock; stop dispatching < 10 GB free on /home.
+## RESUME HERE (run 17 END: B2 HUMAN GATE REACHED)
+- Run 17 merged 8: HOTFIX-0.1.7 a5c4e3a (SHIP AS 0.1.7), BUG-9 ac0765f, C-19 578985c, TEST-1 b43dbca, BUG-10 4ce6632, BUG-8 dcc3216, UI-FOUND-WEB 2056faa, UI-DS 3007499.
+- HUMAN GATE (B2): UI-WEB and UI-APP are HUMAN-GATED until the human approves docs/DESIGN.md + /styleguide (HUMAN_CHECKS top). Never dispatch them before the approval message.
+- IN FLIGHT at end: UI-FOUND-APP (writer-senior, attempt 1), branch t/UI-FOUND-APP-viewmodels-harness, worktree .claude/worktrees/agent-af829448723171bb9. Resume per §2: if it has commits + HANDOFF.md, READY_FOR_REVIEW (rebase, flock make check android, merge, med no review); else re-dispatch (attempt kept).
+- NEXT runnable: UI-FOUND-APP (finish), then UI-DS-APP (deps UI-DS, UI-FOUND-APP); SYNC-T1 (chunked-pull failure tests, med); C-20 (SYNC.md 6.1 wording, architect). Then FOLLOWUPS.
+- 0.1.8 candidate: BUG-8/9/10 (+ UI-FOUND-WEB, UI-DS card.css change). Notes in HUMAN_CHECKS. No migrations; server Dockerfile JAVA_TOOL_OPTIONS default.
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
 ## 0.1.7 hotfix status
-- HOTFIX-0.1.7: MERGED at a5c4e3a — READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS top.
+- HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| UI-DS | writer-senior | 1 | t/UI-DS-design-system | RUN17 |
-| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 |
+| UI-FOUND-APP | writer-senior | 1 | t/UI-FOUND-APP-viewmodels-harness | RUN17 (in flight at end) |
 
 ## Queued
-UI-DS-APP (after UI-DS + UI-FOUND-APP) · SYNC-T1, C-20 (next run; merge budget)
+UI-DS-APP (after UI-FOUND-APP) · SYNC-T1 · C-20
 
 ## Ready for review / In review
+(none)
 
 ## Blocked
-(none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
+(none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate: waiting for human approval of DESIGN.md + styleguide)
 
 ## Notes
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
@@ -39,13 +41,14 @@ UI-DS-APP (after UI-DS + UI-FOUND-APP) · SYNC-T1, C-20 (next run; merge budget)
 - UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-Run 17: merged 7 · attempts 9 · escalations 0
+Run 17: merged 8 · attempts 10 · escalations 0 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- UI-DS (run 17, 3007499): tokens.json -> tokens.css/card.css/Tokens.kt (drift + WCAG AA tests), 18 web ui primitives, /styleguide, docs/DESIGN.md (both platforms), docs/design-screenshots/web; B2 gate
 - UI-FOUND-WEB (run 17, 2056faa): web/src/lib/state/* per screen, views import only state/ui (architecture test), fixtures/demo (CC0, scenarios default/empty/due900), make dev-ui, make screenshots-web (672 PNGs; @playwright/test 1.65, CHROMIUM_PATH)
 - BUG-8 (run 17, dcc3216): Android sync 200-op chunked pull tx, deferred replay per chunk, verdict-only SyncSchemas (equivalence-tested), WAL reader read{}, no main-thread DB (StrictMode + DbThreadGuard), Syncing N of M chip; 100k pull 55.8 s bench; reviewer + architect APPROVE (0.1.8, new APK)
 - BUG-10 (run 17, 4ce6632): HotWords.loadHistory via card pk/merged_into + review_log_card_idx (7.2s->110ms warm), settings loaded once; no migration (0.1.8)

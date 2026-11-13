@@ -4,6 +4,15 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## READY TO READ (run 17): UI design system, B2 gate. Approval needed before any screen is rebuilt
+UI-DS merged at 3007499. UI-WEB and UI-APP stay HUMAN-GATED until you message approval (fold in any changes you want).
+- Plan: docs/DESIGN.md covers both platforms: information architecture (Android Media tab dropped; web app shell with a sidebar at 1024 px and up, a rail from 600 to 1023 px, compact nav below) and a visual plan per screen, Review first.
+- Tokens: design/tokens/tokens.json is the single source. `make tokens` generates web/src/lib/tokens.css, the card.css token block (light and dark) and the Android ui/theme/Tokens.kt.
+- Styleguide: run `make dev-ui` from the repo root (the SPA runs against the demo dataset, no server needed), then open http://localhost:3000/styleguide. Use the theme override to compare light and dark. The route is in the web build too, so after a deploy it is at https://<your-host>/styleguide.
+- Screenshots: docs/design-screenshots/web/ (curated). For the full matrix, `make screenshots-web` (needs CHROMIUM_PATH set to a system Chromium) writes web/screenshots/.
+- Note: card.css now uses `--kb-card-*` colours and fluid font sizes, so review cards look a little different on web and Android once this ships.
+- Android styleguide screen + Roborazzi shots come later (UI-DS-APP, not part of this gate).
+
 ## Ready now (run 17) — 0.1.8 candidates: BUG-8, BUG-9, BUG-10 (no migrations; no new env beyond the image default)
 - Merged: BUG-9 ac0765f, BUG-10 4ce6632, BUG-8 dcc3216 (plus TEST-1, C-19, UI-FOUND-WEB: no runtime behaviour change intended). Build from one pinned SHA (main at/after dcc3216).
 - Server image: stats replay chunked + shared (BUG-9); server/Dockerfile now sets ENV JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70 (same as the chart default; api.env still overrides). Hot words/kanji query rewrite (BUG-10).

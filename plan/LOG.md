@@ -859,3 +859,6 @@
 2026-11-13T13:17:25Z UI-FOUND-WEB MERGE 2056faa CHECK_GREEN web (med, no review); 672 screenshots
 2026-11-13T13:17:25Z UI-DS DISPATCH writer-senior (opus, med; gate on merge)
 2026-11-13T13:17:25Z UI-FOUND-APP DISPATCH writer-senior (opus, med)
+2026-11-13T13:55:45Z UI-DS MERGE 3007499 CHECK_GREEN web+core+android (med, no review)
+2026-11-13T13:55:45Z B2 GATE_OPEN UI-WEB/UI-APP HUMAN-GATED; HUMAN_CHECKS top READY TO READ
+2026-11-13T13:55:45Z RUN17 END 8 merges; UI-FOUND-APP in flight (t/UI-FOUND-APP-viewmodels-harness)
