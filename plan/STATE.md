@@ -15,7 +15,7 @@ Updated: run 19
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | UI-APP | writer-senior | 2 (review fixes) | t/UI-APP-rebuild | run 19 |
-| UI-WEB | reviewer | 1b (IN REVIEW + check) | t/UI-WEB-rebuild | run 19 |
+| UI-WEB | writer-senior | 2 (review fixes) | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
 FOLLOWUPS

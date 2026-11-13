@@ -890,3 +890,5 @@
 2026-11-13T16:51:45Z UI-APP DISPATCH writer-senior attempt 2 (majors + minors 6,8; same worktree)
 2026-11-13T16:55:19Z UI-WEB HANDOFF DONE (amendment round); token generator edit accepted (legacy block moved)
 2026-11-13T16:55:19Z UI-WEB REVIEW dispatched reviewer (screenshots + bar)
+2026-11-13T16:58:01Z UI-WEB REVIEW_CHANGES 4 majors (200% answer below fold; table cols misaligned; segmented clip 360; FEAT-x click creates override) + 5 minors
+2026-11-13T16:58:01Z UI-WEB DISPATCH writer-senior attempt 2 (majors + minors 5,7,8,9; same worktree)
