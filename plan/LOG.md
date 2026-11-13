@@ -648,3 +648,4 @@
 2026-11-13T04:25:03Z F-19 NEW: image build never passes version → /health 'dev' (gap found auditing F-16)
 2026-11-13T04:25:17Z F-15+F-16 MERGE CHECK_GREEN server; 1 attempt (URGENT, med)
 2026-11-13T04:25:25Z F-17 DISPATCH writer (gradle slot); F-19 DISPATCH writer-light
+2026-11-13T04:25:52Z F-19 MERGE CHECK_GREEN deploy; 1 attempt (low)
