@@ -1,10 +1,10 @@
 .PHONY: check test fmt dev-up dev-down
 
-MODULES := core server worker web android deploy contracts
+MODULES := core server worker web android deploy contracts acceptance
 GRADLE := ./gradlew --no-daemon -q
 ANDROID_SDK := $(or $(ANDROID_HOME),$(ANDROID_SDK_ROOT))
 
-# make check MODULE=<core|server|worker|web|android|deploy|contracts>
+# make check MODULE=<core|server|worker|web|android|deploy|contracts|acceptance>
 # deploy and contracts are no-op stubs until T009 (Helm) and T003-T006 (contracts) fill them.
 check:
 ifndef MODULE
@@ -31,6 +31,9 @@ check-android:
 	else \
 	  $(GRADLE) :android:testDebugUnitTest; \
 	fi
+
+check-acceptance:
+	$(GRADLE) :acceptance:test
 
 check-deploy:
 	bash deploy/helm/check.sh

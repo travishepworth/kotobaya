@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 rootProject.name = "kotobaya"
 
 include(":core", ":server", ":android")
+include(":acceptance")
