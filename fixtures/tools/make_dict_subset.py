@@ -2,8 +2,11 @@
 
 Usage: python3 fixtures/tools/make_dict_subset.py [CACHE_DIR]
 CACHE_DIR (default ~/.cache/kotobaya-fixtures) must hold JMdict_e.gz and kanjidic2.xml.gz.
-Selection: every entry whose keb/reb matches a lemma in parse/sentences.json, then
+Selection: every entry whose keb/reb matches a lemma in the first BASE_SENTENCES (20) records of
+parse/sentences.json (the later records only feed JMdict_parse_extra.xml, see below), then
 priority-tagged (news1/ichi1/spec1/gai1) entries in file order until 2000.
+Extra file: dict/JMdict_parse_extra.xml holds every JMdict entry that a token of parse/sentences.json
+needs (its `seq`, or an exact keb/reb match for its lemma) and that is not in the 2000-entry subset.
 Kanji subset: every kanji occurring in the selected entries' keb elements.
 """
 import gzip
@@ -15,7 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.home() / ".cache" / "kotobaya-fixtures"
 TARGET = 2000
+BASE_SENTENCES = 20
+NO_LEMMA = {"punct", "name", "symbol", "number"}
 PRI = re.compile(r"<(?:ke|re)_pri>(?:news1|ichi1|spec1|gai1)</(?:ke|re)_pri>")
+
+
+def seq_of(entry: str) -> int:
+    return int(re.search(r"<ent_seq>(\d+)</ent_seq>", entry).group(1))
 
 
 def main() -> None:
@@ -23,11 +32,8 @@ def main() -> None:
     head_end = text.index("<JMdict>") + len("<JMdict>")
     header = text[:head_end]
     entries = re.findall(r"<entry>.*?</entry>", text, re.S)
-    lemmas = {
-        t["lemma"]
-        for s in json.loads((ROOT / "parse" / "sentences.json").read_text())["sentences"]
-        for t in s["tokens"]
-    }
+    sentences = json.loads((ROOT / "parse" / "sentences.json").read_text())["sentences"]
+    lemmas = {t["lemma"] for s in sentences[:BASE_SENTENCES] for t in s["tokens"]}
     must, rest = [], []
     for e in entries:
         forms = set(re.findall(r"<(?:keb|reb)>(.*?)</(?:keb|reb)>", e))
@@ -49,6 +55,26 @@ def main() -> None:
         header + "\n" + "\n".join(chosen) + "\n</JMdict>\n", encoding="utf-8"
     )
     print(f"JMdict: {len(chosen)} entries ({len(must)} forced by sentence lemmas)")
+
+    subset_seqs = {seq_of(e) for e in chosen}
+    tokens = [t for s in sentences for t in s["tokens"]]
+    need_seqs = {t["seq"] for t in tokens if t.get("seq") is not None}
+    need_lemmas = {t["lemma"] for t in tokens if t["pos"] not in NO_LEMMA}
+    def forms_of(e: str) -> set[str]:
+        return set(re.findall(r"<(?:keb|reb)>(.*?)</(?:keb|reb)>", e))
+
+    extra = [e for e in entries if seq_of(e) not in subset_seqs and seq_of(e) in need_seqs]
+    covered = set().union(*(forms_of(e) for e in chosen + extra))
+    uncovered = need_lemmas - covered
+    extra += [
+        e
+        for e in entries
+        if seq_of(e) not in subset_seqs and seq_of(e) not in need_seqs and forms_of(e) & uncovered
+    ]
+    (ROOT / "dict" / "JMdict_parse_extra.xml").write_text(
+        header + "\n" + "\n".join(extra) + "\n</JMdict>\n", encoding="utf-8"
+    )
+    print(f"JMdict extra: {len(extra)} entries for parse/sentences.json")
 
     kanji = {
         c
