@@ -1,257 +1,360 @@
 <script lang="ts">
+	// Dictionary: search on the left, the entry set for reading on the right (phones: the entry is a pushed view).
 	import { onMount } from 'svelte';
-	import GrammarCapture from '../../lib/grammar-capture/GrammarCapture.svelte';
-	import { tg } from '../../lib/grammar-capture/messages';
-	import KanjiPanel from '../../lib/dictionary/KanjiPanel.svelte';
+	import Chip from '../../lib/ui/Chip.svelte';
+	import EmptyState from '../../lib/ui/EmptyState.svelte';
+	import Icon from '../../lib/ui/Icon.svelte';
+	import Button from '../../lib/ui/Button.svelte';
+	import Skeleton from '../../lib/ui/Skeleton.svelte';
+	import TextField from '../../lib/ui/TextField.svelte';
+	import { ut } from '../../lib/ui/messages';
 	import { td } from '../../lib/dictionary/messages';
-	import { DictionaryPage, pitchText } from '../../lib/state/dictionary.svelte';
+	import { DictionaryPage } from '../../lib/state/dictionary.svelte';
+	import EntryView from './EntryView.svelte';
+	import { dx } from './messages';
 
 	const vm = new DictionaryPage();
+	onMount(() => {
+		// Desktop: straight to typing.
+		if (window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
+		return () => vm.dispose();
+	});
+
+	let pane = $state<'results' | 'entry'>('results');
+	let lastQuery = $state('');
+
+	function searchBox(): HTMLInputElement | null {
+		return document.querySelector<HTMLInputElement>('#dict-q');
+	}
 
 	function submit(e: Event): void {
 		e.preventDefault();
 		vm.searchNow();
+		lastQuery = vm.query.trim();
 	}
 
-	onMount(() => () => vm.dispose());
+	function oninput(): void {
+		vm.queryChanged();
+		lastQuery = vm.query.trim();
+		pane = 'results';
+	}
+
+	function open(seq: number): void {
+		pane = 'entry';
+		void vm.open(seq);
+		window.scrollTo({ top: 0 });
+	}
+
+	function tryQuery(q: string): void {
+		vm.query = q;
+		lastQuery = q;
+		vm.searchNow();
+	}
+
+	function onkeydown(e: KeyboardEvent): void {
+		const t = e.target as HTMLElement | null;
+		if (e.key === '/' && !(t?.tagName === 'INPUT' || t?.tagName === 'TEXTAREA' || t?.isContentEditable)) {
+			e.preventDefault();
+			searchBox()?.focus();
+		}
+	}
+
+	// Typing an empty query clears the list: also reflected in the "last query" shown in the no-results state.
+	$effect(() => {
+		if (vm.query.trim() === '') lastQuery = '';
+	});
 </script>
 
-<h1>{td('dict.title')}</h1>
+<svelte:window {onkeydown} />
+<svelte:head><title>{td('dict.title')} · Kotobaya</title></svelte:head>
 
-<form class="search" onsubmit={submit}>
-	<label>
-		{td('dict.search')}
-		<input type="search" bind:value={vm.query} oninput={() => vm.queryChanged()} lang="ja" />
-	</label>
-	<label class="inline">
-		<input type="checkbox" bind:checked={vm.commonOnly} onchange={() => void vm.runSearch(true)} />
-		{td('dict.commonOnly')}
-	</label>
-	<p class="muted">{td('dict.searchHelp')}</p>
-</form>
+<div class="dict" class:show-entry={pane === 'entry'}>
+	<section class="list" aria-label={dx('dx.results')}>
+		<h1 class="title">{td('dict.title')}</h1>
+		<form class="search" role="search" onsubmit={submit}>
+			<TextField
+				id="dict-q"
+				type="search"
+				label={dx('dx.searchLabel')}
+				hideLabel
+				icon="search"
+				clearable
+				placeholder={dx('dx.placeholder')}
+				lang="ja"
+				autocomplete="off"
+				enterkeyhint="search"
+				bind:value={vm.query}
+				{oninput}
+			/>
+			<Chip
+				kind="filter"
+				label={dx('dx.commonOnly')}
+				selected={vm.commonOnly}
+				onclick={() => {
+					vm.commonOnly = !vm.commonOnly;
+					void vm.runSearch(true);
+				}}
+			/>
+		</form>
 
-<div class="layout">
-	<section aria-label={td('dict.results')}>
-		{#if vm.searching && vm.items.length === 0}
-			<p>{td('dict.searching')}</p>
-		{:else if !vm.searched}
-			<p class="muted">{td('dict.empty')}</p>
-		{:else if vm.items.length === 0}
-			<p>{td('dict.none')}</p>
-		{:else}
-			<ul class="results">
-				{#each vm.items as it (it.seq)}
-					<li>
-						<button
-							type="button"
-							class="result"
-							aria-current={it.seq === vm.selectedSeq ? 'true' : undefined}
-							onclick={() => void vm.open(it.seq)}
-						>
-							<span class="hw" lang="ja">{it.headword}</span>
-							{#if it.headword !== it.headwordReading}
-								<span class="rd" lang="ja">{it.headwordReading}</span>
-							{/if}
-							<span class="gloss">{it.glosses.join('; ')}</span>
-							<span class="meta">
-								{#if it.isCommon}{td('dict.common')}{/if}
-								{#if it.freqRank !== null}
-									{td('dict.rank', { n: it.freqRank })}{/if}
-								{#if it.retired}{td('dict.retired')}{/if}
-								{#if it.noteId !== null}{td('dict.hasNote')}{/if}
-							</span>
-						</button>
-					</li>
-				{/each}
-			</ul>
-			{#if vm.cursor !== null}
-				<button
-					type="button"
-					class="kb-btn"
-					disabled={vm.searching}
-					onclick={() => void vm.runSearch(false)}
-				>
-					{td('dict.more')}
-				</button>
+		<div class="results" aria-busy={vm.searching}>
+			{#if vm.searching && vm.items.length === 0}
+				<Skeleton shape="row" count={6} />
+			{:else if !vm.searched}
+				<div class="start">
+					<EmptyState art="dictionary" title={dx('dx.startTitle')} body={dx('dx.startBody')}>
+						{#snippet action()}
+							<div class="tries">
+								<span>{dx('dx.try')}</span>
+								<Chip kind="tag" lang="ja" label="取る" onclick={() => tryQuery('取る')} />
+								<Chip kind="tag" label="toru" onclick={() => tryQuery('toru')} />
+								<Chip kind="tag" label="take" onclick={() => tryQuery('take')} />
+							</div>
+						{/snippet}
+					</EmptyState>
+				</div>
+			{:else if vm.items.length === 0}
+				<EmptyState art="search" title={dx('dx.noneTitle', { q: lastQuery })} body={dx('dx.noneBody')} />
+			{:else}
+				<ul>
+					{#each vm.items as it (it.seq)}
+						<li>
+							<button
+								type="button"
+								class="result"
+								aria-current={it.seq === vm.selectedSeq ? 'true' : undefined}
+								onclick={() => open(it.seq)}
+							>
+								<span class="line">
+									<span class="hw" lang="ja">{it.headword}</span>
+									{#if it.headword !== it.headwordReading}<span class="rd" lang="ja">{it.headwordReading}</span>{/if}
+								</span>
+								<span class="gloss">{it.glosses.join('; ')}</span>
+								{#if it.noteId !== null || it.isCommon || it.retired}
+									<span class="marks">
+										{#if it.noteId !== null}<span class="mark in"><Icon name="check" size={12} />{dx('dx.inNotes')}</span>{/if}
+										{#if it.isCommon}<span class="mark">{dx('dx.common')}</span>{/if}
+										{#if it.retired}<span class="mark">{dx('dx.retired')}</span>{/if}
+									</span>
+								{/if}
+							</button>
+						</li>
+					{/each}
+				</ul>
+				{#if vm.cursor !== null}
+					<div class="more">
+						<Button variant="quiet" loading={vm.searching} onclick={() => void vm.runSearch(false)}>{ut('app.loadMore')}</Button>
+					</div>
+				{/if}
 			{/if}
-		{/if}
+		</div>
 	</section>
 
-	<aside aria-label={td('dict.entry')}>
+	<section class="detail" aria-label={td('dict.entry')}>
+		<div class="back">
+			<Button variant="quiet" icon="chevronLeft" onclick={() => (pane = 'results')}>{dx('dx.backToResults')}</Button>
+		</div>
 		{#if vm.loadingEntry}
-			<p>{td('dict.loadingEntry')}</p>
+			<div class="loading" aria-busy="true">
+				<span class="kb-sr">{dx('dx.loadingEntry')}</span>
+				<Skeleton shape="block" height="3.5rem" />
+				<Skeleton shape="text" count={5} />
+			</div>
 		{:else if vm.entry}
-			{@const e = vm.entry}
-			<h2 lang="ja">{e.headword}</h2>
-			<p class="meta">
-				{e.pos.join(', ')}
-				{#if e.isCommon}· {td('dict.common')}{/if}
-				{#if e.retired}· {td('dict.retired')}{/if}
-				· {td('dict.status', { status: e.status })}
-			</p>
-			{#if e.noteId === null}
-				<button type="button" class="kb-btn" disabled={vm.adding} onclick={() => void vm.addNote(e)}>
-					{vm.adding ? td('dict.adding') : td('dict.addNote')}
-				</button>
-			{:else}
-				<a href="/notes?note={e.noteId}">{td('dict.openNotes')}</a>
-			{/if}
-
-			{#if e.kanjiForms.length > 0}
-				<h3>{td('dict.kanjiForms')}</h3>
-				<p lang="ja">{e.kanjiForms.map((k) => k.text).join('、')}</p>
-			{/if}
-			<h3>{td('dict.readings')}</h3>
-			<p lang="ja">{e.readings.map((r) => r.text).join('、')}</p>
-			{#if e.pitch.length > 0}
-				<h3>{td('dict.pitch')}</h3>
-				<ul>
-					{#each e.pitch as p (p.reading)}
-						<li><span lang="ja">{p.reading}</span>: {pitchText(p.positions)}</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if e.freqs.length > 0}
-				<h3>{td('dict.frequency')}</h3>
-				<ul>
-					{#each e.freqs as f (f.listId)}
-						<li>{f.listId}: #{f.rank}</li>
-					{/each}
-				</ul>
-			{/if}
-			<h3>{td('dict.senses')}</h3>
-			<ol>
-				{#each e.senses as s, i (i)}
-					<li>
-						<span class="meta">{[...s.pos, ...s.misc, ...s.field, ...s.dialect].join(', ')}</span>
-						<div>{s.gloss.map((g) => g.text).join('; ')}</div>
-						{#if s.info.length > 0}<div class="muted">{s.info.join('; ')}</div>{/if}
-					</li>
-				{/each}
-			</ol>
-			{#if e.kanji.length > 0}
-				<h3>{td('dict.kanji')}</h3>
-				<p lang="ja">
-					{#each e.kanji as k (k)}
-						<button
-							type="button"
-							class="kanji-btn"
-							aria-label={td('dict.kanjiOpen', { k })}
-							aria-pressed={vm.kanjiOpen === k}
-							onclick={() => vm.toggleKanji(k)}>{k}</button
-						>
-					{/each}
-				</p>
-				{#if vm.kanjiOpen !== null}
-					<KanjiPanel
-						literal={vm.kanjiOpen}
-						onopen={(seq) => void vm.open(seq)}
-						onclose={() => vm.closeKanji()}
-					/>
-				{/if}
-			{/if}
-			{#if vm.examples && (vm.examples.media.length > 0 || vm.examples.tatoeba.length > 0)}
-				<h3>{td('dict.examples')}</h3>
-				{#if vm.examples.media.length > 0}
-					<h4>{td('dict.examplesMedia')}</h4>
-					<ul>
-						{#each vm.examples.media as s (s.id)}
-							<li>
-								<span lang="ja">{s.text}</span>
-								<button type="button" onclick={() => vm.toggleCapture(s.id)}
-									>{tg('gc.open')}</button
-								>
-								{#if vm.capturing === s.id}<GrammarCapture sentence={s} onclose={() => vm.closeCapture()} />{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-				{#if vm.examples.tatoeba.length > 0}
-					<h4>{td('dict.examplesTatoeba')}</h4>
-					<ul>
-						{#each vm.examples.tatoeba as s (s.id)}
-							<li>
-								<span lang="ja">{s.text}</span>{#if s.translation}<br /><span class="muted"
-										>{s.translation}</span
-									>{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			{/if}
+			<EntryView {vm} entry={vm.entry} />
 		{:else}
-			<p class="muted">{td('dict.selectPrompt')}</p>
+			<div class="pick"><EmptyState art="dictionary" title={dx('dx.pickTitle')} body={dx('dx.pickBody')} /></div>
 		{/if}
-	</aside>
+	</section>
 </div>
 
 <style>
-	.search {
+	.dict {
 		display: grid;
-		gap: var(--kb-space-2);
-		max-width: 32rem;
+		grid-template-columns: minmax(0, 1fr);
+		min-height: 100dvh;
 	}
-	.inline {
+	.list {
 		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		padding: var(--kb-space-5) var(--kb-space-4) var(--kb-space-8);
+	}
+	.title {
+		font: var(--kb-type-headline);
+		margin-bottom: var(--kb-space-4);
+	}
+	.search {
+		display: flex;
+		flex-wrap: wrap;
 		gap: var(--kb-space-2);
 		align-items: center;
+		margin-bottom: var(--kb-space-4);
 	}
-	.layout {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: var(--kb-space-4);
-		margin-top: var(--kb-space-4);
-		align-items: start;
+	.search > :global(.field) {
+		flex: 1 1 14rem;
 	}
-	.results {
-		list-style: none;
-		margin: 0 0 var(--kb-space-2);
+	.results ul {
+		display: flex;
+		flex-direction: column;
+		margin: 0 calc(-1 * var(--kb-space-2));
 		padding: 0;
-		border: 1px solid var(--kb-border);
-		border-radius: var(--kb-radius);
+		list-style: none;
 	}
 	.result {
-		all: unset;
-		box-sizing: border-box;
-		display: grid;
-		grid-template-columns: auto auto 1fr;
-		gap: var(--kb-space-2);
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 		width: 100%;
-		padding: var(--kb-space-2);
+		min-height: 3.5rem;
+		padding: var(--kb-space-3) var(--kb-space-3) var(--kb-space-3) var(--kb-space-4);
+		border: 0;
+		border-radius: var(--kb-radius-md);
+		background: transparent;
+		color: var(--kb-color-text);
+		text-align: start;
 		cursor: pointer;
+		transition: background-color var(--kb-duration-fast) var(--kb-ease-standard);
+	}
+	.result:hover {
+		background: var(--kb-color-surface-hover);
 	}
 	.result[aria-current='true'] {
-		background: var(--kb-info-bg);
+		background: var(--kb-color-surface-selected);
+	}
+	.result[aria-current='true']::before {
+		content: '';
+		position: absolute;
+		inset-block: var(--kb-space-3);
+		left: 0;
+		width: 3px;
+		border-radius: var(--kb-radius-full);
+		background: var(--kb-color-primary);
 	}
 	.result:focus-visible {
-		outline: 2px solid var(--kb-focus);
+		outline: 2px solid var(--kb-color-focus);
+		outline-offset: -2px;
+	}
+	.line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0 var(--kb-space-3);
 	}
 	.hw {
-		font-weight: 700;
+		font: var(--kb-type-title-sm);
+		font-size: 1.1875rem;
+		font-weight: 500;
 	}
-	.meta {
-		grid-column: 1 / -1;
-		color: var(--kb-text-muted);
-		font-size: 0.85rem;
+	.rd {
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
 	}
-	aside .meta {
-		margin: 0;
+	.gloss {
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
-	.muted {
-		color: var(--kb-text-muted);
-		margin: 0;
+	.marks {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--kb-space-1);
+		margin-top: var(--kb-space-1);
 	}
-	.kanji-btn {
-		font-size: 1.4rem;
-		cursor: pointer;
+	.mark {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		padding: 0 var(--kb-space-2);
+		border-radius: var(--kb-radius-full);
+		background: var(--kb-color-surface-sunken);
+		font: var(--kb-type-caption);
+		color: var(--kb-color-text-muted);
 	}
-	h3,
-	h4 {
-		margin-bottom: 0;
+	.mark.in {
+		background: var(--kb-color-state-review-container);
+		color: var(--kb-color-state-review);
 	}
-	@media (max-width: 60rem) {
-		.layout {
-			grid-template-columns: 1fr;
+	.more {
+		display: flex;
+		justify-content: center;
+		padding-top: var(--kb-space-3);
+	}
+	.start {
+		padding-top: var(--kb-space-4);
+	}
+	.tries {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--kb-space-2);
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
+	}
+
+	.detail {
+		display: none;
+		min-width: 0;
+		padding: var(--kb-space-3) var(--kb-space-4) var(--kb-space-12);
+	}
+	.loading {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-4);
+		max-width: var(--kb-size-measure);
+	}
+	.pick {
+		display: grid;
+		place-items: center;
+		min-height: 60dvh;
+	}
+	/* Phones and small tablets: the entry is a pushed view with a way back to the results. */
+	.show-entry .list {
+		display: none;
+	}
+	.show-entry .detail {
+		display: block;
+	}
+	.back {
+		margin: 0 0 var(--kb-space-3) calc(-1 * var(--kb-space-2));
+	}
+
+	/* Side by side from 840 px: list 40 % / entry 60 %; from 1024 px a fixed 380 px list. */
+	@media (min-width: 840px) {
+		.dict {
+			grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+		}
+		.list,
+		.show-entry .list {
+			display: flex;
+			position: sticky;
+			top: 0;
+			align-self: start;
+			max-height: 100dvh;
+			overflow-y: auto;
+			border-inline-end: 1px solid var(--kb-color-border);
+			padding: var(--kb-space-8) var(--kb-space-5) var(--kb-space-8);
+		}
+		.detail {
+			display: block;
+			padding: var(--kb-space-10) var(--kb-space-8) var(--kb-space-16);
+		}
+		.back {
+			display: none;
+		}
+	}
+	@media (min-width: 1024px) {
+		.dict {
+			grid-template-columns: 23.75rem minmax(0, 1fr);
+		}
+		.detail {
+			padding-inline: var(--kb-space-12);
 		}
 	}
 </style>

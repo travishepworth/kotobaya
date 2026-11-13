@@ -234,6 +234,19 @@
 		background: var(--kb-color-primary-container);
 		color: var(--kb-color-on-primary-container);
 	}
+	/* Very narrow bar (phones at large text sizes): icons only; the label stays the accessible name. */
+	@container shell (max-width: 26rem) {
+		.tab .text {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+		}
+		.pill {
+			width: 3rem;
+		}
+	}
 	.more {
 		display: flex;
 		flex-direction: column;

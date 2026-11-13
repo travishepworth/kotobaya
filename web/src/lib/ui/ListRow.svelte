@@ -28,9 +28,14 @@
 		<span class="title" lang={titleLang}>{title}</span>
 		{#if supporting}<span class="supporting" lang={supportingLang}>{supporting}</span>{/if}
 	</span>
-	{#if meta}<span class="meta">{meta}</span>{/if}
-	{#if trailing}<span class="trailing">{@render trailing()}</span>{/if}
-	{#if href}<span class="chev"><Icon name="chevronRight" size={18} /></span>{/if}
+	{#if meta || trailing || href}
+		<!-- One group, so at large text sizes it wraps under the text as a unit (never a lone chevron). -->
+		<span class="end">
+			{#if meta}<span class="meta">{meta}</span>{/if}
+			{#if trailing}<span class="trailing">{@render trailing()}</span>{/if}
+			{#if href}<span class="chev"><Icon name="chevronRight" size={18} /></span>{/if}
+		</span>
+	{/if}
 {/snippet}
 
 {#if href}
@@ -112,6 +117,15 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+	}
+	.end {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--kb-space-2) var(--kb-space-3);
+		margin-inline-start: auto;
+		min-width: 0;
 	}
 	.meta {
 		flex: none;
