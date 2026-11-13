@@ -57,13 +57,23 @@
 		el.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
 	}
 
+	// Set when the revealed card does not fit: the question then steps back (smaller headword, less air).
+	// Only then, so on a card that fits the front stays exactly where it was.
+	let compact = $state(false);
+
 	$effect(() => {
 		const flipped = s.flipped;
+		void s.current?.card.id;
 		void s.rendered;
+		compact = false;
 		const el = body;
 		if (!el) return;
-		void tick().then(() => {
-			if (flipped) bringAnswerIntoView(el);
+		void tick().then(async () => {
+			if (flipped && el.scrollHeight > el.clientHeight) {
+				compact = true;
+				await tick();
+				bringAnswerIntoView(el);
+			}
 			measure();
 		});
 		if (typeof ResizeObserver === 'undefined') return;
@@ -300,7 +310,7 @@
 			</div>
 		{:else}
 			{#key s.current.card.id}
-				<article class="card enter" class:flipped={s.flipped} class:more-below={moreBelow} aria-live="polite">
+				<article class="card enter" class:flipped={s.flipped} class:compact class:more-below={moreBelow} aria-live="polite">
 					<div class="card-body" bind:this={body} onscroll={measure}>
 						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
 						{#if s.rendered === null}
@@ -556,18 +566,18 @@
 	.card-body :global(.kb-literal) {
 		font-size: clamp(4.5rem, 3.4rem + 4.5vw, 7rem);
 	}
-	/* Revealed: the question steps back so the answer fits. The top padding and the headword are
-	   capped by the card's own height, so at 200 % text the answer stays on screen. */
-	.flipped .card-body {
+	/* Revealed and too tall (large text, short window): the question steps back so the answer fits. The
+	   top padding and the headword are capped by the card's own height. */
+	.compact .card-body {
 		padding-top: min(clamp(24px, 12dvh, 112px), 8cqh);
 	}
-	.flipped .card-body :global(.kb-expression) {
+	.compact .card-body :global(.kb-expression) {
 		font-size: min(clamp(3rem, 2.25rem + 3.2vw, 5rem), max(2rem, 13cqh));
 	}
-	.flipped .card-body :global(.kb-literal) {
+	.compact .card-body :global(.kb-literal) {
 		font-size: min(clamp(4.5rem, 3.4rem + 4.5vw, 7rem), max(2.5rem, 18cqh));
 	}
-	.flipped .card-body :global(.kb-divider) {
+	.compact .card-body :global(.kb-divider) {
 		margin: min(1rem, 3cqh) 0;
 	}
 

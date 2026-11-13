@@ -4,7 +4,7 @@ Every rebuilt screen from the `make screenshots-web` matrix, demo dataset (`fixt
 Names: `<screen>[--<scenario>]-<width>-<theme>[-x2].png`.
 
 - All screens: 360 and 1920 px, light and dark, text 1.0 (`default` scenario).
-- Review (front and back): also at 200 % text (`-x2`).
+- Review (front and back): also at 200 % text (`-x2`). Settings: 360 px at 200 % text too.
 - Empty account (`--empty`): Today, Review, Cards, Notes, Decks, Struggle, Stats, Reading.
 - 900 due (`--due900`): Review, Stats.
 - Load error (`--error`): Review, Cards, Decks, 360 and 1920 px. Not part of the matrix: captured once with the
