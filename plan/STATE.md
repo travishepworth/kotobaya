@@ -16,14 +16,14 @@ Updated: RUN17
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | BUG-8 | writer-senior | 1 | t/BUG-8-android-sync-perf | RUN17 |
-| BUG-9 | writer | 1 | t/BUG-9-stats-memory | RUN17 |
+| TEST-1 | writer-light | 1 | t/TEST-1-preview-loop-vitest | RUN17 |
 | C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
 
 ## Queued
-TEST-1 (jsdom human-approved; small), BUG-10, UI-FOUND-WEB (ready; next free slots in that order) · UI-FOUND-APP (after BUG-8) · UI-DS
+BUG-10, UI-FOUND-WEB (ready; next free slots in that order) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
-(none)
+BUG-9: HANDOFF DONE (stats 7-607 ms, peak heap 335 MB); re-check server after rebase in progress
 
 ## Blocked
 (none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
