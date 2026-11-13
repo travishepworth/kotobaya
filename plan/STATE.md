@@ -23,7 +23,6 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | C-15 | architect (opus) | 1 | t/C-15-grammar-card-sentence | run 9 |
-| T508a | writer | 1 | t/T508a-grammar-capture-web | run 9 |
 
 ## Parked
 (none)
