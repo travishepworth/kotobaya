@@ -45,7 +45,25 @@ const en = {
 	'st.reason.other': 'Other',
 	'st.confirm': 'Confirm',
 	'st.reject': 'Reject',
-	'st.pairUpdated': 'Pair updated.'
+	'st.pairUpdated': 'Pair updated.',
+	'st.lead': 'The words that keep slipping away. Drills never change your schedule.',
+	'st.calmTitle': 'Nothing is giving you trouble',
+	'st.calmBody': 'When a word keeps failing, it shows up here with a quick way to drill it.',
+	'st.leechesLead': 'Cards you have forgotten many times. Rewrite the mnemonic, add a sentence, or suspend them.',
+	'st.confusablesLead': 'Words you mix up with each other. Confirm real pairs so drills can test them side by side.',
+	'st.openLeeches': 'All leeches',
+	'st.openConfusables': 'All pairs',
+	'st.hotWordsLead': 'Most failures in the last 14 days',
+	'st.hotKanjiLead': 'Kanji shared by the words you miss',
+	'st.drill': 'Drill',
+	'st.vs': 'or',
+	'st.wordStats': 'Recent trouble',
+	'st.fails14': 'Failures, 14 days',
+	'st.scoreLabel': 'Trouble score',
+	'st.cardsLabel': 'Cards',
+	'st.openDictionary': 'Open in dictionary',
+	'st.mnemonicHint': 'A vivid story beats repetition. It shows on the back of every card of this word.',
+	'st.notFoundTitle': 'Not struggling any more'
 } as const;
 
 export type StruggleMessageKey = keyof typeof en;

@@ -15,7 +15,8 @@
 	import { ut, type UiMessageKey } from '../lib/ui/messages';
 	import { DecksListPage } from '../lib/state/decks.svelte';
 	import { StatsPage, iso } from '../lib/state/stats.svelte';
-	import { StrugglePage, noteName } from '../lib/state/struggle.svelte';
+	import { StrugglePage } from '../lib/state/struggle.svelte';
+	import { noteTitle } from '../lib/ui/cardState';
 	import { th } from './messages';
 
 	const stats = new StatsPage();
@@ -203,7 +204,7 @@
 								<Chip
 									kind="tag"
 									lang="ja"
-									label={w.entry?.headword ?? noteName(w.note)}
+									label={w.entry?.headword ?? noteTitle(w.note)}
 									onclick={() => goto(`/struggle/word/${w.noteId}`)}
 								/>
 							{/each}
