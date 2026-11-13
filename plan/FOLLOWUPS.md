@@ -340,3 +340,13 @@
 
 ## F-28 notes (run 11)
 - worker/Dockerfile hardcodes torch==2.15.0 (CPU index); bump together with uv.lock, or switch Dockerfile to `uv sync --frozen`. (low)
+
+## T609 review minors + deferred SEC items (run 11)
+- egress.internet IPv4-only; add commented ::/0 (private excluded) for dual-stack. (low)
+- ntfy.baseUrl empty -> no base-url; attachments/web links break (SEC-9). (low)
+- backupTo egress defaults to anywhere; narrow to restic target/ntfy/apiserver when backups go live. (low)
+- SEC-6: narrow ingressFrom + api.trustedProxies to gateway pods; persist login limiter/TOTP step. (low)
+- SEC-4 (C-ticket): dedicated `export` scope or require admin for exportAll/exportAnki. (low)
+- SEC-5 (C-ticket): AnkiConnect contract drift (`url` media unsupported; OPTIONS preflight). (low)
+- SEC-7 web: nginx.conf with CSP/nosniff/Referrer-Policy (ingress deployments). (low)
+- SEC-10: try voicevox readOnlyRootFilesystem with emptyDirs. (info)  SEC-13: emptyDir sizeLimits. (info)

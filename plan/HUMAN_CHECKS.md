@@ -145,3 +145,11 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - Known limits: Android struggle/grammar-capture writes are online-only (F-27); widget hot word uses local lapse stand-in. Deploy: grammar rule create/update needs PARSER_URL (503 otherwise); GRAMMAR_SEED_ON_START seeds grammar points.
 
 - (run 11) Worker image torch is CPU-only now (F-28); image ~2.04 GB (sudachidict-full + torch). Build with `--build-arg SUDACHI_DICT=core` for a smaller image if wanted.
+
+## Run 11 (T609 security review)
+- kubectl current-context was switched by T609's k3d test and is now `homepage`; restore your intended context (`kubectl config use-context <ctx>`).
+- Backups are off in the live deploy (values in ~/repos/kubernetes/kotobaya); enable them and narrow `networkPolicy.egress.backupTo`.
+- Live gateway.yaml (outside this repo) needs the security response-header filters the chart's HTTPRoute now sets.
+- NEW chart value: external Postgres/S3 now require `networkPolicy.egress.externalServices` (render fails otherwise). Bundled live setup unaffected.
+- SEC-3: app uses the Postgres superuser; split roles (app owner non-superuser, backup CREATEDB+read). Needs a one-off live DB migration.
+- SEC-9: host ntfy on its own name (`ntfy.baseUrl`) and test a push to a phone.

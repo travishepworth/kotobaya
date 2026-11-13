@@ -577,16 +577,24 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: `server/src/main/kotlin/kotobaya/export/`
 
 ### T609 — Security hardening review
-- model: opus · risk: high · deps: T601–T608 · status: RUNNING
+- model: opus · risk: high · deps: T601–T608 · status: MERGED
 - paths: `deploy/`, `docs/SECURITY.md` (findings become new tickets)
 
 ### T610 — Runbook and restore drill docs
-- model: haiku · risk: low · deps: T609 · status: TODO
+- model: haiku · risk: low · deps: T609 · status: RUNNING
 - paths: `docs/RUNBOOK.md`
 
 ### F-28 — Worker image: CPU-only torch
 - model: sonnet · risk: low · deps: T606 · status: MERGED
 - paths: `worker/pyproject.toml`, `worker/uv.lock`, `worker/Dockerfile` (ticket: plan/tickets/F-28.md; from T606 HUMAN_CHECK)
+
+### SEC-1 — Blob responses: nosniff/CSP/attachment (T609 S-01, HIGH)
+- model: opus · risk: high · deps: T609 · status: RUNNING
+- paths: server blobs/, ankiconnect/AnkiMedia.kt + tests (ticket: plan/tickets/SEC-1.md)
+
+### SEC-2 — Worker SSRF guard on URL import (T609 S-02)
+- model: sonnet · risk: med · deps: T609 · status: RUNNING
+- paths: worker extract/html/, worker/tests/extract/ (ticket: plan/tickets/SEC-2.md)
 
 → **GATE-DONE**: human sign-off.
 
