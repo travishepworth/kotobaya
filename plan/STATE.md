@@ -22,8 +22,7 @@ Updated: 2026-11-13 (orchestrator run 8 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-14 | architect | 1 | t/C-14-rule-test-contract | run 8 |
-| D-2 | writer (Gradle slot) | 1 | t/D-2-volume-leak | run 8 |
+| D-2 | orchestrator re-check core+server | 1 | t/D-2-volume-leak | run 8 |
 
 ## Parked
 (none)
@@ -58,6 +57,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- C-14 (run 8): worker-parse 1.1.0 rule-test endpoint (+validate-only); minors → F-24
 - T504a (run 8): web struggle screens; extra drill = all hot words (F-21)
 - T506a grammar DSL/matcher/test_rules + grammar-detect job (61 rules, real Sudachi); detection in parse/import publishes — reviewer APPROVE x2 (run 7)
 - W-6 grammar-detect enqueue on rule edits, publish keeps parse_status, examples + manual span API (testGrammarRules still 501 → C-14/T506c) (run 7)

@@ -694,3 +694,5 @@
 2026-11-13T05:58:36Z T504 SPLIT T504a web, T504b android+widget
 2026-11-13T05:58:36Z T504a DISPATCH writer (web)
 2026-11-13T06:01:54Z T504a MERGE CHECK_GREEN web; 1 attempt (low); hot-word extra drill = all hot words (F-21)
+2026-11-13T06:03:04Z C-14 HANDOFF DONE contracts green; reviewer dispatched
+2026-11-13T06:04:43Z C-14 MERGE REVIEW_APPROVE CHECK_GREEN contracts; 1 attempt; 4 minors → F-24

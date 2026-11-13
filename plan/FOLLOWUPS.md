@@ -295,3 +295,9 @@
 
 ## F-23 (from T506a re-review, run 7) — grammar-detect dedupe A→B→A (low, contract)
 - Rules edited A→B→A while the per-media job for B runs: the revert's enqueue hits the running job's key and is dropped → media keeps B spans. Fix via C-ticket: key includes the rules' hlc, or the fan-out clears running per-media keys.
+
+## F-24 (from C-14 review, run 8) — rule-test contract polish (low)
+- worker-parse.yaml §5 mapping: server must check existing `id` (idempotent 200) on createGrammarPoint BEFORE calling the worker, else retries get 503/422. (Passed to T506c.)
+- PARSER.md §5.1 still says "any other path is 404"; align with worker-parse 1.1.0.
+- openapi DetectionRule.rule: 1000 code points + "grammar owned by the core" vs worker cap 500 / worker-owned DSL; align.
+- WorkerRuleTestSentence.tokens maxItems 20000 < possible 40000 UTF-16 units; raise or have server skip such sentences.
