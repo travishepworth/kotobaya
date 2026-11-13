@@ -57,11 +57,13 @@
 	$effect(() => {
 		const seq = note.entrySeq;
 		const lit = note.kanjiLiteral;
+		// Test a local, never the state this effect writes: reading `dictLoading` back would make it a dependency and loop.
+		const busy = seq !== null || lit !== null;
 		entry = null;
 		kanji = null;
 		dictFailed = false;
-		dictLoading = seq !== null || lit !== null;
-		if (!dictLoading) return;
+		dictLoading = busy;
+		if (!busy) return;
 		let stale = false;
 		void (async () => {
 			try {

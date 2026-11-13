@@ -22,11 +22,13 @@
 	$effect(() => {
 		const seq = card.note?.entrySeq ?? null;
 		const lit = card.note?.kanjiLiteral ?? null;
+		// Test a local, never the state this effect writes: reading `loading` back would make it a dependency and loop.
+		const busy = seq !== null || lit !== null;
 		entry = null;
 		kanji = null;
 		failed = false;
-		loading = seq !== null || lit !== null;
-		if (!loading) return;
+		loading = busy;
+		if (!busy) return;
 		let stale = false;
 		void (async () => {
 			try {
