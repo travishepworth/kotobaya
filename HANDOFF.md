@@ -1,0 +1,27 @@
+# HANDOFF T403a
+
+STATUS: BLOCKED
+BRANCH: t/T403a-parser-segmentation
+CHECK: `make check MODULE=worker` not finished. Host disk is full, so I stopped on the orchestrator's instruction. Parse tests pass (57, 1 skipped). ruff and mypy pass on parse/. The earlier full run failed only in Postgres/SQLite tests ("database or disk is full").
+
+## Changed
+- `parse/normalize.py`: width, odoriji and long-vowel/wave-dash folding with a UTF-16 offset map
+- `parse/sudachi/`: mode C, then B/A when the injected predicate rejects; one dictionary per process, one tokenizer per thread
+- `parse/deinflect/`: lemma/reading rules, volitional split, ので/かも/prefix joins
+- `parse/segment.py`: `segment(text, is_jmdict_key, analyzer) -> list[RawToken]`
+
+## Acceptance → tests
+- Agreement → `test_parser_fixture_agreement[full|core]`: full 0.9785, core 0.9762 (F1, surface+lemma)
+- Offset map → `test_offsets_slice_original_text_*`, `test_normalize.py`
+- C→B fallback → `test_fallback_splits_compound_absent_from_jmdict`, `..._keeps_compound_present_in_jmdict`
+
+## New dependencies
+- sudachipy==0.6.10, sudachidict-full==20250825: required by ticket
+- sudachidict-core==20250825 (dev only): ADR-019 core baseline test
+
+## For the reviewer
+- Possible fixture/dict-subset errors: s131 (富士山 missing from the dict fixture); s85/s84/s148/s153/s162/s198/s174 (kana lemmas).
+- Remaining: rerun `make check MODULE=worker` once disk is freed.
+
+## If BLOCKED
+QUESTION: Once the disk is freed, should I rerun `make check MODULE=worker` and mark this DONE?
