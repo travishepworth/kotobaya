@@ -24,6 +24,8 @@ data class SyncStatusView(
     val upgradeRequired: UpgradeRequiredState?,
     /** Consecutive failed cycles (backoff count). */
     val consecutiveFailures: Int,
+    /** The last outcome was "network up, server did not answer" (the coordinator's probe), not an HTTP/protocol error. */
+    val unreachable: Boolean = false,
 )
 
 /**
@@ -43,6 +45,9 @@ class SyncStatusRepository(
     private var last: CycleResult? = null
 
     @Volatile
+    private var lastUnreachable: Boolean = false
+
+    @Volatile
     private var running: Boolean = false
 
     /** The status; null until the first [refresh] (the bootstrap runs one after the startup replay). */
@@ -52,8 +57,9 @@ class SyncStatusRepository(
     fun current(): SyncStatusView = compute().also { state.value = it }
 
     /** Records the last sync outcome (as a [CycleResult], null for "nothing to report"). */
-    fun onOutcome(result: CycleResult?) {
+    fun onOutcome(result: CycleResult?, unreachable: Boolean = false) {
         last = result
+        lastUnreachable = unreachable
         refresh()
     }
 
@@ -77,6 +83,7 @@ class SyncStatusRepository(
             staleOverTwoDays = isStale(snapshot.lastSyncAt, now),
             upgradeRequired = snapshot.upgradeRequired,
             consecutiveFailures = failures(),
+            unreachable = lastUnreachable,
         )
     }
 

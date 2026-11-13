@@ -194,7 +194,7 @@ val syncModule = module {
             counter = get<StoreFailureCounter>(),
             ready = { koin.get<SyncBootstrap>().ready.await() },
             onOutcome = { _, outcome, retryDelayMs ->
-                status.onOutcome(outcome.asCycleResult())
+                status.onOutcome(outcome.asCycleResult(), unreachable = outcome is SyncOutcome.Unreachable)
                 runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result
                 if (r is CycleResult.Completed && r.pulledOps > 0) koin.getOrNull<DueTrigger>()?.fire()

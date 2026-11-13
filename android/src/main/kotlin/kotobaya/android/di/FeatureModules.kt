@@ -43,4 +43,5 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.push.pushFeature,
     kotobaya.android.media.mediaFeature,
     kotobaya.android.sync.syncFeature,
+    kotobaya.android.sync.ui.syncUiFeature,
 )

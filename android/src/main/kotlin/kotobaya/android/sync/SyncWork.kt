@@ -100,7 +100,7 @@ class SyncWorker(
         Channels.ensure(applicationContext)
         val n = NotificationCompat.Builder(applicationContext, Channels.SERVER_EVENTS)
             .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-            .setContentTitle(applicationContext.getString(R.string.app_name))
+            .setContentTitle(applicationContext.getString(R.string.sync_notification_syncing))
             .setOngoing(true)
             .setSilent(true)
             .build()
