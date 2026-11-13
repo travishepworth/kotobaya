@@ -1,7 +1,5 @@
 package kotobaya.blobs
 
-import io.minio.CopyObjectArgs
-import io.minio.CopySource
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
@@ -9,14 +7,15 @@ import io.minio.RemoveObjectArgs
 import io.minio.StatObjectArgs
 import io.minio.errors.ErrorResponseException
 import java.io.InputStream
+import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 
 /** The object-store operations the blobs API needs. Blocking; callers run on the IO dispatcher. */
 interface BlobStore {
-    /** Streams [input] to [key]; the size is unknown up front. */
+    /** Streams [input] to [key]; the size is unknown up front (spooled to a temp file). */
     fun put(key: String, input: InputStream, contentType: String)
 
-    /** Server-side copy. */
+    /** Copies [from] to [to] (content type not preserved; blob content types are not served from the store). */
     fun copy(from: String, to: String)
 
     fun delete(key: String)
@@ -31,17 +30,25 @@ interface BlobStore {
 /** Plain S3 API (ADR-003): MinIO, SeaweedFS or AWS, whatever `S3_ENDPOINT` points at. The bucket is created by `BucketInit`. */
 class S3BlobStore(private val client: MinioClient, private val bucket: String) : BlobStore {
     override fun put(key: String, input: InputStream, contentType: String) {
-        client.putObject(
-            PutObjectArgs.builder().bucket(bucket).`object`(key).contentType(contentType)
-                .stream(input, -1, PART_SIZE).build(),
-        )
+        // Unknown-length streaming makes minio-java send per-part Content-MD5 values SeaweedFS 3.80 rejects.
+        // Spool to a temp file so the length is known; always delete the file.
+        val tmp = Files.createTempFile("kotobaya-blob-", ".part")
+        try {
+            val len = Files.newOutputStream(tmp).use { input.copyTo(it) }
+            Files.newInputStream(tmp).use { ins ->
+                client.putObject(
+                    PutObjectArgs.builder().bucket(bucket).`object`(key).contentType(contentType)
+                        .stream(ins, len, PART_SIZE).build(),
+                )
+            }
+        } finally {
+            Files.deleteIfExists(tmp)
+        }
     }
 
     override fun copy(from: String, to: String) {
-        client.copyObject(
-            CopyObjectArgs.builder().bucket(bucket).`object`(to)
-                .source(CopySource.builder().bucket(bucket).`object`(from).build()).build(),
-        )
+        // Server-side CopyObject sends a Content-MD5 SeaweedFS 3.80 answers with a 500; copy through get + put instead.
+        get(from, 0, null).use { put(to, it, "application/octet-stream") }
     }
 
     override fun delete(key: String) {
