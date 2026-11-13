@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -22,6 +23,8 @@ from kotobaya_worker.grammar.detect import (
     rules_digest,
 )
 from kotobaya_worker.grammar.job import dedupe_key, run_detect_media, run_fan_out
+from kotobaya_worker.media.pipeline.base import MediaBase
+from kotobaya_worker.media.pipeline.parse_job import run_parse
 from kotobaya_worker.media.publish.snapshot import (
     ContentArchive,
     GrammarSpanRec,
@@ -81,16 +84,25 @@ class Rules:
         return list(self.points)
 
 
-class Spans:
-    """Installed spans: detected ones are what the (fake) server installed; manual ones live beside them."""
+class Snapshot:
+    """``PgMediaReader`` stand-in: base rows, live rules and installed detected spans read together."""
 
-    def __init__(self, server: Any) -> None:
+    def __init__(self, server: Any, rules: Rules) -> None:
         self.server = server
-        self.manual: set[GrammarSpanRec] = set()
+        self.rules = rules
+        self.reads = 0
 
-    def detected(self, media_id: str) -> set[GrammarSpanRec]:
-        assert media_id == MEDIA_ID
-        return set(self.server.content.grammar_spans)
+    def read(self, media_id: str) -> MediaBase:
+        self.reads += 1
+        base: MediaBase = self.server.read(media_id)
+        spans = self.server.content.grammar_spans if self.server.content is not None else ()
+        return replace(
+            base, grammar_rules=tuple(self.rules.points), detected_spans=frozenset(spans)
+        )
+
+
+def c12_parser(media_id: str, sentence_ids: Any, texts: Any) -> list[list[dict[str, Any]]]:
+    return [c12(t) for t in texts]
 
 
 class Env:
@@ -110,15 +122,28 @@ class Env:
             [SentenceRec(sentence_id(i), SEG_ID, i, t, toks[i]) for i, t in enumerate(TEXTS)],
         )
         self.rules = Rules(points)
-        self.spans = Spans(self.server)
+        self.reader = Snapshot(self.server, self.rules)
+        self.manual: set[GrammarSpanRec] = (
+            set()
+        )  # manual rows live beside the installed detected ones
 
     def run(self) -> dict[str, Any]:
         ctx = ps.Ctx()
         ctx.payload = {"media_id": MEDIA_ID}
         return dict(
             run_detect_media(
-                ctx, MEDIA_ID, rules=self.rules, base_reader=self.server, spans=self.spans,
+                ctx, MEDIA_ID, base_reader=self.reader,
                 store=self.store, objects=self.objects, blobs=self.blobs, sleep=self.server.sleep,
+            )
+        )  # fmt: skip
+
+    def reparse(self) -> dict[str, Any]:
+        ctx = ps.Ctx()
+        ctx.payload = {"media_id": MEDIA_ID}
+        return dict(
+            run_parse(
+                ctx, parser=c12_parser, base_reader=self.reader, store=self.store,
+                objects=self.objects, blobs=self.blobs, sleep=self.server.sleep,
             )
         )  # fmt: skip
 
@@ -200,15 +225,15 @@ def test_manual_spans_are_never_read_published_or_touched() -> None:
     env = Env([ZARU])
     manual = GrammarSpanRec(sentence_id(3), GP_ZARU, 0, 2, 0)
     same_as_detected = GrammarSpanRec(sentence_id(0), GP_ZARU, 7, 15, 0)
-    env.spans.manual = {manual, same_as_detected}
+    env.manual = {manual, same_as_detected}
     env.run()
     env.rules.points = []
     env.run()
     assert env.installed == []
-    assert env.spans.manual == {manual, same_as_detected}
+    assert env.manual == {manual, same_as_detected}
     # a manual span covering a detected span does not make the detected one count as installed
     env2 = Env([ZARU])
-    env2.spans.manual = {same_as_detected}
+    env2.manual = {same_as_detected}
     assert env2.run()["changed"] is True
 
 
@@ -249,11 +274,12 @@ def test_stale_base_replans_on_the_new_version() -> None:
     env.server.sleep = sleep
     ctx = ps.Ctx()
     res = run_detect_media(
-        ctx, MEDIA_ID, rules=env.rules, base_reader=env.server, spans=env.spans,
+        ctx, MEDIA_ID, base_reader=env.reader,
         store=env.store, objects=env.objects, blobs=env.blobs, sleep=sleep,
     )  # fmt: skip
     assert res["changed"] is True and res["content_version"] == 3
     assert len(env.installed) == 2
+    assert env.reader.reads == 2  # the re-plan re-read base, rules and spans in a new snapshot
 
 
 def test_detect_spans_dedupes_by_key_keeping_the_lowest_rule_index() -> None:
@@ -269,6 +295,10 @@ class Queue:
     def __init__(self, ids: list[str]) -> None:
         self.ids = ids
         self.keys: set[str] = set()
+        self.released: list[uuid.UUID] = []
+
+    def release(self, job_id: uuid.UUID) -> None:
+        self.released.append(job_id)
 
     def media_ids(self) -> list[str]:
         return list(self.ids)
@@ -297,3 +327,44 @@ def test_fan_out_enqueues_one_job_per_media_per_rule_set() -> None:
 def test_non_list_detection_rules_are_ignored(bad: Any) -> None:
     pts, _ = compile_points([PointRules(GP_DELETED_RULES, bad)])
     assert pts == []
+
+
+def test_fan_out_releases_its_key_before_reading_rules() -> None:
+    order: list[str] = []
+
+    class R(Rules):
+        def load(self) -> list[PointRules]:
+            order.append("rules")
+            return super().load()
+
+    class Q(Queue):
+        def release(self, job_id: uuid.UUID) -> None:
+            order.append("release")
+            super().release(job_id)
+
+    ctx = ps.Ctx()
+    q = Q([str(uuid.UUID(int=1))])
+    run_fan_out(ctx, rules=R([ZARU]), queue=q)
+    assert order == ["release", "rules"] and q.released == [ctx.job_id]
+
+
+def test_reparse_keeps_detected_spans_and_uses_current_rules() -> None:
+    env = Env([ZARU, WAKE])
+    env.run()
+    before = env.installed
+    res = env.reparse()  # media-parse publish replaces every detected span: it must re-detect
+    assert res["content_version"] == 3
+    assert env.installed == before
+    env.rules.points = [ZARU]
+    env.reparse()
+    assert [g for _, g, _, _ in env.installed] == [GP_ZARU, GP_ZARU]
+    assert env.run()["changed"] is False  # the parse already published the current spans
+
+
+def test_equal_spans_after_a_stale_replan_publish_nothing() -> None:
+    env = Env([ZARU])
+    env.run()
+    # the detection publish of v2 is installed; rules unchanged: nothing to do on any snapshot
+    assert env.run() == {
+        "media_id": MEDIA_ID, "changed": False, "content_version": 2, "spans": 2, "invalid_rules": 0,
+    }  # fmt: skip

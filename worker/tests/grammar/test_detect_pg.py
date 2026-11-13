@@ -19,9 +19,9 @@ from kotobaya_worker.grammar.job import (
     KIND,
     PgDetectQueue,
     PgRuleSource,
-    PgSpanReader,
     dedupe_key,
 )
+from kotobaya_worker.media.pipeline.base import PgMediaReader
 from kotobaya_worker.media.publish.snapshot import GrammarSpanRec
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -84,9 +84,26 @@ def test_rule_source_lists_live_points_with_rules(conn: psycopg.Connection[Any])
     ]
 
 
-def test_span_reader_returns_detected_rows_only(conn: psycopg.Connection[Any]) -> None:
-    assert PgSpanReader(conn).detected(M_FILE) == {GrammarSpanRec(SENT, GP_LIVE, 1, 5, 0)}
-    assert PgSpanReader(conn).detected(M_JPDB) == set()
+def test_media_reader_snapshot_has_rules_and_detected_spans_only(
+    conn: psycopg.Connection[Any],
+) -> None:
+    base = PgMediaReader(conn).read(M_FILE)
+    assert base.detected_spans == frozenset({GrammarSpanRec(SENT, GP_LIVE, 1, 5, 0)})
+    assert [p.grammar_point_id for p in base.grammar_rules] == [GP_LIVE]
+    missing = PgMediaReader(conn).read(str(uuid.UUID(int=99)))
+    assert not missing.exists and [p.grammar_point_id for p in missing.grammar_rules] == [GP_LIVE]
+
+
+def test_fan_out_release_clears_own_key(conn: psycopg.Connection[Any]) -> None:
+    job = uuid.UUID(int=77)
+    conn.execute(
+        "insert into app.job (id, kind, payload, dedupe_key) values (%s, %s, '{}', %s)",
+        (job, KIND, "grammar-detect:all"),
+    )
+    PgDetectQueue(conn).release(job)
+    assert conn.execute("select dedupe_key from app.job where id = %s", (job,)).fetchone() == {
+        "dedupe_key": None
+    }
 
 
 def test_queue_lists_taggable_media_and_dedupes(conn: psycopg.Connection[Any]) -> None:

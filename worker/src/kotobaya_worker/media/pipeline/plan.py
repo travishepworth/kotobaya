@@ -19,6 +19,7 @@ from kotobaya_worker.coverage.aggregate import (
     deck_items,
     job_result,
 )
+from kotobaya_worker.grammar.detect import Detection, DetectSentence, detect
 from kotobaya_worker.importers.jpdb_history.handler import Context
 from kotobaya_worker.media.pipeline.base import BaseSegment, MediaBase
 from kotobaya_worker.media.pipeline.parser import SegmentParser
@@ -84,6 +85,7 @@ def from_base(seg: BaseSegment, *, reparse: bool) -> DraftSegment:
 class Planned:
     request: PublishRequest
     counts: tuple[SegmentCounts, ...]
+    detection: Detection
 
 
 def plan_request(
@@ -161,8 +163,10 @@ def plan_request(
         sents.extend(recs)
         counts.append(c)
     ctx.check_cancelled()
+    # Every publish replaces the media's detected spans, so detect with the base snapshot's rules (C-13).
+    found = detect(base.grammar_rules, (DetectSentence(r.id, r.text, r.tokens) for r in sents))
     content = ContentArchive(
-        media_id, version, segs, sents, [o for c in counts for o in c.occurrences]
+        media_id, version, segs, sents, [o for c in counts for o in c.occurrences], found.spans
     )
     deck = DeckArchive(media_id, "media", version, deck_items(counts))
     log.info("media %s v%d planned: %s", media_id, version, job_result(media_id, version, counts))
@@ -175,4 +179,5 @@ def plan_request(
             create=create,
         ),
         tuple(counts),
+        found,
     )

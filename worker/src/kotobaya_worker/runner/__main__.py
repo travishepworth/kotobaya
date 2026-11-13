@@ -8,6 +8,7 @@ import signal
 import threading
 
 from kotobaya_worker import health
+from kotobaya_worker.grammar.job import make_grammar_detect
 from kotobaya_worker.importers.jpdb_deck.handler import make_jpdb_deck_import
 from kotobaya_worker.importers.jpdb_history.apply import make_apply_plan, make_fetch_blob
 from kotobaya_worker.importers.jpdb_history.handler import make_jpdb_history_import
@@ -30,6 +31,7 @@ def build_registry() -> Registry:
     reg.register("media-import", make_media_import(database_url))
     reg.register("media-parse", make_media_parse(database_url))
     reg.register("jpdb-deck-import", make_jpdb_deck_import(database_url))
+    reg.register("grammar-detect", make_grammar_detect(database_url))
     return reg
 
 

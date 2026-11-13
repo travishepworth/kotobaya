@@ -11,13 +11,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from kotobaya_worker.grammar.dsl import GrammarRuleError, Pattern, parse_rule
-from kotobaya_worker.grammar.matcher import find_matches, to_mtokens
+from kotobaya_worker.grammar.matcher import MatchStats, find_matches, to_mtokens
 from kotobaya_worker.media.publish.snapshot import GrammarSpanRec
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,9 @@ def _len16(text: str) -> int:
 
 
 def detect_spans(
-    points: Sequence[CompiledPoint], sentences: Iterable[DetectSentence]
+    points: Sequence[CompiledPoint],
+    sentences: Iterable[DetectSentence],
+    stats: MatchStats | None = None,
 ) -> list[GrammarSpanRec]:
     out: list[GrammarSpanRec] = []
     for sent in sentences:
@@ -90,7 +95,7 @@ def detect_spans(
         best: dict[tuple[int, int, str], int] = {}
         for point in points:
             for k, pattern in point.rules:
-                for m in find_matches(pattern, toks):
+                for m in find_matches(pattern, toks, stats):
                     if not 0 <= m.start < m.end <= limit:
                         continue  # tokens inconsistent with the text: never publish a bad span
                     key = (m.start, m.end, point.grammar_point_id)
@@ -100,12 +105,35 @@ def detect_spans(
     return out
 
 
+@dataclass(frozen=True)
+class Detection:
+    spans: tuple[GrammarSpanRec, ...]
+    invalid_rules: int
+    give_ups: int
+
+
+def detect(rules: Iterable[PointRules], sentences: Iterable[DetectSentence]) -> Detection:
+    """Compile ``rules`` (invalid ones logged and counted) and detect spans in ``sentences``."""
+    points, problems = compile_points(rules)
+    for p in problems:
+        log.warning(
+            "grammar point %s rule %d skipped: %s", p.grammar_point_id, p.rule_index, p.message
+        )
+    stats = MatchStats()
+    spans = detect_spans(points, sentences, stats)
+    if stats.give_ups:
+        log.warning("grammar detection gave up at %d token positions (step budget)", stats.give_ups)
+    return Detection(tuple(spans), len(problems), stats.give_ups)
+
+
 __all__ = [
     "CompiledPoint",
     "DetectSentence",
+    "Detection",
     "PointRules",
     "RuleProblem",
     "compile_points",
+    "detect",
     "detect_spans",
     "rules_digest",
 ]

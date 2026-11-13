@@ -44,6 +44,13 @@ def _get(tok: Any, key: str) -> Any:
     return tok.get(key) if isinstance(tok, Mapping) else getattr(tok, key, None)
 
 
+def _pos(raw: Any) -> tuple[str, ...]:
+    levels = [norm(str(p)) for p in (raw or ())]
+    while levels and levels[-1] == "*":  # Sudachi pads unused levels with '*'; C-12 drops them
+        levels.pop()
+    return tuple(levels)
+
+
 def to_mtoken(tok: Any) -> MToken:
     cform = _get(tok, "cform")
     return MToken(
@@ -52,7 +59,7 @@ def to_mtoken(tok: Any) -> MToken:
         surface=norm(str(_get(tok, "surface") or "")),
         lemma=norm(str(_get(tok, "lemma") or "")),
         reading=norm_reading(str(_get(tok, "reading") or "")),
-        pos=tuple(norm(p) for p in (_get(tok, "pos") or ()) if p != "*"),
+        pos=_pos(_get(tok, "pos")),
         cform=None if not cform or cform == "*" else tuple(norm(cform).split("-")),
     )
 
@@ -88,6 +95,13 @@ def _passes(c: Constraint, t: MToken) -> bool:
         cf = t.cform
         ok = cf is not None and any(_levels_match(cf, v) for v in c.values if isinstance(v, tuple))
     return ok != c.negate
+
+
+@dataclass
+class MatchStats:
+    """Counts across ``find_matches`` calls: start positions abandoned because of ``STEP_BUDGET``."""
+
+    give_ups: int = 0
 
 
 class _Budget(Exception):
@@ -151,7 +165,9 @@ class _Run:
             yield i
 
 
-def find_matches(pattern: Pattern, tokens: Sequence[MToken]) -> list[Match]:
+def find_matches(
+    pattern: Pattern, tokens: Sequence[MToken], stats: MatchStats | None = None
+) -> list[Match]:
     """Leftmost, non-overlapping matches of ``pattern`` in one sentence's tokens."""
     out: list[Match] = []
     i = 0
@@ -161,6 +177,8 @@ def find_matches(pattern: Pattern, tokens: Sequence[MToken]) -> list[Match]:
             end = next((j for j in run.ends(pattern.root, i) if j > i), None)
         except _Budget:
             end = None
+            if stats is not None:
+                stats.give_ups += 1
         if end is None:
             i += 1
             continue
@@ -169,4 +187,12 @@ def find_matches(pattern: Pattern, tokens: Sequence[MToken]) -> list[Match]:
     return out
 
 
-__all__ = ["STEP_BUDGET", "MToken", "Match", "find_matches", "to_mtoken", "to_mtokens"]
+__all__ = [
+    "STEP_BUDGET",
+    "MToken",
+    "Match",
+    "MatchStats",
+    "find_matches",
+    "to_mtoken",
+    "to_mtokens",
+]

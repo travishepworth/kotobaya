@@ -163,3 +163,9 @@ def test_rules_reports_errors_per_rule_and_still_matches_the_rest() -> None:
     assert js["matches"][0] == {
         "rule_index": 1, "sentence_index": 0, "start_offset": 4, "end_offset": 8, "text": "を得ない",
     }  # fmt: skip
+
+
+def test_raw_sudachi_pos_drops_only_trailing_padding() -> None:
+    raw = {"s": 0, "e": 1, "surface": "x", "lemma": "x", "pos": ["助詞", "格助詞", "*", "*"]}
+    assert to_mtokens([raw])[0].pos == ("助詞", "格助詞")
+    assert spans("[助詞-格助詞]", [raw]) == [(0, 1)]

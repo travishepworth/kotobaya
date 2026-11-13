@@ -42,6 +42,7 @@ API_JOB_KINDS: frozenset[str] = frozenset(
         "fsrs-optimize",
         "tts",
         "deck-build",
+        "grammar-detect",
     }
 )
 

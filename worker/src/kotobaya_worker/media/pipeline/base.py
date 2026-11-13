@@ -14,7 +14,9 @@ from typing import Any, Protocol
 import psycopg
 from psycopg.rows import tuple_row
 
+from kotobaya_worker.grammar.detect import PointRules
 from kotobaya_worker.media.publish.ids import ExistingContent, ExistingSegment, ExistingSentence
+from kotobaya_worker.media.publish.snapshot import GrammarSpanRec
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,9 @@ class MediaBase:
     source: str | None = None
     live: bool = True
     segments: tuple[BaseSegment, ...] = ()  # ascending ordinal
+    # Read in the same snapshot (SCHEMA.md 4.4 grammar-detect, C-13): every publish re-detects spans.
+    grammar_rules: tuple[PointRules, ...] = ()  # live points with non-empty detection_rules
+    detected_spans: frozenset[GrammarSpanRec] = frozenset()  # installed origin = 'detected' rows
 
     def existing(self) -> ExistingContent:
         """The id-stability view (``media.publish.ids.assign_ids``)."""
@@ -90,6 +95,14 @@ from app.sentence s join app.media_segment seg on seg.id = s.segment_id
 where s.media_id = %s
 order by seg.ordinal, s.ordinal
 """
+_RULES_SQL = (
+    "select id, detection_rules from app.grammar_point "
+    "where deleted_at is null and detection_rules <> '[]'::jsonb order by id"
+)
+_SPANS_SQL = (
+    "select sentence_id, grammar_point_id, start_offset, end_offset, rule_index "
+    "from app.sentence_grammar_span where media_id = %s and origin = 'detected'"
+)
 
 
 class PgMediaReader:
@@ -102,18 +115,23 @@ class PgMediaReader:
         mid = uuid.UUID(media_id)
         with self._c.transaction(), self._c.cursor(row_factory=tuple_row) as cur:
             cur.execute("set transaction isolation level repeatable read, read only")
+            rules = tuple(PointRules(str(r[0]), r[1]) for r in cur.execute(_RULES_SQL).fetchall())
             m = cur.execute(
                 "select content_version, source, deleted_at is null from app.media where id = %s",
                 (mid,),
             ).fetchone()
             if m is None:
-                return NO_MEDIA
+                return MediaBase(exists=False, grammar_rules=rules)
             segs = cur.execute(
                 "select id, ordinal, kind, title from app.media_segment where media_id = %s "
                 "order by ordinal",
                 (mid,),
             ).fetchall()
             sents = cur.execute(_SENTENCES_SQL, (mid,)).fetchall()
+            spans = frozenset(
+                GrammarSpanRec(str(r[0]), str(r[1]), r[2], r[3], r[4])
+                for r in cur.execute(_SPANS_SQL, (mid,)).fetchall()
+            )
         by_seg: dict[int, list[BaseSentence]] = {}
         for r in sents:
             by_seg.setdefault(r[1], []).append(
@@ -138,4 +156,6 @@ class PgMediaReader:
             segments=tuple(
                 BaseSegment(str(r[0]), r[1], r[2], r[3], tuple(by_seg.get(r[1], ()))) for r in segs
             ),
+            grammar_rules=rules,
+            detected_spans=spans,
         )

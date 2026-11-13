@@ -1,32 +1,25 @@
-"""Runner handler for ``grammar-detect``: (re-)tag media sentences with detected grammar spans.
+"""Runner handler for ``grammar-detect`` (C-13; contracts/db/SCHEMA.md 4.4 "``grammar-detect``").
 
 Detected spans are media content (MEDIA_PIPELINE.md 1, SNAPSHOT.md 3): only the server writes them,
-inside a ``media-publish`` install that replaces the media's detected rows with the archive's. So this
-job republishes a media like ``media-parse`` does (T404b path), but keeps every token and swaps in the
-new spans. Manual spans are never in an archive and the install only deletes ``origin = 'detected'``
-rows, so they are never touched.
+inside a ``media-publish`` install that replaces the media's detected rows with the archive's. So a
+per-media job republishes the media like ``media-parse`` does, but keeps every token and only the
+spans change. Manual spans are never in an archive and the install deletes ``origin = 'detected'``
+rows only, so they are never touched.
 
-Not registered in ``build_registry`` yet: ``grammar-detect`` is not a value of the API's ``JobKind``
-(the runner's list is closed), pending a contract change (T506a HANDOFF).
-
-Payloads:
-
-- ``{"media_id": <uuid>}``: one media. Live points' non-draft rules are matched against the stored
-  tokens; if the result equals the installed detected spans nothing is published (idempotent: a second
-  run is a no-op), else a new content version is published with the new spans (stale spans gone).
-- ``{}`` (or any payload without ``media_id``, e.g. ``{"grammar_point_id": ...}`` after a rule edit):
-  fan-out. Enqueues one ``grammar-detect {"media_id"}`` job per live, parsed, non-jpdb media with
-  ``dedupe_key = grammar-detect:<media>:<rules digest>``, so an edit made while a media job is queued or
-  running still gets its own run, and identical requests collapse.
+- ``{"media_id": <uuid>}`` (per-media): base, live points' rules and installed detected spans come
+  from one REPEATABLE READ snapshot (``PgMediaReader``); ``plan_request`` detects with those rules.
+  Equal span sets: ``changed: false``, nothing published (a second run is a no-op). Else publish; every
+  ``stale_base`` re-plan re-reads all three in a new snapshot and re-checks equality.
+- ``{}`` (fan-out): release the ``grammar-detect:all`` key under ``pg_advisory_xact_lock(7033001)``,
+  then read the rules in a fresh snapshot and enqueue one per-media job per eligible media with
+  ``dedupe_key = grammar-detect:<media id>:<rules_digest>``.
 """
 
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from collections.abc import Callable, Mapping
-from dataclasses import replace
 from typing import Any, Protocol
 
 import psycopg
@@ -35,14 +28,7 @@ from psycopg.types.json import Jsonb
 
 from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.dict.package.s3 import S3Client, S3Config
-from kotobaya_worker.grammar.detect import (
-    CompiledPoint,
-    DetectSentence,
-    PointRules,
-    compile_points,
-    detect_spans,
-    rules_digest,
-)
+from kotobaya_worker.grammar.detect import PointRules, rules_digest
 from kotobaya_worker.importers.jpdb_history.apply import EVENTS_CHANNEL, uuid7
 from kotobaya_worker.importers.jpdb_history.handler import Context
 from kotobaya_worker.media.pipeline.base import BaseReader, MediaBase, PgMediaReader
@@ -54,25 +40,22 @@ from kotobaya_worker.media.publish.handoff import (
     PublishStore,
     publish_replanning,
 )
-from kotobaya_worker.media.publish.snapshot import GrammarSpanRec
 
-log = logging.getLogger(__name__)
 KIND = "grammar-detect"
+OP_APPLY_LOCK = 7033001
 
 
 class RuleSource(Protocol):
     def load(self) -> list[PointRules]:
-        """Every live grammar point with its ``detection_rules``."""
-        ...
-
-
-class SpanReader(Protocol):
-    def detected(self, media_id: str) -> set[GrammarSpanRec]:
-        """The media's installed ``origin = 'detected'`` spans."""
+        """Every live grammar point with non-empty ``detection_rules`` (a fresh snapshot)."""
         ...
 
 
 class DetectQueue(Protocol):
+    def release(self, job_id: uuid.UUID) -> None:
+        """Clear the fan-out job's own dedupe key under the op-apply advisory lock (committed)."""
+        ...
+
     def media_ids(self) -> list[str]:
         """Live media with published content that can carry spans (not jpdb)."""
         ...
@@ -102,70 +85,69 @@ def _no_parse(media_id: str, sentence_ids: Any, texts: Any) -> list[list[dict[st
     raise AssertionError("grammar-detect keeps every token; nothing is re-parsed")
 
 
-def _sentences(req: PublishRequest) -> list[DetectSentence]:
-    return [DetectSentence(s.id, s.text, s.tokens) for s in req.content.sentences]
+class _Finished(Exception):
+    """Planning ended without a publish (skipped or nothing changed)."""
+
+    def __init__(self, result: dict[str, Any]) -> None:
+        super().__init__("finished")
+        self.result = result
 
 
 def run_detect_media(
     ctx: Context,
     media_id: str,
     *,
-    rules: RuleSource,
     base_reader: BaseReader,
-    spans: SpanReader,
     store: PublishStore,
     objects: ObjectStore,
     blobs: BlobTable,
     **publish_kw: Any,
 ) -> Mapping[str, Any]:
-    done = store.succeeded_result(ctx.job_id)  # an earlier attempt already published
+    done = store.succeeded_result(ctx.job_id)  # step 1: an earlier attempt already published
     if done is not None:
         return {"media_id": media_id, "changed": True, "content_version": done["content_version"]}
-    ctx.progress(0.0, "reading rules")
-    points, problems = compile_points(rules.load())
-    for p in problems:
-        log.warning(
-            "grammar point %s rule %d skipped: %s", p.grammar_point_id, p.rule_index, p.message
-        )
-    base = base_reader.read(media_id)
-    reason = skip_reason(base)
-    if reason is not None:
-        return {"media_id": media_id, "changed": False, "skipped": reason}
-
-    def plan_from(b: MediaBase, pts: list[CompiledPoint]) -> PublishRequest:
-        drafts = [from_base(s, reparse=False) for s in b.segments]
-        req = plan_request(ctx, media_id, b, drafts, _no_parse, create=None, progress=(0.1, 0.8))
-        found = detect_spans(pts, _sentences(req.request))
-        return replace(req.request, content=replace(req.request.content, grammar_spans=found))
-
-    first = plan_from(base, points)
-    wanted = set(first.content.grammar_spans)
-    result: dict[str, Any] = {
-        "media_id": media_id,
-        "spans": len(wanted),
-        "invalid_rules": len(problems),
-    }
-    if wanted == spans.detected(media_id):
-        return {**result, "changed": False, "content_version": base.content_version}
-    ctx.progress(0.85, "publishing spans")
-    plans = iter([first])
+    ctx.progress(0.0, "reading media and rules")
+    counts: dict[str, int] = {}
 
     def plan() -> PublishRequest:
-        nxt = next(plans, None)  # the first plan was already built on this base
-        if nxt is not None:
-            return nxt
-        b = base_reader.read(media_id)
-        if skip_reason(b) is not None:
-            raise RuntimeError(f"media {media_id} can no longer be tagged ({skip_reason(b)})")
-        return plan_from(b, points)
+        base = base_reader.read(media_id)  # one snapshot: base rows, rules, installed spans
+        reason = skip_reason(base)
+        if reason is not None:
+            raise _Finished({"media_id": media_id, "changed": False, "skipped": reason})
+        drafts = [from_base(s, reparse=False) for s in base.segments]
+        planned = plan_request(
+            ctx, media_id, base, drafts, _no_parse, create=None, progress=(0.1, 0.8)
+        )
+        det = planned.detection
+        counts.update(spans=len(det.spans), invalid_rules=det.invalid_rules)
+        if set(det.spans) == base.detected_spans:
+            raise _Finished(
+                {
+                    "media_id": media_id,
+                    "changed": False,
+                    "content_version": base.content_version,
+                    **counts,
+                }
+            )
+        ctx.progress(0.85, "publishing spans")
+        return planned.request
 
-    published = publish_replanning(
-        ctx, plan, store=store, objects=objects, blobs=blobs, **publish_kw
-    )
-    return {**result, "changed": True, "content_version": published.content_version}
+    try:
+        published = publish_replanning(
+            ctx, plan, store=store, objects=objects, blobs=blobs, **publish_kw
+        )
+    except _Finished as f:
+        return f.result
+    return {
+        "media_id": media_id,
+        "changed": True,
+        "content_version": published.content_version,
+        **counts,
+    }
 
 
 def run_fan_out(ctx: Context, *, rules: RuleSource, queue: DetectQueue) -> Mapping[str, Any]:
+    queue.release(ctx.job_id)  # (1) committed before (2) reads the rules
     digest = rules_digest(rules.load())
     ids = queue.media_ids()
     enqueued = 0
@@ -180,6 +162,8 @@ def run_fan_out(ctx: Context, *, rules: RuleSource, queue: DetectQueue) -> Mappi
 
 
 class PgRuleSource:
+    """``conn``: autocommit, dict rows (each ``load`` is its own snapshot)."""
+
     def __init__(self, conn: psycopg.Connection[Any]) -> None:
         self._c = conn
 
@@ -191,31 +175,16 @@ class PgRuleSource:
         return [PointRules(str(r["id"]), r["detection_rules"]) for r in rows]
 
 
-class PgSpanReader:
-    def __init__(self, conn: psycopg.Connection[Any]) -> None:
-        self._c = conn
-
-    def detected(self, media_id: str) -> set[GrammarSpanRec]:
-        rows = self._c.execute(
-            "select sentence_id, grammar_point_id, start_offset, end_offset, rule_index "
-            "from app.sentence_grammar_span where media_id = %s and origin = 'detected'",
-            (uuid.UUID(media_id),),
-        ).fetchall()
-        return {
-            GrammarSpanRec(
-                str(r["sentence_id"]),
-                str(r["grammar_point_id"]),
-                r["start_offset"],
-                r["end_offset"],
-                r["rule_index"],
-            )
-            for r in rows
-        }
-
-
 class PgDetectQueue:
+    """``conn``: autocommit, dict rows."""
+
     def __init__(self, conn: psycopg.Connection[Any]) -> None:
         self._c = conn
+
+    def release(self, job_id: uuid.UUID) -> None:
+        with self._c.transaction():
+            self._c.execute("select pg_advisory_xact_lock(%s)", (OP_APPLY_LOCK,))
+            self._c.execute("update app.job set dedupe_key = null where id = %s", (job_id,))
 
     def media_ids(self) -> list[str]:
         rows = self._c.execute(
@@ -254,9 +223,7 @@ def make_grammar_detect(
             return run_detect_media(
                 ctx,
                 str(uuid.UUID(raw)),
-                rules=PgRuleSource(c),
                 base_reader=PgMediaReader(c),
-                spans=PgSpanReader(c),
                 store=PgPublishStore(c),
                 objects=objects or S3ObjectStore(S3Client(S3Config.from_env())),
                 blobs=PgBlobTable(c),
@@ -270,11 +237,10 @@ __all__ = [
     "DetectQueue",
     "PgDetectQueue",
     "PgRuleSource",
-    "PgSpanReader",
     "RuleSource",
-    "SpanReader",
     "dedupe_key",
     "make_grammar_detect",
     "run_detect_media",
     "run_fan_out",
+    "skip_reason",
 ]
