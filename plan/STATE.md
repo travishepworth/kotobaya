@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T00:46:19Z
+Updated: 2026-11-13T01:10:04Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -14,7 +14,9 @@ Updated: 2026-11-13T00:46:19Z
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T303c | — (in review) | 1 | t/T303c-android-sync | 2026-11-13T01:07:15Z |
+| T304b | writer (sonnet) | 1 | t/T304b-review-ui | 2026-11-13T01:10:04Z |
+| T305b | writer-senior (opus) | 1 | t/T305b-note-creator | 2026-11-13T01:10:04Z |
+| T310 | writer (sonnet) | 1 | t/T310-audio-prefetch | 2026-11-13T01:10:04Z |
 | T303d | — (in review) | 1 | t/T303d-remint | 2026-11-13T01:07:37Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -23,8 +25,7 @@ Updated: 2026-11-13T00:46:19Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T303d | reviewer (opus) + architect (opus) | 2026-11-13T01:07:37Z |
-| T303c | reviewer (opus) + architect (opus) | 2026-11-13T01:07:15Z |
+| T303d | reviewer APPROVE; architect running | 2026-11-13T01:07:37Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -43,11 +44,12 @@ Updated: 2026-11-13T00:46:19Z
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 12/23 · attempts 16 · escalations 0
+P3: merged 13/23 · attempts 19 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T303c Android sync: SQLDelight DeviceStore/LearningTables, DurableDriver (WAL+FULL), HttpSyncTransport, SyncCoordinator, WorkManager, startup-replay gate — reviewer + architect APPROVE, 1 attempt
 - T303b core device apply (all op types, append-only review_log, refused cache, startup replay, merge readers, rebuild 0–3, auto-retry; 112-seed fuzz) — 2 attempts (1 cut off); reviewer + architect APPROVE
 - T307+T309 widget/QS tile + ntfy/UnifiedPush (server NtfySink wired in Main.kt, SSRF-guarded, off unless NTFY_BASE_URL)
 - T312 Android release: env signing, tag→versionCode, GitHub release workflow publishing both flavors

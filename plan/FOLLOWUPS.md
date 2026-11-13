@@ -194,3 +194,9 @@
 - db/Databases.kt should open the durable driver itself (sync module currently replaces AppDatabase binding); expedited-work notification needs a "Syncing" string (T303e).
 - (reviewer) DurableDriver: synchronous=FULL set once in onConfigure; re-assert at start of SqlDelightDeviceStore.run or test after other features touch the DB.
 - (reviewer) SqlLearningTables.put keeps absent columns; LearningTables contract says replace whole row (in-memory drops them) — fill NULL/default or require full rows.
+
+## T303d (reviewer, 2026-11-13)
+- Remint.blockedBy ignores clock_blocked → preview offers Re-mint that rolls back MINT_REFUSED (no loss) → T303e must hide/disable when clock_blocked; core fix optional.
+- remint catches Abort outside its own transaction; called inside an outer tx the in-memory store could commit partial deletes → fail fast in core; T303e must never wrap it.
+- RejectedRows OpFacts.decode catches only IllegalStateException; other decode errors crash list()/preview — catch Exception.
+- (T303b question resolved) weights_version 0 after card.created post fsrs_params.published conforms (§9.3 lazy marker); readers must replay before reading cache.
