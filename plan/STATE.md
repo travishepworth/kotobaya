@@ -1,9 +1,11 @@
 # STATE
 Mode: single-session
-Phase: P8 (features) COMPLETE (run 15)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T10:59:28Z (run 15 end)
+Phase: P7 live bug BUG-7 (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13T11:05:33Z (run 16 dispatch)
 
-## RESUME HERE (run 15 END: P8 done)
+## RESUME HERE (run 16 IN PROGRESS: BUG-7 dispatched to writer, branch t/BUG-7-cards-preview; on resume reconcile per §2, then check/merge; low risk = no review)
+
+### Run 15 handover
 - Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test rc=0 at c933158 (225ffce).
 - AND-SETTINGS (user requirement): the Settings tab renders every FeatureEntry.settingsSections entry, so Devices → Scan QR pairing is reachable. Unpaired Home shows a "Pair this device" prompt. The real scanner/pair flow is a device check in HUMAN_CHECKS (run 15).
 - Nothing in flight. No t/* or worktree-agent-* branches or worktrees. Deploy: no migrations, no new env/config; new server/web images + APK.
@@ -13,6 +15,7 @@ Updated: 2026-11-13T10:59:28Z (run 15 end)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| BUG-7 | writer (sonnet, low) | 1 | t/BUG-7-cards-preview | 2026-11-13T11:05:33Z |
 
 ## Queued
 (none)
