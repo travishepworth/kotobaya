@@ -38,7 +38,9 @@ import kotobaya.android.sync.SqlLearningTables
 import kotobaya.sync.client.apply.LearningTable
 import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.mint.OpMinter
+import kotobaya.db.app.AppDatabase
 import kotobaya.sync.client.store.Clock
+import kotobaya.sync.client.store.SyncStateKeys
 import kotobaya.sync.client.store.UuidV7Source
 import org.koin.android.ext.koin.androidContext
 import org.koin.compose.koinInject
@@ -58,6 +60,10 @@ class TakobotoStartup(private val ensure: () -> Unit) {
 val takobotoModule = module {
     single<AnkiIdMap> { SqliteAnkiIdMap(androidContext()) }
     single {
+        // A Takoboto call can cold-start the process, making our read the database's first use. When the very
+        // first use is a SqlDelightDeviceStore transaction the schema is not visible to it (found under
+        // Robolectric: "table note_type does not exist" for the whole process), so open it with a plain query first.
+        runCatching { get<AppDatabase>().syncOpsQueries.getSyncState(SyncStateKeys.DEVICE_ID).executeAsOneOrNull() }
         val store = get<SqlDelightDeviceStore>()
         val minter = get<OpMinter<SqlLearningTables>>()
         val ids = UuidV7Source(SecureRandom().asKotlinRandom())

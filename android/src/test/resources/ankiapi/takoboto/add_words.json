@@ -1,0 +1,123 @@
+{
+  "description": "Takoboto adds words through AddContentApi against the real store (Takoboto Vocab, no user decks yet): deck and model lists, duplicate check miss, addNote, duplicate check hit (csum and sfld), the same word again (duplicate: the existing note), addNotes (bulkInsert) of a matched and an unmatched word, the note and its cards.",
+  "source": "seeded: spike README URI table + AddContentApi call sequence + OPS.md C-2 Takoboto field names (not a real Takoboto log)",
+  "vars": { "mid": "1600000000000", "inbox": "1" },
+  "calls": [
+    {
+      "comment": "getDeckList: no user decks, so the Takoboto inbox",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/decks",
+      "projection": ["deck_id", "deck_name"],
+      "expect": { "rows": [["${inbox}", "Takoboto"]] }
+    },
+    {
+      "comment": "getSelectedDeckName",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/selected_deck",
+      "projection": ["deck_id", "deck_name"],
+      "expect": { "rows": [["${inbox}", "Takoboto"]] }
+    },
+    {
+      "comment": "getModelList",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models",
+      "projection": ["_id", "name", "field_names", "num_cards", "sort_field_index"],
+      "expect": { "rows": [["${mid}", "Takoboto Vocab", "Expression\u001fKana\u001fMeaning\u001fSentence\u001fSentenceMeaning", 2, 0]] }
+    },
+    {
+      "comment": "getFieldList(mid)",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/models/${mid}",
+      "projection": ["field_names"],
+      "expect": { "rows": [["Expression\u001fKana\u001fMeaning\u001fSentence\u001fSentenceMeaning"]] }
+    },
+    {
+      "comment": "findDuplicateNotes(mid, 食べる): miss",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id", "flds"],
+      "selection": "mid=${mid} and csum in (567984260)",
+      "expect": { "rowCount": 0 }
+    },
+    {
+      "comment": "addNote: HTML in the expression is stored as plain text",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes?deckId=${inbox}",
+      "values": { "mid": "${mid}", "flds": "<b>食べる</b>\u001fたべる\u001fto eat\u001fパンを食べる。\u001fI eat bread.", "tags": "takoboto" },
+      "save": "taberu",
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/1" }
+    },
+    {
+      "comment": "findDuplicateNotes(mid, 食べる): hit",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id", "mid", "sfld", "csum"],
+      "selection": "mid=${mid} and csum in (567984260)",
+      "expect": { "rows": [["${taberu}", "${mid}", "食べる", 567984260]] }
+    },
+    {
+      "comment": "duplicate check by sort field, reading given in kana: the same word",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes",
+      "projection": ["_id"],
+      "selection": "sfld=?",
+      "args": ["食べる"],
+      "expect": { "rows": [["${taberu}"]] }
+    },
+    {
+      "comment": "adding the same word again: duplicate, answered with the existing note, nothing created",
+      "method": "insert",
+      "uri": "content://com.ichi2.anki.flashcards/notes?deckId=${inbox}",
+      "values": { "mid": "${mid}", "flds": "食べる\u001fたべる\u001fto eat\u001f\u001f", "tags": "takoboto" },
+      "expect": { "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}" }
+    },
+    {
+      "comment": "addNotes: a dictionary word and one the dictionary does not know",
+      "method": "bulkInsert",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2?deckId=${inbox}",
+      "valuesList": [
+        { "mid": "${mid}", "flds": "猫\u001fねこ\u001fcat\u001f\u001f", "tags": "takoboto" },
+        { "mid": "${mid}", "flds": "ふにゃふにゃ\u001fふにゃふにゃ\u001flimp\u001f\u001f", "tags": "takoboto" }
+      ],
+      "expect": { "count": 2 }
+    },
+    {
+      "comment": "the note as AnkiDroid shows it",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}",
+      "projection": ["_id", "mid", "flds", "tags", "sfld", "csum"],
+      "expect": { "rows": [["${taberu}", "${mid}", "食べる\u001fたべる\u001fto eat\u001fパンを食べる。\u001fI eat bread.", "takoboto", "食べる", 567984260]] }
+    },
+    {
+      "comment": "its cards (Kotobaya kinds, in the inbox)",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}/cards",
+      "projection": ["ord", "card_name", "deck_id"],
+      "expect": { "rows": [[0, "meaning", "${inbox}"], [1, "reading", "${inbox}"]] }
+    },
+    {
+      "comment": "all notes of the model",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id"],
+      "selection": "mid=${mid}",
+      "expect": { "rowCount": 3 }
+    },
+    {
+      "comment": "an unknown model has no notes",
+      "method": "query",
+      "uri": "content://com.ichi2.anki.flashcards/notes_v2",
+      "projection": ["_id"],
+      "selection": "mid=42",
+      "expect": { "rowCount": 0 }
+    },
+    {
+      "comment": "updating a note is not offered",
+      "method": "update",
+      "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}",
+      "values": { "tags": "x" },
+      "expect": { "count": 0 },
+      "logsUnknown": true
+    }
+  ]
+}
