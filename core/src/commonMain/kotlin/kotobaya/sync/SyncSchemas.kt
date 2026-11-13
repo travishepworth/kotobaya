@@ -81,6 +81,37 @@ public object SyncSchemas {
         out
     }
 
+    /**
+     * Every `$ref` of every embedded file, resolved once to (file it names, target node), keyed by
+     * [refKey] of the file holding the `$ref` and its text. Built in one `lazy` (thread-safe, immutable
+     * afterwards), so validation never splits a ref string again (BUG-8). A ref that does not resolve
+     * is left out, so it fails at validation time exactly as before.
+     */
+    private val refCache: Map<String, Pair<String, JsonValue>> by lazy {
+        val out = HashMap<String, Pair<String, JsonValue>>()
+        fun walk(file: String, v: JsonValue) {
+            when (v) {
+                is JsonObject -> v.members.forEach { (k, x) ->
+                    if (k == "\$ref" && x is JsonString) {
+                        val key = refKey(file, x.value)
+                        if (key !in out) runCatching { resolve(file, x.value) }.onSuccess { out[key] = it }
+                    }
+                    walk(file, x)
+                }
+                is JsonArray -> v.items.forEach { walk(file, it) }
+                else -> Unit
+            }
+        }
+        schemas.forEach { (file, root) -> walk(file, root) }
+        out
+    }
+
+    private fun refKey(file: String, ref: String): String = "$file\u0000$ref"
+
+    /** [resolve] through [refCache]; a ref it lacks (one of an ad-hoc schema) is resolved directly. */
+    private fun resolveCached(file: String, ref: String): Pair<String, JsonValue> =
+        refCache[refKey(file, ref)] ?: resolve(file, ref)
+
     /** Paths (relative to `contracts/sync`) of the embedded schema files, e.g. `ops/note.created.schema.json`. */
     public val files: Set<String> get() = SyncSchemaTexts.FILES.keys
 
@@ -183,14 +214,36 @@ public object SyncSchemas {
         return if (text.length > 60) text.substring(0, 57) + "..." else text
     }
 
+    /**
+     * The first error of [inst] against [schema] (message and pointer), or null. Sub-schemas whose
+     * error is never reported (`if` conditions, `oneOf` branches, `anyOf` branches until every one
+     * failed) are evaluated by [passes] instead (BUG-8).
+     */
+    private fun check(schema: JsonValue, file: String, inst: JsonValue, ptr: String): SchemaError? =
+        eval(schema, file, inst, ptr, true)
+
+    /** True iff [check] of the same arguments would return null; builds no message and no pointer. */
+    private fun passes(schema: JsonValue, file: String, inst: JsonValue): Boolean = eval(schema, file, inst, "", false) == null
+
+    /** What [eval] returns for a failure in verdict-only mode (never escapes this object). */
+    private val FAIL = SchemaError("", "")
+
+    /**
+     * The validator. With [full] it returns the first error with its diagnostic; without, [FAIL] or
+     * null. Both modes evaluate the same predicates in the same order, so the verdict is identical;
+     * the verdict-only mode skips what only feeds the diagnostic (the message, the pointer, the
+     * `anyOf` deepest-branch choice). `anyOf` computes its branch diagnostics only once every branch
+     * has failed, which picks the same error the old one-pass loop picked.
+     */
     @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
-    private fun check(schema: JsonValue, file: String, inst: JsonValue, ptr: String): SchemaError? {
-        if (schema is JsonBool) return if (schema.value) null else SchemaError("not allowed here", ptr)
+    private fun eval(schema: JsonValue, file: String, inst: JsonValue, ptr: String, full: Boolean): SchemaError? {
+        if (schema is JsonBool) return if (schema.value) null else if (full) SchemaError("not allowed here", ptr) else FAIL
         val s = (schema as? JsonObject)?.members ?: throw IllegalArgumentException("schema is not an object at $file")
+        fun at(token: String): String = if (full) child(ptr, token) else ptr
 
         s["\$ref"]?.let { ref ->
-            val (f, target) = resolve(file, (ref as JsonString).value)
-            check(target, f, inst, ptr)?.let { return it }
+            val (f, target) = resolveCached(file, (ref as JsonString).value)
+            eval(target, f, inst, ptr, full)?.let { return it }
         }
         s["type"]?.let { t ->
             val types = when (t) {
@@ -199,32 +252,33 @@ public object SyncSchemas {
                 else -> throw IllegalArgumentException("bad type keyword")
             }
             if (types.none { typeMatches(it, inst) }) {
+                if (!full) return FAIL
                 val hint = if ("integer" in types && inst is JsonNumber) " (an integral value with magnitude < 2^53)" else ""
                 return SchemaError("expected ${types.joinToString(" or ")}$hint, got ${describe(inst)}", ptr)
             }
         }
         s["const"]?.let { c ->
-            if (!jsonEquals(c, inst)) return SchemaError("must be ${describe(c)}", ptr)
+            if (!jsonEquals(c, inst)) return if (full) SchemaError("must be ${describe(c)}", ptr) else FAIL
         }
         s["enum"]?.let { e ->
             if ((e as JsonArray).items.none { jsonEquals(it, inst) }) {
-                return SchemaError("must be one of ${describe(e)}, got ${describe(inst)}", ptr)
+                return if (full) SchemaError("must be one of ${describe(e)}, got ${describe(inst)}", ptr) else FAIL
             }
         }
         if (inst is JsonNumber) {
             val x = inst.value
-            num(s["minimum"])?.let { if (x < it) return SchemaError("must be >= ${JsNumberFormat.format(it)}", ptr) }
-            num(s["maximum"])?.let { if (x > it) return SchemaError("must be <= ${JsNumberFormat.format(it)}", ptr) }
-            num(s["exclusiveMinimum"])?.let { if (x <= it) return SchemaError("must be > ${JsNumberFormat.format(it)}", ptr) }
-            num(s["exclusiveMaximum"])?.let { if (x >= it) return SchemaError("must be < ${JsNumberFormat.format(it)}", ptr) }
+            num(s["minimum"])?.let { if (x < it) return if (full) SchemaError("must be >= ${JsNumberFormat.format(it)}", ptr) else FAIL }
+            num(s["maximum"])?.let { if (x > it) return if (full) SchemaError("must be <= ${JsNumberFormat.format(it)}", ptr) else FAIL }
+            num(s["exclusiveMinimum"])?.let { if (x <= it) return if (full) SchemaError("must be > ${JsNumberFormat.format(it)}", ptr) else FAIL }
+            num(s["exclusiveMaximum"])?.let { if (x >= it) return if (full) SchemaError("must be < ${JsNumberFormat.format(it)}", ptr) else FAIL }
         }
         if (inst is JsonString) {
             val len by lazy { codePoints(inst.value) }
-            num(s["minLength"])?.let { if (len < it) return SchemaError("shorter than ${it.toLong()} characters", ptr) }
-            num(s["maxLength"])?.let { if (len > it) return SchemaError("longer than ${it.toLong()} characters", ptr) }
+            num(s["minLength"])?.let { if (len < it) return if (full) SchemaError("shorter than ${it.toLong()} characters", ptr) else FAIL }
+            num(s["maxLength"])?.let { if (len > it) return if (full) SchemaError("longer than ${it.toLong()} characters", ptr) else FAIL }
             (s["pattern"] as? JsonString)?.let { p ->
                 val re = regexCache[p.value] ?: PortableRegex.compile(p.value)
-                if (!re.containsMatchIn(inst.value)) return SchemaError("does not match ${p.value}", ptr)
+                if (!re.containsMatchIn(inst.value)) return if (full) SchemaError("does not match ${p.value}", ptr) else FAIL
             }
         }
         if (inst is JsonArray) {
@@ -233,22 +287,22 @@ public object SyncSchemas {
             (s["prefixItems"] as? JsonArray)?.let { pi ->
                 prefix = pi.items.size
                 for (i in 0 until minOf(prefix, items.size)) {
-                    check(pi.items[i], file, items[i], child(ptr, i.toString()))?.let { return it }
+                    eval(pi.items[i], file, items[i], at(i.toString()), full)?.let { return it }
                 }
             }
             s["items"]?.let { itemSchema ->
                 for (i in prefix until items.size) {
                     if (itemSchema is JsonBool && !itemSchema.value) {
-                        return SchemaError("at most $prefix items allowed", ptr)
+                        return if (full) SchemaError("at most $prefix items allowed", ptr) else FAIL
                     }
-                    check(itemSchema, file, items[i], child(ptr, i.toString()))?.let { return it }
+                    eval(itemSchema, file, items[i], at(i.toString()), full)?.let { return it }
                 }
             }
-            num(s["minItems"])?.let { if (items.size < it) return SchemaError("fewer than ${it.toLong()} items", ptr) }
-            num(s["maxItems"])?.let { if (items.size > it) return SchemaError("more than ${it.toLong()} items", ptr) }
+            num(s["minItems"])?.let { if (items.size < it) return if (full) SchemaError("fewer than ${it.toLong()} items", ptr) else FAIL }
+            num(s["maxItems"])?.let { if (items.size > it) return if (full) SchemaError("more than ${it.toLong()} items", ptr) else FAIL }
             if (s["uniqueItems"] == JsonBool(true)) {
                 for (i in items.indices) for (j in 0 until i) {
-                    if (jsonEquals(items[i], items[j])) return SchemaError("items $j and $i are equal", ptr)
+                    if (jsonEquals(items[i], items[j])) return if (full) SchemaError("items $j and $i are equal", ptr) else FAIL
                 }
             }
         }
@@ -256,53 +310,55 @@ public object SyncSchemas {
             val m = inst.members
             (s["required"] as? JsonArray)?.items?.forEach { r ->
                 val name = (r as JsonString).value
-                if (name !in m) return SchemaError("missing required property '$name'", ptr)
+                if (name !in m) return if (full) SchemaError("missing required property '$name'", ptr) else FAIL
             }
             val props = (s["properties"] as? JsonObject)?.members ?: emptyMap()
             for ((name, sub) in props) {
                 val v = m[name] ?: continue
-                check(sub, file, v, child(ptr, name))?.let { return it }
+                eval(sub, file, v, at(name), full)?.let { return it }
             }
             s["additionalProperties"]?.let { ap ->
                 for ((name, v) in m) {
                     if (name in props) continue
-                    if (ap is JsonBool && !ap.value) return SchemaError("unknown property '$name'", child(ptr, name))
-                    check(ap, file, v, child(ptr, name))?.let { return it }
+                    if (ap is JsonBool && !ap.value) return if (full) SchemaError("unknown property '$name'", child(ptr, name)) else FAIL
+                    eval(ap, file, v, at(name), full)?.let { return it }
                 }
             }
             s["propertyNames"]?.let { pn ->
                 for (name in m.keys) {
-                    check(pn, file, JsonString(name), child(ptr, name))?.let {
-                        return SchemaError("property name '$name': ${it.message}", child(ptr, name))
+                    eval(pn, file, JsonString(name), at(name), full)?.let {
+                        return if (full) SchemaError("property name '$name': ${it.message}", child(ptr, name)) else FAIL
                     }
                 }
             }
-            num(s["minProperties"])?.let { if (m.size < it) return SchemaError("fewer than ${it.toLong()} properties", ptr) }
+            num(s["minProperties"])?.let { if (m.size < it) return if (full) SchemaError("fewer than ${it.toLong()} properties", ptr) else FAIL }
             (s["dependentRequired"] as? JsonObject)?.members?.forEach { (name, deps) ->
                 if (name in m) {
                     for (d in (deps as JsonArray).items) {
                         val dn = (d as JsonString).value
-                        if (dn !in m) return SchemaError("'$name' requires '$dn'", ptr)
+                        if (dn !in m) return if (full) SchemaError("'$name' requires '$dn'", ptr) else FAIL
                     }
                 }
             }
         }
-        (s["allOf"] as? JsonArray)?.items?.forEach { sub -> check(sub, file, inst, ptr)?.let { return it } }
+        (s["allOf"] as? JsonArray)?.items?.forEach { sub -> eval(sub, file, inst, ptr, full)?.let { return it } }
         (s["anyOf"] as? JsonArray)?.let { any ->
-            val errors = ArrayList<SchemaError>()
-            for (sub in any.items) errors.add(check(sub, file, inst, ptr) ?: return@let)
+            if (any.items.any { passes(it, file, inst) }) return@let
+            if (!full) return FAIL
+            // every branch failed: their diagnostics, in branch order as before
+            val errors = any.items.map { sub -> checkNotNull(eval(sub, file, inst, ptr, true)) }
             // the deepest branch error points closest to the culprit (an object branch whose member is wrong)
             val deepest = errors.maxByOrNull { it.pointer.length }
             if (deepest != null && deepest.pointer.length > ptr.length) return deepest
             return SchemaError("matches none of the allowed shapes (anyOf): ${describe(inst)}", ptr)
         }
         (s["oneOf"] as? JsonArray)?.let { one ->
-            val n = one.items.count { check(it, file, inst, ptr) == null }
-            if (n != 1) return SchemaError("must match exactly one shape (oneOf), matches $n", ptr)
+            val n = one.items.count { passes(it, file, inst) }
+            if (n != 1) return if (full) SchemaError("must match exactly one shape (oneOf), matches $n", ptr) else FAIL
         }
         s["if"]?.let { cond ->
-            val branch = if (check(cond, file, inst, ptr) == null) s["then"] else s["else"]
-            if (branch != null) check(branch, file, inst, ptr)?.let { return it }
+            val branch = if (passes(cond, file, inst)) s["then"] else s["else"]
+            if (branch != null) eval(branch, file, inst, ptr, full)?.let { return it }
         }
         return null
     }
