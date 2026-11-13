@@ -1,20 +1,18 @@
 # STATE
 Mode: single-session
-Phase: P8 (features) RUNNING (run 15, user approved)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: run 15 start
+Phase: P8 (features) COMPLETE (run 15)   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
+Updated: 2026-11-13T10:59:28Z (run 15 end)
 
-## RESUME HERE (run 14 END: P7 done, release point green)
-- Run 14 took over run 13 (died on an API auth error, no handover). It committed run 13's board state (59985bc), rebased BUG-6 cleanly, and merged it (a660c52) with core, server and contracts checks green. make test rc=0 at a660c52. Pushed.
-- P7 merged: BUG-1..BUG-6. Nothing is in flight, and no t/* or worktree-agent-* branches or worktrees remain.
-- NEXT: Phase 8 (C-17 contract → FEAT-1 clickable kanji). Status TODO and NOT dispatched: wait until the user confirms. Then C-17 goes to the architect (opus); push main before dispatching.
-- BUG-6 deploy: no migration. The new server image re-replays all live cards at startup (core_scheduler_version fsrs6-1→fsrs6-2, one tx, lock 7033001), and /readyz fails until that commits. Android re-replays on first start after update. HUMAN_CHECKS has a line for this (Provisional decisions › ADR-021).
-- Remaining otherwise: FOLLOWUPS only, plus the human items in HUMAN_CHECKS (cluster deploy of a660c52 is manual per memory).
-- Orchestrator lessons: rebase onto main before ff-merge; never pipe git or make through tail; agent worktrees are locked, so run `git worktree unlock` then remove, and also delete the `worktree-agent-*` branch with -d.
+## RESUME HERE (run 15 END: P8 done)
+- Run 15 merged 5: C-17 (listKanjiWords contract), FEAT-1 (server + web clickable kanji), AND-DECKS, AND-SEARCH, AND-SETTINGS (Android tabs; no PlaceholderScreen left). make test: MAKETEST_RESULT.
+- AND-SETTINGS (user requirement): the Settings tab renders every FeatureEntry.settingsSections entry, so Devices → Scan QR pairing is reachable. Unpaired Home shows a "Pair this device" prompt. The real scanner/pair flow is a device check in HUMAN_CHECKS (run 15).
+- Nothing in flight. No t/* or worktree-agent-* branches or worktrees. Deploy: no migrations, no new env/config; new server/web images + APK.
+- NEXT: nothing runnable in BACKLOG except FOLLOWUPS (run 15 added AND-*/FEAT-1 gaps: deck CRUD on Android, smart-deck counts on device, word/{seq} nav route). UI-1 is HUMAN-GATED: never dispatch.
+- Orchestrator lessons: (1) commit plan edits BEFORE rebasing a writer branch, or rebase again right before ff-merge; my plan commits made ff fail twice. (2) Chain merge+cleanup with && (zsh ignored set -e here), or a failed ff deletes the branch (recovered from the commit sha both times). (3) Sibling Android tabs conflict in FeatureModules.kt and AppStartsTest; send the rebase back to the writer with "keep all lines".
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| AND-SETTINGS | writer (rebase fix) | 2 | t/AND-SETTINGS-settings-tab | run 15 |
 
 ## Queued
 (none)
@@ -35,13 +33,15 @@ Updated: run 15 start
 - Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- P8 approved (run 15). UI-1 is HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
+- UI-1 is HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-SETTINGS (run 15): Settings tab renders all registered settingsSections (QR pairing reachable), Study limits/rollover via settings.set ops, About; unpaired Home pairing prompt
 - AND-SEARCH (run 15): Android Search tab (offline dict -> API; my cards via core parser+SQLite compiler -> API), word/note detail in-screen
 - FEAT-1 (run 15): listKanjiWords server (keyset, mine/deck_id, decks[]) + web clickable kanji panel (Most frequent / In my decks)
 - AND-DECKS (run 15): Android Decks tab (replica counts = LocalQueueLoader, deck study via ReviewScreen deckId); read-only, gaps -> FOLLOWUPS

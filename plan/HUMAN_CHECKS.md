@@ -4,6 +4,12 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 15, 2026-11-13) — Phase 8 (no migrations, no new env/config)
+- Deploy: new server + web images (FEAT-1 adds GET /kanji/{literal}/words; no DB migration, no new env). New Android APK (Search, Decks, Settings tabs).
+- Android on device: Settings → Devices → "Scan QR" opens the ML Kit scanner and pairs (tests only render the section); an unpaired first launch shows the Home "Pair this device" prompt.
+- Android: Settings → Study changes (new/reviews per day, rollover hour) sync to web settings; Decks → Study this deck reviews only that deck; Search → My cards query (e.g. `deck:x is:due`) works offline.
+- Web: dictionary entry → click a kanji → panel with Most frequent / In my decks, deck filter, load more.
+
 ## Ready now (run 7, 2026-11-13) — 0.1.3 (DEPLOYMENT CHANGES)
 - W-5 changes deploy: worker now exposes a parse Service on :8082; api gets `PARSER_URL` (absent → parse endpoints 503); new NetworkPolicy api→worker:8082; new jpdb-cache PVC + `JPDB_CACHE_DIR`; optional `JPDB_API_KEY` Secret (`worker.jpdbApiKey.enabled`). Worker image now installs ffmpeg and takes `SUDACHI_DICT` build arg (default full) — image is bigger; rebuild both images and update values in ~/repos/kubernetes/kotobaya.
 - Media/parse/sentences/coverage API live (no more 501s for those ops); media-publish runner starts only when a blob store is configured.

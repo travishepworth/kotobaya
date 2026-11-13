@@ -643,7 +643,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: android decks/, review route deck arg (ticket: plan/tickets/AND-DECKS.md)
 
 ### AND-SETTINGS — Android Settings tab (server/pairing, sync, limits via settings ops, notify, TTS, integrations, about)
-- model: sonnet · risk: med · deps: — · status: RUNNING
+- model: sonnet · risk: med · deps: — · status: MERGED
 - paths: android settings/ui/ (ticket: plan/tickets/AND-SETTINGS.md)
 
 ### UI-1 — Full UI gamification and visual polish pass across web and Android
