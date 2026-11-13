@@ -4,6 +4,8 @@ import io.ktor.server.application.ApplicationCall
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.search.SearchNode
 import kotobaya.decks.SmartDecks
+import kotobaya.drill.DrillSelector
+import kotobaya.drill.DrillSources
 import kotobaya.notes.Errors
 import kotobaya.notes.jsonBody
 import kotobaya.search.DefaultSearchQueryParser
@@ -11,9 +13,7 @@ import kotobaya.search.sql.Dialect
 import kotobaya.search.sql.SearchContext
 import kotobaya.search.sql.SearchSqlCompiler
 import kotobaya.search.sql.SmartDeckRef
-import kotobaya.server.ApiException
 import kotobaya.server.Database
-import kotobaya.server.Problems
 import kotobaya.server.Uuid7
 import kotobaya.server.respondJson
 import org.jooq.DSLContext
@@ -25,8 +25,9 @@ private val DRILL_KEYS = setOf("source", "entry_seq", "query", "card_ids", "mode
  * `createDrillSession`: an ephemeral list of cards; nothing is stored and no op is emitted. The answers go to
  * `POST /review/answer` with `mode = drill|cram`, which logs them without touching the schedule.
  *
- * `cards`, `leeches` and `query` are served. `hot_words` and `confusables` answer `501 not_implemented`: they need
- * the hot-word scorer's inputs and the confusable pairs, which no merged ticket provides to the server yet.
+ * Struggle sources (T503) are picked by the core `DrillSelector` (seeded by the session id) over inputs loaded by
+ * `DrillSources`: `hot_words`, `leeches`, `confusables` (confirmed pairs only; none means an empty list).
+ * `cards` and `query` are served here directly. The request schema has no single-word source, so none is exposed.
  */
 internal class DrillApi(private val db: Database, private val scheduler: Scheduler, private val clock: () -> Instant) {
     suspend fun create(call: ApplicationCall) {
@@ -36,7 +37,7 @@ internal class DrillApi(private val db: Database, private val scheduler: Schedul
         val source = e.enum(body, "source", setOf("hot_words", "leeches", "confusables", "query", "cards"), required = true)
         val mode = e.enum(body, "mode", setOf("drill", "cram")) ?: "drill"
         val limit = body.get("limit")?.let { e.long(it, "/limit", 1, 500)?.toInt() } ?: 20
-        body.get("entry_seq")?.let { e.long(it, "/entry_seq", 1) }
+        val entrySeq = body.get("entry_seq")?.let { e.long(it, "/entry_seq", 1) }
         val query = e.string(body, "query", 1, 2000)
         val cardIds = body.get("card_ids")?.let { n ->
             if (!n.isArray || n.size() < 1 || n.size() > 500) {
@@ -51,29 +52,30 @@ internal class DrillApi(private val db: Database, private val scheduler: Schedul
         if (source == "query" && query == null && !body.has("query")) e.add("/query", "required", "query is required for source query.")
         if (source == "cards" && cardIds == null && !body.has("card_ids")) e.add("/card_ids", "required", "card_ids is required for source cards.")
         e.throwIfAny()
-        if (source == "hot_words" || source == "confusables") {
-            throw ApiException(
-                io.ktor.http.HttpStatusCode.NotImplemented, "not_implemented", "Not implemented",
-                "Drill source $source is not implemented yet; use cards, leeches or query.",
-            )
-        }
-
         val nowMs = clock().toEpochMilli()
         val out = db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
+            val sessionId = Uuid7.generate().toString()
+            val seed = sessionId.fold(0L) { h, ch -> h * 31 + ch.code }
+            val sources = DrillSources(dsl, nowMs)
             val ids = when (source) {
                 "cards" -> live(dsl, checkNotNull(cardIds)).take(limit)
-                "leeches" -> dsl.fetch(
-                    "select c.id::text from app.card c join app.note n on n.id = c.note_id " +
-                        "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and c.lapses >= ? " +
-                        "order by c.lapses desc, c.id limit ?",
-                    settings.leechThreshold, limit,
-                ).map { it.get(0, String::class.java) }
+                "leeches" -> DrillSelector.leeches(sources.leechCandidates(settings.leechThreshold), settings.leechThreshold, limit, seed)
+                "hot_words" -> {
+                    val hot = sources.hotNotes()
+                    DrillSelector.hotWords(hot, sources.candidatesOf(hot.map { it.noteId }), limit, seed)
+                }
+                "confusables" -> {
+                    val only = entrySeq?.let { sources.noteOfEntry(it) }
+                    val pairs = sources.confirmedPairs().filter { p -> only == null || p.noteA in only || p.noteB in only }
+                    val cards = sources.candidatesOf(pairs.flatMap { listOf(it.noteA, it.noteB) }.toSet())
+                    DrillSelector.confusables(pairs, cards, only?.singleOrNull(), limit, seed)
+                }
                 else -> byQuery(dsl, checkNotNull(query), settings, nowMs).let { live(dsl, it) }.take(limit)
             }
             val views = ReviewViews(dsl, settings.leechThreshold)
             mapOf(
-                "id" to Uuid7.generate().toString(),
+                "id" to sessionId,
                 "mode" to mode,
                 "items" to views.items(ids, ids.associateWith { mode }, nowMs, scheduler),
             )
