@@ -1,23 +1,26 @@
 # STATE
 Mode: single-session
 Phase: P5 (Struggle + grammar)   Gate: GATE-P2, GATE-P3, GATE-P4 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13 (run 7 in progress)
+Updated: 2026-11-13 (end of orchestrator run 7)
 
 
-## RESUME HERE (updated 2026-11-13, end of orchestrator run 6 — post-crash recovery)
-- Run 6 merged (10): F-18, F-14, T403b (reviewer APPROVE), F-15+F-16, F-19 (new: image passes KOTOBAYA_VERSION build-arg), F-17, T403c+T408a, T404b, T406+T408b, T410. All 5 crashed worktrees salvaged (resumed in place), removed; no worktrees or t/* branches left.
-- **0.1.2 is ready to build** from main (HUMAN_CHECKS "Ready now (run 6)"): blob PUT on SeaweedFS, jpdb vocab 501, health version, dict examples.
-- Nothing in flight. Merge helper: rebase in worktree → make check → ff-merge → git mv HANDOFF.md plan/handoffs/<ID>.md → `git worktree remove -f -f` → branch -D (also the auto `worktree-agent-*` branch) → LOG → push.
-- QUEUE ORDER next run:
-  1. W-5 (server, sonnet, med; all deps merged): wire media/parse/sentences/coverage modules in Main.kt + PARSER_URL in Config.kt; api→worker:8082 NetworkPolicy allow. NOTE: listEntryExamples is implemented twice (F-17 dict/EntryExamples.kt is registered; T408a SentencesModule also provides it) — register only one, and drop wired ops from WiringAuditTest's 501 allowlist. Also start worker parse service (T403b `start_parse_service()`).
-  2. After W-5: P4 complete → `make test` (modules serially; check `df -h /` ≥10 GB first) → GATE-P4 deferred to HUMAN_CHECKS → P5 tickets.
-- RESOURCES (human, after crash): MAX_PARALLEL_WRITERS=3; exactly 1 Gradle-heavy (server/core/android/acceptance) writer at a time; never two Gradle `make check`s concurrently (count orchestrator re-checks and reviewers). Writers often don't see `make check` -q result → orchestrator re-runs it with `; echo exit=$?`.
-- BACKLOG status column is stale for P4 (STATE/LOG are authoritative).
+## RESUME HERE (updated 2026-11-13, end of orchestrator run 7)
+- Run 7 merged (10): W-5, T604 (CLI, new `cli` module), T505a, T501, T505b, T503, T502, C-13, W-6, T506a. P4 closed: `make test` green all modules → GATE-P4 deferred (HUMAN_CHECKS). Phase P5.
+- **DISK: 8.7 GB free (<10 GB floor) — run stopped for this. Do not start Gradle work until the human frees space (HUMAN_CHECKS › Disk space).**
+- 0.1.3 deploy changes listed in HUMAN_CHECKS "Ready now (run 7)" (worker parse Service :8082, PARSER_URL, jpdb-cache PVC, ffmpeg image).
+- Nothing in flight; no worktrees or t/* branches.
+- QUEUE ORDER next run (P5 remaining):
+  1. C-14 (architect/opus, contract: worker-parse rule-test endpoint + validate mode) → T506c (sonnet: worker route + server testGrammarRules + 422 on invalid rules).
+  2. T507 grammar cards (sonnet med; deps T506a ✓, T201 ✓) — write ticket; fold F-20 (grammar seed trigger + dup titles) in or run separately.
+  3. T504 struggle UIs (web/android/widget; deps T502 ✓ T503 ✓ T307 ✓) — consider F-21 (single-word drill source needs C-ticket).
+  4. T508 "saw something weird" (deps T507, T406).
+  5. Then `make test` → GATE-P5 deferred → P6 (T604 already merged).
+- Merge helper unchanged (rebase → make check → ff → git mv HANDOFF.md plan/handoffs/<ID>.md → worktree remove -f -f → branch -D incl. worktree-agent-* → LOG → push).
+- RESOURCES: MAX_PARALLEL_WRITERS=3; 1 Gradle-heavy at a time (count re-checks/reviewers). Python/web/fixtures writers can run beside it.
+- BACKLOG status column is stale for P4/P5 (STATE/LOG are authoritative).
 
 ## Running
-| Ticket | Agent | Attempt | Branch |
-|---|---|---|---|
-| T506a | writer-senior | 2 | t/T506a-grammar-dsl (C-13 follow-through + F-22.1) |
+(none)
 
 ## Parked
 (none)
@@ -43,6 +46,8 @@ Updated: 2026-11-13 (run 7 in progress)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+P5: merged 8 (T501, T502, T503, T505a, T505b, C-13, W-6, T506a) · attempts 10 · escalations 0 · left: C-14, T506c, T507, T504, T508
+P4 DONE: W-5 merged run 7; make test green
 P4: merged 33+/37 (run 6: F-14, F-15, F-16, F-17, F-18, F-19, T403b, T403c, T408a, T404b, T406, T408b, T410; left: W-5) (run 3: T402a, T401a, T411a, T405a, F-7; run 4: T402b, T409, T403a, C-11, F-8, F-9, T407, T404a, D-1, F-11, W-5a, T404c, T412, T413, F-12, F-13, T405b, T411b, F-10) · open high-risk: C-12, T411c, T403b
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
@@ -50,6 +55,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T506a grammar DSL/matcher/test_rules + grammar-detect job (61 rules, real Sudachi); detection in parse/import publishes — reviewer APPROVE x2 (run 7)
 - W-6 grammar-detect enqueue on rule edits, publish keeps parse_status, examples + manual span API (testGrammarRules still 501 → C-14/T506c) (run 7)
 - C-13 `grammar-detect` JobKind (additive; fan-out lock 7033001 race fix) — reviewer APPROVE after 2 attempts (run 7)
 - T502 confusables: server-side suggester (homophone/look-alike/meaning, every 6h via ops) + list/set API (run 7)

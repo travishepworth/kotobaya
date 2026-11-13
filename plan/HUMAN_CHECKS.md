@@ -53,6 +53,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 <!-- orchestrator appends: ADR id, one line, how to reverse. Confirm or reverse each. -->
 
 ## Disk space (2026-11-13) — BLOCKS THE BUILD
+- **Run 7 end: 8.7 GB free on / (below the 10 GB floor) — run stopped dispatching for this reason.** Please free space (Docker anon volumes / build caches, `docker system df`) before the next run.
 - [ ] **URGENT:** root fs hit 100% again during P4 (179 anonymous Docker volumes, ~35 GB, from Testcontainers). Run `docker volume prune -f` (and optionally `docker builder prune -f`, 8 GB), then resume the orchestrator. Consider allowing `docker volume prune` for the orchestrator, or configuring Testcontainers/ryuk to remove volumes.
 - [ ] Root fs at 95% (5.3 GB free); `make test` hit Postgres DiskFull in worker dict tests. 131 unused anonymous Docker volumes (~22 GB, Testcontainers leftovers) — run `docker volume prune -f` (anonymous only; keeps named volumes). Orchestrator's prune was denied by the permission classifier. Merged worktrees were removed 2026-11-13 (10 GB free after). Still recommended: prune before P4 (Testcontainers volumes accumulate per run).
 

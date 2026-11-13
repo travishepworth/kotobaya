@@ -291,3 +291,7 @@
 - media-parse/media-import publish no `grammar_spans` → a re-parse wipes detected spans and new media get none until a rule edit fan-out (V1 comment: replaced "on every (re-)parse"). Fix: call `detect_spans` in media-parse `plan_request`.
 - matcher.py `to_mtoken` drops every `*` in pos (also middle levels) → deep `[pos:A-B-C]` rules mis-match. Drop trailing `*` only / treat as wildcard.
 - matcher backtracking budget exhaustion silently = no match; count and report in job result.
+- F-22 status (run 7): item 1 FIXED in T506a#2 (detection in parse/import plan_request). Items 2–3 (pos `*` levels, budget give-ups) may be partly done — check T506a handoff; give-ups are logged only (result schema forbids extra fields).
+
+## F-23 (from T506a re-review, run 7) — grammar-detect dedupe A→B→A (low, contract)
+- Rules edited A→B→A while the per-media job for B runs: the revert's enqueue hits the running job's key and is dropped → media keeps B spans. Fix via C-ticket: key includes the rules' hlc, or the fan-out clears running per-media keys.
