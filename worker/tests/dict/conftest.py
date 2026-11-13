@@ -56,6 +56,7 @@ def pg_server() -> Iterator[PgServer]:
             "docker", "run", "-d", "--rm", "--name", name,
             "-e", f"POSTGRES_PASSWORD={PG_PASSWORD}",
             "-e", "POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-ctype=C.UTF-8",
+            "--tmpfs", "/var/lib/postgresql/data",
             "-p", "127.0.0.1::5432",
             "postgres:17",
         ],
@@ -88,7 +89,7 @@ def pg_server() -> Iterator[PgServer]:
             c.execute(V1.read_text(encoding="utf-8"))
         yield server
     finally:
-        subprocess.run(["docker", "rm", "-f", name], check=False, capture_output=True)
+        subprocess.run(["docker", "rm", "-f", "-v", name], check=False, capture_output=True)
 
 
 @pytest.fixture

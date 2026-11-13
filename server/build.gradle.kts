@@ -49,7 +49,7 @@ tasks.processResources {
         into("contracts")
     }
     from(rootProject.file("contracts/db")) {
-        include("V1__init.sql")
+        include("V*__*.sql")
         into("db/migration")
     }
 }
