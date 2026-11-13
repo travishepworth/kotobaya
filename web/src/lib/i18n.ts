@@ -11,6 +11,7 @@ const en = {
 	'nav.media': 'Media',
 	'nav.import': 'Import',
 	'nav.struggle': 'Struggle',
+	'nav.stats': 'Stats',
 	'nav.settings': 'Settings',
 	'nav.logout': 'Log out',
 	'nav.main': 'Main navigation',

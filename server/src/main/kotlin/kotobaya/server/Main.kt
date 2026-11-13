@@ -23,6 +23,7 @@ import kotobaya.imports.ImportsModule
 import kotobaya.jobs.JobsModule
 import kotobaya.coverage.CoverageModule
 import kotobaya.struggle.StruggleModule
+import kotobaya.stats.StatsModule
 import kotobaya.media.api.MediaApiModule
 import kotobaya.confusables.ConfusableModule
 import kotobaya.confusables.ConfusableSuggester
@@ -139,7 +140,7 @@ fun composeApp(
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
         ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +
-        kotobaya.tts.TtsModule(db).handlers + StruggleModule(db).handlers + ConfusableModule(db, sync.opApply).handlers +
+        kotobaya.tts.TtsModule(db).handlers + StruggleModule(db).handlers + StatsModule(db, sync.opApply.config.clock).handlers + ConfusableModule(db, sync.opApply).handlers +
         // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
         (SentencesModule(db).handlers - "listEntryExamples") +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())

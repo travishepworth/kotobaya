@@ -22,6 +22,7 @@
 		{ href: '/media', label: 'nav.media' },
 		{ href: '/import', label: 'nav.import' },
 		{ href: '/struggle', label: 'nav.struggle' },
+		{ href: '/stats', label: 'nav.stats' },
 		{ href: '/settings', label: 'nav.settings' }
 	];
 
