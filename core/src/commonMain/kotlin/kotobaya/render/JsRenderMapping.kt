@@ -5,6 +5,7 @@ import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.cards.TemplateInfo
 import kotobaya.contracts.js.JsRenderInput
 import kotobaya.contracts.js.JsRenderedCard
+import kotobaya.contracts.js.JsRenderedField
 import kotobaya.contracts.render.CardSide
 import kotobaya.contracts.render.ClozeSentence
 import kotobaya.contracts.render.DictionaryData
@@ -50,10 +51,16 @@ internal fun JsRenderInput.toRenderInput(): RenderInput {
         },
         cloze = cloze?.let { ClozeSentence(it.sentenceId, it.text, it.start, it.end, it.translation) },
         side = cardSide,
-        options = RenderOptions(furigana, pitch, showMnemonic, mediaUrlTemplate),
+        options = RenderOptions(furigana, pitch, showMnemonic, mediaUrlTemplate, fieldRegions),
         kanji = kanji?.let { KanjiData(it.literal, it.meanings.toList(), it.onyomi.toList(), it.kunyomi.toList(), it.strokeCount) },
     )
 }
 
 internal fun RenderedCard.toJs(): JsRenderedCard =
-    JsRenderedCard(html, audio.toTypedArray(), extraCss, warnings.toTypedArray())
+    JsRenderedCard(
+        html,
+        audio.toTypedArray(),
+        extraCss,
+        warnings.toTypedArray(),
+        fields.map { JsRenderedField(it.key, it.source.wire, it.rendered) }.toTypedArray(),
+    )

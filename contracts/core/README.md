@@ -56,6 +56,7 @@ Package prefix `kotobaya.contracts`.
 | `HotScorer` (`hot/HotScorer.kt`) | SPEC Leeches and hot words | hot-words ticket |
 | `SearchQueryParser`, AST (`search/Search.kt`) + `search.ebnf` | SPEC Public API › Card search language | T108 |
 | `CardRenderer`, `CardClasses` (`render/CardRenderer.kt`) | ADR-002; `note_type.templates`/`css`, `note.fields` comments | T213 |
+| `RenderOptions.fieldRegions`, `RenderedCard.fields`, `RenderedField`, `FieldSource` (`render/CardRenderer.kt`); `JsRenderInput.fieldRegions`, `JsRenderedField` (`js/CoreJs.kt`) | C-19 (field regions for the WYSIWYG note view, FEAT-x); KDoc "Field regions" on `CardRenderer` | C-19 |
 | `CoreJs` + `Js*` classes (`js/CoreJs.kt`) | ADR-002 (search parse/complete, card render, FSRS preview for the web) | T108 + T213 + T107 (each fills its methods) |
 
 **The web entry point.** The first ticket that implements a `CoreJs` method adds, in package
@@ -139,6 +140,22 @@ disabled is never introduced; a deckless NEW card is (ADR-006 tier interleaving)
 `burySiblings`, one build never holds two NEW/REVIEW cards of one note.
 
 UI code (renderer HTML, queue, completions, hot scores) needs tests only where its ticket says so.
+
+**C-19 — field regions** (`core/src/commonTest/kotlin/kotobaya/render/`, run on jvm and js):
+- `RenderGoldens.kt` unchanged and still matched with the option off (its default); `RenderRegionGoldens.kt`
+  holds the same 36 cases with the option on, and equals the plain goldens once the two attributes are removed.
+- Forgery: `data-field` / `data-field-source` / `kb-field-*` in a field value, a custom template or
+  dictionary data never produce or alter a region (`FieldRegionTest`), and the whole hostile-payload
+  suite of `SanitizerTest` runs with the option off and on through `RegionChecker.assertConsistent`.
+- `fields`: sources (note wins, dictionary, kanji, empty), order of first reference, hidden sections,
+  `{{FrontSide}}`, values that sanitise to nothing, placeholders inside template attributes.
+
+How a host uses it (UI-WEB): render with `fieldRegions: true`; for each `[data-field]` element show
+an edit affordance, marked "overridden" when `data-field-source="note"`; the editor's initial text is
+`note.fields[key]` (empty for dictionary/kanji values), saving emits `note.updated` with that key,
+"reset to dictionary" clears the field (same op). Fields with `rendered: false` have no element to attach to: list
+them next to the card (filtered by `noteType.fieldKeys`) so they can be added. Never parse a region's
+text back into a field value.
 
 ## Follow-ups outside this ticket's paths
 

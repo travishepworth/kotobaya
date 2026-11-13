@@ -68,11 +68,24 @@ class SanitizerTest {
         "<div",
         "<img src=\"blob:$hash",
         "</div></span></ruby>",
+        // C-19: a value or template must not be able to write a field region
+        "<span class=\"kb-field-back\" data-field=\"back\" data-field-source=\"dictionary\">x</span>",
+        "</span><span data-field=\"front\" data-field-source=\"kanji\">x",
+        "<div data-field=back>x</div>",
         "0",
     )
 
-    private fun options(furigana: Boolean, media: String = RenderFixtures.MEDIA) =
-        RenderOptions(furigana = furigana, pitch = true, showMnemonic = true, mediaUrlTemplate = media)
+    private fun options(furigana: Boolean, media: String = RenderFixtures.MEDIA, regions: Boolean = false) =
+        RenderOptions(furigana = furigana, pitch = true, showMnemonic = true, mediaUrlTemplate = media, fieldRegions = regions)
+
+    /** Strict allowlist check plus the C-19 region invariants, with the option off and on. */
+    private fun assertSafeWithAndWithoutRegions(input: RenderInput, context: String) {
+        for (regions in listOf(false, true)) {
+            val card = DefaultCardRenderer.render(input.copy(options = input.options.copy(fieldRegions = regions)))
+            HtmlChecker.assertSafe(card.html, RenderFixtures.MEDIA, "$context / regions=$regions")
+            RegionChecker.assertConsistent(card, regions, "$context / regions=$regions")
+        }
+    }
 
     private fun customType(front: String, back: String) = BuiltInNoteTypes.CUSTOM.info.copy(
         templates = listOf(TemplateInfo("basic", true, front, back)),
@@ -92,7 +105,7 @@ class SanitizerTest {
                     side = side,
                     options = options(furigana),
                 )
-                HtmlChecker.assertSafe(DefaultCardRenderer.render(input).html, RenderFixtures.MEDIA, "$context / $side / furigana=$furigana")
+                assertSafeWithAndWithoutRegions(input, "$context / $side / furigana=$furigana")
             }
         }
     }
@@ -119,7 +132,7 @@ class SanitizerTest {
                             side = side,
                             options = options(true),
                         )
-                        HtmlChecker.assertSafe(DefaultCardRenderer.render(input).html, RenderFixtures.MEDIA, "${type.name}/${t.kind}: $v")
+                        assertSafeWithAndWithoutRegions(input, "${type.name}/${t.kind}: $v")
                     }
                 }
             }

@@ -94,6 +94,24 @@ export interface RenderOptions {
 	showMnemonic: boolean;
 	/** e.g. `/api/v1/blobs/{sha256}`. */
 	mediaUrlTemplate: string;
+	/**
+	 * Field regions (C-19, WYSIWYG note view): every field-value wrapper span gets
+	 * `data-field="<key>"` and `data-field-source="note|dictionary|kanji"`, and `RenderedCard.fields`
+	 * is filled. Omitted or false: the review output, unchanged.
+	 */
+	fieldRegions?: boolean;
+}
+
+/** `note`: the note's own value; `dictionary` / `kanji`: filled from reference data; `empty`: nothing to show. */
+export type FieldSource = 'note' | 'dictionary' | 'kanji' | 'empty';
+
+/** One field the rendered side refers to (core `RenderedField`). */
+export interface RenderedField {
+	/** `note.fields` key, e.g. `keyword`. */
+	key: string;
+	source: FieldSource;
+	/** True iff `html` holds at least one `[data-field="<key>"]` region. */
+	rendered: boolean;
 }
 
 export interface RenderInput {
@@ -119,6 +137,12 @@ export interface RenderedCard {
 	extraCss: string;
 	/** Warning i18n keys. */
 	warnings: string[];
+	/**
+	 * With `options.fieldRegions`: the fields this side refers to (also ones in hidden sections), one
+	 * entry per key in template order; otherwise empty. A region's text is the rendered form of the
+	 * value: an editor loads `note.fields[key]`, never the region's content.
+	 */
+	fields: RenderedField[];
 }
 
 export function renderCard(input: RenderInput): RenderedCard {
@@ -152,10 +176,17 @@ export function renderCard(input: RenderInput): RenderedCard {
 			input.options.pitch,
 			input.options.showMnemonic,
 			input.options.mediaUrlTemplate,
-			k ? new JsKanji(k.literal, [...k.meanings], [...k.onyomi], [...k.kunyomi], k.strokeCount) : null
+			k ? new JsKanji(k.literal, [...k.meanings], [...k.onyomi], [...k.kunyomi], k.strokeCount) : null,
+			input.options.fieldRegions ?? false
 		)
 	);
-	return { html: out.html, audio: [...out.audio], extraCss: out.extraCss, warnings: [...out.warnings] };
+	return {
+		html: out.html,
+		audio: [...out.audio],
+		extraCss: out.extraCss,
+		warnings: [...out.warnings],
+		fields: out.fields.map((f) => ({ key: f.key, source: f.source as FieldSource, rendered: f.rendered }))
+	};
 }
 
 /* ---------- search ---------- */

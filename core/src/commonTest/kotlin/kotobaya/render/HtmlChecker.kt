@@ -18,6 +18,7 @@ object HtmlChecker {
     private val ATTR = Regex(""" ([a-z-]+)="([^"<>]*)"""")
     private val SHA = Regex("[0-9a-f]{64}")
     private val GENERATED_CLASS = Regex("kb-field-[a-z][a-z0-9_]*|kb-kind-[a-z][a-z0-9_]*|kb-(vocab|kanji|phrase|grammar|sentence|custom)")
+    private val REGION = Regex("""<span class="kb-field-([a-z][a-z0-9_]*)" data-field="\1" data-field-source="(note|dictionary|kanji)">""")
     private val USER_CLASS = Regex("user-[A-Za-z0-9_-]+")
 
     fun assertSafe(html: String, mediaTemplate: String, context: String = html) {
@@ -57,6 +58,8 @@ object HtmlChecker {
                     }
                     "alt" -> assertTrue(name == "img", "alt on $name: $context")
                     "data-kb-audio" -> assertTrue(name == "button" && SHA.matches(value), "data-kb-audio=$value: $context")
+                    // C-19 regions: only in the renderer's own wrapper start tag, in its exact form
+                    "data-field", "data-field-source" -> assertTrue(REGION.matches(m.value), "forged region ${m.value}: $context")
                     else -> fail("attribute $attr for: $context\n$html")
                 }
             }

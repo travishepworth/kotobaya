@@ -236,6 +236,19 @@ public class JsRenderInput(
     public val mediaUrlTemplate: String,
     /** `RenderInput.kanji` or null (C-2); the web fills it from `QueueItem.kanji`. */
     public val kanji: JsKanji? = null,
+    /** `RenderOptions.fieldRegions` (C-19); default off = pre-C-19 output. */
+    public val fieldRegions: Boolean = false,
+)
+
+/** `RenderedField` (C-19). */
+@JsExport
+public class JsRenderedField(
+    /** Field key, e.g. `keyword`. */
+    public val key: String,
+    /** `FieldSource.wire`: `note`, `dictionary`, `kanji` or `empty`. */
+    public val source: String,
+    /** True iff the HTML contains a `data-field` region for this key. */
+    public val rendered: Boolean,
 )
 
 /** `RenderedCard`. */
@@ -249,6 +262,8 @@ public class JsRenderedCard(
     public val extraCss: String,
     /** Warning i18n keys. */
     public val warnings: Array<String>,
+    /** `RenderedCard.fields` (C-19); empty unless `JsRenderInput.fieldRegions`. */
+    public val fields: Array<JsRenderedField> = emptyArray(),
 )
 
 /** `CardSchedule` (the card's cache columns as the API returns them). */

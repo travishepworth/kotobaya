@@ -52,3 +52,32 @@
   kanji ordering for mined cards and is `BEFORE` when `scheduler.kanji_before_vocab` is true.
   Decks without their own `add_kanji` get the same fallback, but a deck's own setting, even `off`,
   always wins. SCHEMA.md 6.2 has the rules.
+
+## C-19 changes (additive): field regions for the WYSIWYG note view
+- **What.** New render option `fieldRegions` (default off). On, the span the renderer already puts
+  around every field value also says which field it is and where the value came from:
+  `<span class="kb-field-keyword" data-field="keyword" data-field-source="kanji">`. Sources are
+  `note` (the user's own value), `dictionary`, `kanji`. The result also gets `fields`: every field
+  the card side refers to, its source (or `empty`), and whether it is visible in the HTML.
+- **Off means untouched.** With the option off the HTML is byte-for-byte what it was; the 36 existing
+  goldens are unchanged, and 36 new ones cover the option on. Review screens keep it off.
+- **Cannot be forged.** The sanitiser allowlist did not change at all. The attributes are written by
+  the renderer after sanitising, so a field value, a custom template or dictionary text that contains
+  `data-field` just loses it.
+
+Rejected:
+- Teaching the sanitiser to keep `data-field` (as the ticket's wording suggests). Then note content
+  could mark itself as another field. Not needed: the wrapper never passes through the sanitiser.
+- A new wrapper element. The `kb-field-<key>` span was already there; reusing it keeps layout and CSS identical.
+- Always emitting the attributes. It would change every golden and the review HTML for no benefit.
+- Returning text offsets instead of attributes. Offsets break as soon as the host touches the DOM.
+
+Worth a second look:
+1. **Empty fields get no box in the card.** An empty field renders nothing, as before, so there is
+   nothing to click. Instead `fields` lists it (`empty`, not rendered) and the web shows an "add"
+   row beside the card. The alternative, an empty placeholder span inside the card, would shift
+   layout and show up inside hidden sections.
+2. **`fields` includes fields inside hidden sections** (for example `notes` when it is empty). That
+   is what lets the web offer them, but it also lists keys a custom template only tests with `{{#key}}`.
+3. **Mnemonic, pitch and cloze sentence are not regions.** They are not note fields. If the note
+   view should edit the mnemonic in place, that is a small follow-up (a marker on `kb-mnemonic`).
