@@ -61,6 +61,21 @@ class NamedChaosTest {
         assertEquals(s.sim.ledger.expected(), sets, "every review feeds a survivor's schedule")
     }
 
+    /** The oracle itself: a review silently dropped from one replica is reported as lost and as a divergence. */
+    @Test
+    fun oracleCatchesALostReview() = Story().use { s ->
+        val (_, cards) = s.word(s.a, 1_358_280L)
+        s.tick(MINUTE)
+        val r = s.review(s.a, cards.getValue("meaning"))
+        s.syncOk(s.a)
+        s.syncOk(s.b)
+        assertEquals(emptyList(), s.sim.check())
+        s.b.store.transaction { it.learning.delete(LearningTable.REVIEW_LOG, listOf(JsonString(r.p("id")!!))) }
+        val v = s.sim.check()
+        assertTrue(v.any { it.startsWith("LOST REVIEWS on dev1") }, "$v")
+        assertTrue(v.any { it.startsWith("device dev1 differs") }, "$v")
+    }
+
     @Test
     fun clockBehindWeek_guardedClientMintsNothingAndLosesNothing() = Story().use { s ->
         val (_, cards) = s.word(s.a, 1_358_280L)
