@@ -23,6 +23,7 @@ Updated: 2026-11-13 (orchestrator run 9 in progress)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T508b | writer | 1 | t/T508b-grammar-capture-android | run 9 |
+| F-22 | writer | 1 | t/F-22-grammar-matcher | run 9 |
 
 ## Parked
 (none)
