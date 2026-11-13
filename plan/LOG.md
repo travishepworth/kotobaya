@@ -598,3 +598,6 @@
 2026-11-13T02:42:11Z - HANDOVER: disk full blocks all checks; nothing in flight
 2026-11-13T03:11:14Z T402b+T409 CHECK_GREEN worker; MERGE 1 attempt
 2026-11-13T03:13:15Z T403a CHECK_GREEN worker; REVIEW_APPROVE (5 minors → FOLLOWUPS); MERGE 1 attempt
+2026-11-13T03:17:51Z C-11 CHECK_GREEN contracts; REVIEW_CHANGES reviewer+architect (1 major: lock-order deadlock §5.4); DISPATCH attempt 2 architect(opus)
+2026-11-13T03:17:51Z T404c CHECK_RED server: OOM in test JVM under concurrent load (triage: flaky-infra); re-run when idle
+2026-11-13T03:17:51Z F-8+F-9 HANDOFF DONE (root cause: worker dict conftest docker rm without -v); checks re-running

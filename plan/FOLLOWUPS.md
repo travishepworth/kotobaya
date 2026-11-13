@@ -256,3 +256,8 @@
 - parse/normalize.py:405 is_kana(prev) includes ・/゠ and maps ‐/− to ー after them; use hiragana/katakana/ー check.
 - parse/segment.py:505 ASCII 名詞 lemma lowercased by Sudachi (A4サイズ → a); keep width-folded case.
 - W-5: sudachidict-full is a large runtime dep of the worker image — size the Docker image accordingly.
+
+## C-11 (reviewer/architect minors, 2026-11-13)
+- MEDIA_PIPELINE.md §5.4:272 — re-sending the same resolution after a permanently failed remap returns jobs: []; enqueue remap when the media's latest remap job failed.
+- MEDIA_PIPELINE.md §5.3 — a `mapped` correction whose entry_seq is later retired by dict-refresh: treat as unresolved at import time or list in `unmapped`.
+- (if not taken in C-11 attempt 2) stale-heartbeat requeue fencing (FOR UPDATE + status/locked_by guard); reparseMedia `parsing` version read under 7033001.
