@@ -1,0 +1,64 @@
+[
+ {
+  "kind": "episode",
+  "title": "sample",
+  "sentences": [
+   {
+    "text": "おはよう。",
+    "start_ms": 1000,
+    "end_ms": 3500,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "今日もいい天気だね。",
+    "start_ms": 1000,
+    "end_ms": 3500,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "うん、散歩に行こうか。",
+    "start_ms": 4000,
+    "end_ms": 6200,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "その前に、朝ご飯を食べなきゃ。",
+    "start_ms": 7100,
+    "end_ms": 9800,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "お腹がすいた。",
+    "start_ms": 7100,
+    "end_ms": 9800,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "（猫の鳴き声）",
+    "start_ms": 10500,
+    "end_ms": 12000,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "あ、猫が窓の外を見てる。",
+    "start_ms": 12500,
+    "end_ms": 15000,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "じゃあ、早く行こう！",
+    "start_ms": 20000,
+    "end_ms": 22400,
+    "location": null,
+    "reading_hints": []
+   }
+  ]
+ }
+]

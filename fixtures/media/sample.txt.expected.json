@@ -1,0 +1,77 @@
+[
+ {
+  "kind": "chapter",
+  "title": "第一章　朝",
+  "sentences": [
+   {
+    "text": "おはよう。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "今日もいい天気だね。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "「散歩に行こうか。」",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "「いいね」と彼は言った。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "その前に、朝ご飯を食べなきゃ。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "お腹がすいた。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "猫が窓の外を見てる。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   }
+  ]
+ },
+ {
+  "kind": "chapter",
+  "title": "第二章 駅へ",
+  "sentences": [
+   {
+    "text": "駅まで歩いて十分かかるよ。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "「じゃあ、早く行こう！」",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   }
+  ]
+ }
+]

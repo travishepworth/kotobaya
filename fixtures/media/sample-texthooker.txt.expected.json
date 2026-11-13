@@ -1,0 +1,43 @@
+[
+ {
+  "kind": "whole",
+  "title": "sample-texthooker",
+  "sentences": [
+   {
+    "text": "おはよう。今日もいい天気だね。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "うん、散歩に行こうか。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "その前に、朝ご飯を食べなきゃ。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "お腹がすいた。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   },
+   {
+    "text": "おはよう。今日もいい天気だね。",
+    "start_ms": null,
+    "end_ms": null,
+    "location": null,
+    "reading_hints": []
+   }
+  ]
+ }
+]
