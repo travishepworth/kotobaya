@@ -19,7 +19,7 @@ Updated: RUN17
 | UI-FOUND-WEB | writer-senior | 1 | t/UI-FOUND-WEB-state-harness | RUN17 |
 
 ## Queued
-UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-DS + UI-FOUND-APP) · UI-FOUND-APP (after BUG-8) · UI-DS
+UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-DS + UI-FOUND-APP)
 
 ## Ready for review / In review
 
