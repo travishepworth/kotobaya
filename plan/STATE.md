@@ -16,13 +16,12 @@ Updated: 2026-11-13 (orchestrator run 3)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | C-11 | architect (opus) | 1 | t/C-11-media-pipeline | run 3 |
-| F-7 | writer (sonnet) | 1 | t/F-7-parse-fixture-200 | run 3 |
+| T403a | writer-senior (opus) | 1 | t/T403a-parser-segmentation | run 3 |
 | T404c | writer-senior (opus) | 1 | t/T404c-coverage-engine | run 3 |
 | T402b+T409 | writer (sonnet) | 1 | t/T402b+T409-extract-audio | run 3 |
-| T405a | writer (sonnet) | 1 | t/T405a-media-library | run 3 |
 
 ## Queued (ready; waiting for a slot)
-- none (next unlocks: C-11 → T404a, T407, T411b, T411c, C-12; F-7 → T403a)
+- none (next unlocks: C-11 → T404a, T407, T411b, T411c, C-12)
 
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
@@ -45,13 +44,15 @@ Updated: 2026-11-13 (orchestrator run 3)
 - none blocking. See plan/HUMAN_CHECKS.md.
 
 ## Phase stats
-P4: merged 3/25 (T402a, T401a, T411a) · attempts 8 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
+P4: merged 5/25 (T402a, T401a, T411a, T405a, F-7) · attempts 9 · escalations 0. Risk high (reviewer [+architect for contracts/sync]): C-11, C-12, T403a, T403b, T411c.
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
 P3 DONE: merged 25/25 (22 planned leaf tickets + W-4/F-5/F-6) · attempts 36 · escalations 0 (make test green per module 2026-11-13 after env DiskFull) · attempts 35 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-7 parse fixture 200 sentences + JMdict_parse_extra (hand-authored segmentation)
+- T405a web media library + import wizard (UUIDv7 import_id retry)
 - T411a blobs API (BlobsModule PUT/GET/query, S3BlobStore + in-memory; not wired until W-5)
 - T401a jpdb deck client (Pages + API source, disk cache, rate limit; API layout assumed → HUMAN_CHECKS)
 - T402a extractors SRT/ASS/VTT/TXT/text-hooker + sentence splitter

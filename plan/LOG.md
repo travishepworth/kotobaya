@@ -589,3 +589,6 @@
 2026-11-13T02:22:39Z T402b+T409 DISPATCH writer(sonnet) batched; T405a DISPATCH writer(sonnet)
 2026-11-13T02:22:53Z T401a CHECK_GREEN worker; MERGE 1 attempt
 2026-11-13T02:23:05Z T411a CHECK_GREEN server; MERGE 1 attempt (W-5 wires it)
+2026-11-13T02:26:01Z T405a CHECK_GREEN web; MERGE 1 attempt
+2026-11-13T02:26:01Z F-7 CHECK_GREEN worker+fixtures/tools; MERGE 1 attempt (hand-authored segmentation; spot-check → HUMAN_CHECKS)
+2026-11-13T02:26:13Z T403a DISPATCH writer-senior(opus)

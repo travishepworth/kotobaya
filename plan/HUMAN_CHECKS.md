@@ -81,6 +81,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
 - [ ] **P3:** pair the phone; review offline (airplane mode) for a week; sync; confirm review counts match on web and phone.
 - [ ] **P3:** widget sizes, due-count notification, Quick Settings tile, share-to-app, Yomitan via on-device AnkiConnect.
 - [ ] **P4:** import two shows you have on jpdb; compare coverage numbers (expect within ~3 points).
+- [ ] **F-7:** spot-check a few of the 180 new hand-authored sentences in fixtures/parse/sentences.json (segmentation/readings; Sudachi was not run).
 - [ ] **P4 (Sudachi full dict):** run the parser agreement test with the full Sudachi dictionary installed (ADR-019).
 - [ ] **P4:** import one of your own files (subtitles or EPUB); fix a mis-parsed word in the reader.
 - [ ] **P5:** hot words and leeches look sensible after a week of data; grammar cards appear from your own sentences.
