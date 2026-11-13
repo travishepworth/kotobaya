@@ -117,3 +117,21 @@ has all.yaml "Content-Security-Policy, value: \"sandbox; default-src 'none'\""
   || { echo "FAIL: values.yaml must not carry secret values" >&2; exit 1; }
 bash ../backup/check.sh
 echo "helm check OK"
+
+# VOICEVOX (BUG-4): runs the engine directly (the image's gosu entrypoint fails as non-root); the per-component
+# readOnlyRootFilesystem value wins over the global container context, for both true and false.
+for ro in true false; do
+  render "vv-$ro.yaml" --set voicevox.enabled=true,voicevox.readOnlyRootFilesystem=$ro
+  has "vv-$ro.yaml" 'command: \[/opt/python/bin/python3, ./run.py\]'
+  lacks "vv-$ro.yaml" 'gosu'
+  python3 - "$tmp/vv-$ro.yaml" "$ro" <<'PY'
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(open(sys.argv[1])) if d]
+d = next(d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"].endswith("-voicevox"))
+c = d["spec"]["template"]["spec"]["containers"][0]
+sc = c["securityContext"]
+assert c["command"][0] == "/opt/python/bin/python3", c["command"]
+assert d["spec"]["template"]["spec"]["securityContext"]["runAsNonRoot"] is True
+assert sc["readOnlyRootFilesystem"] is (sys.argv[2] == "true"), sc
+PY
+done

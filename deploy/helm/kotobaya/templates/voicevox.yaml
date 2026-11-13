@@ -2,7 +2,7 @@
 {{- $sel := dict "root" . "component" "voicevox" }}
 {{- /* VOICEVOX engine (T601), CPU image. Cluster-internal; only the worker may reach it (networkpolicy.yaml).
        The root filesystem stays writable: the engine writes caches and user settings under its home directory
-       and the image does not document a read-only mode. ~/.local is an emptyDir instead, so nothing persists. */}}
+       and the image does not document a read-only mode. ~/.local/share is an emptyDir instead (NOT all of ~/.local: the engine python packages live in ~/.local/lib), so nothing persists. */}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +26,11 @@ spec:
         - name: voicevox
           image: {{ .Values.voicevox.image }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
-          securityContext: {{- toYaml (merge (dict "readOnlyRootFilesystem" .Values.voicevox.readOnlyRootFilesystem) .Values.containerSecurityContext) | nindent 12 }}
+          # The image CMD is a user-switching wrapper (python3 run.py ...), which cannot switch users as non-root with all caps dropped.
+          # Run the engine directly (same args as the image CMD, WorkingDir /opt/voicevox_engine).
+          command: [/opt/python/bin/python3, ./run.py]
+          args: [--voicelib_dir, /opt/voicevox_core/, --runtime_dir, /opt/onnxruntime/lib, --host, 0.0.0.0, --port, {{ .Values.voicevox.port | quote }}]
+          securityContext: {{- toYaml (set (deepCopy .Values.containerSecurityContext) "readOnlyRootFilesystem" .Values.voicevox.readOnlyRootFilesystem) | nindent 12 }}
           ports: [{ name: http, containerPort: {{ .Values.voicevox.port }} }]
           readinessProbe:
             httpGet: { path: /version, port: http }
@@ -37,7 +41,7 @@ spec:
             failureThreshold: 6
           resources: {{- toYaml .Values.voicevox.resources | nindent 12 }}
           volumeMounts:
-            - { name: local, mountPath: /home/user/.local }
+            - { name: local, mountPath: /home/user/.local/share }
             - { name: tmp, mountPath: /tmp }
       volumes:
         - { name: local, emptyDir: {} }
