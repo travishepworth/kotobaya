@@ -10,11 +10,13 @@
 		sheet?: boolean;
 		/** Renders the panel in the page flow (styleguide, docs) instead of as a modal. */
 		inline?: boolean;
+		/** lg: forms and editors (40 rem wide). */
+		size?: 'md' | 'lg';
 		onclose?: () => void;
 		children: Snippet;
 		actions?: Snippet;
 	}
-	let { open = $bindable(false), title, sheet = false, inline = false, onclose, children, actions }: Props = $props();
+	let { open = $bindable(false), title, sheet = false, inline = false, size = 'md', onclose, children, actions }: Props = $props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
 	const uid = $props.id();
@@ -46,7 +48,7 @@
 {:else}
 	<dialog
 		bind:this={dialog}
-		class="panel"
+		class="panel {size}"
 		class:sheet
 		aria-labelledby="dlg-{uid}"
 		onclose={() => {
@@ -74,6 +76,10 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+	}
+	.panel.lg {
+		width: min(40rem, calc(100vw - 2 * var(--kb-space-4)));
+		max-height: min(88dvh, 56rem);
 	}
 	dialog.panel:not([open]) {
 		display: none;

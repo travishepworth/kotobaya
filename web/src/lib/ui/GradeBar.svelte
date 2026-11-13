@@ -1,32 +1,41 @@
 <script lang="ts">
 	import Kbd from './Kbd.svelte';
 	import { ut } from './messages';
-	import { GRADES, type Grade } from './kinds';
+	import { GRADES, type Grade, type GradeOption } from './kinds';
 
 	interface Props {
 		/** Interval previews per grade ("<1m", "2d"); from the state layer (core previewIntervals). */
-		intervals: Record<Grade, string>;
-		ongrade: (g: Grade) => void;
+		intervals?: Record<Grade, string>;
+		/** Explicit buttons (5-button grading, drills). Overrides `intervals`. */
+		options?: GradeOption[];
+		ongrade: (g: Grade, index: number) => void;
 		disabled?: boolean;
 		/** Shows 1-4 key hints (desktop; hidden on touch-only devices regardless). */
 		keys?: boolean;
 	}
-	let { intervals, ongrade, disabled = false, keys = true }: Props = $props();
+	let { intervals, options, ongrade, disabled = false, keys = true }: Props = $props();
+
+	const list = $derived<GradeOption[]>(
+		options ?? GRADES.map((g) => ({ id: g, label: ut(`ui.grade.${g}`), tone: g, interval: intervals?.[g] }))
+	);
+	// The default answer (Good / Okay) carries the full outline.
+	const defaultIndex = $derived(list.findIndex((o) => o.tone === 'good'));
 </script>
 
 <div class="bar">
-<div class="grades" role="group" aria-label={ut('ui.grades')}>
-	{#each GRADES as g, i (g)}
+<div class="grades" class:five={list.length === 5} role="group" aria-label={ut('ui.grades')}>
+	{#each list as o, i (o.id)}
 		<button
 			type="button"
-			class="grade {g}"
+			class="grade {o.tone}"
+			class:default={i === defaultIndex}
 			{disabled}
-			onclick={() => ongrade(g)}
+			onclick={() => ongrade(o.tone, i)}
 			aria-keyshortcuts={String(i + 1)}
-			aria-label="{ut(`ui.grade.${g}`)}, {intervals[g]}"
+			aria-label={o.interval ? `${o.label}, ${o.interval}` : o.label}
 		>
-			<span class="name">{ut(`ui.grade.${g}`)}</span>
-			<span class="interval">{intervals[g]}</span>
+			<span class="name">{o.label}</span>
+			{#if o.interval}<span class="interval">{o.interval}</span>{/if}
 			{#if keys}<span class="key"><Kbd keys={String(i + 1)} /></span>{/if}
 		</button>
 	{/each}
@@ -78,8 +87,11 @@
 		--bg: var(--kb-color-grade-easy-container);
 	}
 	/* Good is the default answer: it carries a full outline. */
-	.good {
+	.default {
 		border-color: var(--fg);
+	}
+	.five {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
 	}
 	.grade:hover:not(:disabled) {
 		background: color-mix(in oklab, var(--bg), var(--fg) 12%);
@@ -115,6 +127,18 @@
 	@container (max-width: 24rem) {
 		.grades {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	/* Five buttons when narrow: the two "fail" answers on top, the other three below. */
+	@container (max-width: 34rem) {
+		.five {
+			grid-template-columns: repeat(6, minmax(0, 1fr));
+		}
+		.five .grade {
+			grid-column: span 2;
+		}
+		.five .grade:nth-child(-n + 2) {
+			grid-column: span 3;
 		}
 	}
 	/* Key hints: keyboard devices only, and only when each button has room for them. */

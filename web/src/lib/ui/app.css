@@ -1,0 +1,87 @@
+/*
+ * App-wide base styles on the design tokens (docs/DESIGN.md). Imported once by the root layout, after tokens.css,
+ * so these win over the legacy POC base rules that tokens.css still carries.
+ */
+html {
+	font-family: var(--kb-family-sans);
+	font: var(--kb-type-body);
+	background: var(--kb-color-bg);
+	color: var(--kb-color-text);
+	-webkit-text-size-adjust: 100%;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	/* The page never scrolls sideways; wide things (tables, code) scroll in their own box. */
+	overflow-x: clip;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+}
+
+/* The card stylesheet still reads the legacy family variable: point it at the design-system stack. */
+:root {
+	--kb-font: var(--kb-family-sans);
+	--kb-font-serif: var(--kb-family-serif);
+}
+
+a {
+	color: var(--kb-color-link);
+	text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+	outline: 2px solid var(--kb-color-focus);
+	outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+	margin: 0;
+}
+
+/* Japanese text: Japanese glyphs (lang), phrase-aware line breaks, kana-friendly leading. */
+:lang(ja) {
+	font-family: var(--kb-family-sans);
+	word-break: auto-phrase;
+	line-break: strict;
+}
+
+ruby {
+	ruby-align: center;
+}
+
+rt {
+	font-size: max(calc(var(--kb-ruby-scale) * 1em), var(--kb-ruby-min));
+}
+
+::selection {
+	background: var(--kb-color-highlight);
+	color: var(--kb-color-on-highlight);
+}
+
+/* Screen-reader-only text. */
+.kb-sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* Numbers that line up. */
+.kb-num {
+	font-variant-numeric: tabular-nums;
+}

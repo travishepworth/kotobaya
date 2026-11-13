@@ -1,31 +1,45 @@
 <script lang="ts">
 	import '../../../assets/card/card.css';
 	import '../lib/tokens.css';
+	import '../lib/ui/app.css';
+	import '../lib/ui/fonts';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Toaster from '../lib/components/Toaster.svelte';
-	import { t, type MessageKey } from '../lib/i18n';
+	import AppShell from '../lib/ui/AppShell.svelte';
+	import IconButton from '../lib/ui/IconButton.svelte';
+	import ToastHost from '../lib/ui/ToastHost.svelte';
+	import type { NavItem } from '../lib/ui/kinds';
+	import { ut } from '../lib/ui/messages';
+	import { initTheme } from '../lib/ui/theme.svelte';
 	import { logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
 
 	let { children } = $props();
 
-	const nav: { href: string; label: MessageKey }[] = [
-		{ href: '/', label: 'nav.home' },
-		{ href: '/review', label: 'nav.review' },
-		{ href: '/dictionary', label: 'nav.dictionary' },
-		{ href: '/notes', label: 'nav.notes' },
-		{ href: '/cards', label: 'nav.cards' },
-		{ href: '/decks', label: 'nav.decks' },
-		{ href: '/note-types', label: 'nav.noteTypes' },
-		{ href: '/media', label: 'nav.media' },
-		{ href: '/import', label: 'nav.import' },
-		{ href: '/struggle', label: 'nav.struggle' },
-		{ href: '/stats', label: 'nav.stats' },
-		{ href: '/settings', label: 'nav.settings' }
+	// Before the first render of any screen: the stored light/dark choice.
+	initTheme();
+
+	const nav: NavItem[] = [
+		{ href: '/', label: ut('app.nav.home'), icon: 'home' },
+		{ href: '/review', label: ut('app.nav.review'), icon: 'review' },
+		{ href: '/dictionary', label: ut('app.nav.dictionary'), icon: 'dictionary' },
+		{ href: '/cards', label: ut('app.nav.browse'), icon: 'browse' },
+		{ href: '/decks', label: ut('app.nav.decks'), icon: 'decks' },
+		{ href: '/struggle', label: ut('app.nav.struggle'), icon: 'struggle' },
+		{ href: '/stats', label: ut('app.nav.stats'), icon: 'stats' },
+		{ href: '/media', label: ut('app.nav.media'), icon: 'media' },
+		{ href: '/import', label: ut('app.nav.import'), icon: 'import', secondary: true },
+		{ href: '/note-types', label: ut('app.nav.noteTypes'), icon: 'noteTypes', secondary: true },
+		{ href: '/settings', label: ut('app.nav.settings'), icon: 'settings', secondary: true }
 	];
 
-	const onLogin = $derived(page.url.pathname.startsWith('/login'));
+	const path = $derived(page.url.pathname);
+	const onLogin = $derived(path.startsWith('/login'));
+	// The styleguide frames its own shells; it renders bare.
+	const bare = $derived(path.startsWith('/styleguide'));
+	const immersive = $derived(path === '/review' || path.startsWith('/review/'));
+	// Cards and Notes are one destination (Browse).
+	const current = $derived(path.startsWith('/notes') ? '/cards' : path);
 
 	// Check the cookie once at startup (the status never returns to 'unknown').
 	onMount(() => {
@@ -49,74 +63,64 @@
 		if (session.status !== 'in') return;
 		return watchConnection();
 	});
-
-	async function doLogout(): Promise<void> {
-		await logout();
-	}
 </script>
 
-{#if session.status === 'in'}
-	<header class="bar">
-		<a class="brand" href="/">{t('app.name')}</a>
-		<nav aria-label={t('nav.main')}>
-			{#each nav as item (item.href)}
-				<a
-					href={item.href}
-					aria-current={page.url.pathname === item.href ? 'page' : undefined}>{t(item.label)}</a
-				>
-			{/each}
-		</nav>
-		<button class="kb-btn kb-btn-quiet" type="button" onclick={doLogout}>{t('nav.logout')}</button>
-	</header>
-	<main>{@render children()}</main>
+{#snippet shellActions()}
+	<IconButton icon="logout" label={ut('app.logout')} onclick={() => void logout()} />
+{/snippet}
+
+{#if session.status === 'in' && bare}
+	{@render children()}
+{:else if session.status === 'in'}
+	<AppShell items={nav} {current} brand={ut('app.name')} {immersive} actions={shellActions}>
+		<main id="main">{@render children()}</main>
+	</AppShell>
 {:else if onLogin}
-	<main>{@render children()}</main>
+	<main id="main">{@render children()}</main>
 {:else}
-	<p class="loading">{t('app.loading')}</p>
+	<div class="boot" role="status">
+		<span class="seal" aria-hidden="true">言</span>
+		<span class="kb-sr">{ut('app.loading')}</span>
+	</div>
 {/if}
 
-<Toaster />
+<ToastHost aboveNav={session.status === 'in' && !immersive && !bare} />
 
 <style>
-	.bar {
-		display: flex;
-		align-items: center;
-		gap: var(--kb-space-4);
-		padding: var(--kb-space-2) var(--kb-space-4);
-		background: var(--kb-surface);
-		border-bottom: 1px solid var(--kb-border);
-		position: sticky;
-		top: 0;
-	}
-	.brand {
-		font-weight: 700;
-		color: var(--kb-accent);
-		text-decoration: none;
-	}
-	nav {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--kb-space-3);
-		flex: 1;
-	}
-	nav a {
-		text-decoration: none;
-		color: var(--kb-text-muted);
-		padding: var(--kb-space-1) var(--kb-space-2);
-		border-radius: var(--kb-radius);
-	}
-	nav a[aria-current='page'] {
-		color: var(--kb-text);
-		background: var(--kb-surface-2);
-	}
 	main {
-		max-width: 64rem;
-		margin: 0 auto;
-		padding: var(--kb-space-4);
+		display: block;
+		min-height: 100%;
 	}
-	.loading {
-		text-align: center;
-		color: var(--kb-text-muted);
-		margin-top: 20vh;
+	.boot {
+		display: grid;
+		place-items: center;
+		min-height: 100dvh;
+	}
+	.seal {
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		border-radius: var(--kb-radius-md);
+		background: var(--kb-color-brand);
+		color: var(--kb-color-surface);
+		font: 600 1.75rem/1 var(--kb-family-serif);
+		animation: breathe 1.6s var(--kb-ease-standard) infinite alternate;
+	}
+	@keyframes breathe {
+		from {
+			opacity: 0.55;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.seal {
+			animation: none;
+		}
+	}
+	/* Below 600 px the toast stack sits above the bottom bar; the bar is hidden on compact phones in Review. */
+	@media (min-width: 600px) {
+		main {
+			min-height: 100dvh;
+		}
 	}
 </style>

@@ -9,13 +9,19 @@
 		label: string;
 		variant?: 'quiet' | 'tonal' | 'outline';
 		pressed?: boolean;
+		/** Renders a link with the same look (e.g. "back"). */
+		href?: string;
 	}
-	let { icon, label, variant = 'quiet', pressed, type = 'button', ...rest }: Props = $props();
+	let { icon, label, variant = 'quiet', pressed, href, type = 'button', ...rest }: Props = $props();
 </script>
 
-<button class="ib {variant}" {type} aria-label={label} title={label} aria-pressed={pressed} {...rest}>
-	<Icon name={icon} />
-</button>
+{#if href}
+	<a class="ib {variant}" {href} aria-label={label} title={label}><Icon name={icon} /></a>
+{:else}
+	<button class="ib {variant}" {type} aria-label={label} title={label} aria-pressed={pressed} {...rest}>
+		<Icon name={icon} />
+	</button>
+{/if}
 
 <style>
 	.ib {

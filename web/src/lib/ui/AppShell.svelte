@@ -16,9 +16,14 @@
 		compactCount?: number;
 		/** Trailing actions in the phone top bar and the sidebar footer (sync status, account). */
 		actions?: Snippet;
+		/**
+		 * Immersive screens (Review): no top or bottom bar on phones, and the desktop sidebar collapses to the rail.
+		 * The screen brings its own header with a way back.
+		 */
+		immersive?: boolean;
 		children: Snippet;
 	}
-	let { items, current, brand, compactCount = 4, actions, children }: Props = $props();
+	let { items, current, brand, compactCount = 4, actions, immersive = false, children }: Props = $props();
 
 	const primary = $derived(items.filter((i) => !i.secondary));
 	const secondary = $derived(items.filter((i) => i.secondary));
@@ -50,7 +55,7 @@
 	</ul>
 {/snippet}
 
-<div class="shell">
+<div class="shell" class:immersive>
 	<div class="grid">
 		<nav class="side" aria-label={ut('ui.mainNav')}>
 			<a class="brand" href="/">{@render seal()}<span class="word">{brand}</span></a>
@@ -235,6 +240,18 @@
 		margin: 0 calc(-1 * var(--kb-space-4));
 	}
 
+	/* Immersive (Review): the screen owns the whole phone viewport. */
+	.immersive .top,
+	.immersive .bottom {
+		display: none;
+	}
+	@container shell (max-width: 599.98px) {
+		.immersive .grid {
+			grid-template-rows: 1fr;
+			grid-template-areas: 'content';
+		}
+	}
+
 	/* Tablet (medium/expanded, 600-1023): navigation rail. */
 	@container shell (min-width: 600px) {
 		.grid {
@@ -314,22 +331,22 @@
 
 	/* Desktop (large, >= 1024): full sidebar. */
 	@container shell (min-width: 1024px) {
-		.grid {
+		.shell:not(.immersive) .grid {
 			grid-template-columns: var(--kb-size-sidebar) minmax(0, 1fr);
 		}
-		.side {
+		.shell:not(.immersive) .side {
 			padding: var(--kb-space-4) var(--kb-space-3);
 			background: var(--kb-color-bg);
 		}
-		.side .brand {
+		.shell:not(.immersive) .side .brand {
 			justify-content: flex-start;
 			padding: 0 var(--kb-space-3);
 			margin-bottom: var(--kb-space-5);
 		}
-		.side .word {
+		.shell:not(.immersive) .side .word {
 			display: inline;
 		}
-		.item {
+		.shell:not(.immersive) .item {
 			flex-direction: row;
 			gap: var(--kb-space-3);
 			min-height: var(--kb-size-touch-min);
@@ -337,26 +354,26 @@
 			font: var(--kb-type-label);
 			text-align: start;
 		}
-		.item .glyph {
+		.shell:not(.immersive) .item .glyph {
 			width: auto;
 			height: auto;
 		}
-		.item .glyph,
-		.item:hover .glyph,
-		.item[aria-current='page'] .glyph {
+		.shell:not(.immersive) .item .glyph,
+		.shell:not(.immersive) .item:hover .glyph,
+		.shell:not(.immersive) .item[aria-current='page'] .glyph {
 			background: none;
 		}
-		.item:hover {
+		.shell:not(.immersive) .item:hover {
 			background: var(--kb-color-surface-hover);
 		}
-		.item[aria-current='page'] {
+		.shell:not(.immersive) .item[aria-current='page'] {
 			background: var(--kb-color-surface-selected);
 			color: var(--kb-color-text);
 		}
-		.item[aria-current='page'] .glyph {
+		.shell:not(.immersive) .item[aria-current='page'] .glyph {
 			color: var(--kb-color-primary);
 		}
-		.side-actions {
+		.shell:not(.immersive) .side-actions {
 			flex-direction: row;
 			padding: var(--kb-space-3) var(--kb-space-1) 0;
 			margin-top: var(--kb-space-2);

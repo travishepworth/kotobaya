@@ -48,3 +48,40 @@ export interface NavItem {
 	/** Settings-like destinations: bottom of the sidebar, inside "More" on phones. */
 	secondary?: boolean;
 }
+
+/** One grade-bar button: its colour family (tone), its label and the interval it would schedule. */
+export interface GradeOption {
+	id: string;
+	label: string;
+	tone: Grade;
+	/** Omitted in drill mode (drills do not reschedule). */
+	interval?: string;
+}
+
+const SMALL_KANA = new Set([...'ゃゅょぁぃぅぇぉゎャュョァィゥェォヮヵヶ']);
+
+/**
+ * Splits kana into morae for the pitch-accent contour (display only): small ゃ/ゅ/ょ and small vowels join the
+ * mora before them; っ, ん and ー are morae of their own.
+ */
+export function splitMorae(kana: string): string[] {
+	const out: string[] = [];
+	for (const ch of kana) {
+		if (SMALL_KANA.has(ch) && out.length > 0) out[out.length - 1] += ch;
+		else out.push(ch);
+	}
+	return out;
+}
+
+/** An overflow-menu entry (Menu.svelte). */
+export interface MenuItem {
+	label: string;
+	icon?: IconName;
+	/** Keyboard shortcut shown on the right (desktop). */
+	key?: string;
+	disabled?: boolean;
+	danger?: boolean;
+	/** A checked toggle (menuitemcheckbox). */
+	checked?: boolean;
+	onselect: () => void;
+}
