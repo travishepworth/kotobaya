@@ -262,3 +262,7 @@
 - MEDIA_PIPELINE.md §5.3 — a `mapped` correction whose entry_seq is later retired by dict-refresh: treat as unresolved at import time or list in `unmapped`.
 - (if not taken in C-11 attempt 2) stale-heartbeat requeue fencing (FOR UPDATE + status/locked_by guard); reparseMedia `parsing` version read under 7033001.
 - MEDIA_PIPELINE.md: state that deleteMedia's job cancellation takes 7033001 before updating job rows (else waits on runner child-row lock while runner waits on 7033001).
+
+## T404a (2026-11-13)
+- publish_replanning allows 4 publishes (3 re-plans); confirm against MEDIA_PIPELINE wording '3 publishes… 4th fails' (possible off-by-one).
+- New-media retry re-plans fresh ids → orphan app.blob row per retry (GC later).
