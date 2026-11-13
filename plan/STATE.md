@@ -1,7 +1,7 @@
 # STATE
 Mode: single-session
 Phase: P3 (Android and offline)   Gate: GATE-P2 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T00:24:42Z (resumed; T303b attempt 2)
+Updated: 2026-11-13T00:46:19Z
 
 
 ## RESUME HERE (updated 2026-11-12T14:26:49Z)
@@ -10,14 +10,12 @@ Updated: 2026-11-13T00:24:42Z (resumed; T303b attempt 2)
 - Web tickets: tell writers SvelteKit 3 = relative imports (no $lib), client via web/src/lib/api/generated.ts (see FOLLOWUPS T208).
 - Conventions: named agent types now registered; architect-role tickets run with model=opus (never Fable). Archive HANDOFF.md → plan/handoffs/<ID>.md at merge. MAX_PARALLEL_WRITERS=6, ≤3 Gradle-heavy. Review loop only on real majors with failure scenarios.
 
-## USAGE-LIMIT STOP 2026-11-12T19:31:49Z: in flight, may be cut off mid-work:
-- T303b (writer-senior, branch t/T303b-sync-client-apply) — device apply/rebuild. If no HANDOFF.md on branch → TODO, redispatch (worktree may hold partial work).
-Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused-rollback acceptance), T305b, then T304b/c, T305c, T306, T310, T311, T313.
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T303b | — (in review) | 2 | t/T303b-sync-client-apply | 2026-11-13T00:42:19Z |
+| T303c | writer-senior (opus) | 1 | t/T303c-android-sync | 2026-11-13T00:46:19Z |
+| T303d | writer-senior (opus) | 1 | t/T303d-remint | 2026-11-13T00:46:19Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - none
@@ -25,7 +23,6 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
-| T303b | reviewer (opus) + architect (opus) | 2026-11-13T00:42:19Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
@@ -44,11 +41,12 @@ Next ready after these: T303c (needs T303b), T303d (needs T303b; carries Refused
 
 ## Phase stats
 P2 DONE: merged 35/36 · attempts 53 · escalations 0 (make test green)
-P3: merged 11/23 · attempts 14 · escalations 0
+P3: merged 12/23 · attempts 16 · escalations 0
 P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S01, S02, C-1, C-2).
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T303b core device apply (all op types, append-only review_log, refused cache, startup replay, merge readers, rebuild 0–3, auto-retry; 112-seed fuzz) — 2 attempts (1 cut off); reviewer + architect APPROVE
 - T307+T309 widget/QS tile + ntfy/UnifiedPush (server NtfySink wired in Main.kt, SSRF-guarded, off unless NTFY_BASE_URL)
 - T312 Android release: env signing, tag→versionCode, GitHub release workflow publishing both flavors
 - T303a core sync client (outbox, mint incl. mintAt, push/pull/purge, clock_blocked hysteresis, resetLog) — 2 attempts; reviewer + architect APPROVE

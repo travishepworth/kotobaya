@@ -523,3 +523,6 @@
 2026-11-13T00:42:26Z T303b CHECK_GREEN core (orchestrator re-run)
 2026-11-13T00:44:45Z T303b REVIEW_APPROVE architect (6 minors → FOLLOWUPS; auto_status re-derivation folded into T304b)
 2026-11-13T00:45:52Z T303b REVIEW_APPROVE reviewer (6 minors → FOLLOWUPS)
+2026-11-13T00:46:19Z T303b MERGE 2 attempts
+2026-11-13T00:46:19Z T303c DISPATCH writer-senior(opus)
+2026-11-13T00:46:19Z T303d DISPATCH writer-senior(opus)

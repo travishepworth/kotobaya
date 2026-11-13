@@ -427,7 +427,7 @@ Either way, contracts are then frozen (ORCHESTRATOR.md §10).
 
 ### Phase 3 splits and additions (2026-11-13, planner)
 T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: store seam, mint, outbox, push/pull)/T303b(core: device apply, replay, rebuild, log reset, refused cache)/T303c(Android: SQLDelight store, WorkManager, connectivity)/T303d(core: rejected ops, Retry/Discard, Re-mint, discard list)/T303e(UI); T304→T304a(queue loader)/T304b(review screen)/T304c(toolbar actions); T305→T305a(flavors, provider)/T305b(note creation service, new)/T305c(Takoboto note type, real store). Real deps differ from the parent rows (e.g. T304b needs T303c, T305b needs T302+T303c, T307 needs T308, T313 needs T303a/b/d + T305b). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded. Android paths use the real module layout `android/src/main/...` (not `android/app/`). T313 adds an `acceptance` Gradle module.
-- T301a status: MERGED · T301b MERGED · T302 MERGED · T303a MERGED · T303b TODO · T303c TODO · T303d TODO · T303e TODO · T304a MERGED · T304b TODO · T304c TODO · T305a MERGED · T305b TODO · T305c TODO · T306 TODO · T307 MERGED · T308 MERGED · T309 MERGED · T310 TODO · T311 TODO · T312 MERGED · T313 TODO
+- T301a status: MERGED · T301b MERGED · T302 MERGED · T303a MERGED · T303b MERGED · T303c TODO · T303d TODO · T303e TODO · T304a MERGED · T304b TODO · T304c TODO · T305a MERGED · T305b TODO · T305c TODO · T306 TODO · T307 MERGED · T308 MERGED · T309 MERGED · T310 TODO · T311 TODO · T312 MERGED · T313 TODO
 
 ---
 
