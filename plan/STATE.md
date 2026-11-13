@@ -22,7 +22,7 @@ Updated: 2026-11-13 (orchestrator run 8 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T506c | writer (Gradle slot) | 1 | t/T506c-rule-tester | run 8 |
+| D-3 | writer (Gradle slot) | 1 | t/D-3-volume-leak-2 | run 8 |
 
 ## Parked
 (none)
@@ -57,6 +57,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T506c (run 8): worker rule-test endpoint; server testGrammarRules + 422/503 rule validation (needs PARSER_URL in deploy)
 - D-2 (run 8): Docker volume leak fixed (tmpfs for postgres:17 core test + seaweedfs); prune cmd in HUMAN_CHECKS
 - C-14 (run 8): worker-parse 1.1.0 rule-test endpoint (+validate-only); minors → F-24
 - T504a (run 8): web struggle screens; extra drill = all hot words (F-21)

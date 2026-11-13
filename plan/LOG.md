@@ -698,3 +698,5 @@
 2026-11-13T06:04:43Z C-14 MERGE REVIEW_APPROVE CHECK_GREEN contracts; 1 attempt; 4 minors → F-24
 2026-11-13T06:05:42Z D-2 MERGE CHECK_GREEN core+server; volumes stable at 195; prune cmd → HUMAN_CHECKS
 2026-11-13T06:05:42Z T506c DISPATCH writer (worker+server, Gradle slot)
+2026-11-13T06:20:55Z T506c MERGE CHECK_GREEN worker+server; 1 attempt (med); create/update w/ rules now need PARSER_URL (503 otherwise)
+2026-11-13T06:20:55Z D-3 DISPATCH writer (volumes 195→216 after D-2; remaining leak source)
