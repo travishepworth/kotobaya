@@ -1,112 +1,175 @@
 <script lang="ts">
+	// Sentences of a media as rows (the one unknown word of an i+1 sentence highlighted), with "Make card" opening a
+	// short form in a dialog.
 	import { page } from '$app/state';
-	import { ts } from '../../../../lib/sentences/messages';
-	import GrammarCapture from '../../../../lib/grammar-capture/GrammarCapture.svelte';
+	import Button from '../../../../lib/ui/Button.svelte';
+	import Dialog from '../../../../lib/ui/Dialog.svelte';
+	import EmptyState from '../../../../lib/ui/EmptyState.svelte';
+	import GrammarCapture from '../../../../lib/ui/GrammarCapture.svelte';
+	import IconButton from '../../../../lib/ui/IconButton.svelte';
+	import SegmentedControl from '../../../../lib/ui/SegmentedControl.svelte';
+	import Select from '../../../../lib/ui/Select.svelte';
+	import Skeleton from '../../../../lib/ui/Skeleton.svelte';
+	import Switch from '../../../../lib/ui/Switch.svelte';
+	import TextField from '../../../../lib/ui/TextField.svelte';
 	import { tg } from '../../../../lib/grammar-capture/messages';
-	import { formatMs, pieces, playBlob, SentencesPage } from '../../../../lib/state/reader.svelte';
+	import { ts } from '../../../../lib/sentences/messages';
+	import { formatMs, pieces, playBlob, SentencesPage, type SentenceFilter } from '../../../../lib/state/reader.svelte';
 
 	const mediaId = $derived(page.params.id ?? '');
 	const vm = new SentencesPage(() => mediaId);
+	const segOptions = $derived([{ value: '', label: ts('sn.allSegments') }, ...vm.segments.map((s) => ({ value: s.id, label: s.title || String(s.ordinal + 1) }))]);
+	const deckOptions = $derived([{ value: '', label: ts('sn.form.defaultDeck') }, ...vm.decks.map((d) => ({ value: d.id, label: d.name }))]);
+	const capturing = $derived(vm.rows.find((s) => s.id === vm.capturing) ?? null);
+	let formOpen = $state(false);
+	$effect(() => {
+		formOpen = vm.editing !== null;
+	});
 </script>
 
-<h1>{ts('sn.title')}</h1>
+<svelte:head><title>{ts('sn.title')} · Kotobaya</title></svelte:head>
 
-<div class="controls">
-	<label>
-		{ts('sn.filter')}
-		<select bind:value={vm.filter}>
-			<option value="all">{ts('sn.filter.all')}</option>
-			<option value="i+1">{ts('sn.filter.i1')}</option>
-			<option value="i+0">{ts('sn.filter.i0')}</option>
-		</select>
-	</label>
-	<label>
-		{ts('sn.segment')}
-		<select bind:value={vm.segmentId}>
-			<option value="">{ts('sn.allSegments')}</option>
-			{#each vm.segments as s (s.id)}
-				<option value={s.id}>{s.title || String(s.ordinal + 1)}</option>
+<div class="sentences">
+	<div class="controls">
+		<SegmentedControl
+			label={ts('sn.filter')}
+			bind:value={vm.filter}
+			options={[
+				{ value: 'all' as SentenceFilter, label: ts('sn.filter.all') },
+				{ value: 'i+1' as SentenceFilter, label: ts('sn.filter.i1') },
+				{ value: 'i+0' as SentenceFilter, label: ts('sn.filter.i0') }
+			]}
+		/>
+		{#if vm.segments.length > 0}
+			<div class="seg"><Select label={ts('sn.segment')} hideLabel options={segOptions} bind:value={vm.segmentId} /></div>
+		{/if}
+		<div class="q"><TextField label={ts('sn.search')} hideLabel type="search" icon="search" lang="ja" placeholder={ts('sn.search')} bind:value={vm.q} /></div>
+	</div>
+
+	{#if !vm.loaded && vm.rows.length === 0}
+		<Skeleton shape="row" count={6} />
+	{:else if vm.rows.length === 0}
+		<EmptyState art="search" title={ts('sn.empty')} />
+	{:else}
+		<ul class="rows">
+			{#each vm.rows as s (s.id)}
+				<li>
+					<p class="text" lang="ja">
+						{#each pieces(s) as piece, i (i)}
+							{#if piece.tokenIndex !== null && s.tokens[piece.tokenIndex].seq != null && s.tokens[piece.tokenIndex].seq === vm.unknown[s.id]}<mark>{piece.text}</mark>{:else}{piece.text}{/if}
+						{/each}
+					</p>
+					<div class="acts">
+						{#if s.startMs != null}<span class="at kb-num">{ts('sn.at', { time: formatMs(s.startMs) })}</span>{/if}
+						{#if s.audioBlobHash}
+							{@const hash = s.audioBlobHash}
+							<IconButton icon="audio" label={ts('sn.play')} onclick={() => playBlob(hash)} />
+						{/if}
+						<IconButton icon="flag" label={tg('gc.open')} onclick={() => vm.toggleCapture(s.id)} />
+						<Button size="sm" variant="tonal" icon="plus" onclick={() => vm.open(s)}>{ts('sn.make')}</Button>
+					</div>
+				</li>
 			{/each}
-		</select>
-	</label>
-	<input type="search" placeholder={ts('sn.search')} aria-label={ts('sn.search')} bind:value={vm.q} />
+		</ul>
+		{#if vm.cursor}<div class="more"><Button variant="quiet" onclick={() => vm.load(true)}>{ts('sn.more')}</Button></div>{/if}
+	{/if}
 </div>
 
-{#if !vm.loaded}
-	<p>{ts('sn.loading')}</p>
-{:else if vm.rows.length === 0}
-	<p>{ts('sn.empty')}</p>
+{#if vm.editing}
+	{@const ed = vm.editing}
+	<Dialog bind:open={formOpen} title={ts('sn.make')} size="lg" onclose={() => vm.cancel()}>
+		<form
+			id="sn-form"
+			class="form"
+			onsubmit={(e) => {
+				e.preventDefault();
+				void vm.create();
+			}}
+		>
+			<TextField label={ts('sn.form.sentence')} lang="ja" bind:value={vm.formSentence} />
+			<TextField label={ts('sn.form.reading')} lang="ja" bind:value={vm.formReading} />
+			<TextField label={ts('sn.form.translation')} bind:value={vm.formTranslation} />
+			<Select label={ts('sn.form.deck')} options={deckOptions} bind:value={vm.formDeck} />
+			{#if vm.unknown[ed.id] != null}<Switch label={ts('sn.form.alsoVocab')} bind:checked={vm.alsoVocab} />{/if}
+		</form>
+		{#snippet actions()}
+			<Button variant="quiet" onclick={() => vm.cancel()}>{ts('sn.form.cancel')}</Button>
+			<Button variant="primary" type="submit" form="sn-form">{ts('sn.form.create')}</Button>
+		{/snippet}
+	</Dialog>
 {/if}
-
-<ul class="rows" lang="ja">
-	{#each vm.rows as s (s.id)}
-		<li>
-			<span class="sentence">
-				{#each pieces(s) as piece, i (i)}
-					{#if piece.tokenIndex !== null && s.tokens[piece.tokenIndex].seq != null && s.tokens[piece.tokenIndex].seq === vm.unknown[s.id]}
-						<mark>{piece.text}</mark>
-					{:else}{piece.text}{/if}
-				{/each}
-			</span>
-			{#if s.startMs != null}<small>{ts('sn.at', { time: formatMs(s.startMs) })}</small>{/if}
-			{#if s.audioBlobHash}
-				{@const hash = s.audioBlobHash}
-				<button type="button" onclick={() => playBlob(hash)}>{ts('sn.play')}</button>
-			{/if}
-			<button type="button" onclick={() => vm.open(s)}>{ts('sn.make')}</button>
-			<button type="button" onclick={() => vm.toggleCapture(s.id)}>{tg('gc.open')}</button>
-			{#if vm.capturing === s.id}<GrammarCapture sentence={s} onclose={() => vm.closeCapture()} />{/if}
-			{#if vm.editing?.id === s.id}
-				<form
-					class="card-form"
-					onsubmit={(e) => {
-						e.preventDefault();
-						void vm.create();
-					}}
-				>
-					<label>{ts('sn.form.sentence')} <input bind:value={vm.formSentence} /></label>
-					<label>{ts('sn.form.reading')} <input bind:value={vm.formReading} /></label>
-					<label>{ts('sn.form.translation')} <input bind:value={vm.formTranslation} /></label>
-					<label>
-						{ts('sn.form.deck')}
-						<select bind:value={vm.formDeck}>
-							<option value="">{ts('sn.form.defaultDeck')}</option>
-							{#each vm.decks as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
-						</select>
-					</label>
-					{#if vm.unknown[s.id] != null}
-						<label><input type="checkbox" bind:checked={vm.alsoVocab} /> {ts('sn.form.alsoVocab')}</label>
-					{/if}
-					<button type="submit">{ts('sn.form.create')}</button>
-					<button type="button" onclick={() => vm.cancel()}>{ts('sn.form.cancel')}</button>
-				</form>
-			{/if}
-		</li>
-	{/each}
-</ul>
-
-{#if vm.cursor}<button type="button" onclick={() => vm.load(true)}>{ts('sn.more')}</button>{/if}
+{#if capturing}<GrammarCapture sentence={capturing} onclose={() => vm.closeCapture()} />{/if}
 
 <style>
+	.sentences {
+		max-width: calc(var(--kb-size-measure) + 2 * var(--kb-space-10));
+		margin: 0 auto;
+		padding: var(--kb-space-5) var(--kb-space-4) var(--kb-space-16);
+	}
 	.controls {
 		display: flex;
-		gap: var(--kb-space-3);
-		margin-bottom: var(--kb-space-3);
 		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--kb-space-2);
+		margin-bottom: var(--kb-space-5);
+	}
+	.seg {
+		flex: 0 1 12rem;
+		min-width: 0;
+	}
+	.q {
+		flex: 1 1 12rem;
+		min-width: 0;
 	}
 	.rows {
-		list-style: none;
+		margin: 0;
 		padding: 0;
+		list-style: none;
+		border: 1px solid var(--kb-color-border);
+		border-radius: var(--kb-radius-lg);
+		background: var(--kb-color-surface);
 	}
-	.rows li {
-		margin-bottom: var(--kb-space-3);
+	li {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-1);
+		padding: var(--kb-space-4) var(--kb-space-5) var(--kb-space-2);
+		border-bottom: 1px solid var(--kb-color-border);
 	}
-	.sentence {
-		font-size: 1.15rem;
+	li:last-child {
+		border-bottom: 0;
 	}
-	.card-form {
-		display: grid;
-		gap: var(--kb-space-2);
-		margin-top: var(--kb-space-2);
+	.text {
+		font: var(--kb-type-jp-body);
+		font-size: 1.1875rem;
+	}
+	mark {
+		padding: 0 0.1em;
+		border-radius: 2px;
+		background: var(--kb-color-highlight);
+		color: var(--kb-color-on-highlight);
+	}
+	.acts {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--kb-space-1);
+	}
+	.at {
+		margin-inline-end: auto;
+		font: var(--kb-type-caption);
+		color: var(--kb-color-text-muted);
+	}
+	.more {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--kb-space-3);
+	}
+	.form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-4);
+		color: var(--kb-color-text);
 	}
 </style>

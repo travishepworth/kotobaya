@@ -1,158 +1,187 @@
 <script lang="ts">
+	// Import media: source (files / URL / paste / jpdb deck), details, study-deck options; then live progress.
 	import { onDestroy } from 'svelte';
-	import { tm } from '../../../lib/media/messages';
-	import type { MediaMessageKey } from '../../../lib/media/messages';
+	import Banner from '../../../lib/ui/Banner.svelte';
+	import Button from '../../../lib/ui/Button.svelte';
+	import EmptyState from '../../../lib/ui/EmptyState.svelte';
+	import FileDrop from '../../../lib/ui/FileDrop.svelte';
+	import Page from '../../../lib/ui/Page.svelte';
+	import Panel from '../../../lib/ui/Panel.svelte';
+	import ProgressBar from '../../../lib/ui/ProgressBar.svelte';
+	import Select from '../../../lib/ui/Select.svelte';
+	import Switch from '../../../lib/ui/Switch.svelte';
+	import Tabs from '../../../lib/ui/Tabs.svelte';
+	import TextArea from '../../../lib/ui/TextArea.svelte';
+	import TextField from '../../../lib/ui/TextField.svelte';
+	import { tm, type MediaMessageKey } from '../../../lib/media/messages';
 	import { IMPORT_FORMATS, IMPORT_TABS, isRunning, MEDIA_KINDS, MediaNewPage } from '../../../lib/state/media.svelte';
+	import { mx } from '../messages';
 
 	const vm = new MediaNewPage();
 	onDestroy(() => vm.dispose());
+
+	let priorityText = $state(String(vm.priority));
+	$effect(() => {
+		const n = Number(priorityText);
+		if (Number.isFinite(n)) vm.priority = n;
+	});
 </script>
 
-<h1>{tm('new.title')}</h1>
+<svelte:head><title>{tm('new.title')} · Kotobaya</title></svelte:head>
 
-{#if vm.job === null}
-	<div role="tablist" aria-label={tm('new.tabs')}>
-		{#each IMPORT_TABS as tb (tb)}
-			<button
-				role="tab"
-				type="button"
-				class="kb-btn kb-btn-quiet"
-				aria-selected={vm.tab === tb}
-				disabled={vm.busy}
-				onclick={() => (vm.tab = tb)}>{tm(`new.tab.${tb}` as MediaMessageKey)}</button
-			>
-		{/each}
-	</div>
-	<form
-		onsubmit={(e) => {
-			e.preventDefault();
-			void vm.start();
-		}}
-	>
-		<p>
-			<label
-				>{tm('new.mediaTitle')}
-				<input lang="ja" bind:value={vm.title} required={vm.tab !== 'jpdb'} /></label
-			>
-			{#if vm.tab === 'jpdb'}<small>{tm('new.jpdbTitle')}</small>{/if}
-		</p>
-		<p>
-			<label
-				>{tm('new.kind')}
-				<select bind:value={vm.kind}>
-					{#each MEDIA_KINDS as k (k)}
-						<option value={k}>{tm(`med.kind.${k}` as MediaMessageKey)}</option>
-					{/each}
-				</select></label
-			>
-		</p>
+<Page title={tm('new.title')} back={{ href: '/media', label: mx('mx.library') }} width="narrow">
+	{#if vm.job === null}
+		<form
+			class="form"
+			onsubmit={(e) => {
+				e.preventDefault();
+				void vm.start();
+			}}
+		>
+			<Tabs label={tm('new.tabs')} bind:value={vm.tab} tabs={IMPORT_TABS.map((t) => ({ value: t, label: tm(`new.tab.${t}` as MediaMessageKey) }))} />
 
-		{#if vm.tab === 'files'}
-			<p>
-				<label
-					>{tm('new.files')}
-					<input
-						type="file"
-						multiple
-						onchange={(e) => vm.setFiles(e.currentTarget.files)}
-					/></label
-				>
-			</p>
-			<p>
-				<label
-					>{tm('new.format')}
-					<select bind:value={vm.format}>
-						{#each IMPORT_FORMATS as f (f)}
-							<option value={f}>{f === 'auto' ? tm('new.format.auto') : f}</option>
+			<Panel title={mx('mx.source')}>
+				<div class="stack">
+					{#if vm.tab === 'files'}
+						<FileDrop
+							title={mx('mx.drop')}
+							hint={mx('mx.dropHint')}
+							multiple
+							icon="media"
+							chosen={vm.files.length ? mx('mx.chosen', { n: vm.files.length }) : undefined}
+							onfiles={(f) => vm.setFiles(f)}
+						/>
+						{#each vm.files as f, i (i)}
+							<label class="audio">
+								<span>{tm('new.audio', { name: f.name })}</span>
+								<input type="file" accept="audio/*" onchange={(e) => vm.setAudio(i, e.currentTarget.files?.[0])} />
+							</label>
 						{/each}
-					</select></label
-				>
-			</p>
-			<p>
-				<label
-					>{tm('new.ruby')}
-					<select bind:value={vm.ruby}>
-						<option value="strip">{tm('new.ruby.strip')}</option>
-						<option value="hint">{tm('new.ruby.hint')}</option>
-					</select></label
-				>
-			</p>
-			{#each vm.files as f, i (i)}
-				<p>
-					<label
-						>{tm('new.audio', { name: f.name })}
-						<input
-							type="file"
-							accept="audio/*"
-							onchange={(e) => vm.setAudio(i, e.currentTarget.files?.[0])}
-						/></label
-					>
-				</p>
-			{/each}
-			<p>
-				<label><input type="checkbox" bind:checked={vm.cutAudio} /> {tm('new.cutAudio')}</label>
-			</p>
-		{:else if vm.tab === 'url'}
-			<p><label>{tm('new.url')} <input type="url" bind:value={vm.url} required /></label></p>
-		{:else if vm.tab === 'paste'}
-			<p>
-				<label
-					>{tm('new.text')}
-					<textarea lang="ja" rows="10" maxlength="1000000" bind:value={vm.text}></textarea></label
-				>
-			</p>
-		{:else}
-			<p><label>{tm('new.jpdbId')} <input bind:value={vm.jpdbId} required /></label></p>
-			{#if vm.jpdbId.trim() !== '' && vm.deckId === null}
-				<p role="alert">{tm('new.jpdbIdInvalid')}</p>
+						<div class="two">
+							<Select label={tm('new.format')} bind:value={vm.format} options={IMPORT_FORMATS.map((f) => ({ value: f, label: f === 'auto' ? tm('new.format.auto') : f }))} />
+							<Select
+								label={tm('new.ruby')}
+								bind:value={vm.ruby}
+								options={[
+									{ value: 'strip', label: tm('new.ruby.strip') },
+									{ value: 'hint', label: tm('new.ruby.hint') }
+								]}
+							/>
+						</div>
+						<Switch label={tm('new.cutAudio')} bind:checked={vm.cutAudio} />
+					{:else if vm.tab === 'url'}
+						<TextField label={tm('new.url')} type="url" bind:value={vm.url} required />
+					{:else if vm.tab === 'paste'}
+						<TextArea label={tm('new.text')} lang="ja" rows={10} maxlength={1000000} bind:value={vm.text} />
+					{:else}
+						<TextField
+							label={tm('new.jpdbId')}
+							bind:value={vm.jpdbId}
+							required
+							error={vm.jpdbId.trim() !== '' && vm.deckId === null ? tm('new.jpdbIdInvalid') : undefined}
+						/>
+					{/if}
+				</div>
+			</Panel>
+
+			<Panel title={mx('mx.details')}>
+				<div class="two">
+					<TextField label={tm('new.mediaTitle')} hint={vm.tab === 'jpdb' ? tm('new.jpdbTitle') : undefined} lang="ja" bind:value={vm.title} required={vm.tab !== 'jpdb'} />
+					<Select label={tm('new.kind')} bind:value={vm.kind} options={MEDIA_KINDS.map((k) => ({ value: k, label: tm(`med.kind.${k}` as MediaMessageKey) }))} />
+				</div>
+			</Panel>
+
+			<Panel title={mx('mx.deck')}>
+				<div class="stack">
+					<div class="two">
+						<TextField label={tm('new.priority')} inputmode="numeric" bind:value={priorityText} />
+						<TextField label={tm('new.perDay')} inputmode="numeric" bind:value={vm.perDay} />
+					</div>
+					<Switch label={tm('new.enabled')} bind:checked={vm.enabled} />
+				</div>
+			</Panel>
+
+			{#if vm.upload}
+				<div role="status">
+					<ProgressBar value={vm.upload.done} max={vm.upload.total} label={tm('new.uploading', { done: vm.upload.done, total: vm.upload.total })} showCount />
+				</div>
 			{/if}
-		{/if}
-
-		<fieldset>
-			<legend>{tm('new.deckOptions')}</legend>
-			<p>
-				<label
-					>{tm('new.priority')}
-					<input type="number" min="0" max="9" bind:value={vm.priority} /></label
-				>
-			</p>
-			<p>
-				<label>{tm('new.perDay')} <input type="number" min="0" bind:value={vm.perDay} /></label>
-			</p>
-			<p><label><input type="checkbox" bind:checked={vm.enabled} /> {tm('new.enabled')}</label></p>
-		</fieldset>
-
-		{#if vm.upload}
-			<p role="status">{tm('new.uploading', { done: vm.upload.done, total: vm.upload.total })}</p>
-		{/if}
-		<button class="kb-btn" type="submit" disabled={!vm.canStart || vm.busy}>
-			{vm.failed ? tm('new.retry') : tm('new.start')}
-		</button>
-	</form>
-{:else if isRunning(vm.job)}
-	<p role="status">
-		{tm('new.progress', { status: vm.job.status, percent: Math.round(vm.job.progress * 100) })}
-	</p>
-	<progress max="1" value={vm.job.progress}></progress>
-	{#if vm.job.progressMessage}<p>{vm.job.progressMessage}</p>{/if}
-{:else if vm.job.status === 'succeeded'}
-	<p role="status">{tm('new.done')}</p>
-	{#if vm.unmappedCount > 0}
-		<p>
-			{tm('new.unmapped', { count: vm.unmappedCount })}
-			<a href="/import/mapping">{tm('new.unmappedLink')}</a>
-		</p>
+			<div class="actions">
+				<Button variant="primary" size="lg" type="submit" icon="import" disabled={!vm.canStart} loading={vm.busy}>
+					{vm.failed ? tm('new.retry') : tm('new.start')}
+				</Button>
+			</div>
+		</form>
+	{:else if isRunning(vm.job)}
+		<Panel>
+			<div class="running" role="status">
+				<p class="big kb-num">{Math.round(vm.job.progress * 100)}%</p>
+				<ProgressBar value={Math.round(vm.job.progress * 100)} max={100} label={tm('new.title')} />
+				{#if vm.job.progressMessage}<p class="muted">{vm.job.progressMessage}</p>{/if}
+			</div>
+		</Panel>
+	{:else if vm.job.status === 'succeeded'}
+		<EmptyState size="page" art="success" title={tm('new.done')} body={vm.unmappedCount > 0 ? tm('new.unmapped', { count: vm.unmappedCount }) : undefined}>
+			{#snippet action()}
+				<div class="row">
+					{#if vm.mediaId}<Button variant="primary" href="/media/{vm.mediaId}">{tm('new.open')}</Button>{/if}
+					{#if vm.unmappedCount > 0}<Button variant="outline" href="/import/mapping">{tm('new.unmappedLink')}</Button>{/if}
+					<Button variant="quiet" onclick={() => vm.reset()}>{tm('new.another')}</Button>
+				</div>
+			{/snippet}
+		</EmptyState>
+	{:else}
+		<Banner tone="error">
+			{vm.job.status === 'failed' ? tm('new.failed', { error: vm.job.error ?? tm('new.noError') }) : tm('new.cancelled')}
+			{#snippet action()}<Button size="sm" variant="outline" onclick={() => vm.reset()}>{tm('new.another')}</Button>{/snippet}
+		</Banner>
 	{/if}
-	<p>
-		{#if vm.mediaId}<a class="kb-btn" href={`/media/${vm.mediaId}`}>{tm('new.open')}</a>{/if}
-		<a href="/media">{tm('new.library')}</a>
-		<button class="kb-btn kb-btn-quiet" type="button" onclick={() => vm.reset()}>{tm('new.another')}</button>
-	</p>
-{:else}
-	<p role="alert">
-		{vm.job.status === 'failed'
-			? tm('new.failed', { error: vm.job.error ?? tm('new.noError') })
-			: tm('new.cancelled')}
-	</p>
-	<p><button class="kb-btn kb-btn-quiet" type="button" onclick={() => vm.reset()}>{tm('new.another')}</button></p>
-{/if}
+</Page>
+
+<style>
+	.form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-5);
+	}
+	.stack {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-4);
+	}
+	.two {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+		gap: var(--kb-space-3);
+	}
+	.audio {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-1);
+		font: var(--kb-type-body-sm);
+	}
+	.audio input {
+		min-height: var(--kb-size-touch-min);
+	}
+	.actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+	.running {
+		display: flex;
+		flex-direction: column;
+		gap: var(--kb-space-3);
+	}
+	.big {
+		font: var(--kb-type-display);
+	}
+	.muted {
+		color: var(--kb-color-text-muted);
+	}
+	.row {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: var(--kb-space-2);
+	}
+</style>
