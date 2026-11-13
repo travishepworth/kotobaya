@@ -205,3 +205,11 @@
 - (architect T303d) lowerBound falls back to FLOOR when device has no card row — comment or contract clarification.
 - (architect T303d) undecodable rows excluded from C → remint_offset deleted even if such a row is clock-rejected (harmless; row stays listed).
 - (T310) BlobStore opens a second AndroidSqliteDriver on the app DB (not durable driver); hash mismatch and 404 both → state missing (no failed state in schema).
+
+## T305b (architect, 2026-11-13)
+- Retry of a request id whose note is now tombstoned returns Created(retried=true); return tombstone state or treat as new.
+- Retry result carries current-call match, not original (cosmetic).
+- Unmatched note still mints add_kanji notes for the deck; skip kanji when unmatched.
+- DuplicateCheck with no dict match only checks entry-less notes; misses matched note of same expression (§4 MUST NOT knowingly duplicate) — compare expression of matched notes too.
+- Open: any server/worker job matching entry-less vocab notes by expression would merge forced duplicates — confirm none does.
+- client.note_request.* sync_state keys never pruned.

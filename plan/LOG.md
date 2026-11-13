@@ -546,3 +546,6 @@
 2026-11-13T01:20:43Z T304b HANDOFF attempt 1 built on stale base (worktree cut from unpushed origin/main) → attempt 2: rebase + wire T303c store
 2026-11-13T01:20:43Z T305b told to rebase (same stale base)
 2026-11-13T01:20:43Z F-5 created: server AutoStatusHook NoOp → device/server status differ (deps T304b)
+2026-11-13T01:22:02Z T305b HANDOFF DONE (+1148, rebased on T303c); reviewer + architect dispatched
+2026-11-13T01:22:13Z T305b CHECK_GREEN android (orchestrator re-run)
+2026-11-13T01:23:16Z T305b REVIEW_APPROVE architect (6 minors → FOLLOWUPS)

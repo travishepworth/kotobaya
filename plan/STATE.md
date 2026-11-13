@@ -15,7 +15,7 @@ Updated: 2026-11-13T01:16:06Z
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T304b | writer (sonnet) | 2 (rebase on T303c) | t/T304b-review-ui | 2026-11-13T01:20:43Z |
-| T305b | writer-senior (opus) | 1 | t/T305b-note-creator | 2026-11-13T01:10:04Z |
+| T305b | — (in review) | 1 | t/T305b-note-creator | 2026-11-13T01:22:02Z |
 | T303e | writer (sonnet) | 1 | t/T303e-sync-ui | 2026-11-13T01:16:06Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
@@ -24,6 +24,7 @@ Updated: 2026-11-13T01:16:06Z
 ## Ready for review / In review
 | Ticket | Reviewer | Started |
 |---|---|---|
+| T305b | reviewer (opus) + architect (opus) | 2026-11-13T01:22:02Z |
 
 ## Blocked
 | Ticket | Reason | Needs |
