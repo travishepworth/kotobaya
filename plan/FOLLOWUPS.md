@@ -277,3 +277,5 @@
 - T403b (minor): lone surrogate → 400 invalid_request not in C-12 error table; note in contract follow-up.
 - F-17: writer reports worker dict config requires sha256 for the `tatoeba` source; ADR-020 made pins optional — verify consistency.
 - T404b: ruby reading hints (ruby: hint) unused — parse_sentences has no hint input; add hint plumbing.
+- T406/T408b: SentenceToken lacks word status → web fetches getDictEntry per entry (N requests/page); consider status in sentences/parse response (contract add).
+- T406: override UX applies on click without parseText preview/inline editor (deviation for ≤2-click rule); human to judge in HUMAN_CHECKS.
