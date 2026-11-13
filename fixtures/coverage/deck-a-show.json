@@ -1,0 +1,56 @@
+{
+  "name": "Synthetic show (deck A)",
+  "media_id": "01931f40-3000-7000-8000-00000000ca01",
+  "segments": [
+    {"id": "01931f40-3100-7000-8000-00000000ca10", "ordinal": 0, "title": "第1話", "unmapped_token_count": 0},
+    {"id": "01931f40-3100-7000-8000-00000000ca11", "ordinal": 1, "title": "第2話", "unmapped_token_count": 0}
+  ],
+  "occurrences": [
+    {"seq": 1001, "pos_class": "content",   "counts": [20, 15]},
+    {"seq": 1002, "pos_class": "particle",  "counts": [30, 25]},
+    {"seq": 1003, "pos_class": "content",   "counts": [10, 10]},
+    {"seq": 1004, "pos_class": "auxiliary", "counts": [12, 8]},
+    {"seq": 1005, "pos_class": "content",   "counts": [5, 0]},
+    {"seq": 1006, "pos_class": "content",   "counts": [4, 3]},
+    {"seq": 1007, "pos_class": "content",   "counts": [0, 6]},
+    {"seq": 1008, "pos_class": "content",   "counts": [3, 2]},
+    {"seq": 1009, "pos_class": "name",      "counts": [2, 0]},
+    {"seq": 1010, "pos_class": "content",   "counts": [6, 4]},
+    {"seq": 1011, "pos_class": "content",   "counts": [0, 9]},
+    {"seq": 1012, "pos_class": "content",   "counts": [4, 4]},
+    {"seq": 1013, "pos_class": "content",   "counts": [3, 4]},
+    {"seq": 1014, "pos_class": "content",   "counts": [6, 0]},
+    {"seq": 1015, "pos_class": "content",   "counts": [0, 5]},
+    {"seq": 1016, "pos_class": "content",   "counts": [2, 2]},
+    {"seq": 1017, "pos_class": "content",   "counts": [3, 0]},
+    {"seq": 1018, "pos_class": "content",   "counts": [0, 3]},
+    {"seq": 1019, "pos_class": "content",   "counts": [1, 1]},
+    {"seq": 1020, "pos_class": "content",   "counts": [2, 0]},
+    {"seq": 1021, "pos_class": "content",   "counts": [0, 1]},
+    {"seq": 1022, "pos_class": "content",   "counts": [1, 0]},
+    {"seq": 1023, "pos_class": "content",   "counts": [0, 1]}
+  ],
+  "word_status": {
+    "1001": "known", "1002": "known", "1003": "never_forget", "1004": "known", "1005": "known",
+    "1006": "learning", "1007": "learning",
+    "1008": "blacklisted", "1009": "ignored",
+    "1013": "new"
+  },
+  "jpdb": {"unique_known_pct": 23.81, "token_known_pct": 64.29},
+  "expected": {
+    "hide": ["ignored"],
+    "unique": {"total": 21, "known": 5, "learning": 2, "unknown": 14},
+    "tokens": {"total": 210, "known": 135, "learning": 13, "unknown": 62, "unmapped": 0, "known_pct": 64.29},
+    "ignored_count": 2,
+    "curve": [
+      {"words": 0, "known_pct": 64.29},
+      {"words": 10, "known_pct": 91.43},
+      {"words": 14, "known_pct": 93.81}
+    ],
+    "segments": [
+      {"ordinal": 0, "title": "第1話", "unique_total": 15, "unique_unknown": 9, "token_total": 109, "known_pct": 70.64},
+      {"ordinal": 1, "title": "第2話", "unique_total": 16, "unique_unknown": 10, "token_total": 101, "known_pct": 57.43}
+    ],
+    "difficulty": {"unknown_per_1000": 295.24, "rank": 2, "of": 2}
+  }
+}

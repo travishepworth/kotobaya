@@ -1,0 +1,40 @@
+{
+  "name": "Synthetic novel (deck B)",
+  "media_id": "01931f40-3000-7000-8000-00000000cb01",
+  "segments": [
+    {"id": "01931f40-3100-7000-8000-00000000cb10", "ordinal": 0, "title": "", "unmapped_token_count": 4}
+  ],
+  "occurrences": [
+    {"seq": 2001, "pos_class": "content",   "counts": [40]},
+    {"seq": 2002, "pos_class": "particle",  "counts": [50]},
+    {"seq": 2003, "pos_class": "auxiliary", "counts": [20]},
+    {"seq": 2004, "pos_class": "content",   "counts": [8]},
+    {"seq": 2005, "pos_class": "content",   "counts": [10]},
+    {"seq": 2006, "pos_class": "name",      "counts": [7]},
+    {"seq": 2007, "pos_class": "content",   "counts": [5]},
+    {"seq": 2008, "pos_class": "content",   "counts": [4]},
+    {"seq": 2009, "pos_class": "name",      "counts": [3]},
+    {"seq": 2010, "pos_class": "particle",  "counts": [2]}
+  ],
+  "word_status": {
+    "2001": "known", "2002": "known", "2003": "never_forget", "2009": "known",
+    "2004": "learning",
+    "2005": "new", "2006": "new", "2007": "new",
+    "2008": "ignored"
+  },
+  "jpdb": {"unique_known_pct": 44.44, "token_known_pct": 77.93},
+  "expected": {
+    "hide": ["ignored"],
+    "unique": {"total": 9, "known": 4, "learning": 1, "unknown": 4},
+    "tokens": {"total": 149, "known": 113, "learning": 8, "unknown": 24, "unmapped": 4, "known_pct": 75.84},
+    "ignored_count": 1,
+    "curve": [
+      {"words": 0, "known_pct": 75.84},
+      {"words": 4, "known_pct": 91.95}
+    ],
+    "segments": [
+      {"ordinal": 0, "title": "", "unique_total": 9, "unique_unknown": 4, "token_total": 149, "known_pct": 75.84}
+    ],
+    "difficulty": {"unknown_per_1000": 161.07, "rank": 1, "of": 2}
+  }
+}
