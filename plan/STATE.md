@@ -10,14 +10,16 @@ Updated: RUN17
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
 ## 0.1.7 hotfix status
-- HOTFIX-0.1.7: TODO
+- HOTFIX-0.1.7: RUNNING
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| HOTFIX-0.1.7 | writer-light | 1 | t/HOTFIX-0.1.7-preview-loop-heap | RUN17 |
+| C-19 | architect | 1 | t/C-19-render-field-regions | RUN17 |
 
 ## Queued
-BUG-8, BUG-9, BUG-10, UI-FOUND-WEB (after HOTFIX-0.1.7) · UI-FOUND-APP (after BUG-8) · UI-DS · C-19
+BUG-8, BUG-9, BUG-10, UI-FOUND-WEB (after HOTFIX-0.1.7) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
 (none)
