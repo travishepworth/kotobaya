@@ -4,6 +4,13 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Ready now (run 17) — 0.1.8 candidates: BUG-8, BUG-9, BUG-10 (no migrations; no new env beyond the image default)
+- Merged: BUG-9 ac0765f, BUG-10 4ce6632, BUG-8 dcc3216 (plus TEST-1, C-19, UI-FOUND-WEB: no runtime behaviour change intended). Build from one pinned SHA (main at/after dcc3216).
+- Server image: stats replay chunked + shared (BUG-9); server/Dockerfile now sets ENV JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70 (same as the chart default; api.env still overrides). Hot words/kanji query rewrite (BUG-10).
+- Web image: UI-FOUND-WEB restructured every view onto web/src/lib/state/* (no visual change intended, no e2e coverage): click through Review, Cards, Notes, Dictionary, Stats, Decks, Settings, Import once.
+- New Android APK (BUG-8): first sync on a fresh install should finish in minutes, not tens of minutes, with a "Syncing N of M" chip; the app must stay responsive (switch tabs, open Settings) during sync. JVM bench: 100k ops in 55.8 s. Report the real device time.
+- Live checks: /stats panels < 1 s each and no 500; dashboard hot words/kanji < 200 ms; GET /kanji/{literal}/words (was 1.4 s live; not reproduced on seed data, 18-37 ms) — report if still slow.
+
 ## Ready now (run 17, 2026-11-13) — 0.1.7 HOTFIX (chart default env change; no migrations)
 - HOTFIX-0.1.7 merged at a5c4e3a. Build + helm 0.1.7 from that pinned SHA: new web image (CardPreview/NoteEditor $effect loop fix, I-3) and chart change.
 - Chart: api.env now defaults JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70 (I-1 stopgap). If ~/repos/kubernetes/kotobaya/values.yaml sets api.env, the maps merge; setting api.env.JAVA_TOOL_OPTIONS there overrides the default. Server image unchanged.
