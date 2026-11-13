@@ -4,8 +4,8 @@ Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE pending
 Updated: RUN17
 
 ## RESUME HERE (run 17: INBOX ticketed + archived to plan/handoffs/INBOX-0.1.6.md)
-- Dispatch order: HOTFIX-0.1.7 (A0, ship as 0.1.7) → BUG-8 (high, reviewer+architect) → BUG-9 → BUG-10; UI-FOUND-WEB alongside Track A after A0; UI-FOUND-APP after BUG-8; then UI-DS. C-19 when a slot is free.
-- HARD HUMAN GATE: after UI-DS merges do NOT dispatch UI-WEB/UI-APP; they wait for the human's approval message.
+- Dispatch order: HOTFIX-0.1.7 (A0, ship as 0.1.7) → BUG-8 (high, reviewer+architect) → BUG-9 → BUG-10; UI-FOUND-WEB → UI-DS (dispatch as soon as UI-FOUND-WEB merges; does NOT wait on BUG-8; human direction 2026-11-13). Android: BUG-8 → UI-FOUND-APP → UI-DS-APP (after UI-DS; not gated).
+- HARD HUMAN GATE fires when UI-DS merges (DESIGN.md + /styleguide + web screenshots): do NOT dispatch UI-WEB/UI-APP; they wait for the human's approval message.
 - Max 3 writers; Gradle builds via flock /tmp/kotobaya-gradle.lock; stop dispatching < 10 GB free on /home.
 - Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
@@ -19,7 +19,7 @@ Updated: RUN17
 | UI-FOUND-WEB | writer-senior | 1 | t/UI-FOUND-WEB-state-harness | RUN17 |
 
 ## Queued
-(none ready) · UI-FOUND-APP (after BUG-8) · UI-DS
+UI-DS (after UI-FOUND-WEB) · UI-FOUND-APP (after BUG-8) · UI-DS-APP (after UI-DS + UI-FOUND-APP) · UI-FOUND-APP (after BUG-8) · UI-DS
 
 ## Ready for review / In review
 

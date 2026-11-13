@@ -734,7 +734,7 @@ Source for HOTFIX-0.1.7..BUG-10 and Phase 9: plan/handoffs/INBOX-0.1.6.md (0.1.6
 On /notes (and the card browser preview), show the actual rendered card, front and back, with each field region (expression, reading, meaning, keyword, readings, notes, …) as a box filled from the dictionary/KANJIDIC. Each box has an edit button that turns it into an override input. Saving writes the note field (note.updated); "reset to dictionary" clears it. Overridden boxes are visibly marked. Needs a renderer hook from core so the web can map rendered regions to field keys (e.g. data-field="keyword" wrappers in RenderedCard). That is a core render-contract change, so architect first (C-xx), then web.
 
 ## Phase 9 — UI rewrite (UI-1 ungated by the human, run 17 brief)
-Order: UI-FOUND-WEB (∥ Track A after HOTFIX) → UI-FOUND-APP (after BUG-8) → UI-DS → HARD HUMAN GATE → UI-WEB ∥ UI-APP.
+Order (human direction 2026-11-13): UI-FOUND-WEB → UI-DS → HARD HUMAN GATE (DESIGN.md + /styleguide + web screenshots) → UI-WEB ∥ UI-APP. Android side in parallel: BUG-8 → UI-FOUND-APP → UI-DS-APP (after UI-DS; not gated).
 UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/ViewModel code BUG-8 changes.
 
 ### UI-FOUND-WEB — Web state modules, demo dataset, mock-server mode, Playwright screenshot matrix (B1 web)
@@ -743,9 +743,12 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 ### UI-FOUND-APP — Android ViewModels/UiState, demo switch, Roborazzi screenshot matrix (B1 app)
 - model: opus · risk: med · deps: BUG-8, UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-FOUND-APP.md)
 
-### UI-DS — Design system (tokens JSON → CSS + Compose), DESIGN.md IA + visual plan, /styleguide + Android styleguide (B2)
-- model: opus · risk: med · deps: UI-FOUND-WEB, UI-FOUND-APP · status: TODO (ticket: plan/tickets/UI-DS.md)
-- HUMAN GATE after merge: UI-WEB and UI-APP wait for human approval.
+### UI-DS — Design system (tokens JSON → CSS + Compose theme files), DESIGN.md IA + visual plan (both platforms), web /styleguide + Playwright screenshots (B2)
+- model: opus · risk: med · deps: UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-DS.md) · android/: generated theme/token files only (BUG-8 owns the rest)
+- HUMAN GATE fires when UI-DS merges: UI-WEB and UI-APP wait for human approval.
+
+### UI-DS-APP — Android debug styleguide screen + Roborazzi screenshots (split from UI-DS; NOT part of the human gate)
+- model: opus · risk: low · deps: UI-DS, UI-FOUND-APP · status: TODO (ticket: plan/tickets/UI-DS-APP.md)
 
 ### C-19 — Core render contract: data-field regions in RenderedCard (FEAT-x prerequisite; additive)
 - model: opus (architect) · risk: med · deps: — · status: MERGED 578985c (ticket: plan/tickets/C-19.md)
@@ -754,7 +757,7 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 - model: opus · risk: high · deps: UI-DS, C-19 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
 
 ### UI-APP — Rebuild every Android screen on the design system (B4; drops Media tab per IA, dark mode)
-- model: opus · risk: high · deps: UI-DS, BUG-8 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
+- model: opus · risk: high · deps: UI-DS, UI-DS-APP, BUG-8 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
