@@ -276,3 +276,4 @@
 - T403b (minor): agreement test — ~100 ambiguous null-seq fixture tokens are wildcards; print wildcard share with score.
 - T403b (minor): lone surrogate → 400 invalid_request not in C-12 error table; note in contract follow-up.
 - F-17: writer reports worker dict config requires sha256 for the `tatoeba` source; ADR-020 made pins optional — verify consistency.
+- T404b: ruby reading hints (ruby: hint) unused — parse_sentences has no hint input; add hint plumbing.
