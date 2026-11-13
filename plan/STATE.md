@@ -18,7 +18,7 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 
-Queued (Gradle slot, serial): F-15+F-16 (wt agent-aa893aced2b0ba95a, uncommitted server work) → F-17 → T403c+T408a (wt agent-aa2a58c8d4cb2a04d, uncommitted server work)
+Queued (Gradle slot, serial): T403c+T408a (wt agent-aa2a58c8d4cb2a04d, uncommitted server work)
 
 ## Parked
 | Ticket | Branch | State | Next |
