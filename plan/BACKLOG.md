@@ -683,6 +683,24 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - model: sonnet · risk: low · deps: C-18, BUG-7b · status: MERGED
 - paths: server dictionary handler + tests, web/src/lib/cards/, web/src/routes/cards/, web/src/lib/notes/, web/src/routes/notes/ (ticket: plan/tickets/BUG-7c.md)
 
+### HOTFIX-0.1.7 — Preview $effect loop hangs browser (I-3) + chart JAVA_TOOL_OPTIONS default (I-1 stopgap)
+- model: haiku (writer-light) · risk: low · deps: — · status: TODO · ships as 0.1.7
+- paths: web/src/lib/cards/, web/src/lib/notes/, deploy/helm/kotobaya/ (ticket: plan/tickets/HOTFIX-0.1.7.md)
+
+### BUG-8 — Android first sync slow + ANR: main-thread DB, single connection, per-op costs (I-4, I-7)
+- model: opus · risk: high (reviewer + architect) · deps: HOTFIX-0.1.7 · status: TODO
+- paths: android/**, core sync client (ticket: plan/tickets/BUG-8.md)
+
+### BUG-9 — Stats OOM/slow: one bounded streaming pass for retention+calibration (I-1 real fix)
+- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: TODO
+- paths: server stats/, server/Dockerfile heap default (ticket: plan/tickets/BUG-9.md)
+
+### BUG-10 — /words/hot, /kanji/hot, /kanji/{literal}/words slow (I-2)
+- model: sonnet · risk: med · deps: HOTFIX-0.1.7 · status: TODO
+- paths: server hot words/kanji queries (+ index migration if allowed) (ticket: plan/tickets/BUG-10.md)
+
+Source for HOTFIX-0.1.7..BUG-10 and Phase 9: plan/handoffs/INBOX-0.1.6.md (0.1.6 live triage + run 17 brief).
+
 ## Phase 8 — Features (requested 2026-11-13)
 
 ### C-17 — Contract: GET /kanji/{literal}/words (by frequency, deck membership; additive)
@@ -706,11 +724,34 @@ Note: the batch lookup is now needed by both pages (headword + reading + first g
 - paths: android settings/ui/ (ticket: plan/tickets/AND-SETTINGS.md)
 
 ### UI-1 — Full UI gamification and visual polish pass across web and Android
-- status: HUMAN-GATED (never dispatch) · Starts only after everything works; the user plans and starts it personally. No ticket file.
+- status: SUPERSEDED (run 17) by Phase 9 UI-FOUND-WEB/UI-FOUND-APP/UI-DS/UI-WEB/UI-APP (human ungated UI-1 on 2026-11-13).
 
 ### FEAT-x — WYSIWYG note view: rendered card with per-field override
-- status: HUMAN-GATED (part of the UI upgrade the user plans personally; never dispatch) · from BUG-7 addendum 2 FOLLOWUP
+- status: SUPERSEDED (run 17): ungated; folded into UI-WEB, with core render contract C-19 first · from BUG-7 addendum 2 FOLLOWUP
 On /notes (and the card browser preview), show the actual rendered card, front and back, with each field region (expression, reading, meaning, keyword, readings, notes, …) as a box filled from the dictionary/KANJIDIC. Each box has an edit button that turns it into an override input. Saving writes the note field (note.updated); "reset to dictionary" clears it. Overridden boxes are visibly marked. Needs a renderer hook from core so the web can map rendered regions to field keys (e.g. data-field="keyword" wrappers in RenderedCard). That is a core render-contract change, so architect first (C-xx), then web.
+
+## Phase 9 — UI rewrite (UI-1 ungated by the human, run 17 brief)
+Order: UI-FOUND-WEB (∥ Track A after HOTFIX) → UI-FOUND-APP (after BUG-8) → UI-DS → HARD HUMAN GATE → UI-WEB ∥ UI-APP.
+UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/ViewModel code BUG-8 changes.
+
+### UI-FOUND-WEB — Web state modules, demo dataset, mock-server mode, Playwright screenshot matrix (B1 web)
+- model: opus · risk: med · deps: HOTFIX-0.1.7 · status: TODO (ticket: plan/tickets/UI-FOUND-WEB.md)
+
+### UI-FOUND-APP — Android ViewModels/UiState, demo switch, Roborazzi screenshot matrix (B1 app)
+- model: opus · risk: med · deps: BUG-8, UI-FOUND-WEB · status: TODO (ticket: plan/tickets/UI-FOUND-APP.md)
+
+### UI-DS — Design system (tokens JSON → CSS + Compose), DESIGN.md IA + visual plan, /styleguide + Android styleguide (B2)
+- model: opus · risk: med · deps: UI-FOUND-WEB, UI-FOUND-APP · status: TODO (ticket: plan/tickets/UI-DS.md)
+- HUMAN GATE after merge: UI-WEB and UI-APP wait for human approval.
+
+### C-19 — Core render contract: data-field regions in RenderedCard (FEAT-x prerequisite; additive)
+- model: opus (architect) · risk: med · deps: — · status: TODO (ticket: plan/tickets/C-19.md)
+
+### UI-WEB — Rebuild every web screen on the design system (B3, folds in FEAT-x)
+- model: opus · risk: high · deps: UI-DS, C-19 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
+
+### UI-APP — Rebuild every Android screen on the design system (B4; drops Media tab per IA, dark mode)
+- model: opus · risk: high · deps: UI-DS, BUG-8 · status: HUMAN-GATED (waiting for human approval of DESIGN.md + styleguide)
 
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.

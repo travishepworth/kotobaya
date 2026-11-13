@@ -829,3 +829,7 @@
 2026-11-13T11:28:47Z BUG-7c HANDOFF DONE; listDictHeadwords server + Netty initial line 16384; both tables batch-filled
 2026-11-13T11:28:47Z BUG-7c MERGE CHECK_GREEN server+web (low, no review); 501 allowlist empty again
 2026-11-13T11:34:21Z RUN16 END make test rc=0; 4 merges (BUG-7, BUG-7b, C-18, BUG-7c); FEAT-x HUMAN-GATED
+2026-11-13T12:14:45Z RUN17 START main 6c954bd; disk /home 34G free; INBOX run 17 brief (UI-1/FEAT-x ungated)
+2026-11-13T12:14:45Z HOTFIX-0.1.7,BUG-8,BUG-9,BUG-10 FILED Phase 7 from INBOX I-1..I-4,I-7
+2026-11-13T12:14:45Z UI-FOUND SPLIT UI-FOUND-WEB / UI-FOUND-APP (app half dep BUG-8: same android IO code)
+2026-11-13T12:14:45Z UI-DS,C-19,UI-WEB,UI-APP FILED Phase 9; UI-WEB/UI-APP HUMAN-GATED (B2 gate); INBOX archived plan/handoffs/INBOX-0.1.6.md

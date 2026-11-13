@@ -1,28 +1,29 @@
 # STATE
 Mode: single-session
-Phase: P7 live bugs DONE (run 16); P8 COMPLETE   Gate: GATE-P2..P5 deferred (HUMAN_CHECKS); contracts frozen
-Updated: 2026-11-13T11:34:21Z (run 16 end)
+Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE pending (after UI-DS merges); GATE-P2..P5 deferred
+Updated: RUN17
 
-## RESUME HERE (run 16 END: BUG-7 family done)
-- Run 16 merged 4: BUG-7 (/cards row click+Enter, headword label fallback, dict-backed preview), BUG-7b (/notes: rowLabel, Reading/Meaning cols, Preview|Edit default Preview, kind switcher on notes+cards, Kanji fetch->toKanji, 'From dictionary' field values; user addenda 1+2), C-18 (contract listDictHeadwords GET /dict/headwords?seq=, <=500, additive), BUG-7c (server handler + Netty maxInitialLineLength 16384; both tables batch-filled). make test rc=0 at the BUG-7c merge.
-- /review kanji rendering checked: already correct (QueueItem.kanji -> toKanji).
-- Nothing in flight. No t/* or worktree-agent-* branches/worktrees. Deploy: no migrations, no new env/config; new server + web images (no APK change).
-- NEXT: nothing runnable except FOLLOWUPS. UI-1 and FEAT-x (WYSIWYG note view, needs core render-contract C-xx) are HUMAN-GATED: never dispatch.
-- Lesson: an addendum arriving while a sibling writer owns the same files -> SendMessage it to that writer (widen paths) instead of a parallel ticket.
+## RESUME HERE (run 17: INBOX ticketed + archived to plan/handoffs/INBOX-0.1.6.md)
+- Dispatch order: HOTFIX-0.1.7 (A0, ship as 0.1.7) → BUG-8 (high, reviewer+architect) → BUG-9 → BUG-10; UI-FOUND-WEB alongside Track A after A0; UI-FOUND-APP after BUG-8; then UI-DS. C-19 when a slot is free.
+- HARD HUMAN GATE: after UI-DS merges do NOT dispatch UI-WEB/UI-APP; they wait for the human's approval message.
+- Max 3 writers; Gradle builds via flock /tmp/kotobaya-gradle.lock; stop dispatching < 10 GB free on /home.
+- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
+## 0.1.7 hotfix status
+- HOTFIX-0.1.7: TODO
 
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 
 ## Queued
-(none)
+BUG-8, BUG-9, BUG-10, UI-FOUND-WEB (after HOTFIX-0.1.7) · UI-FOUND-APP (after BUG-8) · UI-DS · C-19
 
 ## Ready for review / In review
 (none)
 
 ## Blocked
-(none)
+(none) · HUMAN-GATED: UI-WEB, UI-APP (B2 gate)
 
 ## Notes
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
@@ -34,9 +35,10 @@ Updated: 2026-11-13T11:34:21Z (run 16 end)
 - Review rounds: loop only on real blocker/major findings that have a failure scenario. Minors go to FOLLOWUPS.
 
 ## Pending human questions
-- UI-1 and FEAT-x are HUMAN-GATED, never dispatch. Others: see plan/HUMAN_CHECKS.md.
+- UI-1/FEAT-x ungated (run 17) -> Phase 9. UI-WEB/UI-APP gated on human approval of UI-DS. Others: see plan/HUMAN_CHECKS.md.
 
 ## Phase stats
+Run 17: merged 0 · attempts 0 · escalations 0
 P7 (run 16): merged 4 (BUG-7, BUG-7b, C-18, BUG-7c) · attempts 4 · escalations 0 · make test green
 P8: merged 5 (C-17, FEAT-1, AND-DECKS, AND-SEARCH, AND-SETTINGS) · attempts 7 (2 rebase fixes) · escalations 0
 P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attempts · escalations 0 · make test green (run 14)
