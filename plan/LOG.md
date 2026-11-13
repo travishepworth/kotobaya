@@ -552,3 +552,6 @@
 2026-11-13T01:23:37Z T303e HANDOFF DONE; CHECK_GREEN android after rebase; MERGE 1 attempt
 2026-11-13T01:24:06Z T305b REVIEW_APPROVE reviewer (6 minors → FOLLOWUPS/T305c/T311)
 2026-11-13T01:24:14Z T305b rebase conflict FeatureModules (T303e) → back to writer
+2026-11-13T01:25:40Z T304b CHECK_GREEN core+android after rebase; MERGE 2 attempts
+2026-11-13T01:25:40Z T304c+W-4 DISPATCH writer(sonnet) batched
+2026-11-13T01:25:40Z F-5 DISPATCH writer(sonnet)
