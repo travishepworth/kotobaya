@@ -16,6 +16,7 @@ Updated: 2026-11-13 (end of orchestrator run 9)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
 | T601 | writer | 1 | t/T601-voicevox-tts | run 10 |
+| T603 | writer | 1 | t/T603-server-ankiconnect | run 10 |
 | C-16 | architect | 1 | t/C-16-fsrs-params-publish | run 10 (for T606) |
 
 ## Parked
