@@ -1,6 +1,6 @@
 # STATE
 Mode: single-session
-Phase: P4 (Media)   Gate: GATE-P2, GATE-P3 deferred (HUMAN_CHECKS); contracts frozen
+Phase: P5 (Struggle + grammar)   Gate: GATE-P2, GATE-P3, GATE-P4 deferred (HUMAN_CHECKS); contracts frozen
 Updated: 2026-11-13 (run 7 in progress)
 
 
