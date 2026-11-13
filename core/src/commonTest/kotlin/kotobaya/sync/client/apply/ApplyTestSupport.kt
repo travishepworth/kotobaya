@@ -245,3 +245,16 @@ class ScenarioPlay(val name: String) {
 
     fun assertServerLogIsTheScenarioLog() = assertEquals(log, server.loggedOps(), "$name: server log")
 }
+
+/** Rows that differ between two dumps or projections, readable ("table key: a vs b"). */
+fun diffRows(a: Map<String, Map<String, Row>>, b: Map<String, Map<String, Row>>): List<String> =
+    (a.keys + b.keys).flatMap { table ->
+        val ra = a[table].orEmpty()
+        val rb = b[table].orEmpty()
+        (ra.keys + rb.keys).filter { ra[it] != rb[it] }.map { k ->
+            val x = ra[k]
+            val y = rb[k]
+            val cols = ((x?.keys ?: emptySet()) + (y?.keys ?: emptySet())).filter { x?.get(it) != y?.get(it) }
+            "$table $k: " + if (x == null || y == null) "${x ?: "absent"} vs ${y ?: "absent"}" else cols.joinToString { "$it=${x[it]} vs ${y[it]}" }
+        }
+    }
