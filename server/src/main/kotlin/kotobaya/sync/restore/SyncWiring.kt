@@ -2,6 +2,7 @@ package kotobaya.sync.restore
 
 import kotobaya.server.Database
 import kotobaya.server.StartupSequence
+import kotobaya.sync.CoreAutoStatusHook
 import kotobaya.sync.SyncConfig
 import kotobaya.sync.SyncEvents
 import kotobaya.sync.merge.CoreCardCache
@@ -23,6 +24,7 @@ object SyncWiring {
     /** [SyncConfig] with the real merge policy (SYNC.md 8.1), the core card cache (9) and the backups setting (6.3). */
     fun config(events: SyncEvents = SyncEvents.NoOp, env: Map<String, String> = System.getenv()): SyncConfig = SyncConfig(
         cardCache = cache,
+        autoStatus = CoreAutoStatusHook(),
         merge = DuplicateMerge(),
         events = events,
         backupsDisabled = DurableSeq.backupsDisabled(env),

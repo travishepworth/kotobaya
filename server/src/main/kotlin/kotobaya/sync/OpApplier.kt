@@ -85,7 +85,30 @@ internal class OpApplier(
     private val rows = Rows(dsl)
     private val n = SyncJson.nodes
 
-    fun apply(op: Op): List<FollowUp> {
+    fun apply(op: Op): List<FollowUp> = applyOp(op).also { touchAfter(op) }
+
+    /**
+     * Entries whose derived `auto_status` an op may have moved through a card cache (OPS.md: every replica
+     * re-derives it; the device's `AutoStatus.entriesOf`). Note/card creation, deletion and merge touch their own
+     * entries inside [applyOp]; here are the ops that change a card's state or interval without a note/card row write.
+     */
+    private fun touchAfter(op: Op) {
+        val p = op.payload
+        when (op.opType) {
+            REVIEW_LOGGED -> touchEntriesOfCards(listOfNotNull(p.str("card_id")))
+            REVIEW_UNDONE -> dsl.fetchOptional("select card_id::text from app.review_log where id = ?::uuid", p.reqStr("review_id"))
+                .ifPresent { touchEntriesOfCards(listOf(it.get(0, String::class.java))) }
+            CARD_PRESET_SET -> touchEntriesOfCards(listOf(p.reqStr("id")))
+            NOTE_MERGED -> touchEntriesOfNotes(listOf(p.reqStr("loser_id"), p.reqStr("survivor_id")))
+            else -> if (op.opType.wire.startsWith("fsrs_params.")) {
+                val all = dsl.fetch("select entry_seq from app.note where entry_seq is not null union select entry_seq from app.word_status")
+                    .map { it.get(0, Number::class.java).toLong() }.toSet()
+                if (all.isNotEmpty()) autoStatus.entriesTouched(dsl, all)
+            }
+        }
+    }
+
+    private fun applyOp(op: Op): List<FollowUp> {
         val p = op.payload
         val h = op.hlc
         return when (op.opType) {
