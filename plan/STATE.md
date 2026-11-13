@@ -17,7 +17,6 @@ Updated: 2026-11-13 (end of orchestrator run 4)
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T410 | writer (android, Gradle slot) | 1 | t/T410-android-coverage-sentences | run 6 |
 Next: W-5 (server, Gradle; deps all merged; waits for Gradle slot after T410). W-5 note: F-17 dict/EntryExamples and T408a SentencesModule both implement listEntryExamples — register only one.
 
 ## Parked
@@ -51,6 +50,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T410 Android media browse: coverage, segments, curve, i+1 sentences (6th bottom tab) (run 6)
 - T406+T408b web reader with parse correction + media sentence lists and sentence cards (run 6)
 - T404b worker media-import and media-parse jobs + coverage aggregation (554 worker tests) (run 6)
 - T403c+T408a parse API (parseText, overrides via ops) + sentences API (i+1, i+0); unwired until W-5 (run 6)
