@@ -584,3 +584,8 @@
 2026-11-13T02:17:06Z P4 SPLIT planner: 25 tickets (C-11,C-12,F-7,T401a..T411c,W-5); ADR-014..019 provisional
 2026-11-13T02:17:06Z - DECIDE ADR-014..019 (P4 media pipeline defaults)
 2026-11-13T02:17:37Z C-11,F-7,T401a,T402a,T404c,T411a DISPATCH (architect-opus, writer×4, writer-senior)
+2026-11-13T02:22:39Z T402a CHECK_GREEN worker; MERGE 1 attempt
+2026-11-13T02:22:39Z T401a HANDOFF DONE; T411a HANDOFF DONE; checks running
+2026-11-13T02:22:39Z T402b+T409 DISPATCH writer(sonnet) batched; T405a DISPATCH writer(sonnet)
+2026-11-13T02:22:53Z T401a CHECK_GREEN worker; MERGE 1 attempt
+2026-11-13T02:23:05Z T411a CHECK_GREEN server; MERGE 1 attempt (W-5 wires it)

@@ -55,6 +55,7 @@ checks assume earlier ones pass. Report problems back to the orchestrator as new
   2. Check (vocabulary_carded + vocabulary_status_only) / (vocabulary_total − vocabulary_en_jp_ignored) ≥ 0.95; skim `unmapped` / `kanji_unmapped`; `reviews_id_collisions` should be 0.
   3. Spot-check ~20 cards' due dates against jpdb.
   4. Re-run the same import: 0 new ops. Delete one imported note, re-run: it stays deleted (provisional rule).
+- [ ] **T401a jpdb deck fetch:** (1) fetch one real public deck via the Pages source and compare row counts with the site; (2) with `JPDB_API_KEY`, run the API path once and report real field names (response layout ASSUMED in `map_api_response`); verify numeric-id deck URL form `deck/<id>`.
 - [ ] **S02:** read `spikes/jpdb-map/REPORT.md`. Hit rate ≥ 95%? If not, work through the mapping review queue in the web app.
 - [ ] **P2 — History import:** import your jpdb review history; spot-check 20 cards' due dates against jpdb.
 

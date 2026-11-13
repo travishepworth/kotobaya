@@ -242,3 +242,7 @@
 - ScenarioFilesTest: `after_seq` rejected entries skipped and examples/remint-scenarios/ not played; judge against server restored to after_seq.
 - SimDevice.mint doesn't catch Killed: KILL_AT_COMMIT can fire inside a mint (overlapping action blocks) → spurious failure on other seeds; kill-during-mint/Re-mint untested. Catch, reboot, ledger untouched.
 - Reference replica shares DeviceOpApplier with devices; consider tools/validate.py as an independent model over scenario logs.
+
+## T411a (handoff notes)
+- Unsatisfiable Range → 416 `range_not_satisfiable`, not in contract error table → add via next C-ticket (C-12 or later).
+- S3BlobStore untested against SeaweedFS (tests use in-memory fake); no 302 pre-signed redirects (GET streams).
