@@ -54,6 +54,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- F-15+F-16 MediaApiModule wired (jpdb vocab 501 fixed), WiringAuditTest 501 allowlist, health version from build (run 6)
 - T403b parser matching (ranked JMdict, overrides, parse service; agreement 0.978) — reviewer APPROVE (run 6)
 - F-14 SeaweedFS blob PUT: spool to temp file, known length; copy via get+put (CopyObject 500) (run 6)
 - F-18 web dict page keeps entry when examples fail/empty (run 6)
