@@ -593,7 +593,7 @@ T301→T301a(shell, DI, SQLDelight)/T301b(pairing, net); T303→T303a(core: stor
 - paths: server blobs/, ankiconnect/AnkiMedia.kt + tests (ticket: plan/tickets/SEC-1.md)
 
 ### SEC-2 — Worker SSRF guard on URL import (T609 S-02)
-- model: sonnet · risk: med · deps: T609 · status: RUNNING
+- model: sonnet · risk: med · deps: T609 · status: MERGED
 - paths: worker extract/html/, worker/tests/extract/ (ticket: plan/tickets/SEC-2.md)
 
 → **GATE-DONE**: human sign-off.
