@@ -23,6 +23,8 @@ import kotobaya.jobs.JobsModule
 import kotobaya.coverage.CoverageModule
 import kotobaya.struggle.StruggleModule
 import kotobaya.media.api.MediaApiModule
+import kotobaya.confusables.ConfusableModule
+import kotobaya.confusables.ConfusableSuggester
 import kotobaya.media.publish.MediaPublishRunner
 import kotobaya.parse.HttpParserClient
 import kotobaya.parse.ParseModule
@@ -69,6 +71,7 @@ fun main(args: Array<String>) {
     app.jobs.start(scope)
     app.imports.start(scope)
     app.mediaPublish?.start(scope)
+    app.confusables?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") { kotobayaModule(app.deps) }.start(wait = true)
@@ -78,7 +81,13 @@ fun main(args: Array<String>) {
  * The composed application: [deps] for `kotobayaModule`, and [jobs], [imports] and [mediaPublish] (null without a
  * blob store), which the caller must `start(scope)`.
  */
-class ComposedApp(val deps: AppDeps, val jobs: JobsModule, val imports: ImportsModule, val mediaPublish: MediaPublishRunner? = null)
+class ComposedApp(
+    val deps: AppDeps,
+    val jobs: JobsModule,
+    val imports: ImportsModule,
+    val mediaPublish: MediaPublishRunner? = null,
+    val confusables: ConfusableSuggester? = null,
+)
 
 /**
  * The one place the modules meet: auth (login, token authenticator), dictionary and jobs/events handlers.
@@ -115,7 +124,7 @@ fun composeApp(
         ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + imports.handlers +
         MediaApiModule(db, sync.opApply).handlers +
         ParseModule(db, sync.opApply, parser).handlers + CoverageModule(db).handlers +
-        StruggleModule(db).handlers +
+        StruggleModule(db).handlers + ConfusableModule(db, sync.opApply).handlers +
         // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
         (SentencesModule(db).handlers - "listEntryExamples") +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap())
@@ -126,7 +135,7 @@ fun composeApp(
         startup = startup,
         bucketInit = bucketInit,
     )
-    return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) })
+    return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply))
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()

@@ -29,9 +29,6 @@ class WiringAuditTest {
     private val unwiredUntilW5: Set<String> = setOf(
         // Every other entry has no handler in this tree yet (later tickets); remove entries as they land.
         "listHotKanji",
-        "listWordConfusables",
-        "listConfusables",
-        "setConfusable",
         "testGrammarRules",
         "listGrammarExamples",
         "putGrammarSpan",
