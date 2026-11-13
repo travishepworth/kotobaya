@@ -271,3 +271,7 @@
 - T411c (reviewer, minor): deviation 2 alt fix — return stale_base when payload.parent_job_id differs from the publishing parent, or document in MEDIA_PIPELINE 3.4.
 - C-12 (reviewer, minor): PARSER.md 4.4 sync-path `reading` sanitising has no length cap while API OverrideToken.reading maxLength 200 — document or apply the same cap.
 - C-12 (architect handoff): C-11 owner adds optional `parser_version` to content archive header; T403b note real Sudachi may tag unknown 𠮷 as punctuation.
+- T403b (reviewer, minor): PostgresParseBackend.health learns dict release only at startup/parse → stale `dict_release: null` after refresh until first parse; refresh in background.
+- T403b (minor): MatchCache keyed on release version only; freq list reload without new release keeps stale ranks — key on list version or require new release.
+- T403b (minor): agreement test — ~100 ambiguous null-seq fixture tokens are wildcards; print wildcard share with score.
+- T403b (minor): lone surrogate → 400 invalid_request not in C-12 error table; note in contract follow-up.
