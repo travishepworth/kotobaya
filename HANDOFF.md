@@ -5,10 +5,10 @@ BRANCH: t/C-12-parser-contract
 CHECK: `make check MODULE=contracts` → green
 
 ## Changed (≤ 6 lines)
-- New `contracts/api/PARSER.md`: token format 1, class table, pos_class tie-break, override algorithm, worker service, versioning
-- New `token.schema.json`, `worker-parse.yaml`, `examples/{tokens,parser-cases}.json`, `check_parser.py` (wired into `check.sh`)
-- `openapi.yaml`: SentenceToken all 10 required; OverrideToken +`reading`/`class`; optional `parser_version` on ParseResult/JobResultMedia; examples hiragana + verbatim cform
-- `SCHEMA.md` 4.3 token note; `api/SUMMARY.md` C-12 section; clients regenerated
+- `contracts/api/PARSER.md`: token format 1, class table, pos_class tie-break (jpdb: table with P=[]), override algorithm, worker service, versioning
+- Attempt 2: readiness = Sudachi loaded only (`dict_release` null + per-request `503 not_ready`); 4.4 sanitises sync-path override tokens (fold katakana; invalid lemma/reading/class/seq = absent)
+- `openapi.yaml` OverrideToken.reading rejects katakana; `worker-parse.yaml` health body +`dict_release`; no host exposure of 8082
+- New vector "sync-path override with invalid members"; check_parser.py checks the reading pattern; clients regenerated
 
 ## Acceptance → tests
 - contracts green, clients regenerated → `make check MODULE=contracts`
@@ -18,6 +18,6 @@ CHECK: `make check MODULE=contracts` → green
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Provisional: no auth on worker port 8082 (NetworkPolicy only); cform verbatim (`連用形-一般`); ties favour `content`; overrides must align to token boundaries.
-- New files beyond the listed owned paths: PARSER.md, token.schema.json, examples/, check_parser.py, check.sh edit.
-- Follow-up (C-11 owner): optional `parser_version` in content archive header → JobResultMedia.
+- Provisional: no auth on 8082 (NetworkPolicy only); cform verbatim; ties favour `content`; overrides align to token boundaries.
+- HUMAN_CHECKS (orchestrator): SentenceToken all-required is a tightening (no consumer merged yet).
+- Follow-up (C-11 owner): optional `parser_version` in content archive header; T403b: real Sudachi may gap OOV 𠮷.
