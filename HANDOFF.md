@@ -5,7 +5,7 @@ BRANCH: t/T305c-takoboto-store
 CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- `ankiapi/takoboto/`: TakobotoVocab (field table, fixed name-derived id), NoteTypeEnsurer (one `note_type.created`), Koin feature, debug Settings section.
+- `ankiapi/takoboto/`: TakobotoVocab (field table, name-derived id), NoteTypeEnsurer, Koin feature, debug section.
 - `ankiapi/store/`: TakobotoAnkiStore (op-backed, via NoteCreator/DuplicateCheck), AnkiIdMap (`ankiapi.db`: `ankiapi_note_map`, decks, client models, counters), DeferredAnkiStore, EntryLookup.
 - Out of path: `notes/DuplicateCheck.kt` (the carried-in fix), `app/KotobayaApp.kt` (eager `AnkiStoreHolder.set`), `provider/AnkiProvider.kt` (`@VisibleForTesting attachStore`), `AnkiStoreHolder` (wait is now 2 s), `di/FeatureModules.kt` (+1 line), new `res/values/strings_ankiapi.xml`.
 
