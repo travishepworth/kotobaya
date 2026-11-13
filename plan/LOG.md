@@ -668,3 +668,4 @@
 2026-11-13T04:55:43Z T505 SPLIT T505a (fixtures, haiku) + T505b (server CRUD, deps T505a)
 2026-11-13T04:56:05Z T501 DISPATCH writer (core+server, Gradle slot)
 2026-11-13T04:56:05Z T505a DISPATCH writer-light (fixtures)
+2026-11-13T04:58:40Z T505a MERGE validate.py green (280 stubs); 1 attempt (low)
