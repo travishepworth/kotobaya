@@ -17,6 +17,7 @@ Updated: 2026-11-13 (run 7 in progress)
 ## Running
 | Ticket | Agent | Attempt | Branch |
 |---|---|---|---|
+| T505b | writer | 1 | t/T505b-grammar-library |
 
 ## Parked
 (none)
