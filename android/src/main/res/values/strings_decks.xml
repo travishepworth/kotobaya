@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="decks_title">Decks</string>
+    <string name="decks_empty">No decks yet. Create decks on the web app; they sync here.</string>
+    <string name="decks_loading">Loading…</string>
+    <string name="decks_refresh">Refresh</string>
+    <string name="decks_back">Back</string>
+    <string name="decks_type_user">Your deck</string>
+    <string name="decks_type_media">Media deck</string>
+    <string name="decks_type_list">List deck</string>
+    <string name="decks_type_smart">Smart deck</string>
+    <string name="decks_disabled">Disabled</string>
+    <string name="decks_counts">Due %1$d · New %2$d · Learning %3$d · %4$d cards</string>
+    <string name="decks_detail_type">Type: %1$s</string>
+    <string name="decks_detail_query">Query: %1$s</string>
+    <string name="decks_study">Study this deck</string>
+    <string name="decks_words">Words</string>
+    <string name="decks_words_empty">No words in this deck on this device.</string>
+    <string name="decks_more">Show more</string>
+    <string name="decks_smart_note">Smart decks are matched by their query on the server; counts here may be empty.</string>
+    <string name="decks_review_not_ready">Review is not available yet.</string>
+</resources>

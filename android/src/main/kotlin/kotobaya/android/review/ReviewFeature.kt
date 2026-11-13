@@ -17,7 +17,11 @@ import org.koin.dsl.module
 import java.io.File
 
 /** Adapts T304a's loader to the session's queue seam. */
-fun LocalQueueLoader.asQueueSource(): QueueSource = QueueSource { newShown -> load(newShown).queue }
+fun LocalQueueLoader.asQueueSource(): QueueSource = object : QueueSource {
+    override fun load(newShownThisSession: Int) = load(newShownThisSession, null).queue
+
+    override fun forDeck(deckId: String): QueueSource = QueueSource { newShown -> load(newShown, deckId).queue }
+}
 
 /** [BlobResolver] over T310's [BlobStore]: a published blob file, and `touch` on play. */
 class BlobStoreResolver(private val store: BlobStore, private val clock: () -> Long = System::currentTimeMillis) : BlobResolver {

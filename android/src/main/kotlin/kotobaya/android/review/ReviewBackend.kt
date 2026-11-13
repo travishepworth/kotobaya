@@ -47,10 +47,10 @@ class ReviewBackend<L : LearningTables>(
 ) {
     private val ids = UuidV7Source(Random.Default)
 
-    fun newSession(): ReviewSession<L> = ReviewSession(
+    fun newSession(deckId: String? = null): ReviewSession<L> = ReviewSession(
         store = store,
         minter = minter,
-        queue = queue,
+        queue = if (deckId == null) queue else queue.forDeck(deckId),
         clock = clock,
         utcOffsetMin = { at -> TimeZone.getDefault().getOffset(at) / 60_000 },
         newReviewId = ids::newOpId,

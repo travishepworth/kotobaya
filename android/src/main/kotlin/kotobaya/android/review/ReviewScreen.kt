@@ -144,13 +144,13 @@ private fun blockedMessage(r: MintRefusal): Int = when (r) {
 
 /** The review route: [backend] null means the sync store is not wired yet. */
 @Composable
-fun ReviewScreen(backend: ReviewBackend<*>?, onSessionEnd: () -> Unit = {}) {
+fun ReviewScreen(backend: ReviewBackend<*>?, onSessionEnd: () -> Unit = {}, deckId: String? = null) {
     if (backend == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(T(R.string.review_not_ready)) }
         return
     }
     val context = LocalContext.current
-    val session = remember(backend) { backend.newSession() }
+    val session = remember(backend, deckId) { backend.newSession(deckId) }
     val scope = rememberCoroutineScope()
     val audio = remember(backend) { AudioPlayer(backend.blobs) }
     val web = remember(backend) { CardWebView(context, backend.blobs) }

@@ -33,6 +33,9 @@ import kotobaya.sync.client.store.PendingState
 /** The queue the session pulls from (T304a's `LocalQueueLoader` in production). */
 fun interface QueueSource {
     fun load(newShownThisSession: Int): ReviewQueue
+
+    /** The same source limited to one deck (Decks tab "Study this deck"); the default ignores the deck. */
+    fun forDeck(deckId: String): QueueSource = this
 }
 
 /** Dictionary data for a vocab entry (T302 on-device dictionary), or null when unavailable. */
