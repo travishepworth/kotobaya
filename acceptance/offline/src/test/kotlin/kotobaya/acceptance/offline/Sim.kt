@@ -457,13 +457,14 @@ class Sim(val server: SimServer, val world: World, val devices: List<SimDevice>,
         }
     }
 
-    private fun remint(d: SimDevice) {
+    /** Re-mint (SYNC.md 10.4) as the user confirms it after seeing the preview, then a sync; the ledger follows. */
+    fun remint(d: SimDevice, syncAfter: Boolean = true): RemintOutcome.Reminted? {
         val svc = d.app.rejected
         repeat(2) {
             val preview = svc.previewRemint()
             if (!preview.available) {
                 stats.inc("remint.unavailable.${preview.blocked!!.name.lowercase()}")
-                return
+                return null
             }
             val rows = d.rows().associateBy { it.opId }
             when (val out = svc.remint(preview)) {
@@ -486,16 +487,17 @@ class Sim(val server: SimServer, val world: World, val devices: List<SimDevice>,
                             ledger.discarded(opId)
                         }
                     }
-                    sync(d, null)
-                    return
+                    if (syncAfter) sync(d, null)
+                    return out
                 }
                 RemintOutcome.StalePreview -> stats.inc("remint.stale_preview")
                 is RemintOutcome.Unavailable -> {
                     stats.inc("remint.unavailable.${out.reason.name.lowercase()}")
-                    return
+                    return null
                 }
             }
         }
+        return null
     }
 
     // ---- the end of the week ------------------------------------------------------------------
@@ -560,17 +562,22 @@ class Sim(val server: SimServer, val world: World, val devices: List<SimDevice>,
         val ids = log.map { it.opId }
         if (ids.size != ids.toSet().size) out += "an op id is logged twice"
         val ref = replicaOf(log)
-        val refP = projection(ref)
-        diffRows(refP, projection(fullyReplayed(ref))).takeIf { it.isNotEmpty() }?.let { out += "reference replica: a card cache differs from a full replay: $it" }
-        diffRows(refP, server.projection(refP)).takeIf { it.isNotEmpty() }?.let { out += "server (${server.kind}) differs from the replayed log: $it" }
+        // the server and the reference applied the same log in the same order: equal as stored
+        val rawRef = projection(ref)
+        diffRows(rawRef, server.projection(rawRef)).takeIf { it.isNotEmpty() }?.let { out += "server (${server.kind}) differs from the replayed log: $it" }
+        // replicas are compared after their pending lazy replays (11 item 3), which must equal a full replay (9.3)
+        val refP = projection(settled(ref))
+        val irnd = Random(log.size.toLong())
+        repeat(2) { k ->
+            diffRows(refP, projection(settled(interleavedReplica(log, irnd)))).takeIf { it.isNotEmpty() }
+                ?.let { out += "out-of-order delivery #$k (random per-device interleaving with re-deliveries) diverges: $it" }
+        }
         val expected = ledger.expected()
         val replaced = ledger.replaced()
         for ((name, t) in listOf("log" to ref) + devices.map { it.name to it.tables() }) {
-            val p = projection(t)
-            if (name != "log") {
-                diffRows(refP, p).takeIf { it.isNotEmpty() }?.let { out += "device $name differs from the server's log: $it" }
-                diffRows(p, projection(fullyReplayed(t))).takeIf { it.isNotEmpty() }?.let { out += "device $name: a card cache differs from a full replay: $it" }
-            }
+            val p = projection(settled(t))
+            diffRows(p, projection(fullyReplayed(t))).takeIf { it.isNotEmpty() }?.let { out += "$name: a card cache differs from a full replay: $it" }
+            if (name != "log") diffRows(refP, p).takeIf { it.isNotEmpty() }?.let { out += "device $name differs from the server's log: $it" }
             val present = t.all(LearningTable.REVIEW_LOG).mapNotNullTo(HashSet()) { it.str("id") }
             val lost = expected - present
             if (lost.isNotEmpty()) out += "LOST REVIEWS on $name: ${lost.size} (e.g. ${lost.take(3).map { describe(it) }})"

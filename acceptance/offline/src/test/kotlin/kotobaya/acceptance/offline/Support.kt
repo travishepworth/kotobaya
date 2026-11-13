@@ -131,5 +131,45 @@ fun replicaOf(log: List<Op>): InMemoryLearningTables {
     return InMemoryLearningTables.seeded().also { t -> for (op in log) if (op.opType.deviceApplies) applier.applyTo(t, op) }
 }
 
+/**
+ * SYNC.md 11 "any interleaving converges": a fresh replica applies [log] as out-of-order delivery would —
+ * the per-device streams (the server's included) interleaved at random, each in its own order, an op
+ * only once the rows it references exist, and now and then an op delivered again. Always progresses:
+ * the earliest unapplied op of the log is a stream head whose references exist.
+ */
+fun interleavedReplica(log: List<Op>, rnd: kotlin.random.Random, redeliver: Double = 0.05): InMemoryLearningTables {
+    val applier = DeviceOpApplier<InMemoryLearningTables>()
+    val t = InMemoryLearningTables.seeded()
+    val streams = log.filter { it.opType.deviceApplies }.groupBy { it.deviceId }.values.map { ArrayDeque(it) }
+    val applied = ArrayList<Op>()
+    while (streams.any { it.isNotEmpty() }) {
+        if (applied.isNotEmpty() && rnd.nextDouble() < redeliver) applier.applyTo(t, applied[rnd.nextInt(applied.size)])
+        val ready = streams.filter { it.isNotEmpty() && DeviceOpApplier.missingReference(t, it.first()) == null }
+        val s = ready[rnd.nextInt(ready.size)]
+        val op = s.removeFirst()
+        applier.applyTo(t, op)
+        applied += op
+    }
+    return t
+}
+
+/**
+ * [t] after its pending lazy replays (SYNC.md 9.3, 11 item 3 "after all pending replays"): every
+ * maintained card whose `weights_version` differs from its effective preset's is replayed. Such a
+ * mismatch is legal and durable (OPS.md `card.created` inserts `weights_version` 0 even after a
+ * `fsrs_params.published`), so replicas are compared on the settled caches.
+ */
+fun settled(t: InMemoryLearningTables): InMemoryLearningTables {
+    val out = t.copy()
+    val presets = out.all(LearningTable.FSRS_PARAMS).associateBy { it.str("id") }
+    val default = presets.getValue(kotobaya.contracts.Reserved.DEFAULT_PRESET_ID)
+    val stale = out.all(LearningTable.CARD).filter(::isMaintained).filter { card ->
+        val own = presets[card.str("preset_id")]?.takeIf { it.isNull("deleted_at") } ?: default
+        card.num("weights_version") != own.num("weights_version")
+    }.mapNotNull { it.str("id") }
+    if (stale.isNotEmpty()) DeviceCardCache().replayCards(out, stale)
+    return out
+}
+
 /** [t] with every maintained card cache recomputed by a full replay (SYNC.md 9.3): differs from [t] iff a cache is stale. */
 fun fullyReplayed(t: InMemoryLearningTables): InMemoryLearningTables = t.copy().also { DeviceCardCache().replayAll(it) }
