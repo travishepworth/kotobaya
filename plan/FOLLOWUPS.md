@@ -371,3 +371,4 @@
 - AND-DECKS (run 15): deck create/rename/delete not on Android (read-only tab); smart-deck counts empty on device (no on-device resolver); deck words from replica notes only (no API fallback).
 - FEAT-1 (run 15): 'other users' decks' case untestable (single-user schema); deck dropdown lists smart decks (empty page per contract); clickable kanji in review cards/Android still out of scope.
 - AND-SEARCH (run 15): word/{seq} not a nav route (NavRoute.content has no args; detail is in-screen state); is:hot + live smart-deck terms not compiled on device; no 'Add to my words'; API card fallback first 100 only.
+- AND-SETTINGS (run 15): QR scanner launch not exercised in tests (Robolectric renders Devices/Scan QR only) -> HUMAN_CHECKS device check; no licences screen for About link.

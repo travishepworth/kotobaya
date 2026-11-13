@@ -809,3 +809,4 @@
 2026-11-13T10:54:29Z AND-SEARCH HANDOFF DONE af01458; REBASE conflict FeatureModules/AppStartsTest -> writer resolving (attempt 2)
 2026-11-13T10:56:46Z AND-SEARCH MERGE CHECK_GREEN android (med, no review; attempt 2 = rebase fix)
 2026-11-13T10:57:01Z AND-SETTINGS HANDOFF DONE; KotobayaApp open + Home hook accepted; REBASE conflict -> writer resolving (attempt 2)
+2026-11-13T10:58:53Z AND-SETTINGS MERGE CHECK_GREEN android (med, no review; attempt 2 = rebase fix); SettingsTabTest covers Devices/Scan QR
