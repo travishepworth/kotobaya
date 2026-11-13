@@ -50,43 +50,43 @@ internal object OpFacts {
      * `unknown_reference` (OPS.md "Server rejects").
      */
     fun refs(op: Op): List<String> = buildList {
-        fun add(k: String) {
+        fun key(k: String) {
             op.str(k)?.let { add(it) }
         }
         when (op.opType) {
             OpType.NOTE_CREATED -> {
-                add("note_type_id")
-                add("grammar_point_id")
+                key("note_type_id")
+                key("grammar_point_id")
             }
             OpType.CARD_CREATED -> {
-                add("note_id")
+                key("note_id")
                 add(op.str("preset_id") ?: Reserved.DEFAULT_PRESET_ID)
             }
             OpType.CARD_PRESET_SET -> {
-                add("id")
-                add("preset_id")
+                key("id")
+                key("preset_id")
             }
-            OpType.REVIEW_LOGGED -> add("card_id")
-            OpType.REVIEW_UNDONE -> add("review_id")
+            OpType.REVIEW_LOGGED -> key("card_id")
+            OpType.REVIEW_UNDONE -> key("review_id")
             OpType.DECK_ITEM_PUT, OpType.DECK_ITEM_REMOVED -> {
-                add("deck_id")
+                key("deck_id")
                 op.str("item_key")?.takeIf { it.startsWith("n:") }?.let { add(it.substring(2)) }
             }
             OpType.CONFUSABLE_CONFIRMED, OpType.CONFUSABLE_REJECTED, OpType.CONFUSABLE_SUGGESTED -> {
-                add("note_a_id")
-                add("note_b_id")
+                key("note_a_id")
+                key("note_b_id")
             }
-            OpType.GRAMMAR_SPAN_PUT, OpType.GRAMMAR_SPAN_REMOVED -> add("grammar_point_id")
+            OpType.GRAMMAR_SPAN_PUT, OpType.GRAMMAR_SPAN_REMOVED -> key("grammar_point_id")
             OpType.NOTE_MERGED, OpType.CARD_MERGED -> {
-                add("loser_id")
-                add("survivor_id")
+                key("loser_id")
+                key("survivor_id")
             }
-            OpType.DECK_CONTENT_PUBLISHED -> add("deck_id")
-            OpType.MEDIA_CONTENT_PUBLISHED -> add("media_id")
+            OpType.DECK_CONTENT_PUBLISHED -> key("deck_id")
+            OpType.MEDIA_CONTENT_PUBLISHED -> key("media_id")
             OpType.WORD_STATUS_SET, OpType.WORD_STATUS_CLEARED, OpType.SETTINGS_SET,
             OpType.PARSE_OVERRIDE_PUT, OpType.PARSE_OVERRIDE_DELETED,
             -> Unit
-            else -> if (!isCreation(op)) add("id")
+            else -> if (!isCreation(op)) key("id")
         }
     }
 
