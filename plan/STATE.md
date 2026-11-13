@@ -15,7 +15,8 @@ Updated: 2026-11-13 (end of orchestrator run 9)
 ## Running (run 10: Gradle builds serialized via flock /tmp/kotobaya-gradle.lock)
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| T601 | writer | 1 | t/T601-voicevox-tts | run 10 |
+| T608 | writer | 1 | t/T608-export | run 10 |
+| T605 | writer | 1 | t/T605-stats | run 10 |
 | T603 | writer | 1 | t/T603-server-ankiconnect | run 10 |
 
 ## Parked
@@ -52,6 +53,7 @@ P0 done: 15 merged (T001, T001b, T002, T003–T006, T008, T008b, T009, T009b, S0
 Merged 14/15 (freeze review next) (T009b added) (S02, T008b added) (T007 dropped, T001b added) · attempts 13 · escalations 0
 
 ## Recently merged (last 10)
+- T601 (run 10): VOICEVOX TTS (server synthesizeSpeech enqueue+dedupe, worker tts job Opus/S3 cache, helm voicevox default off)
 - C-16 (run 10): fsrs-params-publish contract (contracts/db/FSRS_PUBLISH.md, optimizer schema+examples, JobResultFsrsOptimize fields); unblocks T606
 - T602 (run 10): pitch card kind (front expr+kana, back pitch graph), pattern labels, odaka particle slot; marks only when options.pitch
 - T507 (run 8): grammar card sentence picker (core) + server source (not exposed → F-25); seed trigger env; Main.kt start wait=false+join

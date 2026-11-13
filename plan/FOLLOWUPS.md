@@ -307,3 +307,16 @@
 - F-25 additions (C-15 review, run 9): (a) core GrammarCardSentences.pick with rotation=reps + exclude lastShown skips sentences (A,B,C → A,C,A,C; drills alternate 2) — rotate over full tier stepping past lastShown; (b) order candidates by (sentence_id, start_offset, end_offset) for server/Android agreement; (c) C-15 notes live in contracts/api/SUMMARY.md (no contracts/SUMMARY.md).
 ## F-27 (from T504b, run 9) — Android struggle writes online-only (low)
 - Struggle screen writes (PATCH note, PUT confusable, POST note, drill POST review/answer) go via server REST, not device ops/outbox → fail offline. Move to OpMinter like review. Widget hot word uses local lapse stand-in, not server hot score. Uses hand JSON ApiClient, not generated client.
+
+## T603 review minors (run 10)
+- ankiconnect: 5xx ApiException rethrown -> HTTP 500; AnkiConnect contract says always HTTP 200 (AnkiConnectModule.kt:86)
+- ankiconnect: addNote audio/picture attachments skip the 100 MB cap (only storeMediaFile checks it)
+- ankiconnect: allowDuplicate re-emits deck.item_put, moving item to deck end (same in POST /notes)
+- ankiconnect: duplicate check trims new first field but not stored values
+- ankiconnect: no 100-tag cap (NoteApi has one)
+- ankiconnect: any 64-hex filename rewritten to blob ref even if blob missing (AnkiMedia.kt)
+- ankiconnect: original-filename map in memory, lost on restart/multi-replica
+- ankiconnect: SQL dict-entry matcher stands in for a core matcher; replace when core has one
+
+## T601 notes (run 10)
+- voicevox image tag cpu-0.21.1 unverified; pod root fs writable; only numeric speaker ids; PG cache/sink SQL untested on real DB; deploy/helm/check.sh not extended for voicevox

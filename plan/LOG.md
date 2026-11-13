@@ -734,3 +734,7 @@
 2026-11-13T07:35:27Z T602 MERGE CHECK_GREEN core+web; 1 attempt (low); DefaultCardRenderer 3-line + renderer test edits outside paths accepted
 2026-11-13T07:35:42Z T603 DISPATCH writer (server, med)
 2026-11-13T07:44:47Z C-16 MERGE CHECK_GREEN contracts; 1 attempt; additive only, no DDL
+2026-11-13T07:45:16Z T605 DISPATCH writer (server+web, low)
+2026-11-13T07:50:30Z T608 DISPATCH writer (server, med); T603 REVIEW dispatched
+2026-11-13T07:51:37Z T603 REVIEW APPROVE (8 minors -> FOLLOWUPS); full server check pending after T601 merge
+2026-11-13T07:52:21Z T601 MERGE CHECK_GREEN worker+server (deploy per writer); wiring-audit test edits outside paths accepted
