@@ -803,3 +803,4 @@
 2026-11-13T10:43:27Z AND-SETTINGS DECIDE coordinator: render all FeatureEntry.settingsSections (QR pairing reachable), add only limits/day boundary/about; unpaired first-launch route
 2026-11-13T10:45:22Z AND-DECKS HANDOFF DONE 908589e; AppStartsTest stopKoin edit outside paths accepted (test fix)
 2026-11-13T10:45:22Z AND-SETTINGS DISPATCH writer (sonnet, med; revised ticket)
+2026-11-13T10:49:00Z AND-DECKS MERGE CHECK_GREEN android (med, no review); read-only tab, deck study via ReviewScreen deckId

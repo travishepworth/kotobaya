@@ -22,7 +22,7 @@ Updated: run 15 start
 (none)
 
 ## Ready for review / In review
-- AND-DECKS: handoff DONE, rebased, re-check running
+(none)
 
 ## Blocked
 (none)
@@ -44,6 +44,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-DECKS (run 15): Android Decks tab (replica counts = LocalQueueLoader, deck study via ReviewScreen deckId); read-only, gaps -> FOLLOWUPS
 - C-17 (run 15): listKanjiWords GET /kanji/{literal}/words (deck_id, mine, cursor bound to filters) + clients regen
 - BUG-6 (run 14): jpdb imported passes graduate (re)learning cards in replay; core SCHEDULER_VERSION fsrs6-2 (startup re-replay); server reads import_source; reviewer + architect APPROVE
 - BUG-1 (run 13): stats summary 153ms (was 19.7s), review queue 48ms, independent stats panels; reviewer APPROVE
