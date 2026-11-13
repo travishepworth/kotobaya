@@ -1,14 +1,12 @@
 # STATE
 Mode: single-session
-Phase: P7 live bugs (0.1.6 triage) + P9 UI rewrite   Gate: B2 HUMAN GATE OPEN (UI-DS merged; awaiting human approval); GATE-P2..P5 deferred
-Updated: RUN17 END
+Phase: P9 UI rewrite (+ SYNC-T1)   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
+Updated: run 19
 
-## RESUME HERE (run 18 END: WORK_REMAINS, stopped on context budget after API 429)
-- Run 18 merged 2: UI-FOUND-APP b0683c1 (rebased; orchestrator resolved trivial Makefile .PHONY conflict), C-20 6814485.
-- B2 GATE CLOSED 2026-11-14: human approved DESIGN.md + styleguide ("Ui is beautiful, you have my approvale - continue"), no changes. UI-WEB and UI-APP are TODO. Dispatch per the Run 17 brief + quality bar (plan/handoffs/INBOX-0.1.6.md); UI-WEB folds in FEAT-x on top of C-19.
-- NEXT runnable: SYNC-T1 (attempt 1 died on API 429, NO commits; uncommitted partial work in worktree .claude/worktrees/agent-a8129782ee98b2f5a, branch t/SYNC-T1-chunked-pull-tests: re-dispatch from that state, attempt kept); UI-DS-APP (attempt 1 died on 429 with nothing saved; re-dispatch fresh); UI-WEB (high, reviewer + spot check); then UI-APP (deps UI-DS-APP; high). Then FOLLOWUPS.
-- Worktree .claude/worktrees/agent-af829448723171bb9 (merged UI-FOUND-APP) is locked by another live claude session; remove it with `git worktree remove -f -f` + `git branch -d t/UI-FOUND-APP-viewmodels-harness` once that session has gone.
-- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session, 0.1.8 release pinned at 2597f12).
+## RESUME HERE (run 19 in progress)
+- Run 19 dispatched SYNC-T1 (attempt 2, existing worktree .claude/worktrees/agent-a8129782ee98b2f5a), UI-DS-APP (attempt 2, fresh), UI-WEB (attempt 1). UI-APP dispatches when UI-DS-APP merges.
+- UI-FOUND-APP worktree + branch removed.
+- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
@@ -16,9 +14,12 @@ Updated: RUN17 END
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| SYNC-T1 | writer-senior | 2 | t/SYNC-T1-chunked-pull-tests | run 19 |
+| UI-DS-APP | writer-senior | 2 | t/UI-DS-APP-styleguide | run 19 |
+| UI-WEB | writer-senior | 1 | t/UI-WEB-rebuild | run 19 |
 
 ## Queued
-SYNC-T1 (resume worktree) · UI-DS-APP · UI-WEB · UI-APP (after UI-DS-APP) · then FOLLOWUPS
+UI-APP (after UI-DS-APP) · then FOLLOWUPS
 
 ## Ready for review / In review
 (none)

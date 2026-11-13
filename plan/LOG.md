@@ -875,3 +875,7 @@
 2026-11-13T15:44:26Z SYNC-T1 BLOCK attempt 1 died on API 429 (uncommitted work in worktree); TODO, attempt kept
 2026-11-13T15:44:26Z UI-DS-APP BLOCK attempt 1 died on API 429 (no work saved); TODO, attempt kept
 2026-11-13T15:44:26Z RUN18 END 2 merges; context budget; WORK_REMAINS
+2026-11-13T15:45:43Z RUN19 START resume; removed merged UI-FOUND-APP worktree + branch
+2026-11-13T15:45:43Z SYNC-T1 DISPATCH writer-senior attempt 2 (resume partial worktree)
+2026-11-13T15:45:43Z UI-DS-APP DISPATCH writer-senior attempt 2 (fresh)
+2026-11-13T15:45:43Z UI-WEB DISPATCH writer-senior attempt 1 (high; bar + screenshot matrix verbatim)
