@@ -1,23 +1,23 @@
-# HANDOFF T304b
+# HANDOFF T304b (attempt 2)
 
-STATUS: DONE (T303c-dependent parts deferred, see reviewer notes)
-BRANCH: t/T304b-review-ui
+STATUS: DONE
+BRANCH: t/T304b-review-ui (rebased on main; syncFeature still last in FeatureModules)
 CHECK: `make check MODULE=android` and `MODULE=core` → green
 
 ## Changed
-- android/.../review/: ReviewSession (mint review.logged/undone via OpMinter, queue rebuild, undo, token idempotency), CardPage (HTML + request policy), ReviewScreen (one reused JS-off WebView, grading bar, swipe, audio, summary, sync prompt), ReviewPrefs, ReviewBackend seam, reviewFeature (one line in di/FeatureModules.kt).
-- Out-of-path: res/values/strings_review.xml; AppStartsTest (Review no longer a placeholder); core/.../sync/client/apply/AutoStatus.kt wired into DeviceOpApplier + StartupReplay, with core AutoStatusTest (carried-in auto_status).
+- android/.../review/: ReviewSession (mint review.logged/undone, queue rebuild, undo, token idempotency), CardPage (HTML + request policy), ReviewScreen (one JS-off WebView, grading, swipe, audio, summary, sync prompt, sync after session), ReviewPrefs, ReviewBackend, reviewFeature (Koin: real backend over SyncClient store/minter, LocalQueueLoader, BlobStore, SyncBootstrap.ready, SyncTriggers).
+- Out-of-path edits: res/values/strings_review.xml; FeatureModules.kt (+1 line); sync/SyncFeature.kt (status refresh now `scope.launch`, off the committing thread); queue/LocalQueueLoader.kt + QueueModule.kt (`awaitReady` gate on load/forecast, blocks on SyncBootstrap.ready); AppStartsTest; core sync/client/apply/AutoStatus.kt (+DeviceOpApplier/StartupReplay hooks) with AutoStatusTest (carried-in auto_status).
+- BlobResolver wired to T310 BlobStore (file by hash, `touch` on play).
 
 ## Acceptance → tests
-- buttons/5-button/rating/offset/cache=replay → ReviewSessionTest (eachFourButton…, fiveButtonMode…)
-- undo all four states, double undo, refused card + refused replay still commits → ReviewSessionTest
-- WebView classes/ruby, no network URL → theRenderedPage…, theRequestPolicy…
-- auto_status → core AutoStatusTest; core fuzz still converges.
+- buttons/5-button/cache=replay, undo (4 states, double), refused card/replay, WebView classes + no network → ReviewSessionTest
+- kill + reopen DB → ReviewDurabilityTest (SQLite file via SqlDevice)
+- auto_status → core AutoStatusTest
 
 ## New dependencies
 - none
 
 ## For the reviewer
-- T303c is not merged: no SQLDelight store/`sync/` package exists, so tests use InMemoryDeviceStore (no "kill + reopen DB" test) and the screen needs a `ReviewBackend` that T303c must register in Koin (else shows "not available"). Not done: sync status refresh off committing thread, readiness gate exposure, awaits in queue/notify/widget (`ReviewBackend.awaitReady` is the seam).
-- Seams left null: DictionaryLookup (T302), BlobResolver (T310; no audio until then). Swipe: right=Good, left=Again, only on answer side. Server's AutoStatusHook is still NoOp, so server/device status differ until wired.
-- WebView itself is not exercised (Robolectric); policy is a pure function.
+- Gate for DueNotifications/widget is covered through LocalQueueLoader (both read via it); no separate edits there.
+- Seam still null: DictionaryLookup (T302 on-device dictionary). Server AutoStatusHook is still NoOp, so server vs device status differ until wired.
+- WebView not exercised under Robolectric; policy is a pure tested function.

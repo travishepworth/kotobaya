@@ -67,6 +67,8 @@ class LocalQueueLoader(
     private val clock: () -> Long,
     private val smartDecks: SmartDeckResolver = SmartDeckResolver { _, _, _ -> emptyList() },
     private val headwordOf: (Long) -> String? = { null },
+    /** Blocks until the startup replay (SYNC.md 10.5) has committed; no-op by default (T304b: SyncBootstrap.ready). */
+    private val awaitReady: () -> Unit = {},
 ) {
     private val q get() = db.localQueueQueries
 
@@ -75,6 +77,7 @@ class LocalQueueLoader(
 
     /** Builds the queue now. [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter. */
     fun load(newShownThisSession: Int = 0, deckFilter: String? = null): LoadedQueue {
+        awaitReady()
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -155,6 +158,7 @@ class LocalQueueLoader(
 
     /** Started, queueable cards due in each of the next 24 hours from now (hour 0 includes everything overdue). */
     fun forecast24h(): List<Int> {
+        awaitReady()
         val now = clock()
         val out = IntArray(24)
         for (b in q.forecastBuckets(now, Reserved.REPLAY_REFUSED_ID, now + 24 * HOUR_MS).executeAsList()) {

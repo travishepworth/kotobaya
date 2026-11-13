@@ -9,8 +9,16 @@ import java.util.TimeZone
 import kotlin.random.Random
 
 /** Where cached blobs live: the file of a `blob_cache` row in state `cached`, else null (T310 supplies the real one). */
-fun interface BlobResolver {
+interface BlobResolver {
     fun file(sha256: String): File?
+
+    /** Called when the blob is played (LRU bookkeeping). */
+    fun played(sha256: String) {}
+}
+
+/** A resolver from a lambda (tests). */
+fun BlobResolver(f: (String) -> File?): BlobResolver = object : BlobResolver {
+    override fun file(sha256: String): File? = f(sha256)
 }
 
 /**

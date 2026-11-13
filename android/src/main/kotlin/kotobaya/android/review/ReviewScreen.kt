@@ -106,6 +106,7 @@ internal class AudioPlayer(private val blobs: BlobResolver) {
 
     fun play(sha256: String): Boolean {
         val file = blobs.file(sha256)?.takeIf { it.isFile } ?: return false
+        blobs.played(sha256)
         release()
         player = MediaPlayer().apply {
             setDataSource(file.path)
@@ -143,7 +144,7 @@ private fun blockedMessage(r: MintRefusal): Int = when (r) {
 
 /** The review route: [backend] null means the sync store is not wired yet. */
 @Composable
-fun ReviewScreen(backend: ReviewBackend<*>?) {
+fun ReviewScreen(backend: ReviewBackend<*>?, onSessionEnd: () -> Unit = {}) {
     if (backend == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(T(R.string.review_not_ready)) }
         return
@@ -156,7 +157,7 @@ fun ReviewScreen(backend: ReviewBackend<*>?) {
     val state by session.state.collectAsState()
     val meta by session.meta.collectAsState()
     val prefs = backend.prefs()
-    DisposableEffect(session) { onDispose { audio.release(); web.view.destroy() } }
+    DisposableEffect(session) { onDispose { audio.release(); web.view.destroy(); if (session.meta.value.answered > 0) onSessionEnd() } }
     LaunchedEffect(session) {
         withContext(Dispatchers.IO) {
             backend.awaitReady()

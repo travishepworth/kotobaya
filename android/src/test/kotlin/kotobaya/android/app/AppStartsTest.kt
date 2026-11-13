@@ -23,8 +23,8 @@ class AppStartsTest {
             rule.onNodeWithText(name).performClick()
             rule.onNodeWithText("$name is not built yet.").assertExists()
         }
-        // T304b: Review is real now; without a sync store it says so instead of a placeholder.
+        // T304b: Review is real now (the furigana toggle is on its toolbar).
         rule.onNodeWithText("Review").performClick()
-        rule.onNodeWithText("Reviewing is not available yet", substring = true).assertExists()
+        rule.onNodeWithText("Furigana").assertExists()
     }
 }

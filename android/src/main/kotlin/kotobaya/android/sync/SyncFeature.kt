@@ -125,7 +125,7 @@ class SyncBootstrap(
             runCatching { workManager()?.let(SyncWork::ensurePeriodic) }
         }
         scope.launch { coordinator.running.collect { status.onRunning(it) } }
-        client.store.onCommit { status.refresh() }
+        client.store.onCommit { scope.launch { status.refresh() } } // off the committing thread
         network.register { triggers.background(SyncTrigger.CONNECTIVITY) }
         app.registerActivityLifecycleCallbacks(this)
     }
