@@ -204,3 +204,4 @@
 - (architect T303d) OpFacts.isCreation matches any *.created incl. media.created, not in §10.4 list — restrict or confirm.
 - (architect T303d) lowerBound falls back to FLOOR when device has no card row — comment or contract clarification.
 - (architect T303d) undecodable rows excluded from C → remint_offset deleted even if such a row is clock-rejected (harmless; row stays listed).
+- (T310) BlobStore opens a second AndroidSqliteDriver on the app DB (not durable driver); hash mismatch and 404 both → state missing (no failed state in schema).

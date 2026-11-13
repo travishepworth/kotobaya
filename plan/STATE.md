@@ -16,7 +16,7 @@ Updated: 2026-11-13T01:12:09Z
 |---|---|---|---|---|
 | T304b | writer (sonnet) | 1 | t/T304b-review-ui | 2026-11-13T01:10:04Z |
 | T305b | writer-senior (opus) | 1 | t/T305b-note-creator | 2026-11-13T01:10:04Z |
-| T310 | writer (sonnet) | 1 | t/T310-audio-prefetch | 2026-11-13T01:10:04Z |
+| T310 | writer (sonnet) | 1 (rebase fix) | t/T310-audio-prefetch | 2026-11-13T01:14:48Z |
 
 ## Queued (ready; waiting for a Gradle slot, ≤3 heavy)
 - T303e (sonnet, med) — android sync UI; next free Gradle slot

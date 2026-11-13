@@ -539,3 +539,5 @@
 2026-11-13T01:10:04Z T310 DISPATCH writer(sonnet)
 2026-11-13T01:12:09Z T303d REVIEW_APPROVE architect (4 minors → FOLLOWUPS)
 2026-11-13T01:12:09Z T303d MERGE 1 attempt
+2026-11-13T01:14:48Z T310 HANDOFF DONE (+689); rebase conflict FeatureModules (T303c) → back to writer
+2026-11-13T01:14:48Z W-4 created (T310 wiring gaps; deps T310,T304b,T303e)
