@@ -1002,3 +1002,7 @@
 2026-11-14T03:20:00Z RELEASE 0.1.11 make test GREEN at 265f76a8; images api/worker/web/backup 0.1.11 PUSHED; values tags 0.1.11 + kanjidic sha256 3f87d938
 2026-11-14T03:30:00Z RELEASE 0.1.11 DEPLOY BLOCKED: kubectl OIDC token expired (kubelogin needs browser); live stays 0.1.10
 2026-11-14T03:35:00Z RELEASE 0.1.11 APK built ~/kotobaya-apk/kotobaya-0.1.11-debug.apk (code 111, debug cert ec6b7f45 ok); no adb device
+2026-11-14T05:41:00Z REL-0111 helm rev 17 FAILED (worker strategy Recreate vs live rollingUpdate under SSA); kubectl patch removed rollingUpdate; rev 18 DEPLOYED from 265f76a8; api/web/worker 0.1.11 Running 0 restarts; JMdict sha re-pinned 1003f456
+2026-11-14T05:43:30Z SMOKE-0111 PASS 30 pass / 1 skip / 0 fail; cleanup verified (2 user decks, no smoke cards)
+2026-11-14T05:52:00Z QA-0111 logs api/worker/web clean (only smoke traffic; 413 expected); phone user 10: sync Completed, gate 126 ms, no crash/ANR/pool waits; app idle in window. Minors -> FOLLOWUPS (chart Recreate migration, startup StrictMode prefs, smoke ids file)
+2026-11-14T05:53:00Z RUN25 END clean; no tickets dispatched

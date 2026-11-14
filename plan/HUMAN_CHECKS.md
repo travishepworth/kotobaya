@@ -229,3 +229,7 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - [ ] Phone: after a big sync, Home/Decks/Review load (AND-POSTSYNC NPE fix); insets on edge-to-edge (status bar, nav bar, keyboard lifts bottom bar; KbSheet not double-padded); Review overflow → "open in dictionary" after reveal; search 食べる finds entry-linked notes offline (dictionary installed).
 - [ ] Smoke token: create a token with read/write/import/review scopes and no device for plan/smoke/smoke.sh.
 - [ ] Frequency lists (`freq_lists` in dictSourcesJson) still unconfigured — pick Yomitan freq zips if you want frequency bands.
+
+## 0.1.11 (run 25)
+- [x] 0.1.10 items above are done (deployed, APK installed, smoke token in use).
+- [ ] Phone: use Home/Review in the Private Space app for a minute; it should load at once (AND-PERF). The agent saw only an idle app.

@@ -425,3 +425,6 @@
 - (run 24) API logs unknown-route 404s twice (same request_id, kotobaya.request). low.
 - (run 24) dict-refresh sha256 pins (values.yaml) go stale when EDRDG republishes (kanjidic mismatch 11-13 03:01Z, 3 attempts). Option: allow `"sha256": null` = trust-on-first-use + log the hash; or a re-pin helper script. Operational for now (re-hash before each deploy).
 - (run 24) No log retention: api/worker logs lost on every rollout (8 in 24h); client_error reports only in pod logs. Consider Loki/promtail or a client_error table.
+- (run 25) Chart: worker strategy RollingUpdate→Recreate (WORKER-EMPTY) fails helm SSA upgrade on existing installs ("rollingUpdate: Forbidden"). Live fixed once by `kubectl patch` (json remove /spec/strategy/rollingUpdate). Fresh installs fine; note in deploy README for other installs.
+- (run 25) Android debug StrictMode: KotobayaApp.onCreate reads SharedPreferences on main (ClientErrorQueue/PrefsQueueStorage, SettingsStore, TokenStore via Koin), ~115 ms each at cold start. low.
+- (run 25) plan/smoke/smoke.sh leaves smoke-created-<ts>.txt in the repo root after a successful cleanup; write it to $TMPDIR or delete on clean exit.
