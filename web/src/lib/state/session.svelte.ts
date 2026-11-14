@@ -1,5 +1,6 @@
 import type { Principal } from '../api/generated';
 import { ResponseError, authApi, readProblem, setUnauthenticatedHandler } from '../api/client';
+import { resumeErrorReports } from '../errors';
 import { openEventStream } from '../events';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
@@ -26,6 +27,7 @@ export async function refreshSession(): Promise<void> {
 	try {
 		session.principal = await authApi.getPrincipal();
 		session.status = 'in';
+		resumeErrorReports();
 	} catch (e) {
 		// Network errors already raised a toast; anything else means "not logged in".
 		if (e instanceof ResponseError) setOut();
@@ -39,6 +41,7 @@ export async function login(password: string, totpCode?: string): Promise<LoginR
 			loginRequest: { password, ...(totpCode ? { totpCode } : {}) }
 		});
 		session.status = 'in';
+		resumeErrorReports();
 		return { ok: true };
 	} catch (e) {
 		if (e instanceof ResponseError) {

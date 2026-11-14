@@ -2,6 +2,7 @@ import { AuthApi, Configuration, EventsApi, ResponseError, FetchError } from './
 import type { Middleware, Problem } from './generated';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
+import { reportApiFailure } from '../errors';
 
 /** Same-origin API root; the ingress (or the vite dev proxy) routes /api to the server. */
 export const API_BASE = '/api/v1';
@@ -41,16 +42,28 @@ export function setUnauthenticatedHandler(fn: () => void): void {
  * login failures (shown inline) and 401 (turns into a redirect to /login).
  */
 const errorToasts: Middleware = {
-	async post({ response, url }) {
+	async post({ response, url, init }) {
 		if (response.ok || url.endsWith('/auth/login')) return;
 		if (response.status === 401) {
 			if (!url.endsWith('/auth/session')) hooks.onUnauthenticated();
 			return;
 		}
-		pushToast(problemMessage(await readProblem(response), response.status), 'error');
+		const problem = await readProblem(response);
+		// 5xx only: 4xx are validation and state answers the UI handles.
+		if (response.status >= 500) {
+			reportApiFailure({
+				method: init?.method,
+				url,
+				status: response.status,
+				code: problem?.code,
+				requestId: response.headers.get('X-Request-Id') ?? problem?.requestId
+			});
+		}
+		pushToast(problemMessage(problem, response.status), 'error');
 	},
-	async onError({ error }) {
+	async onError({ error, url, init }) {
 		if (error instanceof FetchError || error instanceof TypeError) {
+			reportApiFailure({ method: init?.method, url });
 			pushToast(t('error.network'), 'error');
 		}
 	}
