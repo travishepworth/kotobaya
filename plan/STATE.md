@@ -4,7 +4,7 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN27 dispatch
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 27): 0.1.12 INSTALLED on phone. Running AND-DECKCONTENT (writer-senior), AND-TAKO-PERF (writer-senior), AND-LABELS (writer). Logs/DB copy: scratchpad c6911de0…/logs, dbcopy. Next: check, review high-risk, merge, build 0.1.13 APK.
+## RESUME HERE (run 27): 0.1.13 APK built (pin 09c74c17, worktree scratchpad c6911de0…/rel0113, ~/kotobaya-apk/kotobaya-0.1.13-debug.apk, code 113, cert ok). Merged AND-LABELS, AND-TAKO-PERF, AND-DECKCONTENT. NEXT: adb install -r on user confirmation, verify Fatal Twelve download, Takoboto timing, search, deck labels.
 
 ## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).
