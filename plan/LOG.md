@@ -911,3 +911,6 @@
 2026-11-14T00:24:07Z BUG-12 DISPATCH writer attempt 1 (struggle Open in dictionary broken)
 2026-11-14T00:24:30Z C-21 REVIEW_APPROVE 4 minors -> FOLLOWUPS
 2026-11-14T00:24:30Z C-21 MERGE 1578783 contracts (V3__vocab_list, VOCAB_LISTS.md, deck-publish, ADR-022)
+2026-11-14T00:25:05Z JLPT-1a DISPATCH writer attempt 1
+2026-11-14T00:25:05Z JLPT-1b DISPATCH writer-senior attempt 1
+2026-11-14T00:26:02Z BUG-12 MERGE 82a5b27 web (low, no review; root: struggle link to bare /dictionary)
