@@ -8,7 +8,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 USER DIRECTION (run 21): NO interim 0.1.10. Ship ONE release (0.1.10) after ALL items below are merged and reviewed: pin one SHA in a worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump the tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; CONFIRM egress to raw.githubusercontent.com for JLPT default-on, or set "jlpt": null), helm upgrade (-n kotobaya, never ingress-nginx), run dict-refresh. Live-verify: jpdb import yields cards, /deck-lists JLPT item_count > 0 and JLPT decks fill, review advances (review_log grows per press), log sweep with the new OBS logs, "how to check health" greps in the report. Build a debug APK with VERSION_NAME=0.1.10 VERSION_CODE=110 (memory phone-apk-install; no device attached in run 21 → HUMAN_CHECKS install).
 Merged in run 21: BUG-14a 3704bd4, JLPT-1a 25b203c, JLPT-1b 1927112, C-22 646bc7a+92cf544.
 In flight at handback (agents keep running after the parent dies; on resume run `git worktree list` and `git log main..<branch>`; a committed HANDOFF.md means READY_FOR_REVIEW, no HANDOFF means re-dispatch at the same tier):
-- FEAT-DICT writer (web links) → reviewer-light
+- FEAT-DICT MERGED (web; low, no review)
 - BROWSE-2 MERGED (reviewer-light APPROVE). BROWSE-1 waits on C-24.
 - C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
 - AND-INSETS writer (android insets) → reviewer-light
