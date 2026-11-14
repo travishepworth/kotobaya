@@ -126,6 +126,14 @@ export class ReviewPage {
 		});
 	}
 
+	/** A new press: fresh answer id and flip state. Only called after a recorded answer or undo, never on retry. */
+	private newPress(): void {
+		this.answerId = uuidv7();
+		this.flipped = false;
+		this.editing = false;
+		this.shownAt = Date.now();
+	}
+
 	previewText(b: GradeButton): string {
 		const p = this.previews?.find((x) => x.rating === b.rating);
 		return p ? formatInterval(p.intervalMs) : '';
@@ -245,6 +253,7 @@ export class ReviewPage {
 				}
 			});
 			this.history = [...this.history, { reviewId: r.review.id, item }];
+			this.newPress(); // recorded: the next grade is a new press even if the same card comes back
 			await this.advance();
 		} catch {
 			/* toast shown; answerId is kept so a retry is idempotent */
@@ -264,6 +273,7 @@ export class ReviewPage {
 		try {
 			await reviewApi.undoReview({ reviewUndoRequest: { reviewId: last.reviewId } });
 			this.history = this.history.slice(0, -1);
+			this.newPress();
 			if (this.isDrill) this.items = [last.item, ...this.items];
 			else await this.fetchQueue();
 		} catch {
