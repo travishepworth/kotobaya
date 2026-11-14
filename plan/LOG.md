@@ -914,3 +914,8 @@
 2026-11-14T00:25:05Z JLPT-1a DISPATCH writer attempt 1
 2026-11-14T00:25:05Z JLPT-1b DISPATCH writer-senior attempt 1
 2026-11-14T00:26:02Z BUG-12 MERGE 82a5b27 web (low, no review; root: struggle link to bare /dictionary)
+2026-11-14T00:26:49Z UI-RUBY HANDOFF BLOCKED (Android ThemeApiTest pins 20sp); DECIDE apply 0.6 on Android too, scope + test/messages/DESIGN; attempt 2
+2026-11-14T00:27:23Z BUG-14 DIAGNOSE opus scout (CRITICAL: review stuck on same card)
+2026-11-14T00:27:23Z BUG-13 DISPATCH writer attempt 1 (open note bounce)
+2026-11-14T00:27:38Z UI-RUBY DISPATCH writer-light attempt 2 (fresh agent, same worktree; ticket amended)
+2026-11-14T00:28:59Z BUG-13 MERGE 860196f web (low; notes start() search() reset dropped deep-linked note)
