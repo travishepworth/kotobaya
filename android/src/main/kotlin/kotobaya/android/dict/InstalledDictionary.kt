@@ -98,6 +98,22 @@ class InstalledDictionary(
         handle = null
     }
 
+    /**
+     * C-24 lookup for the card-search compiler: runs [sql] (the compiler's own `dict_entry_form` statement, [binds] are
+     * Strings) and returns the `seq, form, norm` rows whose seq passes [keep], filtering while the cursor is read so a
+     * broad pattern never materialises the dictionary. Null when no dictionary is installed.
+     */
+    fun formRows(sql: String, binds: List<String>, keep: (Long) -> Boolean): List<kotobaya.search.sql.DictFormRow>? = withDb { db ->
+        db.rawQuery(sql, binds.toTypedArray()).use { c ->
+            buildList {
+                while (c.moveToNext()) {
+                    val seq = c.getLong(0)
+                    if (keep(seq)) add(kotobaya.search.sql.DictFormRow(seq, c.getString(1).orEmpty(), c.getString(2).orEmpty()))
+                }
+            }
+        }
+    }
+
     /** True once a package is installed. */
     fun isAvailable(): Boolean = store.installed.isFile
 

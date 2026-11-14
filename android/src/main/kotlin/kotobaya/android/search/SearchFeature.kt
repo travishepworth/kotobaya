@@ -50,7 +50,7 @@ private val searchModule = module {
         // Usable once the startup replay has committed (the replica then holds every acknowledged op).
         val usable = { koin.getOrNull<SyncBootstrap>()?.ready?.isCompleted == true }
         CardSearchBackend(
-            LocalCardSearch(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>()),
+            LocalCardSearch(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), dictionary = get<InstalledDictionary>()),
             ApiCardSearch(get<ApiClient>(named("searchApi"))),
             usable,
         )
