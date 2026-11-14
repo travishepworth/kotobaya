@@ -1012,3 +1012,9 @@
 2026-11-14T06:23:20Z AND-QUEUE MERGE c2ef978d Home hero uses whole-queue counts; review APPROVE (minors -> FOLLOWUPS)
 2026-11-14T06:23:20Z AND-REVIEW-STALE DISPATCH writer; Review tab Empty never refreshes on resume/sync (reviewer finding)
 2026-11-14T06:27:35Z AND-REVIEW-STALE MERGE fb2a253d Review Empty refreshes on sync/resume/rollover; check green
+2026-11-14T06:27:47Z RELEASE 0.1.12 PIN 85a260fb (APK only: AND-QUEUE, AND-REVIEW-STALE; server stays 0.1.11)
+2026-11-14T06:28:31Z RELEASE 0.1.12 APK built ~/kotobaya-apk/kotobaya-0.1.12-debug.apk (code 112, cert ec6b7f45 ok); adb device dropped, waiting
+2026-11-14T06:28:57Z AND-CARDHTML DISPATCH writer-senior; Review WebView loads empty data: URL; 0.1.12 install held for it
+2026-11-14T06:40:59Z AND-CARDHTML HANDOFF: intercept 403'd own data: main frame; ReviewBackend had no dict/kanji lookup (blank fronts)
+2026-11-14T06:41:07Z AND-CARDHTML CHECK_GREEN android (regression 4/4, payload 6/6)
+2026-11-14T06:43:16Z AND-CARDHTML REVIEW_APPROVE + MERGE f639d113 (5 minors -> FOLLOWUPS)

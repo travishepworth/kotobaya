@@ -434,3 +434,10 @@
 - [minor] HomeQueueAgreementTest doesn't reach the TodayScreen composable / AppNav wiring; optional Robolectric compose test of hero text.
 - [minor] Study day computed in UTC on server+Android (scheduler.timezone default UTC); user is UTC+9 so rollover is 13:00 JST. Settings UI should set scheduler.timezone from device zone (or prompt).
 - [minor] AND-REVIEW-STALE uses deprecated androidx.compose.ui.platform.LocalLifecycleOwner (avoids lifecycle-compose dep); migrate later.
+
+## From AND-CARDHTML (run 26)
+- [minor, user-visible] ReviewActions.emptyFronts (ReviewActions.kt:179) renders with dictionary=null/no kanji -> false "front renders empty" EditWarning on every entry_seq vocab note edit from Review. Inject DictionaryLookup/KanjiLookup.
+- [minor] CardPage.decide passes any main-frame data: URL; match exact stub `data:text/html;charset=utf-8;base64,` (defence in depth).
+- [minor] CardContent onReceivedError reports current shownHtml; late error from a replaced load can mark the new card CardUnavailable. Track navigation / ignore stale.
+- [minor] CardAudioNeeds renders with dictionary=null (harmless until dict audio exists).
+- [minor, user-visible] review_card_unavailable_body suggests answering an unseen card (feeds guesses to FSRS); neutral wording or offer bury/skip.

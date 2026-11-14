@@ -5,7 +5,7 @@ Updated: RUN26 in progress
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RESUME HERE (run 26: CRITICAL AND-QUEUE — phone shows 0 due; server queue OK)
-Run 26: AND-QUEUE (Android local queue returns nothing; 299 due on phone DB; server /review/queue new10/learn1/rev183). Then release 0.1.12 (APK code 112; server only if touched), install via adb user 10, verify Review shows cards. 124 suspended learning cards = real data (server identical). Server study day is UTC (day_ends 04:00Z) vs user UTC+9 -> FOLLOWUP.
+Run 26: AND-QUEUE+AND-REVIEW-STALE MERGED; 0.1.12 APK built from 85a260fb but install HELD for AND-CARDHTML (empty data: URL in Review WebView) -> re-pin after. Orig: (Android local queue returns nothing; 299 due on phone DB; server /review/queue new10/learn1/rev183). Then release 0.1.12 (APK code 112; server only if touched), install via adb user 10, verify Review shows cards. 124 suspended learning cards = real data (server identical). Server study day is UTC (day_ends 04:00Z) vs user UTC+9 -> FOLLOWUP.
 
 ## Previous (run 25: 0.1.11 live, QA clean)
 LIVE: 0.1.11 (pin 265f76a8, helm rev 18, worktree scratchpad/rel0111). JMdict re-pinned 1003f456… (kanjidic/krad unchanged). Smoke on 0.1.11: 30 pass/1 skip/0 fail, cleanup verified.
@@ -51,6 +51,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-CARDHTML (run 26, f639d113): WebView intercept no longer 403s own data: main frame; ReviewBackend gets Dictionary+Kanji lookups (entry_seq vocab fronts were blank); CardUnavailable state + reports
 - AND-REVIEW-STALE (run 26, fb2a253d): Review tab Empty re-runs start() on sync (pulledOps>0), ON_RESUME, rollover timer
 - AND-QUEUE (run 26, c2ef978d): Home hero used per-deck sums (deckless due cards -> "caught up"); now whole-queue QueueCounts; review APPROVE
 - UI-WEB (run 19, 8095cce): every web route rebuilt on DESIGN.md, FEAT-x per-field overrides (highlight-only region click), loadFailed/retry + LoadError, app.html theme pre-paint, 24 dead POC components removed, 176+ curated shots; reviewer APPROVE after 3 rounds
