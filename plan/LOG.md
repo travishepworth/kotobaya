@@ -982,3 +982,5 @@
 2026-11-14T01:52:08Z RELEASE 0.1.10 RE-PIN a58b9699 (rel0110b; code = 0200b2f5 + web/Dockerfile fix)
 2026-11-14T01:53:01Z RELEASE 0.1.10 make test GREEN (all modules, code = pin)
 2026-11-14T02:07:40Z SMOKE-0110 MERGE 05cec67a plan/smoke/smoke.sh + README (not yet run live)
+2026-11-14T02:12:19Z RELEASE 0.1.10 images PUSHED from a58b9699 (api/worker/web/backup); values tags bumped; APK 0.1.10/110 built. DEPLOY BLOCKED: kubectl OIDC login needs user browser
+2026-11-14T02:12:19Z RUN23 END RESTART NEEDED (deploy + QA to successor after user login)

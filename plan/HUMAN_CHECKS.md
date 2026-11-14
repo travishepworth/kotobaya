@@ -214,3 +214,10 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 ## Run 21 (0.1.10)
 - **Android crash (user report H), no log captured.** No device was attached during run 21. With the phone on USB, run `! adb logcat -b crash -d > crash.txt` and `! adb logcat -d --pid=$(adb shell pidof com.ichi2.anki) > app.txt` (the second only while the app is running), then hand the files to the next orchestrator run to ticket. Steps to reproduce, if you remember them, help.
 - (run 21) ADR-020 amended provisionally: EDRDG digest pins are now advisory (LOGFIX-1). Optionally drop the EDRDG pins from dictSourcesJson in ~/repos/kubernetes/kotobaya/values.yaml (they now cost one extra download per refresh).
+
+## 0.1.10 (run 23)
+- [ ] BLOCKER: run `kubectl -n kotobaya get pods` in your own terminal to refresh the OIDC login (agent can't open the browser). Then the QA orchestrator deploys 0.1.10 (images pushed, values bumped).
+- [ ] Install APK: `adb install -r ~/kotobaya-apk/kotobaya-0.1.10-debug.apk` (0.1.10/110, debug cert verified matching).
+- [ ] Phone: after a big sync, Home/Decks/Review load (AND-POSTSYNC NPE fix); insets on edge-to-edge (status bar, nav bar, keyboard lifts bottom bar; KbSheet not double-padded); Review overflow → "open in dictionary" after reveal; search 食べる finds entry-linked notes offline (dictionary installed).
+- [ ] Smoke token: create a token with read/write/import/review scopes and no device for plan/smoke/smoke.sh.
+- [ ] Frequency lists (`freq_lists` in dictSourcesJson) still unconfigured — pick Yomitan freq zips if you want frequency bands.
