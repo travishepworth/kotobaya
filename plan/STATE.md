@@ -10,7 +10,7 @@ Running (worktrees under .claude/worktrees/agent-*; check `git worktree list`):
 - UI-RUBY writer-light attempt 2 (ruby 0.6, Android test 24sp, clipping check; low → reviewer-light)
 - BUG-14a writer (CRITICAL review loop: web answerId reuse → server dedups grades; med → reviewer)
 - C-22 architect (CRITICAL: core queue serves future-due learning cards before due reviews; high → reviewer)
-Queued: FEAT-DICT (web dict links everywhere; dispatch after BUG-14a merges; ship in 0.1.10 only if small, else 0.1.11). Android equivalent → FEAT-DICT-APP follow-up.
+Queued: BROWSE-1 (surface-form search; core parser/C-ticket if needed), BROWSE-2 (one row per vocab note) — 0.1.10 if small else 0.1.11, after critical work. FEAT-DICT (web dict links everywhere; dispatch after BUG-14a merges; ship in 0.1.10 only if small, else 0.1.11). Android equivalent → FEAT-DICT-APP follow-up.
 Then: build+push 0.1.10 from one pinned SHA worktree (`make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`), bump tags in ~/repos/kubernetes/kotobaya/values.yaml (+ consider freq_lists in dictSourcesJson per VOCAB_LISTS 4.3), helm upgrade, run dict-refresh job (loads JLPT lists), verify live: jpdb re-import has words; /deck-lists JLPT item_count > 0; JLPT deck fills via deck-build; review grades land (review_log grows per press). Android APK rebuild needed for C-22 (queue in core) + ruby → HUMAN_CHECKS.
 No data loss in review bug: web has no outbox; dup presses were deduped server-side.
 Live-sweep minors in FOLLOWUPS "Run 20 live sweep". Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.

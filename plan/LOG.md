@@ -921,3 +921,4 @@
 2026-11-14T00:28:59Z BUG-13 MERGE 860196f web (low; notes start() search() reset dropped deep-linked note)
 2026-11-14T00:29:45Z BUG-14 DIAGNOSED: web answerId reuse (dedup as retry) + core queue learn-ahead before due reviews; no data loss (no outbox)
 2026-11-14T00:29:45Z BUG-14a DISPATCH writer attempt 1; C-22 DISPATCH architect attempt 1
+2026-11-14T00:30:40Z BROWSE-1 BROWSE-2 FILED (user asks D/E; queued behind critical)
