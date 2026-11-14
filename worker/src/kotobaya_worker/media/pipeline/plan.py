@@ -184,6 +184,9 @@ def plan_request(
     )
 
 
+UNMAPPED_WARN_RATIO = 0.05
+
+
 def log_media_summary(kind: str, result: Mapping[str, Any], *, adopted: bool = False) -> int:
     """Final summary from ``JobResultMedia``: sentences in; tokens and entries out; unmapped tokens.
 
@@ -194,9 +197,12 @@ def log_media_summary(kind: str, result: Mapping[str, Any], *, adopted: bool = F
         v = result.get(key)
         return v if isinstance(v, int) and not isinstance(v, bool) else 0
 
+    unmapped_ratio = n("unmapped_tokens") / n("tokens") if n("tokens") else 0.0
     return job_summary(
         log,
         kind,
+        # Names and onomatopoeia make some unmapped tokens universal: WARN only above the ratio.
+        warn_as_info=unmapped_ratio <= UNMAPPED_WARN_RATIO,
         inputs={"sentences": n("sentences")},
         outputs={"unique_entries": n("unique_entries")},
         dropped={"unmapped_tokens": n("unmapped_tokens")},

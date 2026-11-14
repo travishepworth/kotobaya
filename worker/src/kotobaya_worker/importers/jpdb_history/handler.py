@@ -69,6 +69,7 @@ def log_plan(plan: ImportPlan) -> int:
     return job_summary(
         log,
         "jpdb-history-import plan",
+        max_level=logging.INFO,
         inputs={
             "vocabulary": c.vocabulary_total,
             "kanji": c.kanji_total,

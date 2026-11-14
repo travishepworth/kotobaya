@@ -83,7 +83,24 @@ def test_jpdb_history_zero_card_import_logs_error(caplog: pytest.LogCaptureFixtu
     assert final.levelno == logging.ERROR and "ZERO OUTPUT" in final.getMessage()
     assert final.fields["dropped"]["unmapped"] == 2  # type: ignore[attr-defined]
     (plan,) = _summaries(caplog, "jpdb-history-import plan")
-    assert plan.levelno == logging.ERROR
+    assert plan.levelno == logging.INFO  # only the final summary escalates (OBS-1w2)
+
+
+def test_jpdb_history_end_to_end_one_warning_and_result_unchanged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Real handler: plan line is INFO, final is the only WARNING, result equals the plan's."""
+    export = {"cards_vocabulary_jp_en": [_row(1, "猫", "ねこ"), _row(9, "犬", "いぬ")]}
+    out = _history(export)
+    ref = InMemoryRefLookup()
+    ref.add(1, kanji=["猫"], readings=["ねこ"])
+    from kotobaya_worker.importers.jpdb_history import ImportOptions, plan_import
+
+    assert out == job_result(plan_import(export, ref, ImportOptions.from_payload({})))
+    (plan,) = _summaries(caplog, "jpdb-history-import plan")
+    (final,) = _summaries(caplog, "jpdb-history-import")
+    assert plan.levelno == logging.INFO and final.levelno == logging.WARNING
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == [final]
 
 
 def test_jpdb_history_empty_export_logs_error(caplog: pytest.LogCaptureFixture) -> None:
@@ -145,7 +162,9 @@ def _media(**kw: int) -> dict[str, Any]:
 def test_media_levels(kind: str, caplog: pytest.LogCaptureFixture) -> None:
     assert log_media_summary(kind, _media(sentences=3, tokens=9)) == logging.ERROR
     assert (
-        log_media_summary(kind, _media(sentences=3, tokens=9, unmapped_tokens=2, unique_entries=5))
+        log_media_summary(
+            kind, _media(sentences=30, tokens=90, unmapped_tokens=9, unique_entries=5)
+        )
         == logging.WARNING
     )
     assert log_media_summary(kind, _media(sentences=3, tokens=9, unique_entries=7)) == logging.INFO
@@ -154,6 +173,15 @@ def test_media_levels(kind: str, caplog: pytest.LogCaptureFixture) -> None:
         logging.WARNING,
         logging.INFO,
     ]
+
+
+def test_media_few_unmapped_tokens_is_info(caplog: pytest.LogCaptureFixture) -> None:
+    ok = _media(sentences=30, tokens=100, unmapped_tokens=5, unique_entries=5)
+    assert log_media_summary("media-import", ok) == logging.INFO
+    over = _media(sentences=30, tokens=100, unmapped_tokens=6, unique_entries=5)
+    assert log_media_summary("media-import", over) == logging.WARNING
+    zero = _media(sentences=30, tokens=100, unmapped_tokens=1, unique_entries=0)
+    assert log_media_summary("media-import", zero) == logging.ERROR
 
 
 # ------------------------------------------------------------------ dict-refresh / vocab lists

@@ -10,6 +10,7 @@ Rules inherited from the server side (T109a):
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
@@ -306,7 +307,9 @@ class Runner:
         handler = self.registry.get(job["kind"])
         stop, cancel = threading.Event(), threading.Event()
         beat = threading.Thread(
-            target=self._heartbeat_loop, args=(job_id, stop, cancel), daemon=True
+            target=contextvars.copy_context().run,
+            args=(self._heartbeat_loop, job_id, stop, cancel),
+            daemon=True,
         )
         beat.start()
         started = time.monotonic()

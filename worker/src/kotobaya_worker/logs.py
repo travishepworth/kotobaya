@@ -113,7 +113,9 @@ class KeyValueFormatter(logging.Formatter):
 def configure(
     env: Mapping[str, str] | None = None, stream: TextIO | None = None
 ) -> logging.Handler:
-    """Replace the root handlers with one structured stderr handler; returns it."""
+    """Replace the root handlers with one structured stderr handler; returns it.
+
+    An invalid ``LOG_LEVEL`` falls back to INFO with a warning."""
     e = os.environ if env is None else env
     handler = logging.StreamHandler(stream or sys.stderr)
     fmt = e.get("LOG_FORMAT", "json").lower()
@@ -123,16 +125,23 @@ def configure(
     for h in list(root.handlers):
         root.removeHandler(h)
     root.addHandler(handler)
-    root.setLevel(e.get("LOG_LEVEL", "INFO").upper())
+    requested = e.get("LOG_LEVEL", "INFO").upper()
+    level = logging.getLevelName(requested)
+    bad_level = not isinstance(level, int)
+    root.setLevel(logging.INFO if bad_level else level)
     logging.captureWarnings(True)
+    if bad_level:
+        logging.getLogger(__name__).warning("invalid LOG_LEVEL %r; using INFO", requested)
     return handler
 
 
 def install_excepthooks(logger: logging.Logger) -> None:
-    """Uncaught exceptions on any thread are logged with their stack trace (then the default runs)."""
+    """Uncaught exceptions are logged with their stack trace; the main-thread hook then chains to
+    ``sys.__excepthook__`` (thread failures are only logged)."""
 
     def main_hook(t: type[BaseException], v: BaseException, tb: TracebackType | None) -> None:
         logger.critical("uncaught exception", exc_info=(t, v, tb))
+        sys.__excepthook__(t, v, tb)
 
     def thread_hook(args: threading.ExceptHookArgs) -> None:
         if args.exc_value is None or args.exc_type is SystemExit:
@@ -184,18 +193,24 @@ def job_summary(
     dropped: Mapping[str, int] | None = None,
     require_input: bool = False,
     required_outputs: Collection[str] = (),
+    max_level: int | None = None,
+    warn_as_info: bool = False,
     **extra: Any,
 ) -> int:
     """Log the end-of-job count line for ``what`` and return the level used.
 
     ``inputs`` / ``outputs`` / ``dropped`` are named counts. ERROR when the inputs sum to > 0 and
     the outputs to 0 (or to nothing at all with ``require_input``); WARNING when any dropped or
-    skipped count is > 0; INFO otherwise. ``extra`` (ids, flags) is added to the structured record.
+    skipped count is > 0; INFO otherwise. ``max_level`` caps the level; ``warn_as_info`` demotes only WARNING (outcome is unchanged). ``extra`` (ids, flags) is added to the structured record.
     """
     drop = dict(dropped or {})
     level, outcome = summary_level(
         inputs, outputs, drop, require_input=require_input, required_outputs=required_outputs
     )
+    if max_level is not None:
+        level = min(level, max_level)
+    if warn_as_info and level == logging.WARNING:
+        level = logging.INFO
     job_id, kind = current_job()
     note = {
         OUTCOME_ZERO: " - ZERO OUTPUT from non-empty input",

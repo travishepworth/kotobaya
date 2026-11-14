@@ -78,3 +78,19 @@ def test_key_value_formatter_quotes_values() -> None:
     rec = logging.LogRecord("n", logging.WARNING, __file__, 1, "two words", None, None)
     out = logs.KeyValueFormatter().format(rec)
     assert 'msg="two words"' in out and "level=WARNING" in out and "\n" not in out
+
+
+def test_invalid_log_level_falls_back_to_info() -> None:
+    buf = io.StringIO()
+    root = logging.getLogger()
+    old_level, old_handlers = root.level, list(root.handlers)
+    try:
+        logs.configure({"LOG_LEVEL": "LOUD"}, buf)
+        assert root.level == logging.INFO
+        assert "invalid LOG_LEVEL" in buf.getvalue()
+    finally:
+        for h in list(root.handlers):
+            root.removeHandler(h)
+        for h in old_handlers:
+            root.addHandler(h)
+        root.setLevel(old_level)
