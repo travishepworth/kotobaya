@@ -997,3 +997,4 @@
 2026-11-14T02:56:45Z WORKER-EMPTY MERGE 0a4bca84 0-row import fails, per-stage progress, merged counter, Recreate, refund cap
 2026-11-14T02:57:08Z SRV-404LOG MERGE df845c72 request logged once per call (unknown-route 404 double log)
 2026-11-14T02:58:09Z AND-PERF MERGE c7d7d818 todayReviews index-driven (9.4s->2ms on real DB), LoadGate coalescing, no retention; review APPROVE r2
+2026-11-14T03:02:04Z AND-STRICT MERGE c115825b main-thread IO off main, decks list one load, LoadGate tests de-flaked
