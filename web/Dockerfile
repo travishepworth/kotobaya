@@ -12,6 +12,9 @@ COPY assets assets
 COPY clients/typescript clients/typescript
 COPY web web
 WORKDIR /src/web
+# Same version as the API image (KOTOBAYA_VERSION); exposed to the SPA as import.meta.env.VITE_APP_VERSION.
+ARG KOTOBAYA_VERSION=dev
+ENV VITE_APP_VERSION=${KOTOBAYA_VERSION}
 RUN pnpm install --frozen-lockfile && pnpm build
 
 FROM nginx:alpine
