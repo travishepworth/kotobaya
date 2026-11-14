@@ -984,3 +984,8 @@
 2026-11-14T02:07:40Z SMOKE-0110 MERGE 05cec67a plan/smoke/smoke.sh + README (not yet run live)
 2026-11-14T02:12:19Z RELEASE 0.1.10 images PUSHED from a58b9699 (api/worker/web/backup); values tags bumped; APK 0.1.10/110 built. DEPLOY BLOCKED: kubectl OIDC login needs user browser
 2026-11-14T02:12:19Z RUN23 END RESTART NEEDED (deploy + QA to successor after user login)
+2026-11-14T02:30:00Z REL-0110 DEPLOY helm rev 16 from a58b9699; api/web/worker 0.1.10 Running, 0 restarts; dict hashes unchanged
+2026-11-14T02:35:33Z REL-0110 VERIFY dict-refresh ok 252s, release 2026.11.14.3, vocab_list 5, list_entries 7748
+2026-11-14T02:38:00Z AND-0110 DONE 0.1.10 APK on phone (user 0 + user 10); 0.1.9 crash was todayReviews NPE (AND-POSTSYNC)
+2026-11-14T02:40:00Z AND-PERF DISPATCH writer-senior; phone: SQLite pool starved by todayReviews (30-116s on device)
+2026-11-14T02:40:00Z AND-WIDGET DISPATCH writer; Glance Row>10 children crash

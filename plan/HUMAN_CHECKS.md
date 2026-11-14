@@ -4,6 +4,12 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
+## Run 24 (2026-11-14): 0.1.10 deployed; 0.1.11 in progress
+- [x] kubectl re-login done by user; 0.1.10 deployed (helm rev 16, pinned a58b9699); dict-refresh release 2026.11.14.3 OK (JLPT lists N5..N1 built).
+- [x] 0.1.10 APK installed on the phone (adb install -r). Earlier 0.1.9 crash = todayReviews NPE (DurableDriver.kt:53), fixed by AND-POSTSYNC.
+- Phone note: the app is ALWAYS used in Private Space (Android user 10, server via Tailscale). On-device checks: `adb shell run-as com.ichi2.anki --user 10 ...`, logcat of the user-10 process. Ignore the user-0 install (empty, unpaired).
+- 0.1.10 phone: nothing loads / "syncing" stuck = SQLite pool starved by slow todayReviews query (AND-PERF); widget crash Row>10 (AND-WIDGET). Fix ships in APK 0.1.11.
+
 ## Ready now (run 19, 2026-11-14): 0.1.9 — UI rewrite (web + Android). No migrations, no new env, no chart changes.
 Merged: SYNC-T1 4dce8ba, UI-DS-APP 92889d0, UI-APP 2587826, UI-WEB 8095cce. Build web image + APK (and server for one pinned SHA) from main at/after 8095cce; pin the SHA, don't rebuild if main moves.
 - What changed: every web route and every Android screen rebuilt on the approved DESIGN.md (light/dark following the system + manual override). Android Media tab removed. Web: FEAT-x per-field overrides on /notes, load-error states with Retry, theme set before first paint. Android: new nav shell (bottom bar on phones, rail >= 600dp), Appearance setting, immersive Review, debug-only Settings > Styleguide. Core: chunked-pull hardening (bad chunk -> sync fails safely and retries; no data change). Server: no functional change.
