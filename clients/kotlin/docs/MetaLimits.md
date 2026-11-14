@@ -5,7 +5,7 @@
 | Name | Type | Description | Notes |
 | ------------ | ------------- | ------------- | ------------- |
 | **maxBlobBytes** | **kotlin.Long** | Maximum blob size. |  |
-| **maxJsonBytes** | **kotlin.Int** | Maximum size of any other JSON request body. |  |
+| **maxJsonBytes** | **kotlin.Int** | Maximum size of any other JSON request body (&#x60;POST /client-errors&#x60; has its own fixed 1 MiB limit). |  |
 | **maxOpBytes** | **kotlin.Int** | Maximum size (bytes) of one op: the UTF-8 length of the op envelope serialized as compact JSON, as it appears in &#x60;PushRequest.ops&#x60; (SYNC.md 5.4). Default 1 MiB (&#x60;1048576&#x60;). Invariant: &#x60;max_op_bytes &lt;&#x3D; max_push_bytes - 4096&#x60;, so a batch holding one maximal op always fits in a push body. Clients MUST NOT mint a larger op (SYNC.md 4); a client that has not read &#x60;/meta&#x60; yet uses the default. A pushed op over the limit is rejected **per op** with &#x60;op_too_large&#x60; (never a whole-request &#x60;413&#x60;).  |  |
 | **maxPageSize** | **kotlin.Int** | Maximum &#x60;limit&#x60; of paginated lists. |  |
 | **maxPullOps** | [**inline**](#MaxPullOps) | Maximum &#x60;limit&#x60; of &#x60;GET /sync/pull&#x60;; fixed by &#x60;PullResponse.ops.maxItems&#x60;. |  |

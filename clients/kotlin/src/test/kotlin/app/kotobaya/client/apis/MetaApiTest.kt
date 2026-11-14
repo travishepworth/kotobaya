@@ -27,6 +27,8 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import app.kotobaya.client.apis.MetaApi
+import app.kotobaya.client.models.ClientErrorReport
+import app.kotobaya.client.models.ClientErrorReportAccepted
 import app.kotobaya.client.models.Health
 import app.kotobaya.client.models.Meta
 import app.kotobaya.client.models.Problem
@@ -47,6 +49,14 @@ class MetaApiTest : ShouldSpec() {
         should("test getMeta") {
             // uncomment below to test getMeta
             //val result : Meta = apiInstance.getMeta()
+            //result shouldBe ("TODO")
+        }
+
+        // to test reportClientErrors
+        should("test reportClientErrors") {
+            // uncomment below to test reportClientErrors
+            //val clientErrorReport : ClientErrorReport = {"dropped":3,"items":[{"app_version":"0.2.0 (21)","client":"android","kind":"crash","level":"error","message":"java.lang.IllegalStateException: queue empty","occurred_at":"2026-11-14T07:59:40.000Z","route":"review","stack":"java.lang.IllegalStateException: queue empty\n\tat app.kotobaya.review.ReviewViewModel.next(ReviewViewModel.kt:88)"}]} // ClientErrorReport | 
+            //val result : ClientErrorReportAccepted = apiInstance.reportClientErrors(clientErrorReport)
             //result shouldBe ("TODO")
         }
 

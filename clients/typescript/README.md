@@ -126,6 +126,7 @@ All URIs are relative to */api/v1*
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PATCH** /media/{media_id} | Change a media\&#39;s title, kind or cover.
 *MetaApi* | [**getHealth**](docs/MetaApi.md#gethealth) | **GET** /health | Liveness and readiness probe.
 *MetaApi* | [**getMeta**](docs/MetaApi.md#getmeta) | **GET** /meta | Server versions, limits and sync head.
+*MetaApi* | [**reportClientErrors**](docs/MetaApi.md#reportclienterrors) | **POST** /client-errors | Report client-side errors (web, Android) to the server log.
 *NoteTypesApi* | [**createNoteType**](docs/NoteTypesApi.md#createnotetype) | **POST** /note-types | Create a note type.
 *NoteTypesApi* | [**deleteNoteType**](docs/NoteTypesApi.md#deletenotetype) | **DELETE** /note-types/{note_type_id} | Delete one of your own note types.
 *NoteTypesApi* | [**getNoteType**](docs/NoteTypesApi.md#getnotetype) | **GET** /note-types/{note_type_id} | One note type.
@@ -202,6 +203,9 @@ All URIs are relative to */api/v1*
 - [CardTemplate](docs/CardTemplate.md)
 - [CardUnburiedSchema](docs/CardUnburiedSchema.md)
 - [CardUnsuspendedSchema](docs/CardUnsuspendedSchema.md)
+- [ClientErrorItem](docs/ClientErrorItem.md)
+- [ClientErrorReport](docs/ClientErrorReport.md)
+- [ClientErrorReportAccepted](docs/ClientErrorReportAccepted.md)
 - [Confusable](docs/Confusable.md)
 - [ConfusableConfirmedSchema](docs/ConfusableConfirmedSchema.md)
 - [ConfusableList](docs/ConfusableList.md)

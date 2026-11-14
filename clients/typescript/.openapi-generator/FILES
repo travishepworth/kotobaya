@@ -30,6 +30,9 @@ docs/CardTemplate.md
 docs/CardUnburiedSchema.md
 docs/CardUnsuspendedSchema.md
 docs/CardsApi.md
+docs/ClientErrorItem.md
+docs/ClientErrorReport.md
+docs/ClientErrorReportAccepted.md
 docs/CompatApi.md
 docs/Confusable.md
 docs/ConfusableConfirmedSchema.md
@@ -350,6 +353,9 @@ src/models/CardSuspendedSchema.ts
 src/models/CardTemplate.ts
 src/models/CardUnburiedSchema.ts
 src/models/CardUnsuspendedSchema.ts
+src/models/ClientErrorItem.ts
+src/models/ClientErrorReport.ts
+src/models/ClientErrorReportAccepted.ts
 src/models/Confusable.ts
 src/models/ConfusableConfirmedSchema.ts
 src/models/ConfusableList.ts

@@ -30,7 +30,7 @@ import com.google.gson.annotations.SerializedName
  * Request limits enforced by this server.
  *
  * @param maxBlobBytes Maximum blob size.
- * @param maxJsonBytes Maximum size of any other JSON request body.
+ * @param maxJsonBytes Maximum size of any other JSON request body (`POST /client-errors` has its own fixed 1 MiB limit).
  * @param maxOpBytes Maximum size (bytes) of one op: the UTF-8 length of the op envelope serialized as compact JSON, as it appears in `PushRequest.ops` (SYNC.md 5.4). Default 1 MiB (`1048576`). Invariant: `max_op_bytes <= max_push_bytes - 4096`, so a batch holding one maximal op always fits in a push body. Clients MUST NOT mint a larger op (SYNC.md 4); a client that has not read `/meta` yet uses the default. A pushed op over the limit is rejected **per op** with `op_too_large` (never a whole-request `413`). 
  * @param maxPageSize Maximum `limit` of paginated lists.
  * @param maxPullOps Maximum `limit` of `GET /sync/pull`; fixed by `PullResponse.ops.maxItems`.
@@ -45,7 +45,7 @@ data class MetaLimits (
     @SerializedName("max_blob_bytes")
     val maxBlobBytes: kotlin.Long,
 
-    /* Maximum size of any other JSON request body. */
+    /* Maximum size of any other JSON request body (`POST /client-errors` has its own fixed 1 MiB limit). */
     @SerializedName("max_json_bytes")
     val maxJsonBytes: kotlin.Int,
 

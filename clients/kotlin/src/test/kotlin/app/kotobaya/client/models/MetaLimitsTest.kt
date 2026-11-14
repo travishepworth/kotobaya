@@ -39,7 +39,7 @@ class MetaLimitsTest : ShouldSpec() {
             //modelInstance.maxBlobBytes shouldBe ("TODO")
         }
 
-        // to test the property `maxJsonBytes` - Maximum size of any other JSON request body.
+        // to test the property `maxJsonBytes` - Maximum size of any other JSON request body (`POST /client-errors` has its own fixed 1 MiB limit).
         should("test maxJsonBytes") {
             // uncomment below to test the property
             //modelInstance.maxJsonBytes shouldBe ("TODO")

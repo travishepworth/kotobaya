@@ -6,7 +6,8 @@ usage: check_contract.py <bundled openapi.json> <SUMMARY.md> <contracts/db/SCHEM
 Checks (T004 acceptance):
   1. Every operation has an operationId, a tag, and an explicit `security` declaration; every
      non-public operation names exactly one scope per alternative, from the five known scopes
-     (an empty scope list is allowed only for getPrincipal: "any valid credential"). An empty
+     (an empty scope list is allowed only for getPrincipal and reportClientErrors: "any valid
+     credential"). An empty
      alternative `{}` is allowed only together with `x-auth: body-key` and a known
      `x-body-key-scope` (POST /ankiconnect: token in the JSON body).
   2. Every non-GET operation declares `x-emits-ops` (possibly empty): the sync ops the server
@@ -31,7 +32,7 @@ import sys
 
 SCOPES = {"read", "write", "review", "import", "admin"}
 PUBLIC = {"getHealth", "login", "pairDevice"}
-ANY_CREDENTIAL = {"getPrincipal"}
+ANY_CREDENTIAL = {"getPrincipal", "reportClientErrors"}
 METHODS = ("get", "put", "post", "delete", "patch", "head", "options")
 TABLES = [
     "note_type", "note", "card", "review_log", "word_status", "deck", "deck_item", "confusable",

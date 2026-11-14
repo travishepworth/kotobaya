@@ -60,7 +60,9 @@ Scopes are independent (no scope implies another):
 Each operation lists the scope it needs in its `security` requirement: the array after the
 scheme name. When two alternatives are listed for one scheme the caller needs either. A request
 with no or an invalid credential gets `401 unauthenticated`; a valid credential lacking the
-scope gets `403 insufficient_scope`. Operations with `security: []` are public.
+scope gets `403 insufficient_scope`. Operations with `security: []` are public. An empty scope
+array (`bearerAuth: []`, `sessionCookie: []`) means any valid credential, whatever its scopes:
+only `GET /auth/session` and `POST /client-errors`.
 
 There are exactly two places where who may call is not just \"scheme + scope\", and both are
 declared in the operation, not only in prose:
@@ -182,13 +184,13 @@ Every non-2xx response has the body `application/problem+json` (RFC 9457), schem
 | 409 | `card_not_reviewable` | Card is suspended. |
 | 409 | `job_not_cancellable` | Job already finished. |
 | 410 | `gone` | Tombstoned row requested without `include_deleted=true`. |
-| 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. |
+| 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. `POST /client-errors`: body over 1 MiB or more than 20 items. |
 | 415 | `unsupported_media_type` | Wrong `Content-Type`. |
 | 422 | `validation_failed` | Well-formed but invalid; `errors[]` lists each problem. |
 | 422 | `invalid_query` | Card search string does not parse; `errors[0].position` is the UTF-16 offset. |
 | 422 | `bulk_too_large` | Bulk selector matched more than 5000 cards. |
 | 422 | `hash_mismatch` | Uploaded bytes do not hash to the `{hash}` in the path. |
-| 429 | `rate_limited` | Too many login or pairing attempts; see `Retry-After`. |
+| 429 | `rate_limited` | Too many login or pairing attempts, or too many client error reports (`POST /client-errors`); see `Retry-After`. |
 | 500 | `internal` | Bug. Safe to retry idempotent calls. |
 | 503 | `unavailable` | Database or object store unreachable. Retry with backoff. |
 
@@ -379,6 +381,7 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**update_media**](docs/MediaApi.md#update_media) | **PATCH** /media/{media_id} | Change a media&#39;s title, kind or cover.
 *MetaApi* | [**get_health**](docs/MetaApi.md#get_health) | **GET** /health | Liveness and readiness probe.
 *MetaApi* | [**get_meta**](docs/MetaApi.md#get_meta) | **GET** /meta | Server versions, limits and sync head.
+*MetaApi* | [**report_client_errors**](docs/MetaApi.md#report_client_errors) | **POST** /client-errors | Report client-side errors (web, Android) to the server log.
 *NoteTypesApi* | [**create_note_type**](docs/NoteTypesApi.md#create_note_type) | **POST** /note-types | Create a note type.
 *NoteTypesApi* | [**delete_note_type**](docs/NoteTypesApi.md#delete_note_type) | **DELETE** /note-types/{note_type_id} | Delete one of your own note types.
 *NoteTypesApi* | [**get_note_type**](docs/NoteTypesApi.md#get_note_type) | **GET** /note-types/{note_type_id} | One note type.
@@ -455,6 +458,9 @@ Class | Method | HTTP request | Description
  - [CardTemplate](docs/CardTemplate.md)
  - [CardUnburiedSchema](docs/CardUnburiedSchema.md)
  - [CardUnsuspendedSchema](docs/CardUnsuspendedSchema.md)
+ - [ClientErrorItem](docs/ClientErrorItem.md)
+ - [ClientErrorReport](docs/ClientErrorReport.md)
+ - [ClientErrorReportAccepted](docs/ClientErrorReportAccepted.md)
  - [Confusable](docs/Confusable.md)
  - [ConfusableConfirmedSchema](docs/ConfusableConfirmedSchema.md)
  - [ConfusableList](docs/ConfusableList.md)

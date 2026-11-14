@@ -68,7 +68,9 @@ info:
     Each operation lists the scope it needs in its `security` requirement: the array after the
     scheme name. When two alternatives are listed for one scheme the caller needs either. A request
     with no or an invalid credential gets `401 unauthenticated`; a valid credential lacking the
-    scope gets `403 insufficient_scope`. Operations with `security: []` are public.
+    scope gets `403 insufficient_scope`. Operations with `security: []` are public. An empty scope
+    array (`bearerAuth: []`, `sessionCookie: []`) means any valid credential, whatever its scopes:
+    only `GET /auth/session` and `POST /client-errors`.
 
     There are exactly two places where who may call is not just "scheme + scope", and both are
     declared in the operation, not only in prose:
@@ -190,13 +192,13 @@ info:
     | 409 | `card_not_reviewable` | Card is suspended. |
     | 409 | `job_not_cancellable` | Job already finished. |
     | 410 | `gone` | Tombstoned row requested without `include_deleted=true`. |
-    | 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. |
+    | 413 | `payload_too_large` | Body over the limit in `GET /meta`. On `POST /sync/push` only for the whole batch (the client halves it); one op over `max_op_bytes` is a per-op `op_too_large` result instead. `POST /client-errors`: body over 1 MiB or more than 20 items. |
     | 415 | `unsupported_media_type` | Wrong `Content-Type`. |
     | 422 | `validation_failed` | Well-formed but invalid; `errors[]` lists each problem. |
     | 422 | `invalid_query` | Card search string does not parse; `errors[0].position` is the UTF-16 offset. |
     | 422 | `bulk_too_large` | Bulk selector matched more than 5000 cards. |
     | 422 | `hash_mismatch` | Uploaded bytes do not hash to the `{hash}` in the path. |
-    | 429 | `rate_limited` | Too many login or pairing attempts; see `Retry-After`. |
+    | 429 | `rate_limited` | Too many login or pairing attempts, or too many client error reports (`POST /client-errors`); see `Retry-After`. |
     | 500 | `internal` | Bug. Safe to retry idempotent calls. |
     | 503 | `unavailable` | Database or object store unreachable. Retry with backoff. |
 
@@ -213,7 +215,7 @@ servers:
   - url: /api/v1
     description: Same origin as the web app (reached over the VPN).
 tags:
-  - {name: meta, description: Health and server information.}
+  - {name: meta, description: 'Health, server information and client error reports.'}
   - {name: auth, description: Web session login.}
   - {name: devices, description: Paired devices and pairing.}
   - {name: tokens, description: Personal access tokens and credential listing.}
@@ -269,6 +271,146 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Meta'}
               examples: {default: {$ref: '#/components/examples/Meta'}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  /client-errors:
+    post:
+      operationId: reportClientErrors
+      tags: [meta]
+      summary: Report client-side errors (web, Android) to the server log.
+      description: |
+        Added by C-23 (OBS-1, ADR-024). A client sends a batch of errors it observed (uncaught
+        exceptions, unhandled promise rejections, crashes, failed API calls); the server writes
+        them to its structured log and **stores nothing**: no table, no blob, no op, no job.
+        Duplicate log lines from a retried request are possible and harmless.
+
+        **Who may call.** Any valid credential of any kind (`session`, `device`, `personal`) with
+        any scopes, like `getPrincipal`. No credential, or an expired or revoked one:
+        `401 unauthenticated`. Cookie-authenticated calls need `X-Kotobaya-Csrf: 1` like every
+        other cookie write (`403 csrf_required`), so web clients send reports with
+        `fetch(..., {keepalive: true})`, not `navigator.sendBeacon` (which cannot set headers).
+
+        **Limits and check order** (fixed constants, not published in `GET /meta`):
+        1. `401` / `403` as for every operation.
+        2. Rate limit, requests: per credential (`api_token.id`) at most **12 requests** in any
+           rolling 60-second window. The 13th is `429 rate_limited` before the body is read.
+        3. Body over **1 MiB** (`1048576` bytes of raw request body): `413 payload_too_large`.
+        4. Body not JSON: `400 invalid_request`. Wrong content type: `415`.
+        5. More than **20** `items`: `413 payload_too_large`. The client splits the batch and
+           resends the halves; one item within the field limits always fits in 1 MiB.
+        6. Any field violation (empty `items`, `message` over 2048 characters, `stack` over
+           16384, unknown property, bad enum, ...): `422 validation_failed` with one `errors[]`
+           element per problem (`required`, `unknown_field`, `invalid_type`, `invalid_value`,
+           `out_of_range`, `too_long`). The whole batch is rejected; the server logs one WARN
+           line naming the first problem, not the items. Clients MUST truncate `message` and
+           `stack` to the limits before sending (characters are Unicode code points, as JSON
+           Schema `maxLength` counts) and SHOULD end a truncated value with `…`.
+        7. Rate limit, items: per credential at most **120 items** in any rolling 60-second
+           window; a batch that would exceed it is `429 rate_limited` as a whole (no partial
+           acceptance) and none of its items are logged.
+        8. `202`: every item is logged.
+        `429` carries `Retry-After` (whole seconds, at least 1, until the window admits the
+        request). Every request that passes step 2 counts toward the request limit, whatever its
+        outcome; only `202` requests count toward the item limit. The server logs at most one
+        WARN line per credential per 60-second window saying reports were refused (token name,
+        refused request and item counts). Limiter state is in memory per API replica (like the
+        login limit) and resets on restart.
+
+        **What the server logs** (normative for OBS-1s). One line per item, logger
+        `kotobaya.client_error`, level `ERROR` for `level: error` and `WARN` for `level: warn`,
+        with the key-value fields `client`, `app_version`, `kind`, `occurred_at` (normalised to
+        UTC), `route`, `client_request_id` (the item's `request_id`; the request's own id stays
+        `request_id`), `http_method`, `http_path`, `http_status`, `count`, the calling token's
+        name and device id (from the credential, never from the body), `message` and `stack`.
+        Absent optional properties are omitted from the line. Every string from the body is
+        escaped before logging so one item is exactly one line: CR, LF, TAB and every other
+        C0/C1 control character (including U+0000) become `\r`, `\n`, `\t` or `\u00XX`, and
+        U+2028/U+2029 become `\u2028`/`\u2029`. `route` and `http_path` are cut at the first `?`
+        or `#` before logging (query strings and fragments can hold search text). When
+        `dropped > 0` the server also logs one WARN line with `dropped`, the client, app version
+        and token name.
+
+        **Clock skew.** `occurred_at` is the client's clock and is never rejected for being in
+        the past or the future (only for not being an RFC 3339 instant, or for being after
+        `9999-12-31T23:59:59.999Z`); the log line's own timestamp is the server's receive time.
+
+        **Privacy.** No PII beyond the token name the server adds. Clients MUST NOT put request
+        or response bodies, note or card content, search strings, tokens, cookies or
+        `Authorization` values into any property; `message` is the error's own message.
+
+        **Client obligations** (normative for OBS-1c):
+        - Never report a failure of `reportClientErrors` itself (no feedback loop).
+        - Fold identical reports (same `client`, `kind`, `level`, `message`, `route`,
+          `http_method`, `http_path`, `http_status`) into one item: `count` is the number of
+          occurrences, `occurred_at` the first one.
+        - Keep a bounded queue (web: in memory; Android: persisted, so it survives offline time
+          and restarts) of at most 100 pending items; on overflow drop the oldest and add 1 to
+          `dropped`. Send `dropped` with the next batch and reset it only when that batch is
+          answered `202`.
+        - `202`: remove the sent items. `413`: split the batch and resend. `429`: keep the
+          items and wait `Retry-After`. Network failure, `500`, `503`: keep the items and retry
+          with exponential backoff (at least 30 s, at most 15 min). `401`: keep the items and do
+          not send until a credential is available again. Any other status: drop the batch and
+          add its item count to `dropped` (it can never succeed).
+      x-emits-ops: []
+      security:
+        - bearerAuth: []
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ClientErrorReport'}
+            examples:
+              web:
+                summary: Web - a failed API call (twice) and an uncaught exception
+                value:
+                  items:
+                    - client: web
+                      app_version: 0.2.0
+                      occurred_at: '2026-11-14T08:15:02.120Z'
+                      level: error
+                      kind: api_failure
+                      message: 'POST /api/v1/review/answer failed: 500 internal'
+                      route: /review
+                      request_id: 01931f43-aaaa-7000-8000-00000000r001
+                      http_method: POST
+                      http_path: /api/v1/review/answer
+                      http_status: 500
+                      count: 2
+                    - client: web
+                      app_version: 0.2.0
+                      occurred_at: '2026-11-14T08:15:04.007Z'
+                      level: error
+                      kind: exception
+                      message: "TypeError: Cannot read properties of undefined (reading 'fields')"
+                      stack: "TypeError: Cannot read properties of undefined (reading 'fields')\n    at renderCard (app.js:1:2345)"
+                      route: /review
+              android:
+                summary: Android - a crash sent after restart; three older reports were dropped
+                value:
+                  dropped: 3
+                  items:
+                    - client: android
+                      app_version: 0.2.0 (21)
+                      occurred_at: '2026-11-14T07:59:40.000Z'
+                      level: error
+                      kind: crash
+                      message: 'java.lang.IllegalStateException: queue empty'
+                      stack: "java.lang.IllegalStateException: queue empty\n\tat app.kotobaya.review.ReviewViewModel.next(ReviewViewModel.kt:88)"
+                      route: review
+      responses:
+        '202':
+          description: Every item was accepted and logged.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClientErrorReportAccepted'}
+              examples:
+                default: {value: {accepted: 2}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
         default: {$ref: '#/components/responses/Problem'}
 
   # ---------------------------------------------------------------- auth
@@ -6112,7 +6254,8 @@ components:
               - 2147483648
             max_json_bytes:
               type: integer
-              description: Maximum size of any other JSON request body.
+              description: Maximum size of any other JSON request body (`POST /client-errors` has its own fixed 1 MiB
+                limit).
               examples:
               - 4194304
             max_page_size:
@@ -6120,6 +6263,169 @@ components:
               description: Maximum `limit` of paginated lists.
               examples:
               - 500
+    ClientErrorReport:
+      type: object
+      description: |
+        Body of `POST /client-errors` (C-23): a batch of 1 to 20 client error reports. Limits and
+        client obligations are in the operation.
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: The reports, in any order. More than 20 is `413 payload_too_large` (split the batch); none is
+            `422`.
+          items:
+            $ref: '#/components/schemas/ClientErrorItem'
+        dropped:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: |
+            Optional, default 0. Number of reports this client discarded (queue overflow, or a batch
+            refused with a non-retryable status) since its last `202`. Logged as one WARN line when
+            above 0.
+          examples:
+          - 3
+    ClientErrorItem:
+      type: object
+      description: One error observed by a web or Android client. Logged as one line, never stored.
+      additionalProperties: false
+      required:
+      - client
+      - app_version
+      - occurred_at
+      - level
+      - kind
+      - message
+      properties:
+        client:
+          type: string
+          enum:
+          - web
+          - android
+          description: Which app observed the error.
+          examples:
+          - web
+        app_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[\x20-\x7E]+$
+          description: The client's own version string (web build version; Android `versionName (versionCode)`).
+            Printable ASCII.
+          examples:
+          - 0.2.0 (21)
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+          description: When the error happened (first occurrence when `count > 1`), by the client's clock. Never
+            rejected for skew.
+        level:
+          type: string
+          enum:
+          - error
+          - warn
+          description: '`error` is logged at ERROR, `warn` at WARN. Crashes, uncaught exceptions and 5xx/network API
+            failures are `error`; a recovered or expected-but-odd condition is `warn`.'
+          examples:
+          - error
+        kind:
+          type: string
+          enum:
+          - exception
+          - api_failure
+          - unhandled_rejection
+          - crash
+          description: |
+            `exception`: a caught-at-top-level or uncaught exception that did not end the app
+            (web `window.onerror`, Android handled error boundary). `api_failure`: an API call
+            answered with a status the client did not expect (5xx, or a 4xx that indicates a bug),
+            or that failed at the network level; set the `http_*` properties. `unhandled_rejection`:
+            web `unhandledrejection`. `crash`: the app process died (Android uncaught-exception
+            handler; reported on the next start).
+          examples:
+          - api_failure
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: 'The error message (for example `TypeError: x is undefined`), at most 2048 code points; clients
+            truncate. No PII, note content or credentials.'
+          examples:
+          - 'POST /api/v1/review/answer failed: 500 internal'
+        stack:
+          type: string
+          maxLength: 16384
+          description: Optional stack trace, at most 16384 code points; clients truncate. Absent when unknown.
+          examples:
+          - "TypeError: x is undefined\n    at renderCard (app.js:1:2345)"
+        route:
+          type: string
+          maxLength: 512
+          description: Optional. Web - the SPA route path (`/review`, `/notes/01931f40-...`); Android - the screen name
+            (`review`). Clients SHOULD omit the query string and fragment; the server cuts at the first `?` or `#`
+            anyway.
+          examples:
+          - /review
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[\x21-\x7E]+$
+          description: Optional. The `X-Request-Id` response header (or `Problem.request_id`) of the failed API call,
+            tying the report to the server's own log line. Logged as `client_request_id`.
+          examples:
+          - 01931f43-aaaa-7000-8000-00000000r001
+        http_method:
+          type: string
+          enum:
+          - GET
+          - HEAD
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          description: Optional; for `api_failure`. Method of the failed call.
+          examples:
+          - POST
+        http_path:
+          type: string
+          maxLength: 512
+          description: Optional; for `api_failure`. Path of the failed call, without the query string (the server
+            cuts at the first `?` or `#`).
+          examples:
+          - /api/v1/review/answer
+        http_status:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: Optional; for `api_failure`. Response status of the failed call; absent when no response
+            arrived (network failure or timeout).
+          examples:
+          - 500
+        count:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: Optional, default 1. Number of identical occurrences folded into this item by the client.
+          examples:
+          - 2
+    ClientErrorReportAccepted:
+      type: object
+      description: Answer of `POST /client-errors`.
+      required:
+      - accepted
+      properties:
+        accepted:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: Number of items logged (always the number sent).
+          examples:
+          - 2
     LoginRequest:
       type: object
       description: Login credentials.

@@ -1,6 +1,6 @@
 # API contract — summary for the human
 
-Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml` (lint rules),
+Files: `openapi.yaml` (the contract, OpenAPI 3.1, 123 operations), `redocly.yaml` (lint rules),
 `check_contract.py` + `check.sh` (verification, see the end). Parser (C-12): `PARSER.md`,
 `token.schema.json`, `worker-parse.yaml` (cluster-internal), `examples/`, `check_parser.py`.
 
@@ -77,6 +77,12 @@ Files: `openapi.yaml` (the contract, OpenAPI 3.1, 117 operations), `redocly.yaml
   hash from a JSON import request. The media row and its deck are created by the job.
 - **Events** are a server-sent-events stream without replay; the first event carries the sync
   head so a reconnecting client knows whether to refetch.
+- **Client error reports are log lines, not data (C-23, ADR-024).** `POST /client-errors`
+  takes 1-20 reports from web/Android (any valid credential, any scope), logs one escaped line
+  each at WARN/ERROR and stores nothing, so it emits no op and needs no table. Fixed limits: 1 MiB
+  body or >20 items `413` (client splits), field limits `422`, 12 requests / 120 items per
+  credential per minute `429`. Client queue, dedupe (`count`), `dropped` and retry rules are in
+  the operation.
 - **AnkiConnect** keeps its own protocol (always HTTP 200, errors in the body) and accepts a
   personal access token in the body's `key`, which is the only thing Yomitan can send.
 
@@ -210,7 +216,7 @@ Everything else (additions):
 
 | Area | operationIds |
 |---|---|
-| Meta | `getHealth`, `getMeta` |
+| Meta | `getHealth`, `getMeta`, `reportClientErrors` (C-23) |
 | Presets | `listPresets`, `createPreset`, `getPreset`, `updatePreset`, `deletePreset`, `optimizePreset` |
 | Note types | `listNoteTypes`, `createNoteType`, `getNoteType`, `updateNoteType`, `deleteNoteType` |
 | Dictionary | `listEntryExamples`, `getDictRelease`, `refreshDictionary`, `listKanjiWords`, `listDictHeadwords` |
