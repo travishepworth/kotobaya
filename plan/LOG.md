@@ -980,3 +980,5 @@
 2026-11-14T01:50:05Z RELEASE 0.1.10 images FAILED at pin 0200b2f5: WEBVER dropped 'COPY fixtures/demo' from web/Dockerfile (nothing pushed) → WEBVER-fix DISPATCH writer-light; will re-pin
 2026-11-14T01:51:59Z WEBVER-fix MERGE db909f66 web Dockerfile (release/0.1.9-only commit c4d8dcb0 never reached main; docker build verified)
 2026-11-14T01:52:08Z RELEASE 0.1.10 RE-PIN a58b9699 (rel0110b; code = 0200b2f5 + web/Dockerfile fix)
+2026-11-14T01:53:01Z RELEASE 0.1.10 make test GREEN (all modules, code = pin)
+2026-11-14T02:07:40Z SMOKE-0110 MERGE 05cec67a plan/smoke/smoke.sh + README (not yet run live)
