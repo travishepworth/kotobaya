@@ -1,20 +1,23 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN19 END
+Updated: RUN21 END
 
-## RESUME HERE (run 20 IN PROGRESS: 0.1.10 hotfix for live bugs)
-Merged this run: BUG-11 d3711c2 (jpdb slugless URL), C-21 1578783 (JLPT vocab contract, ADR-022), BUG-12 82a5b27 (struggle Open in dictionary), BUG-13 860196f (Open note bounce).
-RUN20 ENDED (context budget) with these agents still in flight. On resume: `git worktree list` + `git log main..<branch>`; a branch whose worktree has a committed HANDOFF.md → READY_FOR_REVIEW (validate, make check, review per tier, merge); no HANDOFF → re-dispatch same tier (attempt kept), resuming the partial worktree.
-Running at handback:
-- JLPT-1a HANDOFF DONE (ac0977b, worker green 815; JLPT default-on → verify pinned sha256 digests against real downloads before deploy; READY_FOR_REVIEW, med → reviewer since release-critical) · JLPT-1b HANDOFF DONE (server green; DeckPublishRunner via OpApply, DeckLists from ref.vocab_list; READY_FOR_REVIEW, high → reviewer)
-- UI-RUBY MERGED aa8d61d
-- BUG-14a MERGED 3704bd4 (reviewer APPROVE r2)
-- C-22 HANDOFF DONE (core+contracts green; learn-ahead after review/new interleave; ADR-023 provisional, check number clash on merge; server+Android use core builder, no follow-up). READY_FOR_REVIEW (high → reviewer).
-Queued: BROWSE-1 (surface-form search; core parser/C-ticket if needed), BROWSE-2 (one row per vocab note) — 0.1.10 if small else 0.1.11, after critical work. FEAT-DICT (web dict links everywhere; dispatch after BUG-14a merges; ship in 0.1.10 only if small, else 0.1.11). Android equivalent → FEAT-DICT-APP follow-up.
-Then: build+push 0.1.10 from one pinned SHA worktree (`make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`), bump tags in ~/repos/kubernetes/kotobaya/values.yaml (+ consider freq_lists in dictSourcesJson per VOCAB_LISTS 4.3), helm upgrade, run dict-refresh job (loads JLPT lists), verify live: jpdb re-import has words; /deck-lists JLPT item_count > 0; JLPT deck fills via deck-build; review grades land (review_log grows per press). Android APK rebuild needed for C-22 (queue in core) + ruby → HUMAN_CHECKS.
-No data loss in review bug: web has no outbox; dup presses were deduped server-side.
-Live-sweep minors in FOLLOWUPS "Run 20 live sweep". Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
+## RESUME HERE (run 21 ended at its context budget; run 22 resumes)
+USER DIRECTION (run 21): NO interim 0.1.10. Ship ONE release (0.1.10) after ALL items below are merged and reviewed: pin one SHA in a worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump the tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; CONFIRM egress to raw.githubusercontent.com for JLPT default-on, or set "jlpt": null), helm upgrade (-n kotobaya, never ingress-nginx), run dict-refresh. Live-verify: jpdb import yields cards, /deck-lists JLPT item_count > 0 and JLPT decks fill, review advances (review_log grows per press), log sweep with the new OBS logs, "how to check health" greps in the report. Build a debug APK with VERSION_NAME=0.1.10 VERSION_CODE=110 (memory phone-apk-install; no device attached in run 21 → HUMAN_CHECKS install).
+Merged in run 21: BUG-14a 3704bd4, JLPT-1a 25b203c, JLPT-1b 1927112, C-22 646bc7a+92cf544.
+In flight at handback (agents keep running after the parent dies; on resume run `git worktree list` and `git log main..<branch>`; a committed HANDOFF.md means READY_FOR_REVIEW, no HANDOFF means re-dispatch at the same tier):
+- FEAT-DICT writer (web links) → reviewer-light
+- BROWSE-2 DONE on t/BROWSE-1+2-browse (452fbc1; the BROWSE-1 commit is handoff-only); reviewer-light dispatched. On merge, drop the handoff commit or keep it as a plan note.
+- C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
+- AND-INSETS writer (android insets) → reviewer-light
+- AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
+- LOGFIX-1 writer (worker log bugs + JLPT-1a minors) → reviewer
+- C-23 architect (POST /client-errors contract) → reviewer; then OBS-1c (web+android reporters)
+- OBS-1s writer (server logging + RUNBOOK health) → reviewer; implement the C-23 handler in a follow-up if C-23 lands later
+Queued: OBS-1w (worker logging; after LOGFIX-1), OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
+Possible stale orchestrator: run 20 kept committing "plan:" lines after its end; harmless.
+Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
