@@ -9,16 +9,24 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,18 +84,29 @@ fun navTag(tab: Tab): String = "nav-${tab.route}"
 /**
  * The app shell: a bottom bar under 600 dp, a navigation rail (with the 言 seal) from 600 dp. [immersive] hides the
  * bottom bar (Review on phones); the rail stays on larger screens.
+ *
+ * The window is edge-to-edge and the shell is the one place that applies the system-bar insets, so every tab and
+ * pushed page starts below the status bar and clear of cutouts without padding for it itself. The bottom bar pads for
+ * the navigation bar and the content consumes that inset (no double padding); with the bottom bar hidden
+ * ([immersive]) the screen pads its own bottom actions (Review's grade bar). The keyboard pushes the whole shell up
+ * (`imePadding`), which also cancels the navigation-bar padding it covers.
  */
 @Composable
 fun AppShell(selected: Tab?, onSelect: (Tab) -> Unit, immersive: Boolean = false, content: @Composable () -> Unit) {
     val c = KbTheme.colors
     BoxWithConstraints(Modifier.fillMaxSize().background(c.bg)) {
         if (maxWidth < KbTheme.breakpoint.medium) {
-            Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
-                if (!immersive) BottomBar(selected, onSelect)
+            Column(Modifier.fillMaxSize().imePadding()) {
+                val body = Modifier.weight(1f).fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                val bottomBar = !immersive
+                Box(if (bottomBar) body.consumeWindowInsets(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)) else body) {
+                    content()
+                }
+                if (bottomBar) BottomBar(selected, onSelect)
             }
         } else {
-            Row(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Rail(selected, onSelect)
                 Box(Modifier.weight(1f).fillMaxHeight()) { content() }
             }
