@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
@@ -67,7 +68,7 @@ TITLE_MAX = 300
 
 
 class _CancellingFetcher(CachedFetcher):
-    """Checks cancellation before every page/request, so a cancel is honoured between pages."""
+    """Checks cancellation before every page/request, so a cancel is honoured between pages (and a SIGTERM release, via JobContext.check_cancelled)."""
 
     def __init__(self, ctx: Context, **kw: Any) -> None:
         super().__init__(**kw)
@@ -78,6 +79,26 @@ class _CancellingFetcher(CachedFetcher):
         return super().get(url, **kw)
 
 
+PROGRESS_MIN_INTERVAL_S = 2.0
+FETCH_BAND = 0.5  # fetching owns 0..0.5 of the job's progress; mapping/publishing the rest
+
+
+def page_progress(
+    ctx: Context, clock: Callable[[], float] = time.monotonic
+) -> Callable[[int, int], None]:
+    """Per-page progress inside 0..FETCH_BAND (total unknown: asymptotic), DB writes <= 1 per 2 s."""
+    last = [-PROGRESS_MIN_INTERVAL_S]
+
+    def on_page(page: int, words: int) -> None:
+        now = clock()
+        if page > 1 and now - last[0] < PROGRESS_MIN_INTERVAL_S:
+            return
+        last[0] = now
+        ctx.progress(FETCH_BAND * page / (page + 20), f"fetching deck: page {page} ({words} words)")
+
+    return on_page
+
+
 SourceFactory = Callable[[Context, bool], JpdbDeckSource]
 
 
@@ -86,7 +107,7 @@ def default_source_factory(ctx: Context, remap_only: bool) -> JpdbDeckSource:
     fetcher = _CancellingFetcher(
         ctx, cache_dir=default_cache_dir(), max_age=None if remap_only else FULL_IMPORT_MAX_AGE_S
     )
-    pages = PagesDeckSource(fetcher)
+    pages = PagesDeckSource(fetcher, on_page=page_progress(ctx))
     key = os.environ.get("JPDB_API_KEY")
     return ApiDeckSource(fetcher, key, pages) if key else pages
 

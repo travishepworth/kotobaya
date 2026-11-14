@@ -345,3 +345,36 @@ def test_deck_slug_accepts_only_title_segments(raw: str, want: str | None) -> No
     from kotobaya_worker.importers.jpdb_deck.client.pages import deck_slug
 
     assert deck_slug(raw) == want
+
+
+def test_page_progress_per_page_and_summary_log(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    import logging
+
+    from kotobaya_worker.importers.jpdb_deck.handler import page_progress
+
+    class Ctx:
+        def __init__(self) -> None:
+            self.calls: list[tuple[float, str | None]] = []
+
+        def progress(self, fraction: float, message: str | None = None) -> None:
+            self.calls.append((fraction, message))
+
+    ctx = Ctx()
+    f, _op = make(tmp_path, page_routes())
+    tick = [0.0]
+
+    def clock() -> float:
+        tick[0] += 5.0  # every page is past the write throttle
+        return tick[0]
+
+    with caplog.at_level(logging.INFO):
+        PagesDeckSource(f, on_page=page_progress(ctx, clock)).fetch_deck(DECK)  # type: ignore[arg-type]
+    msgs = [m or "" for _, m in ctx.calls]
+    assert len(msgs) == 3
+    assert [m.split(" (")[0] for m in msgs] == [f"fetching deck: page {i}" for i in (1, 2, 3)]
+    assert msgs[-1].endswith("(8 words)")
+    fr = [p for p, _ in ctx.calls]
+    assert fr == sorted(fr) and 0 < fr[0] and fr[-1] < 0.5
+    assert any("fetched 3 pages" in r.getMessage() for r in caplog.records)

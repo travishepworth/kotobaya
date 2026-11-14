@@ -55,6 +55,10 @@ class JobCancelled(Exception):
     """Raised inside a handler (by ``ctx.check_cancelled`` / ``ctx.progress``) once the job was cancelled."""
 
 
+class JobStopped(Exception):
+    """Raised inside a handler (``ctx.check_stop``) once the worker is shutting down; the job is released."""
+
+
 Handler = Callable[["JobContext"], Mapping[str, Any] | None]
 
 
@@ -87,6 +91,7 @@ class RunnerConfig:
     poll_interval: float = 2.0
     backoff_base: float = 5.0
     backoff_cap: float = 600.0
+    shutdown_budget: float = 20.0  # after SIGTERM, a still-running job is released to queued
 
     @staticmethod
     def from_env(env: Mapping[str, str] | None = None) -> RunnerConfig:
@@ -112,6 +117,7 @@ class JobContext:
         payload: dict[str, Any],
         attempt: int,
         cancel_event: threading.Event,
+        stop_event: threading.Event | None = None,
     ) -> None:
         self._conn = conn
         self._worker_id = worker_id
@@ -120,6 +126,12 @@ class JobContext:
         self.payload = payload
         self.attempt = attempt
         self._cancel = cancel_event
+        self._stop = stop_event or threading.Event()
+
+    def check_stop(self) -> None:
+        """Raise JobStopped when the worker is shutting down (long handlers call this between pages/stages)."""
+        if self._stop.is_set():
+            raise JobStopped(str(self.job_id))
 
     def is_cancelled(self) -> bool:
         """True once the job is no longer ours and running (cancelled via the API, or reclaimed)."""
@@ -134,6 +146,9 @@ class JobContext:
         return self._cancel.is_set()
 
     def check_cancelled(self) -> None:
+        """Cancel check at every handler stage/page boundary; also the SIGTERM release point
+        (raises JobStopped: the job goes back to queued, the page/blob caches make the resume cheap)."""
+        self.check_stop()
         if self.is_cancelled():
             raise JobCancelled(str(self.job_id))
 
@@ -159,6 +174,7 @@ class Runner:
         self.registry = registry
         self._main: psycopg.Connection[Any] | None = None
         self._side: psycopg.Connection[Any] | None = None  # heartbeat + handler context
+        self.stop_event = threading.Event()  # set on SIGTERM (run_forever adopts the caller's)
 
     # --- connections ---------------------------------------------------------------------
     def _connect(self) -> psycopg.Connection[Any]:
@@ -282,10 +298,53 @@ class Runner:
                 _hint(self.main, job_id)
 
     # --- execution -----------------------------------------------------------------------
+    def _release(self, job_id: uuid.UUID) -> None:
+        """Back to queued, attempt not consumed, lock cleared. Guarded like every post-claim write."""
+        with self.main.transaction():
+            cur = self.main.execute(
+                "update app.job set status = 'queued', attempts = greatest(attempts - 1, 0), "
+                "locked_by = null, heartbeat_at = null, run_after = now(), progress_message = null "
+                "where id = %s and status = 'running' and locked_by = %s",
+                (job_id, self.config.worker_id),
+            )
+            if cur.rowcount:
+                _hint(self.main, job_id)
+
     def _heartbeat_loop(
         self, job_id: uuid.UUID, stop: threading.Event, cancel: threading.Event
     ) -> None:
-        while not stop.wait(self.config.heartbeat_interval):
+        tick = min(self.config.heartbeat_interval, 1.0)
+        last_beat = time.monotonic()
+        stop_seen: float | None = None
+        while not stop.wait(tick):
+            now = time.monotonic()
+            if self.stop_event.is_set():
+                stop_seen = stop_seen if stop_seen is not None else now
+                if now - stop_seen >= self.config.shutdown_budget:
+                    # Handler did not finish in time: hand the job to another runner right now.
+                    # (Uses its own connection: the handler may be mid-statement on ``main``/``side``.)
+                    try:
+                        with self._connect() as c:
+                            cur = c.execute(
+                                "update app.job set status = 'queued', "
+                                "attempts = greatest(attempts - 1, 0), locked_by = null, "
+                                "heartbeat_at = null, run_after = now(), progress_message = null "
+                                "where id = %s and status = 'running' and locked_by = %s",
+                                (job_id, self.config.worker_id),
+                            )
+                            if cur.rowcount:
+                                _hint(c, job_id)
+                        log.warning(
+                            "job %s released to queued: shutdown budget %ss exceeded",
+                            job_id, self.config.shutdown_budget,
+                        )  # fmt: skip
+                    except psycopg.Error:
+                        log.warning("release on shutdown failed for %s", job_id, exc_info=True)
+                    cancel.set()
+                    return
+            if now - last_beat < self.config.heartbeat_interval:
+                continue
+            last_beat = now
             try:
                 cur = self.side.execute(
                     "update app.job set heartbeat_at = now() "
@@ -323,7 +382,7 @@ class Runner:
                 raise LookupError(f"no handler for {job['kind']}")
             ctx = JobContext(
                 self.side, self.config.worker_id, job_id, job["kind"], job["payload"],
-                job["attempts"], cancel,
+                job["attempts"], cancel, self.stop_event,
             )  # fmt: skip
             result = handler(ctx)
             log.info(
@@ -331,6 +390,9 @@ class Runner:
                 (time.monotonic() - started) * 1000,
             )  # fmt: skip
             outcome = lambda: self._finish_ok(job_id, result)
+        except JobStopped:
+            log.warning("job %s (%s) released to queued: worker shutting down", job_id, job["kind"])
+            outcome = lambda: self._release(job_id)
         except JobCancelled:
             log.info("job %s (%s) cancelled", job_id, job["kind"])
             outcome = lambda: self._finish_cancelled(job_id)
@@ -369,6 +431,7 @@ class Runner:
         return n
 
     def run_forever(self, stop: threading.Event) -> None:
+        self.stop_event = stop
         last_reclaim = 0.0
         while not stop.is_set():
             try:

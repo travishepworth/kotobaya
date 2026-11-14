@@ -13,6 +13,7 @@ spec:
       labels: {{- include "kotobaya.selector" $sel | nindent 8 }}
     spec:
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
         runAsUser: 65534

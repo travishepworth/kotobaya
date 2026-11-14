@@ -278,3 +278,52 @@ def test_failures_log_stack_with_job_id_and_final_attempt_is_error(
     assert all(r.exc_info is not None for r in fails)
     line = JsonFormatter().format(fails[-1])
     assert "\n" not in line and '"exc": "Traceback' in line and str(job_id) in line
+
+
+def test_stop_flag_releases_long_handler_to_queued(db_url: str) -> None:
+    (jid,) = _insert(db_url, "tts")
+    reg = Registry()
+    started = threading.Event()
+
+    def long(ctx: JobContext) -> None:
+        started.set()
+        while True:  # cooperative handler: checks the stop flag between "pages"
+            ctx.check_stop()
+            time.sleep(0.01)
+
+    reg.register("tts", long)
+    r = Runner(_cfg(db_url), reg)
+    t = threading.Thread(target=r.run_once)
+    t.start()
+    assert started.wait(10)
+    r.stop_event.set()
+    t.join(10)
+    row = _row(db_url, jid)
+    assert (row["status"], row["attempts"], row["locked_by"]) == ("queued", 0, None)
+    r.close()
+
+
+def test_stop_flag_budget_releases_uncooperative_handler(db_url: str) -> None:
+    (jid,) = _insert(db_url, "tts")
+    reg = Registry()
+    started, done = threading.Event(), threading.Event()
+
+    def stubborn(ctx: JobContext) -> None:  # never checks the stop flag
+        started.set()
+        done.wait(10)
+        ctx.check_cancelled()  # sees the release: raises JobCancelled, must not clobber the row
+
+    reg.register("tts", stubborn)
+    r = Runner(_cfg(db_url, shutdown_budget=0.2), reg)
+    t = threading.Thread(target=r.run_once)
+    t.start()
+    assert started.wait(10)
+    r.stop_event.set()
+    deadline = time.time() + 10
+    while time.time() < deadline and _row(db_url, jid)["status"] != "queued":
+        time.sleep(0.05)
+    done.set()
+    t.join(10)
+    row = _row(db_url, jid)
+    assert (row["status"], row["attempts"], row["locked_by"]) == ("queued", 0, None)
+    r.close()

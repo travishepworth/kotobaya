@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import html as htmllib
+import logging
 import re
+import time
 import urllib.error
 import urllib.parse
+from collections.abc import Callable
 
 from .fetch import CachedFetcher
 from .models import DeckVocabulary, DeckWord, SkippedRow
@@ -22,6 +25,11 @@ _H1 = re.compile(r"<h1[^>]*>(.*?)</h1>", re.DOTALL)
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.DOTALL)
 _TAGS = re.compile(r"<[^>]+>")
 MAX_PAGES = 1000
+log = logging.getLogger(__name__)
+PAGE_LOG_EVERY = 10
+
+# Called after each page with (page number, words so far).
+PageCallback = Callable[[int, int], None]
 
 
 _NOT_DECKS = frozenset({"vocabulary", "kanji", "api", "deck"})
@@ -134,8 +142,11 @@ def parse_title(page: str) -> str | None:
 
 
 class PagesDeckSource:
-    def __init__(self, fetcher: CachedFetcher, base: str = BASE) -> None:
+    def __init__(
+        self, fetcher: CachedFetcher, base: str = BASE, on_page: PageCallback | None = None
+    ) -> None:
         self._f = fetcher
+        self.on_page = on_page
         self._base = base.rstrip("/")
 
     def fetch_title(self, jpdb_id: str) -> str | None:
@@ -165,6 +176,7 @@ class PagesDeckSource:
         out = DeckVocabulary(title="")
         url: str | None = self._first_url(jpdb_id)
         seen: set[str] = set()
+        started = time.monotonic()
         while url is not None and url not in seen and len(seen) < MAX_PAGES:
             first = not seen
             seen.add(url)
@@ -182,5 +194,15 @@ class PagesDeckSource:
             out.words.extend(words)
             out.skipped.extend(skipped)
             out.raw_rows += raw
+            n = len(seen)
+            if self.on_page is not None:
+                self.on_page(n, len(out.words))
+            if n % PAGE_LOG_EVERY == 0:
+                log.info("jpdb deck %s: fetched %d pages, %d words", jpdb_id, n, len(out.words))
             url = next_page_url(page, url)
+        log.info(
+            "jpdb deck %s: fetched %d pages in %.1f s: %d words, %d skipped rows (of %d rows)",
+            jpdb_id, len(seen), time.monotonic() - started, len(out.words), len(out.skipped),
+            out.raw_rows,
+        )  # fmt: skip
         return out

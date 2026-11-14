@@ -45,6 +45,8 @@ api:
 worker:
   image: { repository: worker, tag: "0.1.0" }
   replicas: 1
+  # > the runner's 20 s shutdown budget: a running job is released to queued before SIGKILL.
+  terminationGracePeriodSeconds: 45
   healthPort: 8081
   # Parse service (C-12), cluster-internal: the api reaches it at PARSER_URL = http://<release>-worker:<parserPort>.
   parserPort: 8082
