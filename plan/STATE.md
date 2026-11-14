@@ -13,7 +13,7 @@ In flight at handback (agents keep running after the parent dies; on resume run 
 - C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
 - AND-INSETS writer (android insets) → reviewer-light
 - AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
-- LOGFIX-1 writer (worker log bugs + JLPT-1a minors) → reviewer
+- LOGFIX-1 MERGED
 - C-23 architect (POST /client-errors contract) → reviewer; then OBS-1c (web+android reporters)
 - OBS-1s writer (server logging + RUNBOOK health) → reviewer; implement the C-23 handler in a follow-up if C-23 lands later
 Queued: OBS-1w (worker logging; after LOGFIX-1), OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.

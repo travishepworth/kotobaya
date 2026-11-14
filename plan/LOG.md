@@ -947,3 +947,4 @@
 2026-11-14T00:41:19Z RUN22 RESUME 7 run-21 agents alive (C-23,C-24,OBS-1s,AND-POSTSYNC,LOGFIX-1,FEAT-DICT,AND-INSETS); polling HANDOFFs
 2026-11-14T00:41:19Z RELEASE CHECK worker pod -> raw.githubusercontent.com HTTP 200; JLPT default source stays on. adb: no device
 2026-11-14T00:42:23Z FEAT-DICT MERGE 71fbc12 web (low, no review; CHECK_GREEN after rebase on BROWSE-2)
+2026-11-14T00:45:14Z LOGFIX-1 REVIEW_APPROVE (ADR-020 amended provisional; 2 minors → OBS-1w); MERGE 03821d4 worker

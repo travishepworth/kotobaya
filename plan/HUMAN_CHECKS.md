@@ -213,3 +213,4 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 
 ## Run 21 (0.1.10)
 - **Android crash (user report H), no log captured.** No device was attached during run 21. With the phone on USB, run `! adb logcat -b crash -d > crash.txt` and `! adb logcat -d --pid=$(adb shell pidof com.ichi2.anki) > app.txt` (the second only while the app is running), then hand the files to the next orchestrator run to ticket. Steps to reproduce, if you remember them, help.
+- (run 21) ADR-020 amended provisionally: EDRDG digest pins are now advisory (LOGFIX-1). Optionally drop the EDRDG pins from dictSourcesJson in ~/repos/kubernetes/kotobaya/values.yaml (they now cost one extra download per refresh).

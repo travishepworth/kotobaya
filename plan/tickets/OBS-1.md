@@ -19,3 +19,7 @@ Web global error handlers plus API failure reporting (batched, deduped); Android
 
 ## Acceptance
 - [ ] Each part: tests for count/zero WARN/ERROR emission (worker), the op rejection log line and the request-id echo (server), and the reporter batching/capping (web vitest). make check green for touched modules.
+
+## OBS-1w extra (LOGFIX-1 review minors)
+- fetch.py:100: HTTPError is a subclass of URLError, so 404/403 are retried despite the comment. Re-raise HTTPError before the _TRANSIENT catch.
+- fetch.py:122: mkstemp .part files leak after SIGKILL/OOM. Delete stale `<name>.*.part` files older than a threshold on entry.
