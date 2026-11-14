@@ -479,3 +479,11 @@ attempt 1 is gone). Needs node and python3; network on first run.
   default, so the server (BUG-7c) must raise `maxInitialLineLength` to >= 8192; (2) `glosses` is
   an array, not the ticket's scalar `gloss`; (3) items come back by `seq`, not in request order,
   and omitted `seq` values are the only "not found" signal.
+
+## C-21 changes (additive): JLPT list decks
+
+- `GET /deck-lists` now offers every loaded vocabulary list (`jlpt-n5` … `jlpt-n1` once the JLPT
+  source is loaded) and omits lists with 0 items; `item_count` equals what a build publishes.
+- `JobResultDeckBuild` gains `list_key`, `changed`, `unmatched`; `JobResultDictRefresh` gains
+  `vocab_lists` (per-list row accounting). No new operation; `deck-build` semantics and the
+  internal `deck-publish` hand-off are in `contracts/db/VOCAB_LISTS.md`.

@@ -33,7 +33,7 @@ class JobResultDeckBuildTest : ShouldSpec() {
         // uncomment below to create an instance of JobResultDeckBuild
         //val modelInstance = JobResultDeckBuild()
 
-        // to test the property `contentVersion` - Content version published.
+        // to test the property `contentVersion` - Content version published, or the deck's current version when `changed` is false.
         should("test contentVersion") {
             // uncomment below to test the property
             //modelInstance.contentVersion shouldBe ("TODO")
@@ -45,10 +45,28 @@ class JobResultDeckBuildTest : ShouldSpec() {
             //modelInstance.deckId shouldBe ("TODO")
         }
 
-        // to test the property `items` - Items in the snapshot.
+        // to test the property `items` - Items in the snapshot (at least 1 for a C-21 build; an empty list fails the job instead).
         should("test items") {
             // uncomment below to test the property
             //modelInstance.items shouldBe ("TODO")
+        }
+
+        // to test the property `changed` - false = the computed items equal the installed ones; nothing was published and no op was emitted.
+        should("test changed") {
+            // uncomment below to test the property
+            //modelInstance.changed shouldBe ("TODO")
+        }
+
+        // to test the property `listKey` - The deck's list key.
+        should("test listKey") {
+            // uncomment below to test the property
+            //modelInstance.listKey shouldBe ("TODO")
+        }
+
+        // to test the property `unmatched` - Source rows of the vocabulary list that matched no dictionary entry (`ref.vocab_list.unmatched_rows`; the rows are in `ref.vocab_list_unmatched`). 0 for frequency bands.
+        should("test unmatched") {
+            // uncomment below to test the property
+            //modelInstance.unmatched shouldBe ("TODO")
         }
 
     }

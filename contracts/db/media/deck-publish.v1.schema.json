@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/contracts/db/media/deck-publish.v1.schema.json",
+  "title": "deck-publish job payload v1",
+  "description": "app.job.payload of the server-internal job kind `deck-publish` (VOCAB_LISTS.md 5, C-21). Written by the worker's deck-build handler, read by the server's DeckPublishRunner, never by the API. Closed: the runner fails the child on any payload that does not validate (`invalid_payload`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "parent_job_id", "deck_id", "list_key", "base_content_version", "deck_items", "unmatched"],
+  "properties": {
+    "format_version": {"const": 1, "description": "Payload version. The runner fails the child (`unsupported_format`) on any other value."},
+    "parent_job_id": {"$ref": "#/$defs/uuid", "description": "The public parent job (kind deck-build)."},
+    "deck_id": {"$ref": "#/$defs/uuid", "description": "The list deck. Equals the parent payload's deck_id and the archive header's deck_id."},
+    "list_key": {
+      "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "maxLength": 100,
+      "description": "app.deck.list_key of the deck as the worker read it. The runner rejects the child (`invalid_payload`) if it differs from the stored one."
+    },
+    "base_content_version": {
+      "type": "integer", "minimum": 0, "maximum": 2147483646,
+      "description": "app.deck.content_version the worker built on (0 = first build). The archive is published as base_content_version + 1; the runner rejects the child with `stale_base` if the deck's current version differs."
+    },
+    "deck_items": {"$ref": "#/$defs/blob_ref", "description": "The kotobaya-deck-items archive (SNAPSHOT.md 4), deck_type list, at least one item, positions 1024, 2048, ... (VOCAB_LISTS.md 4.3)."},
+    "unmatched": {
+      "type": "integer", "minimum": 0, "maximum": 2147483647,
+      "description": "Copied into JobResultDeckBuild.unmatched: ref.vocab_list.unmatched_rows of the list for a vocabulary list, 0 for a frequency band."
+    }
+  },
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "blob_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blob_hash", "size_bytes"],
+      "properties": {
+        "blob_hash": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the compressed bytes = object key; an app.blob row (kind snapshot, origin build) exists before the child is enqueued."},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 536870912, "description": "Length of the compressed bytes."}
+      }
+    }
+  }
+}

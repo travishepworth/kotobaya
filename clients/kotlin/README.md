@@ -640,6 +640,7 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.TokenKind](docs/TokenKind.md)
  - [app.kotobaya.client.models.TokenList](docs/TokenList.md)
  - [app.kotobaya.client.models.TtsRequest](docs/TtsRequest.md)
+ - [app.kotobaya.client.models.VocabListReport](docs/VocabListReport.md)
  - [app.kotobaya.client.models.WordStatus](docs/WordStatus.md)
  - [app.kotobaya.client.models.WordStatusSet](docs/WordStatusSet.md)
  - [app.kotobaya.client.models.WordStatusValue](docs/WordStatusValue.md)

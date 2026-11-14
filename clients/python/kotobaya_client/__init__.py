@@ -318,6 +318,7 @@ __all__ = [
     "TokenKind",
     "TokenList",
     "TtsRequest",
+    "VocabListReport",
     "WordStatus",
     "WordStatusClearedSchema",
     "WordStatusSet",
@@ -630,6 +631,7 @@ from kotobaya_client.models.token_created import TokenCreated as TokenCreated
 from kotobaya_client.models.token_kind import TokenKind as TokenKind
 from kotobaya_client.models.token_list import TokenList as TokenList
 from kotobaya_client.models.tts_request import TtsRequest as TtsRequest
+from kotobaya_client.models.vocab_list_report import VocabListReport as VocabListReport
 from kotobaya_client.models.word_status import WordStatus as WordStatus
 from kotobaya_client.models.word_status_cleared_schema import WordStatusClearedSchema as WordStatusClearedSchema
 from kotobaya_client.models.word_status_set import WordStatusSet as WordStatusSet

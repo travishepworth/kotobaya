@@ -81,6 +81,8 @@ Rules for the list of one release `R`:
      only after the build (e.g. a note added later) and outside the top 60k is missing on the
      device until the next release includes it. Readers already tolerate this (soft references).
 3. `kanji` and `freq_list` are always complete (every `ref.*` row), whatever the scope.
+   `ref.vocab_list*` (C-21) are server-only and never in a package; devices get list-deck
+   membership only through deck-item archives (`VOCAB_LISTS.md`).
 4. Every other child table (`dict_entry_form`, `dict_entry_gloss`, `entry_kanji`, `entry_freq`,
    `entry_pitch`, `example_sentence_entry`) holds exactly the `ref.*` rows whose `seq` is in the
    entry set; `example_sentence` holds exactly the sentences linked from those

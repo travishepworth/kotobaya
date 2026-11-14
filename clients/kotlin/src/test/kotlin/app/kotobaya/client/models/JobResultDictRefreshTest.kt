@@ -27,6 +27,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import app.kotobaya.client.models.JobResultDictRefresh
+import app.kotobaya.client.models.VocabListReport
 
 class JobResultDictRefreshTest : ShouldSpec() {
     init {
@@ -55,6 +56,12 @@ class JobResultDictRefreshTest : ShouldSpec() {
         should("test version") {
             // uncomment below to test the property
             //modelInstance.version shouldBe ("TODO")
+        }
+
+        // to test the property `vocabLists` - C-21: per loaded vocabulary list of the new release, ordered by family then ordinal (`jlpt-n5` first): how its source rows were accounted for (`source_rows = entries + duplicates + shadowed + unmatched`; `contracts/db/VOCAB_LISTS.md` 3.3). Empty when no list is configured; absent when no release was built.
+        should("test vocabLists") {
+            // uncomment below to test the property
+            //modelInstance.vocabLists shouldBe ("TODO")
         }
 
     }

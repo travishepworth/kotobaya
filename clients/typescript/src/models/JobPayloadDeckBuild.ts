@@ -14,7 +14,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * Payload of a `deck-build` job (builds the item snapshot of a list deck).
+ * Payload of a `deck-build` job (builds the item snapshot of a list deck; `contracts/db/VOCAB_LISTS.md` 4.4). Enqueued by the server only.
  * @export
  * @interface JobPayloadDeckBuild
  */

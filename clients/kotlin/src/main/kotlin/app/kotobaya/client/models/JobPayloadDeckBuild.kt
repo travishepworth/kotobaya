@@ -27,7 +27,7 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Payload of a `deck-build` job (builds the item snapshot of a list deck).
+ * Payload of a `deck-build` job (builds the item snapshot of a list deck; `contracts/db/VOCAB_LISTS.md` 4.4). Enqueued by the server only.
  *
  * @param deckId The list deck.
  */

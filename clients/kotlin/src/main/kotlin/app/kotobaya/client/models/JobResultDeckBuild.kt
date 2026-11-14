@@ -27,17 +27,20 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Result of a deck build.
+ * Result of a deck build (`contracts/db/VOCAB_LISTS.md` 4.4). `list_key`, `changed` and `unmatched` were added by C-21; every C-21 producer sets them.
  *
- * @param contentVersion Content version published.
+ * @param contentVersion Content version published, or the deck's current version when `changed` is false.
  * @param deckId The deck.
- * @param items Items in the snapshot.
+ * @param items Items in the snapshot (at least 1 for a C-21 build; an empty list fails the job instead).
+ * @param changed false = the computed items equal the installed ones; nothing was published and no op was emitted.
+ * @param listKey The deck's list key.
+ * @param unmatched Source rows of the vocabulary list that matched no dictionary entry (`ref.vocab_list.unmatched_rows`; the rows are in `ref.vocab_list_unmatched`). 0 for frequency bands.
  */
 
 
 data class JobResultDeckBuild (
 
-    /* Content version published. */
+    /* Content version published, or the deck's current version when `changed` is false. */
     @SerializedName("content_version")
     val contentVersion: kotlin.Int,
 
@@ -45,9 +48,21 @@ data class JobResultDeckBuild (
     @SerializedName("deck_id")
     val deckId: kotlin.String,
 
-    /* Items in the snapshot. */
+    /* Items in the snapshot (at least 1 for a C-21 build; an empty list fails the job instead). */
     @SerializedName("items")
-    val items: kotlin.Int
+    val items: kotlin.Int,
+
+    /* false = the computed items equal the installed ones; nothing was published and no op was emitted. */
+    @SerializedName("changed")
+    val changed: kotlin.Boolean? = null,
+
+    /* The deck's list key. */
+    @SerializedName("list_key")
+    val listKey: kotlin.String? = null,
+
+    /* Source rows of the vocabulary list that matched no dictionary entry (`ref.vocab_list.unmatched_rows`; the rows are in `ref.vocab_list_unmatched`). 0 for frequency bands. */
+    @SerializedName("unmatched")
+    val unmatched: kotlin.Int? = null
 
 ) {
 

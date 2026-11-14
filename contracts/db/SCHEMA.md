@@ -9,6 +9,8 @@ Frozen interface. Files:
 | `sqldelight/ref/kotobaya/db/ref/Dict.sq` | On-device dictionary file (`RefDatabase`, package `kotobaya.db.ref`), built by the worker. |
 | `DICT_PACKAGE.md` | Dictionary device package, diff format, blob keys, device update algorithm (section 5.4). |
 | `V2__jpdb_vocab.sql` | Additive migration (C-11): the server-only jpdb mapping-correction tables (4.4). |
+| `V3__vocab_list.sql` | Additive migration (C-21): the server-only vocabulary-list tables (JLPT) behind list decks (4.5). |
+| `VOCAB_LISTS.md` | JLPT source and licence, matching rule and unmatched report, list-deck catalogue, `deck-build` job and the `deck-publish` hand-off (C-21). |
 | `SNAPSHOT.md` | Media content and deck-item snapshot archives: format, integrity rules, install rule (C-11). |
 | `MEDIA_PIPELINE.md` | The `media-publish` hand-off, `parse_status` transitions, jpdb mapping corrections (C-11). |
 | `media/` | Record schemas, `media-publish` payload schema, worked example archives and `validate.py` for the two documents above. |
@@ -16,6 +18,7 @@ Frozen interface. Files:
 | `optimizer/` | `fsrs-params-publish` payload schema, worked examples and `validate.py` for `FSRS_PUBLISH.md`. |
 | `test/smoke.sql` | One worked example row per table plus the constraints you may rely on. Read it for examples. |
 | `test/smoke_v2.sql` | The same for `V2__jpdb_vocab.sql`. |
+| `test/smoke_v3.sql` | The same for `V3__vocab_list.sql` (the worked example of `VOCAB_LISTS.md` 6). |
 | `check.sh` | Verifies all of the above (see section 8). |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
 
@@ -368,6 +371,7 @@ Its payload carries `parent_job_id`; its `dedupe_key` is `<kind>:<parent id>`. R
 |---|---|---|---|---|---|---|
 | `jpdb-history-apply` | `jpdb-history-import` | worker | server (`JpdbHistoryApplyRunner`) | `{"parent_job_id": uuid, "plan": <ImportPlan v1>}`; `plan` removed when the row ends | `JobResultJpdbHistory` | `importJpdbHistory` "Execution" |
 | `media-publish` | `media-import`, `media-parse`, `jpdb-deck-import`, `grammar-detect` (C-13) | worker | server (`MediaPublishRunner`) | `media/media-publish.v1.schema.json` (`parent_job_id`, `media_id`, `base_content_version`, `create`, two archive blobs, `unmapped`, `jpdb`); kept when the row ends; `max_attempts = 1` | `JobResultMedia` | `MEDIA_PIPELINE.md` 3 (C-11) |
+| `deck-publish` (C-21) | `deck-build` | worker | server (`DeckPublishRunner`) | `media/deck-publish.v1.schema.json` (`parent_job_id`, `deck_id`, `list_key`, `base_content_version`, `deck_items` blob, `unmatched`); kept when the row ends; `max_attempts = 1` | `JobResultDeckBuild` | `VOCAB_LISTS.md` 5 (C-21) |
 | `fsrs-params-publish` (C-16) | `fsrs-optimize` | worker | server (`FsrsParamsPublishRunner`) | `optimizer/fsrs-params-publish.v1.schema.json` (`parent_job_id`, `preset_id`, `base_weights_version`, `fsrs_version`, `weights`, `optimized_at`, `review_count`, `holdout_review_count`, `log_loss_before`, `log_loss_after`, `rmse_bins`); kept when the row ends; `max_attempts = 1` | `JobResultFsrsOptimize` | `FSRS_PUBLISH.md` (C-16) |
 
 A new internal kind is added here by a contract ticket; it must not equal a `JobKind` value.
@@ -455,6 +459,7 @@ Payload `JobPayloadGrammarDetect`, result `JobResultGrammarDetect` (`openapi.yam
 | `entry_pitch` | S D | Kanjium |
 | `kanji` | S D | KANJIDIC2, KRADFILE |
 | `example_sentence`, `example_sentence_entry` | S D | Tatoeba |
+| `vocab_list`, `vocab_list_item`, `vocab_list_unmatched` | S | JLPT vocabulary lists (C-21, `V3__vocab_list.sql`): replaced wholesale per release by dict-refresh; not in device packages (`VOCAB_LISTS.md` 3) |
 
 Release rules: a refresh upserts by natural key inside one transaction and flips
 `dict_release.is_current`. Entries that disappeared from JMdict keep their row with

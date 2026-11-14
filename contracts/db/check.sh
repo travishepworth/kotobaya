@@ -10,8 +10,8 @@
 #      optimizer/validate.py: the fsrs-params-publish payload, its worked examples and
 #      negative cases (FSRS_PUBLISH.md, C-16).
 #                                                              (needs python3 + jsonschema, or uv)
-#   1. V1__init.sql then V2__jpdb_vocab.sql apply cleanly to a throwaway postgres:17
-#      container and test/smoke.sql, test/smoke_v2.sql pass.  (needs docker)
+#   1. V1__init.sql, V2__jpdb_vocab.sql, V3__vocab_list.sql apply cleanly to a throwaway
+#      postgres:17 container and test/smoke.sql, smoke_v2.sql, smoke_v3.sql pass. (needs docker)
 #   2. The .sq files load into SQLite and the device schema matches the server
 #      schema (same tables/columns, identical seed rows).     (needs sqlite3, python3)
 #   3. The .sq files compile with the SQLDelight Gradle plugin. (needs JDK + network on first run)
@@ -74,6 +74,10 @@ echo "== postgres:17: apply V2__jpdb_vocab.sql, test/smoke_v2.sql"
 psql_in <"$here/V2__jpdb_vocab.sql"
 psql_in <"$here/test/smoke_v2.sql" >"$work/smoke_v2.out"
 grep -q '^smoke_v2.sql: ok$' "$work/smoke_v2.out"
+echo "== postgres:17: apply V3__vocab_list.sql, test/smoke_v3.sql"
+psql_in <"$here/V3__vocab_list.sql"
+psql_in <"$here/test/smoke_v3.sql" >"$work/smoke_v3.out"
+grep -q '^smoke_v3.sql: ok$' "$work/smoke_v3.out"
 
 echo "== postgres:17: migration refuses a C-ctype database"
 psql_in -c "CREATE DATABASE c_ctype TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'"
@@ -120,7 +124,8 @@ def sqlite_columns(path):
 DEVICE_ONLY_TABLES = {"pending_op", "sync_state", "blob_cache"}
 # Server tables deliberately absent from the device.
 SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override", "server_state",
-                      "jpdb_vocab", "jpdb_vocab_media"}
+                      "jpdb_vocab", "jpdb_vocab_media",
+                      "vocab_list", "vocab_list_item", "vocab_list_unmatched"}
 # Per-table column differences: (extra on device, missing on device).
 DIFF = {
     "note": (set(), {"search_text"}),

@@ -51,13 +51,22 @@ import {
  * unchanged). It is an ordinary public job (listed, streamed, cancellable) but is never
  * forwarded to ntfy. Normative protocol: `contracts/db/SCHEMA.md`, "Jobs", "`grammar-detect`".
  * 
+ * **`deck-build` (C-21).** Builds the deck-item snapshot of one `list` deck from the
+ * current dictionary release (a JLPT vocabulary list or a frequency band) and publishes it
+ * through the internal `deck-publish` child. Enqueued by `createDeck` (type `list`) and,
+ * for every live list deck, by each `dict-refresh` that builds a new release. Fails with
+ * `empty_list` rather than publish an empty deck; `unknown_list`, `unknown_deck`,
+ * `deck_deleted`, `no_release` likewise. A rebuild with identical items publishes nothing
+ * (`changed: false`). Normative protocol: `contracts/db/VOCAB_LISTS.md` 4.4-5.
+ * 
  * **Server-internal jobs (C-9).** An `app.job` row whose `kind` is not a `JobKind` value
  * is *server-internal*: a hand-off between the worker and the server inside one public
  * job (its *parent*). The registered internal kinds are listed in
  * `contracts/db/SCHEMA.md` ("Jobs"): `jpdb-history-apply` (see `importJpdbHistory`,
  * "Execution") and `media-publish` (C-11; parents `media-import`, `media-parse`,
  * `jpdb-deck-import`, and `grammar-detect` (C-13); `contracts/db/MEDIA_PIPELINE.md` 3),
- * and `fsrs-params-publish` (C-16; parent `fsrs-optimize`; `contracts/db/FSRS_PUBLISH.md`). Rules:
+ * `fsrs-params-publish` (C-16; parent `fsrs-optimize`; `contracts/db/FSRS_PUBLISH.md`),
+ * and `deck-publish` (C-21; parent `deck-build`; `contracts/db/VOCAB_LISTS.md` 5). Rules:
  * - The API never exposes an internal row: `listJobs` skips it (also for `limit` and
  *   cursor arithmetic: pages are built from public rows only), `getJob` and `cancelJob`
  *   answer `404 not_found` for its id, and `streamEvents` never sends a `job.updated`

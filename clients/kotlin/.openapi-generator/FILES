@@ -291,6 +291,7 @@ docs/TokenKind.md
 docs/TokenList.md
 docs/TokensApi.md
 docs/TtsRequest.md
+docs/VocabListReport.md
 docs/WordStatus.md
 docs/WordStatusClearedSchema.md
 docs/WordStatusSet.md
@@ -603,6 +604,7 @@ src/main/kotlin/app/kotobaya/client/models/TokenCreated.kt
 src/main/kotlin/app/kotobaya/client/models/TokenKind.kt
 src/main/kotlin/app/kotobaya/client/models/TokenList.kt
 src/main/kotlin/app/kotobaya/client/models/TtsRequest.kt
+src/main/kotlin/app/kotobaya/client/models/VocabListReport.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatus.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatusSet.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatusValue.kt
@@ -899,6 +901,7 @@ src/test/kotlin/app/kotobaya/client/models/TokenKindTest.kt
 src/test/kotlin/app/kotobaya/client/models/TokenListTest.kt
 src/test/kotlin/app/kotobaya/client/models/TokenTest.kt
 src/test/kotlin/app/kotobaya/client/models/TtsRequestTest.kt
+src/test/kotlin/app/kotobaya/client/models/VocabListReportTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusClearedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusSetSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusSetTest.kt

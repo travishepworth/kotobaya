@@ -38,7 +38,16 @@ class TestJobResultDictRefresh(unittest.TestCase):
                 entries = 0,
                 release_id = 56,
                 retired = 0,
-                version = ''
+                version = '',
+                vocab_lists = [
+                    kotobaya_client.models.vocab_list_report.VocabListReport(
+                        duplicates = 0, 
+                        entries = 0, 
+                        id = 'wr1c2v7s6djuy1zmetozkhdomha1b', 
+                        shadowed = 0, 
+                        source_rows = 0, 
+                        unmatched = 0, )
+                    ]
             )
         else:
             return JobResultDictRefresh(

@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VocabListReport } from './VocabListReport';
+import {
+    VocabListReportFromJSON,
+    VocabListReportFromJSONTyped,
+    VocabListReportToJSON,
+    VocabListReportToJSONTyped,
+} from './VocabListReport';
+
 /**
  * Result of a dictionary refresh.
  * @export
@@ -35,6 +43,10 @@ export interface JobResultDictRefresh {
      * New release version.
      */
     version: string | null;
+    /**
+     * C-21: per loaded vocabulary list of the new release, ordered by family then ordinal (`jlpt-n5` first): how its source rows were accounted for (`source_rows = entries + duplicates + shadowed + unmatched`; `contracts/db/VOCAB_LISTS.md` 3.3). Empty when no list is configured; absent when no release was built.
+     */
+    vocabLists?: Array<VocabListReport>;
 }
 
 /**
@@ -62,6 +74,7 @@ export function JobResultDictRefreshFromJSONTyped(json: any, ignoreDiscriminator
         'releaseId': json['release_id'],
         'retired': json['retired'],
         'version': json['version'],
+        'vocabLists': json['vocab_lists'] == null ? undefined : ((json['vocab_lists'] as Array<any>).map(VocabListReportFromJSON)),
     };
 }
 
@@ -80,6 +93,7 @@ export function JobResultDictRefreshToJSONTyped(value?: JobResultDictRefresh | n
         'release_id': value['releaseId'],
         'retired': value['retired'],
         'version': value['version'],
+        'vocab_lists': value['vocabLists'] == null ? undefined : ((value['vocabLists'] as Array<any>).map(VocabListReportToJSON)),
     };
 }
 

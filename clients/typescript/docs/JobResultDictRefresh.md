@@ -11,6 +11,7 @@ Name | Type
 `releaseId` | number
 `retired` | number
 `version` | string
+`vocabLists` | [Array&lt;VocabListReport&gt;](VocabListReport.md)
 
 ## Example
 
@@ -23,6 +24,7 @@ const example = {
   "releaseId": null,
   "retired": null,
   "version": null,
+  "vocabLists": null,
 } satisfies JobResultDictRefresh
 
 console.log(example)

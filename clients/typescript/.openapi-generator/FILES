@@ -292,6 +292,7 @@ docs/TokenKind.md
 docs/TokenList.md
 docs/TokensApi.md
 docs/TtsRequest.md
+docs/VocabListReport.md
 docs/WordStatus.md
 docs/WordStatusClearedSchema.md
 docs/WordStatusSet.md
@@ -592,6 +593,7 @@ src/models/TokenCreated.ts
 src/models/TokenKind.ts
 src/models/TokenList.ts
 src/models/TtsRequest.ts
+src/models/VocabListReport.ts
 src/models/WordStatus.ts
 src/models/WordStatusClearedSchema.ts
 src/models/WordStatusSet.ts

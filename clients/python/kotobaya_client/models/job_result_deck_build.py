@@ -17,8 +17,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
@@ -26,18 +26,31 @@ from pydantic_core import to_jsonable_python
 
 class JobResultDeckBuild(BaseModel):
     """
-    Result of a deck build.
+    Result of a deck build (`contracts/db/VOCAB_LISTS.md` 4.4). `list_key`, `changed` and `unmatched` were added by C-21; every C-21 producer sets them.
     """ # noqa: E501
-    content_version: Annotated[int, Field(strict=True, ge=1)] = Field(description="Content version published.")
+    changed: Optional[StrictBool] = Field(default=None, description="false = the computed items equal the installed ones; nothing was published and no op was emitted.")
+    content_version: Annotated[int, Field(strict=True, ge=1)] = Field(description="Content version published, or the deck's current version when `changed` is false.")
     deck_id: Annotated[str, Field(strict=True)] = Field(description="The deck.")
-    items: Annotated[int, Field(strict=True, ge=0)] = Field(description="Items in the snapshot.")
-    __properties: ClassVar[List[str]] = ["content_version", "deck_id", "items"]
+    items: Annotated[int, Field(strict=True, ge=0)] = Field(description="Items in the snapshot (at least 1 for a C-21 build; an empty list fails the job instead).")
+    list_key: Optional[Annotated[str, Field(strict=True)]] = Field(default=None, description="The deck's list key.")
+    unmatched: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="Source rows of the vocabulary list that matched no dictionary entry (`ref.vocab_list.unmatched_rows`; the rows are in `ref.vocab_list_unmatched`). 0 for frequency bands.")
+    __properties: ClassVar[List[str]] = ["changed", "content_version", "deck_id", "items", "list_key", "unmatched"]
 
     @field_validator('deck_id', mode="before")
     def deck_id_validate_regular_expression(cls, value):
         """Validates the regular expression"""
         if isinstance(value, str) and not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", value):
             raise ValueError(r"must validate the regular expression /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/")
+        return value
+
+    @field_validator('list_key', mode="before")
+    def list_key_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if value is None:
+            return value
+
+        if isinstance(value, str) and not re.match(r"^[a-z0-9][a-z0-9-]*$", value):
+            raise ValueError(r"must validate the regular expression /^[a-z0-9][a-z0-9-]*$/")
         return value
 
     model_config = ConfigDict(
@@ -91,9 +104,12 @@ class JobResultDeckBuild(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "changed": obj.get("changed"),
             "content_version": obj.get("content_version"),
             "deck_id": obj.get("deck_id"),
-            "items": obj.get("items")
+            "items": obj.get("items"),
+            "list_key": obj.get("list_key"),
+            "unmatched": obj.get("unmatched")
         })
         return _obj
 

@@ -227,3 +227,28 @@
   and split, and the minimum count, are left to T606 as worker configuration; the contract
   only requires the held-out reviews to be unseen in training; (3) a job cancelled in the last
   instant can end `cancelled` with the weights already published (not reverted).
+
+## C-21 changes (JLPT vocabulary lists for list decks; additive: `V3__vocab_list.sql`, `VOCAB_LISTS.md`)
+
+- **Where JLPT membership lives:** three new server-only reference tables, `ref.vocab_list`
+  (one row per list, id = the deck `list_key`, with row accounting), `ref.vocab_list_item`
+  (list, entry seq, source position) and `ref.vocab_list_unmatched` (every source row that
+  matched nothing, with a reason). Replaced wholesale by each dict-refresh in the transaction
+  that makes the release current. Not on devices.
+- **Source:** Jonathan Waller's JLPT lists (CC BY) via stephenmk/yomitan-jlpt-vocab (CC BY-SA
+  4.0), which carries JMdict seqs; pinned to a commit with SHA-256 per file, and on by default
+  (no deployment config needed).
+- **Matching:** by JMdict seq if live, else exact kanji+kana forms (unique live candidate);
+  a word belongs to its easiest level only; source rows = items + duplicates + shadowed +
+  unmatched, enforced by a `CHECK`.
+- **Builds:** the worker's `deck-build` computes items (JLPT: by global frequency, then source
+  order), refuses to publish an empty list, publishes through a new internal `deck-publish`
+  kind (a deck-only `media-publish`); identical rebuilds publish nothing. Every new release
+  re-queues a build for each live list deck.
+- Alternatives rejected: (a) JLPT levels as `freq_list` rows: would feed `dict_entry.freq_rank`,
+  spawn `freq-jlpt-…` bands and ship to devices; (b) the server builds list decks itself
+  (simpler, but a second archive producer and heavy work in the API process); (c) a JLPT
+  column on `dict_entry`: not a list, can't hold the unmatched report.
+- Worth a second look: (1) shadowing — N4 excludes words also listed in N5 (jisho-style), so
+  the five decks are disjoint; (2) JLPT decks ordered by global frequency, not the list's
+  alphabetical order; (3) the source repo's CC BY-SA 4.0 licence (upstream CC BY), personal use.

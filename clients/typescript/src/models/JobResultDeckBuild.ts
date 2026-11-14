@@ -14,13 +14,17 @@
 
 import { mapValues } from '../runtime';
 /**
- * Result of a deck build.
+ * Result of a deck build (`contracts/db/VOCAB_LISTS.md` 4.4). `list_key`, `changed` and `unmatched` were added by C-21; every C-21 producer sets them.
  * @export
  * @interface JobResultDeckBuild
  */
 export interface JobResultDeckBuild {
     /**
-     * Content version published.
+     * false = the computed items equal the installed ones; nothing was published and no op was emitted.
+     */
+    changed?: boolean;
+    /**
+     * Content version published, or the deck's current version when `changed` is false.
      */
     contentVersion: number;
     /**
@@ -28,9 +32,17 @@ export interface JobResultDeckBuild {
      */
     deckId: string;
     /**
-     * Items in the snapshot.
+     * Items in the snapshot (at least 1 for a C-21 build; an empty list fails the job instead).
      */
     items: number;
+    /**
+     * The deck's list key.
+     */
+    listKey?: string;
+    /**
+     * Source rows of the vocabulary list that matched no dictionary entry (`ref.vocab_list.unmatched_rows`; the rows are in `ref.vocab_list_unmatched`). 0 for frequency bands.
+     */
+    unmatched?: number;
 }
 
 /**
@@ -53,9 +65,12 @@ export function JobResultDeckBuildFromJSONTyped(json: any, ignoreDiscriminator: 
     }
     return {
         
+        'changed': json['changed'] == null ? undefined : json['changed'],
         'contentVersion': json['content_version'],
         'deckId': json['deck_id'],
         'items': json['items'],
+        'listKey': json['list_key'] == null ? undefined : json['list_key'],
+        'unmatched': json['unmatched'] == null ? undefined : json['unmatched'],
     };
 }
 
@@ -70,9 +85,12 @@ export function JobResultDeckBuildToJSONTyped(value?: JobResultDeckBuild | null,
 
     return {
         
+        'changed': value['changed'],
         'content_version': value['contentVersion'],
         'deck_id': value['deckId'],
         'items': value['items'],
+        'list_key': value['listKey'],
+        'unmatched': value['unmatched'],
     };
 }
 

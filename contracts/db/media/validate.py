@@ -8,6 +8,8 @@ usage:
   validate.py pair <content> <deck>            both, plus the media-deck pairing rules (SNAPSHOT.md 5)
   validate.py publish <payload.json> <content.zst> <deck.zst>
                                                a media-publish payload with its two blobs (MEDIA_PIPELINE.md 3.1)
+  validate.py deck-publish <payload.json> <deck.zst>
+                                               a deck-publish payload with its blob (VOCAB_LISTS.md 5.1, C-21)
 
 Exit status 0 = valid. Producers (worker) and consumers (server, devices) may shell out to this
 script in tests, or port the rules; the rules here and in SNAPSHOT.md are the same list.
@@ -49,6 +51,7 @@ def _schema(name: str) -> jsonschema.protocols.Validator:
 CONTENT_SCHEMA = _schema("content.v1.schema.json")
 DECK_SCHEMA = _schema("deck-items.v1.schema.json")
 PUBLISH_SCHEMA = _schema("media-publish.v1.schema.json")
+DECK_PUBLISH_SCHEMA = _schema("deck-publish.v1.schema.json")
 
 
 # ------------------------------------------------------------------ bytes and lines
@@ -68,6 +71,25 @@ def zstd_decompress(data: bytes) -> bytes:
     if shutil.which("zstd"):
         return subprocess.run(["zstd", "-dc"], input=data, capture_output=True, check=True).stdout
     raise SystemExit("validate.py: no zstd decoder (need Python 3.14, the zstandard package, or the zstd CLI)")
+
+
+def zstd_compress(data: bytes) -> bytes:
+    """Self-test only (negative cases built on the fly)."""
+    try:
+        from compression import zstd  # type: ignore[import-not-found]  # Python 3.14+
+
+        return zstd.compress(data)
+    except ImportError:
+        pass
+    try:
+        import zstandard  # type: ignore[import-not-found]
+
+        return zstandard.ZstdCompressor().compress(data)
+    except ImportError:
+        pass
+    if shutil.which("zstd"):
+        return subprocess.run(["zstd", "-c", "-q"], input=data, capture_output=True, check=True).stdout
+    raise SystemExit("validate.py: no zstd encoder (need Python 3.14, the zstandard package, or the zstd CLI)")
 
 
 def read_archive(path: pathlib.Path) -> bytes:
@@ -401,6 +423,31 @@ def validate_publish(payload: dict[str, Any], content_blob: bytes, deck_blob: by
             "unique_entries": len(deck["items"]), "unmapped": payload["unmapped"]}
 
 
+# ------------------------------------------------------------------ deck-publish payload (VOCAB_LISTS.md 5.1, C-21)
+def validate_deck_publish(payload: dict[str, Any], deck_blob: bytes) -> dict[str, Any]:
+    errs = sorted(DECK_PUBLISH_SCHEMA.iter_errors(payload), key=lambda e: list(e.path))
+    if errs:
+        raise Invalid("payload: schema: %s at %s" % (errs[0].message, "/".join(map(str, errs[0].path))))
+    ref = payload["deck_items"]
+    if hashlib.sha256(deck_blob).hexdigest() != ref["blob_hash"] or len(deck_blob) != ref["size_bytes"]:
+        raise Invalid("payload: deck_items blob_hash/size_bytes do not match the blob")
+    records = parse_lines(zstd_decompress(deck_blob))
+    deck = validate_deck(records)
+    head = deck["header"]
+    version = payload["base_content_version"] + 1
+    if head["deck_type"] != "list":
+        raise Invalid("deck-publish: deck_type must be list")
+    if head["deck_id"] != payload["deck_id"] or head["content_version"] != version:
+        raise Invalid("payload: archive header deck_id/content_version != payload deck_id/base_content_version + 1")
+    items = records[1:]
+    if not items:
+        raise Invalid("deck-publish: empty list (a deck-build with no items fails instead of publishing)")
+    if [i["position"] for i in items] != [1024 * k for k in range(1, len(items) + 1)]:
+        raise Invalid("deck-publish: positions are not 1024, 2048, ...")
+    return {"deck_id": payload["deck_id"], "content_version": version, "items": len(items),
+            "list_key": payload["list_key"], "changed": True, "unmatched": payload["unmatched"]}
+
+
 # ------------------------------------------------------------------ self-test
 def _lines(name: str) -> list[dict[str, Any]]:
     return parse_lines((EXAMPLES / name).read_bytes())
@@ -495,6 +542,9 @@ def selftest() -> int:
         ok("media-publish.%s.json" % stem, lambda p=payload, s=stem: validate_publish(
             p, (EXAMPLES / (s + ".content.v1.jsonl.zst")).read_bytes(), (EXAMPLES / (s + ".deck-items.v1.jsonl.zst")).read_bytes()))
 
+    dp = json.loads((EXAMPLES / "deck-publish.list-deck.json").read_text(encoding="utf-8"))
+    ok("deck-publish.list-deck.json", lambda: validate_deck_publish(dp, (EXAMPLES / (LIST_D + ".zst")).read_bytes()))
+
     print("== negative cases (each must be rejected)")
     for label, name, mut, expect in NEGATIVE:
         if mut is None:
@@ -541,6 +591,39 @@ def selftest() -> int:
             failures += 1
             print("  FAIL %s: accepted" % label)
 
+    def _list_blob(mut: Callable[[list[dict[str, Any]]], None]) -> bytes:
+        rs = copy.deepcopy(_lines(LIST_D))
+        mut(rs)
+        return zstd_compress(_dump(rs))
+
+    def _with_blob(p: dict[str, Any], blob: bytes) -> bytes:
+        p["deck_items"] = {"blob_hash": hashlib.sha256(blob).hexdigest(), "size_bytes": len(blob)}
+        return blob
+
+    deck_neg: list[tuple[str, Callable[[dict[str, Any]], bytes], str]] = [
+        ("deck-publish: header version != base + 1", lambda p: (p.__setitem__("base_content_version", 0), (EXAMPLES / (LIST_D + ".zst")).read_bytes())[1], "base_content_version + 1"),
+        ("deck-publish: other deck", lambda p: (p.__setitem__("deck_id", "0193a1b2-0009-7000-8000-0000000000ff"), (EXAMPLES / (LIST_D + ".zst")).read_bytes())[1], "deck_id"),
+        ("deck-publish: hash mismatch", lambda p: (p["deck_items"].__setitem__("size_bytes", 204), (EXAMPLES / (LIST_D + ".zst")).read_bytes())[1], "do not match"),
+        ("deck-publish: unknown member", lambda p: (p.__setitem__("items", 3), (EXAMPLES / (LIST_D + ".zst")).read_bytes())[1], "schema"),
+        ("deck-publish: empty list", lambda p: _with_blob(p, _list_blob(lambda rs: (rs.__delitem__(slice(1, None)), rs[0]["counts"].__setitem__("item", 0)))), "empty list"),
+        ("deck-publish: sparse positions", lambda p: _with_blob(p, _list_blob(lambda rs: rs[3].__setitem__("position", 4096))), "1024, 2048"),
+        ("deck-publish: media deck archive", lambda p: _with_blob(p, _list_blob(lambda rs: rs[0].__setitem__("deck_type", "media"))), "media deck"),
+    ]
+    for label, mut3, expect in deck_neg:
+        p = json.loads((EXAMPLES / "deck-publish.list-deck.json").read_text(encoding="utf-8"))
+        try:
+            blob = mut3(p)
+            validate_deck_publish(p, blob)
+        except Invalid as e:
+            if expect in str(e):
+                print("  ok   %s" % label)
+            else:
+                failures += 1
+                print("  FAIL %s: rejected for another reason: %s" % (label, e))
+        else:
+            failures += 1
+            print("  FAIL %s: accepted" % label)
+
     if failures:
         print("validate.py: %d failure(s)" % failures)
         return 1
@@ -560,6 +643,9 @@ def main(argv: list[str]) -> int:
         elif cmd == "pair" and len(args) == 2:
             validate_pair(validate_content(parse_lines(read_archive(args[0]))),
                           validate_deck(parse_lines(read_archive(args[1]))))
+        elif cmd == "deck-publish" and len(args) == 2:
+            result = validate_deck_publish(json.loads(args[0].read_text(encoding="utf-8")), args[1].read_bytes())
+            print(json.dumps(result, ensure_ascii=False))
         elif cmd == "publish" and len(args) == 3:
             result = validate_publish(json.loads(args[0].read_text(encoding="utf-8")), args[1].read_bytes(), args[2].read_bytes())
             print(json.dumps(result, ensure_ascii=False))

@@ -26,7 +26,7 @@ from pydantic_core import to_jsonable_python
 
 class JobPayloadDeckBuild(BaseModel):
     """
-    Payload of a `deck-build` job (builds the item snapshot of a list deck).
+    Payload of a `deck-build` job (builds the item snapshot of a list deck; `contracts/db/VOCAB_LISTS.md` 4.4). Enqueued by the server only.
     """ # noqa: E501
     deck_id: Annotated[str, Field(strict=True)] = Field(description="The list deck.")
     additional_properties: Dict[str, Any] = {}

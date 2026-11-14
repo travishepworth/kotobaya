@@ -23,6 +23,7 @@
 
 package app.kotobaya.client.models
 
+import app.kotobaya.client.models.VocabListReport
 
 import com.google.gson.annotations.SerializedName
 
@@ -33,6 +34,7 @@ import com.google.gson.annotations.SerializedName
  * @param releaseId New release id; null when nothing changed and `force` was false.
  * @param retired Entries retired by this release.
  * @param version New release version.
+ * @param vocabLists C-21: per loaded vocabulary list of the new release, ordered by family then ordinal (`jlpt-n5` first): how its source rows were accounted for (`source_rows = entries + duplicates + shadowed + unmatched`; `contracts/db/VOCAB_LISTS.md` 3.3). Empty when no list is configured; absent when no release was built.
  */
 
 
@@ -52,7 +54,11 @@ data class JobResultDictRefresh (
 
     /* New release version. */
     @SerializedName("version")
-    val version: kotlin.String?
+    val version: kotlin.String?,
+
+    /* C-21: per loaded vocabulary list of the new release, ordered by family then ordinal (`jlpt-n5` first): how its source rows were accounted for (`source_rows = entries + duplicates + shadowed + unmatched`; `contracts/db/VOCAB_LISTS.md` 3.3). Empty when no list is configured; absent when no release was built. */
+    @SerializedName("vocab_lists")
+    val vocabLists: kotlin.collections.List<VocabListReport>? = null
 
 ) {
 

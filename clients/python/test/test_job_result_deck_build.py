@@ -35,9 +35,12 @@ class TestJobResultDeckBuild(unittest.TestCase):
         model = JobResultDeckBuild()
         if include_optional:
             return JobResultDeckBuild(
+                changed = True,
                 content_version = 1,
                 deck_id = 'bf325375-e030-fccb-a009-17317c574773',
-                items = 0
+                items = 0,
+                list_key = 'wr1c2v7s6djuy1zmetozkhdomha1b',
+                unmatched = 0
             )
         else:
             return JobResultDeckBuild(

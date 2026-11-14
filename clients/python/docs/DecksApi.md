@@ -131,8 +131,9 @@ legal here).
   `name` defaults to the catalogue title. Under the op-apply lock: if a live deck with
   that `list_key` exists it is returned with `200` and nothing is emitted (a sent `id`
   is then ignored). Otherwise the deck is created and a job of kind `deck-build` is
-  queued that builds the item snapshot and makes the server emit
-  `deck.content_published`; until then the deck has `content_version = 0` and no items.
+  queued (payload `{"deck_id"}`, dedupe key `deck-build:<deck id>`) that builds the item
+  snapshot and makes the server emit `deck.content_published`; until then the deck has
+  `content_version = 0` and no items (`contracts/db/VOCAB_LISTS.md` 4.4).
 - `type: media` is `422`: media decks are created only by import jobs.
 
 Properties that do not belong to the type (`query` on a user deck, ...) are `422`.
@@ -600,10 +601,14 @@ Name | Type | Description  | Notes
 
 Generated lists (JLPT, frequency bands) that can be enabled as `list` decks.
 
-The catalogue is computed by the server from the current dictionary release: `jlpt-n5` ...
-`jlpt-n1` and, per loaded frequency list, `freq-<list id>-<N>` for N in 1000, 2000, 5000,
-10000, 20000. `deck_id` is set when a live deck for the key exists. Not paginated;
-ordered by `list_key`. Empty when no dictionary release is loaded.
+The catalogue is computed by the server from the current dictionary release: every
+loaded vocabulary list (`ref.vocab_list`: `jlpt-n5` ... `jlpt-n1` once the JLPT source is
+loaded, C-21) and, per loaded frequency list, `freq-<list id>-<N>` for N in 1000, 2000,
+5000, 10000, 20000 (`_` in the list id becomes `-`). A list whose `item_count` would be 0
+is not offered. `item_count` equals the number of items a `deck-build` of that key
+publishes against the same release (live entries only). Normative rules:
+`contracts/db/VOCAB_LISTS.md` 4.1. `deck_id` is set when a live deck for the key exists.
+Not paginated; ordered by `list_key`. Empty when no dictionary release is loaded.
 
 
 ### Example

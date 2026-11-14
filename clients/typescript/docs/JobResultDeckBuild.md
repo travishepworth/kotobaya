@@ -1,15 +1,18 @@
 
 # JobResultDeckBuild
 
-Result of a deck build.
+Result of a deck build (`contracts/db/VOCAB_LISTS.md` 4.4). `list_key`, `changed` and `unmatched` were added by C-21; every C-21 producer sets them.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`changed` | boolean
 `contentVersion` | number
 `deckId` | string
 `items` | number
+`listKey` | string
+`unmatched` | number
 
 ## Example
 
@@ -18,9 +21,12 @@ import type { JobResultDeckBuild } from '@kotobaya/api-client'
 
 // TODO: Update the object below with actual values
 const example = {
+  "changed": null,
   "contentVersion": null,
   "deckId": null,
   "items": null,
+  "listKey": null,
+  "unmatched": null,
 } satisfies JobResultDeckBuild
 
 console.log(example)

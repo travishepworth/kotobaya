@@ -445,6 +445,7 @@ All URIs are relative to */api/v1*
 - [TokenKind](docs/TokenKind.md)
 - [TokenList](docs/TokenList.md)
 - [TtsRequest](docs/TtsRequest.md)
+- [VocabListReport](docs/VocabListReport.md)
 - [WordStatus](docs/WordStatus.md)
 - [WordStatusClearedSchema](docs/WordStatusClearedSchema.md)
 - [WordStatusSet](docs/WordStatusSet.md)

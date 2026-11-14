@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
+from kotobaya_client.models.vocab_list_report import VocabListReport
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -32,7 +33,8 @@ class JobResultDictRefresh(BaseModel):
     release_id: Optional[StrictInt] = Field(description="New release id; null when nothing changed and `force` was false.")
     retired: Annotated[int, Field(strict=True, ge=0)] = Field(description="Entries retired by this release.")
     version: Optional[StrictStr] = Field(description="New release version.")
-    __properties: ClassVar[List[str]] = ["entries", "release_id", "retired", "version"]
+    vocab_lists: Optional[List[VocabListReport]] = Field(default=None, description="C-21: per loaded vocabulary list of the new release, ordered by family then ordinal (`jlpt-n5` first): how its source rows were accounted for (`source_rows = entries + duplicates + shadowed + unmatched`; `contracts/db/VOCAB_LISTS.md` 3.3). Empty when no list is configured; absent when no release was built.")
+    __properties: ClassVar[List[str]] = ["entries", "release_id", "retired", "version", "vocab_lists"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -73,6 +75,12 @@ class JobResultDictRefresh(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in vocab_lists (list)
+        _items = []
+        if self.vocab_lists:
+            for _item_vocab_lists in self.vocab_lists:
+                _items.append(_item_vocab_lists.to_dict() if _item_vocab_lists is not None else None)
+            _dict['vocab_lists'] = _items
         # set to None if release_id (nullable) is None
         # and model_fields_set contains the field
         if self.release_id is None and "release_id" in self.model_fields_set:
@@ -98,7 +106,8 @@ class JobResultDictRefresh(BaseModel):
             "entries": obj.get("entries"),
             "release_id": obj.get("release_id"),
             "retired": obj.get("retired"),
-            "version": obj.get("version")
+            "version": obj.get("version"),
+            "vocab_lists": [VocabListReport.from_dict(_item) for _item in obj["vocab_lists"]] if obj.get("vocab_lists") is not None else None
         })
         return _obj
 

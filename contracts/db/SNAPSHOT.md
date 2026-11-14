@@ -154,7 +154,9 @@ Only entry items exist in v1 (no `n:<note>` items in generated decks). Example:
    number of items.
 2. **Media decks:** `position` = rank by in-deck frequency: `1 … n` dense, ordered by
    `occurrence_count` descending, ties by `entry_seq` ascending; `occurrence_count ≥ 1`.
-3. **List decks:** `position ≥ 0` (sparse allowed), `occurrence_count = 0`.
+3. **List decks:** `position ≥ 0` (sparse allowed), `occurrence_count = 0`. The `deck-build`
+   job (C-21) publishes list decks with at least one item and positions `1024 · k`, through the
+   `deck-publish` hand-off (`VOCAB_LISTS.md` 4–5), which checks both.
 
 ### 4.3 Installed row
 

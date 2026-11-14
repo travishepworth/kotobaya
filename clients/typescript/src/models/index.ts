@@ -268,6 +268,7 @@ export * from './TokenCreated';
 export * from './TokenKind';
 export * from './TokenList';
 export * from './TtsRequest';
+export * from './VocabListReport';
 export * from './WordStatus';
 export * from './WordStatusClearedSchema';
 export * from './WordStatusSet';

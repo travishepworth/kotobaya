@@ -281,6 +281,7 @@ from kotobaya_client.models.token_created import TokenCreated
 from kotobaya_client.models.token_kind import TokenKind
 from kotobaya_client.models.token_list import TokenList
 from kotobaya_client.models.tts_request import TtsRequest
+from kotobaya_client.models.vocab_list_report import VocabListReport
 from kotobaya_client.models.word_status import WordStatus
 from kotobaya_client.models.word_status_cleared_schema import WordStatusClearedSchema
 from kotobaya_client.models.word_status_set import WordStatusSet
