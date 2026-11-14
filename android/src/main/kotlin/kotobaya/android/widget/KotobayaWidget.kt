@@ -117,16 +117,27 @@ private fun Progress(s: WidgetSnapshot) {
     }
 }
 
+/** RemoteViews rejects a Row with more than 10 children, so the 24 hourly counts are summed into at most [MAX_FORECAST_BARS] bars. */
+internal const val MAX_FORECAST_BARS = 8
+
+internal fun forecastBars(forecast: List<Int>): List<Int> {
+    if (forecast.size <= MAX_FORECAST_BARS) return forecast
+    val per = (forecast.size + MAX_FORECAST_BARS - 1) / MAX_FORECAST_BARS
+    return forecast.chunked(per) { it.sum() }
+}
+
 @Composable
 private fun Forecast(forecast: List<Int>) {
     val context = LocalContext.current
-    val max = forecast.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val bars = forecastBars(forecast)
+    val max = bars.maxOrNull()?.coerceAtLeast(1) ?: 1
     Text(context.getString(R.string.widget_forecast), style = TextStyle(color = MUTED, fontSize = 12.sp))
     Row(verticalAlignment = Alignment.Bottom, modifier = GlanceModifier.fillMaxWidth().height(32.dp)) {
-        forecast.forEach { n ->
+        bars.forEach { n ->
             val h = if (n == 0) 1 else (n * 30 / max).coerceAtLeast(2)
-            Box(modifier = GlanceModifier.width(8.dp).height(h.dp).background(if (n == 0) TRACK else ACCENT)) {}
-            Box(modifier = GlanceModifier.width(1.dp).height(1.dp)) {}
+            Box(modifier = GlanceModifier.width(16.dp).height(32.dp), contentAlignment = Alignment.BottomStart) {
+                Box(modifier = GlanceModifier.width(12.dp).height(h.dp).background(if (n == 0) TRACK else ACCENT)) {}
+            }
         }
     }
 }

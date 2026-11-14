@@ -157,6 +157,15 @@ class WidgetTest {
     }
 
     @Test
+    fun forecastRowNeverExceedsTenChildren() {
+        for (n in listOf(0, 1, 7, 8, 9, 24, 48, 100)) {
+            val bars = forecastBars(List(n) { 1 })
+            assertTrue(bars.size <= 10, "n=$n gave ${bars.size} bars")
+            assertEquals(n, bars.sum())
+        }
+    }
+
+    @Test
     fun tileLaunchesTheReviewIntent() {
         val service = Robolectric.buildService(ReviewTileService::class.java).create().get()
         var launched: Intent? = null
