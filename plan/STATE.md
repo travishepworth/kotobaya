@@ -1,19 +1,14 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN23 END (deploy blocked: OIDC login)
+Updated: RUN24 in progress
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 23 ended: deploy blocked on kubectl OIDC login)
-All 0.1.10 items MERGED + reviewed. make test GREEN. Images 0.1.10 (api/worker/web/backup) PUSHED to core.harbor.batk.me/kotobaya from PIN a58b9699 (worktree /tmp/claude-1000/-home-travmonkey-repos-kotobaya/14e7df7d-ac8c-49b3-99e3-adc26fe8ab51/scratchpad/rel0110b; if gone: `git worktree add --detach <dir> a58b9699`). values.yaml tags already bumped to 0.1.10 (~/repos/kubernetes/kotobaya/values.yaml). APK built: ~/kotobaya-apk/kotobaya-0.1.10-debug.apk (com.ichi2.anki, code 110, debug cert ec6b7f45…dbf6cd verified); no adb device.
-BLOCKER: kubectl OIDC token expired; kubelogin authcode-browser can't open a browser from the agent sandbox. User must run any `kubectl -n kotobaya get pods` once in their own terminal to log in.
-NEXT (QA orchestrator):
-1. Re-hash EDRDG sources (daily republish) → update jmdict/kanjidic/krad sha256 in values.yaml dictSourcesJson (URLs in worker/src/kotobaya_worker/dict/fetch.py). JLPT: built-in default (absent key). freq_lists: none configured (user choice, HUMAN_CHECKS).
-2. From rel0110b: `helm upgrade --install kotobaya deploy/helm/kotobaya -n kotobaya -f ~/repos/kubernetes/kotobaya/values.yaml` (never ingress-nginx). Wait rollout; POST /api/v1/dict/refresh; watch job.
-3. Smoke: plan/smoke/smoke.sh (README there; needs KOTOBAYA_TOKEN with read/write/import/review scopes, no device; throwaway objects, auto-cleanup). Then log sweep of api/worker/web pods (RUNBOOK "How to check health"; kotobaya.client_error logger).
-4. Live-verify per item: C-22 learn-ahead order, JLPT decks fill, jpdb import cards>0, review advances (review_log grows), BROWSE-1/C-24 search 食べる/たべる/タベル, OBS logs, client-errors 202/413. Fix → ticket → review → 0.1.11 pinned. Report shipped SHA a58b9699.
-Merged run 23: OBS-1w, C-24 (resolves BROWSE-1 on web), AND-INSETS, OBS-1w2, AND-POSTSYNC, C-23+OBS-1s, AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP, WEBVER, OBS-1c-web, OBS-1s2, OBS-1c-and, WEBVER-fix (release/0.1.9-only commit c4d8dcb0 had never reached main), SMOKE-0110.
-Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
+## RESUME HERE (run 24 in progress: 0.1.10 LIVE, working toward 0.1.11)
+LIVE: 0.1.10 from pin a58b9699 (helm rev 16, 02:29Z 11-14). dict-refresh release 2026.11.14.3 ok (5 vocab lists). Phone APK 0.1.10 installed (users 0 and 10). Phone app is ALWAYS Private Space = Android user 10 (`run-as com.ichi2.anki --user 10`); ignore user 0.
+Smoke token: ~/.config/kotobaya/smoke-token (never print). Smoke NOT yet run (waiting for worker to drain jpdb scrape job 01a1d7e5-9354..).
+0.1.11 scope: AND-PERF (todayReviews pool starvation, opus, high → needs reviewer), AND-WIDGET MERGED e328f8cc, WORKER-PROGRESS (scrape progress + SIGTERM release, sonnet med), + whatever the log sweep finds. Then build server images + APK (VERSION_CODE 111) from ONE pinned SHA, helm upgrade, install APK via adb if device attached (else HUMAN_CHECKS "plug in phone").
+Evidence: scratchpad/phone-logs/ (u10 DB copy, logcat). Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019/rel0110b.
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
