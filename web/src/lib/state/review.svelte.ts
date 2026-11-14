@@ -253,11 +253,20 @@ export class ReviewPage {
 				}
 			});
 			this.history = [...this.history, { reviewId: r.review.id, item }];
-			this.newPress(); // recorded: the next grade is a new press even if the same card comes back
-			await this.advance();
 		} catch {
 			/* toast shown; answerId is kept so a retry is idempotent */
+			this.busy = false;
+			return;
+		}
+		// Recorded: drop the graded card locally so it is never shown as gradeable again, even if the
+		// refetch fails. The next grade is a new press even if the same card comes back.
+		this.items = this.items.slice(1);
+		try {
+			if (!this.isDrill) await this.fetchQueue();
+		} catch {
+			/* toast shown; the graded card is already gone, the rest of the old queue stays */
 		} finally {
+			this.newPress();
 			this.busy = false;
 		}
 	}

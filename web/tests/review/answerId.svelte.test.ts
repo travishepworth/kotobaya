@@ -69,6 +69,22 @@ describe('review answer id', () => {
 		dispose();
 	});
 
+	it('does not present the graded card again when the queue refetch fails', async () => {
+		const { page, ids, dispose } = setup();
+		api.getReviewQueue.mockRejectedValueOnce(new Error('network'));
+		page.flip();
+		await page.grade(button);
+		flushSync();
+		expect(ids).toHaveLength(1);
+		expect(page.current).toBeUndefined();
+		expect(page.flipped).toBe(false);
+		page.flip();
+		await page.grade(button);
+		expect(ids).toHaveLength(1);
+		expect(page.history.map((h) => h.reviewId)).toEqual(['r1']);
+		dispose();
+	});
+
 	it('mints a fresh id after undo', async () => {
 		const { page, dispose } = setup();
 		page.flip();
