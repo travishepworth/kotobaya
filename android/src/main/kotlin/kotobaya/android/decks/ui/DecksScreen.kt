@@ -37,6 +37,7 @@ import kotobaya.android.decks.DecksIntents
 import kotobaya.android.decks.DecksMode
 import kotobaya.android.decks.DecksUiState
 import kotobaya.android.i18n.T
+import kotobaya.android.ui.components.KbBanner
 import kotobaya.android.ui.components.KbButton
 import kotobaya.android.ui.components.KbButtonSize
 import kotobaya.android.ui.components.KbButtonVariant
@@ -58,6 +59,7 @@ import kotobaya.android.ui.components.KbTopBar
 import kotobaya.android.ui.components.LARGE_TEXT
 import kotobaya.android.ui.components.fontScale
 import kotobaya.android.ui.theme.KbCardState
+import kotobaya.android.ui.theme.KbFeedback
 import kotobaya.android.ui.theme.KbDeckColor
 import kotobaya.android.ui.theme.KbTheme
 import kotobaya.android.ui.theme.ja
@@ -84,7 +86,7 @@ fun DecksScreen(state: DecksUiState, intents: DecksIntents, study: @Composable (
         val split = maxWidth >= KbTheme.breakpoint.expanded
         if (split) {
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.width(380.dp).fillMaxHeight()) { DeckList(state.decks, state.selectedId.takeIf { state.mode == DecksMode.DETAIL }, intents) }
+                Box(Modifier.width(380.dp).fillMaxHeight()) { DeckList(state.decks, state.selectedId.takeIf { state.mode == DecksMode.DETAIL }, intents, state.loadFailed) }
                 Box(Modifier.width(1.dp).fillMaxHeight().background(KbTheme.colors.border))
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     if (state.mode == DecksMode.DETAIL) {
@@ -98,7 +100,7 @@ fun DecksScreen(state: DecksUiState, intents: DecksIntents, study: @Composable (
             BackHandler(onBack = intents::back)
             DeckDetail(state.deck, state.words, state.limit, intents, showBack = true)
         } else {
-            DeckList(state.decks, null, intents)
+            DeckList(state.decks, null, intents, state.loadFailed)
         }
     }
 }
@@ -138,7 +140,7 @@ fun DeckCounts(d: DeckSummary, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DeckList(decks: List<DeckSummary>?, selectedId: String?, intents: DecksIntents) {
+private fun DeckList(decks: List<DeckSummary>?, selectedId: String?, intents: DecksIntents, failed: Boolean = false) {
     val c = KbTheme.colors
     var filter by rememberSaveable { mutableStateOf("") }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -149,6 +151,9 @@ private fun DeckList(decks: List<DeckSummary>?, selectedId: String?, intents: De
             }
         }
         when {
+            decks == null && failed -> item {
+                KbBanner(T(R.string.decks_load_failed), Modifier.padding(horizontal = 16.dp), kind = KbFeedback.Danger)
+            }
             decks == null -> item { KbSkeletonRows(6, leading = true) }
             decks.isEmpty() -> item {
                 KbEmptyState(T(R.string.decks_empty_title), body = T(R.string.decks_empty), icon = KbIcons.Decks, page = true)

@@ -133,9 +133,12 @@ class SyncBootstrap(
 
     init {
         scope.launch {
-            runCatching { client.startup.run(client.store) }
+            val gateStart = System.currentTimeMillis()
+            val replayed = runCatching { client.startup.run(client.store) }
                 .onFailure { Log.e(TAG, "startup replay failed; the applier retries it before the next apply", it) }
             ready.complete(Unit)
+            // AND-POSTSYNC: every reader (queue, decks, review, local search) waits for this line
+            Log.i(TAG, "gate open after ${System.currentTimeMillis() - gateStart} ms (replayed=${replayed.getOrNull()})")
             status.refresh()
             runCatching { workManager()?.let(SyncWork::ensurePeriodic) }
         }
@@ -216,7 +219,9 @@ val syncModule = module {
             probe = { reach.probe() },
             counter = get<StoreFailureCounter>(),
             ready = { koin.get<SyncBootstrap>().ready.await() },
-            onOutcome = { _, outcome, retryDelayMs ->
+            onOutcome = { trigger, outcome, retryDelayMs ->
+                // AND-POSTSYNC: one line per finished cycle (`adb logcat -s KotobayaSync`)
+                Log.i("KotobayaSync", "sync $trigger finished: $outcome (retry in $retryDelayMs ms if failed)")
                 status.onOutcome(outcome.asCycleResult(), unreachable = outcome is SyncOutcome.Unreachable)
                 runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result

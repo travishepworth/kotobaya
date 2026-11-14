@@ -40,9 +40,11 @@ WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL;
 
 -- Today's non-undone answers; introduced_new = a learning row whose card had no earlier schedule-feeding row,
 -- or whose last one was a reset. Cards resolve through merged_into_id.
+-- (AND-POSTSYNC: IS, not =: a previous row with manual_action NULL made '= reset' NULL, so introduced_new was NULL and
+-- the generated non-null Boolean mapper threw on every load after an ordinary second learning answer today.)
 todayReviews:
 SELECT x.card_id, x.note_id, x.review_type,
-       (x.review_type = 'learning' AND (x.prev_id IS NULL OR (SELECT manual_action FROM review_log WHERE id = x.prev_id) = 'reset')) AS introduced_new
+       (x.review_type = 'learning' AND (x.prev_id IS NULL OR (SELECT manual_action FROM review_log WHERE id = x.prev_id) IS 'reset')) AS introduced_new
 FROM (
   SELECT sc.id AS card_id, sc.note_id AS note_id, r.review_type AS review_type,
          (SELECT p.id FROM review_log p JOIN card pc ON pc.id = p.card_id

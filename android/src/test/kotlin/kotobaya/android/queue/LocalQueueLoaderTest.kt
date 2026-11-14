@@ -203,6 +203,32 @@ class LocalQueueLoaderTest {
         assertEquals(0, loader().load().counts.new)
     }
 
+    /**
+     * AND-POSTSYNC root cause: a second `learning` answer today (an "again" then "good" on a new card, the
+     * commonest case) has an earlier row with `manual_action` NULL, so `introduced_new` was SQL NULL and the
+     * generated mapper threw a NullPointerException: every queue load (Home, Decks, Review, widget) failed.
+     */
+    @Test
+    fun aSecondLearningAnswerTodayIsNotIntroducedNewAndDoesNotBreakTheLoad() {
+        setting("scheduler.timezone", "\"Asia/Tokyo\"")
+        addNote(1)
+        addCard(1, 1, state = "learning", due = NOW + 600_000)
+        addNote(2)
+        addCard(2, 2, state = "learning", due = NOW + 600_000)
+        fun answer(n: Int, card: Int, at: Long, type: String = "learning", action: String? = null) = exec(
+            "INSERT INTO review_log (id, card_id, device_id, hlc, reviewed_at, review_type, rating, manual_action) VALUES " +
+                "('${uuid(4, n)}', '${card(card)}', 'd', 'h$n', $at, '$type', ${if (action == null) 3 else "NULL"}, ${action?.let { "'$it'" } ?: "NULL"})",
+        )
+        answer(1, 1, NOW - 2 * HOUR)
+        answer(2, 1, NOW - HOUR) // earlier row has manual_action NULL
+        answer(3, 2, NOW - 3 * HOUR)
+        answer(4, 2, NOW - 2 * HOUR, type = "manual", action = "reset")
+        answer(5, 2, NOW - HOUR) // after a reset: introduced again
+        val byCard = loader().load().input.today.groupBy({ it.cardId }, { it.introducedNew })
+        assertEquals(listOf(true, false), byCard[card(1)]?.sortedDescending())
+        assertEquals(listOf(true, true), byCard[card(2)])
+    }
+
     @Test
     fun settingsIntsFollowTheBinary64ValidityTest() {
         fun newPerDay(json: String?): Int {

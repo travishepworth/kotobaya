@@ -3,6 +3,7 @@
     <string name="decks_title">Decks</string>
     <string name="decks_empty">No decks yet. Create decks on the web app; they sync here.</string>
     <string name="decks_refresh">Refresh</string>
+    <string name="decks_load_failed">Could not load your decks. Tap Refresh to try again.</string>
     <string name="decks_back">Back</string>
     <string name="decks_type_user">Your deck</string>
     <string name="decks_type_media">Media deck</string>

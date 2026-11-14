@@ -4,10 +4,14 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotobaya.android.sync.SyncStatusView
 import kotobaya.android.vm.StateViewModel
 
 /** Which page of the Decks tab shows. */
@@ -24,6 +28,8 @@ data class DecksUiState(
     val limit: Int = DecksViewModel.PAGE,
     /** Bumped per "Study" visit, so each visit gets a fresh review session. */
     val studyRun: Int = 0,
+    /** The last load threw (logged as `KotobayaLoad`); the next sync change or refresh tries again. */
+    val loadFailed: Boolean = false,
 )
 
 /** What the Decks screen can ask for (no-ops by default, for previews). */
@@ -52,31 +58,46 @@ class DecksViewModel(
     init {
         reload()
         syncChanges?.let { f ->
-            viewModelScope.launch { f.distinctUntilChanged().drop(1).collect { reload() } }
+            // AND-POSTSYNC: a pull publishes a status per committed chunk (and a progress update per chunk); each
+            // used to start a full reload (one queue build per deck) and cancel the one running, which kept running
+            // anyway. Progress alone does not change what is shown; the rest is conflated, one reload at a time,
+            // at most one per SYNC_RELOAD_MS.
+            viewModelScope.launch {
+                f.map { if (it is SyncStatusView) it.copy(progress = null) else it }
+                    .distinctUntilChanged().drop(1).conflate()
+                    .collect {
+                        reload().join()
+                        delay(SYNC_RELOAD_MS)
+                    }
+            }
         }
     }
 
-    private fun reload() {
+    override fun onFailure(e: Throwable) = update { it.copy(loadFailed = true) }
+
+    private fun reload(): Job {
         val s = current
         loading?.cancel()
-        loading = launchIo {
+        return launchIo {
             when (s.mode) {
                 DecksMode.LIST -> {
                     val decks = source.decks()
-                    update { it.copy(decks = decks) }
+                    update { it.copy(decks = decks, loadFailed = false) }
                 }
                 DecksMode.DETAIL, DecksMode.STUDY -> {
                     val id = s.selectedId.orEmpty()
                     val deck = source.deck(id)
                     update { if (it.selectedId == id) it.copy(deck = deck) else it }
                     val words = source.words(id, s.limit, 0)
-                    update { if (it.selectedId == id && it.limit == s.limit) it.copy(words = words) else it }
+                    update { if (it.selectedId == id && it.limit == s.limit) it.copy(words = words, loadFailed = false) else it }
                 }
             }
-        }
+        }.also { loading = it }
     }
 
-    override fun refresh() = reload()
+    override fun refresh() {
+        reload()
+    }
 
     override fun open(deckId: String) {
         update { it.copy(mode = DecksMode.DETAIL, selectedId = deckId, deck = null, words = null, limit = PAGE) }
@@ -100,9 +121,14 @@ class DecksViewModel(
         reload()
     }
 
-    override fun sessionEnded() = reload()
+    override fun sessionEnded() {
+        reload()
+    }
 
     companion object {
         const val PAGE: Int = 50
+
+        /** Minimum time between two reloads caused by sync changes. */
+        const val SYNC_RELOAD_MS: Long = 1_500
     }
 }

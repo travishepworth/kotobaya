@@ -3,6 +3,7 @@ package kotobaya.android.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +31,21 @@ abstract class StateViewModel<S>(initial: S, protected val io: CoroutineDispatch
     /** Atomically replaces the state (safe from any thread). */
     protected fun update(f: (S) -> S) = mutable.update(f)
 
-    /** Runs [block] on [io] in the ViewModel's scope (cancelled when the screen's back-stack entry goes). */
-    protected fun launchIo(block: suspend CoroutineScope.() -> Unit): Job = viewModelScope.launch(io, block = block)
+    /**
+     * Called (on the failing thread) when a [launchIo] block throws. The failure is already logged with the tag
+     * [ScreenLog.TAG]; override to leave the loading state (AND-POSTSYNC: a failed load used to crash the process
+     * from the ViewModel's scope, with nothing tagged in the log).
+     */
+    protected open fun onFailure(e: Throwable) {}
+
+    private val failures = CoroutineExceptionHandler { _, e ->
+        ScreenLog.loadFailed(javaClass.simpleName, e)
+        runCatching { onFailure(e) }.onFailure { ScreenLog.loadFailed(javaClass.simpleName + ".onFailure", it) }
+    }
+
+    /**
+     * Runs [block] on [io] in the ViewModel's scope (cancelled when the screen's back-stack entry goes). An exception
+     * it throws is logged and passed to [onFailure]; it does not crash the app.
+     */
+    protected fun launchIo(block: suspend CoroutineScope.() -> Unit): Job = viewModelScope.launch(io + failures, block = block)
 }
