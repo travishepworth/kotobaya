@@ -971,3 +971,4 @@
 2026-11-14T02:24:00Z C-23+OBS-1s MERGE dc73808e (C-23 + OBS-1s logging + reportClientErrors handler)
 2026-11-14T02:26:00Z OBS-1s2 DISPATCH writer attempt 1; OBS-1c SPLIT → OBS-1c-web (DISPATCH writer) + OBS-1c-and (after android batch)
 2026-11-14T02:50:00Z AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP HANDOFF DONE android green; REVIEW_APPROVE (minors 1,2,4 + cap test → OBS-1c-and; 5 → FOLLOWUPS); OBS-1c-and DISPATCH writer (from batch tip)
+2026-11-14T01:31:47Z WEBVER MERGE 4b1b256e (low; web Dockerfile+Makefile pass KOTOBAYA_VERSION as VITE_APP_VERSION)
