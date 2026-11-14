@@ -15,7 +15,10 @@
 2. Guard: a deck import that fetched 0 vocabulary rows FAILS with a clear error (no media-publish).
 3. Summary accounting: add a `merged` (duplicates collapsing onto one entry) counter so in = out + merged + dropped holds; assert it in tests.
 
+4. (user request) Every stage of jpdb-deck-import and its media-publish child sets progress_message + progress in its band (fetch 0–0.5 is done by WORKER-PROGRESS; map/merge, parse/align, write occurrences, publish/upload, TTS if any) and logs one INFO line per stage with counts.
+
 ## Acceptance
+- [ ] Test: a fake import walks all stages; each stage writes a distinct progress_message and monotonic progress.
 - [ ] Test reproducing the root cause (e.g. cached empty/404 page) → import refetches or fails, never succeeds empty.
 - [ ] Test: 0 rows → job failed, no media-publish child.
 - [ ] Test: summary counts balance with duplicate vids.
