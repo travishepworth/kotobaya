@@ -16,7 +16,8 @@ In flight at handback (agents keep running after the parent dies; on resume run 
 - LOGFIX-1 MERGED
 - C-23 READY_FOR_REVIEW (1bb486d, contracts green; ADR-024). MERGE CONSTRAINT: server WiringAuditTest fails until reportClientErrors has a handler → merge together with an OBS-1s handler (OBS-1s writer was told NOT to implement it; give it a follow-up attempt on its branch after C-23, or allowlist). Then OBS-1c.
 - OBS-1s writer (server logging + RUNBOOK health) → reviewer; implement the C-23 handler in a follow-up if C-23 lands later
-Running: OBS-1w writer. Queued: OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
+- OBS-1w READY_FOR_REVIEW (t/OBS-1w-worker-logging, worker green 859; med → reviewer; note media WARN on unmapped_tokens>0 may be noisy).
+Queued: OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
 Possible stale orchestrator: run 20 kept committing "plan:" lines after its end; harmless.
 Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
 
