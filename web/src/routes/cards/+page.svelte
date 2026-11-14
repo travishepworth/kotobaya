@@ -1,6 +1,6 @@
 <script lang="ts">
-	// Browse › Cards: search-language query, a windowed table with selection and bulk actions, and the selected
-	// card rendered for real in the detail pane.
+	// Browse › Cards: search-language query, a windowed table with one row per note (each card of the note as a chip
+	// that opens it, with its own checkbox), selection and bulk actions, and the selected card rendered in the detail pane.
 	import { onMount } from 'svelte';
 	import Button from '../../lib/ui/Button.svelte';
 	import Chip from '../../lib/ui/Chip.svelte';
@@ -10,7 +10,15 @@
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
 	import { kindLabel, stateLabel, stateOf } from '../../lib/ui/cardState';
 	import type { TableColumn } from '../../lib/ui/kinds';
-	import { CardsPage, rowLabel, type Card } from '../../lib/state/cards.svelte';
+	import {
+		CardsPage,
+		earliestDue,
+		maxLapses,
+		rowLabel,
+		rowSelection,
+		type Card,
+		type NoteRow
+	} from '../../lib/state/cards.svelte';
 	import BrowseLayout from './BrowseLayout.svelte';
 	import BulkBar from './BulkBar.svelte';
 	import CardDetail from './CardDetail.svelte';
@@ -21,17 +29,23 @@
 
 	const columns: TableColumn[] = [
 		{ key: 'word', label: tb('br.col.word'), lang: 'ja' },
-		{ key: 'kind', label: tb('br.col.kind'), width: '7.5rem', optional: true },
-		{ key: 'state', label: tb('br.col.state'), width: '8.5rem' },
+		{ key: 'cards', label: tb('br.col.cards'), width: 'minmax(0, 1.6fr)' },
 		{ key: 'due', label: tb('br.col.due'), width: '7.5rem', optional: true },
 		{ key: 'lapses', label: tb('br.col.lapses'), width: '5.5rem', align: 'end', optional: true }
 	];
 
 	const allLoaded = $derived(s.cards.length > 0 && s.cards.every((c) => s.selected.has(c.id)));
 
-	function due(c: Card): string {
-		if (!c.dueAt) return '–';
-		return c.dueAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	function day(d: Date | null): string {
+		if (!d) return '–';
+		return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	}
+	function cardSummary(c: Card): string {
+		return tb('br.cardSummary', { kind: kindLabel(c.kind), state: stateLabel(c), due: day(c.dueAt), lapses: c.lapses });
+	}
+	function openCard(e: Event, c: Card): void {
+		e.stopPropagation();
+		s.activate(c);
 	}
 	// Dictionary-backed notes are named by their headword; others by their first field.
 	function label(c: Card): string {
@@ -78,17 +92,44 @@
 	{/if}
 {/snippet}
 
-{#snippet cell(c: Card, col: TableColumn)}
+{#snippet cell(row: NoteRow<Card>, col: TableColumn)}
 	{#if col.key === 'word'}
-		{label(c)}
-	{:else if col.key === 'kind'}
-		<span class="muted">{kindLabel(c.kind)}</span>
-	{:else if col.key === 'state'}
-		<span class="state-chip"><Chip kind="state" state={stateOf(c)} label={stateLabel(c)} /></span>
+		{label(row.cards[0])}
+	{:else if col.key === 'cards'}
+		<span class="cards">
+			{#each row.cards as c (c.id)}
+				<span class="card" class:on={c.id === s.activeId}>
+					{#if row.cards.length > 1}
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+						<label class="pick" onclick={(e) => e.stopPropagation()}>
+							<input
+								type="checkbox"
+								aria-label={tb('br.selectCard', { kind: kindLabel(c.kind) })}
+								checked={s.allMatching || s.selected.has(c.id)}
+								disabled={s.allMatching}
+								onchange={() => s.toggle(c)}
+							/>
+						</label>
+					{/if}
+					<button
+						type="button"
+						class="open"
+						title={cardSummary(c)}
+						aria-label={tb('br.openCard', { summary: cardSummary(c) })}
+						aria-pressed={c.id === s.activeId}
+						onclick={(e) => openCard(e, c)}
+					>
+						<span class="muted kind">{kindLabel(c.kind)}</span>
+						<span class="state-chip"><Chip kind="state" state={stateOf(c)} label={stateLabel(c)} /></span>
+					</button>
+				</span>
+			{/each}
+		</span>
 	{:else if col.key === 'due'}
-		<span class="muted kb-num">{due(c)}</span>
+		<span class="muted kb-num">{day(earliestDue(row))}</span>
 	{:else}
-		<span class="kb-num" class:hot={c.lapses >= 4}>{c.lapses}</span>
+		{@const lapses = maxLapses(row)}
+		<span class="kb-num" class:hot={lapses >= 4}>{lapses}</span>
 	{/if}
 {/snippet}
 
@@ -96,21 +137,21 @@
 	<VirtualTable
 		label={tb('br.cards')}
 		{columns}
-		rows={s.cards}
-		rowKey={(c) => c.id}
+		rows={s.rows}
+		rowKey={(r) => r.noteId}
 		{cell}
-		activeKey={s.activeId}
-		onactivate={(c) => s.activate(c)}
+		activeKey={s.active?.noteId ?? null}
+		onactivate={(r) => s.activateRow(r)}
 		selection={{
-			has: (c) => s.allMatching || s.selected.has(c.id),
-			toggle: (c) => s.toggle(c),
+			has: (r) => s.allMatching || rowSelection(r, s.selected) === 'all',
+			toggle: (r) => s.toggleNote(r),
 			all: s.allMatching || allLoaded,
 			toggleAll: () => s.togglePage(),
 			disabled: s.allMatching,
 			label: tb('br.selectRow'),
 			allLabel: tb('br.selectAll')
 		}}
-		loading={!s.loadedOnce || (s.loading && s.cards.length === 0)}
+		loading={!s.loadedOnce || (s.loading && s.rows.length === 0)}
 		hasMore={s.cursor !== null}
 		onnearend={() => void s.loadPage(false)}
 		height="min(40rem, calc(100dvh - 16rem))"
@@ -133,7 +174,11 @@
 		<div class="more-error"><LoadError size="banner" onretry={() => s.retry()} /></div>
 	{/if}
 	{#if s.cards.length > 0}
-		<p class="count">{s.cursor !== null ? tb('br.loadedMore', { n: s.cards.length }) : tb('br.loaded', { n: s.cards.length })}</p>
+		<p class="count">
+			{s.cursor !== null
+				? tb('br.loadedNotesMore', { n: s.rows.length, c: s.cards.length })
+				: tb('br.loadedNotes', { n: s.rows.length, c: s.cards.length })}
+		</p>
 	{/if}
 {/snippet}
 
@@ -173,6 +218,44 @@
 	}
 	.muted {
 		color: var(--kb-color-text-muted);
+	}
+	.cards {
+		display: flex;
+		flex-wrap: nowrap;
+		gap: var(--kb-space-2);
+		min-width: 0;
+		overflow: hidden;
+	}
+	.card {
+		display: inline-flex;
+		align-items: center;
+		flex: 0 1 auto;
+		min-width: 0;
+		border-radius: var(--kb-radius-full);
+	}
+	.card.on {
+		outline: 2px solid var(--kb-color-primary);
+	}
+	.pick {
+		display: inline-flex;
+		align-items: center;
+		padding-inline: var(--kb-space-1);
+		cursor: pointer;
+	}
+	.open {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--kb-space-1);
+		min-width: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+	.kind {
+		white-space: nowrap;
 	}
 	/* Narrow tables (phones at large text): the state chip keeps its glyph and colour; the word is read out. */
 	@container (max-width: 24rem) {

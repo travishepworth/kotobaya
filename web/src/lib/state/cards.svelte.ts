@@ -6,6 +6,7 @@ import { tc } from '../cards/messages';
 import { buildRequest, PAGE_SIZE, type BulkKind, type BulkParams, type Selector } from '../cards/model';
 import { EMPTY_VOCABULARY, loadVocabulary } from '../decks/vocabulary';
 import type { SearchVocabulary } from '../core/index';
+import { groupByNote, toggleRow, type NoteRow } from './noteRows';
 import { DictRef, renderPreview, sortKinds, type CardSide, type Rendered } from './preview.svelte';
 
 export type { Card, CardBulkResult, Deck, NoteType } from '../api/generated';
@@ -13,6 +14,7 @@ export type { SearchVocabulary } from '../core/index';
 export { BULK_KINDS, ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
 export type { BulkKind, BulkParams, Selector } from '../cards/model';
 export { completeQuery, parseQuery } from './search';
+export { earliestDue, maxLapses, rowSelection, type NoteRow } from './noteRows';
 
 /** The /cards screen. */
 export class CardsPage {
@@ -39,7 +41,9 @@ export class CardsPage {
 	/** Bumped for every new search so a slow page of an older query is dropped. */
 	private generation = 0;
 
-	readonly active = $derived(this.cards.find((c) => c.id === this.activeId) ?? null);
+	readonly active = $derived(this.cards.findLast((c) => c.id === this.activeId) ?? null);
+	/** One row per note over every loaded page (see `groupByNote` for the paging boundary). */
+	readonly rows = $derived(groupByNote(this.cards));
 	readonly selector = $derived<Selector>(this.allMatching ? { query: this.appliedQuery } : { ids: [...this.selected] });
 	readonly hasSelection = $derived(this.allMatching || this.selected.size > 0);
 	readonly scopeText = $derived(
@@ -125,6 +129,16 @@ export class CardsPage {
 
 	activate(c: Card): void {
 		this.activeId = c.id;
+	}
+
+	/** A row stays on its active card; otherwise it opens the note's first loaded card. */
+	activateRow(row: NoteRow<Card>): void {
+		if (!row.cards.some((c) => c.id === this.activeId)) this.activeId = row.cards[0]?.id ?? null;
+	}
+
+	/** The row checkbox selects (or clears) every loaded card of the note. */
+	toggleNote(row: NoteRow<Card>): void {
+		this.selected = toggleRow(row, this.selected);
 	}
 
 	toggle(c: Card): void {
