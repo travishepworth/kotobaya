@@ -75,6 +75,7 @@ fun main(args: Array<String>) {
     app.jobs.start(scope)
     app.imports.start(scope)
     app.mediaPublish?.start(scope)
+    app.deckPublish?.start(scope)
     app.fsrsPublish.start(scope)
     app.confusables?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
@@ -102,6 +103,8 @@ class ComposedApp(
     val seedGrammar: suspend () -> Int = { 0 },
     /** The `fsrs-params-publish` runner (T606): mints `fsrs_params.published` for the worker's optimizer jobs. */
     val fsrsPublish: kotobaya.optimizer.FsrsParamsPublishRunner,
+    /** The `deck-publish` runner (JLPT-1b, VOCAB_LISTS.md 5.2): installs list-deck archives; null without a blob store. */
+    val deckPublish: kotobaya.decks.DeckPublishRunner? = null,
 )
 
 /**
@@ -158,7 +161,8 @@ fun composeApp(
     )
     return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply),
         seedGrammar = { kotobaya.grammar.GrammarSeeder.seed(sync.opApply) },
-        fsrsPublish = kotobaya.optimizer.FsrsParamsPublishRunner(db, sync.opApply))
+        fsrsPublish = kotobaya.optimizer.FsrsParamsPublishRunner(db, sync.opApply),
+        deckPublish = blobStore?.let { kotobaya.decks.DeckPublishRunner(db, sync.opApply, it) })
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()

@@ -158,6 +158,8 @@ class DecksApiTest : SyncFixture() {
         assertEquals(emptyList(), client.call(HttpMethod.Get, "/deck-lists", bearer = token).json()["items"].toList(), "no dictionary release loaded")
         assertProblem(createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n3")), 422, "validation_failed")
         dictEntry(1)
+        assertProblem(createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n3")), 422, "validation_failed")
+        db.txBlocking { VocabListFixture.oneItemList(it, "jlpt-n3", 1) }
         val keysOf = client.call(HttpMethod.Get, "/deck-lists", bearer = token).json()["items"].map { it["list_key"].asText() }
         assertTrue("jlpt-n3" in keysOf && keysOf == keysOf.sorted(), keysOf.toString())
         val made = createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n3", "new_cards_per_day" to 5))
@@ -172,6 +174,55 @@ class DecksApiTest : SyncFixture() {
         assertEquals(mark, head())
         assertProblem(client.call(HttpMethod.Put, "/decks/${made.json()["id"].asText()}/items/e:1", bearer = token), 409, "deck_read_only")
         assertEquals(made.json()["id"], client.call(HttpMethod.Get, "/deck-lists", bearer = token).json()["items"].first { it["list_key"].asText() == "jlpt-n3" }["deck_id"])
+    }
+
+    @Test
+    fun deckListsCountVocabListsAndLiveFrequencyBandsAndCreatingAJlptDeckEnqueuesDeckBuild() = deckApp {
+        val token = writer()
+        db.txBlocking { dsl ->
+            VocabListFixture.load(dsl)
+            // A list that matched nothing is stored but not offered (VOCAB_LISTS.md 3.3, 4.1).
+            dsl.execute(
+                "insert into ref.vocab_list (id, family, ordinal, title, release_id, entry_count, source_rows, duplicate_rows, shadowed_rows, unmatched_rows) " +
+                    "values ('jlpt-n3', 'jlpt', 2, 'JLPT N3', 2, 0, 0, 0, 0, 0)",
+            )
+            // A frequency list: the retired 1000010 does not count; ranks beyond 20000 do not count.
+            dsl.execute("insert into ref.freq_list (id, title, priority) values ('jpdb_v2', 'JPDB', 0)")
+            dsl.execute(
+                "insert into ref.entry_freq (seq, list_id, rank) values (1578850, 'jpdb_v2', 80), (1000010, 'jpdb_v2', 90), " +
+                    "(1579840, 'jpdb_v2', 1500), (1198180, 'jpdb_v2', 30000)",
+            )
+            // A frequency list whose only entry is retired: no band is offered.
+            dsl.execute("insert into ref.freq_list (id, title, priority) values ('dead', 'Dead', 1)")
+            dsl.execute("insert into ref.entry_freq (seq, list_id, rank) values (1000010, 'dead', 1)")
+        }
+        val items = client.call(HttpMethod.Get, "/deck-lists", bearer = token).json()["items"]
+        assertEquals(
+            listOf(
+                "freq-jpdb-v2-1000" to 1, "freq-jpdb-v2-10000" to 2, "freq-jpdb-v2-2000" to 2, "freq-jpdb-v2-20000" to 2,
+                "freq-jpdb-v2-5000" to 2, "jlpt-n4" to 1, "jlpt-n5" to 5,
+            ),
+            items.map { it["list_key"].asText() to it["item_count"].asInt() },
+        )
+        assertEquals("JLPT N5", items.first { it["list_key"].asText() == "jlpt-n5" }["title"].asText())
+        assertEquals("JPDB top 2000", items.first { it["list_key"].asText() == "freq-jpdb-v2-2000" }["title"].asText())
+        assertTrue(items.all { it["deck_id"].isNull })
+
+        // Keys not offered are 422 with nothing minted: an empty vocabulary list, an all-retired band, unknown.
+        val mark = head()
+        for (key in listOf("jlpt-n3", "freq-dead-1000", "jlpt-n2", "freq-jpdb-v2-3000")) {
+            assertProblem(createDeck(token, mapOf("type" to "list", "list_key" to key)), 422, "validation_failed")
+        }
+        assertEquals(mark, head())
+
+        val made = createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n5"))
+        assertEquals(201, made.status.value, made.json().toString())
+        val id = made.json()["id"].asText()
+        assertEquals("JLPT N5", made.json()["name"].asText())
+        assertEquals(0, made.json()["content_version"].asInt())
+        assertEquals(listOf("deck.created"), opsSince(mark))
+        assertEquals(1, count("select count(*) from app.job where kind = 'deck-build' and status = 'queued' and payload->>'deck_id' = ? and dedupe_key = ?", id, "deck-build:$id"))
+        assertEquals(id, client.call(HttpMethod.Get, "/deck-lists", bearer = token).json()["items"].first { it["list_key"].asText() == "jlpt-n5" }["deck_id"].asText())
     }
 
     @Test
@@ -321,7 +372,8 @@ class DecksApiTest : SyncFixture() {
     fun addAndRemoveItemsOnSmartMediaAndListDecksAreRefused() = deckApp {
         val token = writer()
         dictEntry(1)
-        val smart = createDeck(token, mapOf("type" to "smart", "name" to "S", "query" to "tag:a")).json()["id"].asText()
+        db.txBlocking { VocabListFixture.oneItemList(it, "jlpt-n3", 1) }
+        val smart =createDeck(token, mapOf("type" to "smart", "name" to "S", "query" to "tag:a")).json()["id"].asText()
         val media = "01931f40-3000-7000-8000-000000000002"
         emit(OpType.MEDIA_CREATED, """{"id":"$media","kind":"anime","title":"Frieren","source":"paste"}""")
         val list = createDeck(token, mapOf("type" to "list", "list_key" to "jlpt-n3")).json()["id"].asText()
