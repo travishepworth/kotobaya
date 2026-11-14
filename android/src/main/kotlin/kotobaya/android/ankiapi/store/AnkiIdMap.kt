@@ -29,6 +29,9 @@ interface AnkiIdMap {
 
     fun noteByKotobayaId(noteId: String): NoteLink?
 
+    /** Every link by Kotobaya note id, in one read (the duplicate query looks at every vocab note). */
+    fun noteLinks(): Map<String, NoteLink>
+
     /** The Anki id of deck [deckId], allocated on first use (always > [AnkiIds.INBOX_DECK_ID]). */
     fun deckAnkiId(deckId: String): Long
 
@@ -102,6 +105,17 @@ class SqliteAnkiIdMap(context: Context, name: String? = DB_NAME) : AnkiIdMap {
     override fun note(ankiId: Long): NoteLink? = noteWhere("anki_id = ?", ankiId.toString())
 
     override fun noteByKotobayaId(noteId: String): NoteLink? = noteWhere("note_id = ?", noteId)
+
+    override fun noteLinks(): Map<String, NoteLink> = synchronized(lock) {
+        db.query("ankiapi_note_map", arrayOf("anki_id", "note_id", "model_id", "deck_anki_id"), null, null, null, null, null).use { c ->
+            buildMap {
+                while (c.moveToNext()) {
+                    val link = NoteLink(c.getLong(0), c.getString(1), c.getLong(2), c.getLong(3))
+                    put(link.noteId, link)
+                }
+            }
+        }
+    }
 
     private fun noteWhere(where: String, arg: String): NoteLink? = synchronized(lock) {
         db.query("ankiapi_note_map", arrayOf("anki_id", "note_id", "model_id", "deck_anki_id"), where, arrayOf(arg), null, null, null).use { c ->

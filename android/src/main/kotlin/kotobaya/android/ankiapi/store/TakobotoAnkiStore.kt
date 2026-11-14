@@ -235,22 +235,53 @@ class TakobotoAnkiStore<L : LearningTables>(
             } else {
                 t.where(LearningTable.NOTE, "type", JsonString("vocab")).filter(DuplicateCheck::isLive)
             }
+            // AND-TAKO-PERF: no per-row work before the checksum filter except hashing. Links are read once
+            // (only needed to pick a row's model when none was requested); dictionary headwords of entry-linked
+            // notes come from one batched lookup ([EntryLookup.forms]) instead of a full entry read per note.
+            val links: MutableMap<String, NoteLink>? = if (requested == null) HashMap(map.noteLinks()) else null
+            fun defOf(noteId: String): Def =
+                requested ?: links?.get(noteId)?.let { l -> all.firstOrNull { it.model.id == l.modelId } } ?: all.first()
+            val checksums = filter.checksums
+            val forms: Map<Long, HeadwordForms> = if (checksums == null) {
+                emptyMap()
+            } else {
+                entries.forms(
+                    rows.mapNotNull { row ->
+                        val key = defOf(str(row, "id") ?: return@mapNotNull null).keys.first()
+                        (row["entry_seq"] as? JsonNumber)?.value?.toLong()
+                            ?.takeIf { (key == "expression" || key == "reading") && fieldsOf(row)[key] == null }
+                    },
+                )
+            }
             val out = LinkedHashMap<String, AnkiNote>()
             for (row in rows) {
                 val noteId = str(row, "id") ?: continue
-                val link = map.noteByKotobayaId(noteId)
-                val def = requested ?: link?.let { l -> all.firstOrNull { it.model.id == l.modelId } } ?: all.first()
-                val values = values(row, def)
-                if (filter.checksums != null && AnkiContract.fieldChecksum(values[0]) !in filter.checksums) continue
+                val def = defOf(noteId)
+                if (checksums != null && AnkiContract.fieldChecksum(firstValue(row, def, forms)) !in checksums) continue
                 // every hit is answered as the note DuplicateCheck would keep for its word
                 val canonical = if (bySortField != null) row else canonical(t, row) ?: continue
                 val cid = str(canonical, "id") ?: continue
                 if (cid in out) continue
-                val cdef = if (canonical === row) def else requested ?: all.first()
-                out[cid] = view(canonical, cdef, linkFor(cid, cdef.model.id).ankiId)
+                // same note (canonical() re-reads it, so compare ids, not rows): render it as it was filtered
+                val cdef = if (cid == noteId) def else requested ?: all.first()
+                val link = linkFor(cid, cdef.model.id).also { links?.put(cid, it) }
+                out[cid] = view(canonical, cdef, link.ankiId)
             }
             out.values.toList()
         }
+    }
+
+    /** `values(row, def)[0]` (the field Anki's `csum` is taken over), with headwords from [forms] where possible. */
+    private fun firstValue(row: Row, def: Def, forms: Map<Long, HeadwordForms>): String {
+        val key = def.keys.first() ?: return ""
+        fieldsOf(row)[key]?.let { return it }
+        val seq = (row["entry_seq"] as? JsonNumber)?.value?.toLong() ?: return ""
+        return when (key) {
+            "expression" -> forms[seq]?.word
+            "reading" -> forms[seq]?.reading
+            "meaning" -> entries.headword(seq)?.meaning
+            else -> null
+        } ?: ""
     }
 
     /** The oldest live note of [row]'s word ([DuplicateCheck.find] on the tables), [row] itself if none. */

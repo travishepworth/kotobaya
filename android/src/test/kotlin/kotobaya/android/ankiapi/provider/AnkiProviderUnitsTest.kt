@@ -17,6 +17,13 @@ class AnkiProviderUnitsTest {
         assertEquals(567984260L, AnkiContract.fieldChecksum("食べる"))
         assertEquals(567984260L, AnkiContract.fieldChecksum("<b>食べる</b>"))
         assertEquals(AnkiContract.fieldChecksum("a & b"), AnkiContract.fieldChecksum("a &amp; b"))
+        // AND-TAKO-PERF goldens (Python: int(sha1(s.encode()).hexdigest()[:8], 16)); first byte >= 0x80 stays unsigned
+        assertEquals(3661210606L, AnkiContract.fieldChecksum(""))
+        assertEquals(3775650288L, AnkiContract.fieldChecksum("猫"))
+        assertEquals(2463288064L, AnkiContract.fieldChecksum("a & b"))
+        assertEquals(2845392438L, AnkiContract.fieldChecksum("<!-- c --><span style=\"x\">a</span>bc"))
+        assertEquals("a pic.jpg b<'\"& ", AnkiContract.stripHtmlMedia("a<img src=\"pic.jpg\">b&lt;&#39;&quot;&amp;&nbsp;<style>p{}</style><script>x</script>"))
+        assertEquals("plain 食べる", AnkiContract.stripHtmlMedia("plain 食べる"))
     }
 
     @Test

@@ -121,18 +121,32 @@ object AnkiContract {
      * the client for `csum in (...)` duplicate checks, so a store must produce the same number.
      */
     fun fieldChecksum(field: String): Long {
-        val digest = MessageDigest.getInstance("SHA-1").digest(stripHtmlMedia(field).toByteArray(Charsets.UTF_8))
-        val hex = digest.joinToString("") { "%02x".format(it) }
-        return hex.substring(0, 8).toLong(16)
+        val d = MessageDigest.getInstance("SHA-1").digest(stripHtmlMedia(field).toByteArray(Charsets.UTF_8))
+        // the first 8 hex digits = the first 4 bytes, big-endian, unsigned
+        return ((d[0].toLong() and 0xff) shl 24) or ((d[1].toLong() and 0xff) shl 16) or
+            ((d[2].toLong() and 0xff) shl 8) or (d[3].toLong() and 0xff)
     }
 
+    // Compiled once: the duplicate query checksums every vocab note (AND-TAKO-PERF).
+    private val htmlComment = Regex("(?s)<!--.*?-->")
+    private val htmlStyle = Regex("(?is)<style.*?>.*?</style>")
+    private val htmlScript = Regex("(?is)<script.*?>.*?</script>")
+    private val htmlImg = Regex("(?i)<img[^>]+src=[\"']?([^\"'>]+)[\"']?[^>]*>")
+    private val htmlTag = Regex("(?s)<.*?>")
+
     /** Anki's `stripHTMLMedia`: tags removed, image file names kept, basic entities decoded. Also `sfld`. */
-    fun stripHtmlMedia(field: String): String = field.take(MAX_STRIP_CHARS)
-        .replace(Regex("(?s)<!--.*?-->"), "")
-        .replace(Regex("(?is)<style.*?>.*?</style>"), "")
-        .replace(Regex("(?is)<script.*?>.*?</script>"), "")
-        .replace(Regex("(?i)<img[^>]+src=[\"']?([^\"'>]+)[\"']?[^>]*>"), " $1 ")
-        .replace(Regex("(?s)<.*?>"), "")
+    fun stripHtmlMedia(field: String): String {
+        val f = field.take(MAX_STRIP_CHARS)
+        if ('<' !in f && '&' !in f) return f // nothing to strip or decode
+        return stripTags(f)
+    }
+
+    private fun stripTags(f: String): String = f
+        .replace(htmlComment, "")
+        .replace(htmlStyle, "")
+        .replace(htmlScript, "")
+        .replace(htmlImg, " $1 ")
+        .replace(htmlTag, "")
         .replace("&nbsp;", " ")
         .replace("&lt;", "<")
         .replace("&gt;", ">")

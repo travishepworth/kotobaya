@@ -113,6 +113,7 @@ fun takobotoStore(
     map: AnkiIdMap,
     source: CandidateSource = FakeSource(DICT),
     seed: Int = 7,
+    entries: EntryLookup = FAKE_ENTRIES,
 ): TakobotoAnkiStore<SqlLearningTables> = TakobotoAnkiStore(
     store = d.store,
     reader = reader(d),
@@ -121,7 +122,7 @@ fun takobotoStore(
     creator = noteCreator(d, source, seed),
     duplicates = duplicates(d, source),
     map = map,
-    entries = FAKE_ENTRIES,
+    entries = entries,
     ids = UuidV7Source(Random(seed + 1)),
     clock = d.clock,
 )
