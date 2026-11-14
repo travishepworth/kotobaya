@@ -10,13 +10,16 @@
 	import { ut } from '../../lib/ui/messages';
 	import { td } from '../../lib/dictionary/messages';
 	import { DictionaryPage } from '../../lib/state/dictionary.svelte';
+	import { seqFromSearch } from '../../lib/state/dictionaryLink';
 	import EntryView from './EntryView.svelte';
 	import { dx } from './messages';
 
 	const vm = new DictionaryPage();
 	onMount(() => {
+		const seq = seqFromSearch(window.location.search);
+		if (seq !== null) open(seq);
 		// Desktop: straight to typing.
-		if (window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
+		else if (window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
 		return () => vm.dispose();
 	});
 

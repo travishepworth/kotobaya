@@ -9,6 +9,7 @@
 	import Skeleton from '../../../../lib/ui/Skeleton.svelte';
 	import TextArea from '../../../../lib/ui/TextArea.svelte';
 	import { StruggleWordPage } from '../../../../lib/state/struggle.svelte';
+	import { dictionaryHref } from '../../../../lib/state/dictionaryLink';
 	import { noteTitle } from '../../../../lib/ui/cardState';
 	import { tg, tgEnum } from '../../messages';
 
@@ -35,7 +36,7 @@
 	<Page title={title} titleLang="ja" lead={w.entry ? `${w.entry.headwordReading} · ${w.entry.glosses.slice(0, 3).join('; ')}` : undefined} back={{ href: '/struggle', label: tg('st.title') }} width="measure">
 		{#snippet actions()}
 			<Button variant="primary" icon="review" href="/review?drill=hot_words">{tg('st.extraDrill')}</Button>
-			{#if w.entrySeq !== null}<Button variant="outline" icon="dictionary" href="/dictionary">{tg('st.openDictionary')}</Button>{/if}
+			{#if w.entrySeq !== null}<Button variant="outline" icon="dictionary" href={dictionaryHref(w.entrySeq)}>{tg('st.openDictionary')}</Button>{/if}
 		{/snippet}
 
 		<dl class="figs">
