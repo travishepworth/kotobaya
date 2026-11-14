@@ -925,3 +925,6 @@
 2026-11-14T00:31:15Z UI-RUBY MERGE aa8d61d web+android (low; ruby 0.6/12px; reviewer-light skipped, context budget)
 2026-11-14T00:31:25Z RUN20 END context budget; RESTART NEEDED; in flight JLPT-1a, JLPT-1b, BUG-14a, C-22
 2026-11-14T00:31:41Z BUG-14a HANDOFF DONE 236135e; newPress() fresh id per press; Android unaffected; READY_FOR_REVIEW
+2026-11-14T00:32:24Z RUN21 START resume; JLPT-1a/1b + C-22 agents still alive (orphaned, running checks); BUG-14a reviewer dispatched
+2026-11-14T00:32:56Z BUG-14a REVIEW_CHANGES round 1 (major: recorded answer + failed refetch leaves card gradeable with fresh id); DISPATCH writer attempt 2 same worktree
+2026-11-14T00:34:37Z BUG-14a REVIEW_APPROVE round 2; MERGE 3704bd4 web (CHECK_GREEN 41 tests)
