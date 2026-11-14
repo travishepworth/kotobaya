@@ -906,3 +906,8 @@
 2026-11-14T00:19:19Z BUG-11 CHECK_GREEN worker 805 passed; fmt-only grammar test edits accepted; reviewer dispatched
 2026-11-14T00:20:16Z BUG-11 REVIEW_APPROVE 5 minors -> FOLLOWUPS
 2026-11-14T00:20:16Z BUG-11 MERGE d3711c2 worker
+2026-11-14T00:22:44Z UI-RUBY DISPATCH writer-light attempt 1 (user ask: larger furigana)
+2026-11-14T00:23:18Z C-21 HANDOFF DONE; CHECK_GREEN contracts; reviewer dispatched (architect authored, second architect pass skipped)
+2026-11-14T00:24:07Z BUG-12 DISPATCH writer attempt 1 (struggle Open in dictionary broken)
+2026-11-14T00:24:30Z C-21 REVIEW_APPROVE 4 minors -> FOLLOWUPS
+2026-11-14T00:24:30Z C-21 MERGE 1578783 contracts (V3__vocab_list, VOCAB_LISTS.md, deck-publish, ADR-022)
