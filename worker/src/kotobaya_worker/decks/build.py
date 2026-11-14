@@ -8,6 +8,7 @@ items) -> unchanged? end ``changed: false`` : write the deck-items archive, uplo
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 import uuid
@@ -23,6 +24,7 @@ from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.dict.package.s3 import S3Client, S3Config
 from kotobaya_worker.importers.jpdb_history.apply import EVENTS_CHANNEL, ChildRow
 from kotobaya_worker.importers.jpdb_history.handler import Context
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.media.publish.blobs import (
     BlobRef,
     BlobTable,
@@ -43,6 +45,7 @@ from kotobaya_worker.media.publish.handoff import (
 from kotobaya_worker.media.publish.snapshot import DeckArchive, DeckItemRec, write_deck_items
 
 KIND = "deck-build"
+log = logging.getLogger(__name__)
 CHILD_KIND = "deck-publish"
 FREQ_BANDS = (1000, 2000, 5000, 10000, 20000)
 _FREQ_KEY = re.compile(r"^freq-(.+)-(1000|2000|5000|10000|20000)$")
@@ -253,6 +256,28 @@ def build_payload(plan: Plan, blob: BlobRef, parent: uuid.UUID) -> dict[str, Any
     }
 
 
+def log_build_summary(plan: Plan | None, result: Mapping[str, Any]) -> int:
+    """Final summary: list rows in (items + unmatched), deck items out, unmatched rows dropped."""
+
+    def n(key: str) -> int:
+        v = result.get(key)
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+    items = len(plan.items) if plan is not None else n("items")
+    unmatched = plan.unmatched if plan is not None else n("unmatched")
+    return job_summary(
+        log,
+        KIND,
+        inputs={"list_rows": items + unmatched},
+        outputs={"items": items},
+        dropped={"unmatched": unmatched},
+        deck_id=result.get("deck_id", plan.deck_id if plan else None),
+        list_key=result.get("list_key", plan.list_key if plan else None),
+        changed=result.get("changed"),
+        content_version=result.get("content_version"),
+    )
+
+
 def run_deck_build(
     ctx: Context,
     *,
@@ -268,6 +293,7 @@ def run_deck_build(
     done = store.succeeded_result(ctx.job_id)  # step 1: an earlier attempt got that far
     if done is not None:
         ctx.progress(1.0, "done")
+        log_build_summary(None, done)
         return done
     deck_id = ctx.payload.get("deck_id")
     if not isinstance(deck_id, str):
@@ -277,6 +303,7 @@ def run_deck_build(
         plan = planner.plan(deck_id)
         if plan.unchanged:
             ctx.progress(1.0, "done")
+            log_build_summary(plan, _unchanged_result(plan))
             return _unchanged_result(plan)
         archive = DeckArchive(
             deck_id, "list", plan.base_version + 1,
@@ -287,10 +314,11 @@ def run_deck_build(
         found = adopt_or_create_child(store, ctx.job_id, build_payload(plan, blob, ctx.job_id))
         try:
             if isinstance(found, uuid.UUID):
-                return _wait(
+                found = _wait(
                     store, ctx, found, poll_interval=poll_interval,
                     queued_timeout=queued_timeout, sleep=sleep, clock=clock,
                 )  # fmt: skip
+            log_build_summary(plan, found)
             return found
         except StaleBase:
             if n == MAX_PUBLISHES:

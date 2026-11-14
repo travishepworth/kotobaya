@@ -18,6 +18,8 @@ from typing import Any
 
 import psycopg
 
+from kotobaya_worker.logs import job_summary
+
 from .fetch import SourceSpec
 from .models import VocabListReport
 
@@ -263,11 +265,17 @@ def load_vocab_lists(
     return tuple(reports)
 
 
-def _log_line(r: VocabListReport) -> None:
-    log.info(
-        "vocab list %s: source_rows=%d entries=%d duplicates=%d shadowed=%d unmatched=%d",
-        r.id, r.source_rows, r.entries, r.duplicates, r.shadowed, r.unmatched,
-    )  # fmt: skip
+def _log_line(r: VocabListReport) -> int:
+    """Per-list summary: unmatched rows WARN; rows in but no entry out ERRORs (0.1.9 JLPT decks)."""
+    return job_summary(
+        log,
+        f"vocab list {r.id}",
+        inputs={"source_rows": r.source_rows},
+        outputs={"entries": r.entries, "shadowed": r.shadowed},
+        dropped={"unmatched": r.unmatched},
+        list_id=r.id,
+        duplicates=r.duplicates,
+    )
 
 
 def _check_invariants(cur: psycopg.Cursor[Any], reports: Sequence[VocabListReport]) -> None:

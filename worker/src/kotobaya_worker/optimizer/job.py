@@ -11,6 +11,7 @@ not undone, with a rating, ordered ``(reviewed_at, hlc, id)``. Minimum and split
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 import uuid
@@ -24,6 +25,7 @@ from psycopg.rows import dict_row
 
 from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.importers.jpdb_history.apply import ChildRow
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.media.publish.handoff import adopt_or_create_child
 from kotobaya_worker.optimizer.model import (
     Config,
@@ -37,6 +39,7 @@ from kotobaya_worker.optimizer.model import (
 from kotobaya_worker.optimizer.store import INTERNAL_KIND, PgStore, PlanData, Store
 
 KIND = "fsrs-optimize"
+log = logging.getLogger(__name__)
 PROGRESS_CAP = 0.9
 POLL_INTERVAL = 1.0
 QUEUED_TIMEOUT = 600.0
@@ -199,6 +202,7 @@ def run_optimize(
         raise TypeError("fsrs-optimize payload needs a string `preset_id`")
     done = store.succeeded_result(ctx.job_id)  # step 1: an earlier attempt got that far
     if done is not None:
+        log_optimize_summary(preset_id, None, done)
         return done
     ctx.progress(0.05, "loading reviews")
     plan = store.load_plan(preset_id)
@@ -207,13 +211,36 @@ def run_optimize(
     ctx.progress(0.2, "training")
     outcome = decide(preset_id, ctx.job_id, plan, config=config, trainer=trainer, now_ms=now_ms())
     if outcome.result is not None:
+        log_optimize_summary(preset_id, len(plan.reviews), outcome.result)
         return outcome.result
     assert outcome.payload is not None
     ctx.progress(PROGRESS_CAP, "publishing")
     found = adopt_or_create_child(store, ctx.job_id, outcome.payload)
     if isinstance(found, uuid.UUID):
-        return _wait(store, ctx, found, sleep, clock)
+        found = _wait(store, ctx, found, sleep, clock)
+    log_optimize_summary(preset_id, len(plan.reviews), found)
     return found
+
+
+def log_optimize_summary(preset_id: str, reviews: int | None, result: Mapping[str, Any]) -> int:
+    """Reviews in, reviews trained/evaluated out. Not publishing (too few, not improved) is normal
+    and stays INFO; weights outside the C-1 bounds WARN."""
+    count = result.get("review_count")
+    n = reviews if reviews is not None else (count if isinstance(count, int) else 0)
+    reason = result.get("reason")
+    return job_summary(
+        log,
+        KIND,
+        inputs={"reviews": n},
+        # Every selected review is considered; declining to publish is a result, not lost data.
+        outputs={"reviews_considered": n, "published": 1 if result.get("published") else 0},
+        dropped={"out_of_bounds": 1 if reason == "out_of_bounds" else 0},
+        preset_id=preset_id,
+        reason=reason,
+        log_loss_before=result.get("log_loss_before"),
+        log_loss=result.get("log_loss"),
+        holdout=result.get("holdout_review_count"),
+    )
 
 
 def make_fsrs_optimize(database_url: str) -> Callable[[Any], Mapping[str, Any]]:

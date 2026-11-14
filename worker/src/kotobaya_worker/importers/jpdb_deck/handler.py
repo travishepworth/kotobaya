@@ -34,6 +34,7 @@ from kotobaya_worker.importers.jpdb_deck.plan import DeckPlan, plan_deck, pos_cl
 from kotobaya_worker.importers.jpdb_deck.repo import DeckRepo, PgDeckRepo
 from kotobaya_worker.importers.jpdb_history.handler import Context
 from kotobaya_worker.importers.jpdb_history.ref import PostgresRefLookup, RefLookup
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.media.publish.blobs import (
     BlobTable,
     ObjectStore,
@@ -205,6 +206,7 @@ def run_import(
     ctx.progress(0.5, "mapping")
     title = (job.title or deck.title or job.jpdb_id).strip() or job.jpdb_id
     vids = sorted({w.vid for w in deck.words if w.vid > 0})
+    planned: list[DeckPlan] = []  # the last one is what was published
 
     def plan_request() -> PublishRequest:
         ctx.check_cancelled()
@@ -215,7 +217,7 @@ def run_import(
             raise RuntimeError(f"media_deleted: media {job.media_id} does not exist")
         existing = base_reader.read(job.media_id)
         plan = plan_deck(deck, repo.corrections(vids), ref)
-        log.info("jpdb deck %s: %s", job.jpdb_id, plan.stats)
+        planned.append(plan)
         content, deck_items = build_archives(
             job, plan, title, existing, repo.entry_pos(list(plan.entries))
         )
@@ -244,7 +246,31 @@ def run_import(
     result = publish_replanning(
         ctx, plan_request, store=store, objects=objects, blobs=blobs, **publish_kw
     )
+    log_deck_summary(job.jpdb_id, len(deck.words), planned[-1] if planned else None, asdict(result))
     return asdict(result)
+
+
+def log_deck_summary(
+    jpdb_id: str, words: int, plan: DeckPlan | None, result: Mapping[str, Any]
+) -> int:
+    """Final summary. A jpdb deck is never empty: 0 rows fetched or 0 words mapped logs ERROR."""
+    st = plan.stats if plan is not None else None
+    return job_summary(
+        log,
+        KIND,
+        inputs={"rows_fetched": st.fetched if st else words},
+        outputs={"entries": st.merged_entries if st else int(result.get("unique_entries", 0))},
+        dropped={
+            "unmapped": (st.unmapped - st.ignored) if st else 0,
+            "ignored": st.ignored if st else 0,
+            "skipped": st.skipped if st else 0,
+        },
+        require_input=True,
+        jpdb_id=jpdb_id,
+        media_id=result.get("media_id"),
+        content_version=result.get("content_version"),
+        mapped=st.mapped if st else None,
+    )
 
 
 def make_jpdb_deck_import(

@@ -27,6 +27,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from kotobaya_worker.dict.dburl import to_conninfo
+from kotobaya_worker.logs import job_scope
 
 log = logging.getLogger("kotobaya.worker.runner")
 
@@ -203,6 +204,12 @@ class Runner:
             ).fetchall()
             for r in failed + requeued:
                 _hint(self.main, r["id"])
+        if failed or requeued:
+            log.warning(
+                "reclaimed stale jobs (heartbeat older than %ss): requeued=%s failed=%s",
+                self.config.stale_after, [str(r["id"]) for r in requeued],
+                [str(r["id"]) for r in failed],
+            )  # fmt: skip
         return len(failed) + len(requeued)
 
     def claim(self) -> dict[str, Any] | None:
@@ -291,6 +298,10 @@ class Runner:
                 log.warning("heartbeat failed for %s", job_id, exc_info=True)
 
     def execute(self, job: dict[str, Any]) -> None:
+        with job_scope(job["id"], job["kind"]):
+            self._execute(job)
+
+    def _execute(self, job: dict[str, Any]) -> None:
         job_id: uuid.UUID = job["id"]
         handler = self.registry.get(job["kind"])
         stop, cancel = threading.Event(), threading.Event()
@@ -298,6 +309,11 @@ class Runner:
             target=self._heartbeat_loop, args=(job_id, stop, cancel), daemon=True
         )
         beat.start()
+        started = time.monotonic()
+        log.info(
+            "job %s (%s) started, attempt %s/%s", job_id, job["kind"], job["attempts"],
+            job["max_attempts"],
+        )  # fmt: skip
         outcome: Callable[[], None]
         try:
             if handler is None:  # claim filters by kind; never crash silently anyway
@@ -307,18 +323,28 @@ class Runner:
                 job["attempts"], cancel,
             )  # fmt: skip
             result = handler(ctx)
+            log.info(
+                "job %s (%s) succeeded in %d ms", job_id, job["kind"],
+                (time.monotonic() - started) * 1000,
+            )  # fmt: skip
             outcome = lambda: self._finish_ok(job_id, result)
         except JobCancelled:
+            log.info("job %s (%s) cancelled", job_id, job["kind"])
             outcome = lambda: self._finish_cancelled(job_id)
         except Exception as e:
-            log.warning(
-                "job %s (%s) attempt %s failed", job_id, job["kind"], job["attempts"],
-                exc_info=True,
-            )  # fmt: skip
             # A handler exception may carry its exact ``error`` text and say a retry cannot help
             # (deterministic failures, e.g. deck-build ``empty_list``).
             msg = getattr(e, "job_error", None) or f"{type(e).__name__}: {e}"
-            final = bool(getattr(e, "non_retryable", False))
+            final = bool(getattr(e, "non_retryable", False)) or (
+                job["attempts"] >= job["max_attempts"]
+            )
+            # Always with the stack trace; ERROR once no retry follows.
+            log.log(
+                logging.ERROR if final else logging.WARNING,
+                "job %s (%s) attempt %s/%s failed%s: %s", job_id, job["kind"], job["attempts"],
+                job["max_attempts"], "" if final else " (will retry)", msg,
+                exc_info=True,
+            )  # fmt: skip
             outcome = lambda: self._finish_error(job, msg, final)
         stop.set()
         beat.join()
@@ -351,5 +377,8 @@ class Runner:
             except psycopg.Error:
                 log.warning("database error in runner loop; reconnecting", exc_info=True)
                 self.close()
+            except Exception:
+                # Never let the loop die silently; log with the stack and keep polling.
+                log.exception("unexpected error in runner loop")
             stop.wait(self.config.poll_interval)
         self.close()

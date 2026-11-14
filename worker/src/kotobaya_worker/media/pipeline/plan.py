@@ -8,7 +8,7 @@ cancellation check between segments, then aggregated. Nothing is uploaded here: 
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -21,6 +21,7 @@ from kotobaya_worker.coverage.aggregate import (
 )
 from kotobaya_worker.grammar.detect import Detection, DetectSentence, detect
 from kotobaya_worker.importers.jpdb_history.handler import Context
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.media.pipeline.base import BaseSegment, MediaBase
 from kotobaya_worker.media.pipeline.parser import SegmentParser
 from kotobaya_worker.media.publish.handoff import CreateSpec, PublishRequest
@@ -169,7 +170,7 @@ def plan_request(
         media_id, version, segs, sents, [o for c in counts for o in c.occurrences], found.spans
     )
     deck = DeckArchive(media_id, "media", version, deck_items(counts))
-    log.info("media %s v%d planned: %s", media_id, version, job_result(media_id, version, counts))
+    log.debug("media %s v%d planned: %s", media_id, version, job_result(media_id, version, counts))
     return Planned(
         PublishRequest(
             media_id=media_id,
@@ -180,4 +181,28 @@ def plan_request(
         ),
         tuple(counts),
         found,
+    )
+
+
+def log_media_summary(kind: str, result: Mapping[str, Any], *, adopted: bool = False) -> int:
+    """Final summary from ``JobResultMedia``: sentences in; tokens and entries out; unmapped tokens.
+
+    Sentences with no dictionary entry at all is the broken-parser case and logs ERROR.
+    """
+
+    def n(key: str) -> int:
+        v = result.get(key)
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+    return job_summary(
+        log,
+        kind,
+        inputs={"sentences": n("sentences")},
+        outputs={"unique_entries": n("unique_entries")},
+        dropped={"unmapped_tokens": n("unmapped_tokens")},
+        media_id=result.get("media_id"),
+        content_version=result.get("content_version"),
+        segments=n("segments"),
+        tokens=n("tokens"),
+        adopted=adopted,
     )

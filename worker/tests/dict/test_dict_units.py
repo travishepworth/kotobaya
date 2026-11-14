@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import http.client
+import os
+import time
+import urllib.error
 from dataclasses import replace
+from email.message import Message
 from pathlib import Path
 
 import pytest
@@ -10,6 +14,7 @@ import pytest
 from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.dict.fetch import (
     MAX_ATTEMPTS,
+    STALE_PART_AGE_S,
     ChecksumMismatch,
     SourceSpec,
     ensure_source,
@@ -196,3 +201,52 @@ def test_dict_sources_edrdg_pins_are_advisory_other_pins_strict() -> None:
     )
     assert src.core.kanjidic.sha256 == "ab" and not src.core.kanjidic.strict
     assert src.kanjium is not None and src.kanjium.strict
+
+
+# ---------------------------------------------------------------- OBS-1w: HTTP errors and stale parts
+def _http_error(code: int) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("http://example.invalid/x", code, "x", Message(), None)
+
+
+@pytest.mark.parametrize("code", [403, 404])
+def test_http_4xx_is_not_retried(tmp_path: Path, code: int) -> None:
+    calls: list[int] = []
+
+    def fetch(url: str, dest: Path) -> None:
+        calls.append(1)
+        raise _http_error(code)
+
+    with pytest.raises(urllib.error.HTTPError):
+        fetch_source(_spec(b"good"), tmp_path, fetch)
+    assert len(calls) == 1
+
+
+def test_http_5xx_is_retried(tmp_path: Path) -> None:
+    calls: list[int] = []
+
+    def fetch(url: str, dest: Path) -> None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise _http_error(503)
+        dest.write_bytes(b"good")
+
+    assert fetch_source(_spec(b"good"), tmp_path, fetch).path.read_bytes() == b"good"
+    assert len(calls) == 2
+
+
+def test_stale_part_files_are_removed_fresh_ones_kept(tmp_path: Path) -> None:
+    old = tmp_path / "x.bin.abc123.part"
+    fresh = tmp_path / "x.bin.def456.part"
+    other = tmp_path / "y.bin.abc123.part"
+    for p in (old, fresh, other):
+        p.write_bytes(b"partial")
+    stale = time.time() - STALE_PART_AGE_S - 60
+    os.utime(old, (stale, stale))
+    os.utime(other, (stale, stale))
+
+    def fetch(url: str, dest: Path) -> None:
+        dest.write_bytes(b"good")
+
+    fetch_source(_spec(b"good"), tmp_path, fetch)
+    assert not old.exists()
+    assert fresh.exists() and other.exists()  # young, or another source's

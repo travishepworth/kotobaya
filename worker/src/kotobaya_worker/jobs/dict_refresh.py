@@ -56,6 +56,7 @@ from kotobaya_worker.dict.vocab import (
     jlpt_provenance,
     jlpt_sources,
 )
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.runner.core import JobContext
 
 log = logging.getLogger("kotobaya.worker.dict_refresh")
@@ -183,6 +184,40 @@ def _requeue_decks(database_url: str) -> None:
     log.info("queued %d list deck rebuild(s)", n)
 
 
+def log_refresh_summary(
+    result: Mapping[str, Any],
+    sources: int,
+    artifacts: int,
+    *,
+    resumed: bool,
+    unchanged: bool = False,
+) -> int:
+    """Final summary: sources in; live entries, device artifacts and list entries out.
+
+    Unmatched JLPT rows WARN; a release with 0 live entries (or no artifacts) logs ERROR.
+    """
+    lists = [r for r in result.get("vocab_lists") or () if isinstance(r, Mapping)]
+    outputs = {"entries": int(result.get("entries") or 0)}
+    if not unchanged:
+        outputs["artifacts"] = artifacts
+    if lists:
+        outputs["list_entries"] = sum(int(r.get("entries", 0)) for r in lists)
+    return job_summary(
+        log,
+        "dict-refresh",
+        inputs={"sources": sources},
+        outputs=outputs,
+        dropped={"vocab_unmatched": sum(int(r.get("unmatched", 0)) for r in lists)},
+        # A new or resumed release with no live entry or no device package is a broken refresh.
+        required_outputs=() if unchanged else ("entries", "artifacts"),
+        release_id=result.get("release_id"),
+        version=result.get("version"),
+        retired=result.get("retired"),
+        resumed=resumed,
+        unchanged=unchanged,
+    )
+
+
 def make_dict_refresh(
     database_url: str,
     sources: Callable[[], DictSources] = DictSources.from_env,
@@ -230,12 +265,14 @@ def make_dict_refresh(
                         live = conn.execute(
                             "SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL"
                         ).fetchone()
-                        return {
+                        current = {
                             "release_id": None,
                             "version": None,
                             "entries": live[0] if live else 0,
                             "retired": 0,
                         }
+                        log_refresh_summary(current, len(fp), 0, resumed=False, unchanged=True)
+                        return current
             row = conn.execute("SELECT coalesce(max(id), 0) FROM ref.dict_release").fetchone()
             new_id = (row[0] if row else 0) + 1
 
@@ -308,6 +345,7 @@ def make_dict_refresh(
         }
         if vocab_reports is not None:
             result["vocab_lists"] = vocab_reports
+        log_refresh_summary(result, len(fp), len(artifacts), resumed=resume_id is not None)
         return result
 
     return handler

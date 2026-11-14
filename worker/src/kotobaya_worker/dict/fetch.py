@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
@@ -26,6 +27,9 @@ KRAD_URL = "http://ftp.edrdg.org/pub/Nihongo/kradzip.zip"
 
 # Downloads per fetch: a truncated or failed transfer is retried before anything is concluded.
 MAX_ATTEMPTS = 3
+# ``<name>.*.part`` temp files older than this are leftovers of a killed download (SIGKILL / OOM
+# skip the ``finally``); far longer than any real download, so a concurrent one is never touched.
+STALE_PART_AGE_S = 6 * 3600.0
 
 log = logging.getLogger("kotobaya.worker.dict.fetch")
 
@@ -97,8 +101,31 @@ def urllib_fetcher(url: str, dest: Path) -> Mapping[str, str] | None:
     return headers
 
 
-# Transient transfer failures worth another attempt (HTTP errors such as 404 are not).
+# Transient transfer failures worth another attempt. ``HTTPError`` is a ``URLError`` subclass:
+# a 4xx answer (404, 403, ...) is final and re-raised at once; 5xx and 429 are retried.
 _TRANSIENT = (http.client.HTTPException, urllib.error.URLError, TimeoutError, ConnectionError)
+
+
+def _retryable_http(e: urllib.error.HTTPError) -> bool:
+    return e.code >= 500 or e.code == 429
+
+
+def remove_stale_parts(
+    cache_dir: Path, name: str, max_age_s: float = STALE_PART_AGE_S, now: float | None = None
+) -> int:
+    """Delete ``<name>.*.part`` files older than ``max_age_s``; returns how many were removed."""
+    cutoff = (time.time() if now is None else now) - max_age_s
+    removed = 0
+    for p in cache_dir.glob(f"{name}.*.part"):
+        try:
+            if p.stat().st_mtime < cutoff:
+                p.unlink()
+                removed += 1
+        except FileNotFoundError:
+            continue  # another process cleaned it up first
+    if removed:
+        log.warning("%s: removed %d stale partial download(s)", name, removed)
+    return removed
 
 
 def fetch_source(
@@ -116,6 +143,7 @@ def fetch_source(
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / spec.name
     expected = spec.sha256.lower() if spec.sha256 else None
+    remove_stale_parts(cache_dir, spec.name)
     if expected and target.is_file() and sha256_file(target) == expected:
         return FetchedSource(target, spec)
     # A private temp file: concurrent refreshes never write into each other's download.
@@ -148,6 +176,12 @@ def _download(
     for attempt in range(1, attempts + 1):
         try:
             headers = fetch(spec.url, part) or {}
+        except urllib.error.HTTPError as e:
+            if not _retryable_http(e) or attempt == attempts:
+                raise
+            log.warning("%s: download attempt %d failed (%s); retrying", spec.name, attempt, e)
+            previous = None
+            continue
         except _TRANSIENT as e:
             if attempt == attempts:
                 raise

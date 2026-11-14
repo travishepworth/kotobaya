@@ -38,6 +38,7 @@ from kotobaya_worker.media.pipeline.plan import (
     DraftSegment,
     DraftSentence,
     from_base,
+    log_media_summary,
     plan_request,
 )
 from kotobaya_worker.media.publish.blobs import (
@@ -282,6 +283,7 @@ def run_import(
     job = ImportJob.from_payload(ctx.payload)
     done = store.succeeded_result(ctx.job_id)  # an earlier attempt already published
     if done is not None:
+        log_media_summary(KIND, done, adopted=True)
         return dict(done)
     extracted = extract_sources(ctx, job, fetch_blob, fetch_url)
     new = to_drafts(ctx, job, extracted, cut)
@@ -296,6 +298,7 @@ def run_import(
         ).request
 
     result = publish_replanning(ctx, plan, store=store, objects=objects, blobs=blobs, **publish_kw)
+    log_media_summary(KIND, asdict(result))
     return asdict(result)
 
 

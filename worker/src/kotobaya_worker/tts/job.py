@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import os
 import subprocess
 import tempfile
@@ -28,8 +29,10 @@ from psycopg.rows import dict_row
 from kotobaya_worker.audio.clips import CONTENT_TYPE, ClipOptions, sha256_file
 from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.dict.package.s3 import S3Client, S3Config
+from kotobaya_worker.logs import job_summary
 
 KIND = "tts"
+log = logging.getLogger(__name__)
 DEFAULT_VOICE = "3"  # keep in step with the server's default (kotobaya.tts.DEFAULT_VOICE)
 DEFAULT_VOICEVOX_URL = "http://localhost:50021"
 
@@ -122,6 +125,7 @@ def run_tts(
         raise TypeError("tts payload needs a non-empty string `text` (and a string `voice`)")
     hit = cache.lookup(dedupe_key(voice, text))
     if hit is not None:
+        log_tts_summary(text, voice, hit, size_bytes=None, cached=True)
         return hit
     ctx.check_cancelled()
     wav = synth.synthesize(text, voice)
@@ -131,8 +135,28 @@ def run_tts(
         out = Path(tmp) / "speech.ogg"
         convert(wav, out)
         digest = sha256_file(out)
+        size = out.stat().st_size
         sink.store(out, digest)
-    return {"blob_hash": digest, "content_type": CONTENT_TYPE, "duration_ms": duration}
+    result = {"blob_hash": digest, "content_type": CONTENT_TYPE, "duration_ms": duration}
+    log_tts_summary(text, voice, result, size_bytes=size, cached=False)
+    return result
+
+
+def log_tts_summary(
+    text: str, voice: str, result: Mapping[str, Any], *, size_bytes: int | None, cached: bool
+) -> int:
+    """Characters in, audio milliseconds out: silent audio for non-empty text logs ERROR."""
+    duration = result.get("duration_ms")
+    return job_summary(
+        log,
+        KIND,
+        inputs={"chars": len(text)},
+        outputs={"duration_ms": duration if isinstance(duration, int) else 0},
+        voice=voice,
+        blob_hash=result.get("blob_hash"),
+        size_bytes=size_bytes,
+        cached=cached,
+    )
 
 
 class PgCache:

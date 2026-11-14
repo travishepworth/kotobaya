@@ -7,7 +7,7 @@ import os
 import signal
 import threading
 
-from kotobaya_worker import health
+from kotobaya_worker import health, logs
 from kotobaya_worker.decks.build import make_deck_build
 from kotobaya_worker.grammar.job import make_grammar_detect
 from kotobaya_worker.importers.jpdb_deck.handler import make_jpdb_deck_import
@@ -42,7 +42,8 @@ def build_registry() -> Registry:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
+    logs.configure()
+    logs.install_excepthooks(logging.getLogger("kotobaya.worker"))
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())

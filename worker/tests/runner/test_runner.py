@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 import uuid
@@ -239,3 +240,41 @@ def test_unregistered_kind_left_queued(db_url: str) -> None:
     with pytest.raises(ValueError):
         reg.register("not-a-kind", lambda ctx: None)
     r.close()
+
+
+def test_failures_log_stack_with_job_id_and_final_attempt_is_error(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """OBS-1w: every handler record carries job_id/kind; failures log the stack trace."""
+    from kotobaya_worker.logs import JobContextFilter, JsonFormatter
+
+    (job_id,) = _insert(db_url, "tts", max_attempts=2)
+
+    def handler(ctx: JobContext) -> Mapping[str, Any]:
+        logging.getLogger("kotobaya.test").info("inside handler")
+        raise RuntimeError("boom")
+
+    reg = Registry()
+    reg.register("tts", handler)
+    runner = Runner(_cfg(db_url), reg)
+    flt = JobContextFilter()
+    caplog.handler.addFilter(flt)
+    caplog.set_level(logging.INFO)
+    try:
+        _drain_until(runner, db_url, job_id)
+    finally:
+        runner.close()
+        caplog.handler.removeFilter(flt)
+
+    inside = [r for r in caplog.records if r.getMessage() == "inside handler"]
+    assert inside and all(
+        getattr(r, "job_id", None) == str(job_id) and getattr(r, "job_kind", None) == "tts"
+        for r in inside
+    )
+    fails = [
+        r for r in caplog.records if "failed" in r.getMessage() and str(job_id) in r.getMessage()
+    ]
+    assert [r.levelno for r in fails] == [logging.WARNING, logging.ERROR]
+    assert all(r.exc_info is not None for r in fails)
+    line = JsonFormatter().format(fails[-1])
+    assert "\n" not in line and '"exc": "Traceback' in line and str(job_id) in line

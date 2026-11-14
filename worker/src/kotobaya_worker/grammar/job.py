@@ -18,6 +18,7 @@ rows only, so they are never touched.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Callable, Mapping
 from typing import Any, Protocol
@@ -31,6 +32,7 @@ from kotobaya_worker.dict.package.s3 import S3Client, S3Config
 from kotobaya_worker.grammar.detect import PointRules, rules_digest
 from kotobaya_worker.importers.jpdb_history.apply import EVENTS_CHANNEL, uuid7
 from kotobaya_worker.importers.jpdb_history.handler import Context
+from kotobaya_worker.logs import job_summary
 from kotobaya_worker.media.pipeline.base import BaseReader, MediaBase, PgMediaReader
 from kotobaya_worker.media.pipeline.plan import from_base, plan_request
 from kotobaya_worker.media.publish.blobs import BlobTable, ObjectStore, PgBlobTable, S3ObjectStore
@@ -42,6 +44,7 @@ from kotobaya_worker.media.publish.handoff import (
 )
 
 KIND = "grammar-detect"
+log = logging.getLogger(__name__)
 OP_APPLY_LOCK = 7033001
 
 
@@ -103,6 +106,47 @@ def run_detect_media(
     blobs: BlobTable,
     **publish_kw: Any,
 ) -> Mapping[str, Any]:
+    result = _detect_media(
+        ctx, media_id, base_reader=base_reader, store=store, objects=objects, blobs=blobs,
+        **publish_kw,
+    )  # fmt: skip
+    log_detect_summary(result)
+    return result
+
+
+def log_detect_summary(result: Mapping[str, Any]) -> int:
+    """Per-media summary: spans out (0 is legitimate: no grammar point matched); invalid rules
+    and skipped media WARN."""
+
+    def n(key: str) -> int:
+        v = result.get(key)
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+    skipped = result.get("skipped")
+    return job_summary(
+        log,
+        KIND,
+        # A skipped media (deleted meanwhile, not parsed) is a WARN, not a zero-output ERROR.
+        inputs={"media": 0 if skipped else 1},
+        outputs={"media_checked": 0 if skipped else 1, "spans": n("spans")},
+        dropped={"invalid_rules": n("invalid_rules"), "media_skipped": 1 if skipped else 0},
+        media_id=result.get("media_id"),
+        changed=result.get("changed"),
+        skipped=skipped,
+        content_version=result.get("content_version"),
+    )
+
+
+def _detect_media(
+    ctx: Context,
+    media_id: str,
+    *,
+    base_reader: BaseReader,
+    store: PublishStore,
+    objects: ObjectStore,
+    blobs: BlobTable,
+    **publish_kw: Any,
+) -> Mapping[str, Any]:
     done = store.succeeded_result(ctx.job_id)  # step 1: an earlier attempt already published
     if done is not None:
         return {"media_id": media_id, "changed": True, "content_version": done["content_version"]}
@@ -155,7 +199,15 @@ def run_fan_out(ctx: Context, *, rules: RuleSource, queue: DetectQueue) -> Mappi
         ctx.check_cancelled()
         enqueued += queue.enqueue(mid, digest)
         ctx.progress((k + 1) / len(ids), f"queued {k + 1}/{len(ids)} media")
-    return {"media": len(ids), "enqueued": enqueued, "rules_digest": digest}
+    result = {"media": len(ids), "enqueued": enqueued, "rules_digest": digest}
+    job_summary(
+        log,
+        f"{KIND} fan-out",
+        inputs={"media": len(ids)},
+        outputs={"enqueued": enqueued, "already_queued": len(ids) - enqueued},
+        rules_digest=digest,
+    )
+    return result
 
 
 # ------------------------------------------------------------------------------ Postgres

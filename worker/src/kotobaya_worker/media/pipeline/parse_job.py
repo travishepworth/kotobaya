@@ -21,7 +21,7 @@ from kotobaya_worker.dict.package.s3 import S3Client, S3Config
 from kotobaya_worker.importers.jpdb_history.handler import Context
 from kotobaya_worker.media.pipeline.base import BaseReader, MediaBase, PgMediaReader
 from kotobaya_worker.media.pipeline.parser import PgSegmentParser, SegmentParser
-from kotobaya_worker.media.pipeline.plan import from_base, plan_request
+from kotobaya_worker.media.pipeline.plan import from_base, log_media_summary, plan_request
 from kotobaya_worker.media.publish.blobs import (
     BlobTable,
     ObjectStore,
@@ -65,6 +65,7 @@ def run_parse(
     media_id = str(uuid.UUID(raw))
     done = store.succeeded_result(ctx.job_id)  # an earlier attempt already published
     if done is not None:
+        log_media_summary(KIND, done, adopted=True)
         return dict(done)
     ctx.progress(0.0, "reading sentences")
 
@@ -77,6 +78,7 @@ def run_parse(
         ).request
 
     result = publish_replanning(ctx, plan, store=store, objects=objects, blobs=blobs, **publish_kw)
+    log_media_summary(KIND, asdict(result))
     return asdict(result)
 
 
