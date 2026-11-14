@@ -15,7 +15,7 @@ In flight at handback (agents keep running after the parent dies; on resume run 
 - AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
 - LOGFIX-1 MERGED
 - C-23 READY_FOR_REVIEW (1bb486d, contracts green; ADR-024). MERGE CONSTRAINT: server WiringAuditTest fails until reportClientErrors has a handler → merge together with an OBS-1s handler (OBS-1s writer was told NOT to implement it; give it a follow-up attempt on its branch after C-23, or allowlist). Then OBS-1c.
-- OBS-1s writer (server logging + RUNBOOK health) → reviewer; implement the C-23 handler in a follow-up if C-23 lands later
+- OBS-1s READY_FOR_REVIEW (20418ba, server green; RUNBOOK health greps). C-23 handler NOT done → after C-23 review, give OBS-1s a follow-up attempt on its branch (rebase on C-23, implement reportClientErrors per the openapi description), then review both together.
 - OBS-1w READY_FOR_REVIEW (t/OBS-1w-worker-logging, worker green 859; med → reviewer; note media WARN on unmapped_tokens>0 may be noisy).
 Queued: OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
 Possible stale orchestrator: run 20 kept committing "plan:" lines after its end; harmless.

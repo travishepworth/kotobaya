@@ -952,3 +952,4 @@
 2026-11-14T00:45:37Z RUN21 DRAIN context budget: no new dispatches; recording handoffs as READY_FOR_REVIEW until the 6 writers finish
 2026-11-14T00:49:27Z C-23 HANDOFF DONE 1bb486d; READY_FOR_REVIEW (drain)
 2026-11-14T00:54:36Z OBS-1w HANDOFF DONE worker green 859; READY_FOR_REVIEW (drain)
+2026-11-14T00:57:19Z OBS-1s HANDOFF DONE 20418ba server green; READY_FOR_REVIEW (drain)
