@@ -441,3 +441,4 @@
 - [minor] CardContent onReceivedError reports current shownHtml; late error from a replaced load can mark the new card CardUnavailable. Track navigation / ignore stale.
 - [minor] CardAudioNeeds renders with dictionary=null (harmless until dict audio exists).
 - [minor, user-visible] review_card_unavailable_body suggests answering an unseen card (feeds guesses to FSRS); neutral wording or offer bury/skip.
+- AND-LABELS (run 27): `/meta` reachability probe failures each queue a client-error report (ServerReachability, net/ + sync/) → throttle ClientErrors.apiFailure for /meta or don't report probe failures. Deck/search labels do entry() per seq (3 queries each); batch if pages grow past ~50.

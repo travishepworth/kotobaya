@@ -1,10 +1,12 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN26 end
+Updated: RUN27 dispatch
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
+## RESUME HERE (run 27): 0.1.12 INSTALLED on phone. Running AND-DECKCONTENT (writer-senior), AND-TAKO-PERF (writer-senior), AND-LABELS (writer). Logs/DB copy: scratchpad c6911de0…/logs, dbcopy. Next: check, review high-risk, merge, build 0.1.13 APK.
+
+## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).
 0.1.12 = APK only, pin b745fa53, ~/kotobaya-apk/kotobaya-0.1.12-debug.apk code 112 cert ec6b7f45 ok. Server stays 0.1.11 (helm rev 18). Worktree scratchpad/rel0112.
 NEXT: when adb device present -> cert check, adb install -r, verify Home/Review on user 10 (see HUMAN_CHECKS run 26). Then FOLLOWUPS (user-visible: ReviewActions emptyFronts dict, CardUnavailable wording, timezone default UTC).
@@ -20,6 +22,8 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| AND-DECKCONTENT | writer-senior | 1 | t/AND-DECKCONTENT-install | run 27 |
+| AND-TAKO-PERF | writer-senior | 1 | t/AND-TAKO-PERF-dupcheck | run 27 |
 
 
 ## Queued
@@ -53,6 +57,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-LABELS (run 27, 710d5d5c): deck rows + card hits labelled from note/dictionary (no e:<seq>, no literal reading/meaning); merged Android search (ADR-026)
 - AND-CARDHTML (run 26, f639d113): WebView intercept no longer 403s own data: main frame; ReviewBackend gets Dictionary+Kanji lookups (entry_seq vocab fronts were blank); CardUnavailable state + reports
 - AND-REVIEW-STALE (run 26, fb2a253d): Review tab Empty re-runs start() on sync (pulledOps>0), ON_RESUME, rollover timer
 - AND-QUEUE (run 26, c2ef978d): Home hero used per-deck sums (deckless due cards -> "caught up"); now whole-queue QueueCounts; review APPROVE

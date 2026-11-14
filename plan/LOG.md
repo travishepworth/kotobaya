@@ -1025,3 +1025,6 @@
 2026-11-14T22:21:12Z RELEASE 0.1.12 INSTALLED on phone (adb install -r; cert ec6b7f45 match; 111->112, user 10 kept data)
 2026-11-14T22:21:12Z QA-0112 logs: Takoboto notes_v2 csum query 37.7 s; Fatal Twelve installed_content_version 0<1 (no device content installer); deck rows show e:<seq>; search shows literal reading/meaning; GET /meta network x6 (settings)
 2026-11-14T22:21:12Z ADR-026 DECIDE Android search merged into one list (PROVISIONAL)
+2026-11-14T22:21:33Z AND-DECKCONTENT,AND-TAKO-PERF,AND-LABELS DISPATCH (writer-senior, writer-senior, writer)
+2026-11-14T22:29:48Z AND-LABELS HANDOFF 710d5d5c merged search, deck labels, CardHit reading/meaning; /meta = ServerReachability probe reports (not settings)
+2026-11-14T22:30:29Z AND-LABELS CHECK_GREEN + MERGE 710d5d5c
