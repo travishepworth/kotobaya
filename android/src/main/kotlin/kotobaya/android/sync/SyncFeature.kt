@@ -20,6 +20,11 @@ import kotlinx.coroutines.launch
 import kotobaya.android.db.GuardedDriver
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.media.AudioPrefetchWork
+import kotobaya.android.media.BlobDownloader
+import kotobaya.android.net.ApiClient
+import kotobaya.android.sync.content.BlobSnapshotFetcher
+import kotobaya.android.sync.content.ContentInstallWork
+import kotobaya.android.sync.content.ContentInstaller
 import kotobaya.android.media.MediaPrefs
 import kotobaya.android.net.MetaLimitsStore
 import kotobaya.android.net.ServerReachability
@@ -127,6 +132,8 @@ class SyncBootstrap(
     private val triggers: SyncTriggers,
     scope: CoroutineScope,
     workManager: () -> WorkManager?,
+    /** After the startup replay, on the sync scope (AND-DECKCONTENT: queue pending content installs). */
+    onReady: () -> Unit = {},
 ) : Application.ActivityLifecycleCallbacks {
     val ready: CompletableDeferred<Unit> = CompletableDeferred()
     private var started = 0
@@ -141,6 +148,7 @@ class SyncBootstrap(
             Log.i(TAG, "gate open after ${System.currentTimeMillis() - gateStart} ms (replayed=${replayed.getOrNull()})")
             status.refresh()
             runCatching { workManager()?.let(SyncWork::ensurePeriodic) }
+            runCatching(onReady)
         }
         scope.launch { coordinator.running.collect { status.onRunning(it) } }
         // off the committing thread, and conflated: a pull commits every chunk (BUG-8), the status
@@ -227,6 +235,10 @@ val syncModule = module {
                 val r = (outcome as? SyncOutcome.Ran)?.result
                 if (outcome is SyncOutcome.Ran) koin.getOrNull<kotobaya.android.report.ClientErrorFlusher>()?.flushAsync() // OBS-1c-and
                 if (r is CycleResult.Completed && r.pulledOps > 0) koin.getOrNull<DueTrigger>()?.fire()
+                // AND-DECKCONTENT: a pull may have announced new deck items / media content
+                if (r is CycleResult.Completed) {
+                    ContentInstallWork.enqueueIfPending(koin.get()) { runCatching { WorkManager.getInstance(ctx) }.getOrNull() }
+                }
                 prefetchAfterSync(outcome, { koin.get<MediaPrefs>().allowMetered }) { metered ->
                     runCatching { AudioPrefetchWork.enqueue(ctx, metered) }
                 }
@@ -234,6 +246,15 @@ val syncModule = module {
         )
     }
     single { RejectedOpsStore(get()) }
+    single {
+        val settings = get<SettingsStore>()
+        val tokens = get<TokenStore>()
+        val downloader = BlobDownloader(get(), { settings.serverBaseUrl }, { tokens.token }, ApiClient.defaultHttp())
+        ContentInstaller(
+            get(), get(SYNC_DRIVER), BlobSnapshotFetcher(downloader, get()),
+            info = { Log.i(ContentInstaller.TAG, it) },
+        )
+    }
     single {
         val ctx = androidContext()
         SyncTriggers(get(), get(SYNC_SCOPE)) { runCatching { WorkManager.getInstance(ctx) }.getOrNull() }
@@ -254,6 +275,9 @@ val syncModule = module {
             triggers = get(),
             scope = get(SYNC_SCOPE),
             workManager = { runCatching { WorkManager.getInstance(ctx) }.getOrNull() },
+            onReady = {
+                ContentInstallWork.enqueueIfPending(get()) { runCatching { WorkManager.getInstance(ctx) }.getOrNull() }
+            },
         )
     }
 }

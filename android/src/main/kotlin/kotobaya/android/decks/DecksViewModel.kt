@@ -46,6 +46,8 @@ interface DecksIntents {
     fun study() {}
     fun endStudy() {}
     fun more() {}
+    /** AND-DECKCONTENT: download the selected deck's rejected contents again. */
+    fun retryContent() {}
     /** A study session answered something (counts change). */
     fun sessionEnded() {}
 }
@@ -58,6 +60,8 @@ class DecksViewModel(
     private val source: DeckSource,
     syncChanges: Flow<Any?>?,
     io: CoroutineDispatcher = Dispatchers.IO,
+    /** Clears the deck's rejected archive and queues the content install (blocking; runs on [io]). */
+    private val retryContent: (deckId: String) -> Unit = {},
 ) : StateViewModel<DecksUiState>(DecksUiState(), io), DecksIntents {
     private var loading: Job? = null
 
@@ -131,6 +135,14 @@ class DecksViewModel(
     override fun more() {
         update { it.copy(limit = it.limit + PAGE) }
         reload()
+    }
+
+    override fun retryContent() {
+        val id = current.selectedId ?: return
+        launchIo {
+            retryContent(id)
+            reload()
+        }
     }
 
     override fun sessionEnded() {

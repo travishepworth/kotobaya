@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.nav.DictJump
+import kotobaya.android.decks.DeckContent
 import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.DeckWord
 import kotobaya.android.decks.DecksIntents
@@ -188,11 +189,24 @@ private fun DeckList(decks: List<DeckSummary>?, selectedId: String?, intents: De
     }
 }
 
+/** AND-DECKCONTENT: why a media/list deck has no words yet, or null when its items are installed. */
+@Composable
+fun contentLabel(content: DeckContent): String? = when (content) {
+    DeckContent.READY -> null
+    DeckContent.DOWNLOADING -> T(R.string.decks_content_downloading)
+    DeckContent.FAILED -> T(R.string.decks_content_failed)
+    DeckContent.NOT_PUBLISHED -> T(R.string.decks_content_not_ready)
+}
+
 @Composable
 private fun DeckRow(d: DeckSummary, selected: Boolean, onClick: () -> Unit) {
     KbListRow(
         title = d.name,
-        supporting = if (d.enabled) T(R.string.decks_total, d.totalCards) else T(R.string.decks_total, d.totalCards) + " · " + T(R.string.decks_disabled),
+        supporting = listOfNotNull(
+            T(R.string.decks_total, d.totalCards),
+            T(R.string.decks_disabled).takeIf { !d.enabled },
+            contentLabel(d.content),
+        ).joinToString(" · "),
         leading = { KbDeckDot(KbDeckColor.Hai) },
         trailing = { DeckCounts(d) },
         onClick = onClick,
@@ -229,6 +243,15 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                         if (!deck.enabled) KbTagChip(T(R.string.decks_disabled))
                     }
                 }
+                contentLabel(deck.content)?.let { label ->
+                    if (deck.content == DeckContent.FAILED) {
+                        KbBanner(label, kind = KbFeedback.Danger, action = {
+                            KbButton(T(R.string.decks_content_retry), intents::retryContent, variant = KbButtonVariant.Outline)
+                        })
+                    } else {
+                        KbBanner(label, kind = KbFeedback.Info)
+                    }
+                }
                 StatTiles(deck)
                 KbButton(T(R.string.decks_study), intents::study, Modifier.fillMaxWidth(), size = KbButtonSize.Lg, leading = KbIcons.Cards)
                 if (deck.type == "smart") {
@@ -248,7 +271,7 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                 KbPanel(padding = PaddingValues(0.dp)) {
                     when {
                         words == null -> KbSkeletonRows(4)
-                        words.isEmpty() -> KbEmptyState(T(R.string.decks_words_empty), icon = KbIcons.Book)
+                        words.isEmpty() -> KbEmptyState(contentLabel(deck.content) ?: T(R.string.decks_words_empty), icon = KbIcons.Book)
                         else -> words.forEachIndexed { i, w ->
                             if (i > 0) KbDivider(inset = 16.dp)
                             KbListRow(

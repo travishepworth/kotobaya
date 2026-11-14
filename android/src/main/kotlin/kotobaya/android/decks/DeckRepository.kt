@@ -8,6 +8,8 @@ import kotobaya.android.queue.LoadedQueue
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.QueueCounts
 import kotobaya.android.search.EntryLabeler
+import kotobaya.android.sync.content.ContentInstaller
+import kotobaya.android.sync.content.ContentKind
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.queue.DefaultQueueBuilder
@@ -22,7 +24,27 @@ data class DeckSummary(
     val query: String?,
     val counts: QueueCounts,
     val totalCards: Int,
+    /** Whether the deck's server-built items are on this device (AND-DECKCONTENT); user and smart decks are [DeckContent.READY]. */
+    val content: DeckContent = DeckContent.READY,
 )
+
+/**
+ * Install state of a media/list deck's items (SNAPSHOT.md 7): a deck with no words is truly empty only when
+ * [READY]; otherwise its items are still to come.
+ */
+enum class DeckContent {
+    /** Items installed (or the deck has no server-built items: user, smart). */
+    READY,
+
+    /** The server has not published items yet (`content_version = 0`). */
+    NOT_PUBLISHED,
+
+    /** A newer version is announced and not installed yet (queued, downloading, or waiting to retry). */
+    DOWNLOADING,
+
+    /** The announced archive was rejected (logged as `KotobayaContent`); waits for a newer version or app. */
+    FAILED,
+}
 
 /**
  * A word of a deck. [label] is, in order: the note's expression, the dictionary headword, the item key (last resort).
@@ -59,7 +81,14 @@ class DeckRepository(
     /** The offline dictionary, for words whose note has no `expression` (or no note on this device). */
     private val labeler: EntryLabeler? = null,
 ) : DeckSource {
-    private class Row(val id: String, val name: String, val type: String, val enabled: Boolean, val query: String?)
+    private class Row(
+        val id: String,
+        val name: String,
+        val type: String,
+        val enabled: Boolean,
+        val query: String?,
+        val content: DeckContent,
+    )
 
     override fun decks(): List<DeckSummary> = overview().decks
 
@@ -110,13 +139,27 @@ class DeckRepository(
         query = r.query,
         counts = countsOf(loaded, r.id),
         totalCards = totalCards(r.id),
+        content = r.content,
     )
 
     private fun rows(): List<Row> = query(
-        "SELECT id, name, type, enabled, query FROM deck WHERE deleted_at IS NULL ORDER BY priority, id",
-        0,
-        {},
-    ) { c -> Row(c.getString(0).orEmpty(), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getLong(3) == 1L, c.getString(4)) }
+        "SELECT d.id, d.name, d.type, d.enabled, d.query, d.content_version, d.installed_content_version, " +
+            "d.content_blob_hash = (SELECT s.value FROM sync_state s WHERE s.key = ? || d.id) " +
+            "FROM deck d WHERE d.deleted_at IS NULL ORDER BY d.priority, d.id",
+        1,
+        { bindString(0, ContentInstaller.rejectedKey(ContentKind.DECK_ITEMS, "")) },
+    ) { c ->
+        val type = c.getString(2).orEmpty()
+        val version = c.getLong(5) ?: 0L
+        val content = when {
+            type != "media" && type != "list" -> DeckContent.READY
+            version == 0L -> DeckContent.NOT_PUBLISHED
+            (c.getLong(6) ?: 0L) >= version -> DeckContent.READY
+            c.getLong(7) == 1L -> DeckContent.FAILED
+            else -> DeckContent.DOWNLOADING
+        }
+        Row(c.getString(0).orEmpty(), c.getString(1).orEmpty(), type, c.getLong(3) == 1L, c.getString(4), content)
+    }
 
     /** Live cards of the live notes the deck's items name (merge losers resolve to the survivor, as the loader does). */
     private fun totalCards(deckId: String): Int = query(

@@ -13,6 +13,10 @@
     <string name="decks_study">Study this deck</string>
     <string name="decks_words">Words</string>
     <string name="decks_words_empty">No words in this deck on this device.</string>
+    <string name="decks_content_downloading">Downloading…</string>
+    <string name="decks_content_failed">Couldn\'t download deck contents</string>
+    <string name="decks_content_not_ready">Not ready yet</string>
+    <string name="decks_content_retry">Retry</string>
     <string name="decks_more">Show more</string>
     <string name="decks_smart_note">Smart decks are matched by their query on the server; counts here may be empty.</string>
     <string name="decks_empty_title">No decks yet</string>
