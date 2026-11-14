@@ -10,6 +10,8 @@ WORKDIR /src
 COPY --from=core /src/core/build/npm/core core/build/npm/core
 COPY assets assets
 COPY clients/typescript clients/typescript
+# vite.config.ts imports mock/demo-api.ts, which reads fixtures/demo at config load (build stage only).
+COPY fixtures/demo fixtures/demo
 COPY web web
 WORKDIR /src/web
 # Same version as the API image (KOTOBAYA_VERSION); exposed to the SPA as import.meta.env.VITE_APP_VERSION.
