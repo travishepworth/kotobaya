@@ -63,7 +63,6 @@ import kotobaya.android.review.ui.LocalCardContent
 import kotobaya.android.review.ui.LocalReviewExit
 import kotobaya.android.review.ui.ReviewScreen
 import kotobaya.android.search.SearchIntents
-import kotobaya.android.search.SearchMode
 import kotobaya.android.search.SearchUiState
 import kotobaya.android.search.SearchViewModel
 import kotobaya.android.search.ui.SearchScreen
@@ -158,7 +157,7 @@ object DemoScreens {
         )
         add(
             screen("search-cards", Tab.SEARCH) {
-                val vm = rememberVm { SearchViewModel(DemoSearchPort(data), now).apply { setMode(SearchMode.CARDS); search() } }
+                val vm = rememberVm { SearchViewModel(DemoSearchPort(data), now).apply { setQuery("is:due"); search() } }
                 val s by vm.state.collectAsState()
                 SearchScreen(s, vm)
             },
@@ -176,7 +175,7 @@ object DemoScreens {
             add(
                 screen("note-detail", Tab.SEARCH) {
                     val vm = rememberVm {
-                        SearchViewModel(DemoSearchPort(data), now).apply { setMode(SearchMode.CARDS); search(); openNote(noEntryNote) }
+                        SearchViewModel(DemoSearchPort(data), now).apply { setQuery("is:due"); search(); openNote(noEntryNote) }
                     }
                     val s by vm.state.collectAsState()
                     SearchScreen(s, vm)

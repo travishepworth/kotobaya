@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="search_hint_words">Word, kana, romaji or English</string>
-    <string name="search_hint_cards">Card search, e.g. deck:Frieren is:due lapses&gt;3</string>
-    <string name="search_mode_words">Dictionary</string>
-    <string name="search_mode_cards">My cards</string>
+    <string name="search_hint">Word, kana, romaji, English, or e.g. is:due lapses&gt;3</string>
+    <string name="search_in_my_cards">In my cards</string>
+    <string name="search_your_notes">Your notes</string>
     <string name="search_more">Show more</string>
     <string name="search_no_results">Nothing found.</string>
     <string name="search_from_server">Results from the server.</string>
@@ -42,10 +41,8 @@
     <string name="search_clear">Clear search</string>
     <string name="search_pick_title">Pick a result</string>
     <string name="search_pick_body">Its meanings, kanji and your cards show here.</string>
-    <string name="search_idle_words_title">Look up a word</string>
-    <string name="search_idle_words_body">Kanji, kana, romaji and English all work.</string>
-    <string name="search_idle_cards_title">Search your cards</string>
-    <string name="search_idle_cards_body">Type words, or use the query language.</string>
+    <string name="search_idle_title">Search words and your cards</string>
+    <string name="search_idle_body">Kanji, kana, romaji and English all work. Use the query language, like is:due, to list cards.</string>
     <string name="search_retry">Try again</string>
     <string name="search_no_results_words">Check the spelling, or try kana, romaji or an English word.</string>
     <string name="search_no_results_cards">Try fewer conditions, or check the deck name.</string>

@@ -31,6 +31,9 @@ data class CardHit(
     val suspended: Boolean,
     val entrySeq: Long?,
     val title: String,
+    /** The note's `reading` / `meaning` fields, else the dictionary's (see [withLabels]); never a placeholder. */
+    val reading: String = "",
+    val meaning: String = "",
 )
 
 sealed interface CardSearchOutcome {
@@ -52,6 +55,21 @@ internal fun noteTitle(fieldsJson: String): String {
     val preferred = text(EXPRESSION_FIELD)
     if (preferred.isNotEmpty()) return preferred
     return fields.keys.sorted().map(::text).firstOrNull { it.isNotEmpty() }.orEmpty()
+}
+
+private fun fieldText(fieldsJson: String, key: String): String {
+    val fields = (DefaultCanonicalJson.decode(fieldsJson).value as? JsonObject)?.members.orEmpty()
+    return (fields[key] as? JsonString)?.value.orEmpty().replace(Regex("<[^>]*>"), "").trim()
+}
+
+/** Fills what the note's fields leave empty (title, reading, meaning) from the dictionary entry the note links to. */
+internal fun CardHit.withLabels(labels: Map<Long, EntryLabel>): CardHit {
+    val l = entrySeq?.let(labels::get) ?: return this
+    return copy(
+        title = title.ifEmpty { l.headword },
+        reading = reading.ifEmpty { l.reading },
+        meaning = meaning.ifEmpty { l.gloss },
+    )
 }
 
 /**
@@ -131,6 +149,7 @@ class LocalCardSearch(
                 val hit = CardHit(
                     c.getString(0)!!, c.getString(1)!!, c.getString(2)!!, c.getString(3)!!, (c.getLong(4) ?: 0L) != 0L,
                     c.getLong(6), noteTitle(c.getString(7).orEmpty()),
+                    fieldText(c.getString(7).orEmpty(), "reading"), fieldText(c.getString(7).orEmpty(), "meaning"),
                 )
                 out += Triple(c.getLong(5) ?: 0L, hit.cardId, hit)
             }
@@ -151,6 +170,8 @@ class ApiCardSearch(private val api: ApiClient) {
                 c.getString("id"), c.getString("note_id"), c.getString("kind"), c.getString("state"),
                 c.optBoolean("suspended"), note?.takeIf { !it.isNull("entry_seq") }?.getLong("entry_seq"),
                 note?.optJSONObject("fields")?.toString()?.let(::noteTitle).orEmpty(),
+                note?.optJSONObject("fields")?.toString()?.let { fieldText(it, "reading") }.orEmpty(),
+                note?.optJSONObject("fields")?.toString()?.let { fieldText(it, "meaning") }.orEmpty(),
             )
         }
         CardSearchOutcome.Results(hits, fromServer = true)

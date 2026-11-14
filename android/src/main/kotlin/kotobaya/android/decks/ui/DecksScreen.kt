@@ -253,6 +253,7 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                             if (i > 0) KbDivider(inset = 16.dp)
                             KbListRow(
                                 w.label,
+                                supporting = w.detail.ifEmpty { null },
                                 titleStyle = KbTheme.type.jpBody.copy(lineHeight = KbTheme.type.titleSm.lineHeight).ja(),
                                 titleMaxLines = 2,
                                 trailing = w.entrySeq?.let { seq -> { KbIconButton(KbIcons.Book, T(R.string.dict_open), { DictJump.openWord(seq) }) } },

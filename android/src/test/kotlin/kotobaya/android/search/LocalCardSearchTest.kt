@@ -59,6 +59,7 @@ class LocalCardSearchTest {
         val hit = (search.search("entry:200") as CardSearchOutcome.Results).hits.single()
         assertEquals(200L, hit.entrySeq)
         assertEquals("飲む", hit.title)
+        assertEquals("", hit.reading) // no field: empty, never a placeholder
         assertTrue(hit.suspended)
     }
 

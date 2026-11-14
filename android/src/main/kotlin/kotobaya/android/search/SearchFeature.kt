@@ -1,6 +1,8 @@
 package kotobaya.android.search
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,13 +31,16 @@ class CardSearchBackend(
     private val local: LocalCardSearch,
     private val remote: ApiCardSearch,
     private val replicaUsable: () -> Boolean,
+    private val labeler: EntryLabeler? = null,
 ) {
     suspend fun search(query: String): CardSearchOutcome {
-        if (replicaUsable()) {
-            val r = runCatching { local.search(query) }.getOrNull()
-            if (r != null) return r
-        }
-        return remote.search(query)
+        val raw = run {
+            if (replicaUsable()) runCatching { local.search(query) }.getOrNull() else null
+        } ?: remote.search(query)
+        val results = raw as? CardSearchOutcome.Results ?: return raw
+        val l = labeler ?: return raw
+        val labels = withContext(Dispatchers.IO) { l.labels(results.hits.mapNotNull { it.entrySeq }) }
+        return results.copy(hits = results.hits.map { it.withLabels(labels) })
     }
 }
 
@@ -56,9 +61,16 @@ private val searchModule = module {
             LocalCardSearch(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), dictionary = get<InstalledDictionary>()),
             ApiCardSearch(get<ApiClient>(named("searchApi"))),
             usable,
+            get<InstalledDictionary>().asLabeler(),
         )
     }
-    single<SearchPort> { AppSearchPort(get(), get(), get()) }
+    single<SearchPort> {
+        val koin = getKoin()
+        AppSearchPort(
+            get(), get(), get(),
+            MyCardsLookup(get<SqlDriver>(named("syncAppDriver"))) { koin.getOrNull<SyncBootstrap>()?.ready?.isCompleted == true },
+        )
+    }
     single {
         val koin = getKoin()
         WordRepository(
@@ -85,7 +97,6 @@ private fun SearchRoute() {
         when (val t = jump) {
             is DictTarget.Word -> vm.openWord(t.seq)
             is DictTarget.Kanji -> {
-                vm.setMode(SearchMode.WORDS)
                 vm.setQuery(t.literal)
                 vm.search()
             }

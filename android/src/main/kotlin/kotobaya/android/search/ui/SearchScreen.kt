@@ -24,9 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.i18n.T
+import kotobaya.android.search.CardHit
 import kotobaya.android.search.SearchDetail
 import kotobaya.android.search.SearchIntents
-import kotobaya.android.search.SearchMode
 import kotobaya.android.search.SearchResults
 import kotobaya.android.search.SearchUiState
 import kotobaya.android.ui.components.KbBanner
@@ -38,7 +38,6 @@ import kotobaya.android.ui.components.KbEmptyTone
 import kotobaya.android.ui.components.KbIcons
 import kotobaya.android.ui.components.KbListRow
 import kotobaya.android.ui.components.KbSearchField
-import kotobaya.android.ui.components.KbSegmented
 import kotobaya.android.ui.components.KbSkeletonRows
 import kotobaya.android.ui.components.KbStateChip
 import kotobaya.android.ui.components.KbSuggestionChip
@@ -96,7 +95,6 @@ private fun Detail(open: SearchDetail, intents: SearchIntents, showBack: Boolean
     when (open) {
         is SearchDetail.Word -> WordDetailScreen(open.load, onBack = onBack, onKanji = { k ->
             intents.closeDetail()
-            intents.setMode(SearchMode.WORDS)
             intents.setQuery(k)
             intents.search()
         })
@@ -108,22 +106,15 @@ private fun Detail(open: SearchDetail, intents: SearchIntents, showBack: Boolean
 @Composable
 private fun ResultsPane(state: SearchUiState, intents: SearchIntents) {
     val c = KbTheme.colors
-    val mode = state.mode
     val selected = (state.detail as? SearchDetail.Word)?.seq
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             Column(Modifier.padding(horizontal = 16.dp).padding(top = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(T(R.string.nav_search), style = KbTheme.type.headline, color = c.text)
-                KbSegmented(
-                    listOf(SearchMode.WORDS to T(R.string.search_mode_words), SearchMode.CARDS to T(R.string.search_mode_cards)),
-                    selected = mode,
-                    onSelect = intents::setMode,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 KbSearchField(
                     state.query,
                     intents::setQuery,
-                    label = T(if (mode == SearchMode.WORDS) R.string.search_hint_words else R.string.search_hint_cards),
+                    label = T(R.string.search_hint),
                     clearLabel = T(R.string.search_clear),
                     onSearch = intents::search,
                 )
@@ -133,13 +124,13 @@ private fun ResultsPane(state: SearchUiState, intents: SearchIntents) {
             SearchResults.Idle -> item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     KbEmptyState(
-                        T(if (mode == SearchMode.WORDS) R.string.search_idle_words_title else R.string.search_idle_cards_title),
-                        body = T(if (mode == SearchMode.WORDS) R.string.search_idle_words_body else R.string.search_idle_cards_body),
-                        icon = if (mode == SearchMode.WORDS) KbIcons.Book else KbIcons.Cards,
+                        T(R.string.search_idle_title),
+                        body = T(R.string.search_idle_body),
+                        icon = KbIcons.Search,
                     )
                     FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                        (if (mode == SearchMode.WORDS) WORD_EXAMPLES else CARD_EXAMPLES).forEach { ex ->
-                            KbSuggestionChip(ex, { intents.setQuery(ex); intents.search() }, japanese = mode == SearchMode.WORDS)
+                        (WORD_EXAMPLES + CARD_EXAMPLES).forEach { ex ->
+                            KbSuggestionChip(ex, { intents.setQuery(ex); intents.search() }, japanese = ex in WORD_EXAMPLES)
                         }
                     }
                 }
@@ -160,26 +151,45 @@ private fun ResultsPane(state: SearchUiState, intents: SearchIntents) {
                     }
                 }
             }
-            is SearchResults.Words -> {
-                if (s.items.isEmpty()) {
+            is SearchResults.Merged -> {
+                if (s.words.isEmpty() && s.notes.isEmpty()) {
                     item { KbEmptyState(T(R.string.search_no_results), body = T(R.string.search_no_results_words), icon = KbIcons.Search) }
                 }
-                itemsIndexed(s.items, key = { _, w -> w.seq }) { i, w ->
+                itemsIndexed(s.words, key = { _, w -> "w${w.hit.seq}" }) { i, row ->
+                    val w = row.hit
                     if (i > 0) KbDivider(inset = 16.dp)
                     KbListRow(
                         title = w.headword,
                         titleStyle = jaTitle(),
                         supporting = listOf(w.reading, w.gloss).filter { it.isNotBlank() }.joinToString(" · "),
-                        trailing = if (w.status != "new") {
-                            { KbStateChip(wordStatusTone(w.status), T(statusRes(w.status))) }
-                        } else {
-                            null
+                        trailing = {
+                            Column(horizontalAlignment = Alignment.End) {
+                                if (row.mine != null) {
+                                    KbStateChip(wordStatusTone(w.status), T(R.string.search_in_my_cards))
+                                } else if (w.status != "new") {
+                                    KbStateChip(wordStatusTone(w.status), T(statusRes(w.status)))
+                                }
+                                val decks = row.mine?.deckNames.orEmpty()
+                                if (decks.isNotEmpty()) Text(decks.joinToString(", "), style = KbTheme.type.bodySm, color = c.textMuted, maxLines = 1)
+                            }
                         },
                         onClick = { intents.openWord(w.seq) },
                         selected = w.seq == selected,
                     )
                 }
                 if (s.next != null) item { MoreButton(intents::moreWords) }
+                if (s.notes.isNotEmpty()) {
+                    item {
+                        Text(
+                            T(R.string.search_your_notes), style = KbTheme.type.label, color = c.textMuted,
+                            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 4.dp),
+                        )
+                    }
+                    itemsIndexed(s.notes, key = { _, n -> "n${n.noteId}" }) { i, hit ->
+                        if (i > 0) KbDivider(inset = 16.dp)
+                        CardRow(hit, intents)
+                    }
+                }
             }
             is SearchResults.Cards -> {
                 if (s.fromServer) item { KbBanner(T(R.string.search_from_server), Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
@@ -188,21 +198,27 @@ private fun ResultsPane(state: SearchUiState, intents: SearchIntents) {
                 }
                 itemsIndexed(s.hits.take(s.shown), key = { _, c -> c.cardId }) { i, hit ->
                     if (i > 0) KbDivider(inset = 16.dp)
-                    KbListRow(
-                        title = hit.title.ifEmpty { hit.kind },
-                        titleStyle = jaTitle(),
-                        supporting = hit.kind,
-                        trailing = { KbStateChip(cardStateOf(hit.state, hit.suspended), if (hit.suspended) T(R.string.search_card_suspended) else T(cardStateRes(hit.state))) },
-                        onClick = {
-                            val seq = hit.entrySeq
-                            if (seq != null) intents.openWord(seq) else intents.openNote(hit.noteId)
-                        },
-                    )
+                    CardRow(hit, intents)
                 }
                 if (s.hits.size > s.shown) item { MoreButton(intents::moreCards) }
             }
         }
     }
+}
+
+/** A card result: its word, then reading and meaning (never the card kind). */
+@Composable
+private fun CardRow(hit: CardHit, intents: SearchIntents) {
+    KbListRow(
+        title = hit.title,
+        titleStyle = jaTitle(),
+        supporting = listOf(hit.reading, hit.meaning).filter { it.isNotBlank() }.joinToString(" · "),
+        trailing = { KbStateChip(cardStateOf(hit.state, hit.suspended), if (hit.suspended) T(R.string.search_card_suspended) else T(cardStateRes(hit.state))) },
+        onClick = {
+            val seq = hit.entrySeq
+            if (seq != null) intents.openWord(seq) else intents.openNote(hit.noteId)
+        },
+    )
 }
 
 @Composable

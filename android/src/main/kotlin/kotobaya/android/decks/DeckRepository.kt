@@ -7,6 +7,7 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import kotobaya.android.queue.LoadedQueue
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.QueueCounts
+import kotobaya.android.search.EntryLabeler
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.queue.DefaultQueueBuilder
@@ -23,8 +24,11 @@ data class DeckSummary(
     val totalCards: Int,
 )
 
-/** A word of a deck: [label] is the note's expression when a note exists on this device, else the item key. */
-data class DeckWord(val itemKey: String, val label: String, val entrySeq: Long? = null)
+/**
+ * A word of a deck. [label] is, in order: the note's expression, the dictionary headword, the item key (last resort).
+ * [detail] is the reading and first gloss (the note's fields, else the dictionary's).
+ */
+data class DeckWord(val itemKey: String, val label: String, val entrySeq: Long? = null, val detail: String = "")
 
 /**
  * Read-only view of decks over the local replica. Counts come from [LocalQueueLoader.load] with the deck filter,
@@ -49,7 +53,12 @@ interface DeckSource {
 /** [decks] with [queue], the counts of the unfiltered queue built in the same load. */
 data class DecksOverview(val decks: List<DeckSummary>, val queue: QueueCounts)
 
-class DeckRepository(private val driver: SqlDriver, private val loader: LocalQueueLoader) : DeckSource {
+class DeckRepository(
+    private val driver: SqlDriver,
+    private val loader: LocalQueueLoader,
+    /** The offline dictionary, for words whose note has no `expression` (or no note on this device). */
+    private val labeler: EntryLabeler? = null,
+) : DeckSource {
     private class Row(val id: String, val name: String, val type: String, val enabled: Boolean, val query: String?)
 
     override fun decks(): List<DeckSummary> = overview().decks
@@ -69,9 +78,18 @@ class DeckRepository(private val driver: SqlDriver, private val loader: LocalQue
             "FROM deck_item di WHERE di.deck_id = ? AND di.deleted_at IS NULL ORDER BY di.position, di.item_key LIMIT ? OFFSET ?",
         3,
         { bindString(0, deckId); bindLong(1, limit.toLong()); bindLong(2, offset.toLong()) },
-    ) { c ->
-        val key = c.getString(0).orEmpty()
-        DeckWord(key, expressionOf(c.getString(2)) ?: key, c.getLong(1))
+    ) { c -> Triple(c.getString(0).orEmpty(), c.getLong(1), c.getString(2)) }.let(::labelled)
+
+    private fun labelled(rows: List<Triple<String, Long?, String?>>): List<DeckWord> {
+        val missing = rows.filter { (_, seq, fields) -> seq != null && (fields == null || fieldOf(fields, "expression") == null) }
+        val labels = if (missing.isEmpty()) emptyMap() else runCatching { labeler?.labels(missing.mapNotNull { it.second }) }.getOrNull().orEmpty()
+        return rows.map { (key, seq, fields) ->
+            val l = seq?.let(labels::get)
+            val expression = fields?.let { fieldOf(it, "expression") }
+            val reading = fields?.let { fieldOf(it, "reading") } ?: l?.reading.orEmpty()
+            val meaning = fields?.let { fieldOf(it, "meaning") } ?: l?.gloss.orEmpty()
+            DeckWord(key, expression ?: l?.headword?.takeIf { it.isNotEmpty() } ?: key, seq, listOf(reading, meaning).filter { it.isNotBlank() }.joinToString(" · "))
+        }
     }
 
     /**
@@ -112,10 +130,9 @@ class DeckRepository(private val driver: SqlDriver, private val loader: LocalQue
         { bindString(0, deckId); bindString(1, deckId) },
     ) { c -> (c.getLong(0) ?: 0L).toInt() }.singleOrNull() ?: 0
 
-    private fun expressionOf(fields: String?): String? {
-        if (fields == null) return null
-        val v = (DefaultCanonicalJson.decode(fields).value as? JsonObject)?.members?.get("expression") as? JsonString
-        return v?.value?.takeIf { it.isNotEmpty() }?.replace(Regex("<[^>]*>"), "")
+    private fun fieldOf(fields: String, key: String): String? {
+        val v = (DefaultCanonicalJson.decode(fields).value as? JsonObject)?.members?.get(key) as? JsonString
+        return v?.value?.replace(Regex("<[^>]*>"), "")?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun <T> query(sql: String, params: Int, bind: SqlPreparedStatement.() -> Unit, map: (SqlCursor) -> T): List<T> =

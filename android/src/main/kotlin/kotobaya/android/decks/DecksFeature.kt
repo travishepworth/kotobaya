@@ -8,6 +8,8 @@ import app.cash.sqldelight.db.SqlDriver
 import kotobaya.android.R
 import kotobaya.android.decks.ui.DecksScreen
 import kotobaya.android.di.FeatureEntry
+import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.search.asLabeler
 import kotobaya.android.nav.NavRoute
 import kotobaya.android.nav.Routes
 import kotobaya.android.queue.LocalQueueLoader
@@ -21,7 +23,7 @@ import org.koin.dsl.module
 val decksFeature = FeatureEntry(
     id = "decks",
     module = module {
-        factory<DeckSource> { DeckRepository(get<SqlDriver>(named("syncAppDriver")), get<LocalQueueLoader>()) }
+        factory<DeckSource> { DeckRepository(get<SqlDriver>(named("syncAppDriver")), get<LocalQueueLoader>(), get<InstalledDictionary>().asLabeler()) }
     },
     routes = listOf(NavRoute(Routes.DECKS, R.string.nav_decks, topLevel = true) { DecksRoute() }),
 )
