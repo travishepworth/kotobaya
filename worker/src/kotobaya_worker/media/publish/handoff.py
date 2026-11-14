@@ -256,11 +256,14 @@ def publish(
     queued_timeout: float = DEFAULT_QUEUED_TIMEOUT,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
+    upload_progress: float | None = None,
 ) -> JobResultMedia:
     """One publish of ``req`` for the job ``ctx`` (the parent). Raises ``StaleBase`` / ``PublishFailed``."""
     done = store.succeeded_result(ctx.job_id)  # step 1: an earlier attempt got that far
     if done is not None:
         return JobResultMedia.from_json(done)
+    if upload_progress is not None:
+        ctx.progress(upload_progress, "uploading snapshots")
     content = upload_snapshot(write_content(req.content), objects, blobs)
     deck = upload_snapshot(write_deck_items(req.deck_items), objects, blobs)
     ctx.progress(PROGRESS_CAP, "publishing")

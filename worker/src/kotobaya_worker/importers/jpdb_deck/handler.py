@@ -99,6 +99,12 @@ def page_progress(
     return on_page
 
 
+# Progress bands after the fetch (0..0.5): map/merge, occurrences, snapshot upload, then the
+# kit's 0.9 "publishing" (waiting on the server's media-publish child, which owns its own progress).
+STAGE_MAP = 0.5
+STAGE_OCCURRENCES = 0.65
+STAGE_UPLOAD = 0.8
+
 SourceFactory = Callable[[Context, bool], JpdbDeckSource]
 
 
@@ -224,7 +230,18 @@ def run_import(
     ctx.progress(0.0, "fetching deck")
     deck: DeckVocabulary = source.fetch_deck(job.deck_ref or job.jpdb_id)
     ctx.check_cancelled()
-    ctx.progress(0.5, "mapping")
+    if not deck.words:
+        # A jpdb deck is never empty: a scrape that found no rows (error/login/overview page, a
+        # changed layout) must fail loudly, not publish an empty media.
+        raise RuntimeError(
+            f"jpdb deck {job.jpdb_id}: fetched 0 vocabulary rows "
+            f"({deck.raw_rows} raw, {len(deck.skipped)} skipped); nothing published"
+        )
+    log.info(
+        "stage fetch done: %d words, %d skipped rows (of %d rows)",
+        len(deck.words), len(deck.skipped), deck.raw_rows,
+    )  # fmt: skip
+    ctx.progress(STAGE_MAP, "mapping words to dictionary entries")
     title = (job.title or deck.title or job.jpdb_id).strip() or job.jpdb_id
     vids = sorted({w.vid for w in deck.words if w.vid > 0})
     planned: list[DeckPlan] = []  # the last one is what was published
@@ -239,9 +256,20 @@ def run_import(
         existing = base_reader.read(job.media_id)
         plan = plan_deck(deck, repo.corrections(vids), ref)
         planned.append(plan)
+        st = plan.stats
+        log.info(
+            "stage map/merge done: %d rows -> %d entries, %d merged, %d unmapped (%d ignored), "
+            "%d skipped",
+            st.fetched, st.merged_entries, st.merged, st.unmapped, st.ignored, st.skipped,
+        )  # fmt: skip
+        ctx.progress(STAGE_OCCURRENCES, "writing occurrences")
         content, deck_items = build_archives(
             job, plan, title, existing, repo.entry_pos(list(plan.entries))
         )
+        log.info(
+            "stage occurrences done: %d occurrences, %d tokens (%d unmapped)",
+            len(content.occurrences), plan.token_count, plan.unmapped_token_count,
+        )  # fmt: skip
         base = existing.content_version
         create = (
             CreateSpec(
@@ -264,6 +292,7 @@ def run_import(
             jpdb=jpdb_payload(job, plan),
         )
 
+    publish_kw.setdefault("upload_progress", STAGE_UPLOAD)
     result = publish_replanning(
         ctx, plan_request, store=store, objects=objects, blobs=blobs, **publish_kw
     )
@@ -281,6 +310,7 @@ def log_deck_summary(
         KIND,
         inputs={"rows_fetched": st.fetched if st else words},
         outputs={"entries": st.merged_entries if st else int(result.get("unique_entries", 0))},
+        merged=st.merged if st else 0,
         dropped={
             "unmapped": (st.unmapped - st.ignored) if st else 0,
             "ignored": st.ignored if st else 0,

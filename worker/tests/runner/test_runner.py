@@ -327,3 +327,23 @@ def test_stop_flag_budget_releases_uncooperative_handler(db_url: str) -> None:
     row = _row(db_url, jid)
     assert (row["status"], row["attempts"], row["locked_by"]) == ("queued", 0, None)
     r.close()
+
+
+def test_release_refunds_attempt_only_three_times(db_url: str) -> None:
+    (jid,) = _insert(db_url, "tts", max_attempts=10)
+    reg = Registry()
+
+    def stop_now(ctx: JobContext) -> None:
+        ctx.check_stop()
+
+    reg.register("tts", stop_now)
+    seen = []
+    for _ in range(5):
+        r = Runner(_cfg(db_url), reg)
+        r.stop_event.set()
+        r.run_once()
+        r.close()
+        row = _row(db_url, jid)
+        seen.append((row["status"], row["attempts"]))
+    # attempts: refunded (0) three times, then each release keeps its attempt
+    assert seen == [("queued", 0)] * 3 + [("queued", 1), ("queued", 2)]

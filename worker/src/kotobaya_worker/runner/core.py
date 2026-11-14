@@ -49,6 +49,18 @@ API_JOB_KINDS: frozenset[str] = frozenset(
 )
 
 _COLUMNS = "id, kind, payload, attempts, max_attempts"
+# A SIGTERM release refunds the attempt, at most MAX_REFUNDS times per job (counted in
+# payload._releases): a job that itself makes the worker restart must not loop forever.
+MAX_REFUNDS = 3
+_RELEASE_SQL = (
+    "update app.job set status = 'queued', "
+    "attempts = case when coalesce((payload->>'_releases')::int, 0) < %s "
+    "then greatest(attempts - 1, 0) else attempts end, "
+    "payload = jsonb_set(payload, '{_releases}', "
+    "to_jsonb(coalesce((payload->>'_releases')::int, 0) + 1)), "
+    "locked_by = null, heartbeat_at = null, run_after = now(), progress_message = null "
+    "where id = %s and status = 'running' and locked_by = %s"
+)
 
 
 class JobCancelled(Exception):
@@ -302,10 +314,8 @@ class Runner:
         """Back to queued, attempt not consumed, lock cleared. Guarded like every post-claim write."""
         with self.main.transaction():
             cur = self.main.execute(
-                "update app.job set status = 'queued', attempts = greatest(attempts - 1, 0), "
-                "locked_by = null, heartbeat_at = null, run_after = now(), progress_message = null "
-                "where id = %s and status = 'running' and locked_by = %s",
-                (job_id, self.config.worker_id),
+                _RELEASE_SQL,
+                (MAX_REFUNDS, job_id, self.config.worker_id),
             )
             if cur.rowcount:
                 _hint(self.main, job_id)
@@ -326,11 +336,8 @@ class Runner:
                     try:
                         with self._connect() as c:
                             cur = c.execute(
-                                "update app.job set status = 'queued', "
-                                "attempts = greatest(attempts - 1, 0), locked_by = null, "
-                                "heartbeat_at = null, run_after = now(), progress_message = null "
-                                "where id = %s and status = 'running' and locked_by = %s",
-                                (job_id, self.config.worker_id),
+                                _RELEASE_SQL,
+                                (MAX_REFUNDS, job_id, self.config.worker_id),
                             )
                             if cur.rowcount:
                                 _hint(c, job_id)

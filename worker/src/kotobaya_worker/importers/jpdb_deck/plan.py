@@ -2,7 +2,8 @@
 
 A stored correction wins over the automatic mapper (``map_vocab``). Rows mapping to the same seq are merged
 (ADR-009: vid == JMdict seq, 260 vids repeat with different spellings): counts are summed, the best (lowest)
-global rank bucket is kept. ``mapped + unmapped + skipped == fetched`` always holds (``DeckStats.check``).
+global rank bucket is kept. ``mapped + unmapped + skipped == fetched`` and ``entries + merged + unmapped + skipped == fetched`` always hold
+(``DeckStats.check``).
 A row without an occurrence count counts once (the word is in the deck, so it occurs at least once).
 """
 
@@ -55,10 +56,14 @@ class DeckStats:
     ignored: int = 0  # subset of ``unmapped`` removed from the queue by an ``ignored`` correction
     skipped: int = 0  # rows without a usable vid (client-skipped or vid <= 0)
     merged_entries: int = 0  # distinct seqs
+    merged: int = 0  # mapped rows folded onto an entry another row already produced
 
     def check(self) -> None:
         if self.mapped + self.unmapped + self.skipped != self.fetched:
             raise AssertionError(f"row accounting broke: {self}")
+        # in = out + merged + dropped
+        if self.merged_entries + self.merged + self.unmapped + self.skipped != self.fetched:
+            raise AssertionError(f"merge accounting broke: {self}")
 
 
 @dataclass
@@ -139,6 +144,7 @@ def plan_deck(
         else:
             note(w.vid, w.spelling, w.reading, n, "unresolved", None)
     st.merged_entries = len(plan.entries)
+    st.merged = st.mapped - st.merged_entries
     plan.vocab = sorted(vocab.values(), key=lambda v: (-v.occurrence_count, v.jpdb_vid))
     st.check()
     return plan

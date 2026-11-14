@@ -10,6 +10,8 @@ import urllib.error
 import urllib.parse
 from collections.abc import Callable
 
+from kotobaya_worker.runner.core import JobCancelled, JobStopped
+
 from .fetch import CachedFetcher
 from .models import DeckVocabulary, DeckWord, SkippedRow
 
@@ -153,6 +155,8 @@ class PagesDeckSource:
         """Title from the first vocabulary-list page (never the bare deck URL, which 404s)."""
         try:
             return parse_title(self._f.get(self._first_url(jpdb_id), accept=has_entries))
+        except (JobStopped, JobCancelled):
+            raise  # a stop/cancel is not a title failure
         except Exception:  # noqa: BLE001  a title failure must never fail the job
             return None
 
@@ -181,14 +185,19 @@ class PagesDeckSource:
             first = not seen
             seen.add(url)
             try:
-                page = self._f.get(url, accept=has_entries if first else None)
+                # Every page must carry rows: a 0-row page is never cached (it would poison later
+                # imports) and never ends the walk quietly (the deck would be silently truncated).
+                page = self._f.get(url, accept=has_entries)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     raise RuntimeError(f"jpdb deck page not found (404): {url}") from e
                 raise
+            if not has_entries(page):
+                raise RuntimeError(
+                    f"jpdb deck page has 0 vocabulary rows: {url}"
+                    + ("" if first else " (a followed 'Next page' link; refusing a truncated deck)")
+                )
             if first:
-                if not has_entries(page):
-                    raise RuntimeError(f"jpdb deck page has 0 vocabulary rows: {url}")
                 out.title = parse_title(page) or jpdb_id
             words, skipped, raw = parse_vocab_list_html(page)
             out.words.extend(words)

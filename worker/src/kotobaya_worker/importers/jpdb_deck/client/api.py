@@ -7,6 +7,8 @@ import logging
 import os
 from typing import Any
 
+from kotobaya_worker.runner.core import JobCancelled, JobStopped
+
 from .fetch import CachedFetcher
 from .models import DeckVocabulary, DeckWord, JpdbDeckSource, SkippedRow
 from .pages import PagesDeckSource
@@ -92,6 +94,8 @@ class ApiDeckSource:
     def _try_title(self, jpdb_id: str) -> str | None:
         try:
             return self._fallback.fetch_title(jpdb_id)
+        except (JobStopped, JobCancelled):
+            raise
         except Exception:  # noqa: BLE001
             return None
 

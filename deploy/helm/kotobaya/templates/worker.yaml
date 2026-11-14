@@ -6,6 +6,8 @@ metadata:
   labels: {{- include "kotobaya.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.worker.replicas }}
+  strategy:
+    type: Recreate  # no old/new pod overlap on a job the old pod releases at SIGTERM
   selector:
     matchLabels: {{- include "kotobaya.selector" $sel | nindent 6 }}
   template:
