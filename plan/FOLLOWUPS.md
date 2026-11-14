@@ -420,3 +420,6 @@
 - OBS-1c-and: HttpSyncTransport reports api_failure on IOException even when offline (ApiClient checks isOnline) → skip offline.
 - OBS-1c (web+android): scrub removes quoted text only; unquoted non-ASCII user text (≤200 chars) can reach server logs → redact non-ASCII runs or allowlist exception types.
 - OBS-1c-and: DictFormsSearchTest cap comment self-contradictory.
+- (run 24) Worker is one serial runner: a 4-min dict-refresh or 30-min jpdb scrape blocks user imports/list-deck builds. Consider worker.replicas=2 (SKIP LOCKED claim is multi-runner safe; check memory) or a fast lane for interactive kinds. Also show "queued behind <kind>" in the web Jobs UI.
+- (run 24) jpdb scrape: no 429 handling (any non-404 HTTPError fails the job); add Retry-After backoff.
+- (run 24) API logs unknown-route 404s twice (same request_id, kotobaya.request). low.
