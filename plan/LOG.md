@@ -967,4 +967,5 @@
 2026-11-14T01:36:00Z OBS-1w2 HANDOFF DONE; CHECK_GREEN 862; MERGE 2d605df2 worker (low, no review)
 2026-11-14T01:40:00Z AND-POSTSYNC CHECK_GREEN after rebase; MERGE f48e2000 android
 2026-11-14T02:00:00Z OBS-1s REVIEW_APPROVE (5 minors → OBS-1s2 filed); rebased t/OBS-1s-c23 (DECISIONS ADR-024/025 conflict resolved), contracts+server checks running
-2026-11-14T02:20:00Z C-23+OBS-1s CHECK_GREEN contracts+server after rebase; MERGE 16787660 (C-23 9d5b15e0)
+2026-11-14T02:20:00Z C-23+OBS-1s CHECK_GREEN contracts+server after rebase (first ff attempt failed: main moved; cherry-picked)
+2026-11-14T02:24:00Z C-23+OBS-1s MERGE dc73808e (C-23 + OBS-1s logging + reportClientErrors handler)
