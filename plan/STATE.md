@@ -4,11 +4,11 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN24 in progress
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 24 in progress: 0.1.10 LIVE, working toward 0.1.11)
-LIVE: 0.1.10 from pin a58b9699 (helm rev 16, 02:29Z 11-14). dict-refresh release 2026.11.14.3 ok (5 vocab lists). Phone APK 0.1.10 installed (users 0 and 10). Phone app is ALWAYS Private Space = Android user 10 (`run-as com.ichi2.anki --user 10`); ignore user 0.
-Smoke token: ~/.config/kotobaya/smoke-token (never print). Smoke NOT yet run (waiting for worker to drain jpdb scrape job 01a1d7e5-9354..).
-0.1.11 scope: AND-PERF (todayReviews pool starvation, opus, high → needs reviewer), AND-WIDGET MERGED e328f8cc, WORKER-PROGRESS (scrape progress + SIGTERM release, sonnet med), + whatever the log sweep finds. Then build server images + APK (VERSION_CODE 111) from ONE pinned SHA, helm upgrade, install APK via adb if device attached (else HUMAN_CHECKS "plug in phone").
-Evidence: scratchpad/phone-logs/ (u10 DB copy, logcat). Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019/rel0110b.
+## RESUME HERE (run 24: releasing 0.1.11)
+LIVE: 0.1.10 (pin a58b9699, helm rev 16). Smoke on 0.1.10: 30 pass/0 fail. Phone app = Private Space (Android user 10).
+0.1.11 PIN 265f76a8, worktree scratchpad/rel0111. Contents: AND-PERF (todayReviews pool starvation, the "nothing loads" phone bug), AND-WIDGET, AND-STRICT, WORKER-PROGRESS, WORKER-EMPTY, SRV-404LOG — all MERGED.
+Steps: make test at pin → `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.11` in rel0111 → values.yaml tags 0.1.11 (re-hash dict sources) → helm upgrade from rel0111 → smoke (token ~/.config/kotobaya/smoke-token) → APK: VERSION_CODE=111 VERSION_NAME=0.1.11 debug ankidroid flavor, verify debug cert ec6b7f45…dbf6cd, ~/kotobaya-apk/; adb install -r if device attached else HUMAN_CHECKS.
+Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019/rel0110b.
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
