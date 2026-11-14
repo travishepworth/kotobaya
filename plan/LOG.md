@@ -989,3 +989,4 @@
 2026-11-14T02:38:00Z AND-0110 DONE 0.1.10 APK on phone (user 0 + user 10); 0.1.9 crash was todayReviews NPE (AND-POSTSYNC)
 2026-11-14T02:40:00Z AND-PERF DISPATCH writer-senior; phone: SQLite pool starved by todayReviews (30-116s on device)
 2026-11-14T02:40:00Z AND-WIDGET DISPATCH writer; Glance Row>10 children crash
+2026-11-14T02:41:55Z AND-WIDGET MERGE e328f8cc forecast row capped at 8 bars (Row>10 Glance crash)
