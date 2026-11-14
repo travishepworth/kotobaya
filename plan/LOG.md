@@ -1037,3 +1037,4 @@
 2026-11-14T22:49:38Z RELEASE 0.1.13 PIN 09c74c17 APK built ~/kotobaya-apk/kotobaya-0.1.13-debug.apk code 113 cert ec6b7f45 ok (AND-LABELS, AND-TAKO-PERF, AND-DECKCONTENT); server stays 0.1.11
 2026-11-14T23:44:49Z RELEASE 0.1.13 INSTALLED on phone; Fatal Twelve installed 10669 items; Takoboto send dup 4.0 s + insert 3.6 s (was 37.7 s) -> AND-TAKO-PERF2
 2026-11-14T23:44:49Z AND-TAKO-PERF2 DISPATCH writer-senior
+2026-11-14T23:45:32Z AND-REVIEW-SNAPPY DISPATCH writer-senior (user: reviews not instant)
