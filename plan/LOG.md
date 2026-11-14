@@ -919,3 +919,5 @@
 2026-11-14T00:27:23Z BUG-13 DISPATCH writer attempt 1 (open note bounce)
 2026-11-14T00:27:38Z UI-RUBY DISPATCH writer-light attempt 2 (fresh agent, same worktree; ticket amended)
 2026-11-14T00:28:59Z BUG-13 MERGE 860196f web (low; notes start() search() reset dropped deep-linked note)
+2026-11-14T00:29:45Z BUG-14 DIAGNOSED: web answerId reuse (dedup as retry) + core queue learn-ahead before due reviews; no data loss (no outbox)
+2026-11-14T00:29:45Z BUG-14a DISPATCH writer attempt 1; C-22 DISPATCH architect attempt 1
