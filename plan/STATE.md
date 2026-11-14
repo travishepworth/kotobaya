@@ -1,11 +1,13 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN26 in progress
+Updated: RUN26 end
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 26: CRITICAL AND-QUEUE — phone shows 0 due; server queue OK)
-Run 26: AND-QUEUE+AND-REVIEW-STALE MERGED; 0.1.12 APK built from 85a260fb but install HELD for AND-CARDHTML (empty data: URL in Review WebView) -> re-pin after. Orig: (Android local queue returns nothing; 299 due on phone DB; server /review/queue new10/learn1/rev183). Then release 0.1.12 (APK code 112; server only if touched), install via adb user 10, verify Review shows cards. 124 suspended learning cards = real data (server identical). Server study day is UTC (day_ends 04:00Z) vs user UTC+9 -> FOLLOWUP.
+## RESUME HERE (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
+Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).
+0.1.12 = APK only, pin b745fa53, ~/kotobaya-apk/kotobaya-0.1.12-debug.apk code 112 cert ec6b7f45 ok. Server stays 0.1.11 (helm rev 18). Worktree scratchpad/rel0112.
+NEXT: when adb device present -> cert check, adb install -r, verify Home/Review on user 10 (see HUMAN_CHECKS run 26). Then FOLLOWUPS (user-visible: ReviewActions emptyFronts dict, CardUnavailable wording, timezone default UTC).
 
 ## Previous (run 25: 0.1.11 live, QA clean)
 LIVE: 0.1.11 (pin 265f76a8, helm rev 18, worktree scratchpad/rel0111). JMdict re-pinned 1003f456… (kanjidic/krad unchanged). Smoke on 0.1.11: 30 pass/1 skip/0 fail, cleanup verified.

@@ -233,3 +233,10 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 ## 0.1.11 (run 25)
 - [x] 0.1.10 items above are done (deployed, APK installed, smoke token in use).
 - [ ] Phone: use Home/Review in the Private Space app for a minute; it should load at once (AND-PERF). The agent saw only an idle app.
+
+## Run 26 — install APK 0.1.12 (phone was unplugged; adb lost 51151FDAP002F1 mid-run)
+- APK: ~/kotobaya-apk/kotobaya-0.1.12-debug.apk (code 112, pin b745fa53, debug cert ec6b7f45…dbf6cd = phone's installed cert per memory; installed APK not re-pulled because device dropped).
+- Plug phone in, then: pull installed APK (`adb shell pm path --user 10 com.ichi2.anki`), confirm cert with `apksigner verify --print-certs`, then `adb install -r ~/kotobaya-apk/kotobaya-0.1.12-debug.apk` (updates user 0 and 10; never clear data).
+- Verify (Private Space): Home hero shows ~183 reviews (not "caught up"); Review tab shows a rendered card front (no Chromium "ERR_HTTP_RESPONSE_CODE_FAILURE" page, no blank expression); logcat (user-10 PID) free of KotobayaLoad card-failure lines.
+- Server unchanged (stays 0.1.11, helm rev 18): 0.1.12 is Android-only.
+- Known: study day rolls over at 04:00 UTC = 13:00 JST (scheduler.timezone default UTC) -> FOLLOWUPS.

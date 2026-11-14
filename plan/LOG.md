@@ -1018,3 +1018,7 @@
 2026-11-14T06:40:59Z AND-CARDHTML HANDOFF: intercept 403'd own data: main frame; ReviewBackend had no dict/kanji lookup (blank fronts)
 2026-11-14T06:41:07Z AND-CARDHTML CHECK_GREEN android (regression 4/4, payload 6/6)
 2026-11-14T06:43:16Z AND-CARDHTML REVIEW_APPROVE + MERGE f639d113 (5 minors -> FOLLOWUPS)
+2026-11-14T06:43:26Z RELEASE 0.1.12 RE-PIN b745fa53 (adds AND-CARDHTML; 85a260fb build never installed)
+2026-11-14T06:43:50Z RELEASE 0.1.12 APK built ~/kotobaya-apk/kotobaya-0.1.12-debug.apk code 112 cert ec6b7f45 ok; waiting for adb device
+2026-11-14T07:14:09Z RELEASE 0.1.12 INSTALL BLOCKED: no adb device for 40 min; HUMAN_CHECKS updated
+2026-11-14T07:14:09Z RUN26 END 3 merged (AND-QUEUE, AND-REVIEW-STALE, AND-CARDHTML); 0.1.12 APK ready, device verify pending
