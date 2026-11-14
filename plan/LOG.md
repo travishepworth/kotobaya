@@ -966,3 +966,4 @@
 2026-11-14T01:30:30Z BROWSE-1 RESOLVED by C-24 (scout: web listCards → server CardSearch Postgres compiler, no client filtering); live-verify after deploy
 2026-11-14T01:36:00Z OBS-1w2 HANDOFF DONE; CHECK_GREEN 862; MERGE 2d605df2 worker (low, no review)
 2026-11-14T01:40:00Z AND-POSTSYNC CHECK_GREEN after rebase; MERGE f48e2000 android
+2026-11-14T02:00:00Z OBS-1s REVIEW_APPROVE (5 minors → OBS-1s2 filed); rebased t/OBS-1s-c23 (DECISIONS ADR-024/025 conflict resolved), contracts+server checks running
