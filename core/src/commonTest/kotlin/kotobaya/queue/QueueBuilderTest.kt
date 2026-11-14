@@ -116,6 +116,52 @@ class QueueBuilderTest {
         assertEquals(NOW + 20 * 60_000L + 1, q.nextLearningDueAt)
     }
 
+    // ---- Learn-ahead (C-22, ADR-023) -----------------------------------------------------------
+
+    private fun relearning(n: Int, due: Long) = card(n, state = CardState.RELEARNING, due = due)
+
+    @Test
+    fun relearningDueInFifteenMinutesWaitsBehindDueReview() {
+        // Live 0.1.9 bug: a relearning card graded Hard (due now + 15 min) headed the queue again.
+        val q = build(input(listOf(relearning(1, NOW + 15 * 60_000L), review(2, past))))
+        assertEquals("R2 L1", q.shape())
+    }
+
+    @Test
+    fun relearningDueNowStillBeatsDueReviews() {
+        val q = build(input(listOf(review(2, past - HOUR), relearning(1, NOW), learning(3, past))))
+        assertEquals("L3 L1 R2", q.shape())
+    }
+
+    @Test
+    fun onlyFutureLearningCardLeftIsServedAsLearnAhead() {
+        val q = build(input(listOf(relearning(1, NOW + 15 * 60_000L))))
+        assertEquals("L1", q.shape())
+        assertNull(q.nextLearningDueAt)
+    }
+
+    @Test
+    fun learnAheadWaitsBehindNewCardsWithinLimitsToo() {
+        val c = listOf(learning(1, NOW + 60_000L), card(2), review(3, past), learning(4, past))
+        assertEquals("L4 R3 N2 L1", build(input(c)).shape())
+        // New budget used up: the learn-ahead card follows the reviews directly.
+        assertEquals("L4 R3 L1", build(input(c, limits = limits(newPerDay = 0))).shape())
+        // Reviews at their limit and no new budget: learn-ahead is served after the due learning card.
+        assertEquals("L4 L1", build(input(c, limits = limits(newPerDay = 0, reviewsPerDay = 0))).shape())
+    }
+
+    @Test
+    fun learnAheadCardsAreOrderedByDueThenIdAfterTheInterleavedPart() {
+        val c = listOf(learning(5, NOW + 2 * 60_000L), learning(4, NOW + 60_000L), learning(6, NOW + 60_000L), review(1, past), card(2))
+        assertEquals("R1 N2 L4 L6 L5", build(input(c)).shape())
+    }
+
+    @Test
+    fun nullDueLearningCardCountsAsDueNow() {
+        val q = build(input(listOf(review(2, past), card(1, state = CardState.LEARNING, due = null))))
+        assertEquals("L1 R2", q.shape())
+    }
+
     @Test
     fun nextLearningDueAtNullWhenNothingLaterToday() {
         assertNull(build(input(listOf(learning(1, past), learning(2, TOKYO_DAY.endMs)))).nextLearningDueAt)

@@ -29,7 +29,7 @@ import kotobaya.contracts.queue.ReviewQueue
  * `candidates` are queued at most once.
  *
  * Choices the contract leaves open: a null `dueAt` on a LEARNING/RELEARNING/REVIEW card sorts as
- * overdue (`Long.MIN_VALUE`) so the card is shown rather than lost; a membership naming a deck not
+ * overdue (`Long.MIN_VALUE`) so the card is shown rather than lost (a LEARNING one counts as due now); a membership naming a deck not
  * in [QueueInput.decks] is ignored for the home deck and counts as "not enabled" for the home
  * new-source; inside a deck, a card and a pending entry with equal `(position, itemKey)` order card
  * first; a pending entry whose `entrySeq` was already materialized from another deck is skipped.
@@ -119,14 +119,16 @@ public object DefaultQueueBuilder : QueueBuilder {
         fun run(): ReviewQueue {
             val eligible = input.candidates.filter { eligible(it) }
 
-            // Rule 2: learning.
+            // Rule 2: learning, split into due now (`dueAt <= now`) and learn-ahead (C-22, ADR-023).
             val learningAll = eligible.filter { it.state == CardState.LEARNING || it.state == CardState.RELEARNING }
             val horizon = input.now + limits.learnAheadMs
-            val learning = mutableListOf<QueueItem>()
+            val learningNow = mutableListOf<QueueItem>()
+            val learningAhead = mutableListOf<QueueItem>()
             for (c in learningAll.filter { due(it) <= horizon }.sortedWith(byDueThenId)) {
                 if (c.cardId in taken) continue
                 taken += c.cardId
-                learning += QueueItem(c.cardId, QueueItemKind.LEARNING, homeDeck(c.deckIds())?.id)
+                val item = QueueItem(c.cardId, QueueItemKind.LEARNING, homeDeck(c.deckIds())?.id)
+                if (due(c) <= input.now) learningNow += item else learningAhead += item
             }
             val nextLearningDueAt = learningAll
                 .mapNotNull { it.dueAt }
@@ -135,7 +137,7 @@ public object DefaultQueueBuilder : QueueBuilder {
 
             val reviews = buildReviews(eligible)
             val news = buildNew(eligible)
-            return ReviewQueue(learning + interleave(reviews, news.first), news.second, nextLearningDueAt)
+            return ReviewQueue(learningNow + interleave(reviews, news.first) + learningAhead, news.second, nextLearningDueAt)
         }
 
         // Rule 3.

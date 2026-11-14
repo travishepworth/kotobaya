@@ -159,7 +159,7 @@ public data class QueueLimits(
     public val newShownThisSession: Int,
     /** `scheduler.bury_siblings` (default true). */
     public val burySiblings: Boolean,
-    /** Learning cards due within this many ms are shown now (default 1 200 000 = 20 min). */
+    /** Learning cards due within this many ms may be shown early, after everything else (rules 2, 5; default 1 200 000 = 20 min). */
     public val learnAheadMs: Long,
 )
 
@@ -202,7 +202,7 @@ public data class QueueInput(
 
 /** Why an item is in the queue. */
 public enum class QueueItemKind {
-    /** LEARNING or RELEARNING card due now (within learn-ahead). */
+    /** LEARNING or RELEARNING card due now, or within learn-ahead (rule 2; learn-ahead ones are placed last, rule 5). */
     LEARNING,
 
     /** REVIEW card due today. */
@@ -247,6 +247,9 @@ public data class ReviewQueue(
  *    not buried.
  * 2. **Learning**: eligible LEARNING/RELEARNING cards with `dueAt <= now + learnAheadMs`, ordered
  *    by `(dueAt, cardId)`. Not limited. Those due later but before `day.endMs` set `nextLearningDueAt`.
+ *    They split into **due learning** (`dueAt <= now`) and **learn-ahead** (`now < dueAt <= now +
+ *    learnAheadMs`); rule 5 places the two parts differently (C-22, ADR-023). A null `dueAt` (should
+ *    not occur) counts as due learning, sorted first.
  * 3. **Reviews**: eligible REVIEW cards with `dueAt < day.endMs`, ordered by `(dueAt, cardId)`.
  *    The **home deck** of a card is the first of its membership decks in `(priority, id)` order
  *    (enabled or not); null without memberships. A card is taken iff the global remaining
@@ -297,10 +300,17 @@ public data class ReviewQueue(
  *    - **Breaking (C-8 attempt 2)** against T205's tests (`QueueBuilderTest.kt` add_kanji cases):
  *      add_kanji cards no longer count against the drawing deck, and a group that does not fit is
  *      not drawn in part.
- * 5. **Order**: learning items first; then reviews `R` and new `N` interleaved: if either is empty
- *    the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and position
- *    `i` (0-based within the interleaved part) holds a new card iff `(i + 1) % k == 0` and new
- *    cards remain, or reviews are exhausted.
+ * 5. **Order**: due learning items first; then reviews `R` and new `N` interleaved: if either is
+ *    empty the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and
+ *    position `i` (0-based within the interleaved part) holds a new card iff `(i + 1) % k == 0` and
+ *    new cards remain, or reviews are exhausted; then the learn-ahead items last. Because the UI
+ *    rebuilds after every answer, a learn-ahead card is shown only once no due learning card, no
+ *    review within the limits and no new card within the budget is left; it moves to the front by
+ *    itself once its `dueAt <= now` on a later build (Anki-like; C-22 — before C-22 every learning
+ *    card within learn-ahead came first, so a relearning card answered Hard, due in ~15 min,
+ *    reappeared at once ahead of every due review).
+ *    Example (`now` = N, learn-ahead 20 min): L1 due N+15 min, L2 due N−1 min, R3 due today, new
+ *    N4 → `L2 R3 N4 L1`. With only L1 → `L1` (served ahead of time).
  */
 public interface QueueBuilder {
     /** Builds the queue for [input]. */

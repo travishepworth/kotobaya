@@ -43,7 +43,12 @@ class QueuePropertyTest {
                 base = if (isKanji) NoteBaseType.KANJI else NoteBaseType.VOCAB,
                 created = r.nextLong(0, 10),
                 state = state,
-                due = if (state == CardState.NEW) null else NOW + r.nextLong(-30, 30) * HOUR,
+                due = when {
+                    state == CardState.NEW -> null
+                    // Minute-scale dues around now exercise the learn-ahead split (C-22).
+                    r.nextInt(3) == 0 -> NOW + r.nextLong(-30, 30) * 60_000L
+                    else -> NOW + r.nextLong(-30, 30) * HOUR
+                },
                 suspended = r.nextInt(10) == 0,
                 buriedUntil = if (r.nextInt(10) == 0) NOW + r.nextLong(-2, 2) else null,
                 override = if (r.nextInt(6) == 0) WordStatus.entries[r.nextInt(6)] else null,
@@ -128,6 +133,19 @@ class QueuePropertyTest {
                 q.items.count { it.kind == QueueItemKind.REVIEW } <= maxOf(0, i.limits.reviewsPerDay - i.today.count { it.countsAsReview }),
                 "review budget, seed $seed",
             )
+            // C-22: due learning first, then reviews/new, then learn-ahead learning.
+            val phases = q.items.map { item ->
+                val due = byId.getValue(item.cardId).dueAt
+                when {
+                    item.kind != QueueItemKind.LEARNING -> 1
+                    due == null || due <= i.now -> 0
+                    else -> {
+                        assertTrue(due <= i.now + i.limits.learnAheadMs, "learning beyond learn-ahead, seed $seed")
+                        2
+                    }
+                }
+            }
+            assertEquals(phases.sorted(), phases, "learning phase order, seed $seed")
             val notes = mutableSetOf<String>()
             for (item in q.items) {
                 val c = byId.getValue(item.cardId)
