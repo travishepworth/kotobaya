@@ -15,3 +15,8 @@
 
 ## Acceptance
 - [ ] A named test for each of 2, 3, 4 (and 1 if the code changes). make check MODULE=worker green.
+
+## Added from the JLPT-1a review (minors)
+6. dict_refresh.py:243: on the resume path, `_requeue_decks` only runs inside `if need_extra:`. Always call it (dedupe makes a repeat a no-op).
+7. vocab.py:603: `jlpt_provenance` compares only the n5 URL to decide default vs custom. Compare all five URL/sha pairs with JLPT_DEFAULT.
+8. decks/build.py:291: the unchanged path skips `ctx.progress(1.0)`.
