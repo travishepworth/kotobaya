@@ -40,6 +40,7 @@ class LoadGateTest {
         val loaders = List(4) { LocalQueueLoader(db, { NOW }, gate = gate) }
         concurrently(16) { i -> loaders[i % 4].load() }
         assertEquals(1, driver.maxInFlight.get())
+        assertEquals(0, gate.liveSlots(), "no queue retained once the loads are done")
         // all 16 arrive while the first build runs: that build and one more serve them
         assertTrue(driver.watchedRuns.get() <= 2, "builds: ${driver.watchedRuns.get()}")
     }
@@ -71,6 +72,34 @@ class LoadGateTest {
         val gate = LoadGate()
         assertTrue(runCatching { gate.run("k") { error("boom") } }.isFailure)
         assertEquals(1, gate.run("k") { 1 })
+    }
+
+    @Test
+    fun theGateRetainsNoResultOnceItsCallersLeft() {
+        val raw = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        val db = createAppDatabase(raw)
+        SyntheticReviews(cards = 50, historyRows = 300, todayRows = 30, dayStart = NOW - 3_600_000, now = NOW).insert(db, raw)
+        val gate = LoadGate()
+        val loader = LocalQueueLoader(db, { NOW }, gate = gate)
+        // a review session: one key per answer (newShownThisSession), plus a per-deck load
+        for (newShown in 0..20) loader.load(newShownThisSession = newShown)
+        loader.load(deckFilter = "d1")
+        assertEquals(0, gate.liveSlots())
+        assertTrue(runCatching { gate.run("k") { error("boom") } }.isFailure)
+        assertEquals(0, gate.liveSlots())
+    }
+
+    /** todayReviews pins `INDEXED BY review_log_replay_idx`: without this index (contract schema) the query throws. */
+    @Test
+    fun theReplayIndexTodayReviewsPinsExistsWithItsColumns() {
+        val raw = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createAppDatabase(raw)
+        val cols = raw.executeQuery(null, "SELECT name FROM pragma_index_info('review_log_replay_idx') ORDER BY seqno", { c ->
+            val out = ArrayList<String>()
+            while (c.next().value) out += c.getString(0).orEmpty()
+            app.cash.sqldelight.db.QueryResult.Value(out)
+        }, 0).value
+        assertEquals(listOf("card_id", "reviewed_at", "hlc", "id"), cols)
     }
 
     private companion object {

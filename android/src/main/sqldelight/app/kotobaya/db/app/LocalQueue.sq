@@ -46,6 +46,8 @@ WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL;
 -- members are the resolved card itself (if not merged away) and the cards merged into it. INDEXED BY pins the plan;
 -- without it Android's SQLite walked review_log_reviewed_idx backwards over the whole history for every row of today
 -- (minutes per call on 78k rows, all four pool connections busy). No row values, no COALESCE join on the lookup.
+-- The index is defined in contracts/db Learning.sq; if it is ever dropped or renamed this query throws (guarded by
+-- LoadGateTest.theReplayIndexTodayReviewsPinsExistsWithItsColumns).
 -- The subquery yields the previous row's manual_action ('' when NULL), NULL when there is none; it runs only for
 -- learning rows. Same result set as the pre-AND-PERF query (TodayReviewsQueryTest).
 todayReviews:
