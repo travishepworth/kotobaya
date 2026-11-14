@@ -1,6 +1,7 @@
 <script lang="ts">
 	// A dictionary entry, set for reading: headword ▸ reading + pitch ▸ status and actions ▸ senses / kanji / examples.
 	import Button from '../../lib/ui/Button.svelte';
+	import { noteHref } from '../../lib/state/noteLink';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import GrammarCapture from '../../lib/ui/GrammarCapture.svelte';
 	import PitchAccent from '../../lib/ui/PitchAccent.svelte';
@@ -59,7 +60,7 @@
 				<Button variant="tonal" icon="plus" loading={vm.adding} onclick={() => void vm.addNote(entry)}>{dx('dx.addNote')}</Button>
 			{:else}
 				<span class="in"><span class="dot" aria-hidden="true"></span>{dx('dx.inNotes')}</span>
-				<Button variant="quiet" href="/notes?note={entry.noteId}" iconEnd="chevronRight">{dx('dx.openNote')}</Button>
+				<Button variant="quiet" href={noteHref(entry.noteId)} iconEnd="chevronRight">{dx('dx.openNote')}</Button>
 			{/if}
 		</div>
 		<p class="tags">

@@ -5,6 +5,7 @@ import { PAGE_SIZE } from '../cards/model';
 import { noteTypesApi, notesApi } from '../notes/api';
 import { dictFieldValues } from '../notes/dict';
 import { HeadwordMap } from '../notes/headwords.svelte';
+import { withPinned } from './noteLink';
 import { tn } from '../notes/messages';
 import { pushToast } from '../toasts.svelte';
 import { DictRef, renderPreview, sortKinds, type CardSide, type Rendered } from './preview.svelte';
@@ -32,6 +33,8 @@ export class NotesPage {
 	private retryCursor: string | null = null;
 	readonly headwords = new HeadwordMap();
 	private generation = 0;
+	/** The deep-linked note, kept in the list across the initial page load (which would otherwise replace it). */
+	private pinned: Note | null = null;
 	private appliedFilter = { q: '', type: '' as NoteBaseType | '', tag: '' };
 
 	readonly active = $derived(this.notes.find((n) => n.id === this.activeId) ?? null);
@@ -47,7 +50,8 @@ export class NotesPage {
 			if (deepLink) {
 				try {
 					const n = await notesApi.getNote({ noteId: deepLink });
-					if (!this.notes.some((x) => x.id === n.id)) this.notes = [n, ...this.notes];
+					this.pinned = n;
+					this.notes = withPinned(this.notes, n);
 					this.activate(n);
 				} catch {
 					/* toast shown */
@@ -73,7 +77,7 @@ export class NotesPage {
 			});
 			if (gen !== this.generation) return;
 			this.loadFailed = false;
-			this.notes = reset ? res.items : [...this.notes, ...res.items];
+			this.notes = reset ? withPinned(res.items, this.pinned) : [...this.notes, ...res.items];
 			this.cursor = res.nextCursor;
 			void fetchHeadwords(
 				res.items.flatMap((n) => (n.entrySeq != null ? [n.entrySeq] : [])),
@@ -104,6 +108,7 @@ export class NotesPage {
 	search(): void {
 		this.appliedFilter = { q: this.draft.trim(), type: this.typeFilter, tag: this.tagFilter.trim() };
 		this.activeId = null;
+		this.pinned = null;
 		this.notes = [];
 		this.cursor = null;
 		void this.loadPage(true);

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '../../../lib/ui/Button.svelte';
+	import { noteHref } from '../../../lib/state/noteLink';
 	import Chip from '../../../lib/ui/Chip.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../../lib/ui/LoadError.svelte';
@@ -32,7 +33,7 @@
 	{:else}
 		<div class="rows">
 			{#each vm.cards as c (c.id)}
-				<ListRow title={c.note ? noteTitle(c.note) : c.noteId} titleLang="ja" supporting={c.kind} href="/notes?note={c.noteId}">
+				<ListRow title={c.note ? noteTitle(c.note) : c.noteId} titleLang="ja" supporting={c.kind} href={noteHref(c.noteId)}>
 					{#snippet trailing()}
 						<span class="lapses kb-num">{tg('st.lapses', { n: c.lapses })}</span>
 						{#if c.suspended}<Chip kind="state" state="suspended" label={tg('st.suspended')} />{/if}

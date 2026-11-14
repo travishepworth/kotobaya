@@ -2,6 +2,7 @@
 	// One card in the browser: the rendered card, its schedule, and a way into the note. Clicking a field
 	// region in the card opens that field's box in the note editor (FEAT-x).
 	import { goto } from '$app/navigation';
+	import { noteHref } from '../../lib/state/noteLink';
 	import Button from '../../lib/ui/Button.svelte';
 	import Chip from '../../lib/ui/Chip.svelte';
 	import type { CardState } from '../../lib/ui/kinds';
@@ -41,7 +42,7 @@
 		onkind={(k) => (s.kind = k)}
 		errorTitle={tc('cards.previewFailed', { detail: '' }).replace(/[:\s]+$/, '')}
 		{notice}
-		onfield={(key) => void goto(`/notes?note=${encodeURIComponent(card.noteId)}&field=${encodeURIComponent(key)}`)}
+		onfield={(key) => void goto(noteHref(card.noteId, key))}
 	/>
 
 	<section class="schedule" aria-labelledby="sched-h">
@@ -57,7 +58,7 @@
 		</dl>
 	</section>
 
-	<Button variant="outline" icon="edit" href="/notes?note={card.noteId}" full>{tb('br.editNote')}</Button>
+	<Button variant="outline" icon="edit" href={noteHref(card.noteId)} full>{tb('br.editNote')}</Button>
 </div>
 
 <style>
