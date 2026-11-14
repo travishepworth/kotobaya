@@ -976,3 +976,5 @@
 2026-11-14T01:32:59Z OBS-1c-web MERGE 33e1b7d8 web (REVIEW_APPROVE + minors fixed; CHECK_GREEN)
 2026-11-14T01:34:34Z OBS-1s2 MERGE 64686a11 server (low; CHECK_GREEN by writer, no server drift on main)
 2026-11-14T01:42:54Z OBS-1c-and REVIEW_APPROVE (4 minors → FOLLOWUPS); CHECK_GREEN android; MERGE 6b41f35d (handoff rebase artefact repaired)
+2026-11-14T01:45:12Z RELEASE 0.1.10 PIN 0200b2f5 (worktree scratchpad/rel0110); kubectl OIDC token expired (browser login needed) → prep without cluster
+2026-11-14T01:50:05Z RELEASE 0.1.10 images FAILED at pin 0200b2f5: WEBVER dropped 'COPY fixtures/demo' from web/Dockerfile (nothing pushed) → WEBVER-fix DISPATCH writer-light; will re-pin
