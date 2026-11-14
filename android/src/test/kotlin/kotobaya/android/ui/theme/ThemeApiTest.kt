@@ -40,9 +40,9 @@ class ThemeApiTest {
     }
 
     @Test
-    fun rubyIsHalfTheBaseButNeverBelowTheMinimum() {
+    fun rubyIsSixTenthsOfTheBaseButNeverBelowTheMinimum() {
         val t = kbTextStyles()
-        assertEquals(20.sp, t.ruby(t.jpDisplay).fontSize)
+        assertEquals(24.sp, t.ruby(t.jpDisplay).fontSize)
         assertEquals(KbType.RUBY_MIN_SP.sp, t.ruby(t.caption).fontSize)
     }
 

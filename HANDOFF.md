@@ -1,24 +1,24 @@
 # HANDOFF UI-RUBY
 
-STATUS: BLOCKED
+STATUS: DONE
 BRANCH: t/UI-RUBY-furigana-size
-CHECK: `make check MODULE=web` → green; `make check MODULE=android` → red (ThemeApiTest.rubyIsHalfTheBaseButNeverBelowTheMinimum expects 20sp, now 24sp)
+CHECK: `make check MODULE=web` → green; `make check MODULE=android` → green
 
 ## Changed
-- design/tokens/tokens.json: ruby scale 0.5→0.6, minRem 0.625→0.75 (12px), minSp 10→12; card ruby-scale 0.5→0.6.
-- assets/card/card.css: hand-written rt floor 0.625rem→0.75rem.
-- Regenerated via make tokens: web/src/lib/tokens.css, card.css token block, Tokens.kt.
+- ThemeApiTest.kt: renamed to `rubyIsSixTenthsOfTheBaseButNeverBelowTheMinimum`, expects 24.sp (0.6 × 40sp).
+- web/src/lib/ui/messages.ts: `sg.type.rubyNote` now says 0.6×, never below 12 px.
+- docs/DESIGN.md §2.2: rt = 0.6 × base, never below 12 px/sp.
+- Attempt 1 token/card.css/Tokens.kt changes (ff26cb6) unchanged.
 
 ## Acceptance → tests
-- rt larger everywhere → token change only; no screenshots taken.
-- make check web green → web check (tokens-check included).
-- No clipping at 360px / 200% → NOT checked; reasoning only (compaction re-measures after flip; no overflow:hidden).
+- rt larger everywhere → token change (ff26cb6); no before/after shots taken.
+- make check web green → tokens-check and vitest pass.
+- make check android green → ThemeApiTest rubyIsSixTenthsOfTheBaseButNeverBelowTheMinimum.
+- No rt clipped at 360px / 200% → checked `web/screenshots/default/review--back/360-light-2.0.png` (revealed card, scale 2.0, 360 px): ruby over 猫 and ね/こ fully visible. The fade at the card bottom is the existing scroll "more below" cue, not rt clipping.
 
 ## New dependencies
 - none
 
 ## For the reviewer
-- Stale text outside owned paths: web/src/lib/ui/messages.ts `sg.type.rubyNote` and docs/DESIGN.md §2.2 still say "half, never below 10 px".
-
-## If BLOCKED
-QUESTION: May I update android/src/test/kotlin/kotobaya/android/ui/theme/ThemeApiTest.kt lines 43-45 to expect 24.sp (0.6 × 40sp), or should Android stay at 0.5 (needs a split token)? Also allow editing messages.ts and DESIGN.md §2.2?
+- Only the 360 × 2.0 light revealed shot was inspected; dark theme and 1280+ not viewed.
+- docs/design-screenshots not refreshed (not cheap enough to justify here).

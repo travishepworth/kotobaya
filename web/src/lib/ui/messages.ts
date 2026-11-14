@@ -121,7 +121,7 @@ const en = {
 	'sg.type.lead':
 		'Noto Sans JP for everything (its Latin is clean and matched in weight), Noto Serif JP only for the kanji literal. Sizes are fluid between 360 and 1280 px and in rem, so they follow the browser text size; Android uses the same roles in sp.',
 	'sg.type.ruby': 'Furigana',
-	'sg.type.rubyNote': 'Half the base size, never below 10 px; ruby lines get a taller line-height so they never collide.',
+	'sg.type.rubyNote': '0.6 × the base size, never below 12 px; ruby lines get a taller line-height so they never collide.',
 	'sg.type.kana': 'Running Japanese',
 	'sg.type.kanaNote': 'Japanese body text uses line-height 1.9 and a little tracking: kana need air.',
 	'sg.type.range': '{min}–{max} rem · {sp} sp · lh {lh}',

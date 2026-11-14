@@ -87,7 +87,7 @@ pair: deck-shu on its container, 5.08:1 (light). The `/styleguide` Contrast tabl
 | caption | 0.8125 | 12 sp | Metadata, intervals, key hints (smallest size) |
 | overline | 0.75 / 600, uppercase | 12 sp | Latin eyebrows only, never Japanese |
 
-- **Furigana:** `rt` = 0.5 × base, never below 10 px/sp (`--kb-ruby-scale`, `--kb-ruby-min`); text that carries
+- **Furigana:** `rt` = 0.6 × base, never below 12 px/sp (`--kb-ruby-scale`, `--kb-ruby-min`); text that carries
   ruby gets `line-height: 2.2` (`--kb-ruby-lh`) so readings never collide with the line above. `ruby-align: center`.
 - **Kana line-height:** Japanese body 1.9 with 0.02em tracking; UI body 1.65.
 - **Line breaking:** `lang="ja"` on all Japanese; `word-break: auto-phrase` on headwords and sentences
