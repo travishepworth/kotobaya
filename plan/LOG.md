@@ -932,3 +932,7 @@
 2026-11-14T00:35:17Z JLPT-1a HANDOFF DONE ac0977b worker green; default digests untested offline; READY_FOR_REVIEW
 2026-11-14T00:36:21Z RUN21 DECIDE user: no interim 0.1.10; single release after all items. DISPATCH JLPT-1a reviewer, FEAT-DICT writer, BROWSE-1+2 writer (batched). FILED LOGFIX-1 (worker, after JLPT-1a), FEAT-DICT-APP (after AND-INSETS)
 2026-11-14T00:36:24Z JLPT-1b HANDOFF DONE server green; READY_FOR_REVIEW (high)
+2026-11-14T00:36:38Z G DIAGNOSED partial: server clean; Pixel 98 pulls/23min, no push, no other routes → client-side; FILED AND-POSTSYNC (writer-senior, after C-22)
+2026-11-14T00:36:49Z JLPT-1b HANDOFF DONE 069f276 server green; reviewer dispatched (high)
+2026-11-14T00:36:59Z AND-INSETS DISPATCH writer attempt 1
+2026-11-14T00:37:17Z C-22 HANDOFF DONE core+contracts green; READY_FOR_REVIEW (high)
