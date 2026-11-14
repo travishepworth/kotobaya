@@ -3,7 +3,7 @@
 - Phase: P10 (0.1.10) · Model: haiku (writer-light) · Risk: low
 - Deps: none
 - Branch: t/UI-RUBY-furigana-size
-- Owned paths (only edit these): assets/card/**, design token source + generated outputs (tokens.json and its generated tokens.css/card.css/Tokens.kt, per docs/DESIGN.md / UI-DS) only if the rt size is a token, web/src/** CSS only if web overrides rt size, docs/design-screenshots/** (refresh affected curated shots if cheap)
+- Owned paths (only edit these): assets/card/**, design token source + generated outputs (tokens.json and its generated tokens.css/card.css/Tokens.kt, per docs/DESIGN.md / UI-DS) only if the rt size is a token, web/src/** CSS only if web overrides rt size, docs/design-screenshots/** (refresh affected curated shots if cheap), android/src/test/kotlin/kotobaya/android/ui/theme/ThemeApiTest.kt, web/src/lib/ui/messages.ts (sg.type.rubyNote), docs/DESIGN.md §2.2
 - Module(s) for CI: web (and android if Tokens.kt changes)
 
 ## Read
@@ -20,3 +20,7 @@ Check that the UI-WEB revealed-card compaction ("compact the revealed card only 
 
 ## Out of scope
 Any other typography change.
+
+## Notes from previous attempts
+- Attempt 1 (ff26cb6): tokens 0.5→0.6, min 12px/12sp, regenerated; web green; android red only because ThemeApiTest pins 20sp. Clipping check not done.
+- Orchestrator decision: apply 0.6 on Android too (no split token). Update ThemeApiTest to 24.sp and rename it (no "half"); update messages.ts rubyNote and DESIGN.md §2.2 text. Do the clipping check: review-card screenshots (360px and 200%, revealed) from `make screenshots-web` subset; look at them; state result. Android check under `flock /tmp/kotobaya-gradle.lock`.
