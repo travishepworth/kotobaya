@@ -8,10 +8,20 @@
 	import { ut } from '../../../lib/ui/messages';
 	import { CONFUSABLE_STATUSES, ConfusablesPage } from '../../../lib/state/struggle.svelte';
 	import { noteTitle } from '../../../lib/ui/cardState';
+	import { dictionaryLinkFor, type DictionaryRef } from '../../../lib/state/dictionaryLink';
 	import { tg, tgEnum } from '../messages';
 
 	const vm = new ConfusablesPage();
 </script>
+
+{#snippet word(n: Parameters<typeof noteTitle>[0] & DictionaryRef)}
+	{@const href = dictionaryLinkFor(n)}
+	{#if href}
+		<a class="w" {href} title={ut('ui.openInDictionaryFor', { text: noteTitle(n) })}>{noteTitle(n)}</a>
+	{:else}
+		<span class="w">{noteTitle(n)}</span>
+	{/if}
+{/snippet}
 
 <svelte:head><title>{tg('st.confusables')} · Kotobaya</title></svelte:head>
 
@@ -37,9 +47,9 @@
 			{#each vm.pairs as p (`${p.noteAId}/${p.noteBId}/${p.reason}`)}
 				<li>
 					<div class="pair" lang="ja">
-						<span class="w">{noteTitle(p.noteA)}</span>
+						{@render word(p.noteA)}
 						<span class="vs" lang="en">{tg('st.vs')}</span>
-						<span class="w">{noteTitle(p.noteB)}</span>
+						{@render word(p.noteB)}
 					</div>
 					<p class="reason">{tgEnum('st.reason', p.reason)}</p>
 					<div class="acts">
@@ -100,6 +110,14 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+	}
+	a.w {
+		color: var(--kb-color-text);
+		text-decoration: underline dotted var(--kb-color-border-strong);
+		text-underline-offset: 0.2em;
+	}
+	a.w:hover {
+		color: var(--kb-color-link);
 	}
 	.vs {
 		font: var(--kb-type-caption);

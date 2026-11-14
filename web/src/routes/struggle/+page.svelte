@@ -1,12 +1,14 @@
 <script lang="ts">
 	// Struggle overview: hot words (with their recent failures), hot kanji, and the ways in: leeches, confusables, drills.
 	import Button from '../../lib/ui/Button.svelte';
+	import DictionaryLink from '../../lib/ui/DictionaryLink.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Page from '../../lib/ui/Page.svelte';
 	import Panel from '../../lib/ui/Panel.svelte';
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import { StrugglePage } from '../../lib/state/struggle.svelte';
+	import { dictionarySearchHref } from '../../lib/state/dictionaryLink';
 	import { noteTitle } from '../../lib/ui/cardState';
 	import { tg } from './messages';
 
@@ -53,6 +55,7 @@
 									<span class="spark" aria-hidden="true"><i style:width="{(w.failures14d / maxFail) * 100}%"></i></span>
 									<span class="n kb-num">{tg('st.failures', { n: w.failures14d })}</span>
 								</a>
+								<DictionaryLink seq={w.entrySeq} kanji={w.note.kanjiLiteral} text={w.entry?.headword ?? noteTitle(w.note)} />
 							</li>
 						{/each}
 					</ul>
@@ -65,9 +68,12 @@
 					<ul class="kanji">
 						{#each vm.kanji.slice(0, 16) as k (k.literal)}
 							<li title={k.meanings.join(', ')}>
-								<span class="lit" lang="ja">{k.literal}</span>
-								<span class="km">{k.meanings[0] ?? ''}</span>
-								<span class="kw kb-num">{tg('st.kanjiWords', { n: k.wordCount })}</span>
+								<!-- The dictionary has no kanji page: a search for the literal lists the words using it. -->
+								<a href={dictionarySearchHref(k.literal)}>
+									<span class="lit" lang="ja">{k.literal}</span>
+									<span class="km">{k.meanings[0] ?? ''}</span>
+									<span class="kw kb-num">{tg('st.kanjiWords', { n: k.wordCount })}</span>
+								</a>
 							</li>
 						{/each}
 					</ul>
@@ -127,7 +133,13 @@
 		padding: 0 var(--kb-space-2);
 		list-style: none;
 	}
+	.hot li {
+		display: flex;
+		align-items: center;
+	}
 	.hot a {
+		flex: 1;
+		min-width: 0;
 		display: grid;
 		grid-template-columns: minmax(5rem, auto) minmax(0, 1fr) 4rem auto;
 		align-items: center;
@@ -187,6 +199,14 @@
 	}
 	.kanji li {
 		display: flex;
+		min-width: 0;
+	}
+	.kanji a {
+		flex: 1;
+		color: var(--kb-color-text);
+		text-decoration: none;
+		transition: background-color var(--kb-duration-fast) var(--kb-ease-standard);
+		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
@@ -195,6 +215,13 @@
 		background: var(--kb-color-surface-sunken);
 		text-align: center;
 		min-width: 0;
+	}
+	.kanji a:hover {
+		background: var(--kb-color-surface-hover);
+	}
+	.kanji a:focus-visible {
+		outline: 2px solid var(--kb-color-focus);
+		outline-offset: 2px;
 	}
 	.lit {
 		font: 2rem/1.2 var(--kb-family-serif);

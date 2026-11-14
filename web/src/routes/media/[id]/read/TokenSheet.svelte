@@ -2,6 +2,7 @@
 	// A tapped word: its entry and status, Mine / Known / Ignore, and — folded away — fixing the parse.
 	import Button from '../../../../lib/ui/Button.svelte';
 	import Dialog from '../../../../lib/ui/Dialog.svelte';
+	import DictionaryLink from '../../../../lib/ui/DictionaryLink.svelte';
 	import Select from '../../../../lib/ui/Select.svelte';
 	import Skeleton from '../../../../lib/ui/Skeleton.svelte';
 	import TextField from '../../../../lib/ui/TextField.svelte';
@@ -47,6 +48,7 @@
 					{#each STATUS_ACTIONS as k (k)}
 						<Button variant="outline" size="sm" onclick={() => vm.mark(STATUS_VALUE[k])}>{tr(k)}</Button>
 					{/each}
+					<DictionaryLink look="text" seq={vm.entry.seq} />
 				</div>
 			{/if}
 

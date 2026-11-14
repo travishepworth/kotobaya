@@ -6,6 +6,7 @@
 	// an override, and a field whose text equals the dictionary value is never saved as one.
 	import Button from '../../lib/ui/Button.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
+	import DictionaryLink from '../../lib/ui/DictionaryLink.svelte';
 	import TextArea from '../../lib/ui/TextArea.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
 	import { kindLabel } from '../../lib/ui/cardState';
@@ -118,7 +119,10 @@
 </script>
 
 <form class="editor" onsubmit={save}>
-	<h2 class="title">{tn('notes.edit')}</h2>
+	<div class="head">
+		<h2 class="title">{tn('notes.edit')}</h2>
+		<DictionaryLink look="text" seq={note.entrySeq} kanji={note.kanjiLiteral} />
+	</div>
 
 	<PreviewPane
 		rendered={s.rendered}
@@ -208,6 +212,13 @@
 	.editor :global(textarea),
 	.editor :global(input) {
 		scroll-margin-bottom: calc(var(--bar-h) + var(--kb-space-3));
+	}
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--kb-space-2);
 	}
 	.title {
 		font: var(--kb-type-title);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	// The media's unknown words, most useful first, with one-tap status marks.
 	import Button from '../../../lib/ui/Button.svelte';
+	import DictionaryLink from '../../../lib/ui/DictionaryLink.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import Panel from '../../../lib/ui/Panel.svelte';
@@ -51,6 +52,7 @@
 					<span class="n kb-num" title={tc('cov.col.count')}>×{item.occurrenceCount}</span>
 					{#if item.entrySeq != null}
 						<div class="acts">
+							<DictionaryLink seq={item.entrySeq} text={item.entry?.headword} />
 							<Button size="sm" variant="tonal" icon="check" onclick={() => vm.mark(item, 'known', onchanged)}>{tc('cov.markKnown')}</Button>
 							<Button size="sm" variant="quiet" onclick={() => vm.mark(item, 'ignored', onchanged)}>{tc('cov.markIgnore')}</Button>
 						</div>

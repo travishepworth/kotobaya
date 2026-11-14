@@ -8,6 +8,7 @@
 	import Button from '../../lib/ui/Button.svelte';
 	import CardFrame from '../../lib/ui/CardFrame.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
+	import DictionaryLink from '../../lib/ui/DictionaryLink.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
 	import GradeBar from '../../lib/ui/GradeBar.svelte';
@@ -320,6 +321,17 @@
 							{#if s.noExample && s.flipped}
 								<p class="note">{tr('review.noExampleSentence')}</p>
 							{/if}
+							{#if s.flipped}
+								<!-- New tab: leaving would drop the session; a link never takes Space/1-5 (see onKeydown). -->
+								<p class="dict-link">
+									<DictionaryLink
+										look="text"
+										newTab
+										seq={s.current.entry?.seq ?? s.current.card.note?.entrySeq}
+										kanji={s.current.card.note?.kanjiLiteral}
+									/>
+								</p>
+							{/if}
 						{:else}
 							<EmptyState tone="error" art="alert" title={rv('rv.renderFailed')} body={s.rendered.detail} />
 						{/if}
@@ -551,6 +563,14 @@
 		left: var(--kb-space-4);
 		font: var(--kb-type-caption);
 		color: var(--kb-color-text-muted);
+	}
+	.dict-link {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--kb-space-4);
+	}
+	.dict-link:empty {
+		display: none;
 	}
 	.note {
 		max-width: 32rem;

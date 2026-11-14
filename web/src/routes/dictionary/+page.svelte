@@ -10,14 +10,17 @@
 	import { ut } from '../../lib/ui/messages';
 	import { td } from '../../lib/dictionary/messages';
 	import { DictionaryPage } from '../../lib/state/dictionary.svelte';
-	import { seqFromSearch } from '../../lib/state/dictionaryLink';
+	import { queryFromSearch, seqFromSearch } from '../../lib/state/dictionaryLink';
 	import EntryView from './EntryView.svelte';
 	import { dx } from './messages';
 
 	const vm = new DictionaryPage();
 	onMount(() => {
 		const seq = seqFromSearch(window.location.search);
+		const q = queryFromSearch(window.location.search);
 		if (seq !== null) open(seq);
+		// A kanji (or word without an entry) linked from elsewhere: its search results.
+		else if (q !== null) tryQuery(q);
 		// Desktop: straight to typing.
 		else if (window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
 		return () => vm.dispose();

@@ -5,6 +5,7 @@
 	import { noteHref } from '../../lib/state/noteLink';
 	import Button from '../../lib/ui/Button.svelte';
 	import Chip from '../../lib/ui/Chip.svelte';
+	import DictionaryLink from '../../lib/ui/DictionaryLink.svelte';
 	import type { CardState } from '../../lib/ui/kinds';
 	import { tc } from '../../lib/cards/messages';
 	import { CardPreviewState, type Card, type NoteType } from '../../lib/state/cards.svelte';
@@ -59,6 +60,7 @@
 	</section>
 
 	<Button variant="outline" icon="edit" href={noteHref(card.noteId)} full>{tb('br.editNote')}</Button>
+	<DictionaryLink look="button" full seq={card.note?.entrySeq} kanji={card.note?.kanjiLiteral} />
 </div>
 
 <style>

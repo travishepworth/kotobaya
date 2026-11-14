@@ -1,6 +1,7 @@
 <script lang="ts">
 	// The items of a user or list deck as rows (headword, reading, gloss); user decks can add and remove items.
 	import Button from '../../../lib/ui/Button.svelte';
+	import DictionaryLink from '../../../lib/ui/DictionaryLink.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../../lib/ui/LoadError.svelte';
 	import IconButton from '../../../lib/ui/IconButton.svelte';
@@ -46,6 +47,7 @@
 					{:else}
 						<p class="text">{deckItemLabel(it)}</p>
 					{/if}
+					<DictionaryLink seq={it.entrySeq} text={it.entry?.headword} />
 					{#if s.editable}
 						<IconButton icon="close" label={td('decks.itemRemove')} onclick={() => void s.remove(it)} />
 					{/if}

@@ -2,6 +2,8 @@
 // Same shape as lib/i18n.ts; kept here so the primitives stay self-contained.
 const en = {
 	'ui.close': 'Close',
+	'ui.openInDictionary': 'Open in dictionary',
+	'ui.openInDictionaryFor': 'Open {text} in the dictionary',
 	'ui.dismiss': 'Dismiss',
 	'ui.more': 'More',
 	'ui.loading': 'Loading…',

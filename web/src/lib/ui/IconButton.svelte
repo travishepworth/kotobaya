@@ -11,12 +11,14 @@
 		pressed?: boolean;
 		/** Renders a link with the same look (e.g. "back"). */
 		href?: string;
+		/** With `href`: "_blank" opens the link in a new tab (e.g. from review, so the session stays put). */
+		target?: '_blank';
 	}
-	let { icon, label, variant = 'quiet', pressed, href, type = 'button', ...rest }: Props = $props();
+	let { icon, label, variant = 'quiet', pressed, href, target, type = 'button', ...rest }: Props = $props();
 </script>
 
 {#if href}
-	<a class="ib {variant}" {href} aria-label={label} title={label}><Icon name={icon} /></a>
+	<a class="ib {variant}" {href} {target} rel={target ? 'noopener' : undefined} aria-label={label} title={label}><Icon name={icon} /></a>
 {:else}
 	<button class="ib {variant}" {type} aria-label={label} title={label} aria-pressed={pressed} {...rest}>
 		<Icon name={icon} />
