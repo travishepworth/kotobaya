@@ -172,5 +172,12 @@ def test_raw_sudachi_pos_drops_only_trailing_padding() -> None:
 
 
 def test_middle_star_pos_level_is_kept_so_deep_rules_match() -> None:
-    raw = {"s": 0, "e": 1, "surface": "x", "lemma": "x", "reading": "", "pos": ["名詞", "*", "地名", "*"]}
+    raw = {
+        "s": 0,
+        "e": 1,
+        "surface": "x",
+        "lemma": "x",
+        "reading": "",
+        "pos": ["名詞", "*", "地名", "*"],
+    }
     assert to_mtokens([raw])[0].pos == ("名詞", "*", "地名")

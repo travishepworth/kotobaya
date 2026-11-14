@@ -6,3 +6,4 @@
 - `vocabulary-list-{1,2,3}.html`: 4 + 3 + 2 = 9 `entry` rows; pages 1 and 2 have a "Next page" link (`offset=50`, `offset=100`), page 3 does not.
 - Edge cases: kana-only rows (no `<rt>`: この, は, ラーメン, でも), rows without a "Top N" tag (この, でも), okurigana outside `<ruby>` (食べる), one malformed row on page 2 (no vocabulary link; must land in `skipped`).
 - `api-response.json`: mocked API response in the *assumed* layout (real field names unverified; see T401a HANDOFF).
+- `deck-overview.html`: **real** jpdb page, fetched 2026-11 from `https://jpdb.io/visual-novel/3913/vocabulary-list` (the slugless URL, which returns the deck overview, not the list), trimmed to head + the deck header block (stats tables, styles and "similar decks" removed). Contains the 0-entry overview and the `/visual-novel/3913/fatal-twelve/vocabulary-list` link. Public page content kept minimal (title, link) for test purposes only; same licence note as above: no private data.

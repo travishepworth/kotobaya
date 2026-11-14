@@ -375,9 +375,19 @@ def test_detect_counts_budget_give_ups() -> None:
 
     text = "ね" * 40
     toks = [
-        {"s": i, "e": i + 1, "surface": "ね", "lemma": "ね", "reading": "ネ", "pos": ["助詞"], "cform": None}
+        {
+            "s": i,
+            "e": i + 1,
+            "surface": "ね",
+            "lemma": "ね",
+            "reading": "ネ",
+            "pos": ["助詞"],
+            "cform": None,
+        }
         for i in range(40)
     ]
     rule = "ね{0,10} ね{0,10} ね{0,10} ね{0,10} ね{0,10} [surface=x]"
-    res = detect([PointRules(GP_ZARU, [{"rule": rule, "draft": False}])], [DetectSentence("s", text, toks)])
+    res = detect(
+        [PointRules(GP_ZARU, [{"rule": rule, "draft": False}])], [DetectSentence("s", text, toks)]
+    )
     assert res.spans == () and res.give_ups > 0

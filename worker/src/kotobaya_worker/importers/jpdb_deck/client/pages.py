@@ -52,6 +52,19 @@ def normalize_deck_id(raw: str) -> str:
     raise ValueError(f"jpdb deck {raw!r}: expected a jpdb URL or <kind>/<id> such as anime/5370")
 
 
+def deck_slug(raw: str) -> str | None:
+    """Title slug from a jpdb URL like `.../visual-novel/3913/fatal-twelve/vocabulary-list`."""
+    m = _URL_PATH.match(raw.strip())
+    parts = [p for p in (m.group(1) if m else "").split("/") if p]
+    if len(parts) >= 3 and parts[2].lower() != "vocabulary-list":
+        return urllib.parse.quote(urllib.parse.unquote(parts[2]), safe="-_.~")
+    return None
+
+
+def has_entries(page: str) -> bool:
+    return ENTRY_MARK in page
+
+
 def deck_path(jpdb_id: str) -> str:
     return normalize_deck_id(jpdb_id)
 
@@ -116,28 +129,39 @@ class PagesDeckSource:
     def fetch_title(self, jpdb_id: str) -> str | None:
         """Title from the first vocabulary-list page (never the bare deck URL, which 404s)."""
         try:
-            return parse_title(self._f.get(self._first_url(deck_path(jpdb_id))))
+            return parse_title(self._f.get(self._first_url(jpdb_id), accept=has_entries))
         except Exception:  # noqa: BLE001  a title failure must never fail the job
             return None
 
-    def _first_url(self, path: str) -> str:
-        return f"{self._base}/{path}/vocabulary-list?sort_by=by-frequency-local"
+    def _first_url(self, jpdb_id: str) -> str:
+        """List URL WITH the title slug (the slugless one returns the 0-row overview page)."""
+        path = deck_path(jpdb_id)
+        slug = deck_slug(jpdb_id)
+        if slug is None:
+            overview_url = f"{self._base}/{path}/vocabulary-list"
+            overview = self._f.get(overview_url)
+            m = re.search(rf'href="/{re.escape(path)}/([^/"?#]+)/vocabulary-list"', overview)
+            if not m:
+                raise RuntimeError(f"jpdb deck {path}: no vocabulary-list link on {overview_url}")
+            slug = m.group(1)
+        return f"{self._base}/{path}/{slug}/vocabulary-list?sort_by=by-frequency-local"
 
     def fetch_deck(self, jpdb_id: str) -> DeckVocabulary:
-        path = deck_path(jpdb_id)
         out = DeckVocabulary(title="")
-        url: str | None = self._first_url(path)
+        url: str | None = self._first_url(jpdb_id)
         seen: set[str] = set()
         while url is not None and url not in seen and len(seen) < MAX_PAGES:
             first = not seen
             seen.add(url)
             try:
-                page = self._f.get(url)
+                page = self._f.get(url, accept=has_entries if first else None)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     raise RuntimeError(f"jpdb deck page not found (404): {url}") from e
                 raise
             if first:
+                if not has_entries(page):
+                    raise RuntimeError(f"jpdb deck page has 0 vocabulary rows: {url}")
                 out.title = parse_title(page) or jpdb_id
             words, skipped, raw = parse_vocab_list_html(page)
             out.words.extend(words)

@@ -98,6 +98,7 @@ class DeckJob:
     kind: str
     deck: DeckOptions
     remap_only: bool
+    deck_ref: str = ""  # raw user reference (may carry the title slug)
 
     @staticmethod
     def from_payload(p: Mapping[str, Any]) -> DeckJob:
@@ -107,6 +108,7 @@ class DeckJob:
         if not isinstance(media_id, str):
             raise TypeError("jpdb-deck-import payload needs media_id (set by the server)")
         uuid.UUID(media_id)
+        deck_ref = jpdb_id
         jpdb_id = normalize_deck_id(jpdb_id)
         d = p.get("deck") or {}
         title = p.get("title")
@@ -121,6 +123,7 @@ class DeckJob:
                 new_cards_per_day=d.get("new_cards_per_day"),
             ),
             remap_only=bool(p.get("remap_only", False)),
+            deck_ref=deck_ref,
         )
 
 
@@ -197,7 +200,7 @@ def run_import(
     if job.remap_only:
         repo.claim_remap(ctx.job_id)  # R1, before any correction is read
     ctx.progress(0.0, "fetching deck")
-    deck: DeckVocabulary = source.fetch_deck(job.jpdb_id)
+    deck: DeckVocabulary = source.fetch_deck(job.deck_ref or job.jpdb_id)
     ctx.check_cancelled()
     ctx.progress(0.5, "mapping")
     title = (job.title or deck.title or job.jpdb_id).strip() or job.jpdb_id

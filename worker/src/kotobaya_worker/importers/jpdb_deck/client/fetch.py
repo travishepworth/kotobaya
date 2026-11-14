@@ -61,15 +61,23 @@ class CachedFetcher:
         *,
         data: bytes | None = None,
         headers: Mapping[str, str] | None = None,
+        accept: Callable[[str], bool] | None = None,
     ) -> str:
-        """`headers` (e.g. Authorization) are sent but never cached or hashed."""
+        """`headers` (e.g. Authorization) are sent but never cached or hashed.
+
+        `accept` validates a body: a cached body it rejects is a cache miss, and a fetched body it
+        rejects is returned but never written to the cache.
+        """
         path = self._dir / f"{self.cache_key(url, data)}.json"
         if not self._refresh and path.exists():
             try:
                 entry = json.loads(path.read_text(encoding="utf-8"))
                 age = self._wall() - float(entry["fetched_at"])
-                if self._max_age is None or age <= self._max_age:
-                    return str(entry["body"])
+                body = str(entry["body"])
+                if (self._max_age is None or age <= self._max_age) and (
+                    accept is None or accept(body)
+                ):
+                    return body
             except (ValueError, KeyError, TypeError, OSError):
                 pass  # unreadable cache entry: refetch
         if self._last_call is not None:
@@ -84,6 +92,8 @@ class CachedFetcher:
                 body = resp.read().decode("utf-8")
         finally:
             self._last_call = self._clock()
+        if accept is not None and not accept(body):
+            return str(body)
         self._dir.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"url": url, "fetched_at": self._wall(), "body": body}),

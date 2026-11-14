@@ -23,7 +23,7 @@ from kotobaya_worker.importers.jpdb_deck.client.pages import normalize_deck_id
 FIX = Path(__file__).resolve().parents[5] / "fixtures" / "jpdb" / "deck"
 BASE = "https://jpdb.io"
 DECK = "anime/9999"
-LIST = f"{BASE}/{DECK}/vocabulary-list"
+LIST = f"{BASE}/{DECK}/test-deck/vocabulary-list"  # real list URLs carry the title slug
 ROUTES = {
     f"{LIST}?sort_by=by-frequency-local": "vocabulary-list-1.html",
     f"{LIST}?sort_by=by-frequency-local&offset=50": "vocabulary-list-2.html",
@@ -77,8 +77,16 @@ class FakeClock:
         self.t += s
 
 
+def overview(path: str, slug: str) -> str:
+    """The real jpdb overview page fixture, retargeted at another deck path/slug."""
+    return fx("deck-overview.html").replace("visual-novel/3913/fatal-twelve", f"{path}/{slug}")
+
+
 def page_routes() -> dict[str, str]:
-    return {u: fx(f) for u, f in ROUTES.items()}
+    routes = {u: fx(f) for u, f in ROUTES.items()}
+    # slugless /vocabulary-list answers 200 with the 0-row overview page (live jpdb behaviour)
+    routes[f"{BASE}/{DECK}/vocabulary-list"] = overview(DECK, "test-deck")
+    return routes
 
 
 def make(
@@ -114,7 +122,7 @@ def test_paging_follows_next_links_and_cache_hit_makes_no_network_call(tmp_path:
     deck = PagesDeckSource(f).fetch_deck(DECK)
     assert deck.title == DECK  # fixture list page has no title: falls back to the id
     assert deck.raw_rows == 9 and len(deck.words) == 8 and len(deck.skipped) == 1
-    assert len(op.urls) == 3
+    assert len(op.urls) == 4  # overview + 3 list pages
     # second run, fresh fetcher, same cache dir: zero network calls
     f2, op2 = make(tmp_path, {})
     deck2 = PagesDeckSource(f2).fetch_deck(DECK)
@@ -122,7 +130,7 @@ def test_paging_follows_next_links_and_cache_hit_makes_no_network_call(tmp_path:
     # refresh=True refetches
     f3, op3 = make(tmp_path, page_routes(), refresh=True)
     PagesDeckSource(f3).fetch_deck(DECK)
-    assert len(op3.urls) == 3
+    assert len(op3.urls) == 4
 
 
 def test_max_age_expires_cache(tmp_path: Path) -> None:
@@ -152,7 +160,7 @@ def test_rate_limiter_spaces_calls(tmp_path: Path) -> None:
 
     f._opener = stamped
     PagesDeckSource(f).fetch_deck(DECK)
-    assert len(times) == 3
+    assert len(times) == 4
     assert all(b - a >= 2.0 for a, b in itertools.pairwise(times))
 
 
@@ -197,7 +205,8 @@ def test_api_schema_mismatch_falls_back_to_pages(
 ) -> None:
     routes = page_routes()
     routes["https://jpdb.io/api/v1/deck/list-vocabulary"] = json.dumps({"unexpected": []})
-    routes[f"{BASE}/anime/42/vocabulary-list?sort_by=by-frequency-local"] = fx(
+    routes[f"{BASE}/anime/42/vocabulary-list"] = overview("anime/42", "forty-two")
+    routes[f"{BASE}/anime/42/forty-two/vocabulary-list?sort_by=by-frequency-local"] = fx(
         "vocabulary-list-3.html"
     )
     f, _ = make(tmp_path, routes)
@@ -213,21 +222,23 @@ def test_api_schema_mismatch_falls_back_to_pages(
 
 def test_title_from_list_page_and_no_bare_deck_request(tmp_path: Path) -> None:
     page = "<html><head><title>Steins;Gate - jpdb</title></head><body><h1>Steins;Gate</h1></body></html>"
-    list_url = f"{BASE}/visual-novel/3913/vocabulary-list?sort_by=by-frequency-local"
+    list_url = f"{BASE}/visual-novel/3913/steins-gate/vocabulary-list?sort_by=by-frequency-local"
     f, op = make(tmp_path, {list_url: page + fx("vocabulary-list-3.html")})
-    deck = PagesDeckSource(f).fetch_deck("visual-novel/3913")
+    deck = PagesDeckSource(f).fetch_deck(
+        "https://jpdb.io/visual-novel/3913/steins-gate/vocabulary-list"
+    )
     assert deck.title == "Steins;Gate"
-    assert op.urls == [list_url]  # no request to the bare /visual-novel/<id> URL
+    assert op.urls == [list_url]  # slugged input: list fetched directly, no bare/overview request
 
 
 def test_title_parse_failure_falls_back_to_id(tmp_path: Path) -> None:
-    list_url = f"{BASE}/visual-novel/3913/vocabulary-list?sort_by=by-frequency-local"
-    f, _ = make(tmp_path, {list_url: "<html><title></title></html>"})
-    assert PagesDeckSource(f).fetch_deck("visual-novel/3913").title == "visual-novel/3913"
+    list_url = f"{BASE}/visual-novel/3913/x/vocabulary-list?sort_by=by-frequency-local"
+    f, _ = make(tmp_path, {list_url: "<html><title></title>" + fx("vocabulary-list-3.html")})
+    assert PagesDeckSource(f).fetch_deck("visual-novel/3913/x").title == "visual-novel/3913/x"
     f2, _ = make(tmp_path / "b", {})  # list page 404s -> clear error naming the URL
     with pytest.raises(RuntimeError, match="vocabulary-list"):
-        PagesDeckSource(f2).fetch_deck("visual-novel/3913")
-    assert PagesDeckSource(f2).fetch_title("visual-novel/3913") is None
+        PagesDeckSource(f2).fetch_deck("visual-novel/3913/x")
+    assert PagesDeckSource(f2).fetch_title("visual-novel/3913/x") is None
 
 
 @pytest.mark.parametrize(
@@ -252,3 +263,53 @@ def test_normalize_deck_id(raw: str, want: str | None) -> None:
             normalize_deck_id(raw)
     else:
         assert normalize_deck_id(raw) == want
+
+
+def test_slugless_url_resolves_slug_via_overview_and_maps_every_row(tmp_path: Path) -> None:
+    slugless = f"{BASE}/visual-novel/3913/vocabulary-list"
+
+    def retarget(page: str) -> str:
+        return page.replace("anime/9999/test-deck", "visual-novel/3913/fatal-twelve")
+
+    list_url = f"{BASE}/visual-novel/3913/fatal-twelve/vocabulary-list?sort_by=by-frequency-local"
+    routes = {
+        slugless: fx("deck-overview.html"),
+        list_url: retarget(fx("vocabulary-list-1.html")),
+        f"{list_url}&offset=50": retarget(fx("vocabulary-list-2.html")),
+        f"{list_url}&offset=100": fx("vocabulary-list-3.html"),
+    }
+    f, op = make(tmp_path, routes)
+    deck = PagesDeckSource(f).fetch_deck("https://jpdb.io/visual-novel/3913/vocabulary-list")
+    assert op.urls[0] == slugless and op.urls[1] == list_url
+    # every fixture row is fetched and mapped or reported; none silently dropped
+    assert deck.raw_rows == 9
+    assert len(deck.words) + len(deck.skipped) == deck.raw_rows == 9
+    assert len(deck.words) == 8 and len(deck.skipped) == 1
+
+
+def test_zero_row_first_page_raises(tmp_path: Path) -> None:
+    list_url = f"{BASE}/anime/5/s/vocabulary-list?sort_by=by-frequency-local"
+    f, _ = make(tmp_path, {list_url: fx("deck-overview.html")})
+    with pytest.raises(RuntimeError, match="0 vocabulary rows"):
+        PagesDeckSource(f).fetch_deck("anime/5/s")
+    # overview without a list link: also a clear error
+    f2, _ = make(tmp_path / "b", {f"{BASE}/anime/5/vocabulary-list": "<html></html>"})
+    with pytest.raises(RuntimeError, match="no vocabulary-list link"):
+        PagesDeckSource(f2).fetch_deck("anime/5")
+
+
+def test_zero_row_page_is_never_cached_and_cached_one_is_ignored(tmp_path: Path) -> None:
+    list_url = f"{BASE}/anime/5/s/vocabulary-list?sort_by=by-frequency-local"
+    # 1) a 0-row response is not written to the cache
+    f, _ = make(tmp_path, {list_url: fx("deck-overview.html")})
+    with pytest.raises(RuntimeError):
+        PagesDeckSource(f).fetch_deck("anime/5/s")
+    assert list(tmp_path.glob("*.json")) == []
+    # 2) a poisoned cache entry (0 rows) is a miss: the real page is refetched
+    key = CachedFetcher.cache_key(list_url, None)
+    (tmp_path / f"{key}.json").write_text(
+        json.dumps({"url": list_url, "fetched_at": 1.0, "body": fx("deck-overview.html")})
+    )
+    f2, op2 = make(tmp_path, {list_url: fx("vocabulary-list-3.html")})
+    deck = PagesDeckSource(f2).fetch_deck("anime/5/s")
+    assert op2.urls == [list_url] and len(deck.words) == 2
