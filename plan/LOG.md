@@ -940,3 +940,4 @@
 2026-11-14T00:37:43Z C-22 HANDOFF DONE 1bf8289 core+contracts green; reviewer + architect dispatched. LOGFIX-1 DISPATCH writer attempt 1
 2026-11-14T00:37:56Z JLPT-1b REVIEW_APPROVE 3 minors → FOLLOWUPS; MERGE 1927112 server
 2026-11-14T00:38:35Z OBS-1 FILED (user request; split C-23, OBS-1s, OBS-1w after LOGFIX-1, OBS-1c after C-23)
+2026-11-14T00:38:54Z C-22 REVIEW_APPROVE + ARCHITECT_APPROVE (minors → FOLLOWUPS; ADR wording fixed at merge); MERGE 92cf544 core+contracts
