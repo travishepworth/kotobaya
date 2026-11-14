@@ -423,3 +423,5 @@
 - (run 24) Worker is one serial runner: a 4-min dict-refresh or 30-min jpdb scrape blocks user imports/list-deck builds. Consider worker.replicas=2 (SKIP LOCKED claim is multi-runner safe; check memory) or a fast lane for interactive kinds. Also show "queued behind <kind>" in the web Jobs UI.
 - (run 24) jpdb scrape: no 429 handling (any non-404 HTTPError fails the job); add Retry-After backoff.
 - (run 24) API logs unknown-route 404s twice (same request_id, kotobaya.request). low.
+- (run 24) dict-refresh sha256 pins (values.yaml) go stale when EDRDG republishes (kanjidic mismatch 11-13 03:01Z, 3 attempts). Option: allow `"sha256": null` = trust-on-first-use + log the hash; or a re-pin helper script. Operational for now (re-hash before each deploy).
+- (run 24) No log retention: api/worker logs lost on every rollout (8 in 24h); client_error reports only in pod logs. Consider Loki/promtail or a client_error table.
