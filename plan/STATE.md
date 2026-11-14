@@ -18,7 +18,7 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| AND-QUEUE | writer-senior | 1 | t/AND-QUEUE-due-cards | run 26 |
+
 
 ## Queued
 FOLLOWUPS
@@ -51,6 +51,8 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-REVIEW-STALE (run 26, fb2a253d): Review tab Empty re-runs start() on sync (pulledOps>0), ON_RESUME, rollover timer
+- AND-QUEUE (run 26, c2ef978d): Home hero used per-deck sums (deckless due cards -> "caught up"); now whole-queue QueueCounts; review APPROVE
 - UI-WEB (run 19, 8095cce): every web route rebuilt on DESIGN.md, FEAT-x per-field overrides (highlight-only region click), loadFailed/retry + LoadError, app.html theme pre-paint, 24 dead POC components removed, 176+ curated shots; reviewer APPROVE after 3 rounds
 - UI-APP (run 19, 2587826): every Android screen rebuilt on DESIGN.md (ui/components, nav shell bottom bar <600dp / rail, 5 tabs, Appearance override, immersive Review), Media tab removed, KbSystemBars, 176 curated shots; reviewer APPROVE round 2
 - UI-DS-APP (run 19, 92889d0): ui/theme KotobayaTheme/KbTheme API (ThemeMode, KbTextStyles ja+ruby, tones, shapes, motion), debug styleguide 10 pages (Settings > Styleguide), 120 Roborazzi PNGs, 26 curated in docs/design-screenshots/app

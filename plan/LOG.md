@@ -1009,3 +1009,6 @@
 2026-11-14T06:11:59Z AND-QUEUE DISPATCH writer-senior; server queue OK (183 due), phone shows 0; Android-side
 2026-11-14T06:21:19Z AND-QUEUE HANDOFF root cause: Home hero summed enabled-deck counts; due cards are deckless -> 0. Queue itself 183/10/1
 2026-11-14T06:21:26Z AND-QUEUE CHECK_GREEN android
+2026-11-14T06:23:20Z AND-QUEUE MERGE c2ef978d Home hero uses whole-queue counts; review APPROVE (minors -> FOLLOWUPS)
+2026-11-14T06:23:20Z AND-REVIEW-STALE DISPATCH writer; Review tab Empty never refreshes on resume/sync (reviewer finding)
+2026-11-14T06:27:35Z AND-REVIEW-STALE MERGE fb2a253d Review Empty refreshes on sync/resume/rollover; check green

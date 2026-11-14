@@ -433,3 +433,4 @@
 - [minor] Android ServerReachability probe reports network api_failure to /client-errors on every offline probe (/meta x7 noise). Don't report probe network failures.
 - [minor] HomeQueueAgreementTest doesn't reach the TodayScreen composable / AppNav wiring; optional Robolectric compose test of hero text.
 - [minor] Study day computed in UTC on server+Android (scheduler.timezone default UTC); user is UTC+9 so rollover is 13:00 JST. Settings UI should set scheduler.timezone from device zone (or prompt).
+- [minor] AND-REVIEW-STALE uses deprecated androidx.compose.ui.platform.LocalLifecycleOwner (avoids lifecycle-compose dep); migrate later.
