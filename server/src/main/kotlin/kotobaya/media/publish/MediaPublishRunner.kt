@@ -2,6 +2,7 @@ package kotobaya.media.publish
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -70,6 +71,8 @@ class MediaPublishRunner(
             while (isActive) {
                 try {
                     reconciler.reconcileAll()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     log.error("media parse reconciler failed", e)
                 }
@@ -79,6 +82,8 @@ class MediaPublishRunner(
         while (isActive) {
             val ran = try {
                 runOnce()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error("media publish runner failed", e)
                 false
@@ -153,6 +158,8 @@ class MediaPublishRunner(
             // The checks of step 5 passed but an op was refused: the database contradicts them.
             log.warn("media publish {}: op refused: {}", id, e.message)
             end(id, token, "failed", error = "${PublishFailure.INVARIANT_VIOLATION}: ${e.message}")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.error("media publish {} failed", id, e)
             end(id, token, "failed", error = "${PublishFailure.INTERNAL}: ${e.message ?: e.javaClass.simpleName}")

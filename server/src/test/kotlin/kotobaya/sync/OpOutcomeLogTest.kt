@@ -39,4 +39,20 @@ class OpOutcomeLogTest : SyncFixture() {
             assertTrue(rej["message"].asText().startsWith("op rejected: unknown_reference"))
         }
     }
+
+    /** OBS-1s2: a schema_invalid line carries reason + pointer, never the rejected value. */
+    @Test
+    fun schemaInvalidLineDoesNotQuoteTheValue() {
+        val a = principal(A)
+        val bad = op(SETTINGS_SET, A, base + 1, """{"key":"k.a","value":1}""")
+        (bad.get("payload") as com.fasterxml.jackson.databind.node.ObjectNode).put("key", 12345).put("extra", "SECRET-NOTE-TEXT")
+        syncNow.set(java.time.Instant.ofEpochMilli(base + 10))
+        LogCapture("kotobaya.sync.ops").use { cap ->
+            val r = push(a, bad).single()
+            assertRejected(RejectCode.SCHEMA_INVALID, r)
+            val line = cap.lines().single { it["op_id"].asText() == bad["op_id"].asText() }
+            assertEquals("schema_invalid", line["reason"].asText())
+            assertTrue(!line.toString().contains("SECRET-NOTE-TEXT"), line.toString())
+        }
+    }
 }

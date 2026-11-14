@@ -2,6 +2,7 @@ package kotobaya.decks
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -62,6 +63,8 @@ class DeckPublishRunner(
         while (isActive) {
             val ran = try {
                 runOnce()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error("deck publish runner failed", e)
                 false
@@ -131,6 +134,8 @@ class DeckPublishRunner(
         } catch (e: OpRefused) {
             log.warn("deck publish {}: op refused: {}", id, e.message)
             end(id, token, "failed", error = "${PublishFailure.INTERNAL}: op refused: ${e.message}")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.error("deck publish {} failed", id, e)
             end(id, token, "failed", error = "${PublishFailure.INTERNAL}: ${e.message ?: e.javaClass.simpleName}")

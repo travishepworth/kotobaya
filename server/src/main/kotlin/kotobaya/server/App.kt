@@ -1,6 +1,7 @@
 package kotobaya.server
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -77,6 +78,9 @@ private val AccessLog = createApplicationPlugin("AccessLog") {
             when {
                 status != null && status >= 500 -> requestLog.warn("request", *args)
                 path in QUIET_PATHS -> requestLog.debug("request", *args)
+                // Long-lived / polled reads: routine 2xx at DEBUG, errors stay WARN/INFO.
+                call.request.httpMethod == HttpMethod.Get && (path == "/sync/pull" || path == "/events") &&
+                    status != null && status in 200..299 -> requestLog.debug("request", *args)
                 else -> requestLog.info("request", *args)
             }
         }

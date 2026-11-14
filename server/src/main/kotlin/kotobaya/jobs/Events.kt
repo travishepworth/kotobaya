@@ -225,14 +225,16 @@ class JobWatcher(
                 seen[j.id] = Seen(snap, if (baselined) now else 0L)
                 if (baselined) {
                     emit(j)
-                    if (j.terminal) JobResultLog.log(j)
+                    if (j.terminal) runCatching { JobResultLog.log(j) }
                 }
             } else if (prev.snap != snap && (j.terminal || now - prev.lastEmitMs >= 1000)) {
-                // OBS-1s: the transition into a terminal state is seen exactly once here; log the job's result.
-                if (j.terminal && prev.snap.status != j.status) JobResultLog.log(j)
+                // OBS-1s: the transition into a terminal state is seen exactly once here; log the job's result
+                // after the emit, and never let a logging failure re-emit the terminal event.
+                val becameTerminal = j.terminal && prev.snap.status != j.status
                 prev.snap = snap
                 prev.lastEmitMs = now
                 emit(j)
+                if (becameTerminal) runCatching { JobResultLog.log(j) }
             }
         }
         seen.keys.retainAll(present)

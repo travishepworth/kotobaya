@@ -161,11 +161,16 @@ internal class ClientErrorLimiter(private val clock: () -> Instant) {
     private val states = HashMap<UUID, State>()
     private val window = Duration.ofSeconds(60)
 
-    private fun state(id: UUID, now: Instant): State {
-        if (states.size > 1_000) states.values.removeIf { it.requests.isEmpty() && it.items.isEmpty() && it.refusedRequests == 0 }
-        val s = states.getOrPut(id) { State() }
+    private fun trim(s: State, now: Instant) {
         while (s.requests.isNotEmpty() && !s.requests.first.isAfter(now.minus(window))) s.requests.removeFirst()
         while (s.items.isNotEmpty() && !s.items.first.first.isAfter(now.minus(window))) s.itemSum -= s.items.removeFirst().second
+    }
+
+    private fun state(id: UUID, now: Instant): State {
+        // Trim every state inside the prune so stale ones (empty after trimming) are removed.
+        if (states.size > 1_000) states.values.removeIf { trim(it, now); it.requests.isEmpty() && it.items.isEmpty() && it.refusedRequests == 0 }
+        val s = states.getOrPut(id) { State() }
+        trim(s, now)
         return s
     }
 

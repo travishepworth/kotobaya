@@ -1,5 +1,6 @@
 package kotobaya.confusables
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,7 +22,7 @@ import org.slf4j.LoggerFactory
  * Idempotent: any existing row (suggested, confirmed or rejected) suppresses the pair, so a re-run emits nothing and
  * a user decision is never touched. Runs at start and every [intervalMs]; [runOnce] is callable directly.
  */
-class ConfusableSuggester(
+open class ConfusableSuggester(
     private val db: Database,
     private val opApply: OpApply,
     private val intervalMs: Long = 6 * 3_600_000L,
@@ -34,6 +35,8 @@ class ConfusableSuggester(
             try {
                 val n = runOnce()
                 if (n > 0) log.info("confusables: {} suggestion(s)", n)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error("confusable suggestions failed", e)
             }
@@ -42,7 +45,7 @@ class ConfusableSuggester(
     }
 
     /** Returns the number of suggestions minted. */
-    fun runOnce(): Int {
+    open fun runOnce(): Int {
         val (candidates, existing) = db.txBlocking { dsl ->
             val vocab = dsl.fetch(
                 "select n.id::text, n.entry_seq, e.headword, e.headword_reading, e.senses::text " +

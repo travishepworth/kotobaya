@@ -103,9 +103,20 @@ class PushService(private val opApply: OpApply) {
             )
             PushResult.REJECTED -> opLog.warn(
                 "op rejected: {}", r.error?.code, kv("op_id", r.opId), kv("op_type", type), kv("outcome", r.status),
-                kv("reason", r.error?.code), kv("reason_message", r.error?.message),
+                kv("reason", r.error?.code), kv("reason_message", logSafeReason(r.error)),
             )
         }
+    }
+
+    /**
+     * The rejection message as it may be logged. A `schema_invalid` message can quote the rejected value (note text
+     * must never reach logs), so only its JSON pointer is kept; other codes carry fixed or numeric messages.
+     */
+    private fun logSafeReason(e: Rejection?): String? {
+        if (e == null) return null
+        if (e.code != RejectCode.SCHEMA_INVALID) return e.message.take(300)
+        val pointer = Regex(" at '([^']{0,200})'$").find(e.message)?.groupValues?.get(1)
+        return if (pointer != null) "invalid value at '$pointer'" else "schema invalid"
     }
 
     private fun reject(opId: String, code: String, message: String) = PushResult(opId, PushResult.REJECTED, error = Rejection(code, message))

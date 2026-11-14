@@ -2,6 +2,7 @@ package kotobaya.optimizer
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,8 @@ class FsrsParamsPublishRunner(
         while (isActive) {
             val ran = try {
                 runOnce()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error("fsrs params publish runner failed", e)
                 false
@@ -114,6 +117,8 @@ class FsrsParamsPublishRunner(
             end(id, token, "failed", error = e.error)
         } catch (e: OpInputInvalid) {
             end(id, token, "failed", error = "${FsrsPublishFailure.WEIGHTS_OUT_OF_BOUNDS}: ${e.message}")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.error("fsrs params publish {} failed", id, e)
             end(id, token, "failed", error = "${FsrsPublishFailure.INTERNAL}: ${e.message ?: e.javaClass.simpleName}")

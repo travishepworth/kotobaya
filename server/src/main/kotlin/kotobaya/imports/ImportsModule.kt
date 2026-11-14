@@ -2,6 +2,7 @@ package kotobaya.imports
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -103,6 +104,8 @@ class JpdbHistoryApplyRunner(
         while (isActive) {
             val ran = try {
                 runOnce()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error("jpdb apply runner failed", e)
                 false
@@ -145,6 +148,9 @@ class JpdbHistoryApplyRunner(
         } catch (e: ImportCancelled) {
             beat.stop()
             finish(id, "cancelled")
+        } catch (e: CancellationException) {
+            beat.stop()
+            throw e
         } catch (e: Exception) {
             beat.stop()
             log.error("jpdb history import {} failed", parent, e)
