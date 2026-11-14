@@ -55,6 +55,8 @@ class AppDeps(
 
 private val requestLog = LoggerFactory.getLogger("kotobaya.request")
 private val StartKey = io.ktor.util.AttributeKey<Long>("kotobaya.start")
+/** SRV-404LOG: set once a call's access-log line is written. ResponseSent fires twice for an unmatched route's 404. */
+private val AccessLogged = io.ktor.util.AttributeKey<java.util.concurrent.atomic.AtomicBoolean>("kotobaya.accessLogged")
 
 /** Probe and scrape paths: their access-log lines are DEBUG, so kubelet probes do not drown the log. */
 private val QUIET_PATHS = setOf("/healthz", "/readyz", "/metrics")
@@ -65,6 +67,9 @@ private val QUIET_PATHS = setOf("/healthz", "/readyz", "/metrics")
  */
 private val AccessLog = createApplicationPlugin("AccessLog") {
     on(ResponseSent) { call ->
+        val first = call.attributes.computeIfAbsent(AccessLogged) { java.util.concurrent.atomic.AtomicBoolean(false) }
+            .compareAndSet(false, true)
+        if (!first) return@on
         val ms = (System.nanoTime() - (call.attributes.getOrNull(StartKey) ?: System.nanoTime())) / 1_000_000
         val path = call.request.local.uri.substringBefore('?')
         val status = call.response.status()?.value

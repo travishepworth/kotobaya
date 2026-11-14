@@ -144,6 +144,29 @@ class ServerTest {
         assertEquals("GET", line["method"].asText())
     }
 
+    /** SRV-404LOG: every request logs exactly one kotobaya.request line, unmatched routes included. */
+    @Test
+    fun everyRequestLogsExactlyOnceIncludingUnknownRoutes() = testApplication {
+        val db = TestPg.deadDb()
+        application { kotobayaModule(AppDeps(db, authenticator = Authenticator { _, _ -> TokenInfo("tok-3", "laptop") })) }
+        val requests = LogCapture("kotobaya.request")
+
+        assertEquals(404, client.get("/api/v1/version").status.value)
+        assertEquals(501, client.get("/api/v1/notes").status.value)
+        // let the ResponseSent hook run
+        Thread.sleep(200)
+        requests.close()
+        db.close()
+
+        val lines = requests.lines()
+        val unknown = lines.filter { it["path"]?.asText() == "/api/v1/version" }
+        assertEquals(1, unknown.size, "unknown route must log exactly once")
+        assertEquals(404, unknown.single()["status"].asInt())
+        val known = lines.filter { it["path"]?.asText() == "/api/v1/notes" }
+        assertEquals(1, known.size, "known route must log exactly once")
+        assertEquals(501, known.single()["status"].asInt())
+    }
+
     @Test
     fun migrateCommandReturnsZeroOnSuccessAndNonZeroOnFailure() {
         val url = TestPg.freshDatabaseUrl()
