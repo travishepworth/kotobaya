@@ -1032,3 +1032,5 @@
 2026-11-14T22:41:57Z AND-TAKO-PERF HANDOFF findNotes per-note dict entry()+map lookups -> batched forms(); JVM miss 1379->91 ms; Takoboto deck = inbox id 1 by design
 2026-11-14T22:43:47Z AND-DECKCONTENT HANDOFF attempt 2 (rebased 4f2da0ef, content-state UI + retry); reviewer dispatched
 2026-11-14T22:46:06Z AND-TAKO-PERF CHECK_GREEN + MERGE abc4499a
+2026-11-14T22:46:37Z AND-DECKCONTENT REVIEW_APPROVE (6 minors -> FOLLOWUPS)
+2026-11-14T22:48:51Z AND-DECKCONTENT CHECK_GREEN + MERGE 09c74c17
