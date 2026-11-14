@@ -123,6 +123,7 @@ class ReviewViewModel(
     /** A failed load shows [ReviewState.Failed] (Retry); a failed intent on a shown card shows the inline error. */
     override fun onFailure(e: Throwable) {
         if (session == null || current.review == ReviewState.Loading) {
+            sessionJob?.cancel()
             sessionJob = null
             session = null
             update { it.copy(review = ReviewState.Failed) }
@@ -251,7 +252,19 @@ class ReviewViewModel(
         launchIo {
             when (val r = block()) {
                 is ActionResult.Done -> {
-                    if (requeue) s?.start() else s?.refreshCurrent()
+                    if (requeue) {
+                        // the card was buried/suspended: if the next card cannot be loaded, do not leave it on screen
+                        try {
+                            s?.start()
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Throwable) {
+                            update { it.copy(review = ReviewState.Failed) }
+                            throw e
+                        }
+                    } else {
+                        s?.refreshCurrent()
+                    }
                     setResult(R.string.review_action_done, r.undoable, r.warnings.size)
                 }
                 is ActionResult.Refused -> setResult(R.string.review_action_refused, false, 0)

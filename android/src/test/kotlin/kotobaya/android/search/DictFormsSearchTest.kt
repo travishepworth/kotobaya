@@ -66,6 +66,16 @@ class DictFormsSearchTest {
     }
 
     @Test
+    fun aPatternMatchingMoreEntriesThanTheCapDropsTheDictionaryBranch() {
+        linkedNote(1, 1)
+        linkedNote(2, 2)
+        val dict = dictionary()
+        // cap 1: "る" matches one entry (kept), "む" too; a pattern hitting both entries (ま is in neither) -- use cap 0
+        assertEquals(listOf(uuid(2, 1)), ids(LocalCardSearch(driver, db, { NOW }, dict, dictFormsMaxSeqs = 1), "食べる"))
+        assertTrue(ids(LocalCardSearch(driver, db, { NOW }, dict, dictFormsMaxSeqs = 0), "食べる").isEmpty())
+    }
+
+    @Test
     fun withoutADictionaryBehaviourIsUnchanged() {
         linkedNote(1, 1)
         val none = LocalCardSearch(driver, db, { NOW })

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotobaya.android.R
 import kotobaya.android.media.browse.Loaded
+import kotobaya.android.vm.ScreenLog
 import kotobaya.android.vm.StateViewModel
 
 /** The pages of the struggle screen. */
@@ -183,15 +184,31 @@ class StruggleViewModel(
     override fun saveMnemonic() {
         val page = current.page as? StrugglePage.Word ?: return
         val text = current.word.mnemonic
-        launchIo { reportWord(source.saveMnemonic(page.word.noteId, text), R.string.struggle_mnemonic_saved) }
+        writeIo(wordPane = true) { reportWord(source.saveMnemonic(page.word.noteId, text), R.string.struggle_mnemonic_saved) }
     }
 
     override fun makeSentenceCard(sentence: SentenceItem) {
-        launchIo { reportWord(source.makeSentenceCard(sentence), R.string.struggle_card_created) }
+        writeIo(wordPane = true) { reportWord(source.makeSentenceCard(sentence), R.string.struggle_card_created) }
+    }
+
+    /** A write that throws marks only the pane that issued it (the other pane's message stays as it was). */
+    private fun writeIo(wordPane: Boolean, block: suspend () -> Unit) = launchIo {
+        try {
+            block()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            ScreenLog.loadFailed("StruggleViewModel.write", e)
+            kotobaya.android.report.ClientErrors.exception(e, "write in StruggleViewModel")
+            update {
+                if (wordPane) it.copy(word = it.word.copy(message = R.string.struggle_write_failed))
+                else it.copy(confusables = it.confusables.copy(message = R.string.struggle_write_failed))
+            }
+        }
     }
 
     override fun setConfusable(pair: ConfusableView, status: String) {
-        launchIo {
+        writeIo(wordPane = false) {
             val r = source.setConfusable(pair, status)
             val message = if (r.isSuccess) R.string.struggle_pair_updated else R.string.struggle_write_failed
             update { it.copy(confusables = it.confusables.copy(message = message)) }

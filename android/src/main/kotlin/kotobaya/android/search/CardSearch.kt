@@ -65,6 +65,8 @@ class LocalCardSearch(
     private val clock: () -> Long = System::currentTimeMillis,
     /** The offline dictionary for the C-24 dictionary-form lookup; null (or not installed): bare terms match note text only. */
     private val dictionary: InstalledDictionary? = null,
+    /** Cap of distinct entries one pattern may match before the dictionary branch is dropped (overridable in tests). */
+    private val dictFormsMaxSeqs: Int = DICT_FORMS_MAX_SEQS,
 ) {
     fun search(query: String): CardSearchOutcome {
         val parsed = DefaultSearchQueryParser.parse(query)
@@ -110,7 +112,7 @@ class LocalCardSearch(
         }
         return { f ->
             val rows = dict.formRows(f.sql, f.params.map { it.toString() }) { it in collection }.orEmpty()
-            if (rows.mapTo(HashSet()) { it.seq }.size > DICT_FORMS_MAX_SEQS) emptyList() else rows
+            if (rows.mapTo(HashSet()) { it.seq }.size > dictFormsMaxSeqs) emptyList() else rows
         }
     }
 
