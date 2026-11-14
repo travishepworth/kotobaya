@@ -9,7 +9,7 @@ RUN20 ENDED (context budget) with these agents still in flight. On resume: `git 
 Running at handback:
 - JLPT-1a writer (worker loader + deck-build handler) · JLPT-1b writer-senior (server DeckPublishRunner + DeckLists counts; high → reviewer)
 - UI-RUBY MERGED aa8d61d
-- BUG-14a writer (CRITICAL review loop: web answerId reuse → server dedups grades; med → reviewer)
+- BUG-14a HANDOFF DONE (236135e, web green; test under web/tests/review — out-of-path but required by vitest include; accept). READY_FOR_REVIEW (med → reviewer), then merge.
 - C-22 architect (CRITICAL: core queue serves future-due learning cards before due reviews; high → reviewer)
 Queued: BROWSE-1 (surface-form search; core parser/C-ticket if needed), BROWSE-2 (one row per vocab note) — 0.1.10 if small else 0.1.11, after critical work. FEAT-DICT (web dict links everywhere; dispatch after BUG-14a merges; ship in 0.1.10 only if small, else 0.1.11). Android equivalent → FEAT-DICT-APP follow-up.
 Then: build+push 0.1.10 from one pinned SHA worktree (`make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`), bump tags in ~/repos/kubernetes/kotobaya/values.yaml (+ consider freq_lists in dictSourcesJson per VOCAB_LISTS 4.3), helm upgrade, run dict-refresh job (loads JLPT lists), verify live: jpdb re-import has words; /deck-lists JLPT item_count > 0; JLPT deck fills via deck-build; review grades land (review_log grows per press). Android APK rebuild needed for C-22 (queue in core) + ruby → HUMAN_CHECKS.

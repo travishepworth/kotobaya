@@ -924,3 +924,4 @@
 2026-11-14T00:30:40Z BROWSE-1 BROWSE-2 FILED (user asks D/E; queued behind critical)
 2026-11-14T00:31:15Z UI-RUBY MERGE aa8d61d web+android (low; ruby 0.6/12px; reviewer-light skipped, context budget)
 2026-11-14T00:31:25Z RUN20 END context budget; RESTART NEEDED; in flight JLPT-1a, JLPT-1b, BUG-14a, C-22
+2026-11-14T00:31:41Z BUG-14a HANDOFF DONE 236135e; newPress() fresh id per press; Android unaffected; READY_FOR_REVIEW
