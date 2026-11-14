@@ -930,3 +930,5 @@
 2026-11-14T00:34:37Z BUG-14a REVIEW_APPROVE round 2; MERGE 3704bd4 web (CHECK_GREEN 41 tests)
 2026-11-14T00:35:15Z RUN21 USER_REPORTS F (android insets → AND-INSETS ticket) G (android post-sync loads fail → DIAGNOSE scout) H (crash; no adb device → HUMAN_CHECKS)
 2026-11-14T00:35:17Z JLPT-1a HANDOFF DONE ac0977b worker green; default digests untested offline; READY_FOR_REVIEW
+2026-11-14T00:36:21Z RUN21 DECIDE user: no interim 0.1.10; single release after all items. DISPATCH JLPT-1a reviewer, FEAT-DICT writer, BROWSE-1+2 writer (batched). FILED LOGFIX-1 (worker, after JLPT-1a), FEAT-DICT-APP (after AND-INSETS)
+2026-11-14T00:36:24Z JLPT-1b HANDOFF DONE server green; READY_FOR_REVIEW (high)

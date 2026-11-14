@@ -7,7 +7,7 @@ Updated: RUN19 END
 Merged this run: BUG-11 d3711c2 (jpdb slugless URL), C-21 1578783 (JLPT vocab contract, ADR-022), BUG-12 82a5b27 (struggle Open in dictionary), BUG-13 860196f (Open note bounce).
 RUN20 ENDED (context budget) with these agents still in flight. On resume: `git worktree list` + `git log main..<branch>`; a branch whose worktree has a committed HANDOFF.md → READY_FOR_REVIEW (validate, make check, review per tier, merge); no HANDOFF → re-dispatch same tier (attempt kept), resuming the partial worktree.
 Running at handback:
-- JLPT-1a HANDOFF DONE (ac0977b, worker green 815; JLPT default-on → verify pinned sha256 digests against real downloads before deploy; READY_FOR_REVIEW, med → reviewer since release-critical) · JLPT-1b writer-senior (server DeckPublishRunner + DeckLists counts; high → reviewer)
+- JLPT-1a HANDOFF DONE (ac0977b, worker green 815; JLPT default-on → verify pinned sha256 digests against real downloads before deploy; READY_FOR_REVIEW, med → reviewer since release-critical) · JLPT-1b HANDOFF DONE (server green; DeckPublishRunner via OpApply, DeckLists from ref.vocab_list; READY_FOR_REVIEW, high → reviewer)
 - UI-RUBY MERGED aa8d61d
 - BUG-14a MERGED 3704bd4 (reviewer APPROVE r2)
 - C-22 architect (CRITICAL: core queue serves future-due learning cards before due reviews; high → reviewer)
