@@ -17,7 +17,7 @@ Auth, one of:
 - `KOTOBAYA_PASSWORD` (+ `KOTOBAYA_TOTP` if TOTP is on): session login via `POST /auth/login`
   with a cookie jar; writes send `X-Kotobaya-Csrf: 1`.
 
-Other env: `SMOKE_VERSION` (expected server version, default `0.1.10`), `SMOKE_JPDB_DECK`
+Other env: `SMOKE_VERSION` (expected server version, default `0.1.11`), `SMOKE_JPDB_DECK`
 (a jpdb deck id such as `anime/5370`, see below), `SMOKE_CREATED_FILE` (created-ids path).
 
 ## Safety

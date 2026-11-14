@@ -6,7 +6,7 @@ set -uo pipefail
 BASE="${KOTOBAYA_URL:-https://kotobaya.batk.me}"
 BASE="${BASE%/}"
 API="$BASE/api/v1"
-EXPECTED_VERSION="${SMOKE_VERSION:-0.1.10}"
+EXPECTED_VERSION="${SMOKE_VERSION:-0.1.11}"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="smoke-$TS"
 WORK="$(mktemp -d)"
