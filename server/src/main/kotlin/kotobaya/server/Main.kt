@@ -152,7 +152,8 @@ fun composeApp(
         // listEntryExamples is provided by both dict (F-17, registered) and sentences (T408a): register it once.
         (SentencesModule(db).handlers - "listEntryExamples") +
         (blobStore?.let { BlobsModule(db, it).handlers } ?: emptyMap()) +
-        kotobaya.export.ExportModule(db, blobStore).handlers
+        kotobaya.export.ExportModule(db, blobStore).handlers +
+        kotobaya.clienterrors.ClientErrorsModule().handlers
     val deps = AppDeps(
         db = db,
         authenticator = auth.authenticator,

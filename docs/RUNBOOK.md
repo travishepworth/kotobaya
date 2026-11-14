@@ -102,6 +102,8 @@ credential is known `token.id`, `token.name` and, for device tokens, `device_id`
 | Jobs that produced nothing from a non-empty input (ERROR; e.g. a jpdb import with 0 cards) | `$L \| grep '"message":"job [^"]* produced nothing'` |
 | Server runners (media/deck publish, jpdb apply, fsrs publish) | `$L \| grep -E '"logger_name":"kotobaya\.(media\.publish\|decks\.publish\|imports\.jpdb\|optimizer\.publish)"' \| grep -E '"level":"(WARN\|ERROR)"'` |
 | Auth failures and rate limits | `$L \| grep -E '"event":"auth\.(login\|pair)"' \| grep -v '"outcome":"ok"'` |
+| Client errors reported by web/Android (ERROR/WARN, one line per item; `client`, `app_version`, `kind`, `route`, `client_request_id`, `token.name`) | `$L \| grep '"logger_name":"kotobaya.client_error"' \| jq -c '{level, message, client, app_version, kind, route, client_request_id, "token.name", request_id}'` |
+| Clients that dropped reports, or were refused by the rate limit | `$L \| grep -E '"message":"client (dropped error reports\|error reports refused)'` |
 | Worker failures | `kubectl -n kotobaya logs deploy/kotobaya-worker --since=24h \| grep -E 'ERROR\|Traceback'` |
 
 Job result lines are written by the API when it sees a job reach a terminal state, so a job that
