@@ -956,3 +956,8 @@
 2026-11-14T01:02:19Z AND-INSETS HANDOFF DONE android green; READY_FOR_REVIEW (drain)
 2026-11-14T01:05:00Z RUN23 RESUME C-24 + AND-POSTSYNC writers (run 22) alive finishing; no re-dispatch. Reviews: C-23 reviewer, OBS-1w reviewer, AND-INSETS reviewer-light. OBS-1s DISPATCH writer attempt 2 (t/OBS-1s-c23 = OBS-1s rebased on C-23 + reportClientErrors handler)
 2026-11-14T01:06:00Z C-24 HANDOFF DONE 05129a9 core+contracts+server green; reviewer + architect queued. FILED AND-DICTFORMS (android LocalCardSearch dictForms; after C-24)
+2026-11-14T01:10:00Z AND-INSETS REVIEW_APPROVE (light; minors: imePadding lifts bottom bar, no device check → HUMAN_CHECKS); rebased, android check running
+2026-11-14T01:11:00Z C-23 REVIEW_APPROVE 4 minors (413 for >20 items → OBS-1s attempt 2; 2 → OBS-1c ticket; merge with OBS-1s). C-24 reviewer + architect dispatched
+2026-11-14T01:20:00Z OBS-1w REVIEW_APPROVE 6 minors → OBS-1w2; CHECK_GREEN 859; MERGE 9bff9db worker
+2026-11-14T01:20:30Z C-24 REVIEW_APPROVE + ARCHITECT_APPROVE (perf minors → AND-DICTFORMS; smart-deck server/device diff → FOLLOWUPS/release notes); MERGE 7ea29c1
+2026-11-14T01:21:00Z AND-POSTSYNC HANDOFF DONE 99502d6 android green; reviewer dispatched. OBS-1w2 FILED+DISPATCH writer

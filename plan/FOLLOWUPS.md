@@ -409,3 +409,8 @@
 - JLPT-1b review minors: (1) DeckLists.kt:20 a vocab_list id should win over a same-named freq band (§4.2); (2) DeckPublishPayload.kt:29 accept integral 1.0 for format_version; (3) no test for the parent being cancelled between the pre-check and the tx. low.
 - C-22 review minors: (1) when only learn-ahead cards remain, a card just answered Hard comes straight back (Anki-like). Consider a "come back in N min" screen or skipping cards answered within X min. med UX (looks like "stuck"). (2) DefaultQueueBuilder.kt:32 KDoc rewrap. (3) server queue page limit=20 can hide learn-ahead cards behind more than 20 items (they are still counted). low.
 - BROWSE-2 review minors: partial row selection has no indeterminate checkbox; row select covers only loaded sibling cards; chips don't wrap (clipped with 3+ cards). low.
+
+## From run 23
+- C-24: server smart decks/drills with bare-text queries now also match dict forms of entry-linked notes (smart decks may grow; mention in 0.1.10 notes). Device matches fewer until AND-DICTFORMS; permanently differs when a top60k dictionary package lacks an entry.
+- C-24: Postgres `OR EXISTS` on bare terms scans the user's notes (one PK probe per entry-linked note); EXPLAIN if large collections get slow.
+- AND-INSETS: imePadding on the shell column lifts the bottom bar above the keyboard; check on device.
