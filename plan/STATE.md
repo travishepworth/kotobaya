@@ -5,7 +5,8 @@ Updated: RUN19 END
 
 ## RESUME HERE (run 20 IN PROGRESS: 0.1.10 hotfix for live bugs)
 Merged this run: BUG-11 d3711c2 (jpdb slugless URL), C-21 1578783 (JLPT vocab contract, ADR-022), BUG-12 82a5b27 (struggle Open in dictionary), BUG-13 860196f (Open note bounce).
-Running (worktrees under .claude/worktrees/agent-*; check `git worktree list`):
+RUN20 ENDED (context budget) with these agents still in flight. On resume: `git worktree list` + `git log main..<branch>`; a branch whose worktree has a committed HANDOFF.md → READY_FOR_REVIEW (validate, make check, review per tier, merge); no HANDOFF → re-dispatch same tier (attempt kept), resuming the partial worktree.
+Running at handback:
 - JLPT-1a writer (worker loader + deck-build handler) · JLPT-1b writer-senior (server DeckPublishRunner + DeckLists counts; high → reviewer)
 - UI-RUBY MERGED aa8d61d
 - BUG-14a writer (CRITICAL review loop: web answerId reuse → server dedups grades; med → reviewer)
