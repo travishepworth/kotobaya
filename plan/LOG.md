@@ -1022,3 +1022,6 @@
 2026-11-14T06:43:50Z RELEASE 0.1.12 APK built ~/kotobaya-apk/kotobaya-0.1.12-debug.apk code 112 cert ec6b7f45 ok; waiting for adb device
 2026-11-14T07:14:09Z RELEASE 0.1.12 INSTALL BLOCKED: no adb device for 40 min; HUMAN_CHECKS updated
 2026-11-14T07:14:09Z RUN26 END 3 merged (AND-QUEUE, AND-REVIEW-STALE, AND-CARDHTML); 0.1.12 APK ready, device verify pending
+2026-11-14T22:21:12Z RELEASE 0.1.12 INSTALLED on phone (adb install -r; cert ec6b7f45 match; 111->112, user 10 kept data)
+2026-11-14T22:21:12Z QA-0112 logs: Takoboto notes_v2 csum query 37.7 s; Fatal Twelve installed_content_version 0<1 (no device content installer); deck rows show e:<seq>; search shows literal reading/meaning; GET /meta network x6 (settings)
+2026-11-14T22:21:12Z ADR-026 DECIDE Android search merged into one list (PROVISIONAL)
