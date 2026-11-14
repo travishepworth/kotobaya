@@ -1,7 +1,8 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN21 END
+Updated: RUN22 (resumed; run-21 agents still alive, notifications go to dead parent → poll branches for HANDOFF)
+Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RESUME HERE (run 21 ended at its context budget; run 22 resumes)
 USER DIRECTION (run 21): NO interim 0.1.10. Ship ONE release (0.1.10) after ALL items below are merged and reviewed: pin one SHA in a worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump the tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; CONFIRM egress to raw.githubusercontent.com for JLPT default-on, or set "jlpt": null), helm upgrade (-n kotobaya, never ingress-nginx), run dict-refresh. Live-verify: jpdb import yields cards, /deck-lists JLPT item_count > 0 and JLPT decks fill, review advances (review_log grows per press), log sweep with the new OBS logs, "how to check health" greps in the report. Build a debug APK with VERSION_NAME=0.1.10 VERSION_CODE=110 (memory phone-apk-install; no device attached in run 21 → HUMAN_CHECKS install).

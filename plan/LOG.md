@@ -944,3 +944,5 @@
 2026-11-14T00:39:32Z BROWSE-1 CONTRACT_CHANGE_REQUEST (entry-linked notes have empty fields) → C-24 FILED; BROWSE-2 DONE web green → reviewer-light
 2026-11-14T00:40:00Z RUN21 END context budget; RESTART NEEDED; in flight FEAT-DICT, BROWSE-2 review, C-24, AND-INSETS, AND-POSTSYNC, LOGFIX-1, C-23, OBS-1s
 2026-11-14T00:40:18Z BROWSE-2 REVIEW_APPROVE (light, 3 minors → FOLLOWUPS); MERGE a0e16d0 web (post-handback)
+2026-11-14T00:41:19Z RUN22 RESUME 7 run-21 agents alive (C-23,C-24,OBS-1s,AND-POSTSYNC,LOGFIX-1,FEAT-DICT,AND-INSETS); polling HANDOFFs
+2026-11-14T00:41:19Z RELEASE CHECK worker pod -> raw.githubusercontent.com HTTP 200; JLPT default source stays on. adb: no device
