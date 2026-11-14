@@ -962,3 +962,6 @@
 2026-11-14T01:20:30Z C-24 REVIEW_APPROVE + ARCHITECT_APPROVE (perf minors → AND-DICTFORMS; smart-deck server/device diff → FOLLOWUPS/release notes); MERGE 7ea29c1
 2026-11-14T01:21:00Z AND-POSTSYNC HANDOFF DONE 99502d6 android green; reviewer dispatched. OBS-1w2 FILED+DISPATCH writer
 2026-11-14T01:25:00Z AND-POSTSYNC REVIEW_APPROVE 3 minors → AND-REVIEWERR (filed, android batch for 0.1.10)
+2026-11-14T01:30:00Z AND-INSETS CHECK_GREEN after rebase; MERGE c20cf92 android
+2026-11-14T01:30:30Z BROWSE-1 RESOLVED by C-24 (scout: web listCards → server CardSearch Postgres compiler, no client filtering); live-verify after deploy
+2026-11-14T01:36:00Z OBS-1w2 HANDOFF DONE; CHECK_GREEN 862; MERGE 2d605df2 worker (low, no review)
