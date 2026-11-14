@@ -327,8 +327,8 @@
 	--kb-type-overline-weight: 600;
 	--kb-type-overline-tracking: 0.08em;
 	--kb-type-overline: 600 var(--kb-type-overline-size) / 1.4 var(--kb-family-sans);
-	--kb-ruby-scale: 0.5;
-	--kb-ruby-min: 0.625rem;
+	--kb-ruby-scale: 0.6;
+	--kb-ruby-min: 0.75rem;
 	--kb-ruby-lh: 2.2;
 	--kb-space-0: 0;
 	--kb-space-0-5: 0.125rem;

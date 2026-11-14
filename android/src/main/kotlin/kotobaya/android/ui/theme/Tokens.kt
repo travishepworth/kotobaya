@@ -357,8 +357,8 @@ object KbType {
     /** Uppercase section eyebrows (Latin only; never on Japanese). */
     val overline: TextStyle = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight(600), letterSpacing = 0.08.em)
     /** Furigana: base size × RUBY_SCALE, never below RUBY_MIN_SP. */
-    const val RUBY_SCALE: Float = 0.5f
-    const val RUBY_MIN_SP: Float = 10f
+    const val RUBY_SCALE: Float = 0.6f
+    const val RUBY_MIN_SP: Float = 12f
     const val RUBY_LINE_HEIGHT: Float = 2.2f
 }
 

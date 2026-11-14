@@ -18,7 +18,7 @@
   --kb-card-size-sentence: clamp(1.3125rem, 1.1902rem + 0.5435vw, 1.625rem);
   --kb-card-size-reading: clamp(1.125rem, 1.0272rem + 0.4348vw, 1.375rem);
   --kb-card-leading: 1.7;
-  --kb-card-ruby-scale: 0.5;
+  --kb-card-ruby-scale: 0.6;
 }
 :root,
 [data-theme="light"] {
@@ -73,7 +73,7 @@
   background: var(--kb-card-bg);
   padding: 1rem;
 }
-.kb-card ruby rt { font-size: max(calc(var(--kb-card-ruby-scale) * 1em), 0.625rem); }
+.kb-card ruby rt { font-size: max(calc(var(--kb-card-ruby-scale) * 1em), 0.75rem); }
 .kb-front { min-height: 4rem; }
 .kb-back { padding-bottom: 2rem; }
 
