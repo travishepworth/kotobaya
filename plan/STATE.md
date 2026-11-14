@@ -7,7 +7,7 @@ Updated: RUN19 END
 Merged this run: BUG-11 d3711c2 (jpdb slugless URL), C-21 1578783 (JLPT vocab contract, ADR-022), BUG-12 82a5b27 (struggle Open in dictionary), BUG-13 860196f (Open note bounce).
 Running (worktrees under .claude/worktrees/agent-*; check `git worktree list`):
 - JLPT-1a writer (worker loader + deck-build handler) · JLPT-1b writer-senior (server DeckPublishRunner + DeckLists counts; high → reviewer)
-- UI-RUBY writer-light attempt 2 (ruby 0.6, Android test 24sp, clipping check; low → reviewer-light)
+- UI-RUBY MERGED aa8d61d
 - BUG-14a writer (CRITICAL review loop: web answerId reuse → server dedups grades; med → reviewer)
 - C-22 architect (CRITICAL: core queue serves future-due learning cards before due reviews; high → reviewer)
 Queued: BROWSE-1 (surface-form search; core parser/C-ticket if needed), BROWSE-2 (one row per vocab note) — 0.1.10 if small else 0.1.11, after critical work. FEAT-DICT (web dict links everywhere; dispatch after BUG-14a merges; ship in 0.1.10 only if small, else 0.1.11). Android equivalent → FEAT-DICT-APP follow-up.
