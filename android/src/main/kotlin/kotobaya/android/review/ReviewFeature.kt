@@ -18,6 +18,7 @@ import kotobaya.android.sync.SyncBootstrap
 import kotobaya.android.sync.SyncClient
 import kotobaya.android.sync.SyncTriggers
 import org.koin.compose.getKoin
+import org.koin.dsl.bind
 import org.koin.dsl.module
 import java.io.File
 
@@ -44,6 +45,7 @@ class BlobStoreResolver(private val store: BlobStore, private val clock: () -> L
 val reviewFeature = FeatureEntry(
     id = "review",
     module = module {
+        single { ReviewDueSignal() } bind kotobaya.android.notify.DueListener::class
         single<ReviewBackend<*>> {
             val client = get<SyncClient>()
             val triggers = get<SyncTriggers>()
@@ -57,6 +59,7 @@ val reviewFeature = FeatureEntry(
                 queue = get<LocalQueueLoader>().asQueueSource(),
                 prefs = store::read,
                 blobs = BlobStoreResolver(get()),
+                dueChanged = get<ReviewDueSignal>().flow,
                 awaitReady = { koin.get<SyncBootstrap>().ready.await() },
                 syncNow = { triggers.background(kotobaya.android.sync.SyncTrigger.MANUAL) },
                 nextStudyDayStart = { at ->
@@ -71,6 +74,16 @@ val reviewFeature = FeatureEntry(
         NavRoute(Routes.REVIEW, R.string.nav_review, topLevel = true) { ReviewRoute() },
     ),
 )
+
+/** Relays the shared due-trigger (sync pulled ops, app open, alarms) to open review sessions. */
+class ReviewDueSignal : kotobaya.android.notify.DueListener {
+    private val shared = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val flow: kotlinx.coroutines.flow.Flow<Unit> get() = shared
+
+    override fun onDueChanged() {
+        shared.tryEmit(Unit)
+    }
+}
 
 /**
  * The review screen's glue: a [ReviewViewModel] per [key] (the Review tab uses none; a deck's study page passes one
@@ -90,6 +103,14 @@ fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -
     DisposableEffect(vm) {
         vm.enter()
         onDispose { vm.leave() }
+    }
+    val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(vm, owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) vm.refreshIfEmpty()
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
     }
     val state by vm.state.collectAsState()
     ReviewScreen(state, vm)

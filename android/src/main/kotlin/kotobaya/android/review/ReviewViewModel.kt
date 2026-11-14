@@ -150,6 +150,7 @@ class ReviewViewModel(
             session = s
             update { it.copy(prefs = prefs) }
             var shown: Pair<Long, CardSide>? = null
+            launch { b.dueChanged.collect { refreshIfEmpty() } }
             launch {
                 combine(s.state, s.meta) { st, m -> st to m }.collect { (st, m) ->
                     val showing = st as? ReviewState.Showing
@@ -157,6 +158,7 @@ class ReviewViewModel(
                     val newCard = showing != null && showing.card.token != shown?.first
                     val changed = key != shown
                     shown = key
+                    scheduleDayRoll(st is ReviewState.Empty)
                     update { u ->
                         u.copy(
                             review = st,
@@ -175,11 +177,48 @@ class ReviewViewModel(
         }
     }
 
+    private val refreshing = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var rollJob: Job? = null
+
+    /**
+     * Re-runs the queue load while the session shows [ReviewState.Empty] (resume, sync completed, day rollover);
+     * never touches a session that shows a card. Overlapping calls collapse into one (the loads share the LoadGate).
+     */
+    fun refreshIfEmpty() {
+        val s = session ?: return
+        if (current.review != ReviewState.Empty) return
+        if (!refreshing.compareAndSet(false, true)) return
+        launchIo {
+            try {
+                s.start()
+            } finally {
+                refreshing.set(false)
+            }
+        }
+    }
+
+    /** While Empty, wakes at the next study-day start to reload; cancelled once something is showing. */
+    private fun scheduleDayRoll(empty: Boolean) {
+        rollJob?.cancel()
+        rollJob = null
+        val b = backend ?: return
+        if (!empty) return
+        rollJob = sessionJob?.let {
+            launchIo {
+                val wait = b.nextStudyDayStart(b.clock()) - b.clock()
+                if (wait > 0) kotlinx.coroutines.delay(wait)
+                refreshIfEmpty()
+            }
+        }
+    }
+
     /** The screen went away: ends the session (a later [enter] starts a new one). */
     fun leave() {
         val s = session
         sessionJob?.cancel()
         sessionJob = null
+        rollJob?.cancel()
+        rollJob = null
         session = null
         audio?.release()
         if (s != null && s.meta.value.answered > 0) onSessionEnd()

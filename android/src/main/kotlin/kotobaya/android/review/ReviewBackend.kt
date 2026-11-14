@@ -1,5 +1,7 @@
 package kotobaya.android.review
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.mint.OpMinter
 import kotobaya.sync.client.store.DeviceStore
@@ -37,6 +39,8 @@ class ReviewBackend<L : LearningTables>(
     val awaitReady: suspend () -> Unit = {},
     /** Starts a sync cycle (the 'Sync' prompt); null hides the button. */
     val syncNow: (() -> Unit)? = null,
+    /** Emits when the due state may have changed (a sync pulled ops, the app opened, the day rolled): an Empty session reloads. */
+    val dueChanged: Flow<Unit> = emptyFlow(),
     val clock: () -> Long = System::currentTimeMillis,
     /** First instant of the study day after the one containing the argument (bury horizon, T304c). Default: next local midnight. */
     val nextStudyDayStart: (Long) -> Long = { at ->
