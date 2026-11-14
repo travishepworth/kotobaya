@@ -97,6 +97,7 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 
 ## Provisional decisions
 - ADR-026 (run 27): Android search merged into one result list (dictionary + "In my cards" flag + other notes). Check it reads well on the phone.
+- ADR-027 (run 27): phone now downloads media decks (deck items + sentences) after sync. Check Fatal Twelve shows words on the phone.
 - ADR-021 (BUG-6, run 13): jpdb imported passes graduate learning cards in replay (fsrs6-2). Check: after deploy, imported Hard/Good jpdb cards show as Review, not stuck in learning.
   Deploy (run 14): no DB migration. First start of the new server image re-replays every live card (core_scheduler_version fsrs6-1 → fsrs6-2, one transaction, lock 7033001); `/readyz` fails until it commits, so allow a longer rollout (probe/progressDeadline). Android re-replays on first start after update. Expect ~1,100 stuck jpdb cards to move to Review.
 - C-13 (run 7): `grammar-detect` is a public JobKind; contracts/SUMMARY.md NOT updated (agent's write to it was refused by the tool) — add a line pointing to SCHEMA.md "grammar-detect" section.

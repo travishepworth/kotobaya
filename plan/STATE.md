@@ -22,8 +22,7 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| AND-DECKCONTENT | writer-senior | 1 | t/AND-DECKCONTENT-install | run 27 |
-| AND-TAKO-PERF | writer-senior | 1 | t/AND-TAKO-PERF-dupcheck | run 27 |
+| AND-DECKCONTENT | writer-senior | 2 (rebase+UI) | t/AND-DECKCONTENT-install | run 27 |
 
 
 ## Queued
@@ -57,6 +56,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-TAKO-PERF (run 27, abc4499a): Takoboto csum dup-check batched (per-note dict entry() removed); JVM 1379->91 ms
 - AND-LABELS (run 27, 710d5d5c): deck rows + card hits labelled from note/dictionary (no e:<seq>, no literal reading/meaning); merged Android search (ADR-026)
 - AND-CARDHTML (run 26, f639d113): WebView intercept no longer 403s own data: main frame; ReviewBackend gets Dictionary+Kanji lookups (entry_seq vocab fronts were blank); CardUnavailable state + reports
 - AND-REVIEW-STALE (run 26, fb2a253d): Review tab Empty re-runs start() on sync (pulledOps>0), ON_RESUME, rollover timer

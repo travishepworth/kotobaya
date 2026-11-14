@@ -1028,3 +1028,7 @@
 2026-11-14T22:21:33Z AND-DECKCONTENT,AND-TAKO-PERF,AND-LABELS DISPATCH (writer-senior, writer-senior, writer)
 2026-11-14T22:29:48Z AND-LABELS HANDOFF 710d5d5c merged search, deck labels, CardHit reading/meaning; /meta = ServerReachability probe reports (not settings)
 2026-11-14T22:30:29Z AND-LABELS CHECK_GREEN + MERGE 710d5d5c
+2026-11-14T22:34:01Z AND-DECKCONTENT HANDOFF a41edd82 ContentInstaller+WorkManager; rebase conflict DeckRepository -> attempt 2 (rebase + content-state UI); ADR-027 supersedes ADR-018
+2026-11-14T22:41:57Z AND-TAKO-PERF HANDOFF findNotes per-note dict entry()+map lookups -> batched forms(); JVM miss 1379->91 ms; Takoboto deck = inbox id 1 by design
+2026-11-14T22:43:47Z AND-DECKCONTENT HANDOFF attempt 2 (rebased 4f2da0ef, content-state UI + retry); reviewer dispatched
+2026-11-14T22:46:06Z AND-TAKO-PERF CHECK_GREEN + MERGE abc4499a
