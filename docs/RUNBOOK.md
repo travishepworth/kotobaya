@@ -76,6 +76,39 @@ ingress pod CIDR: it is the only place `X-Forwarded-For` is trusted by the login
 
 Logs are JSON on stdout (`kubectl -n kotobaya logs deploy/kotobaya-api`).
 
+### How to check health
+
+The API writes one JSON object per line (`level`, `logger_name`, `message`, `stack_trace` when there is
+one). Every line written while serving a request carries `request_id` (the caller's `X-Request-Id` when
+well formed, else a minted one; echoed in the response header and in problem bodies), and once the
+credential is known `token.id`, `token.name` and, for device tokens, `device_id`. A healthy day has no
+`ERROR` lines and only a few `WARN`s. Set `L="kubectl -n kotobaya logs deploy/kotobaya-api --since=24h"`.
+
+| Look for | Command |
+|---|---|
+| Everything at WARN or worse | `$L \| grep -E '"level":"(WARN\|ERROR)"'` |
+| Unhandled exceptions (500s, with stack) | `$L \| grep '"message":"unhandled error'` |
+| Background loops and coroutines that crashed | `$L \| grep -E '"logger_name":"kotobaya\.(coroutines\|uncaught)"\|runner failed\|poll failed\|prune failed'` |
+| 5xx responses (access log, WARN) | `$L \| grep '"logger_name":"kotobaya.request"' \| grep '"level":"WARN"'` |
+| Slow requests (over 2 s) | `$L \| grep '"logger_name":"kotobaya.request"' \| jq -c 'select(.duration_ms > 2000) \| {path, status, duration_ms, request_id}'` |
+| Everything about one request | `$L \| grep '"request_id":"<id>"'` (the id is in the problem body / `X-Request-Id` header) |
+| One device's traffic | `$L \| grep '"device_id":"<device uuid>"'` |
+| Sync op rejections (WARN; `reason` = SYNC.md 5.3 code) | `$L \| grep '"logger_name":"kotobaya.sync.ops"' \| jq -c 'select(.level=="WARN") \| {op_id, op_type, reason, reason_message, device_id}'` |
+| Sync duplicates (INFO; client retries, normal in small numbers) | `$L \| grep '"message":"op duplicate"' \| wc -l` |
+| Sync conflicts (WARN; duplicate notes/cards merged) | `$L \| grep '"message":"op conflict'` |
+| Job results (one line per finished job) | `$L \| grep '"logger_name":"kotobaya.jobs.result"' \| jq -c '{level, message, job_kind, job_id}'` |
+| Failed jobs (ERROR, with the worker's error) | `$L \| grep '"logger_name":"kotobaya.jobs.result"' \| grep '"level":"ERROR"'` |
+| Jobs that dropped rows (WARN with counts: `unmapped_count`, `reviews_skipped`, ...) | `$L \| grep '"message":"job [^"]* dropped rows'` |
+| Jobs that produced nothing from a non-empty input (ERROR; e.g. a jpdb import with 0 cards) | `$L \| grep '"message":"job [^"]* produced nothing'` |
+| Server runners (media/deck publish, jpdb apply, fsrs publish) | `$L \| grep -E '"logger_name":"kotobaya\.(media\.publish\|decks\.publish\|imports\.jpdb\|optimizer\.publish)"' \| grep -E '"level":"(WARN\|ERROR)"'` |
+| Auth failures and rate limits | `$L \| grep -E '"event":"auth\.(login\|pair)"' \| grep -v '"outcome":"ok"'` |
+| Worker failures | `kubectl -n kotobaya logs deploy/kotobaya-worker --since=24h \| grep -E 'ERROR\|Traceback'` |
+
+Job result lines are written by the API when it sees a job reach a terminal state, so a job that
+finished while the API was restarting has no line; check `GET /api/v1/jobs?status=failed` then.
+Client-side error reports (web, Android) will appear here once the client-error endpoint (C-23) is
+implemented.
+
 ### Stuck jobs
 
 A `running` job whose `heartbeat_at` is older than 5 minutes is stuck (the worker heartbeats every

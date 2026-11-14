@@ -1,22 +1,25 @@
-# HANDOFF C-23
+# HANDOFF OBS-1s
 
 STATUS: DONE
-BRANCH: t/C-23-client-errors
-CHECK: `make check MODULE=contracts` → green (no client drift after regen)
+BRANCH: t/OBS-1s-server-logging
+CHECK: `make check MODULE=server` → green
 
 ## Changed (≤ 6 lines)
-- `contracts/api/openapi.yaml`: `POST /client-errors` (`reportClientErrors`, tag meta), schemas `ClientErrorReport`, `ClientErrorItem`, `ClientErrorReportAccepted`; 413/429 error-table rows; empty-scope rule documented.
-- Normative server log format (logger `kotobaya.client_error`, escaping, query cut) and client queue/retry/dedupe rules in the operation description.
-- `check_contract.py`: `reportClientErrors` joins `ANY_CREDENTIAL`; `SUMMARY.md` updated; ADR-024.
-- `clients/**` regenerated.
+- server/Logging.kt (new): `X-Request-Id` accept-or-mint, coroutine `CallMdc` (request_id, token.id/name, device_id), `withCallMdc`, coroutine and uncaught-exception handlers
+- App.kt: echo request id; access log (5xx WARN, probes DEBUG); StatusPages logs with MDC and stack trace; Main scope uses the handler
+- PushService: duplicate INFO, rejection WARN (op_id, op_type, reason) after commit; DuplicateMerge conflict is WARN
+- jobs/JobResultLog.kt + JobWatcher: one line per finished job with counts; failed ERROR, dropped rows WARN, jpdb 0 output ERROR
+- Runner loops log ERROR with stack trace; auth logs no longer repeat MDC keys (the target token is now `target_token.id`)
+- docs/RUNBOOK.md: "How to check health" grep table
 
 ## Acceptance → tests
-- make check contracts green → `contracts/api/check.sh` + clients drift check
+- request-id echo → ServerTest.requestIdIsAcceptedOrMintedAndEchoed
+- op rejection log line → OpOutcomeLogTest
+- job zero/drop/failure levels → JobResultLogTest
 
 ## New dependencies
-- none
+- none (logstash encoder was already in use)
 
 ## For the reviewer (≤ 3 lines)
-- Server: `WiringAuditTest` will FAIL (new op answers 501, allowlist empty) until OBS-1s adds the handler; merge with OBS-1s or add `reportClientErrors` to the allowlist there.
-- Decided beyond ticket: `security: bearerAuth: [] / sessionCookie: []` (any credential), optional `http_method/http_path/http_status`, `count`, `dropped`; >20 items is 413 (not 422) though schema says maxItems 20.
-- Limits: 1 MiB body, 12 req + 120 items/min per token, in memory.
+- The jpdb ERROR rule: input > 0, and cards_created, notes_existing (vocab and kanji) and word_statuses_set are all 0.
+- Job lines come from JobWatcher, so a job that finishes while the API restarts has no line. C-23 endpoint not done.

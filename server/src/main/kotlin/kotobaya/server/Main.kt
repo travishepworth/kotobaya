@@ -48,6 +48,7 @@ import kotlin.system.exitProcess
  */
 fun main(args: Array<String>) {
     val log = LoggerFactory.getLogger("kotobaya.main")
+    installUncaughtExceptionLogging()
     if (args.firstOrNull() == "migrate") exitProcess(migrateCommand())
 
     val config = try {
@@ -68,7 +69,7 @@ fun main(args: Array<String>) {
         log.error("configuration error: {}", e.message)
         exitProcess(2)
     }
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + loggingExceptionHandler())
     val app = composeApp(db, config.databaseUrl, authConfig, bucketInit = S3BucketInit(config), blobStore = S3BlobStore(s3Client(config), config.s3Bucket),
         parser = HttpParserClient(config.parserUrl, config.parserTimeoutMs),
         ruleTester = kotobaya.grammar.HttpRuleTesterClient(config.parserUrl, config.parserTimeoutMs))

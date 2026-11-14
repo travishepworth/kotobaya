@@ -1,15 +1,11 @@
 package kotobaya.server
 
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.ConsoleAppender
-import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.contentType
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.testing.testApplication
-import org.slf4j.LoggerFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -80,8 +76,8 @@ class ServerTest {
         }
         application { kotobayaModule(AppDeps(db, authenticator = boom)) }
 
-        val logger = LoggerFactory.getLogger("kotobaya.request") as Logger
-        val captured = ListAppender<ILoggingEvent>().also { it.start(); logger.addAppender(it) }
+        val requests = LogCapture("kotobaya.request")
+        val app = LogCapture("kotobaya.app")
 
         val notFound = client.get("/api/v1/nope")
         assertEquals(404, notFound.status.value)
@@ -100,16 +96,52 @@ class ServerTest {
         client.get("/api/v1/notes") // 501 stub, authenticated as tok-1
         // let the ResponseSent hook run
         Thread.sleep(200)
-        logger.detachAppender(captured)
+        requests.close()
+        app.close()
 
-        val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
-        val encoder = (root.getAppender("STDOUT") as ConsoleAppender<ILoggingEvent>).encoder
-        val lines = captured.list.map { json.readTree(encoder.encode(it)) } // parses: every line is JSON
+        val lines = requests.lines() // parses: every line is JSON
         val notes = lines.single { it["path"]?.asText() == "/api/v1/notes" }
         assertEquals(501, notes["status"].asInt())
+        assertEquals("WARN", notes["level"].asText()) // 5xx
         assertEquals("tok-1", notes["token.id"].asText())
         assertEquals("laptop", notes["token.name"].asText())
         assertNotNull(notes["request_id"])
+        assertNotNull(notes["duration_ms"])
+        // OBS-1s: StatusPages logs the unhandled exception with its stack trace and the request id.
+        val crash = app.lines().single { it["message"].asText().startsWith("unhandled error") }
+        assertEquals("ERROR", crash["level"].asText())
+        assertEquals(failure.headers["X-Request-Id"], crash["request_id"].asText())
+        assertTrue(crash["stack_trace"].asText().contains("IllegalStateException: boom"))
+    }
+
+    /** OBS-1s: a well-formed inbound X-Request-Id is kept and echoed; a malformed one is replaced; both reach the log. */
+    @Test
+    fun requestIdIsAcceptedOrMintedAndEchoed() = testApplication {
+        val db = TestPg.migratedDb()
+        application { kotobayaModule(AppDeps(db, authenticator = Authenticator { _, _ -> TokenInfo("tok-2", "phone", "0193a1b2-0000-7000-8000-00000000000a") })) }
+        val requests = LogCapture("kotobaya.request")
+
+        val given = client.get("/api/v1/notes") { header("X-Request-Id", "web-1234.abc") }
+        assertEquals("web-1234.abc", given.headers["X-Request-Id"])
+        assertEquals("web-1234.abc", json.readTree(given.bodyAsText())["request_id"].asText())
+
+        val bad = client.get("/api/v1/notes") { header("X-Request-Id", "evil\" injected=1 " + "x".repeat(200)) }
+        val minted = bad.headers["X-Request-Id"]
+        assertNotNull(minted)
+        assertEquals(36, minted.length)
+
+        val none = client.get("/api/v1/notes")
+        assertEquals(36, none.headers["X-Request-Id"]?.length)
+
+        Thread.sleep(200)
+        requests.close()
+        val ids = requests.lines().map { it["request_id"].asText() }
+        assertTrue("web-1234.abc" in ids)
+        assertTrue(minted in ids)
+        val line = requests.lines().first { it["request_id"].asText() == "web-1234.abc" }
+        assertEquals("tok-2", line["token.id"].asText())
+        assertEquals("0193a1b2-0000-7000-8000-00000000000a", line["device_id"].asText())
+        assertEquals("GET", line["method"].asText())
     }
 
     @Test

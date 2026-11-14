@@ -9,6 +9,10 @@ import kotobaya.contracts.sync.OpDecodeResult
 import kotobaya.contracts.sync.OpSource
 import kotobaya.contracts.sync.OpType
 import kotobaya.server.Problems
+import net.logstash.logback.argument.StructuredArguments.kv
+import org.slf4j.LoggerFactory
+
+private val opLog = LoggerFactory.getLogger("kotobaya.sync.ops")
 
 /** Outcome of [PushService.push]. */
 sealed interface PushOutcome {
@@ -60,7 +64,14 @@ class PushService(private val opApply: OpApply) {
         val parsed = PushBodyParser.parse(text)
         if (parsed is PushBody.BadRequest) return PushOutcome.BadRequest(parsed.message)
         val elements = (parsed as PushBody.Ops).elements
-        return opApply.transactionBlocking(principal.tokenId) { tx ->
+        val outcome = apply(elements, principal)
+        // Logged after commit only: a batch that rolled back reported nothing to the client.
+        elements.zip(outcome.results).forEach { (el, r) -> logOutcome(el, r) }
+        return outcome
+    }
+
+    private fun apply(elements: List<PushElement>, principal: Principal): PushOutcome.Ok =
+        opApply.transactionBlocking(principal.tokenId) { tx ->
             // The log has no identity until the startup sequence ran: nothing may be applied before it (6.3).
             logIdentity(tx.dsl, 0) ?: throw Problems.unavailable("The sync log epoch is not initialised yet.")
             val results = elements.map { one(tx, it, principal) }
@@ -78,6 +89,22 @@ class PushService(private val opApply: OpApply) {
                 "durable_seq" to id.durableSeq,
             )
             PushOutcome.Ok(body, results)
+        }
+
+    /**
+     * OBS-1s: a duplicate is INFO (a client retry), a rejection WARN, each with `op_id`, `op_type` and the reason.
+     * The caller's `request_id`, `token.*` and `device_id` come from the MDC. Accepted ops are not logged one by one.
+     */
+    private fun logOutcome(el: PushElement, r: PushResult) {
+        val type = (el as? PushElement.Parsed)?.tree?.str("op_type") ?: "unknown"
+        when (r.status) {
+            PushResult.DUPLICATE -> opLog.info(
+                "op duplicate", kv("op_id", r.opId), kv("op_type", type), kv("outcome", r.status), kv("seq", r.seq),
+            )
+            PushResult.REJECTED -> opLog.warn(
+                "op rejected: {}", r.error?.code, kv("op_id", r.opId), kv("op_type", type), kv("outcome", r.status),
+                kv("reason", r.error?.code), kv("reason_message", r.error?.message),
+            )
         }
     }
 

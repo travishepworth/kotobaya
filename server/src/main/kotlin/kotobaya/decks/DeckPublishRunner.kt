@@ -63,7 +63,7 @@ class DeckPublishRunner(
             val ran = try {
                 runOnce()
             } catch (e: Exception) {
-                log.warn("deck publish runner: {}", e.message)
+                log.error("deck publish runner failed", e)
                 false
             }
             if (!ran) delay(pollMs)
@@ -296,7 +296,7 @@ class DeckPublishRunner(
                     Thread.sleep(heartbeatMs)
                     runCatching {
                         db.txBlocking { it.execute("update app.job set heartbeat_at = now() where id = ? and status = 'running' and locked_by = ?", id, token) }
-                    }.onFailure { log.warn("deck publish heartbeat failed: {}", it.message) }
+                    }.onFailure { log.warn("deck publish heartbeat failed", it) }
                 }
             } catch (_: InterruptedException) {
                 // stopped

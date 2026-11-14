@@ -8,7 +8,7 @@ import io.ktor.util.AttributeKey
 // ---------------------------------------------------------------------------------------------
 
 /** The credential behind a request; logged on every request as `token.id` / `token.name` (the audit trail). */
-data class TokenInfo(val id: String, val name: String)
+data class TokenInfo(val id: String, val name: String, /** The credential's device, when it is a device token (OBS-1s: logged as `device_id`). */ val deviceId: String? = null)
 
 /**
  * What one operation needs, built from the spec's `security` entries.

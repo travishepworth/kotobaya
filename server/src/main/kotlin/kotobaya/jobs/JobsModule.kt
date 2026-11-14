@@ -76,7 +76,8 @@ class JobsModule(
                     val n = db.tx { JobRepo.prune(it) }
                     if (n > 0) log.info("pruned {} finished jobs", n)
                 } catch (e: Exception) {
-                    log.warn("job prune failed: {}", e.message)
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    log.error("job prune failed", e)
                 }
                 delay(24L * 3600 * 1000)
             }

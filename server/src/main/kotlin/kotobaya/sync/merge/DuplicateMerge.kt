@@ -9,6 +9,7 @@ import kotobaya.sync.Collision
 import kotobaya.sync.MergePolicy
 import kotobaya.sync.OpTx
 import kotobaya.sync.DefaultHlcRules
+import net.logstash.logback.argument.StructuredArguments.kv
 import org.slf4j.LoggerFactory
 import java.util.Collections
 import java.util.WeakHashMap
@@ -69,7 +70,11 @@ class DuplicateMerge(
             val c = reserved.collision
             val loser = c.loserId.toString()
             val survivor = c.survivorId.toString()
-            log.info("duplicate {} ({}): merging {} into {} (op {}, seq {})", c.table, c.key, loser, survivor, op.opId, seq)
+            // OBS-1s: a duplicate-key conflict between two devices is WARN, with the op that caused it.
+            log.warn(
+                "op conflict: duplicate {} ({}), merging {} into {}", c.table, c.key, loser, survivor,
+                kv("op_id", op.opId), kv("op_type", op.opType.wire), kv("outcome", "conflict"), kv("reason", "duplicate_${c.table}"), kv("seq", seq),
+            )
             when (c.table) {
                 "note" -> {
                     tx.emit(OpType.NOTE_MERGED, pair(loser, survivor), causedByOpId = op.opId, hlc = reserved.hlc)

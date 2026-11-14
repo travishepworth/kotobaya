@@ -1,8 +1,5 @@
 package kotobaya.auth
 
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -21,7 +18,6 @@ import kotobaya.server.Database
 import kotobaya.server.TestPg
 import kotobaya.server.json
 import kotobaya.server.kotobayaModule
-import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -300,15 +296,14 @@ class AuthApiTest {
 
     @Test
     fun requestLogCarriesTokenIdAndName() = app {
-        val logger = LoggerFactory.getLogger("kotobaya.request") as Logger
-        val captured = ListAppender<ILoggingEvent>().also { it.start(); logger.addAppender(it) }
+        val captured = kotobaya.server.LogCapture("kotobaya.request")
         val login = client.login(pw())
         val id = json.readTree(login.bodyAsText())["token_id"].asText()
         client.whoami(cookie = login.sessionToken())
         Thread.sleep(200)
-        logger.detachAppender(captured)
-        val lines = captured.list.map { e -> e.argumentArray.associate { a -> a.toString().substringBefore('=') to a.toString().substringAfter('=') } }
-        val paths = lines.filter { it["token.id"] == id && it["token.name"] == "web session 2026-11-12" }.map { it["path"] }
+        captured.close()
+        val lines = captured.lines()
+        val paths = lines.filter { it["token.id"]?.asText() == id && it["token.name"]?.asText() == "web session 2026-11-12" }.map { it["path"].asText() }
         assertEquals(listOf("/api/v1/auth/login", "/api/v1/auth/session"), paths)
     }
 

@@ -25,7 +25,7 @@ class MediaParseReconciler(private val db: Database, private val opApply: OpAppl
                 .map { it.get(0, UUID::class.java) }
         }
         return ids.count { id ->
-            runCatching { reconcile(id) }.onFailure { log.warn("reconcile media {}: {}", id, it.message) }.getOrDefault(false)
+            runCatching { reconcile(id) }.onFailure { log.warn("reconcile media {} failed", id, it) }.getOrDefault(false)
         }
     }
 

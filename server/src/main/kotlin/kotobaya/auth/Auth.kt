@@ -18,11 +18,10 @@ import kotobaya.server.Database
 import kotobaya.server.OperationHandler
 import kotobaya.server.Problems
 import kotobaya.server.TokenInfo
-import kotobaya.server.TokenKey
+import kotobaya.server.setToken
 import kotobaya.server.Uuid7
 import kotobaya.server.formatInstant
 import kotobaya.server.json
-import kotobaya.server.requestId
 import kotobaya.server.respondJson
 import kotobaya.server.respondProblem
 import net.logstash.logback.argument.StructuredArguments.kv
@@ -91,7 +90,7 @@ class Auth(
         val address = clientAddress(call)
         val now = clock()
         limiter.begin(address, now)?.let { wait ->
-            log.warn("login rate limited", kv("event", "auth.login"), kv("outcome", "rate_limited"), kv("client", address), kv("request_id", call.requestId))
+            log.warn("login rate limited", kv("event", "auth.login"), kv("outcome", "rate_limited"), kv("client", address))
             call.response.header(HttpHeaders.RetryAfter, wait.toString())
             call.respondProblem(
                 ApiException(HttpStatusCode.TooManyRequests, "rate_limited", "Too many attempts", "Try again in $wait seconds."),
@@ -113,17 +112,16 @@ class Auth(
             step != null && passwordOk && t.consume(step)
         }
         if (!passwordOk || !codeOk) {
-            log.warn("login failed", kv("event", "auth.login"), kv("outcome", "invalid_credentials"), kv("client", address), kv("request_id", call.requestId))
+            log.warn("login failed", kv("event", "auth.login"), kv("outcome", "invalid_credentials"), kv("client", address))
             throw ApiException(HttpStatusCode.Unauthorized, "invalid_credentials", "Invalid credentials", "Wrong password or code.")
         }
         limiter.succeeded(address, now)
 
         val principal = createSession(now)
         val token = principal.second
-        call.attributes.put(TokenKey, TokenInfo(principal.first.tokenId.toString(), principal.first.name))
+        call.setToken(TokenInfo(principal.first.tokenId.toString(), principal.first.name))
         log.info(
             "login ok", kv("event", "auth.login"), kv("outcome", "ok"), kv("client", address),
-            kv("token.id", principal.first.tokenId.toString()), kv("request_id", call.requestId),
         )
         call.response.header(
             HttpHeaders.SetCookie,
@@ -158,7 +156,7 @@ class Auth(
         }
         validator.revoke(auth.principal.tokenId)
         events.tokensRevoked(listOf(auth.principal.tokenId))
-        log.info("logout", kv("event", "auth.logout"), kv("token.id", auth.principal.tokenId.toString()), kv("request_id", call.requestId))
+        log.info("logout", kv("event", "auth.logout"))
         call.response.header(HttpHeaders.SetCookie, "$SESSION_COOKIE=; Path=/api; Max-Age=0")
         call.respond(HttpStatusCode.NoContent)
     }

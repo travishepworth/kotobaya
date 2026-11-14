@@ -13,10 +13,9 @@ import kotobaya.server.Problems
 import kotobaya.server.SERVER_DEVICE_ID
 import kotobaya.server.SYNC_LOCK
 import kotobaya.server.TokenInfo
-import kotobaya.server.TokenKey
+import kotobaya.server.setToken
 import kotobaya.server.Uuid7
 import kotobaya.server.formatInstant
-import kotobaya.server.requestId
 import kotobaya.server.respondJson
 import net.logstash.logback.argument.StructuredArguments.kv
 import org.jooq.DSLContext
@@ -130,7 +129,7 @@ internal class Devices(
             tokens
         }
         afterRevoke(id, revokedTokens)
-        log.info("device revoked", kv("event", "auth.device_revoked"), kv("device.id", id.toString()), kv("request_id", call.requestId))
+        log.info("device revoked", kv("event", "auth.device_revoked"), kv("device.id", id.toString()))
         call.respond(HttpStatusCode.NoContent)
     }
 
@@ -166,7 +165,7 @@ internal class Devices(
      */
     private fun baseUrl(call: ApplicationCall): String {
         publicOrigin(publicUrl, trustedPeer(call), call.request.local.scheme) { call.request.headers[it] }?.let { return it }
-        log.error("cannot build pairing_uri: set PUBLIC_URL", kv("event", "auth.pairing"), kv("request_id", call.requestId))
+        log.error("cannot build pairing_uri: set PUBLIC_URL", kv("event", "auth.pairing"))
         throw ApiException(
             HttpStatusCode.InternalServerError, "internal", "Public URL unknown",
             "The server does not know its public URL. Set the PUBLIC_URL environment variable (Helm: api.publicUrl), " +
@@ -187,7 +186,7 @@ internal class Devices(
         val address = clientAddress(call)
         val now = clock()
         limiter.begin(address, now)?.let { wait ->
-            log.warn("pairing rate limited", kv("event", "auth.pair"), kv("outcome", "rate_limited"), kv("client", address), kv("request_id", call.requestId))
+            log.warn("pairing rate limited", kv("event", "auth.pair"), kv("outcome", "rate_limited"), kv("client", address))
             call.response.header(HttpHeaders.RetryAfter, wait.toString())
             throw ApiException(HttpStatusCode.TooManyRequests, "rate_limited", "Too many attempts", "Try again in $wait seconds.")
         }
@@ -276,10 +275,9 @@ internal class Devices(
             throw e
         }
         afterRevoke(req.deviceId, paired.revoked)
-        call.attributes.put(TokenKey, TokenInfo(tokenId.toString(), req.name))
+        call.setToken(TokenInfo(tokenId.toString(), req.name, req.deviceId.toString()))
         log.info(
             "device paired", kv("event", "auth.pair"), kv("outcome", "ok"), kv("device.id", req.deviceId.toString()),
-            kv("token.id", tokenId.toString()), kv("request_id", call.requestId),
         )
         call.respondJson(
             linkedMapOf(

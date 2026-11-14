@@ -35,7 +35,7 @@ class ConfusableSuggester(
                 val n = runOnce()
                 if (n > 0) log.info("confusables: {} suggestion(s)", n)
             } catch (e: Exception) {
-                log.warn("confusable suggestions: {}", e.message)
+                log.error("confusable suggestions failed", e)
             }
             delay(intervalMs)
         }

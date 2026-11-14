@@ -149,7 +149,7 @@ class PgListener(
                 }
             } catch (e: Exception) {
                 if (!isActive) break
-                log.warn("event listener lost its connection: {}", e.message)
+                log.warn("event listener lost its connection", e)
                 delay(1000)
             }
         }
@@ -199,7 +199,8 @@ class JobWatcher(
             try {
                 pollOnce()
             } catch (e: Exception) {
-                log.warn("job watcher poll failed: {}", e.message)
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                log.error("job watcher poll failed", e)
             }
             withTimeoutOrNull(pollMs) { poke.receive() }
         }
@@ -222,8 +223,13 @@ class JobWatcher(
             val prev = seen[j.id]
             if (prev == null) {
                 seen[j.id] = Seen(snap, if (baselined) now else 0L)
-                if (baselined) emit(j)
+                if (baselined) {
+                    emit(j)
+                    if (j.terminal) JobResultLog.log(j)
+                }
             } else if (prev.snap != snap && (j.terminal || now - prev.lastEmitMs >= 1000)) {
+                // OBS-1s: the transition into a terminal state is seen exactly once here; log the job's result.
+                if (j.terminal && prev.snap.status != j.status) JobResultLog.log(j)
                 prev.snap = snap
                 prev.lastEmitMs = now
                 emit(j)

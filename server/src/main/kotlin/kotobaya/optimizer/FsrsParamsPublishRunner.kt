@@ -53,7 +53,7 @@ class FsrsParamsPublishRunner(
             val ran = try {
                 runOnce()
             } catch (e: Exception) {
-                log.warn("fsrs params publish runner: {}", e.message)
+                log.error("fsrs params publish runner failed", e)
                 false
             }
             if (!ran) delay(pollMs)
@@ -254,7 +254,7 @@ class FsrsParamsPublishRunner(
                     Thread.sleep(heartbeatMs)
                     runCatching {
                         db.txBlocking { it.execute("update app.job set heartbeat_at = now() where id = ? and status = 'running' and locked_by = ?", id, token) }
-                    }.onFailure { log.warn("fsrs params publish heartbeat failed: {}", it.message) }
+                    }.onFailure { log.warn("fsrs params publish heartbeat failed", it) }
                 }
             } catch (_: InterruptedException) {
                 // stopped

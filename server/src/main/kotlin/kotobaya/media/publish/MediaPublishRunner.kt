@@ -71,7 +71,7 @@ class MediaPublishRunner(
                 try {
                     reconciler.reconcileAll()
                 } catch (e: Exception) {
-                    log.warn("media parse reconciler: {}", e.message)
+                    log.error("media parse reconciler failed", e)
                 }
                 delay(reconcileMs)
             }
@@ -80,7 +80,7 @@ class MediaPublishRunner(
             val ran = try {
                 runOnce()
             } catch (e: Exception) {
-                log.warn("media publish runner: {}", e.message)
+                log.error("media publish runner failed", e)
                 false
             }
             if (!ran) delay(pollMs)
@@ -440,7 +440,7 @@ class MediaPublishRunner(
                     Thread.sleep(heartbeatMs)
                     runCatching {
                         db.txBlocking { it.execute("update app.job set heartbeat_at = now() where id = ? and status = 'running' and locked_by = ?", id, token) }
-                    }.onFailure { log.warn("media publish heartbeat failed: {}", it.message) }
+                    }.onFailure { log.warn("media publish heartbeat failed", it) }
                 }
             } catch (_: InterruptedException) {
                 // stopped

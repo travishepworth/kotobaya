@@ -104,7 +104,7 @@ class JpdbHistoryApplyRunner(
             val ran = try {
                 runOnce()
             } catch (e: Exception) {
-                log.warn("jpdb apply runner: {}", e.message)
+                log.error("jpdb apply runner failed", e)
                 false
             }
             if (!ran) delay(pollMs)
@@ -168,7 +168,7 @@ class JpdbHistoryApplyRunner(
             try {
                 while (true) {
                     Thread.sleep(heartbeatMs)
-                    runCatching { heartbeat(id) }.onFailure { log.warn("jpdb apply heartbeat failed: {}", it.message) }
+                    runCatching { heartbeat(id) }.onFailure { log.warn("jpdb apply heartbeat failed", it) }
                 }
             } catch (_: InterruptedException) {
                 // stopped

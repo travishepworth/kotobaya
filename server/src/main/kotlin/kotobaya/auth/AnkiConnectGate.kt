@@ -10,7 +10,7 @@ import kotobaya.server.OperationHandler
 import kotobaya.server.Problems
 import kotobaya.server.ScopeRequirement
 import kotobaya.server.TokenInfo
-import kotobaya.server.TokenKey
+import kotobaya.server.setToken
 import kotobaya.server.json
 import kotobaya.server.respondJson
 
@@ -77,7 +77,7 @@ internal class AnkiConnectGate(
         if (scope !in principal.scopes) throw AnkiConnectError("the api key lacks the $scope scope")
         val auth = Authenticated(principal, CredentialSource.BODY_KEY)
         call.attributes.put(AuthenticatedKey, auth)
-        call.attributes.put(TokenKey, TokenInfo(principal.tokenId.toString(), principal.name))
+        call.setToken(TokenInfo(principal.tokenId.toString(), principal.name, principal.deviceId?.toString()))
         onAuthenticated(principal)
         return auth
     }

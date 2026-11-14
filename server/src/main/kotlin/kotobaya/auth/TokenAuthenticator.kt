@@ -84,7 +84,7 @@ class TokenAuthenticator(
         }
         scopeCheck.check(auth, requirement)
         onAuthenticated(principal)
-        return TokenInfo(principal.tokenId.toString(), principal.name)
+        return TokenInfo(principal.tokenId.toString(), principal.name, principal.deviceId?.toString())
     }
 
     companion object {

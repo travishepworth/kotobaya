@@ -9,7 +9,6 @@ import kotobaya.server.OperationHandler
 import kotobaya.server.Problems
 import kotobaya.server.Uuid7
 import kotobaya.server.formatInstant
-import kotobaya.server.requestId
 import kotobaya.server.respondJson
 import net.logstash.logback.argument.StructuredArguments.kv
 import org.jooq.DSLContext
@@ -86,8 +85,7 @@ internal class ApiTokens(
             load(dsl, id, now) ?: error("token row vanished")
         }
         log.info(
-            "token created", kv("event", "auth.token_created"), kv("token.id", id.toString()), kv("scopes", req.scopes.joinToString(",")),
-            kv("request_id", call.requestId),
+            "token created", kv("event", "auth.token_created"), kv("target_token.id", id.toString()), kv("scopes", req.scopes.joinToString(",")),
         )
         call.respondJson(linkedMapOf("token" to token, "info" to info), HttpStatusCode.Created)
     }
@@ -127,7 +125,7 @@ internal class ApiTokens(
         }
         validator.invalidateToken(id)
         events.tokensRevoked(listOf(id))
-        log.info("token revoked", kv("event", "auth.token_revoked"), kv("token.id", id.toString()), kv("request_id", call.requestId))
+        log.info("token revoked", kv("event", "auth.token_revoked"), kv("target_token.id", id.toString()))
         call.respond(HttpStatusCode.NoContent)
     }
 
