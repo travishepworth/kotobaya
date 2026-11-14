@@ -86,12 +86,28 @@ function redactQuoted(text: string): string {
  * Remove what must not leave the browser from an error message or stack: quoted text that may be
  * user content, token strings, query strings and fragments, and control characters; then cap.
  */
+// Regex literals (`/^\d+-(.*)$/`) can embed user text; a literal needs a metacharacter so plain
+// paths like /api/v1/x are not touched.
+const REGEX_LITERAL = /(^|[\s(=:,[])\/(?![\s*/])((?:[^/\n\\]|\\.){2,300})\/[dgimsuvy]*/g;
+// Text after "position" or ":" that starts with a non-ASCII character (JSON.parse and
+// parser errors quote the offending input there): replaced up to the end of the line.
+const AFTER_MARKER = /(\bposition\b[^\n]*?|:\s*)([^\x00-\x7F\u2026][^\n]*)/g;
+
+function redactMarkers(text: string): string {
+	let out = text.replace(REGEX_LITERAL, (whole, pre: string, body: string) =>
+		/[\\^$*+?()[\]{}|]/.test(body) ? `${pre}/…/` : whole
+	);
+	out = out.replace(AFTER_MARKER, '$1…');
+	return out;
+}
+
 export function scrub(text: string, max: number): string {
 	// eslint-disable-next-line no-control-regex
 	let out = text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ');
 	out = out.replace(TOKEN, 'kb?_…');
 	out = out.replace(URL_QUERY, '$1');
 	out = redactQuoted(out);
+	out = redactMarkers(out);
 	return capCodePoints(out, max);
 }
 
@@ -147,6 +163,23 @@ function foldKey(i: WireItem): string {
 	]);
 }
 
+/** Above this many serialized bytes a request may not use `keepalive` (browsers cap it near 64 KB). */
+export const KEEPALIVE_LIMIT = 60_000;
+
+export function bodyBytes(report: WireReport): number {
+	return new TextEncoder().encode(JSON.stringify(report)).length;
+}
+
+/**
+ * Outcome for a failed fetch that threw (no HTTP answer). A TypeError on a body too large for
+ * keepalive is treated as 413 so the batch is split instead of blocking the queue forever.
+ */
+export function failedSendResult(report: WireReport): SendResult {
+	return report.items.length > 1 && bodyBytes(report) >= KEEPALIVE_LIMIT
+		? { status: 413 }
+		: 'network';
+}
+
 export interface ReporterDeps {
 	send: Send;
 	version: string;
@@ -163,6 +196,8 @@ export interface Reporter {
 	flush(): Promise<void>;
 	/** A credential is available again after a 401. */
 	resume(): void;
+	/** Cancel timers (HMR dispose). */
+	dispose(): void;
 	/** Observable state, for tests and diagnostics. */
 	state(): { pending: number; dropped: number; paused: boolean };
 }
@@ -289,6 +324,10 @@ export function createReporter(deps: ReporterDeps): Reporter {
 			}
 		},
 		flush,
+		dispose() {
+			if (cancelTimer) cancelTimer();
+			cancelTimer = null;
+		},
 		resume() {
 			if (!paused) return;
 			paused = false;

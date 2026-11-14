@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+	KEEPALIVE_LIMIT,
 	MAX_BACKOFF_MS,
 	MAX_MESSAGE,
 	MAX_PENDING,
 	MIN_BACKOFF_MS,
 	createReporter,
+	failedSendResult,
 	scrub,
 	toWireItem
 } from '../src/lib/errors/reporter';
@@ -86,6 +88,48 @@ describe('scrub (privacy)', () => {
 		expect(scrub('auth kbp_' + 'A'.repeat(40), 2048)).not.toContain('AAAA');
 		expect(scrub('GET /api/v1/cards?q=secret failed', 2048)).not.toContain('secret');
 		expect(scrub('at http://x/app.js?v=1:2:3', 2048)).not.toContain('v=1');
+	});
+
+	it('redacts regex literals but not plain paths', () => {
+		expect(scrub('Invalid pattern /^猫(食べる)+$/u here', 2048)).not.toContain('食べる');
+		expect(scrub('GET /api/v1/cards failed', 2048)).toContain('/api/v1/cards');
+	});
+
+	it('replaces non-ASCII text after "position" or ":"', () => {
+		expect(scrub('Unexpected token 食 in JSON at position 5: 食べる猫', 2048)).not.toContain('猫');
+		expect(scrub('ParseError: 日本語の入力', 2048)).toBe('ParseError: …');
+		expect(scrub('TypeError: x is undefined', 2048)).toBe('TypeError: x is undefined');
+	});
+});
+
+describe('oversized bodies', () => {
+	const big = (n: number, size: number) => ({
+		items: Array.from({ length: n }, (_, i) => ({
+			client: 'web' as const,
+			app_version: '1',
+			occurred_at: '2026-11-14T08:00:00.000Z',
+			level: 'error' as const,
+			kind: 'exception' as const,
+			message: 'm' + i,
+			stack: 'x'.repeat(size),
+			count: 1
+		}))
+	});
+
+	it('treats a fetch failure on a body over the keepalive limit as 413', () => {
+		expect(failedSendResult(big(5, KEEPALIVE_LIMIT))).toEqual({ status: 413 });
+		expect(failedSendResult(big(1, KEEPALIVE_LIMIT))).toBe('network');
+		expect(failedSendResult(big(2, 100))).toBe('network');
+	});
+
+	it('a big batch splits instead of blocking the queue', async () => {
+		const { reporter, sent } = harness((r) =>
+			r.items.length > 1 ? failedSendResult(big(r.items.length, KEEPALIVE_LIMIT)) : { status: 202 }
+		);
+		for (let n = 0; n < 4; n++) reporter.report({ kind: 'exception', message: 'e' + n });
+		await reporter.flush();
+		expect(sent.map((r) => r.items.length)).toEqual([4, 2, 1, 1, 1, 1]);
+		expect(reporter.state()).toMatchObject({ pending: 0, dropped: 0 });
 	});
 });
 
