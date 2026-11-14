@@ -1,24 +1,17 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN22 (resumed; run-21 agents still alive, notifications go to dead parent → poll branches for HANDOFF)
+Updated: RUN23 (active)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 21 ended at its context budget; run 22 resumes)
-USER DIRECTION (run 21): NO interim 0.1.10. Ship ONE release (0.1.10) after ALL items below are merged and reviewed: pin one SHA in a worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump the tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; CONFIRM egress to raw.githubusercontent.com for JLPT default-on, or set "jlpt": null), helm upgrade (-n kotobaya, never ingress-nginx), run dict-refresh. Live-verify: jpdb import yields cards, /deck-lists JLPT item_count > 0 and JLPT decks fill, review advances (review_log grows per press), log sweep with the new OBS logs, "how to check health" greps in the report. Build a debug APK with VERSION_NAME=0.1.10 VERSION_CODE=110 (memory phone-apk-install; no device attached in run 21 → HUMAN_CHECKS install).
-Merged in run 21: BUG-14a 3704bd4, JLPT-1a 25b203c, JLPT-1b 1927112, C-22 646bc7a+92cf544.
-In flight at handback (agents keep running after the parent dies; on resume run `git worktree list` and `git log main..<branch>`; a committed HANDOFF.md means READY_FOR_REVIEW, no HANDOFF means re-dispatch at the same tier):
-- FEAT-DICT MERGED (web; low, no review)
-- BROWSE-2 MERGED (reviewer-light APPROVE). BROWSE-1 waits on C-24.
-- C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
-- AND-INSETS READY_FOR_REVIEW (t/AND-INSETS-window-insets, android green; low → reviewer-light; insets only in nav/AppShell.kt; unverified: KbSheet navigationBarsPadding double-pad on device → HUMAN_CHECKS after APK). Unblocks FEAT-DICT-APP.
-- AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
-- LOGFIX-1 MERGED
-- C-23 READY_FOR_REVIEW (1bb486d, contracts green; ADR-024). MERGE CONSTRAINT: server WiringAuditTest fails until reportClientErrors has a handler → merge together with an OBS-1s handler (OBS-1s writer was told NOT to implement it; give it a follow-up attempt on its branch after C-23, or allowlist). Then OBS-1c.
-- OBS-1s READY_FOR_REVIEW (20418ba, server green; RUNBOOK health greps). C-23 handler NOT done → after C-23 review, give OBS-1s a follow-up attempt on its branch (rebase on C-23, implement reportClientErrors per the openapi description), then review both together.
-- OBS-1w READY_FOR_REVIEW (t/OBS-1w-worker-logging, worker green 859; med → reviewer; note media WARN on unmapped_tokens>0 may be noisy).
-Queued: OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
-Possible stale orchestrator: run 20 kept committing "plan:" lines after its end; harmless.
+## RESUME HERE (run 23)
+USER DIRECTION: NO interim release. Ship ONE 0.1.10 after ALL items merged+reviewed: pinned SHA worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; JLPT default-on, egress OK), helm upgrade -n kotobaya (never ingress-nginx), dict-refresh. Live-verify every item + log sweep with OBS logs; debug APK VERSION_NAME=0.1.10 VERSION_CODE=110 (no device → HUMAN_CHECKS install).
+Merged run 23: OBS-1w 9bff9db, C-24 7ea29c1 (BROWSE-1 resolved by it on web), AND-INSETS c20cf92, OBS-1w2 2d605df2, AND-POSTSYNC f48e2000.
+In flight:
+- OBS-1s attempt 2 (writer, t/OBS-1s-c23 = C-23 + OBS-1s + reportClientErrors handler; 413 for >20 items). C-23 contract APPROVED. When done → reviewer on OBS-1s part, then merge (brings C-23 too).
+- Android batch writer t/AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP (low/med → reviewer-light/reviewer on REVIEWERR part).
+Queued: OBS-1c (after OBS-1s merge; web+android client error reporting; see OBS-1.md "OBS-1c extra"; serialize android with the batch).
+Then: release 0.1.10.
 Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
 
 ## 0.1.7 hotfix status
