@@ -12,5 +12,7 @@ StrictMode DiskReadViolation on main thread: ReviewFeature.kt:51 getSharedPrefer
 ## Do
 Move these to Dispatchers.IO / lazy init off the main thread (e.g. BlobStore dirs created lazily on first IO use; prefs read in a coroutine; tz via java.time ZoneId cached off-main). No behaviour change.
 
+Also (AND-PERF review minor 4): DeckRepository.summary (DeckRepository.kt:65) runs one full queue build per deck on every decks-list reload; build once and split counts per deck (same numbers; add a test comparing per-deck counts old vs new on a small fixture).
+
 ## Acceptance
 - [ ] make check MODULE=android green. (UI glue; no new tests required beyond keeping existing ones green.)

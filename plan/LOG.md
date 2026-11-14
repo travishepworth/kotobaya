@@ -993,3 +993,4 @@
 2026-11-14T02:46:00Z REL-0110 VERIFY jpdb-deck-import visual-novel/3913 ok in 10m (scrape 2s/page, 0% shown whole time) -> WORKER-PROGRESS
 2026-11-14T02:47:00Z SMOKE-0110 PASS 30 pass / 1 skip (jpdb-deck) / 0 fail on live 0.1.10; cleanup verified (note.deleted hides cards by design)
 2026-11-14T02:51:18Z WORKER-PROGRESS MERGE d84a2cd9 per-page scrape progress, SIGTERM release, grace 45s; review APPROVE (minors -> WORKER-EMPTY)
+2026-11-14T02:52:18Z AND-PERF REVIEW_CHANGES major: LoadGate retains LoadedQueue per key (~100MB leak); attempt 2 same writer
