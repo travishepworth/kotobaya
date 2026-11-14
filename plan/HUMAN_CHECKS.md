@@ -4,7 +4,9 @@ Everything the build needs from you after the code is written. The orchestrator 
 (APK paths, commands, questions from blocked tickets) as it goes. Work top to bottom: later
 checks assume earlier ones pass. Report problems back to the orchestrator as new tickets.
 
-## Run 24 (2026-11-14): 0.1.10 deployed; 0.1.11 in progress
+## Run 24 (2026-11-14): 0.1.10 deployed; 0.1.11 built, waiting on you
+- [ ] **kubectl login** (OIDC token expired ~03:30Z; the agent sandbox can't open the browser): run `kubectl -n kotobaya get pods` once in your own terminal. Then deploy 0.1.11 (images already in Harbor, values.yaml already bumped to 0.1.11 + fresh kanjidic sha256): `cd <worktree of 265f76a8> && helm upgrade --install kotobaya deploy/helm/kotobaya -n kotobaya -f ~/repos/kubernetes/kotobaya/values.yaml --wait` (or just restart the orchestrator; it resumes from STATE.md). Note the worker now uses strategy Recreate.
+- [ ] **Plug in the phone** (USB debugging) to install APK 0.1.11: `adb install -r ~/kotobaya-apk/kotobaya-0.1.11-debug.apk` (com.ichi2.anki, code 111, same debug cert ec6b7f45…dbf6cd as 0.1.10; installs into both users incl. Private Space; data kept). Then check: home/decks/review load instantly offline, widget renders, Sync works.
 - [x] kubectl re-login done by user; 0.1.10 deployed (helm rev 16, pinned a58b9699); dict-refresh release 2026.11.14.3 OK (JLPT lists N5..N1 built).
 - [x] 0.1.10 APK installed on the phone (adb install -r). Earlier 0.1.9 crash = todayReviews NPE (DurableDriver.kt:53), fixed by AND-POSTSYNC.
 - Phone note: the app is ALWAYS used in Private Space (Android user 10, server via Tailscale). On-device checks: `adb shell run-as com.ichi2.anki --user 10 ...`, logcat of the user-10 process. Ignore the user-0 install (empty, unpaired).

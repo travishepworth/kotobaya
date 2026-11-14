@@ -999,3 +999,6 @@
 2026-11-14T02:58:09Z AND-PERF MERGE c7d7d818 todayReviews index-driven (9.4s->2ms on real DB), LoadGate coalescing, no retention; review APPROVE r2
 2026-11-14T03:02:04Z AND-STRICT MERGE c115825b main-thread IO off main, decks list one load, LoadGate tests de-flaked
 2026-11-14T03:02:13Z RELEASE 0.1.11 PIN 265f76a8 (worktree scratchpad/rel0111): AND-PERF, AND-WIDGET, AND-STRICT, WORKER-PROGRESS, WORKER-EMPTY, SRV-404LOG
+2026-11-14T03:20:00Z RELEASE 0.1.11 make test GREEN at 265f76a8; images api/worker/web/backup 0.1.11 PUSHED; values tags 0.1.11 + kanjidic sha256 3f87d938
+2026-11-14T03:30:00Z RELEASE 0.1.11 DEPLOY BLOCKED: kubectl OIDC token expired (kubelogin needs browser); live stays 0.1.10
+2026-11-14T03:35:00Z RELEASE 0.1.11 APK built ~/kotobaya-apk/kotobaya-0.1.11-debug.apk (code 111, debug cert ec6b7f45 ok); no adb device
