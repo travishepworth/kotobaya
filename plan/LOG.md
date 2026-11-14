@@ -979,3 +979,4 @@
 2026-11-14T01:45:12Z RELEASE 0.1.10 PIN 0200b2f5 (worktree scratchpad/rel0110); kubectl OIDC token expired (browser login needed) → prep without cluster
 2026-11-14T01:50:05Z RELEASE 0.1.10 images FAILED at pin 0200b2f5: WEBVER dropped 'COPY fixtures/demo' from web/Dockerfile (nothing pushed) → WEBVER-fix DISPATCH writer-light; will re-pin
 2026-11-14T01:51:59Z WEBVER-fix MERGE db909f66 web Dockerfile (release/0.1.9-only commit c4d8dcb0 never reached main; docker build verified)
+2026-11-14T01:52:08Z RELEASE 0.1.10 RE-PIN a58b9699 (rel0110b; code = 0200b2f5 + web/Dockerfile fix)
