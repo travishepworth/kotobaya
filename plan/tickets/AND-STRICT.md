@@ -1,7 +1,7 @@
 # AND-STRICT — main-thread disk I/O (StrictMode) on Android
 
 - Phase: P9 hotfix 0.1.11 · Model: sonnet · Risk: low
-- Deps: AND-PERF (overlapping android paths; branch from main after it merges)
+- Deps: AND-PERF (MERGED)
 - Branch: t/AND-STRICT
 - Owned paths (only edit these): android/app/src/main/** files named below + their DI wiring, tests
 - Module(s) for CI: android
@@ -13,6 +13,8 @@ StrictMode DiskReadViolation on main thread: ReviewFeature.kt:51 getSharedPrefer
 Move these to Dispatchers.IO / lazy init off the main thread (e.g. BlobStore dirs created lazily on first IO use; prefs read in a coroutine; tz via java.time ZoneId cached off-main). No behaviour change.
 
 Also (AND-PERF review minor 4): DeckRepository.summary (DeckRepository.kt:65) runs one full queue build per deck on every decks-list reload; build once and split counts per deck (same numbers; add a test comparing per-deck counts old vs new on a small fixture).
+
+Also (AND-PERF round-2 minors): de-flake LoadGateTest — `aCallerNeverGetsABuildThatStartedBeforeItsCall` (LoadGateTest.kt:58) must wait until the 2nd caller is registered (poll a test hook) instead of Thread.sleep; `builds <= 2` (:44) is timing-dependent → deterministic latch or looser bound with maxInFlight==1. Note in LoadGate doc: at most one build per distinct live key.
 
 ## Acceptance
 - [ ] make check MODULE=android green. (UI glue; no new tests required beyond keeping existing ones green.)
