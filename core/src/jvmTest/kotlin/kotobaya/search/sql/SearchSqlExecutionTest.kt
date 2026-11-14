@@ -19,11 +19,39 @@ class SearchSqlExecutionTest {
     @Test
     fun sqliteSelectsTheExpectedCards() {
         val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        // the on-device dictionary is a separate SQLite file (Dict.sq), reached through SearchContext.dictForms
+        val dict = DriverManager.getConnection("jdbc:sqlite::memory:")
         conn.use {
-            loadSqlite(it)
-            insertFixture(it, Dialect.SQLITE)
-            check(it, Dialect.SQLITE)
+            dict.use { d ->
+                loadSqlite(it, "app")
+                insertFixture(it, Dialect.SQLITE)
+                loadSqlite(d, "ref")
+                d.createStatement().use { st -> for (s in dictStatements(pg = false)) st.execute(s) }
+                check(it, Dialect.SQLITE, CONTEXT.copy(dictForms = { q -> lookupForms(d, q) }))
+            }
         }
+    }
+
+    @Test
+    fun sqliteWithoutInstalledDictionaryMatchesNoteTextOnly() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        conn.use {
+            loadSqlite(it, "app")
+            insertFixture(it, Dialect.SQLITE)
+            for ((query, expected) in listOf("食べる" to setOf(1, 2, 26, 10), "たべる" to setOf(1, 2, 26), "シャツ" to emptySet())) {
+                val node = assertNotNull(DefaultSearchQueryParser.parse(query).query, query)
+                assertEquals(expected.map(::cardId).toSet(), run(it, SearchSqlCompiler.compile(node, Dialect.SQLITE, CONTEXT)), query)
+            }
+        }
+    }
+
+    private fun lookupForms(dict: Connection, q: SqlFragment): List<DictFormRow> {
+        val out = ArrayList<DictFormRow>()
+        dict.prepareStatement(q.sql).use { st ->
+            q.params.forEachIndexed { i, p -> st.setString(i + 1, p as String) }
+            st.executeQuery().use { rs -> while (rs.next()) out.add(DictFormRow(rs.getLong(1), rs.getString(2), rs.getString(3))) }
+        }
+        return out
     }
 
     @Test
@@ -35,15 +63,16 @@ class SearchSqlExecutionTest {
         }
         pg.use {
             insertFixture(it, Dialect.POSTGRES)
-            check(it, Dialect.POSTGRES)
+            it.createStatement().use { st -> for (s in dictStatements(pg = true)) st.execute(s) }
+            check(it, Dialect.POSTGRES, CONTEXT)
         }
     }
 
-    private fun check(conn: Connection, dialect: Dialect) {
+    private fun check(conn: Connection, dialect: Dialect, context: SearchContext) {
         val failures = ArrayList<String>()
         for ((query, expected) in EXPECTED) {
             val node = assertNotNull(DefaultSearchQueryParser.parse(query).query, query)
-            val compiled = SearchSqlCompiler.compile(node, dialect, CONTEXT)
+            val compiled = SearchSqlCompiler.compile(node, dialect, context)
             val got = run(conn, compiled)
             val want = expected.map(::cardId).toSet()
             if (got != want) {
@@ -123,8 +152,8 @@ private object PgHolder {
 // Schema loading
 // ---------------------------------------------------------------------------------------------
 
-private fun loadSqlite(conn: Connection) {
-    val dir = File("../contracts/db/sqldelight/app")
+private fun loadSqlite(conn: Connection, db: String) {
+    val dir = File("../contracts/db/sqldelight/$db")
     val text = dir.walkTopDown().filter { it.extension == "sq" }.sortedBy { it.path }.joinToString("\n") { it.readText() }
         .replace(Regex(" AS kotlin\\.[A-Za-z.]+"), "")
         .lines().filterNot { it.trimStart().startsWith("--") }.joinToString("\n")
@@ -262,7 +291,51 @@ private val NOTES = listOf(
     Nt(17, "vocab", """{"expression":"待つ","meaning":"to wait"}""", entry = 1017),
     Nt(18, "vocab", """{"expression":"言う","meaning":"to say"}""", entry = 1018),
     Nt(20, "custom", """{"front":"abc","back":"def"}""", listOf("anime")),
+    // C-24: entry-linked vocab notes with empty fields (dictionary, jpdb import, deck-build); their text is the entry's forms
+    Nt(21, "vocab", "{}", entry = 1021),
+    Nt(22, "vocab", "{}", entry = 1022),
+    Nt(23, "vocab", "{}", entry = 1023), // entry retired: no form rows
 )
+
+/** `dict_entry_form` rows (seq, kind, ord, form, norm); 1023 is retired, so it has none. 1014 belongs to a deleted note. */
+private val FORMS = listOf(
+    listOf<Any>(1001L, "kanji", 0, "食べる", "食べる"),
+    listOf<Any>(1001L, "reading", 0, "たべる", "たべる"),
+    listOf<Any>(1014L, "kanji", 0, "食べる", "食べる"),
+    listOf<Any>(1021L, "kanji", 0, "食べる", "食べる"),
+    listOf<Any>(1021L, "reading", 0, "たべる", "たべる"),
+    listOf<Any>(1022L, "kanji", 0, "Ｔシャツ", "Tしゃつ"),
+    listOf<Any>(1022L, "reading", 0, "ティーシャツ", "てぃーしゃつ"),
+)
+
+private fun dictStatements(pg: Boolean): List<String> {
+    val g = Gen(pg)
+    val r = if (pg) "ref." else ""
+    val out = ArrayList<String>()
+    out.add(
+        if (pg) {
+            "INSERT INTO ref.dict_release (id, version, built_at, is_current) VALUES (1, 't1', ${g.ts(S)}, true)"
+        } else {
+            "INSERT INTO dict_release (id, version, built_at, scope, sources) VALUES (1, 't1', $S, 'all', '{}')"
+        },
+    )
+    for (seq in listOf(1001L, 1014L, 1021L, 1022L, 1023L)) {
+        val head = FORMS.firstOrNull { it[0] == seq }?.get(3) as String? ?: "x"
+        out.add(
+            if (pg) {
+                "INSERT INTO ref.dict_entry (seq, headword, headword_reading, readings, senses, added_release_id, retired_release_id) VALUES " +
+                    "($seq, ${g.q(head)}, 'x', '[{\"text\":\"x\"}]'::jsonb, '[]'::jsonb, 1, ${if (seq == 1023L) "1" else "NULL"})"
+            } else {
+                "INSERT INTO dict_entry (seq, headword, headword_reading, kanji_forms, readings, senses, pos, misc, retired) VALUES " +
+                    "($seq, ${g.q(head)}, 'x', '[]', '[]', '[]', '[]', '[]', ${if (seq == 1023L) 1 else 0})"
+            },
+        )
+    }
+    for (f in FORMS) {
+        out.add("INSERT INTO ${r}dict_entry_form (seq, kind, ord, form, norm) VALUES (${f[0]}, ${g.q(f[1] as String)}, ${f[2]}, ${g.q(f[3] as String)}, ${g.q(f[4] as String)})")
+    }
+    return out
+}
 
 private val CARDS = listOf(
     Cd(1, 1, state = "review", lapses = 1, reps = 5, stab = 20.0, diff = 5.0, due = S - D + 6 * H, interval = 20, created = S - 100 * D),
@@ -291,6 +364,9 @@ private val CARDS = listOf(
     Cd(24, 11, "reading", "review", reps = 3, stab = 10.0, diff = 4.0, due = S + 10 * D, interval = 10, created = S - 90 * D, preset = HARD_PRESET),
     Cd(25, 3, "reading", deleted = true),
     Cd(26, 1, "listening", created = S - 29 * D),
+    Cd(27, 21),
+    Cd(28, 22),
+    Cd(29, 23),
 )
 
 private val REVIEWS = listOf(
@@ -391,9 +467,9 @@ private fun insertFixture(conn: Connection, dialect: Dialect) {
 // Expectations (card numbers). Live cards: all except c15, c16 (merged), c17 (note deleted), c25 (deleted).
 // ---------------------------------------------------------------------------------------------
 
-private val LIVE = setOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 26)
+private val LIVE = setOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29)
 private val ANIME = setOf(1, 2, 26, 3, 4, 7, 23, 11, 22)
-private val NEW = setOf(4, 9, 10, 14, 19, 22, 26)
+private val NEW = setOf(4, 9, 10, 14, 19, 22, 26, 27, 28, 29)
 private val DUE = setOf(1, 2, 3, 12, 20, 21, 23)
 private val EAT = setOf(1, 2, 26, 7, 23, 10)
 private val FRIEREN = setOf(1, 2, 26, 3, 4, 8)
@@ -447,7 +523,7 @@ private val EXPECTED: List<Pair<String, Set<Int>>> = listOf(
     "rated:2:3" to setOf(7, 20),
     "rated:7" to setOf(1, 20, 7, 2),
     "added:1" to setOf(3, 10, 22),
-    "added:3" to setOf(3, 4, 10, 14, 19, 21, 22),
+    "added:3" to setOf(3, 4, 10, 14, 19, 21, 22, 27, 28, 29),
     "deck:Frieren" to FRIEREN,
     "deck:frieren*" to FRIEREN + 6,
     "deck:\"Anime:S1\"" to setOf(7, 23),
@@ -468,7 +544,7 @@ private val EXPECTED: List<Pair<String, Set<Int>>> = listOf(
     "status:known" to setOf(19),
     "status:never_forget" to setOf(20),
     "status:learning" to setOf(21),
-    "status:new" to setOf(1, 2, 26, 3, 4, 5, 6, 7, 23, 11, 12, 13, 24, 18),
+    "status:new" to setOf(1, 2, 26, 3, 4, 5, 6, 7, 23, 11, 12, 13, 24, 18, 27, 28, 29),
     "flag:3" to setOf(3),
     "flag:0" to LIVE - setOf(3, 20),
     "tag:anime or is:new" to ANIME + NEW,
@@ -482,5 +558,18 @@ private val EXPECTED: List<Pair<String, Set<Int>>> = listOf(
     "-is:hot is:leech" to setOf(5),
     "tag:leech or tag:anime" to ANIME + LEECH,
     "-deck:Frieren is:due" to DUE - FRIEREN,
-    "-kanji:績 type:vocab kind:meaning" to setOf(1, 3, 6, 7, 11, 12, 13, 18, 19, 20, 21),
+    "-kanji:績 type:vocab kind:meaning" to setOf(1, 3, 6, 7, 11, 12, 13, 18, 19, 20, 21, 27, 28, 29),
+    // C-24: bare terms also match the dictionary forms of entry-linked notes (n21 has empty fields; n14 is
+    // deleted; n23's entry is retired and has no forms)
+    "食べる" to setOf(1, 2, 26, 10, 27),
+    "たべる" to setOf(1, 2, 26, 27),
+    "タベル" to setOf(1, 2, 26, 27),
+    "ﾀﾍﾞﾙ" to setOf(1, 2, 26, 27),
+    "シャツ" to setOf(28),
+    "ティーシャツ" to setOf(28),
+    "tシャツ" to setOf(28),
+    "T*ツ" to setOf(28),
+    "\"食べる\" tag:anime" to setOf(1, 2, 26),
+    "-食べる type:vocab kind:meaning" to setOf(3, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21, 28, 29),
+    "食べる or シャツ" to setOf(1, 2, 26, 10, 27, 28),
 )

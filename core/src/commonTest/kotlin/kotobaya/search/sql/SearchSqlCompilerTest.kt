@@ -266,6 +266,57 @@ class SearchSqlCompilerTest {
     }
 
     @Test
+    fun formNormIsNfkcThenKatakanaFolded() {
+        assertEquals("たべる", normalizeForm("タベル"))
+        assertEquals("たべる", normalizeForm("ﾀﾍﾞﾙ"))
+        assertEquals("Tしゃつ", normalizeForm("Ｔシャツ"))
+        assertEquals("らーめん", normalizeForm("ラーメン")) // the prolonged sound mark stays
+        assertEquals("ゝゞ", normalizeForm("ヽヾ"))
+        assertEquals("食べる", normalizeForm("食べる"))
+    }
+
+    @Test
+    fun postgresTextAlsoMatchesDictionaryForms() {
+        val f = compile("ﾀﾍﾞﾙ", Dialect.POSTGRES).select()
+        assertTrue(f.sql.contains("n.entry_seq IS NOT NULL AND EXISTS (SELECT 1 FROM ref.dict_entry_form f WHERE f.seq = n.entry_seq"), f.sql)
+        // form pattern verbatim (ASCII-folded), norm pattern NFKC + katakana folded
+        assertEquals(listOf<Any>("%ﾀﾍﾞﾙ%", "%ﾀﾍﾞﾙ%", "%ﾀﾍﾞﾙ%", "%たべる%"), f.params)
+        assertFalse(compile("ﾀﾍﾞﾙ", Dialect.POSTGRES).residual)
+    }
+
+    @Test
+    fun sqliteTextAsksTheDictionaryOnceAndBindsTheSeqList() {
+        val asked = ArrayList<SqlFragment>()
+        val ctx = CTX.copy(
+            dictForms = { q ->
+                asked.add(q)
+                // the prefilter may over-return; the compiler decides
+                listOf(DictFormRow(7, "食べる", "食べる"), DictFormRow(3, "たべる", "たべる"), DictFormRow(9, "x", "y"), DictFormRow(3, "食べる", "食べる"))
+            },
+        )
+        val c = compile("たべる or (タベル tag:x) or たべる", Dialect.SQLITE, ctx)
+        assertEquals(2, asked.size, "one lookup per distinct pattern")
+        assertTrue(asked[0].sql.startsWith("SELECT seq, form, norm FROM dict_entry_form WHERE"), asked[0].sql)
+        assertEquals(listOf<Any>("%たべる%", "%たべる%"), asked[0].params)
+        assertEquals(listOf<Any>("%タベル%", "%たべる%"), asked[1].params)
+        val sel = c.select()
+        // たべる matches seq 3 (reading); タベル matches it through norm. 7 and 9 do not contain the text.
+        assertTrue(sel.params.contains(",3,"), sel.params.toString())
+        assertFalse(sel.params.any { it is String && it.contains("7") }, sel.params.toString())
+        // the forms branch is decided in SQL (a probe), the note-text branch stays residual
+        val t = compile("たべる", Dialect.SQLITE, ctx)
+        assertEquals(2, t.probes.size)
+        assertTrue(t.accepts(row(fields = "{}", probes = listOf(false, true))))
+        assertFalse(t.accepts(row(fields = "{}", probes = listOf(true, false))))
+        assertTrue(t.accepts(row(fields = "{\"reading\":\"たべる\"}", probes = listOf(true, false))))
+        // no form matches: the SQL is exactly the note-text-only one
+        val none = compile("abc", Dialect.SQLITE, CTX.copy(dictForms = { emptyList() })).select()
+        assertEquals(compile("abc", Dialect.SQLITE).select(), none)
+        // a wildcard-only pattern already matches every note: no whole-dictionary lookup
+        compile("*", Dialect.SQLITE, CTX.copy(dictForms = { error("must not be called") }))
+    }
+
+    @Test
     fun patternMatcher() {
         assertTrue(matchesWhole(listOf("abc"), "ABC"))
         assertFalse(matchesWhole(listOf("abc"), "abcd"))

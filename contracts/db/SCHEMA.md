@@ -468,7 +468,14 @@ of search) but keep everything else. An entry that reappears has `retired_releas
 
 Search recipes (server): normalise the query like `dict_entry_form.norm`; 1–2 characters → exact
 or prefix (`norm LIKE 'x%'`, btree); 3+ characters → `norm LIKE '%x%'` (trigram); English →
-`gloss ILIKE '%x%'`; order by `dict_entry.freq_rank NULLS LAST`. Notes: `note.search_text`.
+`gloss ILIKE '%x%'`; order by `dict_entry.freq_rank NULLS LAST`. Notes: `note.search_text`, OR
+(C-24, card search bare terms, Search.kt `SearchTerm.Text`) the note has an `entry_seq` with a
+`dict_entry_form` row whose `form` contains the text or whose `norm` contains the normalised text
+(`EXISTS (SELECT 1 FROM ref.dict_entry_form f WHERE f.seq = n.entry_seq AND (f.form LIKE ... OR
+f.norm LIKE ...))`, ASCII-case-folded; correlated on the primary key, so no extra index), because
+entry-linked notes usually have `fields = {}`. The device has no `search_text` and its dictionary is a
+separate file: it looks the matching seqs up in the installed `dict_entry_form` first and binds them
+(`SearchContext.dictForms`); without an installed dictionary only the note's own text matches.
 Sentences: `sentence.text`, `example_sentence.text`.
 
 ## 5. Device schema

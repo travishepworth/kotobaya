@@ -20,7 +20,8 @@ import kotobaya.contracts.WordStatus
  * "within the last N days" means `>= start − (N − 1) days` (so `rated:1` = since the start of today).
  *
  * **Text matching.** All string comparisons are case-insensitive for ASCII letters only (`A`–`Z`
- * ≡ `a`–`z`); no other folding (kana/width/NFKC are distinct). A [SearchPattern] is a sequence of
+ * ≡ `a`–`z`); no other folding (kana/width/NFKC are distinct), except the dictionary-form `norm`
+ * comparison of [SearchTerm.Text] (C-24). A [SearchPattern] is a sequence of
  * literal [SearchPattern.segments] separated by wildcards (`*` = any run of characters, possibly
  * empty).
  *
@@ -33,7 +34,10 @@ import kotobaya.contracts.WordStatus
  * - the set of hot note ids ([kotobaya.contracts.hot.HotScorer], computed by the caller at `now`)
  *   for `is:hot`;
  * - merge resolution (`merged_into_id` chains, followed to the survivor) for `nid:`, `cid:`,
- *   `entry:`, `rated:` and "only live cards".
+ *   `entry:`, `rated:` and "only live cards";
+ * - the dictionary forms (`dict_entry_form`) for bare text terms ([SearchTerm.Text] rule 2): the server's
+ *   `ref` schema; on the device the installed dictionary file, which is a separate SQLite database, so
+ *   the device compiler gets a lookup callback (`SearchContext.dictForms`) instead of a join.
  *
  * A compiler MAY split a tree into a **SQL prefilter plus a residual Kotlin predicate**, evaluated
  * on the rows the prefilter returns, provided the prefilter never excludes a matching card (it may
@@ -41,7 +45,7 @@ import kotobaya.contracts.WordStatus
  * the device's SQLite, which has no JSON functions guaranteed (SQLite 3.18, SCHEMA.md 5) and no
  * `note.search_text` (SCHEMA.md 5.2): `tag:` (whole-tag match on the JSON `tags` array), `field:`
  * (one key of the JSON `fields` object), text terms (over field values, mnemonic and source
- * sentence), `kanji:` and `is:hot` are then residual (a `LIKE` on the JSON text MAY prefilter
+ * sentence; their dictionary-form part is decided in SQL from the looked-up seqs), `kanji:` and `is:hot` are then residual (a `LIKE` on the JSON text MAY prefilter
  * them, never decide them). The server can decide every term in SQL (`search_text`, `jsonb`).
  * A `not` over a residual term makes its whole subtree residual (the prefilter for it is `TRUE`).
  */
@@ -192,7 +196,28 @@ public enum class CompareOp(
 
 /** A leaf of the search tree. Each subtype documents its syntax and exact meaning. */
 public sealed interface SearchTerm {
-    /** Bare word or quoted string: the note's searchable text (`note.search_text`: all field values, mnemonic, source sentence) contains the pattern (implicit wildcards at both ends). */
+    /**
+     * Bare word or quoted string (implicit wildcards at both ends). The card matches iff **either**
+     * 1. the note's searchable text (`note.search_text`: all field values, mnemonic, source sentence)
+     *    contains the pattern, **or**
+     * 2. (C-24, ADR-025) `note.entry_seq` is not null and some `dict_entry_form` row of that seq (any kanji
+     *    form or reading; retired entries have none, SCHEMA.md 4.5) has `form` containing the pattern, or
+     *    `norm` containing the **normalised pattern**: each segment normalised like `dict_entry_form.norm`
+     *    (NFKC, then katakana U+30A1–U+30F6 and ヽ ヾ shifted to hiragana) separately, wildcards kept.
+     *    Both comparisons ASCII-case-insensitive as everywhere; the NFKC/kana folding applies to the `norm`
+     *    comparison only.
+     *
+     * Rule 2 exists because notes linked to an entry (dictionary, jpdb import, deck-build) usually store
+     * `fields = {}` and render from the dictionary. Examples, for a note with `fields = {}` linked to
+     * 食べる / たべる: `食べる`, `たべる`, `タベル`, `ﾀﾍﾞﾙ`, `べ` and `*べ*` match; `eat` does not (glosses are
+     * not searched). For Ｔシャツ / ティーシャツ (`norm` `Tしゃつ` / `てぃーしゃつ`): `tシャツ`, `シャツ`, `T*ツ` match.
+     *
+     * Hosts: the server evaluates rule 2 against `ref.dict_entry_form`. The device evaluates it against the
+     * installed dictionary file (`Dict.sq`), which may lack an entry a note references (`top60k` scope,
+     * DICT_PACKAGE.md 2.3) or be absent altogether; rule 2 is then false for those notes on the device
+     * (the only permitted server/device difference for this term). A negated text term (`-食べる`) is the
+     * exact negation of rules 1 or 2.
+     */
     public data class Text(
         /** The pattern. */
         public val pattern: SearchPattern,

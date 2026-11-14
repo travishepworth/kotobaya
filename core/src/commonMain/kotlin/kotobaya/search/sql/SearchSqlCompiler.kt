@@ -48,6 +48,25 @@ public data class SearchContext(
      * offsets in `-36500..100000`. The default assumes 24-hour days, which is an hour off across a DST change.
      */
     public val dayStart: (offset: Int) -> InstantMs = { offset -> studyDay.startMs + offset.toLong() * 86_400_000L },
+    /**
+     * Device only (C-24, [Dialect.SQLITE]; ignored for Postgres, which joins `ref.dict_entry_form` itself):
+     * runs the given statement on the installed dictionary file (`Dict.sq`, opened read-only; a different
+     * SQLite file than the learning database) and returns every row, columns `seq`, `form`, `norm` in that
+     * order. Bind values are Strings. Called at most once per distinct text pattern during
+     * [SearchSqlCompiler.compile]. Null when no dictionary is installed: bare text terms then match the
+     * note's own text only (see Search.kt [kotobaya.contracts.search.SearchTerm.Text]).
+     */
+    public val dictForms: ((SqlFragment) -> List<DictFormRow>)? = null,
+)
+
+/** One `dict_entry_form` row returned to the compiler by [SearchContext.dictForms]. */
+public data class DictFormRow(
+    /** `dict_entry_form.seq`. */
+    public val seq: Long,
+    /** `dict_entry_form.form`. */
+    public val form: String,
+    /** `dict_entry_form.norm`. */
+    public val norm: String,
 )
 
 /** SQL text with positional `?` placeholders and the values to bind, in order. */
@@ -223,7 +242,10 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
     // ---- terms ----
 
     fun term(t: SearchTerm, ctx: SearchContext): C = when (t) {
-        is SearchTerm.Text -> text(t.pattern)
+        is SearchTerm.Text -> {
+            val forms = dictForms(t.pattern, ctx)
+            if (forms == null) text(t.pattern) else or(listOf(text(t.pattern), forms))
+        }
         is SearchTerm.Deck -> deck(t.pattern, ctx)
         is SearchTerm.Tag -> tag(t.pattern, ctx)
         is SearchTerm.Is -> isTerm(t.value, ctx)
@@ -275,6 +297,46 @@ private class Builder(val d: Dialect, val probes: MutableList<SqlFragment>) {
             .ifEmpty { "TRUE" }
         val params = chunks.flatMap { c -> val l = likePattern(listOf(c), contains = true, fold = true); listOf(l, l, l) }
         return C(if (chunks.size > 1) "($sql)" else sql, params) { r -> matchesContains(p, r.searchText) }
+    }
+
+    val formCache = HashMap<List<String>, C?>()
+
+    /**
+     * C-24: the note is linked to a dictionary entry one of whose forms (`dict_entry_form`: kanji forms and
+     * readings) contains [p] in `form`, or contains the per-segment [normalizeForm] of [p] in `norm`; both
+     * ASCII-case-insensitive. Retired entries have no form rows (SCHEMA.md 4.5, DICT_PACKAGE.md 3.3), so every
+     * row is live. Null: the branch cannot match (SQLite without a dictionary, or no form matches).
+     */
+    fun dictForms(p: SearchPattern, ctx: SearchContext): C? {
+        // only wildcards (`*`): the note-text branch already matches every note; skip a whole-dictionary lookup
+        if (p.segments.all { it.isEmpty() }) return null
+        val norm = p.segments.map(::normalizeForm)
+        val formLike = likePattern(p.segments, contains = true, fold = true)
+        val normLike = likePattern(norm, contains = true, fold = true)
+        if (pg) {
+            return C(
+                "(n.entry_seq IS NOT NULL AND EXISTS (SELECT 1 FROM ref.dict_entry_form f WHERE f.seq = n.entry_seq AND " +
+                    "(${fold("f.form")} LIKE ? ESCAPE '\\' OR ${fold("f.norm")} LIKE ? ESCAPE '\\')))",
+                listOf(formLike, normLike),
+            )
+        }
+        val lookup = ctx.dictForms ?: return null
+        return formCache.getOrPut(p.segments) {
+            // SQLite LIKE is ASCII-case-insensitive (Unicode-insensitive with ICU, a superset): only a prefilter.
+            val q = SqlFragment(
+                "SELECT seq, form, norm FROM dict_entry_form WHERE form LIKE ? ESCAPE '\\' OR norm LIKE ? ESCAPE '\\'",
+                listOf(formLike, normLike),
+            )
+            val normPattern = SearchPattern(norm)
+            val seqs = lookup(q).filter { matchesContains(p, it.form) || matchesContains(normPattern, it.norm) }
+                .map { it.seq }.distinct().sorted()
+            if (seqs.isEmpty()) {
+                null
+            } else {
+                // one bound list `,s1,s2,...,` rather than an IN list (SQLite 3.18 allows at most 999 variables)
+                C("(n.entry_seq IS NOT NULL AND instr(?, ',' || n.entry_seq || ',') > 0)", listOf(seqs.joinToString(",", ",", ",")))
+            }
+        }
     }
 
     fun tag(p: SearchPattern, ctx: SearchContext): C {
