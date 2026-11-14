@@ -8,7 +8,7 @@ USER DIRECTION (run 21): NO interim 0.1.10. Ship ONE release (0.1.10) after ALL 
 Merged in run 21: BUG-14a 3704bd4, JLPT-1a 25b203c, JLPT-1b 1927112, C-22 646bc7a+92cf544.
 In flight at handback (agents keep running after the parent dies; on resume run `git worktree list` and `git log main..<branch>`; a committed HANDOFF.md means READY_FOR_REVIEW, no HANDOFF means re-dispatch at the same tier):
 - FEAT-DICT writer (web links) → reviewer-light
-- BROWSE-2 DONE on t/BROWSE-1+2-browse (452fbc1; the BROWSE-1 commit is handoff-only); reviewer-light dispatched. On merge, drop the handoff commit or keep it as a plan note.
+- BROWSE-2 MERGED (reviewer-light APPROVE). BROWSE-1 waits on C-24.
 - C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
 - AND-INSETS writer (android insets) → reviewer-light
 - AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer

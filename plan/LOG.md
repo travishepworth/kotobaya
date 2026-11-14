@@ -943,3 +943,4 @@
 2026-11-14T00:38:54Z C-22 REVIEW_APPROVE + ARCHITECT_APPROVE (minors → FOLLOWUPS; ADR wording fixed at merge); MERGE 92cf544 core+contracts
 2026-11-14T00:39:32Z BROWSE-1 CONTRACT_CHANGE_REQUEST (entry-linked notes have empty fields) → C-24 FILED; BROWSE-2 DONE web green → reviewer-light
 2026-11-14T00:40:00Z RUN21 END context budget; RESTART NEEDED; in flight FEAT-DICT, BROWSE-2 review, C-24, AND-INSETS, AND-POSTSYNC, LOGFIX-1, C-23, OBS-1s
+2026-11-14T00:40:18Z BROWSE-2 REVIEW_APPROVE (light, 3 minors → FOLLOWUPS); MERGE a0e16d0 web (post-handback)

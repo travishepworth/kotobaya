@@ -408,3 +408,4 @@
 - BUG-14a review r2 minor: refetch fails after grading the last item → empty list may show 'done' while cards remain due; show reload prompt instead. low.
 - JLPT-1b review minors: (1) DeckLists.kt:20 a vocab_list id should win over a same-named freq band (§4.2); (2) DeckPublishPayload.kt:29 accept integral 1.0 for format_version; (3) no test for the parent being cancelled between the pre-check and the tx. low.
 - C-22 review minors: (1) when only learn-ahead cards remain, a card just answered Hard comes straight back (Anki-like). Consider a "come back in N min" screen or skipping cards answered within X min. med UX (looks like "stuck"). (2) DefaultQueueBuilder.kt:32 KDoc rewrap. (3) server queue page limit=20 can hide learn-ahead cards behind more than 20 items (they are still counted). low.
+- BROWSE-2 review minors: partial row selection has no indeterminate checkbox; row select covers only loaded sibling cards; chips don't wrap (clipped with 3+ cards). low.
