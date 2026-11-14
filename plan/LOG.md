@@ -995,3 +995,4 @@
 2026-11-14T02:51:18Z WORKER-PROGRESS MERGE d84a2cd9 per-page scrape progress, SIGTERM release, grace 45s; review APPROVE (minors -> WORKER-EMPTY)
 2026-11-14T02:52:18Z AND-PERF REVIEW_CHANGES major: LoadGate retains LoadedQueue per key (~100MB leak); attempt 2 same writer
 2026-11-14T02:56:45Z WORKER-EMPTY MERGE 0a4bca84 0-row import fails, per-stage progress, merged counter, Recreate, refund cap
+2026-11-14T02:57:08Z SRV-404LOG MERGE df845c72 request logged once per call (unknown-route 404 double log)
