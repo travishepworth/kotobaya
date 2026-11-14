@@ -58,6 +58,7 @@ interface ReviewIntents {
     /** The file of a cached blob for the card WebView's media requests (called off the main thread). */
     fun mediaFile(sha256: String): File? = null
     fun flip() {}
+    fun retry() {}
     fun answer(token: Long, button: Button) {}
     fun undo() {}
     fun toggleFurigana() {}
@@ -118,6 +119,23 @@ class ReviewViewModel(
 
     /** The file of a cached blob (the card WebView's media requests); null when not on the device. */
     override fun mediaFile(sha256: String): File? = backend?.blobs?.file(sha256)
+
+    /** A failed load shows [ReviewState.Failed] (Retry); a failed intent on a shown card shows the inline error. */
+    override fun onFailure(e: Throwable) {
+        if (session == null || current.review == ReviewState.Loading) {
+            sessionJob = null
+            session = null
+            update { it.copy(review = ReviewState.Failed) }
+        } else {
+            setResult(R.string.review_error_action, false, 0)
+        }
+    }
+
+    /** 'Retry' after [ReviewState.Failed]: starts a fresh session. */
+    override fun retry() {
+        leave()
+        enter()
+    }
 
     /** The screen is shown: starts a session unless one is running. */
     fun enter() {

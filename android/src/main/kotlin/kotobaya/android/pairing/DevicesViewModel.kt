@@ -95,6 +95,8 @@ class DevicesViewModel(
         }
     }
 
+    override fun onFailure(e: Throwable) = update { it.copy(busy = false, error = UiText(R.string.err_other_generic)) }
+
     override fun setUrl(url: String) = update { it.copy(url = url) }
 
     override fun setCode(code: String) = update { it.copy(code = code) }

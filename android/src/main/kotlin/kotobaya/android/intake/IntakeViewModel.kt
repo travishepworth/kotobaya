@@ -72,6 +72,8 @@ class IntakeViewModel(
         }
     }
 
+    override fun onFailure(e: Throwable) = update { it.copy(busy = false, outcome = IntakeOutcome.Failed(e::class.simpleName.orEmpty())) }
+
     override fun setWord(word: String) = update { it.copy(word = word) }
 
     override fun setReading(reading: String) = update { it.copy(reading = reading) }

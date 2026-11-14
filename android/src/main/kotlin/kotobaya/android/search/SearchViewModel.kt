@@ -78,6 +78,14 @@ class SearchViewModel(
     private val port: SearchPort,
     io: CoroutineDispatcher = Dispatchers.IO,
 ) : StateViewModel<SearchUiState>(SearchUiState(), io), SearchIntents {
+    /** A search or detail load that threw ends the busy state instead of spinning forever. */
+    override fun onFailure(e: Throwable) = update {
+        when {
+            it.results == SearchResults.Busy -> it.copy(results = SearchResults.Failed(offline = false))
+            else -> it.copy(detail = null)
+        }
+    }
+
     override fun setMode(mode: SearchMode) = update { if (it.mode == mode) it else it.copy(mode = mode, results = SearchResults.Idle) }
 
     override fun setQuery(query: String) = update { it.copy(query = query) }

@@ -31,6 +31,11 @@ class NotifySettingsViewModel(
         }
     }
 
+    /** A failed write: show what is actually stored rather than the optimistic switch. */
+    override fun onFailure(e: Throwable) {
+        runCatching { update { NotifySettingsUiState(prefs.nudgesEnabled, prefs.eveningHour != null) } }
+    }
+
     override fun setNudges(enabled: Boolean) {
         update { it.copy(nudges = enabled) }
         launchIo { prefs.nudgesEnabled = enabled }

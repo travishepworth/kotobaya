@@ -167,6 +167,14 @@ class StruggleViewModel(
         launchIo { loadLeeches(more = true) }
     }
 
+    /** A write that threw (the sources return Results; this is the storage layer failing) shows the write-failed line. */
+    override fun onFailure(e: Throwable) = update {
+        it.copy(
+            word = it.word.copy(message = R.string.struggle_write_failed),
+            confusables = it.confusables.copy(message = R.string.struggle_write_failed),
+        )
+    }
+
     override fun setMnemonic(text: String) = update { it.copy(word = it.word.copy(mnemonic = text)) }
 
     private fun reportWord(r: Result<Unit>, @StringRes ok: Int) =

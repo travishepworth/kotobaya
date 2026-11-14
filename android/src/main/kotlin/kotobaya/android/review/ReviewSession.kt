@@ -2,6 +2,7 @@ package kotobaya.android.review
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotobaya.android.vm.ScreenLog
 import kotobaya.android.grammar.GrammarSentenceSource
 import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.fsrs.RatingOutcome
@@ -68,6 +69,9 @@ sealed interface ReviewState {
 
     /** Nothing to review and nothing answered. */
     data object Empty : ReviewState
+
+    /** The queue could not be loaded or the next card could not be shown (a storage error); the screen offers Retry. */
+    data object Failed : ReviewState
 
     data class Summary(val stats: SessionStats) : ReviewState
 
@@ -183,17 +187,30 @@ class ReviewSession<L : LearningTables>(
                 "duration_ms" to JsonNumber(duration.toDouble()),
             ).also { m -> card.sentenceId?.let { m["sentence_id"] = JsonString(it) } },
         )
-        when (val r = minter.mint(OpType.REVIEW_LOGGED, payload)) {
+        val minted = try {
+            minter.mint(OpType.REVIEW_LOGGED, payload)
+        } catch (e: Exception) {
+            // Nothing was written: the card stays answerable, the caller surfaces the error.
+            answeredTokens -= token
+            throw e
+        }
+        when (minted) {
             is MintResult.Refused -> {
                 answeredTokens -= token
-                _state.value = ReviewState.Blocked(r.reason, card)
+                _state.value = ReviewState.Blocked(minted.reason, card)
                 return@synchronized false
             }
             is MintResult.Minted -> Unit
         }
         undoStack += Answered(reviewId, card.cardId, card.kind, button, duration)
         if (card.kind == QueueItemKind.NEW) newShown++
-        advance(null)
+        // The op is committed; if the next card cannot be built, keep the token spent (no duplicate op) and offer Retry.
+        try {
+            advance(null)
+        } catch (e: Exception) {
+            ScreenLog.loadFailed("ReviewSession.advance", e)
+            _state.value = ReviewState.Failed
+        }
         true
     }
 

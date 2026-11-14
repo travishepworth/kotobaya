@@ -175,6 +175,16 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
                             ActionArea(side = CardSide.FRONT, card = null, prefs = state.prefs, keyHints = false, intents = intents, enabled = false)
                         }
                         ReviewState.Empty -> Finished(null, Modifier.weight(1f))
+                        ReviewState.Failed -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            KbEmptyState(
+                                T(R.string.review_error_title),
+                                body = T(R.string.review_error_body),
+                                icon = KbIcons.Info,
+                                tone = KbEmptyTone.Neutral,
+                                page = true,
+                                action = { KbButton(T(R.string.review_error_retry), intents::retry) },
+                            )
+                        }
                         is ReviewState.Summary -> Finished(review.stats, Modifier.weight(1f), state.prefs)
                         is ReviewState.Blocked, is ReviewState.Showing -> {
                             val card = shown

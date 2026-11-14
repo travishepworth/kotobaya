@@ -141,4 +141,9 @@
     <string name="sync_attention_label">Needs attention</string>
     <string name="sync_close">Close</string>
     <string name="sync_open">Open sync status</string>
+    <string name="err_other_generic">Something went wrong. Please try again.</string>
+    <string name="review_error_title">Could not load your reviews</string>
+    <string name="review_error_body">Something went wrong reading the cards on this device.</string>
+    <string name="review_error_retry">Retry</string>
+    <string name="review_error_action">That did not work. Please try again.</string>
 </resources>
