@@ -928,3 +928,5 @@
 2026-11-14T00:32:24Z RUN21 START resume; JLPT-1a/1b + C-22 agents still alive (orphaned, running checks); BUG-14a reviewer dispatched
 2026-11-14T00:32:56Z BUG-14a REVIEW_CHANGES round 1 (major: recorded answer + failed refetch leaves card gradeable with fresh id); DISPATCH writer attempt 2 same worktree
 2026-11-14T00:34:37Z BUG-14a REVIEW_APPROVE round 2; MERGE 3704bd4 web (CHECK_GREEN 41 tests)
+2026-11-14T00:35:15Z RUN21 USER_REPORTS F (android insets → AND-INSETS ticket) G (android post-sync loads fail → DIAGNOSE scout) H (crash; no adb device → HUMAN_CHECKS)
+2026-11-14T00:35:17Z JLPT-1a HANDOFF DONE ac0977b worker green; default digests untested offline; READY_FOR_REVIEW

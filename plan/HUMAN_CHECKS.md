@@ -210,3 +210,6 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - NEW chart value: external Postgres/S3 now require `networkPolicy.egress.externalServices` (render fails otherwise). Bundled live setup unaffected.
 - SEC-3: app uses the Postgres superuser; split roles (app owner non-superuser, backup CREATEDB+read). Needs a one-off live DB migration.
 - SEC-9: host ntfy on its own name (`ntfy.baseUrl`) and test a push to a phone.
+
+## Run 21 (0.1.10)
+- **Android crash (user report H), no log captured.** No device was attached during run 21. With the phone on USB, run `! adb logcat -b crash -d > crash.txt` and `! adb logcat -d --pid=$(adb shell pidof com.ichi2.anki) > app.txt` (the second only while the app is running), then hand the files to the next orchestrator run to ticket. Steps to reproduce, if you remember them, help.
