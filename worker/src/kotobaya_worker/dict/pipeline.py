@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from .jmdict import parse_jmdict
 from .kanjidic import merge_krad, parse_kanjidic, parse_krad, with_components
 from .load import load_release
 from .models import LoadResult, ReleaseInfo
+from .vocab import VocabSource
 
 LICENSE = "CC BY-SA 4.0"
 
@@ -67,8 +69,11 @@ def refresh(
     *,
     cache_dir: Path = DEFAULT_CACHE_DIR,
     fetch: Fetcher = urllib_fetcher,
+    vocab_lists: Sequence[VocabSource] | None = None,
 ) -> LoadResult:
     """Download (verified against any pin, cached), parse and load. Nothing is written on any failure.
+
+    ``vocab_lists``: see :func:`load_release` (None leaves the vocabulary tables untouched).
 
     ``database_url`` is the JDBC-form ``DATABASE_URL``.
     """
@@ -88,5 +93,9 @@ def refresh(
     )
     with psycopg.connect(to_conninfo(database_url)) as conn:
         return load_release(
-            conn, info, parse_jmdict(jm.path), with_components(parse_kanjidic(kd.path), krad)
+            conn,
+            info,
+            parse_jmdict(jm.path),
+            with_components(parse_kanjidic(kd.path), krad),
+            vocab_lists,
         )

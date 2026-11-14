@@ -67,9 +67,32 @@ class ReleaseInfo:
 
 
 @dataclass(frozen=True)
+class VocabListReport:
+    """How one vocabulary list's source rows were accounted for (VOCAB_LISTS.md 3.3)."""
+
+    id: str
+    source_rows: int
+    entries: int
+    duplicates: int
+    shadowed: int
+    unmatched: int
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "id": self.id,
+            "source_rows": self.source_rows,
+            "entries": self.entries,
+            "duplicates": self.duplicates,
+            "shadowed": self.shadowed,
+            "unmatched": self.unmatched,
+        }
+
+
+@dataclass(frozen=True)
 class LoadResult:
     release_id: int
     entries: int  # live entries after the load
     retired: int  # entries retired by this load
     reappeared: int
     kanji: int
+    vocab_lists: tuple[VocabListReport, ...] = ()

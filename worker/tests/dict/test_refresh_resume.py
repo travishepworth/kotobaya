@@ -62,7 +62,7 @@ def test_resume_after_load_publishes_package_once(
 
     handler = make_dict_refresh(
         db_url,
-        sources=lambda: DictSources.from_json(json.dumps({})),
+        sources=lambda: DictSources.from_json(json.dumps({"jlpt": None})),
         s3=lambda: None,
         cache_dir=tmp_path,
         fetch=fetch,

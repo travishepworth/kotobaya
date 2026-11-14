@@ -8,7 +8,11 @@ digest is recorded in the release provenance. Other sources keep a mandatory pin
      "kanjidic": {}, "krad": {},
      "kanjium": {"url": "..", "sha256": ".."},          # optional
      "tatoeba": {"url": "..", "sha256": ".."},          # optional
-     "freq_lists": {"jpdb": {"url": "..", "sha256": "..", "title": "jpdb"}}}   # optional, priority = order
+     "freq_lists": {"jpdb": {"url": "..", "sha256": "..", "title": "jpdb"}},   # optional, priority = order
+     "jlpt": {"n5": {"url": "..", "sha256": ".."}, "n4": {}, "n3": {}, "n2": {}, "n1": {}}}  # all five, pinned
+
+``jlpt`` (contracts/db/VOCAB_LISTS.md 2): absent = the built-in pinned default, ``null`` = no JLPT lists,
+an object = all five levels each with ``url`` and ``sha256``.
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ from typing import Any
 
 import psycopg
 
+from kotobaya_worker.decks.enqueue import enqueue_list_deck_builds
 from kotobaya_worker.dict.dburl import to_conninfo
 from kotobaya_worker.dict.extra.load import FreqListConfig
 from kotobaya_worker.dict.extra.pipeline import ExtraSources, FreqListSource, refresh_extra
@@ -43,6 +48,13 @@ from kotobaya_worker.dict.package.release import build_release
 from kotobaya_worker.dict.package.s3 import S3Client, S3Config
 from kotobaya_worker.dict.package.source import SCOPES
 from kotobaya_worker.dict.pipeline import Sources, refresh
+from kotobaya_worker.dict.vocab import (
+    JLPT_LEVELS,
+    jlpt_default_specs,
+    jlpt_fingerprint,
+    jlpt_provenance,
+    jlpt_sources,
+)
 from kotobaya_worker.runner.core import JobContext
 
 log = logging.getLogger("kotobaya.worker.dict_refresh")
@@ -54,6 +66,7 @@ class DictSources:
     kanjium: SourceSpec | None
     tatoeba: SourceSpec | None
     freq: dict[str, FreqListSource]  # insertion order = priority order
+    jlpt: dict[str, SourceSpec] | None = None  # level -> spec; None = no JLPT lists
 
     @staticmethod
     def from_json(text: str) -> DictSources:
@@ -85,11 +98,29 @@ class DictSources:
                 FreqListConfig(slug, d.get("title", slug), i, d.get("url")),
                 spec(f"freq-{slug}.zip", d),
             )
+        jlpt: dict[str, SourceSpec] | None
+        if "jlpt" not in raw:
+            jlpt = jlpt_default_specs()
+        elif raw["jlpt"] is None:
+            jlpt = None
+        else:
+            cfg = raw["jlpt"]
+            if not isinstance(cfg, dict) or set(cfg) != set(JLPT_LEVELS):
+                raise ValueError(
+                    f"DICT_SOURCES_JSON: jlpt needs exactly the levels {list(JLPT_LEVELS)}"
+                )
+            jlpt = {}
+            for lvl in JLPT_LEVELS:
+                d = cfg[lvl]
+                if not isinstance(d, dict) or not d.get("url"):
+                    raise ValueError(f"DICT_SOURCES_JSON: jlpt {lvl} needs a url")
+                jlpt[lvl] = spec(f"jlpt-{lvl}.csv", d)
         return DictSources(
             core,
             spec("kanjium.txt", raw["kanjium"]) if "kanjium" in raw else None,
             spec("tatoeba.tsv", raw["tatoeba"]) if "tatoeba" in raw else None,
             freq,
+            jlpt,
         )
 
     @staticmethod
@@ -111,6 +142,7 @@ class DictSources:
             one(self.kanjium) if self.kanjium else None,
             one(self.tatoeba) if self.tatoeba else None,
             {s: replace(self.freq[s], source=one(self.freq[s].source)) for s in slugs},
+            None if self.jlpt is None else {lvl: one(sp) for lvl, sp in self.jlpt.items()},
         )
 
     def fingerprint(self, slugs: list[str]) -> dict[str, str]:
@@ -126,7 +158,10 @@ class DictSources:
             specs["tatoeba"] = self.tatoeba
         for s in slugs:
             specs[f"freq:{s}"] = self.freq[s].source
-        return {k: v.sha256 or "" for k, v in specs.items()}
+        out = {k: v.sha256 or "" for k, v in specs.items()}
+        if self.jlpt is not None:
+            out["jlpt"] = jlpt_fingerprint(self.jlpt)
+        return out
 
 
 CORE_KEYS = ("jmdict", "kanjidic2", "kradfile")
@@ -138,6 +173,12 @@ def _published(artifacts: Any) -> bool:
         return False
     have = {a.get("scope") for a in artifacts if isinstance(a, dict) and a.get("kind") == "full"}
     return all(sc in have for sc in SCOPES)
+
+
+def _requeue_decks(database_url: str) -> None:
+    """After a release is loaded: rebuild the live list decks (VOCAB_LISTS.md 3.4; deduped)."""
+    n = enqueue_list_deck_builds(database_url)
+    log.info("queued %d list deck rebuild(s)", n)
 
 
 def make_dict_refresh(
@@ -173,7 +214,12 @@ def make_dict_refresh(
             ).fetchone()
             if cur and not force:
                 have = {k: v.get("sha256") for k, v in cur[2].items() if isinstance(v, dict)}
-                core_ok = all(have.get(k) == fp[k] for k in CORE_KEYS)
+                # The JLPT lists are matched while a release loads, so their configuration is core
+                # data: adding, changing or dropping them builds a new release (VOCAB_LISTS.md 2.2).
+                core_keys = CORE_KEYS + (("jlpt",) if "jlpt" in fp else ())
+                core_ok = all(have.get(k) == fp[k] for k in core_keys) and (
+                    "jlpt" in fp or "jlpt" not in have
+                )
                 clash = any(have.get(k) not in (None, v) for k, v in fp.items())
                 if core_ok and not clash:
                     resume_id, resume_version = cur[0], cur[1]
@@ -197,24 +243,42 @@ def make_dict_refresh(
             if need_extra:
                 ctx.progress(0.4, "loading pitch, frequency and examples")
                 refresh_extra(database_url, release_id, extra, cache_dir=cache_dir, fetch=fetch)
+                _requeue_decks(database_url)
             ctx.check_cancelled()
             with psycopg.connect(to_conninfo(database_url)) as conn:
                 live = conn.execute(
                     "SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL"
                 ).fetchone()
             entries, retired = (live[0] if live else 0), 0
+            vocab_reports: list[dict[str, Any]] | None = None
         else:
             now = datetime.now(UTC)
             release_id = new_id
             version = f"{now:%Y.%m.%d}.{new_id}"
-            release = ReleaseInfo(new_id, version, now.isoformat())
+            sources_prov: dict[str, dict[str, str]] = {}
+            vocab = None
+            if src.jlpt is not None:
+                files = {
+                    lvl: fetch_source(sp, cache_dir, fetch).path for lvl, sp in src.jlpt.items()
+                }  # pinned and cached by resolve(): no second download
+                vocab = jlpt_sources(
+                    files
+                )  # invalid_source fails the job before the database is touched
+                sources_prov["jlpt"] = jlpt_provenance(src.jlpt)
+            else:
+                vocab = []  # no JLPT configured: the new release has no vocabulary lists
+            release = ReleaseInfo(new_id, version, now.isoformat(), sources_prov)
             ctx.progress(0.05, "loading JMdict and KANJIDIC2")
-            loaded = refresh(database_url, release, src.core, cache_dir=cache_dir, fetch=fetch)
+            loaded = refresh(
+                database_url, release, src.core, cache_dir=cache_dir, fetch=fetch, vocab_lists=vocab
+            )
+            vocab_reports = [r.to_json() for r in loaded.vocab_lists]
             ctx.check_cancelled()
             ctx.progress(0.4, "loading pitch, frequency and examples")
             refresh_extra(database_url, new_id, extra, cache_dir=cache_dir, fetch=fetch)
             ctx.check_cancelled()
             entries, retired = loaded.entries, loaded.retired
+            _requeue_decks(database_url)
 
         ctx.progress(0.6, "building device packages")
         client = s3()
@@ -232,11 +296,14 @@ def make_dict_refresh(
                 (json.dumps(artifacts), release_id),
             )
             conn.commit()
-        return {
+        result: dict[str, Any] = {
             "release_id": release_id,
             "version": version,
             "entries": entries,
             "retired": retired,
         }
+        if vocab_reports is not None:
+            result["vocab_lists"] = vocab_reports
+        return result
 
     return handler

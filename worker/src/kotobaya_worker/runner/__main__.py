@@ -8,6 +8,7 @@ import signal
 import threading
 
 from kotobaya_worker import health
+from kotobaya_worker.decks.build import make_deck_build
 from kotobaya_worker.grammar.job import make_grammar_detect
 from kotobaya_worker.importers.jpdb_deck.handler import make_jpdb_deck_import
 from kotobaya_worker.importers.jpdb_history.apply import make_apply_plan, make_fetch_blob
@@ -36,6 +37,7 @@ def build_registry() -> Registry:
     reg.register("grammar-detect", make_grammar_detect(database_url))
     reg.register("tts", make_tts(database_url))
     reg.register("fsrs-optimize", make_fsrs_optimize(database_url))
+    reg.register("deck-build", make_deck_build(database_url))
     return reg
 
 

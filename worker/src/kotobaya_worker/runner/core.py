@@ -243,10 +243,10 @@ class Runner:
             if cur.rowcount:
                 _hint(self.main, job_id)
 
-    def _finish_error(self, job: dict[str, Any], error: str) -> None:
+    def _finish_error(self, job: dict[str, Any], error: str, final: bool = False) -> None:
         job_id = job["id"]
         with self.main.transaction():
-            if job["attempts"] < job["max_attempts"]:
+            if job["attempts"] < job["max_attempts"] and not final:
                 cur = self.main.execute(
                     "update app.job set status = 'queued', locked_by = null, heartbeat_at = null, "
                     "error = %s, run_after = now() + make_interval(secs => %s) "
@@ -315,8 +315,11 @@ class Runner:
                 "job %s (%s) attempt %s failed", job_id, job["kind"], job["attempts"],
                 exc_info=True,
             )  # fmt: skip
-            msg = f"{type(e).__name__}: {e}"
-            outcome = lambda: self._finish_error(job, msg)
+            # A handler exception may carry its exact ``error`` text and say a retry cannot help
+            # (deterministic failures, e.g. deck-build ``empty_list``).
+            msg = getattr(e, "job_error", None) or f"{type(e).__name__}: {e}"
+            final = bool(getattr(e, "non_retryable", False))
+            outcome = lambda: self._finish_error(job, msg, final)
         stop.set()
         beat.join()
         outcome()

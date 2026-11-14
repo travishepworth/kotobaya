@@ -7,7 +7,7 @@ entries that vanished, flip ``is_current``. ``freq_rank`` on entries is never to
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from datetime import datetime
 from itertools import batched
@@ -17,6 +17,7 @@ import psycopg
 
 from .models import Entry, Form, Kanji, LoadResult, ReleaseInfo
 from .normalize import is_kanji, normalize_form
+from .vocab import VocabSource, load_vocab_lists
 
 _LOCK_KEY = 0x4B4F544F  # advisory lock: one dict load at a time
 
@@ -143,10 +144,13 @@ def load_release(
     release: ReleaseInfo,
     entries: Iterable[Entry],
     kanji: Iterable[Kanji],
+    vocab_lists: Sequence[VocabSource] | None = None,
 ) -> LoadResult:
     """Load a full JMdict + KANJIDIC2 snapshot as ``release``. Atomic and idempotent.
 
-    ``entries`` must be the complete JMdict: anything absent is retired.
+    ``entries`` must be the complete JMdict: anything absent is retired. ``vocab_lists`` (None = leave the
+    vocabulary tables alone; a sequence, possibly empty, replaces them, VOCAB_LISTS.md 3.4) is matched in
+    the same transaction that makes the release current.
     """
     with conn.transaction(), conn.cursor() as cur:
         cur.execute("SELECT pg_advisory_xact_lock(%s)", (_LOCK_KEY,))
@@ -248,6 +252,8 @@ def load_release(
             """
         )
 
+        reports = () if vocab_lists is None else load_vocab_lists(cur, release.id, vocab_lists)
+
         cur.execute(
             "UPDATE ref.dict_release SET is_current = false WHERE is_current AND id <> %s",
             (release.id,),
@@ -255,7 +261,7 @@ def load_release(
         cur.execute("UPDATE ref.dict_release SET is_current = true WHERE id = %s", (release.id,))
         cur.execute("SELECT count(*) FROM ref.dict_entry WHERE retired_release_id IS NULL")
         live = _scalar(cur)
-    return LoadResult(release.id, live, retired, reappeared, n_kanji)
+    return LoadResult(release.id, live, retired, reappeared, n_kanji, reports)
 
 
 def _scalar(cur: psycopg.Cursor[Any]) -> int:
