@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
+import logging
 import os
 import shutil
+import tempfile
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
@@ -20,6 +24,11 @@ JMDICT_URL = "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz"
 KANJIDIC2_URL = "http://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
 KRAD_URL = "http://ftp.edrdg.org/pub/Nihongo/kradzip.zip"
 
+# Downloads per fetch: a truncated or failed transfer is retried before anything is concluded.
+MAX_ATTEMPTS = 3
+
+log = logging.getLogger("kotobaya.worker.dict.fetch")
+
 
 class ChecksumMismatch(Exception):
     def __init__(self, name: str, expected: str, actual: str) -> None:
@@ -33,9 +42,13 @@ class ChecksumMismatch(Exception):
 class SourceSpec:
     """One downloadable source.
 
-    ``sha256`` is an optional pin (ADR-020): when set the downloaded bytes must match exactly;
-    when ``None`` (the EDRDG daily-changing files) whatever was fetched is accepted and its
-    digest recorded. ``last_modified`` / ``etag`` are provenance only.
+    ``sha256`` is an optional pin (ADR-020): when ``None`` whatever was fetched is accepted and its
+    digest recorded. When set and ``strict`` (immutable URLs: kanjium, tatoeba, frequency and JLPT
+    lists) the downloaded bytes must match exactly. When set and not ``strict`` (the EDRDG files,
+    republished daily at a fixed URL) a cached file with the pinned digest is reused, but upstream
+    content that differs from the pin is accepted once two downloads agree on it: the new digest
+    is recorded and becomes a new release instead of failing every refresh.
+    ``last_modified`` / ``etag`` are provenance only.
     """
 
     name: str  # cache file name, e.g. JMdict_e.gz
@@ -43,6 +56,7 @@ class SourceSpec:
     sha256: str | None = None
     last_modified: str | None = None
     etag: str | None = None
+    strict: bool = True
 
     def provenance(self, license: str | None = None) -> dict[str, str]:
         out: dict[str, str] = {"url": self.url}
@@ -72,30 +86,44 @@ def sha256_file(path: Path) -> str:
 
 
 def urllib_fetcher(url: str, dest: Path) -> Mapping[str, str] | None:
-    """Default network fetcher (stdlib only)."""
+    """Default network fetcher (stdlib only). A body shorter than its Content-Length raises."""
     with urllib.request.urlopen(url, timeout=120) as resp, dest.open("wb") as out:
         shutil.copyfileobj(resp, out)
-        return {k.lower(): v for k, v in resp.headers.items()}
+        headers = {k.lower(): v for k, v in resp.headers.items()}
+        size = out.tell()
+    length = headers.get("content-length", "")
+    if length.isdigit() and int(length) != size:
+        raise http.client.IncompleteRead(b"", int(length) - size)
+    return headers
 
 
-def fetch_source(spec: SourceSpec, cache_dir: Path, fetch: Fetcher) -> FetchedSource:
+# Transient transfer failures worth another attempt (HTTP errors such as 404 are not).
+_TRANSIENT = (http.client.HTTPException, urllib.error.URLError, TimeoutError, ConnectionError)
+
+
+def fetch_source(
+    spec: SourceSpec, cache_dir: Path, fetch: Fetcher, *, attempts: int = MAX_ATTEMPTS
+) -> FetchedSource:
     """Fetch ``spec`` and return the file plus the spec completed with its digest.
 
-    Pinned: a cached file with the pinned digest is reused, else downloaded and verified
-    (:class:`ChecksumMismatch` on a difference). Unpinned: always downloaded (the source changes
-    daily); the digest and any Last-Modified / ETag are recorded on the returned spec.
+    Pinned: a cached file with the pinned digest is reused, else downloaded and verified. A
+    download that fails in transit or differs from the pin is retried (up to ``attempts``
+    downloads): a partial transfer heals on the next try. A strict pin that still differs raises
+    :class:`ChecksumMismatch`; a non-strict pin accepts the new content once two consecutive
+    downloads agree (upstream republished). Unpinned: always downloaded; the digest and any
+    Last-Modified / ETag are recorded on the returned spec.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / spec.name
     expected = spec.sha256.lower() if spec.sha256 else None
     if expected and target.is_file() and sha256_file(target) == expected:
         return FetchedSource(target, spec)
-    part = cache_dir / (spec.name + ".part")
+    # A private temp file: concurrent refreshes never write into each other's download.
+    fd, tmp = tempfile.mkstemp(prefix=spec.name + ".", suffix=".part", dir=cache_dir)
+    os.close(fd)
+    part = Path(tmp)
     try:
-        headers = fetch(spec.url, part) or {}
-        actual = sha256_file(part)
-        if expected and actual != expected:
-            raise ChecksumMismatch(spec.name, expected, actual)
+        headers, actual = _download(spec, part, expected, fetch, max(1, attempts))
         os.replace(part, target)
     finally:
         part.unlink(missing_ok=True)
@@ -109,6 +137,46 @@ def fetch_source(spec: SourceSpec, cache_dir: Path, fetch: Fetcher) -> FetchedSo
             etag=h.get("etag", spec.etag),
         ),
     )
+
+
+def _download(
+    spec: SourceSpec, part: Path, expected: str | None, fetch: Fetcher, attempts: int
+) -> tuple[Mapping[str, str], str]:
+    """Download into ``part`` until it is acceptable; returns (headers, digest)."""
+    previous: str | None = None
+    actual = ""
+    for attempt in range(1, attempts + 1):
+        try:
+            headers = fetch(spec.url, part) or {}
+        except _TRANSIENT as e:
+            if attempt == attempts:
+                raise
+            log.warning("%s: download attempt %d failed (%s); retrying", spec.name, attempt, e)
+            previous = None
+            continue
+        actual = sha256_file(part)
+        if expected is None or actual == expected:
+            return headers, actual
+        if not spec.strict and actual == previous:
+            log.warning(
+                "%s: upstream content changed (pinned %s, now %s); the pin is stale, "
+                "using the new content",
+                spec.name,
+                expected,
+                actual,
+            )
+            return headers, actual
+        previous = actual
+        log.warning(
+            "%s: sha256 %s differs from pin %s (attempt %d/%d)",
+            spec.name,
+            actual,
+            expected,
+            attempt,
+            attempts,
+        )
+    assert expected is not None
+    raise ChecksumMismatch(spec.name, expected, actual)
 
 
 def ensure_source(spec: SourceSpec, cache_dir: Path, fetch: Fetcher) -> Path:

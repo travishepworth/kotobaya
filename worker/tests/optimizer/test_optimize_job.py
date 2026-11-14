@@ -273,3 +273,25 @@ def test_pg_store_normalises_naive_and_offset_timestamps() -> None:
     loaded = PgStore(Conn()).load_plan(PRESET)  # type: ignore[arg-type]
     assert loaded is not None
     assert [r.reviewed_at for r in loaded.reviews] == [datetime(2025, 1, 1, 12, tzinfo=UTC)] * 2
+
+
+def test_real_pyfsrs_trainer_and_evaluate_accept_naive_and_non_utc_reviews() -> None:
+    """LOGFIX-1 (live 'datetime must be timezone-aware and set to UTC'): the real py-fsrs trainer,
+    not a fake, fed naive and non-UTC aware timestamps as a DB session could hand them over."""
+    from datetime import timezone
+
+    from kotobaya_worker.optimizer.model import train_pyfsrs
+
+    jst = timezone(timedelta(hours=9))
+    reviews = [
+        Review(
+            r.card_id,
+            r.reviewed_at.replace(tzinfo=None) if i % 2 else r.reviewed_at.astimezone(jst),
+            r.rating,
+        )
+        for i, r in enumerate(simulate(true_weights(), cards=60))
+    ]
+    assert all(r.reviewed_at.tzinfo is UTC for r in reviews)
+    weights = train_pyfsrs(reviews)  # 600 reviews: past py-fsrs' 512 minimum, so it really trains
+    assert weights_in_bounds(weights)
+    assert evaluate(weights, reviews) is not None

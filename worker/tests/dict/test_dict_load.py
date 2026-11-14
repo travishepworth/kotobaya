@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import gzip
 import hashlib
 import io
@@ -209,6 +210,10 @@ def test_refresh_end_to_end_with_cache(db_url: str, tmp_path: Path) -> None:
 
 def test_refresh_checksum_mismatch_writes_nothing(db_url: str, tmp_path: Path) -> None:
     sources, blobs = _fake_sources()
+    # strict pin: the EDRDG defaults are advisory (LOGFIX-1), so force an exact pin here
+    sources = dataclasses.replace(
+        sources, kanjidic=dataclasses.replace(sources.kanjidic, strict=True)
+    )
 
     def fetch(url: str, dest: Path) -> None:
         dest.write_bytes(blobs[url] + (b"tampered" if url == sources.kanjidic.url else b""))

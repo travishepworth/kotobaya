@@ -90,6 +90,27 @@ def test_csv_missing_column_fails(tmp_path: Path) -> None:
         parse_vocab_csv(p, "jlpt n5")
 
 
+def test_header_only_source_is_invalid(tmp_path: Path) -> None:
+    """C-21 minor: a header-only file would load 0 rows and empty the list; fail it instead."""
+    p = tmp_path / "x.csv"
+    p.write_text("jmdict_seq,kana,kanji\n\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid_source: jlpt n3"):
+        parse_vocab_csv(p, "jlpt n3")
+
+
+def test_jlpt_provenance_is_default_only_when_all_five_match() -> None:
+    from dataclasses import replace
+
+    from kotobaya_worker.dict.vocab import JLPT_COMMIT, jlpt_default_specs, jlpt_provenance
+
+    specs = jlpt_default_specs()
+    assert jlpt_provenance(specs)["version"] == JLPT_COMMIT
+    custom = dict(specs, n1=replace(specs["n1"], sha256="ab" * 32))
+    assert jlpt_provenance(custom)["version"] != JLPT_COMMIT
+    custom = dict(specs, n3=replace(specs["n3"], url="https://example.invalid/n3.csv"))
+    assert jlpt_provenance(custom)["version"] != JLPT_COMMIT
+
+
 def test_short_row_is_invalid(tmp_path: Path) -> None:
     p = tmp_path / "x.csv"
     p.write_text("jmdict_seq,kana,kanji\n1191730,いえ\n", encoding="utf-8")

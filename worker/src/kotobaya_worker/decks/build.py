@@ -276,6 +276,7 @@ def run_deck_build(
         ctx.progress(0.05, "planning")
         plan = planner.plan(deck_id)
         if plan.unchanged:
+            ctx.progress(1.0, "done")
             return _unchanged_result(plan)
         archive = DeckArchive(
             deck_id, "list", plan.base_version + 1,

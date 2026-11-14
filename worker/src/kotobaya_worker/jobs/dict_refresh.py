@@ -1,8 +1,9 @@
 """``dict-refresh`` handler: refresh -> refresh_extra -> build_release (+ S3) -> ref.dict_release.artifacts.
 
 Sources come from ``DICT_SOURCES_JSON``. The EDRDG files (jmdict, kanjidic, krad) change daily, so
-their ``sha256`` is an optional pin (ADR-020): if set it must match exactly, otherwise the fetched
-digest is recorded in the release provenance. Other sources keep a mandatory pin::
+their ``sha256`` is an optional, advisory pin (ADR-020): a cached file matching it is reused, but
+when upstream has republished (two downloads agree on new content) the new file is used and its
+digest recorded, which builds a new release. Other sources keep a mandatory, exact pin::
 
     {"jmdict": {"url": "optional override", "sha256": "optional pin"},
      "kanjidic": {}, "krad": {},
@@ -85,7 +86,8 @@ class DictSources:
             pin = d.get("sha256") or None
             if pin is None and pin_required:
                 raise ValueError(f"DICT_SOURCES_JSON: {name} needs a sha256")
-            return SourceSpec(name, url, pin)
+            # Optional pins are on daily-republished files: advisory, never a permanent failure.
+            return SourceSpec(name, url, pin, strict=pin_required)
 
         core = Sources(
             spec("JMdict_e.gz", raw.get("jmdict", {}), JMDICT_URL, pin_required=False),
@@ -243,7 +245,9 @@ def make_dict_refresh(
             if need_extra:
                 ctx.progress(0.4, "loading pitch, frequency and examples")
                 refresh_extra(database_url, release_id, extra, cache_dir=cache_dir, fetch=fetch)
-                _requeue_decks(database_url)
+            # Always: an earlier attempt may have loaded the release but died before queueing the
+            # list-deck rebuilds. Builds are deduped, so a repeat is a no-op.
+            _requeue_decks(database_url)
             ctx.check_cancelled()
             with psycopg.connect(to_conninfo(database_url)) as conn:
                 live = conn.execute(

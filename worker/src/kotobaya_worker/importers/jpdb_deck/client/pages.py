@@ -52,13 +52,25 @@ def normalize_deck_id(raw: str) -> str:
     raise ValueError(f"jpdb deck {raw!r}: expected a jpdb URL or <kind>/<id> such as anime/5370")
 
 
+# Deck sub-pages that can follow the numeric id directly (`/anime/5370/stats`): never a title slug.
+_SUBPAGES = frozenset({"vocabulary-list", "kanji-list", "stats", "reviews", "characters"})
+
+
 def deck_slug(raw: str) -> str | None:
-    """Title slug from a jpdb URL like `.../visual-novel/3913/fatal-twelve/vocabulary-list`."""
+    """Title slug from a jpdb URL like `.../visual-novel/3913/fatal-twelve/vocabulary-list`.
+
+    The third path segment is a slug only when it is followed by a sub-page
+    (`<slug>/vocabulary-list`, `<slug>/stats`) or is the last segment and not itself a sub-page
+    name. Otherwise None: the slug is resolved from the overview page.
+    """
     m = _URL_PATH.match(raw.strip())
     parts = [p for p in (m.group(1) if m else "").split("/") if p]
-    if len(parts) >= 3 and parts[2].lower() != "vocabulary-list":
-        return urllib.parse.quote(urllib.parse.unquote(parts[2]), safe="-_.~")
-    return None
+    if len(parts) < 3:
+        return None
+    seg = urllib.parse.unquote(parts[2])
+    if seg.lower() in _SUBPAGES or (len(parts) > 3 and parts[3].lower() not in _SUBPAGES):
+        return None
+    return urllib.parse.quote(seg, safe="-_.~")
 
 
 def has_entries(page: str) -> bool:
@@ -139,8 +151,11 @@ class PagesDeckSource:
         slug = deck_slug(jpdb_id)
         if slug is None:
             overview_url = f"{self._base}/{path}/vocabulary-list"
-            overview = self._f.get(overview_url)
-            m = re.search(rf'href="/{re.escape(path)}/([^/"?#]+)/vocabulary-list"', overview)
+            link = re.compile(rf'href="/{re.escape(path)}/([^/"?#]+)/vocabulary-list"')
+            # Only a page carrying the list link is cached: a challenge or error page must not
+            # poison the cache (remap_only reads it at any age).
+            overview = self._f.get(overview_url, accept=lambda b: link.search(b) is not None)
+            m = link.search(overview)
             if not m:
                 raise RuntimeError(f"jpdb deck {path}: no vocabulary-list link on {overview_url}")
             slug = m.group(1)

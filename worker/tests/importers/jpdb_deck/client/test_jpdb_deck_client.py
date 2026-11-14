@@ -313,3 +313,35 @@ def test_zero_row_page_is_never_cached_and_cached_one_is_ignored(tmp_path: Path)
     f2, op2 = make(tmp_path, {list_url: fx("vocabulary-list-3.html")})
     deck = PagesDeckSource(f2).fetch_deck("anime/5/s")
     assert op2.urls == [list_url] and len(deck.words) == 2
+
+
+def test_overview_without_list_link_is_never_cached(tmp_path: Path) -> None:
+    """BUG-11 minor: a challenge page at the overview URL must not poison the cache."""
+    overview_url = f"{BASE}/{DECK}/vocabulary-list"
+    challenge = "<html><body>Checking your browser...</body></html>"
+    f, _ = make(tmp_path, {overview_url: challenge})
+    with pytest.raises(RuntimeError, match="no vocabulary-list link"):
+        PagesDeckSource(f).fetch_deck(DECK)
+    assert list(tmp_path.glob("*.json")) == []
+    # a remap-style fetcher (cache at any age) now reaches the network and gets the real page
+    f2, op2 = make(tmp_path, page_routes(), max_age=None)
+    deck = PagesDeckSource(f2).fetch_deck(DECK)
+    assert op2.urls[0] == overview_url and len(deck.words) == 8
+
+
+@pytest.mark.parametrize(
+    ("raw", "want"),
+    [
+        ("https://jpdb.io/anime/5370/stats", None),
+        ("https://jpdb.io/anime/5370/vocabulary-list", None),
+        ("https://jpdb.io/anime/5370/kanji-list", None),
+        ("https://jpdb.io/anime/5370/some-title/vocabulary-list", "some-title"),
+        ("https://jpdb.io/anime/5370/some-title/stats", "some-title"),
+        ("https://jpdb.io/anime/5370/some-title", "some-title"),
+        ("anime/5370", None),
+    ],
+)
+def test_deck_slug_accepts_only_title_segments(raw: str, want: str | None) -> None:
+    from kotobaya_worker.importers.jpdb_deck.client.pages import deck_slug
+
+    assert deck_slug(raw) == want

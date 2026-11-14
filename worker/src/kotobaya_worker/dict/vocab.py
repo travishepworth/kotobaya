@@ -72,7 +72,10 @@ def jlpt_fingerprint(specs: Mapping[str, SourceSpec]) -> str:
 
 def jlpt_provenance(specs: Mapping[str, SourceSpec]) -> dict[str, str]:
     """``ref.dict_release.sources.jlpt`` (VOCAB_LISTS.md 2.1) plus the combined ``sha256`` fingerprint."""
-    default = jlpt_default_specs()["n5"].url == specs["n5"].url
+    default = all(
+        (specs[lvl].url, (specs[lvl].sha256 or "").lower()) == JLPT_DEFAULT[lvl]
+        for lvl in JLPT_LEVELS
+    )
     return {
         "version": JLPT_COMMIT if default else (specs["n5"].sha256 or ""),
         "license": JLPT_LICENSE,
@@ -139,6 +142,8 @@ def parse_vocab_csv(path: Path, label: str) -> list[VocabRow]:
                     len(rows) + 1, cell(i_seq), cell(i_kana), cell(i_kanji), len(cells), len(names)
                 )
             )
+    if not rows:  # header only: loading it would silently empty the list (VOCAB_LISTS.md 3.3)
+        raise ValueError(f"invalid_source: {label} has no data rows")
     return rows
 
 

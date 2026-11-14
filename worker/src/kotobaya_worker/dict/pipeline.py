@@ -44,9 +44,9 @@ class Sources:
         krad_sha256: str | None = None,
     ) -> Sources:
         return Sources(
-            SourceSpec("JMdict_e.gz", JMDICT_URL, jmdict_sha256),
-            SourceSpec("kanjidic2.xml.gz", KANJIDIC2_URL, kanjidic_sha256),
-            SourceSpec("kradzip.zip", KRAD_URL, krad_sha256),
+            SourceSpec("JMdict_e.gz", JMDICT_URL, jmdict_sha256, strict=False),
+            SourceSpec("kanjidic2.xml.gz", KANJIDIC2_URL, kanjidic_sha256, strict=False),
+            SourceSpec("kradzip.zip", KRAD_URL, krad_sha256, strict=False),
         )
 
 
