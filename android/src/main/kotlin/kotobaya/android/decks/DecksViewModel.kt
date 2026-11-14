@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotobaya.android.queue.QueueCounts
 import kotobaya.android.sync.SyncStatusView
 import kotobaya.android.vm.StateViewModel
 
@@ -24,6 +25,8 @@ enum class DecksMode { LIST, DETAIL, STUDY }
 data class DecksUiState(
     val mode: DecksMode = DecksMode.LIST,
     val decks: List<DeckSummary>? = null,
+    /** Counts of the whole review queue, loaded with [decks] (AND-QUEUE: what Home's hero shows); null while loading. */
+    val queue: QueueCounts? = null,
     val selectedId: String? = null,
     val deck: DeckSummary? = null,
     val words: List<DeckWord>? = null,
@@ -89,8 +92,8 @@ class DecksViewModel(
                 ensureActive()
                 when (s.mode) {
                     DecksMode.LIST -> {
-                        val decks = source.decks()
-                        update { it.copy(decks = decks, loadFailed = false) }
+                        val o = source.overview()
+                        update { it.copy(decks = o.decks, queue = o.queue, loadFailed = false) }
                     }
                     DecksMode.DETAIL, DecksMode.STUDY -> {
                         val id = s.selectedId.orEmpty()
@@ -114,7 +117,7 @@ class DecksViewModel(
     }
 
     override fun back() {
-        update { it.copy(mode = DecksMode.LIST, decks = null) }
+        update { it.copy(mode = DecksMode.LIST, decks = null, queue = null) }
         reload()
     }
 

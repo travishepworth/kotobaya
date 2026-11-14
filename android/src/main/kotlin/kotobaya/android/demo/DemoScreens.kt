@@ -132,7 +132,7 @@ object DemoScreens {
 
         add(screen("home", Tab.TODAY) { Today(data, unpaired = false) })
         add(screen("home-unpaired", Tab.TODAY) { Today(data, unpaired = true) })
-        add(screen("home-loading", Tab.TODAY) { TodayScreen(false, null, emptyList(), object : TodayIntents {}) })
+        add(screen("home-loading", Tab.TODAY) { TodayScreen(false, null, null, emptyList(), object : TodayIntents {}) })
 
         add(screen("review-front", Tab.REVIEW, immersive = true) { Review(store, flip = false) })
         add(screen("review-back", Tab.REVIEW, immersive = true) { Review(store, flip = true) })
@@ -246,7 +246,7 @@ object DemoScreens {
         val s by sync.state.collectAsState()
         val decks = rememberVm { DecksViewModel(DemoDeckSource(data), null, now) }
         val d by decks.state.collectAsState()
-        TodayScreen(unpaired, d.decks, listOf { SyncChipWithFlow(s, sync) }, object : TodayIntents {}, nowMs = DEMO_NOW_MS)
+        TodayScreen(unpaired, d.decks, d.queue, listOf { SyncChipWithFlow(s, sync) }, object : TodayIntents {}, nowMs = DEMO_NOW_MS)
     }
 
     @Composable

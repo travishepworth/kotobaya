@@ -26,7 +26,14 @@ import kotobaya.queue.DefaultQueueBuilder
 import kotobaya.sync.DefaultCanonicalJson
 
 /** Counts shown on Home: what the queue holds right now (limits applied by core's builder). */
-data class QueueCounts(val due: Int, val new: Int, val learning: Int)
+data class QueueCounts(val due: Int, val new: Int, val learning: Int) {
+    /** Every item of the queue: what a review session started now can show. */
+    val total: Int get() = due + new + learning
+
+    companion object {
+        val ZERO: QueueCounts = QueueCounts(0, 0, 0)
+    }
+}
 
 /** A built queue with the exact input that produced it. */
 class LoadedQueue internal constructor(

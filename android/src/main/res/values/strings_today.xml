@@ -3,7 +3,7 @@
     <string name="today_title">Today</string>
     <string name="today_hero_title">Ready when you are</string>
     <string name="today_hero_clear">You are all caught up</string>
-    <string name="today_hero_nothing">Nothing is waiting in your decks right now.</string>
+    <string name="today_hero_nothing">Nothing is due right now.</string>
     <string name="today_start_review">Start review</string>
     <string name="today_decks">Your decks</string>
     <string name="today_all_decks">All decks</string>
@@ -14,7 +14,7 @@
     <string name="today_empty_body">Search the dictionary to add words. Imports and new decks are made on the web app and sync here.</string>
     <string name="today_empty_action">Search the dictionary</string>
     <plurals name="today_hero_waiting">
-        <item quantity="one">Cards are waiting in %1$d deck.</item>
-        <item quantity="other">Cards are waiting in %1$d decks.</item>
+        <item quantity="one">%1$d card is waiting.</item>
+        <item quantity="other">%1$d cards are waiting.</item>
     </plurals>
 </resources>

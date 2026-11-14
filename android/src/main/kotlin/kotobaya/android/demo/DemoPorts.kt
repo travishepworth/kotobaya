@@ -4,6 +4,7 @@ import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotobaya.android.decks.DeckSource
+import kotobaya.android.decks.DecksOverview
 import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.DeckWord
 import kotobaya.android.grammar.GrammarCapturePort
@@ -255,6 +256,13 @@ class DemoDeckSource(private val data: DemoData) : DeckSource {
     }
 
     override fun decks(): List<DeckSummary> = data.decks.map(::summary)
+
+    /** The demo has no deckless cards; its queue is the user decks' counts. */
+    override fun overview(): DecksOverview {
+        val decks = decks()
+        val user = decks.filter { it.type == "user" && it.enabled }.map { it.counts }
+        return DecksOverview(decks, QueueCounts(user.sumOf { it.due }, user.sumOf { it.new }, user.sumOf { it.learning }))
+    }
 
     override fun deck(id: String): DeckSummary? = data.decks.firstOrNull { it.optString("id") == id }?.let(::summary)
 

@@ -27,6 +27,7 @@ import kotobaya.android.home.HomeViewModel
 import kotobaya.android.home.ui.TodayIntents
 import kotobaya.android.home.ui.TodayScreen
 import kotobaya.android.pairing.DevicesPort
+import kotobaya.android.queue.QueueCounts
 import kotobaya.android.queue.QueueSettings
 import kotobaya.android.queue.studyDayOf
 import kotobaya.android.review.ReviewRoute
@@ -101,6 +102,7 @@ private fun TodayRoute(registry: FeatureRegistry, navigate: (String) -> Unit) {
     TodayScreen(
         unpaired = homeState.unpaired,
         decks = if (decks == null) emptyList() else decksState?.decks,
+        queue = if (decks == null) QueueCounts.ZERO else decksState?.queue,
         statusChips = registry.homeStatusChips,
         studyDate = studyDate,
         intents = object : TodayIntents {

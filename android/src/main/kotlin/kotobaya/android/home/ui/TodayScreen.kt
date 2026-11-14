@@ -27,6 +27,7 @@ import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.ui.DeckCounts
 import kotobaya.android.decks.ui.typeLabel
 import kotobaya.android.i18n.T
+import kotobaya.android.queue.QueueCounts
 import kotobaya.android.ui.components.KbButton
 import kotobaya.android.ui.components.KbButtonSize
 import kotobaya.android.ui.components.KbButtonVariant
@@ -58,9 +59,34 @@ interface TodayIntents {
 /** Decks shown on Today (the ones with work, in deck order). */
 private const val TODAY_DECKS = 6
 
+/** What Today's hero says. */
+sealed interface TodayHero {
+    data object Loading : TodayHero
+
+    data object Clear : TodayHero
+
+    /** [cards]: items of the whole review queue, the number the Review tab starts with. */
+    data class Waiting(val cards: Int) : TodayHero
+}
+
+/**
+ * AND-QUEUE: the hero follows the whole queue ([queue], the Review tab's build), never a sum over decks. Cards in no
+ * deck (mined words, imported history) are in no deck's counts, so a per-deck sum said "caught up" with 183 due.
+ */
+fun todayHero(queue: QueueCounts?): TodayHero = when {
+    queue == null -> TodayHero.Loading
+    queue.total == 0 -> TodayHero.Clear
+    else -> TodayHero.Waiting(queue.total)
+}
+
+/** The "add your first words" page instead of the hero: no deck and nothing to review (AND-QUEUE: deckless cards count). */
+fun todayIsEmpty(decks: List<DeckSummary>?, queue: QueueCounts?): Boolean =
+    decks != null && decks.isEmpty() && queue != null && queue.total == 0
+
 /**
  * Today (DESIGN §5.2): today at a glance. A hero panel with Start review in thumb reach, the decks with work, the
  * Struggle entry and the sync status. One column under 840 dp, two from 840 dp. [decks] null while loading;
+ * [queue] the counts of the whole review queue (the hero), null while loading;
  * [statusChips] is the sync chip slot. [studyDate] names the overline (the study day, which changes at the
  * configured rollover hour, not at midnight); null falls back to the calendar day of [nowMs].
  */
@@ -68,6 +94,7 @@ private const val TODAY_DECKS = 6
 fun TodayScreen(
     unpaired: Boolean,
     decks: List<DeckSummary>?,
+    queue: QueueCounts?,
     statusChips: List<@Composable () -> Unit>,
     intents: TodayIntents,
     nowMs: Long = System.currentTimeMillis(),
@@ -89,7 +116,7 @@ fun TodayScreen(
                     Text(T(R.string.today_title), style = KbTheme.type.headline, color = c.text)
                 }
                 if (unpaired) PairPanel(intents)
-                if (decks != null && decks.isEmpty()) {
+                if (todayIsEmpty(decks, queue)) {
                     KbPanel(padding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
                         KbEmptyState(
                             T(R.string.today_empty_title),
@@ -102,7 +129,7 @@ fun TodayScreen(
                 } else if (two) {
                     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                         Column(Modifier.weight(1.4f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                            Hero(decks, intents)
+                            Hero(todayHero(queue), intents)
                             DecksPanel(decks, intents)
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -111,7 +138,7 @@ fun TodayScreen(
                         }
                     }
                 } else {
-                    Hero(decks, intents)
+                    Hero(todayHero(queue), intents)
                     DecksPanel(decks, intents)
                     StrugglePanel(intents)
                     SyncPanel(statusChips)
@@ -136,22 +163,21 @@ private fun PairPanel(intents: TodayIntents) {
 
 /** The hero: what is waiting, and the one primary action of the screen. */
 @Composable
-private fun Hero(decks: List<DeckSummary>?, intents: TodayIntents) {
+private fun Hero(hero: TodayHero, intents: TodayIntents) {
     val c = KbTheme.colors
     KbPanel(padding = androidx.compose.foundation.layout.PaddingValues(20.dp), elevation = 1.dp) {
-        if (decks == null) {
+        if (hero == TodayHero.Loading) {
             KbSkeleton(Modifier.fillMaxWidth(0.5f), 28.dp)
             KbSkeleton(Modifier.padding(top = 12.dp).fillMaxWidth(0.7f), 16.dp)
         } else {
-            // Smart decks overlap the user decks, so only user decks are counted (the list below shows those too).
-            val waiting = decks.filter { it.type == "user" && it.enabled && it.counts.due + it.counts.learning + it.counts.new > 0 }
+            val waiting = (hero as? TodayHero.Waiting)?.cards ?: 0
             Text(
-                T(if (waiting.isEmpty()) R.string.today_hero_clear else R.string.today_hero_title),
+                T(if (waiting == 0) R.string.today_hero_clear else R.string.today_hero_title),
                 style = KbTheme.type.title,
                 color = c.text,
             )
             Text(
-                if (waiting.isEmpty()) T(R.string.today_hero_nothing) else pluralStringResource(R.plurals.today_hero_waiting, waiting.size, waiting.size),
+                if (waiting == 0) T(R.string.today_hero_nothing) else pluralStringResource(R.plurals.today_hero_waiting, waiting, waiting),
                 style = KbTheme.type.body,
                 color = c.textMuted,
                 modifier = Modifier.padding(top = 4.dp),
@@ -163,7 +189,7 @@ private fun Hero(decks: List<DeckSummary>?, intents: TodayIntents) {
             Modifier.padding(top = 20.dp).fillMaxWidth(),
             size = KbButtonSize.Lg,
             leading = KbIcons.Cards,
-            enabled = decks != null,
+            enabled = hero != TodayHero.Loading,
         )
     }
 }

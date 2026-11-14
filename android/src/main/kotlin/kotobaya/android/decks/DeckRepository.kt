@@ -34,18 +34,30 @@ data class DeckWord(val itemKey: String, val label: String, val entrySeq: Long? 
 interface DeckSource {
     fun decks(): List<DeckSummary>
 
+    /**
+     * The decks plus the counts of the whole queue (what the Review tab starts from), from one build. AND-QUEUE: Home
+     * must show [DecksOverview.queue], not a sum over decks: cards in no deck (mined, imported history) are only
+     * counted there, and smart decks overlap the others.
+     */
+    fun overview(): DecksOverview
+
     fun deck(id: String): DeckSummary?
 
     fun words(deckId: String, limit: Int, offset: Int): List<DeckWord>
 }
 
+/** [decks] with [queue], the counts of the unfiltered queue built in the same load. */
+data class DecksOverview(val decks: List<DeckSummary>, val queue: QueueCounts)
+
 class DeckRepository(private val driver: SqlDriver, private val loader: LocalQueueLoader) : DeckSource {
     private class Row(val id: String, val name: String, val type: String, val enabled: Boolean, val query: String?)
 
-    override fun decks(): List<DeckSummary> {
+    override fun decks(): List<DeckSummary> = overview().decks
+
+    override fun overview(): DecksOverview {
         val rows = rows()
         val loaded = loader.load()
-        return rows.map { summary(it, loaded) }
+        return DecksOverview(rows.map { summary(it, loaded) }, loaded.counts)
     }
 
     override fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it, loader.load()) }
