@@ -1,9 +1,9 @@
 # WORKER-EMPTY — jpdb deck import "succeeds" with 0 rows (silent empty media)
 
 - Phase: P9 hotfix 0.1.11 · Model: sonnet · Risk: med
-- Deps: WORKER-PROGRESS (same files; branch from main after it merges)
+- Deps: WORKER-PROGRESS (MERGED)
 - Branch: t/WORKER-EMPTY-import
-- Owned paths (only edit these): worker/src/kotobaya_worker/ (jpdb deck import handler, jpdb source pages.py/fetch.py/api.py, media-publish payload build), worker/tests/
+- Owned paths (only edit these): worker/src/kotobaya_worker/ (jpdb deck import handler, jpdb source pages.py/fetch.py/api.py, media-publish payload build), worker/tests/, deploy/helm/kotobaya/templates/worker.yaml
 - Module(s) for CI: worker
 
 ## Evidence (app.job)
@@ -16,6 +16,8 @@
 3. Summary accounting: add a `merged` (duplicates collapsing onto one entry) counter so in = out + merged + dropped holds; assert it in tests.
 
 4. (user request) Every stage of jpdb-deck-import and its media-publish child sets progress_message + progress in its band (fetch 0–0.5 is done by WORKER-PROGRESS; map/merge, parse/align, write occurrences, publish/upload, TTS if any) and logs one INFO line per stage with counts.
+
+5. WORKER-PROGRESS review minors: (a) worker Deployment `strategy: Recreate` (avoid old/new pod overlap on a released job); (b) cap refunded attempts: after 3 SIGTERM releases of the same job stop refunding, so a job that triggers restarts can't loop forever; (c) jpdb client `fetch_title`/`_try_title` (pages.py:156, api.py:95) must re-raise JobStopped/JobCancelled before `except Exception`.
 
 ## Acceptance
 - [ ] Test: a fake import walks all stages; each stage writes a distinct progress_message and monotonic progress.
