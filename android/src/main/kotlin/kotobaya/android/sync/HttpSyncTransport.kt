@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotobaya.android.net.ApiClient
 import kotobaya.android.net.MetaLimitsStore
+import kotobaya.android.report.ClientErrors
 import kotobaya.sync.client.protocol.SyncLimits
 import kotobaya.sync.client.protocol.SyncTransport
 import kotobaya.sync.client.protocol.TransportResponse
@@ -54,11 +55,13 @@ class HttpSyncTransport(
                 if (resp.isSuccessful) {
                     TransportResponse.Ok(text)
                 } else {
+                    if (resp.code >= 500) ClientErrors.apiFailure(if (body != null) "POST" else "GET", path, resp.code, resp.header("X-Request-Id"))
                     // diagnostic only (the engine decides by status); the problem body as received, bounded
                     TransportResponse.HttpError(resp.code, "HTTP ${resp.code}" + text.take(MAX_DIAGNOSTIC).let { if (it.isBlank()) "" else ": $it" })
                 }
             }
         } catch (e: IOException) {
+            ClientErrors.apiFailure(if (body != null) "POST" else "GET", path, null, null)
             TransportResponse.NetworkError(e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
         }
     }

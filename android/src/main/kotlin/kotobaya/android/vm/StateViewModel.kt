@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotobaya.android.report.ClientErrors
 
 /**
  * UI-FOUND-APP: the base of every screen's ViewModel. One immutable UiState in a [StateFlow]; the screen's
@@ -40,6 +41,7 @@ abstract class StateViewModel<S>(initial: S, protected val io: CoroutineDispatch
 
     private val failures = CoroutineExceptionHandler { _, e ->
         ScreenLog.loadFailed(javaClass.simpleName, e)
+        ClientErrors.exception(e, "load in " + javaClass.simpleName) // OBS-1c-and: queued, sent after the next sync
         runCatching { onFailure(e) }.onFailure { ScreenLog.loadFailed(javaClass.simpleName + ".onFailure", it) }
     }
 

@@ -2,6 +2,7 @@ package kotobaya.android.nav
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -155,6 +156,7 @@ fun AppNav(registry: FeatureRegistry) {
     val routes = allRoutes(registry, navigate)
     val current by nav.currentBackStackEntryAsState()
     val route = current?.destination?.route
+    SideEffect { kotobaya.android.report.ClientErrors.screen = route } // OBS-1c-and: the pattern, never concrete ids
     val struggleLink by StruggleDeepLink.pending.collectAsState()
     LaunchedEffect(struggleLink) {
         if (struggleLink != null) nav.navigate(STRUGGLE_ROUTE) { launchSingleTop = true }

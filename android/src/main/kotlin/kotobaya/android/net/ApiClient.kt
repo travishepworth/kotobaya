@@ -4,6 +4,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotobaya.android.report.ClientErrors
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,9 +53,12 @@ class ApiClient(
                     }
                     return ApiResponse(resp.code, json)
                 }
+                // OBS-1c-and: 5xx is reported (handled 4xx are not); /client-errors itself is skipped inside
+                if (resp.code >= 500) ClientErrors.apiFailure(method, path, resp.code, resp.header("X-Request-Id"))
                 throw mapError(resp.code, text, resp.header("Retry-After")?.toLongOrNull())
             }
         } catch (e: IOException) {
+            if (isOnline()) ClientErrors.apiFailure(method, path, null, null)
             throw if (isOnline()) ApiError.Unreachable(e.javaClass.simpleName) else ApiError.Offline
         }
     }

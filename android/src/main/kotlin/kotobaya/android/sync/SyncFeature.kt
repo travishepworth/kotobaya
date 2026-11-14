@@ -225,6 +225,7 @@ val syncModule = module {
                 status.onOutcome(outcome.asCycleResult(), unreachable = outcome is SyncOutcome.Unreachable)
                 runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result
+                if (outcome is SyncOutcome.Ran) koin.getOrNull<kotobaya.android.report.ClientErrorFlusher>()?.flushAsync() // OBS-1c-and
                 if (r is CycleResult.Completed && r.pulledOps > 0) koin.getOrNull<DueTrigger>()?.fire()
                 prefetchAfterSync(outcome, { koin.get<MediaPrefs>().allowMetered }) { metered ->
                     runCatching { AudioPrefetchWork.enqueue(ctx, metered) }
