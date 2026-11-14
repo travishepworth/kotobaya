@@ -969,3 +969,4 @@
 2026-11-14T02:00:00Z OBS-1s REVIEW_APPROVE (5 minors → OBS-1s2 filed); rebased t/OBS-1s-c23 (DECISIONS ADR-024/025 conflict resolved), contracts+server checks running
 2026-11-14T02:20:00Z C-23+OBS-1s CHECK_GREEN contracts+server after rebase (first ff attempt failed: main moved; cherry-picked)
 2026-11-14T02:24:00Z C-23+OBS-1s MERGE dc73808e (C-23 + OBS-1s logging + reportClientErrors handler)
+2026-11-14T02:26:00Z OBS-1s2 DISPATCH writer attempt 1; OBS-1c SPLIT → OBS-1c-web (DISPATCH writer) + OBS-1c-and (after android batch)
