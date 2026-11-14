@@ -975,3 +975,4 @@
 2026-11-14T01:31:58Z AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP MERGE d362aed0 android (3 commits; CHECK_GREEN after rebase)
 2026-11-14T01:32:59Z OBS-1c-web MERGE 33e1b7d8 web (REVIEW_APPROVE + minors fixed; CHECK_GREEN)
 2026-11-14T01:34:34Z OBS-1s2 MERGE 64686a11 server (low; CHECK_GREEN by writer, no server drift on main)
+2026-11-14T01:42:54Z OBS-1c-and REVIEW_APPROVE (4 minors → FOLLOWUPS); CHECK_GREEN android; MERGE 6b41f35d (handoff rebase artefact repaired)

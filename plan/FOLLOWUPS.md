@@ -416,3 +416,7 @@
 - AND-INSETS: imePadding on the shell column lifts the bottom bar above the keyboard; check on device.
 - FEAT-DICT-APP: no Roborazzi shot (manual check); Android has no notes/browse screen so that dictionary entry point is absent; DictJump kanji target runs kanji search (no kanji detail screen).
 - AND-REVIEWERR: AnkiConnect and Dict settings VMs have no error slot (failures only logged).
+- OBS-1c-and: ClientErrorQueue built in Application.onCreate reads SharedPreferences on main thread (StrictMode penaltyLog noise each cold start) → lazy/IO init.
+- OBS-1c-and: HttpSyncTransport reports api_failure on IOException even when offline (ApiClient checks isOnline) → skip offline.
+- OBS-1c (web+android): scrub removes quoted text only; unquoted non-ASCII user text (≤200 chars) can reach server logs → redact non-ASCII runs or allowlist exception types.
+- OBS-1c-and: DictFormsSearchTest cap comment self-contradictory.
