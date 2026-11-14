@@ -5,12 +5,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotobaya.android.sync.SyncStatusView
 import kotobaya.android.vm.StateViewModel
 
@@ -55,6 +58,9 @@ class DecksViewModel(
 ) : StateViewModel<DecksUiState>(DecksUiState(), io), DecksIntents {
     private var loading: Job? = null
 
+    /** AND-PERF: cancelling a reload does not stop its blocking queries; the next one waits for them (no overlap). */
+    private val reloadLock = Mutex()
+
     init {
         reload()
         syncChanges?.let { f ->
@@ -79,17 +85,20 @@ class DecksViewModel(
         val s = current
         loading?.cancel()
         return launchIo {
-            when (s.mode) {
-                DecksMode.LIST -> {
-                    val decks = source.decks()
-                    update { it.copy(decks = decks, loadFailed = false) }
-                }
-                DecksMode.DETAIL, DecksMode.STUDY -> {
-                    val id = s.selectedId.orEmpty()
-                    val deck = source.deck(id)
-                    update { if (it.selectedId == id) it.copy(deck = deck) else it }
-                    val words = source.words(id, s.limit, 0)
-                    update { if (it.selectedId == id && it.limit == s.limit) it.copy(words = words, loadFailed = false) else it }
+            reloadLock.withLock {
+                ensureActive()
+                when (s.mode) {
+                    DecksMode.LIST -> {
+                        val decks = source.decks()
+                        update { it.copy(decks = decks, loadFailed = false) }
+                    }
+                    DecksMode.DETAIL, DecksMode.STUDY -> {
+                        val id = s.selectedId.orEmpty()
+                        val deck = source.deck(id)
+                        update { if (it.selectedId == id) it.copy(deck = deck) else it }
+                        val words = source.words(id, s.limit, 0)
+                        update { if (it.selectedId == id && it.limit == s.limit) it.copy(words = words, loadFailed = false) else it }
+                    }
                 }
             }
         }.also { loading = it }

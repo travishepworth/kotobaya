@@ -40,24 +40,31 @@ WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL;
 
 -- Today's non-undone answers; introduced_new = a learning row whose card had no earlier schedule-feeding row,
 -- or whose last one was a reset. Cards resolve through merged_into_id.
--- (AND-POSTSYNC: IS, not =: a previous row with manual_action NULL made '= reset' NULL, so introduced_new was NULL and
--- the generated non-null Boolean mapper threw on every load after an ordinary second learning answer today.)
+-- (AND-POSTSYNC: a previous row with manual_action NULL must not make introduced_new NULL; the generated non-null
+-- mapper threw on every load after an ordinary second learning answer today.)
+-- AND-PERF: the previous row is looked up per member card through review_log_replay_idx (card_id, reviewed_at, ...):
+-- members are the resolved card itself (if not merged away) and the cards merged into it. INDEXED BY pins the plan;
+-- without it Android's SQLite walked review_log_reviewed_idx backwards over the whole history for every row of today
+-- (minutes per call on 78k rows, all four pool connections busy). No row values, no COALESCE join on the lookup.
+-- The subquery yields the previous row's manual_action ('' when NULL), NULL when there is none; it runs only for
+-- learning rows. Same result set as the pre-AND-PERF query (TodayReviewsQueryTest).
 todayReviews:
-SELECT x.card_id, x.note_id, x.review_type,
-       (x.review_type = 'learning' AND (x.prev_id IS NULL OR (SELECT manual_action FROM review_log WHERE id = x.prev_id) IS 'reset')) AS introduced_new
-FROM (
-  SELECT sc.id AS card_id, sc.note_id AS note_id, r.review_type AS review_type,
-         (SELECT p.id FROM review_log p JOIN card pc ON pc.id = p.card_id
-           WHERE COALESCE(pc.merged_into_id, pc.id) = sc.id AND p.undone_at IS NULL
-             AND p.review_type IN ('scheduled', 'learning', 'manual')
-             AND (p.reviewed_at, p.hlc, p.id) < (r.reviewed_at, r.hlc, r.id)
-           ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1) AS prev_id
-  FROM review_log r
-  JOIN card c ON c.id = r.card_id
-  JOIN card sc ON sc.id = COALESCE(c.merged_into_id, c.id)
-  WHERE r.undone_at IS NULL AND r.review_type IN ('scheduled', 'learning', 'drill', 'cram')
-    AND r.reviewed_at >= :dayStart AND r.reviewed_at <= :now
-) x;
+SELECT sc.id AS card_id, sc.note_id AS note_id, r.review_type AS review_type,
+       CASE WHEN r.review_type = 'learning' THEN
+         COALESCE((SELECT COALESCE(p.manual_action, '') FROM review_log p INDEXED BY review_log_replay_idx
+                   WHERE p.card_id IN (SELECT pc.id FROM card pc WHERE pc.id = sc.id AND pc.merged_into_id IS NULL
+                                       UNION ALL
+                                       SELECT pm.id FROM card pm WHERE pm.merged_into_id = sc.id)
+                     AND p.reviewed_at <= r.reviewed_at
+                     AND (p.reviewed_at < r.reviewed_at OR p.hlc < r.hlc OR (p.hlc = r.hlc AND p.id < r.id))
+                     AND p.undone_at IS NULL AND p.review_type IN ('scheduled', 'learning', 'manual')
+                   ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1), 'reset') = 'reset'
+       ELSE 0 END AS introduced_new
+FROM review_log r
+JOIN card c ON c.id = r.card_id
+JOIN card sc ON sc.id = COALESCE(c.merged_into_id, c.id)
+WHERE r.undone_at IS NULL AND r.review_type IN ('scheduled', 'learning', 'drill', 'cram')
+  AND r.reviewed_at >= :dayStart AND r.reviewed_at <= :now;
 
 -- Earliest instant a started, queueable card becomes due after now (a buried card: when the bury ends).
 nextDueAfter:

@@ -69,15 +69,26 @@ class LocalQueueLoader(
     private val headwordOf: (Long) -> String? = { null },
     /** Blocks until the startup replay (SYNC.md 10.5) has committed; no-op by default (T304b: SyncBootstrap.ready). */
     private val awaitReady: () -> Unit = {},
+    /** AND-PERF: conflates concurrent builds; Koin shares one gate between every loader of the app database. */
+    private val gate: LoadGate = LoadGate(),
 ) {
     private val q get() = db.localQueueQueries
 
     private fun settings(): QueueSettings =
         QueueSettings.from(q.schedulerSettings().executeAsList().associate { it.key to it.value_ })
 
-    /** Builds the queue now. [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter. */
+    /**
+     * Builds the queue now. [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter.
+     * Concurrent calls with the same arguments share one build that started after they were made ([LoadGate]).
+     */
     fun load(newShownThisSession: Int = 0, deckFilter: String? = null): LoadedQueue {
         awaitReady()
+        return gate.run(LoadKey(newShownThisSession, deckFilter)) { build(newShownThisSession, deckFilter) }
+    }
+
+    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?)
+
+    private fun build(newShownThisSession: Int, deckFilter: String?): LoadedQueue {
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -150,8 +161,10 @@ class LocalQueueLoader(
      * When the next card becomes due: now if the queue is not empty, else the earliest later instant a started,
      * queueable card is due (a bury's end counts); null if there is none.
      */
-    fun nextDueInstant(): Long? {
-        val loaded = load()
+    fun nextDueInstant(): Long? = nextDueInstant(load())
+
+    /** [nextDueInstant] for a queue the caller already loaded (no second build). */
+    fun nextDueInstant(loaded: LoadedQueue): Long? {
         if (loaded.queue.items.isNotEmpty()) return loaded.input.now
         return q.nextDueAfter(Reserved.REPLAY_REFUSED_ID, loaded.input.now).executeAsOne().MIN
     }

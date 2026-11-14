@@ -41,7 +41,8 @@ class DueNotifications(
             db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ },
         )
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
-        val counts = loader.counts()
+        val loaded = loader.load() // AND-PERF: one build per trigger (was two: counts, then nextDueInstant)
+        val counts = loaded.counts
         val due = counts.due + counts.learning
         val lastSync = signals.lastSyncAtMs()
         if (notifier.canPost()) {
@@ -52,7 +53,7 @@ class DueNotifications(
         }
         scheduler.schedule(
             NextAlarmCalculator.next(
-                dues = listOfNotNull(loader.nextDueInstant()),
+                dues = listOfNotNull(loader.nextDueInstant(loaded)),
                 now = now,
                 zone = settings.timezone,
                 lastAlarm = prefs.lastAlarmMs,
