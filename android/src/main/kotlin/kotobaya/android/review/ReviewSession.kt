@@ -13,6 +13,7 @@ import kotobaya.contracts.queue.ReviewQueue
 import kotobaya.contracts.render.CardRenderer
 import kotobaya.contracts.render.CardSide
 import kotobaya.contracts.render.DictionaryData
+import kotobaya.contracts.render.KanjiData
 import kotobaya.contracts.render.RenderInput
 import kotobaya.contracts.render.RenderOptions
 import kotobaya.contracts.render.RenderedCard
@@ -42,6 +43,11 @@ fun interface QueueSource {
 /** Dictionary data for a vocab entry (T302 on-device dictionary), or null when unavailable. */
 fun interface DictionaryLookup {
     fun lookup(entrySeq: Long): DictionaryData?
+}
+
+/** Kanji data for a kanji note's `kanji_literal` (the on-device dictionary's `kanji` table), or null when unavailable. */
+fun interface KanjiLookup {
+    fun lookup(literal: String): KanjiData?
 }
 
 /** One card on screen, both sides rendered so flipping needs no work. */
@@ -110,6 +116,7 @@ class ReviewSession<L : LearningTables>(
     private val renderer: CardRenderer = DefaultCardRenderer,
     private val scheduler: Scheduler = FsrsScheduler,
     private val dictionary: DictionaryLookup = DictionaryLookup { null },
+    private val kanji: KanjiLookup = KanjiLookup { null },
     private val mediaUrlTemplate: String = CardPage.MEDIA_URL_TEMPLATE,
 ) {
     private class Answered(val reviewId: String, val cardId: String, val kind: QueueItemKind, val button: Button, val durationMs: Long)
@@ -272,6 +279,8 @@ class ReviewSession<L : LearningTables>(
             ?: return@transaction null
         val p = prefs()
         val entry = (note["entry_seq"] as? JsonNumber)?.value?.toLong()
+        val dictData = entry?.let(dictionary::lookup)
+        val kanjiData = CardRows.str(note["kanji_literal"])?.let(kanji::lookup)
         val cardKind = CardRows.str(card["kind"]) ?: ""
         val pointId = CardRows.str(note["grammar_point_id"])
         val grammarPoint = pointId?.takeIf { cardKind != "production" }
@@ -283,10 +292,11 @@ class ReviewSession<L : LearningTables>(
             kind = CardRows.str(card["kind"]) ?: "",
             fields = CardRows.fieldsOf(note),
             mnemonic = CardRows.str(note["mnemonic"]).orEmpty(),
-            dictionary = entry?.let(dictionary::lookup),
+            dictionary = dictData,
             cloze = cloze,
             side = side,
             options = RenderOptions(furigana = furigana, pitch = p.pitch, showMnemonic = true, mediaUrlTemplate = mediaUrlTemplate),
+            kanji = kanjiData,
         )
         val now = clock()
         val previews = scheduler.preview(

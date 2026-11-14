@@ -53,7 +53,10 @@ val reviewFeature = FeatureEntry(
             val store = ReviewPrefsStore { ctx.getSharedPreferences("kotobaya-review", Context.MODE_PRIVATE) }
             val koin = getKoin()
             val db = get<kotobaya.db.app.AppDatabase>()
+            val renderData = InstalledRenderData(get<kotobaya.android.dict.InstalledDictionary>())
             ReviewBackend(
+                dictionary = renderData,
+                kanji = renderData,
                 store = client.store,
                 minter = client.minter,
                 queue = get<LocalQueueLoader>().asQueueSource(),

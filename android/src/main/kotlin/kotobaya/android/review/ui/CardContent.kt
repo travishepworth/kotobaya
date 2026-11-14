@@ -2,6 +2,7 @@ package kotobaya.android.review.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -16,7 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.io.ByteArrayInputStream
 import java.io.File
+import kotobaya.android.R
+import kotobaya.android.i18n.T
 import kotobaya.android.review.CardPage
+import kotobaya.android.review.CardPayload
+import kotobaya.android.review.CardPayloads
 import kotobaya.android.review.PageRequest
 import kotobaya.android.ui.components.KbDivider
 import kotobaya.android.ui.components.jaPhrase
@@ -35,7 +44,12 @@ import kotobaya.contracts.render.RenderedCard
 
 /** The one reused WebView of the review screen: local assets only, no JS, every other URL blocked. */
 @SuppressLint("SetJavaScriptEnabled")
-internal class CardWebView(context: Context, private val mediaFile: (String) -> File?) {
+internal class CardWebView(
+    context: Context,
+    private val mediaFile: (String) -> File?,
+    /** The main-frame document [html] failed to load ([what] = error code or HTTP status); called on the main thread. */
+    private val onPageFailed: (html: String?, what: String) -> Unit,
+) {
     val view: WebView = WebView(context).apply {
         settings.javaScriptEnabled = false
         settings.allowFileAccess = false
@@ -46,23 +60,39 @@ internal class CardWebView(context: Context, private val mediaFile: (String) -> 
         // transparent: the card surface behind it is the same colour as the card's own background
         setBackgroundColor(0)
         webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse =
-                respond(context, request.url.toString())
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                respond(context, request.url.toString(), request.isForMainFrame)
 
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (request.isForMainFrame) onPageFailed(shownHtml, "error ${error.errorCode}")
+            }
+
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                if (request.isForMainFrame) onPageFailed(shownHtml, "http ${errorResponse.statusCode}")
+            }
         }
     }
 
     private var shownHtml: String? = null
 
-    fun show(html: String) {
-        if (html == shownHtml) return
-        shownHtml = html
-        view.loadDataWithBaseURL(CardPage.BASE_URL, html, "text/html", "utf-8", null)
+    /** Loads [page] (never blank: [CardPayload.Page]) unless it is already shown. */
+    fun show(page: CardPayload.Page) {
+        if (page.html == shownHtml) return
+        shownHtml = page.html
+        view.loadDataWithBaseURL(CardPage.BASE_URL, page.html, "text/html", "utf-8", null)
     }
 
-    private fun respond(context: Context, url: String): WebResourceResponse = when (val r = CardPage.decide(url)) {
+    /** Forgets the shown page (after a failure), so the next [show] loads again. */
+    fun reset() {
+        shownHtml = null
+    }
+
+    private fun respond(context: Context, url: String, mainFrame: Boolean): WebResourceResponse? = when (val r = CardPage.decide(url, mainFrame)) {
+        // the card document of loadDataWithBaseURL: WebView serves it itself
+        PageRequest.Document -> null
         is PageRequest.Asset -> try {
             WebResourceResponse(mimeOf(r.path), null, context.assets.open(r.path))
         } catch (e: java.io.IOException) {
@@ -88,18 +118,6 @@ internal class CardWebView(context: Context, private val mediaFile: (String) -> 
 }
 
 /**
- * The card page for [card] in the app's theme: the WebView's `prefers-color-scheme` follows the system, not the
- * in-app override, so the page's `<html>` carries `data-theme` (card.css honours it; DESIGN §2.5). The page body is
- * transparent so the card surface shows through without a seam.
- */
-internal fun themedPage(card: RenderedCard, dark: Boolean): String =
-    CardPage.build(card).replaceFirst(
-        "<html>",
-        "<html data-theme=\"${if (dark) "dark" else "light"}\"><style>html,body{margin:0;background:transparent}" +
-            "html body .kb-card{background:transparent}</style>",
-    )
-
-/**
  * How the review card's HTML is drawn. Production uses the WebView ([CardWebViewContent]); the screenshot harness
  * provides [CardStandIn], because Robolectric does not draw WebViews.
  */
@@ -118,13 +136,43 @@ internal fun CardContent(card: RenderedCard, mediaFile: (String) -> File?, modif
     if (override != null) override(card, mediaFile, modifier) else CardWebViewContent(card, mediaFile, modifier)
 }
 
+/**
+ * The WebView with the card page, or [CardUnavailable] when there is no page to show (blank render) or WebView could
+ * not load it (AND-CARDHTML): never an empty document, never Chromium's error page.
+ */
 @Composable
 private fun CardWebViewContent(card: RenderedCard, mediaFile: (String) -> File?, modifier: Modifier) {
     val context = LocalContext.current
-    val web = remember { CardWebView(context, mediaFile) }
+    val payloads = remember { CardPayloads() }
+    val dark = KbTheme.isDark
+    val payload = remember(card, dark) { payloads.of(card, dark) }
+    // the page WebView failed to load; a different page (next card, theme, furigana) is tried again
+    var failedHtml by remember { mutableStateOf<String?>(null) }
+    val web = remember {
+        CardWebView(context, mediaFile) { html, what ->
+            payloads.loadFailed(what)
+            failedHtml = html
+        }
+    }
     DisposableEffect(web) { onDispose { web.view.destroy() } }
-    val page = themedPage(card, KbTheme.isDark)
-    AndroidView(factory = { web.view }, update = { web.show(page) }, modifier = modifier)
+    if (payload is CardPayload.Page && payload.html != failedHtml) {
+        AndroidView(factory = { web.view }, update = { web.show(payload) }, modifier = modifier)
+    } else {
+        SideEffect { web.reset() }
+        CardUnavailable(modifier)
+    }
+}
+
+/** The card's own error state (i18n), shown in place of the WebView. The grade bar stays usable. */
+@Composable
+private fun CardUnavailable(modifier: Modifier) {
+    val c = KbTheme.colors
+    Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(T(R.string.review_card_unavailable_title), style = KbTheme.type.bodyLg, color = c.text, textAlign = TextAlign.Center)
+            Text(T(R.string.review_card_unavailable_body), style = KbTheme.type.caption, color = c.textMuted, textAlign = TextAlign.Center)
+        }
+    }
 }
 
 /**

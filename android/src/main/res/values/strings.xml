@@ -146,6 +146,8 @@
     <string name="review_error_body">Something went wrong reading the cards on this device.</string>
     <string name="review_error_retry">Retry</string>
     <string name="review_error_action">That did not work. Please try again.</string>
+    <string name="review_card_unavailable_title">This card cannot be shown</string>
+    <string name="review_card_unavailable_body">Its content is missing on this device, for example because the dictionary is not downloaded yet. You can still turn it over and answer it.</string>
     <string name="dict_open">Open in dictionary</string>
     <string name="review_action_dictionary">Look up in dictionary</string>
 </resources>

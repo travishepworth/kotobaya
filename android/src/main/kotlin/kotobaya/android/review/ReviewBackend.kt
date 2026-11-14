@@ -34,7 +34,13 @@ class ReviewBackend<L : LearningTables>(
     val queue: QueueSource,
     val prefs: () -> ReviewPrefs,
     val blobs: BlobResolver = BlobResolver { null },
-    val dictionary: DictionaryLookup = DictionaryLookup { null },
+    /**
+     * Dictionary data for notes of dictionary entries. Required (AND-CARDHTML): the default of "none" left every
+     * imported vocab card blank in production.
+     */
+    val dictionary: DictionaryLookup,
+    /** Kanji data for kanji notes; required for the same reason. */
+    val kanji: KanjiLookup,
     /** Suspends until the startup replay of SYNC.md 10.5 has committed (the readiness gate); returns at once if none. */
     val awaitReady: suspend () -> Unit = {},
     /** Starts a sync cycle (the 'Sync' prompt); null hides the button. */
@@ -60,5 +66,6 @@ class ReviewBackend<L : LearningTables>(
         newReviewId = ids::newOpId,
         prefs = prefs,
         dictionary = dictionary,
+        kanji = kanji,
     )
 }

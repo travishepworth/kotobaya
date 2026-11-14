@@ -34,7 +34,7 @@ class ReviewStaleTest {
         init {
             val real = DemoStore(DemoData.load(assets)).reviewBackend()
             backend = ReviewBackend(
-                store = real.store, minter = real.minter, prefs = { ReviewPrefs() }, dictionary = real.dictionary,
+                store = real.store, minter = real.minter, prefs = { ReviewPrefs() }, dictionary = real.dictionary, kanji = real.kanji,
                 clock = real.clock, nextStudyDayStart = { Long.MAX_VALUE / 4 }, dueChanged = signal,
                 queue = QueueSource { n ->
                     loads++

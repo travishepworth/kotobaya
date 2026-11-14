@@ -39,7 +39,7 @@ class ReviewErrorTest {
         var failing = true
         val real = demo.reviewBackend()
         val backend = ReviewBackend(
-            store = real.store, minter = real.minter, prefs = { ReviewPrefs() }, dictionary = real.dictionary,
+            store = real.store, minter = real.minter, prefs = { ReviewPrefs() }, dictionary = real.dictionary, kanji = real.kanji,
             clock = real.clock, nextStudyDayStart = real.nextStudyDayStart,
             queue = QueueSource { n -> if (failing) error("disk gone") else real.queue.load(n) },
         )
@@ -68,7 +68,7 @@ class ReviewErrorTest {
         val real = demo.reviewBackend()
         val backend = ReviewBackend(
             store = real.store, minter = minter, prefs = { ReviewPrefs() }, queue = real.queue,
-            dictionary = real.dictionary, clock = real.clock, nextStudyDayStart = real.nextStudyDayStart,
+            dictionary = real.dictionary, kanji = real.kanji, clock = real.clock, nextStudyDayStart = real.nextStudyDayStart,
         )
         val vm = ReviewViewModel(backend, io = Dispatchers.Unconfined)
         vm.enter()

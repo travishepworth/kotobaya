@@ -23,6 +23,7 @@ import kotobaya.android.pairing.PairResult
 import kotobaya.android.pairing.PairingTarget
 import kotobaya.android.queue.QueueCounts
 import kotobaya.android.review.DictionaryLookup
+import kotobaya.android.review.KanjiLookup
 import kotobaya.android.review.QueueSource
 import kotobaya.android.review.ReviewBackend
 import kotobaya.android.review.ReviewPrefs
@@ -162,6 +163,7 @@ class DemoStore(val data: DemoData) {
         },
         prefs = { ReviewPrefs() },
         dictionary = DictionaryLookup(::dictionary),
+        kanji = KanjiLookup { null },
         clock = { DemoData.NOW_MS },
         nextStudyDayStart = { DemoData.DAY_END_MS },
     )

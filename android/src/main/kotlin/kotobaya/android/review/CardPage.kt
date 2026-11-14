@@ -11,6 +11,14 @@ sealed interface PageRequest {
     /** A cached blob (sha256 hex), served from local storage only. */
     data class Media(val sha256: String) : PageRequest
 
+    /**
+     * The card document itself: the main-frame navigation `loadDataWithBaseURL` starts. WebView reports it to
+     * `shouldInterceptRequest` as the bare `data:text/html;charset=utf-8;base64,` URL (the HTML travels separately),
+     * so it must be left to WebView (`null`). Answering it with a blocked response is AND-CARDHTML: Chromium then
+     * shows its "ERR_HTTP_RESPONSE_CODE_FAILURE" page instead of the card.
+     */
+    data object Document : PageRequest
+
     data object Blocked : PageRequest
 }
 
@@ -33,8 +41,25 @@ object CardPage {
             (if (card.extraCss.isBlank()) "" else "<style>${card.extraCss.replace("</", "<\\/")}</style>") +
             "</head><body>${card.html}</body></html>"
 
-    /** Decides one request of the WebView: only `https://HOST/assets/card/...` and `https://HOST/media/<sha256>` pass. */
-    fun decide(url: String): PageRequest {
+    /**
+     * [build] in the app's theme: the WebView's `prefers-color-scheme` follows the system, not the in-app override,
+     * so the page's `<html>` carries `data-theme` (card.css honours it; DESIGN §2.5). The page body is transparent
+     * so the card surface shows through without a seam.
+     */
+    fun themed(card: RenderedCard, dark: Boolean): String =
+        build(card).replaceFirst(
+            "<html>",
+            "<html data-theme=\"${if (dark) "dark" else "light"}\"><style>html,body{margin:0;background:transparent}" +
+                "html body .kb-card{background:transparent}</style>",
+        )
+
+    /**
+     * Decides one request of the WebView: the main-frame `data:` document of `loadDataWithBaseURL`
+     * ([PageRequest.Document]), `https://HOST/assets/card/...` and `https://HOST/media/<sha256>` pass; everything
+     * else is blocked (a sub-resource `data:` URL too).
+     */
+    fun decide(url: String, mainFrame: Boolean = false): PageRequest {
+        if (mainFrame && url.regionMatches(0, "data:", 0, 5, ignoreCase = true)) return PageRequest.Document
         val u = try {
             URI(url)
         } catch (e: java.net.URISyntaxException) {
