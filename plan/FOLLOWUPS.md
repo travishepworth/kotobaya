@@ -414,3 +414,5 @@
 - C-24: server smart decks/drills with bare-text queries now also match dict forms of entry-linked notes (smart decks may grow; mention in 0.1.10 notes). Device matches fewer until AND-DICTFORMS; permanently differs when a top60k dictionary package lacks an entry.
 - C-24: Postgres `OR EXISTS` on bare terms scans the user's notes (one PK probe per entry-linked note); EXPLAIN if large collections get slow.
 - AND-INSETS: imePadding on the shell column lifts the bottom bar above the keyboard; check on device.
+- FEAT-DICT-APP: no Roborazzi shot (manual check); Android has no notes/browse screen so that dictionary entry point is absent; DictJump kanji target runs kanji search (no kanji detail screen).
+- AND-REVIEWERR: AnkiConnect and Dict settings VMs have no error slot (failures only logged).
