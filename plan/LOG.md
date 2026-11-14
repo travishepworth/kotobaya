@@ -954,3 +954,5 @@
 2026-11-14T00:54:36Z OBS-1w HANDOFF DONE worker green 859; READY_FOR_REVIEW (drain)
 2026-11-14T00:57:19Z OBS-1s HANDOFF DONE 20418ba server green; READY_FOR_REVIEW (drain)
 2026-11-14T01:02:19Z AND-INSETS HANDOFF DONE android green; READY_FOR_REVIEW (drain)
+2026-11-14T01:05:00Z RUN23 RESUME C-24 + AND-POSTSYNC writers (run 22) alive finishing; no re-dispatch. Reviews: C-23 reviewer, OBS-1w reviewer, AND-INSETS reviewer-light. OBS-1s DISPATCH writer attempt 2 (t/OBS-1s-c23 = OBS-1s rebased on C-23 + reportClientErrors handler)
+2026-11-14T01:06:00Z C-24 HANDOFF DONE 05129a9 core+contracts+server green; reviewer + architect queued. FILED AND-DICTFORMS (android LocalCardSearch dictForms; after C-24)
