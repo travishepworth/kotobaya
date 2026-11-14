@@ -939,3 +939,4 @@
 2026-11-14T00:37:18Z JLPT-1a REVIEW_APPROVE 4 minors (3 → LOGFIX-1, 1 → release checklist: egress raw.githubusercontent.com for JLPT default-on); MERGE 25b203c worker
 2026-11-14T00:37:43Z C-22 HANDOFF DONE 1bf8289 core+contracts green; reviewer + architect dispatched. LOGFIX-1 DISPATCH writer attempt 1
 2026-11-14T00:37:56Z JLPT-1b REVIEW_APPROVE 3 minors → FOLLOWUPS; MERGE 1927112 server
+2026-11-14T00:38:35Z OBS-1 FILED (user request; split C-23, OBS-1s, OBS-1w after LOGFIX-1, OBS-1c after C-23)
