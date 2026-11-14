@@ -1,10 +1,13 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN24 in progress
+Updated: RUN26 in progress
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 25: 0.1.11 live, QA clean)
+## RESUME HERE (run 26: CRITICAL AND-QUEUE — phone shows 0 due; server queue OK)
+Run 26: AND-QUEUE (Android local queue returns nothing; 299 due on phone DB; server /review/queue new10/learn1/rev183). Then release 0.1.12 (APK code 112; server only if touched), install via adb user 10, verify Review shows cards. 124 suspended learning cards = real data (server identical). Server study day is UTC (day_ends 04:00Z) vs user UTC+9 -> FOLLOWUP.
+
+## Previous (run 25: 0.1.11 live, QA clean)
 LIVE: 0.1.11 (pin 265f76a8, helm rev 18, worktree scratchpad/rel0111). JMdict re-pinned 1003f456… (kanjidic/krad unchanged). Smoke on 0.1.11: 30 pass/1 skip/0 fail, cleanup verified.
 Phone (Private Space user 10) on APK 0.1.11/111: startup sync OK, gate 126 ms, no crashes/pool starvation; app idle during 8-min watch so todayReviews not exercised under use.
 Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019/rel0110b/rel0111.
@@ -15,6 +18,7 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| AND-QUEUE | writer-senior | 1 | t/AND-QUEUE-due-cards | run 26 |
 
 ## Queued
 FOLLOWUPS

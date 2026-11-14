@@ -1006,3 +1006,6 @@
 2026-11-14T05:43:30Z SMOKE-0111 PASS 30 pass / 1 skip / 0 fail; cleanup verified (2 user decks, no smoke cards)
 2026-11-14T05:52:00Z QA-0111 logs api/worker/web clean (only smoke traffic; 413 expected); phone user 10: sync Completed, gate 126 ms, no crash/ANR/pool waits; app idle in window. Minors -> FOLLOWUPS (chart Recreate migration, startup StrictMode prefs, smoke ids file)
 2026-11-14T05:53:00Z RUN25 END clean; no tickets dispatched
+2026-11-14T06:11:59Z AND-QUEUE DISPATCH writer-senior; server queue OK (183 due), phone shows 0; Android-side
+2026-11-14T06:21:19Z AND-QUEUE HANDOFF root cause: Home hero summed enabled-deck counts; due cards are deckless -> 0. Queue itself 183/10/1
+2026-11-14T06:21:26Z AND-QUEUE CHECK_GREEN android

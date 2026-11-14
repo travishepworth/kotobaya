@@ -428,3 +428,8 @@
 - (run 25) Chart: worker strategy RollingUpdate→Recreate (WORKER-EMPTY) fails helm SSA upgrade on existing installs ("rollingUpdate: Forbidden"). Live fixed once by `kubectl patch` (json remove /spec/strategy/rollingUpdate). Fresh installs fine; note in deploy README for other installs.
 - (run 25) Android debug StrictMode: KotobayaApp.onCreate reads SharedPreferences on main (ClientErrorQueue/PrefsQueueStorage, SettingsStore, TokenStore via Koin), ~115 ms each at cold start. low.
 - (run 25) plan/smoke/smoke.sh leaves smoke-created-<ts>.txt in the repo root after a successful cleanup; write it to $TMPDIR or delete on clean exit.
+
+## From AND-QUEUE (run 26)
+- [minor] Android ServerReachability probe reports network api_failure to /client-errors on every offline probe (/meta x7 noise). Don't report probe network failures.
+- [minor] HomeQueueAgreementTest doesn't reach the TodayScreen composable / AppNav wiring; optional Robolectric compose test of hero text.
+- [minor] Study day computed in UTC on server+Android (scheduler.timezone default UTC); user is UTC+9 so rollover is 13:00 JST. Settings UI should set scheduler.timezone from device zone (or prompt).
