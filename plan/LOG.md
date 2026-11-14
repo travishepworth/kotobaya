@@ -900,3 +900,9 @@
 2026-11-13T17:16:03Z UI-WEB MERGE 8095cce CHECK_GREEN web (high; reviewer APPROVE)
 2026-11-13T17:16:03Z RUN19 END 4 merges; P9 done; 0.1.9 ready in HUMAN_CHECKS
 2026-11-14T00:06:36Z RUN20 START bugs: jpdb import 0 cards; JLPT decks 0 words (0.1.9 live)
+2026-11-14T00:10:01Z BUG-11 DISPATCH writer attempt 1 (jpdb slugless URL -> overview page, 0 rows)
+2026-11-14T00:10:01Z C-21 DISPATCH architect attempt 1 (JLPT vocab source contract)
+2026-11-14T00:10:16Z RUN20 DECIDE live sweep: no new high bugs; minors -> FOLLOWUPS
+2026-11-14T00:19:19Z BUG-11 CHECK_GREEN worker 805 passed; fmt-only grammar test edits accepted; reviewer dispatched
+2026-11-14T00:20:16Z BUG-11 REVIEW_APPROVE 5 minors -> FOLLOWUPS
+2026-11-14T00:20:16Z BUG-11 MERGE d3711c2 worker

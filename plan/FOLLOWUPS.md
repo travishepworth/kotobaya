@@ -395,3 +395,11 @@
 - UI-WEB review minor (run 19): nav rail icons fixed px while labels scale at 200% (size in rem)
 - UI-APP (run 19): grammar capture entry from Search/intake needs sentence hits with id/mediaId (or a create-sentence call); Today overline study date computed once per composition (stale past rollover if app stays open)
 - UI-WEB (run 19): commit the override-redundancy vitest the round-2 writer ran one-off (NoteEditor dropRedundantOverrides; web/tests)
+
+## Run 20 live sweep (0.1.9, 2026-11-14)
+- dict-refresh failed once 11-13 "ChecksumMismatch: kanjidic2.xml.gz sha256" (later run succeeded) — check whether a pinned checksum can break the next refresh when upstream republishes. low/med.
+- fsrs-optimize failed once 11-13 "datetime must be timezone-aware and set to UTC" (later run succeeded) — find the naive-datetime path (likely a job param/ default). low.
+- media-publish 23:31 succeeded with tokens 0 / sentences 0 — child of the broken jpdb import (jpdb.vocab []); BUG-11 covers. Recheck after 0.1.10.
+- API 404s on /api/health, /api/version, /api/healthz (external probe, wrong paths); /readyz 200. low.
+- Frequency list decks: live values.yaml dictSourcesJson has no `freq_lists` → freq_list/entry_freq empty. Config; handled with JLPT-1 deploy.
+- BUG-11 review minors: (1) pages.py:142 overview page cached without `accept` (link-regex) check → challenge page poisons cache (remap_only forever); (2) pages.py:55-61 deck_slug treats any 3rd segment (e.g. /anime/5370/stats) as slug — loud failure; (3) pages.py:164 title fallback is raw URL, use deck_path(jpdb_id); (4) no test that re-import refills an existing empty jpdb deck; (5) first page with rows all skipped still publishes 0 words (reported) — consider failing.
