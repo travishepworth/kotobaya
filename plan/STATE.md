@@ -3,11 +3,12 @@ Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
 Updated: RUN19 END
 
-## RESUME HERE (run 19 END: ALL_DONE for queued work)
-- Run 19 merged 4: SYNC-T1 4dce8ba, UI-DS-APP 92889d0, UI-APP 2587826, UI-WEB 8095cce. Phase 9 UI rewrite DONE. "0.1.9 ready" section at top of HUMAN_CHECKS.
-- No writers running; all run-19 worktrees/branches removed.
-- NEXT: triage plan/FOLLOWUPS.md into tickets. Candidates: APP-STATE-1 (Android ViewModels: review progress/next-due, Home totals, Stats VM, word pitch/kanji readings); API gaps (deck colour + due count, confusable headwords, sentence ids for Search/intake grammar capture; contract tickets first); web test for NoteEditor dropRedundantOverrides; small UI minors (run 19 block). Run `make test` once before the next release.
-- Leave alone: untracked .claude/settings.json; worktree .../scratchpad/rel016 (another session).
+## RESUME HERE (run 20 IN PROGRESS: 0.1.10 hotfix for live bugs)
+- Bugs on live 0.1.9: (1) jpdb deck import 0 cards -> BUG-11 MERGED d3711c2 (slugless URL hit overview page; cache poisoned). (2) JLPT list decks 0 words -> feature never built: no JLPT vocab source, DeckLists.kt hard-codes 0, no worker deck-build handler.
+- C-21 (architect, contract for JLPT vocab source) RUNNING. Then JLPT-1 (worker loader + deck-build handler + job-kind registry test; server DeckLists counts) -> write ticket from C-21 HANDOFF.
+- Then: build+push 0.1.10 from one pinned SHA worktree, bump ~/repos/kubernetes/kotobaya/values.yaml (also add freq_lists to dictSourcesJson if C-21 says so), helm upgrade, run dict-refresh, verify live: jpdb re-import has words, /deck-lists JLPT item_count > 0, deck-build fills a JLPT deck.
+- Live sweep minors in FOLLOWUPS "Run 20 live sweep".
+- Leave alone: untracked .claude/settings.json; scratchpad worktrees rel016/rel019 (other sessions).
 
 ## 0.1.7 hotfix status
 - HOTFIX-0.1.7: MERGED at a5c4e3a, READY TO SHIP AS 0.1.7 (web image + chart JAVA_TOOL_OPTIONS default; no migrations). Deploy notes in HUMAN_CHECKS.
