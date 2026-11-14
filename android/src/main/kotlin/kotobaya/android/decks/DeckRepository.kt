@@ -22,7 +22,7 @@ data class DeckSummary(
 )
 
 /** A word of a deck: [label] is the note's expression when a note exists on this device, else the item key. */
-data class DeckWord(val itemKey: String, val label: String)
+data class DeckWord(val itemKey: String, val label: String, val entrySeq: Long? = null)
 
 /**
  * Read-only view of decks over the local replica. Counts come from [LocalQueueLoader.load] with the deck filter,
@@ -46,14 +46,14 @@ class DeckRepository(private val driver: SqlDriver, private val loader: LocalQue
 
     /** Live items of [deckId] in the deck's order, [limit] from [offset]. */
     override fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> = query(
-        "SELECT di.item_key, (SELECT n.fields FROM note n WHERE n.deleted_at IS NULL AND " +
+        "SELECT di.item_key, di.entry_seq, (SELECT n.fields FROM note n WHERE n.deleted_at IS NULL AND " +
             "(n.entry_seq = di.entry_seq OR n.id = di.note_id) LIMIT 1) " +
             "FROM deck_item di WHERE di.deck_id = ? AND di.deleted_at IS NULL ORDER BY di.position, di.item_key LIMIT ? OFFSET ?",
         3,
         { bindString(0, deckId); bindLong(1, limit.toLong()); bindLong(2, offset.toLong()) },
     ) { c ->
         val key = c.getString(0).orEmpty()
-        DeckWord(key, expressionOf(c.getString(1)) ?: key)
+        DeckWord(key, expressionOf(c.getString(2)) ?: key, c.getLong(1))
     }
 
     private fun summary(r: Row): DeckSummary = DeckSummary(

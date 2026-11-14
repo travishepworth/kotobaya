@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotobaya.android.R
+import kotobaya.android.nav.DictJump
 import kotobaya.android.grammar.ui.CaptureEntrySlot
 import kotobaya.android.i18n.T
 import kotobaya.android.media.browse.Loaded
@@ -225,6 +226,7 @@ private fun WordPage(word: HotWordView, state: StruggleWordState, intents: Strug
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     KbChip(T(R.string.struggle_failures, word.failures14d), c.feedback(KbFeedback.Danger))
                 }
+                word.entrySeq?.let { seq -> KbButton(T(R.string.dict_open), { DictJump.openWord(seq) }, variant = KbButtonVariant.Outline) }
                 Text(T(R.string.struggle_extra_drill_note), style = KbTheme.type.caption, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
             }
         }

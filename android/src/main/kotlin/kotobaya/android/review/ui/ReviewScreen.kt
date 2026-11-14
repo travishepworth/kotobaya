@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotobaya.android.R
+import kotobaya.android.nav.DictJump
 import kotobaya.android.i18n.T
 import kotobaya.android.review.ReviewAction
 import kotobaya.android.review.ReviewActionsUiState
@@ -261,6 +262,11 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
                     add(KbMenuItem(T(R.string.review_action_flag), KbIcons.Flag) { flags = true })
                     add(KbMenuItem(T(if (state.actions.buried) R.string.review_action_unbury else R.string.review_action_bury)) { intents.perform(card.cardId, ReviewAction.BURY) })
                     add(KbMenuItem(T(if (s?.suspended == true) R.string.review_action_unsuspend else R.string.review_action_suspend)) { intents.perform(card.cardId, ReviewAction.SUSPEND) })
+                    // After the reveal only, and inside the overflow menu: no tap target on the card or grade bar.
+                    val seq = s?.entrySeq
+                    if (seq != null && (state.review as? ReviewState.Showing)?.side == CardSide.BACK) {
+                        add(KbMenuItem(T(R.string.review_action_dictionary), KbIcons.Book) { DictJump.openWord(seq) })
+                    }
                     if (s?.entrySeq != null) {
                         add(
                             KbMenuItem(T(if (s.wordOverride == "never_forget") R.string.review_action_clear_never_forget else R.string.review_action_never_forget)) {

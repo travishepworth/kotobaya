@@ -159,6 +159,10 @@ fun AppNav(registry: FeatureRegistry) {
     LaunchedEffect(struggleLink) {
         if (struggleLink != null) nav.navigate(STRUGGLE_ROUTE) { launchSingleTop = true }
     }
+    val dictJump by DictJump.pending.collectAsState()
+    LaunchedEffect(dictJump) {
+        if (dictJump != null) navigateTo(nav, Routes.SEARCH)
+    }
     AppShell(
         selected = Tab.of(route),
         onSelect = { tab -> navigateTo(nav, tab.route) },

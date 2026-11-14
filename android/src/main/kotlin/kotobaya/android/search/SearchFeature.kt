@@ -2,6 +2,7 @@ package kotobaya.android.search
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.cash.sqldelight.db.SqlDriver
@@ -10,6 +11,8 @@ import org.koin.compose.getKoin
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.nav.DictJump
+import kotobaya.android.nav.DictTarget
 import kotobaya.android.nav.NavRoute
 import kotobaya.android.nav.Routes
 import kotobaya.android.net.ApiClient
@@ -77,5 +80,18 @@ private fun SearchRoute() {
     val koin = getKoin()
     val vm: SearchViewModel = viewModel { SearchViewModel(koin.get<SearchPort>()) }
     val state by vm.state.collectAsState()
+    val jump by DictJump.pending.collectAsState()
+    LaunchedEffect(jump) {
+        when (val t = jump) {
+            is DictTarget.Word -> vm.openWord(t.seq)
+            is DictTarget.Kanji -> {
+                vm.setMode(SearchMode.WORDS)
+                vm.setQuery(t.literal)
+                vm.search()
+            }
+            null -> return@LaunchedEffect
+        }
+        DictJump.consume()
+    }
     SearchScreen(state, vm)
 }

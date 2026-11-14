@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
+import kotobaya.android.nav.DictJump
 import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.DeckWord
 import kotobaya.android.decks.DecksIntents
@@ -250,7 +251,12 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                         words.isEmpty() -> KbEmptyState(T(R.string.decks_words_empty), icon = KbIcons.Book)
                         else -> words.forEachIndexed { i, w ->
                             if (i > 0) KbDivider(inset = 16.dp)
-                            KbListRow(w.label, titleStyle = KbTheme.type.jpBody.copy(lineHeight = KbTheme.type.titleSm.lineHeight).ja(), titleMaxLines = 2)
+                            KbListRow(
+                                w.label,
+                                titleStyle = KbTheme.type.jpBody.copy(lineHeight = KbTheme.type.titleSm.lineHeight).ja(),
+                                titleMaxLines = 2,
+                                trailing = w.entrySeq?.let { seq -> { KbIconButton(KbIcons.Book, T(R.string.dict_open), { DictJump.openWord(seq) }) } },
+                            )
                         }
                     }
                 }

@@ -146,4 +146,6 @@
     <string name="review_error_body">Something went wrong reading the cards on this device.</string>
     <string name="review_error_retry">Retry</string>
     <string name="review_error_action">That did not work. Please try again.</string>
+    <string name="dict_open">Open in dictionary</string>
+    <string name="review_action_dictionary">Look up in dictionary</string>
 </resources>
