@@ -11,7 +11,7 @@ In flight at handback (agents keep running after the parent dies; on resume run 
 - FEAT-DICT MERGED (web; low, no review)
 - BROWSE-2 MERGED (reviewer-light APPROVE). BROWSE-1 waits on C-24.
 - C-24 architect (BROWSE-1 root cause: search matches dict forms of entry-linked notes; high → reviewer + architect pass). Then BROWSE-1 is done unless web wiring is needed.
-- AND-INSETS writer (android insets) → reviewer-light
+- AND-INSETS READY_FOR_REVIEW (t/AND-INSETS-window-insets, android green; low → reviewer-light; insets only in nav/AppShell.kt; unverified: KbSheet navigationBarsPadding double-pad on device → HUMAN_CHECKS after APK). Unblocks FEAT-DICT-APP.
 - AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
 - LOGFIX-1 MERGED
 - C-23 READY_FOR_REVIEW (1bb486d, contracts green; ADR-024). MERGE CONSTRAINT: server WiringAuditTest fails until reportClientErrors has a handler → merge together with an OBS-1s handler (OBS-1s writer was told NOT to implement it; give it a follow-up attempt on its branch after C-23, or allowlist). Then OBS-1c.
