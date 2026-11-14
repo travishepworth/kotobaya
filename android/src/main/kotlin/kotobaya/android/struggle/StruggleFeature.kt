@@ -48,7 +48,7 @@ private val struggleModule = module {
         val tokens = get<TokenStore>()
         StruggleRepository(
             ApiClient({ settings.serverBaseUrl }, { tokens.token }),
-            FileBrowseCache(File(get<Context>().filesDir, "struggle")),
+            FileBrowseCache(lazy { File(get<Context>().filesDir, "struggle") }),
             { settings.serverBaseUrl },
             { tokens.token },
         )

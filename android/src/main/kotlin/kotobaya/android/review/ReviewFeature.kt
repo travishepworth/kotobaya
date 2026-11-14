@@ -48,7 +48,7 @@ val reviewFeature = FeatureEntry(
             val client = get<SyncClient>()
             val triggers = get<SyncTriggers>()
             val ctx = get<Context>()
-            val store = ReviewPrefsStore(ctx.getSharedPreferences("kotobaya-review", Context.MODE_PRIVATE))
+            val store = ReviewPrefsStore { ctx.getSharedPreferences("kotobaya-review", Context.MODE_PRIVATE) }
             val koin = getKoin()
             val db = get<kotobaya.db.app.AppDatabase>()
             ReviewBackend(

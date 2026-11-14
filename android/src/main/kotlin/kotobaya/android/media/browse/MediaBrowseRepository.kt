@@ -39,7 +39,11 @@ interface BrowseCache {
 }
 
 /** One file per key under [dir]; first line is the timestamp. Keys are ids, sanitised. */
-class FileBrowseCache(private val dir: File) : BrowseCache {
+class FileBrowseCache(dirProvider: Lazy<File>) : BrowseCache {
+    constructor(dir: File) : this(lazyOf(dir))
+
+    private val dir: File by dirProvider
+
     private fun file(key: String) = File(dir, key.replace(Regex("[^A-Za-z0-9_-]"), "_"))
 
     override fun get(key: String): CachedBody? {

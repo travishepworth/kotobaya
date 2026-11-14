@@ -22,12 +22,15 @@ data class StorageBreakdown(
 }
 
 /** blob_cache rows (raw SQL over the contract table, so no queries file outside this package) plus files by hash. */
-class BlobStore(private val driver: SqlDriver, val dir: File) {
-    init { dir.mkdirs() }
+class BlobStore(private val driver: SqlDriver, private val root: File) {
+    private val created: Boolean by lazy { root.mkdirs() || root.isDirectory }
+
+    /** The blob directory; created on first access (callers that write run on IO), never at construction. */
+    val dir: File get() { created; return root }
 
     fun file(hash: String): File {
         require(isBlobHash(hash)) { "bad blob hash" }
-        return File(dir, hash)
+        return File(root, hash)
     }
 
     fun partFile(hash: String): File {

@@ -13,6 +13,9 @@ import kotlin.concurrent.withLock
  * N callers arriving during one build therefore cause one more build, not N, and no caller gets a result older
  * than its call. A failed build is not shared: its caller rethrows, a waiting caller builds again.
  *
+ * At most one build per distinct live key runs at a time (and so at most one build per key is waiting for its turn
+ * to cover the callers that arrived meanwhile).
+ *
  * Nothing is cached: a result lives only while callers of its key are inside [run]; the key's slot is dropped
  * when the last one leaves (a review session's per-answer keys must not pile up queues in the singleton).
  */
@@ -35,6 +38,9 @@ class LoadGate {
 
     /** Number of keys with callers inside [run] (0 when idle: no result is retained). */
     internal fun liveSlots(): Int = synchronized(slots) { slots.size }
+
+    /** Test hook: callers currently inside [run] for [key] (running or waiting). */
+    internal fun callers(key: Any): Int = synchronized(slots) { slots[key]?.users ?: 0 }
 
     /** Runs [build] for [key] unless a build that started after this call completes first; returns its result. */
     fun <T> run(key: Any, build: () -> T): T {

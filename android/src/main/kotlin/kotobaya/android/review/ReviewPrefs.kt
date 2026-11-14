@@ -28,7 +28,12 @@ data class ReviewPrefs(
 }
 
 /** [ReviewPrefs] in SharedPreferences. */
-class ReviewPrefsStore(private val prefs: SharedPreferences) {
+class ReviewPrefsStore(prefsProvider: () -> SharedPreferences) {
+    constructor(prefs: SharedPreferences) : this({ prefs })
+
+    /** Opened on first read/write so Koin injection on the main thread never touches the prefs file. */
+    private val prefs: SharedPreferences by lazy(prefsProvider)
+
     fun read(): ReviewPrefs {
         val d = ReviewPrefs()
         return ReviewPrefs(

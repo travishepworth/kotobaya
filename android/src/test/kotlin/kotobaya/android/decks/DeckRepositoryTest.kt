@@ -70,6 +70,15 @@ class DeckRepositoryTest {
     }
 
     @Test
+    fun deckCountsStillMatchTheFilteredLoaderWhenALimitBinds() {
+        fixture()
+        exec("INSERT OR REPLACE INTO settings (key, value, hlc, updated_at) VALUES ('scheduler.new_per_day', '1', 'h', 0)")
+        val repo = DeckRepository(driver, loader)
+        for (d in repo.decks()) assertEquals(loader.load(deckFilter = d.id).counts, d.counts)
+        assertEquals(1, repo.deck(id(3, 2))?.counts?.new)
+    }
+
+    @Test
     fun wordsArePagedInDeckOrder() {
         fixture()
         val repo = DeckRepository(driver, loader)

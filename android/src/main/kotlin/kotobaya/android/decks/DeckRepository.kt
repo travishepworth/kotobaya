@@ -4,10 +4,12 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
+import kotobaya.android.queue.LoadedQueue
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.QueueCounts
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
+import kotobaya.queue.DefaultQueueBuilder
 import kotobaya.sync.DefaultCanonicalJson
 
 /** One deck of the replica with the counts the queue holds for it. */
@@ -40,9 +42,13 @@ interface DeckSource {
 class DeckRepository(private val driver: SqlDriver, private val loader: LocalQueueLoader) : DeckSource {
     private class Row(val id: String, val name: String, val type: String, val enabled: Boolean, val query: String?)
 
-    override fun decks(): List<DeckSummary> = rows().map { summary(it) }
+    override fun decks(): List<DeckSummary> {
+        val rows = rows()
+        val loaded = loader.load()
+        return rows.map { summary(it, loaded) }
+    }
 
-    override fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it) }
+    override fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it, loader.load()) }
 
     /** Live items of [deckId] in the deck's order, [limit] from [offset]. */
     override fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> = query(
@@ -56,13 +62,23 @@ class DeckRepository(private val driver: SqlDriver, private val loader: LocalQue
         DeckWord(key, expressionOf(c.getString(2)) ?: key, c.getLong(1))
     }
 
-    private fun summary(r: Row): DeckSummary = DeckSummary(
+    /**
+     * One load per reload: the same builder input as `load(deckFilter = id)` (it filters candidates only), re-run per
+     * deck over the already-read rows, so the counts are identical without re-reading the database per deck.
+     */
+    private fun countsOf(loaded: LoadedQueue, deckId: String): QueueCounts {
+        val input = loaded.input
+        val filtered = input.copy(candidates = input.candidates.filter { c -> c.memberships.any { it.deckId == deckId } })
+        return LoadedQueue(filtered, DefaultQueueBuilder.build(filtered)).counts
+    }
+
+    private fun summary(r: Row, loaded: LoadedQueue): DeckSummary = DeckSummary(
         id = r.id,
         name = r.name,
         type = r.type,
         enabled = r.enabled,
         query = r.query,
-        counts = loader.load(deckFilter = r.id).counts,
+        counts = countsOf(loaded, r.id),
         totalCards = totalCards(r.id),
     )
 

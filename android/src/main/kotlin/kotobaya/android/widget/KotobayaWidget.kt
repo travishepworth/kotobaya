@@ -51,7 +51,14 @@ class KotobayaWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, LARGE))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = withContext(Dispatchers.IO) { WidgetSnapshots.load() }
+        val snapshot = withContext(Dispatchers.IO) {
+            // Resources.getString with format args loads locale/tz data on first use (1.75 s seen); warm it off the main thread.
+            runCatching {
+                context.getString(R.string.widget_counts, 0, 0)
+                context.getString(R.string.widget_progress, 0, 0)
+            }
+            WidgetSnapshots.load()
+        }
         provideContent { WidgetContent(snapshot, LocalSize.current) }
     }
 }
