@@ -6,11 +6,8 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RESUME HERE (run 23)
 USER DIRECTION: NO interim release. Ship ONE 0.1.10 after ALL items merged+reviewed: pinned SHA worktree, `make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=0.1.10`, bump tags in ~/repos/kubernetes/kotobaya/values.yaml (+ freq_lists in dictSourcesJson; JLPT default-on, egress OK), helm upgrade -n kotobaya (never ingress-nginx), dict-refresh. Live-verify every item + log sweep with OBS logs; debug APK VERSION_NAME=0.1.10 VERSION_CODE=110 (no device → HUMAN_CHECKS install).
-Merged run 23: OBS-1w 9bff9db, C-24 7ea29c1 (BROWSE-1 resolved by it on web), AND-INSETS c20cf92, OBS-1w2 2d605df2, AND-POSTSYNC f48e2000.
-In flight:
-- OBS-1s attempt 2 (writer, t/OBS-1s-c23 = C-23 + OBS-1s + reportClientErrors handler; 413 for >20 items). C-23 contract APPROVED. When done → reviewer on OBS-1s part, then merge (brings C-23 too).
-- Android batch writer t/AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP (low/med → reviewer-light/reviewer on REVIEWERR part).
-Queued: OBS-1c (after OBS-1s merge; web+android client error reporting; see OBS-1.md "OBS-1c extra"; serialize android with the batch).
+Merged run 23: OBS-1w, C-24 (BROWSE-1 resolved by it on web), AND-INSETS, OBS-1w2, AND-POSTSYNC, C-23+OBS-1s (dc73808e), AND-REVIEWERR+AND-DICTFORMS+FEAT-DICT-APP (d362aed0), WEBVER, OBS-1c-web (33e1b7d8), OBS-1s2 (64686a11).
+In flight: OBS-1c-and (writer, t/OBS-1c-and, cut from the android batch tip + batch review minors; med → reviewer, then rebase+android check+merge).
 Then: release 0.1.10.
 Leave alone: .claude/settings.json; scratchpad worktrees rel016/rel019.
 
