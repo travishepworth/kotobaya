@@ -14,7 +14,7 @@ In flight at handback (agents keep running after the parent dies; on resume run 
 - AND-INSETS writer (android insets) → reviewer-light
 - AND-POSTSYNC writer-senior (G: post-sync nothing loads; the scout found the server clean, Pixel made 98 pulls in 23 min, no push, no other routes) → reviewer
 - LOGFIX-1 MERGED
-- C-23 architect (POST /client-errors contract) → reviewer; then OBS-1c (web+android reporters)
+- C-23 READY_FOR_REVIEW (1bb486d, contracts green; ADR-024). MERGE CONSTRAINT: server WiringAuditTest fails until reportClientErrors has a handler → merge together with an OBS-1s handler (OBS-1s writer was told NOT to implement it; give it a follow-up attempt on its branch after C-23, or allowlist). Then OBS-1c.
 - OBS-1s writer (server logging + RUNBOOK health) → reviewer; implement the C-23 handler in a follow-up if C-23 lands later
 Running: OBS-1w writer. Queued: OBS-1c (after C-23 + OBS-1s), FEAT-DICT-APP (after AND-INSETS). H crash: no adb device → HUMAN_CHECKS.
 Possible stale orchestrator: run 20 kept committing "plan:" lines after its end; harmless.
