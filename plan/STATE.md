@@ -4,7 +4,9 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN28 resume
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 28): server+web 0.1.16 LIVE (helm rev 24, pin 99cf5a19, worktree scratchpad/rel0116; worker 0.1.11); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. C-25 MERGED ee1fecdd. WEB-REVIEW-INFO MERGED 48a817be. AND-REVIEW-INFO MERGED d04531d2. APK 0.1.17 INSTALLED on phone (pin f058bbfc). kby + daemon updated live. CLI-KBY MERGED af5ad121 (user must reinstall daemon uv tool + kby). Next: -> RELEASE APK 0.1.17 (user waiting: AND-BACK + AND-REVIEW-INFO + 0.1.15 content; tell user when ready). Then FOLLOWUPS.
+## RESUME HERE (run 29): RUNNING WEB-DECK-INSPECT + AND-DECK-INSPECT (writers, worktrees; user request: deck inspector filters + word actions). After merge: release web (server unchanged) + APK 0.1.18.
+
+## Previous (run 28): server+web 0.1.16 LIVE (helm rev 24, pin 99cf5a19, worktree scratchpad/rel0116; worker 0.1.11); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. C-25 MERGED ee1fecdd. WEB-REVIEW-INFO MERGED 48a817be. AND-REVIEW-INFO MERGED d04531d2. APK 0.1.17 INSTALLED on phone (pin f058bbfc). kby + daemon updated live. CLI-KBY MERGED af5ad121 (user must reinstall daemon uv tool + kby). Next: -> RELEASE APK 0.1.17 (user waiting: AND-BACK + AND-REVIEW-INFO + 0.1.15 content; tell user when ready). Then FOLLOWUPS.
 
 ## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).

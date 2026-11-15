@@ -795,3 +795,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### CLI-KBY — kby machine interface for GUI widgets: daemon grade gating + hidden-answer state (A1–A3), `kby serve` / `kby do --rev` (user request 2026-11-15)
 - model: sonnet · risk: med · deps: CLI-REVIEW, CLI-WATCH · paths: cli/ · status: MERGED af5ad121 (ticket: plan/tickets/CLI-KBY.md)
+
+### Deck inspector (2026-11-15, user request): status filters + word actions on deck detail
+- WEB-DECK-INSPECT — web deck detail filters (new/learning/known/ignored), sort, per-word + bulk status actions · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/WEB-DECK-INSPECT.md)
+- AND-DECK-INSPECT — android deck detail filters, per-word + bulk status actions, offline via word.status_* ops · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/AND-DECK-INSPECT.md)
