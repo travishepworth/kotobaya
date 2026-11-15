@@ -779,13 +779,13 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - model: sonnet · risk: medium · deps: T604 · paths: cli/ · status: MERGED b03d46b6 (ticket: plan/tickets/CLI-DAEMON.md)
 
 ### CLI-REVIEW — Journal-first answer/undo, idempotent retry + crash replay, reviewed-elsewhere replacement, five-button mapping, duration_ms
-- model: opus · risk: medium · deps: CLI-DAEMON (card text needs ARCH-CARD-TEXT) · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-REVIEW.md)
+- model: opus · risk: medium · deps: CLI-DAEMON (card text needs ARCH-CARD-TEXT) · paths: cli/ · status: MERGED (ticket: plan/tickets/CLI-REVIEW.md)
 
 ### CLI-WATCH — `kotobaya watch` json/waybar/template + reconnect loop; waybar/eww/Hyprland examples in cli/README.md
-- model: haiku · risk: low · deps: CLI-DAEMON · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-WATCH.md)
+- model: haiku · risk: low · deps: CLI-DAEMON · paths: cli/ · status: MERGED (ticket: plan/tickets/CLI-WATCH.md)
 
 ### API-GUIDE — Task-oriented API usage guide ("to do X, run Y": curl + CLI), docs/API-GUIDE.md
-- model: haiku · risk: low · deps: — · paths: docs/API-GUIDE.md, cli/README.md (link only), docs/RUNBOOK.md (link only) · status: TODO (ticket: plan/tickets/API-GUIDE.md)
+- model: haiku · risk: low · deps: — · paths: docs/API-GUIDE.md, cli/README.md (link only), docs/RUNBOOK.md (link only) · status: MERGED (ticket: plan/tickets/API-GUIDE.md)
 
 ### Review back-side extras + Android back (2026-11-15, user request)
 - C-25 — kanji example picker (core) + QueueItem.decks/kanji_examples + deck_ids on DictEntry/Note · model: opus (architect) · risk: high · deps: ARCH-CARD-TEXT · status: TODO
