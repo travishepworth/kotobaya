@@ -186,6 +186,77 @@ class ReviewInfoTest {
         }
     }
 
+    private fun kanjiDeckFixture(): InMemoryLearningTables {
+        val t = InMemoryLearningTables()
+        fun deck(id: String, name: String, prio: Int) = t.put(
+            LearningTable.DECK, mapOf("id" to s(id), "name" to s(name), "priority" to n(prio.toLong()), "type" to s("user"), "deleted_at" to JsonNull),
+        )
+        fun item(deckId: String, seq: Long, gone: Boolean = false) = t.put(
+            LearningTable.DECK_ITEM,
+            mapOf("deck_id" to s(deckId), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull, "deleted_at" to if (gone) n(1) else JsonNull),
+        )
+        deck("a", "Core 10k", 1); deck("b", "Mine", 2)
+        // words 1 = 日本, 2 = 日曜, 3 = 本
+        item("a", 1); item("a", 2); item("b", 1); item("b", 3); item("a", 3, gone = true)
+        return t
+    }
+
+    private val kanjiWords = KanjiWordSource { lit ->
+        when (lit) {
+            "日" -> listOf(DictWord(1, "日本", "にほん", null), DictWord(2, "日曜", "にちよう", null))
+            "本" -> listOf(DictWord(1, "日本", "にほん", null), DictWord(3, "本", "ほん", null))
+            else -> emptyList()
+        }
+    }
+
+    @Test
+    fun aKanjiAppearsInTheDecksOfTheWordsContainingIt() {
+        val index = BackExtrasIndex.from(kanjiDeckFixture())
+        assertEquals(listOf(KanjiDeck("a", "Core 10k", 2), KanjiDeck("b", "Mine", 1)), BackExtrasBuilder.kanjiDecksOf("日", kanjiWords, index))
+        // the removed item (a, 3) does not count
+        assertEquals(listOf(KanjiDeck("a", "Core 10k", 1), KanjiDeck("b", "Mine", 2)), BackExtrasBuilder.kanjiDecksOf("本", kanjiWords, index))
+        assertEquals(emptyList(), BackExtrasBuilder.kanjiDecksOf("火", kanjiWords, index))
+    }
+
+    @Test
+    fun theKanjiDeckLookupIsComputedOncePerIndexBuildNotPerCard() {
+        val t = kanjiDeckFixture()
+        t.put(LearningTable.NOTE, row("id" to s("kn"), "type" to s("kanji"), "kanji_literal" to s("日")))
+        t.put(
+            LearningTable.DECK_ITEM,
+            mapOf("deck_id" to s("b"), "item_key" to s("n:kn"), "entry_seq" to JsonNull, "note_id" to s("kn"), "deleted_at" to JsonNull),
+        )
+        val index = BackExtrasIndex.from(t)
+        val c = Counting(t)
+        val note = row("id" to s("kn"), "type" to s("kanji"), "kanji_literal" to s("日"))
+        repeat(50) { BackExtrasBuilder.build(c, note, shoku, kanjiWords, { null }, index) }
+        assertEquals(0, c.queries)
+        val x = BackExtrasBuilder.build(c, note, shoku, kanjiWords, { null }, index)
+        assertEquals(listOf(KanjiDeck("a", "Core 10k", 2), KanjiDeck("b", "Mine", 2)), x.kanjiDecks) // b: 日本 + the kanji's own note
+    }
+
+    @Test
+    fun theDeviceIndexGivesTheSameKanjiDecks() {
+        val driver = memoryDriver()
+        val t = SqlLearningTables(driver, LearningSchema.read(driver))
+        fun deck(id: String, prio: Int, type: String = "user") = t.put(
+            LearningTable.DECK,
+            mapOf("id" to s(id), "name" to s("N$id"), "type" to s(type), "priority" to n(prio.toLong()), "created_at" to n(1), "updated_at" to n(1), "deleted_at" to JsonNull),
+        )
+        fun item(deck: String, seq: Long, gone: Boolean = false) = t.put(
+            LearningTable.DECK_ITEM,
+            mapOf("deck_id" to s(deck), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull, "added_at" to n(1), "deleted_at" to if (gone) n(2) else JsonNull),
+        )
+        deck("a", 1); deck("b", 2); deck("s", 0, "smart")
+        item("a", 1); item("a", 2); item("b", 1); item("b", 3); item("a", 3, gone = true); item("s", 1)
+        val want = BackExtrasIndex.from(t)
+        val got = SqlBackExtrasIndex(driver).load()
+        for (lit in listOf("日", "本", "火")) {
+            assertEquals(BackExtrasBuilder.kanjiDecksOf(lit, kanjiWords, want), BackExtrasBuilder.kanjiDecksOf(lit, kanjiWords, got), lit)
+        }
+        assertEquals(listOf(KanjiDeck("a", "Na", 2), KanjiDeck("b", "Nb", 1)), BackExtrasBuilder.kanjiDecksOf("日", kanjiWords, got))
+    }
+
     @Test
     fun theDeviceIndexReadsTheSameAsTheReplicaRules() {
         val driver = memoryDriver()

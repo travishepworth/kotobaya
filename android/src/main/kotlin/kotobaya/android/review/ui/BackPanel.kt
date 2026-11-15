@@ -25,6 +25,7 @@ import kotobaya.android.ui.components.KbButtonVariant
 import kotobaya.android.ui.components.KbChip
 import kotobaya.android.ui.components.KbDivider
 import kotobaya.android.ui.components.KbIcons
+import kotobaya.android.ui.components.KbKanjiDecks
 import kotobaya.android.ui.theme.JapaneseLocale
 import kotobaya.android.ui.theme.KbTheme
 import kotobaya.android.ui.theme.KbTone
@@ -39,7 +40,7 @@ import kotobaya.contracts.dict.KanjiReadingType
 @Composable
 internal fun BackPanel(extras: BackExtras, intents: ReviewIntents, modifier: Modifier = Modifier) {
     val canOpen = extras.entrySeq != null || extras.kanjiLiteral != null
-    if (extras.examples.isEmpty() && extras.decks.isEmpty() && !canOpen) return
+    if (extras.examples.isEmpty() && extras.decks.isEmpty() && extras.kanjiDecks.isEmpty() && !canOpen) return
     val c = KbTheme.colors
     Column(modifier.fillMaxWidth()) {
         KbDivider()
@@ -47,6 +48,7 @@ internal fun BackPanel(extras: BackExtras, intents: ReviewIntents, modifier: Mod
             Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (extras.kanjiDecks.isNotEmpty()) KbKanjiDecks(extras.kanjiDecks.map { it.name to it.count })
             if (extras.examples.isNotEmpty()) {
                 Text(T(R.string.review_examples_title), style = KbTheme.type.caption, color = c.textMuted)
                 extras.examples.forEach { ExampleRow(it) }

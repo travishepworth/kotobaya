@@ -26,6 +26,12 @@ fun interface KanjiWordSource {
 /** One example word on the back of a kanji card (C-25). */
 data class ExampleWord(val seq: Long, val headword: String, val reading: String, val gloss: String, val type: KanjiReadingType)
 
+/** A live non-smart deck as the index knows it. */
+data class DeckRef(val id: String, val name: String, val priority: Double)
+
+/** "Appears in decks" chip of a kanji: [count] = words with the kanji in the deck (plus the kanji's own note). */
+data class KanjiDeck(val id: String, val name: String, val count: Int)
+
 /**
  * What the back of a card shows besides the template (C-25, ADR-029), computed offline from the replica when the card
  * is loaded (prefetch, off the main thread) and kept for the whole showing. Nothing here is learning data.
@@ -41,6 +47,8 @@ data class BackExtras(
     val entrySeq: Long? = null,
     /** The note's kanji (the target for a kanji card without an entry), if any. */
     val kanjiLiteral: String? = null,
+    /** Kanji cards: every deck holding words with the kanji (or its note), by priority, with counts; the UI shows the first [DECK_CHIPS]. */
+    val kanjiDecks: List<KanjiDeck> = emptyList(),
 ) {
     companion object {
         const val DECK_CHIPS = 3
@@ -64,6 +72,10 @@ class BackExtrasIndex private constructor(
     private val deckSeqs: LongArray,
     /** note id → ids of the notes merged into it. */
     private val merged: Map<String, List<String>>,
+    /** `entry_seq` -> live non-smart decks holding it (live items, live decks). */
+    private val seqDecks: Map<Long, List<DeckRef>>,
+    /** kanji literal -> live non-smart decks holding a live kanji note of it. */
+    private val literalDecks: Map<String, List<DeckRef>>,
 ) {
     fun status(seq: Long): WordStatus = statusSeqs.binarySearch(seq).let { if (it >= 0) statuses[it] else WordStatus.NEW }
 
@@ -73,12 +85,27 @@ class BackExtrasIndex private constructor(
 
     fun mergedInto(noteId: String): List<String> = merged[noteId].orEmpty()
 
+    /**
+     * The decks "containing" [literal], by priority then id: per deck the number of distinct [wordSeqs] (the dictionary
+     * words with the kanji) it holds, plus 1 when it holds the kanji's own note. Hash lookups only.
+     */
+    fun kanjiDecks(literal: String, wordSeqs: Collection<Long>): List<KanjiDeck> {
+        val counts = HashMap<DeckRef, Int>()
+        for (seq in wordSeqs.toSet()) seqDecks[seq]?.forEach { counts.merge(it, 1, Int::plus) }
+        literalDecks[literal]?.forEach { counts.merge(it, 1, Int::plus) }
+        return counts.entries
+            .sortedWith(compareBy<Map.Entry<DeckRef, Int>>({ it.key.priority }, { it.key.id.lowercase() }))
+            .map { KanjiDeck(it.key.id, it.key.name, it.value) }
+    }
+
     /** Collects the index from the narrow rows. */
     class Builder {
         private val status = HashMap<Long, WordStatus>()
         private val notes = HashSet<Long>()
         private val decks = HashSet<Long>()
         private val merged = HashMap<String, MutableList<String>>()
+        private val seqDecks = HashMap<Long, LinkedHashSet<DeckRef>>()
+        private val literalDecks = HashMap<String, LinkedHashSet<DeckRef>>()
 
         /** A `word_status` row; `new` and unknown values are left out (absent = `NEW`). */
         fun status(seq: Long, wire: String?): Builder = apply {
@@ -91,12 +118,19 @@ class BackExtrasIndex private constructor(
 
         fun merged(into: String, noteId: String): Builder = apply { merged.getOrPut(into) { ArrayList() } += noteId }
 
+        /** A live item of a live non-smart deck for the word [seq]. */
+        fun seqDeck(seq: Long, deck: DeckRef): Builder = apply { seqDecks.getOrPut(seq) { LinkedHashSet() } += deck }
+
+        /** A live item of a live non-smart deck for a live note of the kanji [literal]. */
+        fun literalDeck(literal: String, deck: DeckRef): Builder = apply { literalDecks.getOrPut(literal) { LinkedHashSet() } += deck }
+
         fun build(): BackExtrasIndex {
             val sorted = status.keys.toLongArray().also { it.sort() }
             return BackExtrasIndex(
                 sorted, Array(sorted.size) { status.getValue(sorted[it]) },
                 notes.toLongArray().also { it.sort() }, decks.toLongArray().also { it.sort() },
                 merged.mapValues { it.value.sorted() },
+                seqDecks.mapValues { it.value.toList() }, literalDecks.mapValues { it.value.toList() },
             )
         }
     }
@@ -117,9 +151,19 @@ class BackExtrasIndex private constructor(
                 val id = CardRows.str(r["id"])
                 if (into != null && id != null) b.merged(into, id)
             }
-            val liveDecks = t.all(LearningTable.DECK).filter { isNull(it["deleted_at"]) }.mapNotNullTo(HashSet()) { CardRows.str(it["id"]) }
+            val liveDeckRows = t.all(LearningTable.DECK).filter { isNull(it["deleted_at"]) }.associateBy { CardRows.str(it["id"]) }
+            val refs = liveDeckRows.filterValues { CardRows.str(it["type"]) != "smart" }.mapNotNull { (id, r) ->
+                id?.let { it to DeckRef(it, CardRows.str(r["name"]).orEmpty(), (r["priority"] as? JsonNumber)?.value ?: 0.0) }
+            }.toMap()
+            val literals = t.all(LearningTable.NOTE).filter { isNull(it["deleted_at"]) }
+                .mapNotNull { n -> CardRows.str(n["kanji_literal"])?.let { l -> CardRows.str(n["id"])?.let { it to l } } }.toMap()
             t.all(LearningTable.DECK_ITEM).forEach { r ->
-                if (isNull(r["deleted_at"]) && CardRows.str(r["deck_id"]) in liveDecks) seqOf(r["entry_seq"])?.let(b::deckItem)
+                if (!isNull(r["deleted_at"])) return@forEach
+                val deckId = CardRows.str(r["deck_id"])
+                if (deckId in liveDeckRows) seqOf(r["entry_seq"])?.let(b::deckItem)
+                val ref = refs[deckId] ?: return@forEach
+                seqOf(r["entry_seq"])?.let { b.seqDeck(it, ref) }
+                CardRows.str(r["note_id"])?.let { literals[it] }?.let { b.literalDeck(it, ref) }
             }
             return b.build()
         }
@@ -147,7 +191,8 @@ internal object BackExtrasBuilder {
         val vocab = CardRows.str(note["type"]) == "vocab" || entry != null
         val (decks, more) = if (vocab) decksOf(t, note, entry, index) else emptyList<String>() to 0
         val examples = if (literal != null) examplesOf(literal, kanji, words, dictionary, index, picker) else emptyList()
-        return BackExtras(examples, decks, more, entry, literal)
+        val kanjiDecks = if (literal != null) kanjiDecksOf(literal, words, index) else emptyList()
+        return BackExtras(examples, decks, more, entry, literal, kanjiDecks)
     }
 
     private fun isNull(v: Any?) = v == null || v == JsonNull
@@ -167,6 +212,10 @@ internal object BackExtrasBuilder {
         val names = decks.map { CardRows.str(it["name"]).orEmpty() }
         return names.take(BackExtras.DECK_CHIPS) to maxOf(0, names.size - BackExtras.DECK_CHIPS)
     }
+
+    /** The kanji's decks from the per-build index: the dictionary words with the kanji, looked up in memory. */
+    fun kanjiDecksOf(literal: String, words: KanjiWordSource, index: BackExtrasIndex): List<KanjiDeck> =
+        index.kanjiDecks(literal, words.words(literal).map { it.seq })
 
     private fun examplesOf(
         literal: String,

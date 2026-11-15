@@ -16,7 +16,15 @@ class SqlBackExtrasIndex(private val driver: SqlDriver) : BackExtrasIndexSource 
         scan(NOTES) { b.note(it.getLong(0) ?: return@scan) }
         scan(DECK_ITEMS) { b.deckItem(it.getLong(0) ?: return@scan) }
         scan(MERGED) { c -> b.merged(c.getString(1) ?: return@scan, c.getString(0) ?: return@scan) }
+        scan(SEQ_DECKS) { c -> b.seqDeck(c.getLong(0) ?: return@scan, deck(c) ?: return@scan) }
+        scan(NOTE_DECKS) { c -> b.literalDeck(c.getString(0) ?: return@scan, deck(c) ?: return@scan) }
         return b.build()
+    }
+
+    /** Columns 1..3 of a deck row: id, name, priority. */
+    private fun deck(c: SqlCursor): DeckRef? {
+        val id = c.getString(1) ?: return null
+        return DeckRef(id, c.getString(2).orEmpty(), c.getDouble(3) ?: 0.0)
     }
 
     private fun scan(sql: String, row: (SqlCursor) -> Unit) {
@@ -31,6 +39,11 @@ class SqlBackExtrasIndex(private val driver: SqlDriver) : BackExtrasIndexSource 
         const val NOTES = "SELECT DISTINCT entry_seq FROM note WHERE entry_seq IS NOT NULL AND deleted_at IS NULL"
         const val DECK_ITEMS = "SELECT DISTINCT i.entry_seq FROM deck_item i JOIN deck d ON d.id = i.deck_id " +
             "WHERE i.entry_seq IS NOT NULL AND i.deleted_at IS NULL AND d.deleted_at IS NULL"
+        const val SEQ_DECKS = "SELECT DISTINCT i.entry_seq, d.id, d.name, d.priority FROM deck_item i JOIN deck d ON d.id = i.deck_id " +
+            "WHERE i.entry_seq IS NOT NULL AND i.deleted_at IS NULL AND d.deleted_at IS NULL AND d.type <> 'smart'"
+        const val NOTE_DECKS = "SELECT DISTINCT n.kanji_literal, d.id, d.name, d.priority FROM deck_item i JOIN deck d ON d.id = i.deck_id " +
+            "JOIN note n ON n.id = i.note_id WHERE n.kanji_literal IS NOT NULL AND n.deleted_at IS NULL AND i.deleted_at IS NULL " +
+            "AND d.deleted_at IS NULL AND d.type <> 'smart'"
         const val MERGED = "SELECT id, merged_into_id FROM note WHERE merged_into_id IS NOT NULL"
     }
 }

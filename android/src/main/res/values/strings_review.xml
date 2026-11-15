@@ -52,4 +52,6 @@
     <string name="review_example_kun">kun</string>
     <string name="review_decks_title">In decks</string>
     <string name="review_decks_more">+%1$d more</string>
+    <string name="kanji_decks_title">Appears in decks</string>
+    <string name="kanji_deck_chip">%1$s · %2$d</string>
 </resources>

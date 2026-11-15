@@ -22,6 +22,9 @@ interface SearchPort {
     suspend fun note(noteId: String): NoteLoad
 
     /** Which of [seqs] the user has a note for (and in which decks); empty when that is unknown (replica not ready). */
+    /** AND-KANJI-DECKS: decks (name, count of words with the kanji), by priority, for a single-kanji query; empty when none or unknown. */
+    suspend fun kanjiDecks(literal: String): List<Pair<String, Int>> = emptyList()
+
     suspend fun myCards(seqs: Collection<Long>): Map<Long, MyCardInfo> = emptyMap()
 
     /** AND-ADD2DECK: manual deck membership and "Add to my notes"; the defaults do nothing (no replica). */
@@ -46,7 +49,11 @@ class AppSearchPort(
     private val details: WordRepository,
     private val mine: MyCardsLookup? = null,
     private val deckOps: SearchDeckOps? = null,
+    private val kanjiDecks: KanjiDecksLookup? = null,
 ) : SearchPort {
+    override suspend fun kanjiDecks(literal: String): List<Pair<String, Int>> =
+        kanjiDecks?.let { k -> withContext(Dispatchers.IO) { runCatching { k.lookup(literal) }.getOrDefault(emptyList()) } } ?: emptyList()
+
     override suspend fun words(q: String, after: String?) = wordSearch.search(q, after)
 
     override suspend fun cards(q: String) = cardSearch.search(q)
@@ -119,6 +126,8 @@ data class SearchUiState(
     val sheet: DeckSheet? = null,
     /** Names of the decks the open detail's word or note is in. */
     val detailDecks: List<String> = emptyList(),
+    /** AND-KANJI-DECKS: for a single-kanji query, the decks holding words with it (name, word count), by priority. */
+    val kanjiDecks: List<Pair<String, Int>> = emptyList(),
     /** The outcome of the last "Add to my notes", shown once. */
     val addNote: AddNoteOutcome? = null,
 )
@@ -197,7 +206,13 @@ class SearchViewModel(
         val prev = s.results as? SearchResults.Merged
         if (append && prev == null) return
         val after = if (append) prev?.next else null
-        if (!append) update { it.copy(results = SearchResults.Busy) }
+        if (!append) update { it.copy(results = SearchResults.Busy, kanjiDecks = emptyList()) }
+        if (!append && isSingleKanji(q)) {
+            launchIo {
+                val decks = port.kanjiDecks(q)
+                update { if (it.query == q) it.copy(kanjiDecks = decks) else it }
+            }
+        }
         launchIo {
             val wordsOutcome = port.words(q, after)
             val page = (wordsOutcome as? WordSearchOutcome.Page)?.page
@@ -317,4 +332,11 @@ class SearchViewModel(
     companion object {
         const val PAGE: Int = 50
     }
+}
+
+/** A query that is exactly one kanji (CJK ideograph), the kanji tile's search. */
+internal fun isSingleKanji(q: String): Boolean {
+    val t = q.trim()
+    return t.isNotEmpty() && t.codePointCount(0, t.length) == 1 &&
+        Character.UnicodeScript.of(t.codePointAt(0)) == Character.UnicodeScript.HAN
 }

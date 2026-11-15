@@ -51,6 +51,7 @@ import kotobaya.android.ui.theme.KbFeedback
 import kotobaya.android.ui.theme.KbTheme
 import kotobaya.android.word.NoteLoad
 import kotobaya.android.word.WordLoad
+import kotobaya.android.ui.components.KbKanjiDecks
 import kotobaya.android.word.ui.NoteDetailScreen
 import kotobaya.android.word.ui.WordDetailScreen
 import kotobaya.contracts.search.SearchErrorCode
@@ -222,6 +223,9 @@ private fun ResultsPane(state: SearchUiState, intents: SearchIntents) {
             is SearchResults.Merged -> {
                 if (s.words.isEmpty() && s.notes.isEmpty()) {
                     item { KbEmptyState(T(R.string.search_no_results), body = T(R.string.search_no_results_words), icon = KbIcons.Search) }
+                }
+                if (state.kanjiDecks.isNotEmpty()) {
+                    item(key = "kanji-decks") { KbKanjiDecks(state.kanjiDecks, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
                 }
                 itemsIndexed(s.words, key = { _, w -> "w${w.hit.seq}" }) { i, row ->
                     val w = row.hit

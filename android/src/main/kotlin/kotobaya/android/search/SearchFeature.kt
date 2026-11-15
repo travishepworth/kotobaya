@@ -14,6 +14,8 @@ import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.nav.DictJump
+import kotobaya.android.review.InstalledKanjiWords
+import kotobaya.android.review.SqlBackExtrasIndex
 import kotobaya.android.nav.DictTarget
 import kotobaya.android.nav.NavRoute
 import kotobaya.android.nav.Routes
@@ -89,6 +91,7 @@ private val searchModule = module {
                 ) { koin.getOrNull<SyncTriggers>()?.localChange() },
                 get<NoteCreator<SqlLearningTables>>(),
             ),
+            KanjiDecksLookup.over(SqlBackExtrasIndex(get<SqlDriver>(named("syncAppDriver"))), InstalledKanjiWords(get<InstalledDictionary>())),
         )
     }
     single {
