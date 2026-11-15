@@ -1073,4 +1073,5 @@
 2026-11-15T01:28:39Z AND-DECKEND DISPATCH writer-senior (deck session loops on last card; possible repeat grading)
 2026-11-15T01:32:41Z RELEASE web 0.1.13 DEPLOYED helm rev 23 (pin 4908783b: WEB-PRIO, WEB-ADD2DECK, WEB-REVIEW-FAST); rev 22 no-op (values sed missed web tag)
 2026-11-15T01:33:26Z AND-DECKEND evidence: phone log 10:22:55-10:23:04 'rebuild ahead items=1' loop, 6 extra committed reviews of one learning card in a deck session; sent to writer
-2026-11-15T01:33:34Z AND-ADD2DECK CHECK_GREEN + MERGE c1e00bc8 (search detail: add to notes/deck, KbDeckPicker, offline ops)
+2026-11-15T01:33:34Z AND-ADD2DECK CHECK_GREEN + MERGE (see next line) (search detail: add to notes/deck, KbDeckPicker, offline ops)
+2026-11-15T01:33:59Z AND-ADD2DECK MERGE ce4af9cf (first ff failed: main got c1e00bc8 docs/CLI-DAEMON.md from another session; branch restored from 6e2b5cf0 and rebased; docs-only, android check still valid)
