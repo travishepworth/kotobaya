@@ -136,6 +136,21 @@ class DeckMaterializeTest : SyncFixture() {
     }
 
     @Test
+    fun aDeckWithAddKanjiAndCardKindsShapesTheMaterializedNotes() = reviewApp {
+        val t = token()
+        val deck = deckWithEntries(1, base = 8000)
+        db.txBlocking { it.execute("update ref.dict_entry set headword = '食堂' where seq = 8001") }
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"before","card_kinds":["reading"]}}}""")
+        fetch(t)
+        val vocabNote = db.txBlocking { it.fetchValue("select id::text from app.note where entry_seq = 8001 and deleted_at is null") as String }
+        assertEquals(listOf("reading"), db.txBlocking { d -> d.fetch("select kind from app.card where note_id = ?::uuid", vocabNote).map { it.get(0, String::class.java) } })
+        assertEquals(setOf("食", "堂"), db.txBlocking { d -> d.fetch("select kanji_literal from app.note where origin = 'auto_kanji' and deleted_at is null").map { it.get(0, String::class.java) }.toSet() })
+        val head = count("select max(seq) from app.change")
+        fetch(t)
+        assertEquals(head, count("select max(seq) from app.change"), "no second kanji note either")
+    }
+
+    @Test
     fun aReadOnlyCallerSeesPendingEntriesButCreatesNothing() = reviewApp {
         deckWithEntries(5)
         val q = fetch(token(listOf("read")))

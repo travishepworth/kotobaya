@@ -57,7 +57,7 @@ internal class DeckMaterializer(private val cards: CardGenerator = DefaultCardGe
                     emptySet()
                 } else {
                     tx.dsl.fetch(
-                        "select kanji_literal from app.note where kanji_literal = any(?) and deleted_at is null",
+                        "select kanji_literal from app.note where kanji_literal = any(?::text[]) and deleted_at is null",
                         literals.toTypedArray(),
                     ).map { it.get(0, String::class.java) }.toSet()
                 }
