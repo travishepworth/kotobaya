@@ -7,17 +7,21 @@ inputs leaves identical rows. Callers run them in one transaction after T101's r
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 
+from ...logs import job_summary
 from .freq import FreqRow
+from .freqmatch import map_freq_rows
 from .index import EntryIndex
 from .kanjium import PitchRow
 from .tatoeba import LinkIndex, Pair, link_sentence
 
+log = logging.getLogger(__name__)
 _LOCK_KEY = 0x4B4F5402  # distinct from T101's lock; serialises extra loads
 
 
@@ -30,10 +34,14 @@ class PitchResult:
 
 @dataclass(frozen=True)
 class FreqResult:
+    """``rows == mapped + unmatched + deferred``; each mapped row has exactly one entry."""
+
     list_id: str
     rows: int
-    unmatched: int
-    loaded: int  # entry_freq rows written (one per entry)
+    unmatched: int  # no entry has the term (with the reading, if given)
+    loaded: int  # entry_freq rows written (one per entry; rows sharing an entry keep the best)
+    mapped: int = 0
+    deferred: int = 0  # kana rows whose only candidates are owned by kanji rows (freqmatch.py)
 
 
 @dataclass(frozen=True)
@@ -131,16 +139,8 @@ def load_freq_list(
     cfg: FreqListConfig,
     rows: Iterable[FreqRow],
 ) -> FreqResult:
-    best: dict[int, int] = {}
-    total = unmatched = 0
-    for r in rows:
-        total += 1
-        seqs = idx.match(r.term, r.reading)
-        if not seqs:
-            unmatched += 1
-        for seq in seqs:
-            if seq not in best or r.rank < best[seq]:
-                best[seq] = r.rank
+    m = map_freq_rows(idx, rows)
+    best = m.best
     with conn.cursor() as cur:
         cur.execute("DELETE FROM ref.entry_freq WHERE list_id = %s", (cfg.id,))
         cur.execute(
@@ -159,7 +159,16 @@ def load_freq_list(
             ((s, cfg.id, r) for s, r in sorted(best.items())),
         )
         cur.execute("UPDATE ref.freq_list SET entry_count = %s WHERE id = %s", (loaded, cfg.id))
-    return FreqResult(cfg.id, total, unmatched, loaded)
+    res = FreqResult(cfg.id, m.rows, m.unmatched, loaded, m.mapped, m.deferred)
+    job_summary(
+        log,
+        f"freq-list {cfg.id}",
+        inputs={"rows": res.rows},
+        outputs={"mapped": res.mapped, "entries": res.loaded},
+        dropped={"unmatched": res.unmatched, "deferred": res.deferred},
+        warn_as_info=True,  # every list has rows JMdict lacks; the counts are the record
+    )
+    return res
 
 
 def recompute_freq_rank(conn: psycopg.Connection[Any]) -> int:

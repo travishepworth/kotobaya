@@ -1,0 +1,117 @@
+"""Recompute ``ref.entry_freq`` / ``dict_entry.freq_rank`` for the current release, then rebuild
+the list decks. No JMdict reload, no new release.
+
+For a change in how frequency rows map to entries (WRK-FREQ-MATCH). Sources come from
+``DICT_SOURCES_JSON`` like ``dict-refresh``: a cached file matching its pinned sha256 is
+reused, otherwise it is downloaded again and checked against the pin. Every list is reloaded
+in one transaction (all or nothing). Afterwards one ``deck-build`` is queued per live list
+deck; a build whose items changed publishes a new ``content_version`` (devices get
+``deck.content_published``), an unchanged deck ends ``changed: false``.
+
+``app.word_status`` is keyed by ``entry_seq``, not by deck item: entries leaving a deck lose
+no learning data.
+
+Device dictionary packages of the current release are not rebuilt (their ``entry_freq`` and
+top-60k scope follow at the next release); the server's ``ref.*`` is updated at once.
+
+Run inside the worker pod::
+
+    python -m kotobaya_worker.jobs.freq_rebuild [--lists jpdb,cejc] [--no-decks]
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import sys
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+import psycopg
+
+from kotobaya_worker import logs
+from kotobaya_worker.decks.enqueue import enqueue_list_deck_builds
+from kotobaya_worker.dict.dburl import to_conninfo
+from kotobaya_worker.dict.extra.freq import parse_freq_zip
+from kotobaya_worker.dict.extra.index import load_index
+from kotobaya_worker.dict.extra.load import FreqResult, begin, load_freq_list, recompute_freq_rank
+from kotobaya_worker.dict.fetch import DEFAULT_CACHE_DIR, Fetcher, fetch_source, urllib_fetcher
+from kotobaya_worker.jobs.dict_refresh import DictSources
+
+log = logging.getLogger("kotobaya.worker.freq_rebuild")
+
+
+@dataclass(frozen=True)
+class FreqRebuildResult:
+    release_id: int
+    lists: tuple[FreqResult, ...]
+    freq_rank_changed: int  # dict_entry rows whose freq_rank changed
+    deck_builds_queued: int
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "release_id": self.release_id,
+            "lists": [asdict(r) for r in self.lists],
+            "freq_rank_changed": self.freq_rank_changed,
+            "deck_builds_queued": self.deck_builds_queued,
+        }
+
+
+def rebuild_freq(
+    database_url: str,
+    sources: DictSources,
+    slugs: Sequence[str] | None = None,
+    *,
+    requeue_decks: bool = True,
+    cache_dir: Path = DEFAULT_CACHE_DIR,
+    fetch: Fetcher = urllib_fetcher,
+    enqueue: Callable[[str], int] = enqueue_list_deck_builds,
+) -> FreqRebuildResult:
+    """Reload the frequency lists ``slugs`` (default: every configured list) for the current
+    release. Fetches (and verifies) before touching the database."""
+    wanted = list(sources.freq) if slugs is None else list(slugs)
+    unknown = [s for s in wanted if s not in sources.freq]
+    if unknown:
+        raise ValueError(f"frequency lists not configured: {unknown}")
+    if not wanted:
+        raise ValueError("no frequency lists configured in DICT_SOURCES_JSON")
+    fetched = [
+        (sources.freq[s], fetch_source(sources.freq[s].source, cache_dir, fetch)) for s in wanted
+    ]
+
+    results: list[FreqResult] = []
+    with psycopg.connect(to_conninfo(database_url)) as conn, conn.transaction():
+        row = conn.execute("SELECT id FROM ref.dict_release WHERE is_current").fetchone()
+        if row is None:
+            raise ValueError("no current dictionary release; run dict-refresh first")
+        release_id = int(row[0])
+        begin(conn, release_id)
+        idx = load_index(conn)
+        for src, got in fetched:
+            results.append(load_freq_list(conn, idx, src.config, parse_freq_zip(got.path)))
+        changed = recompute_freq_rank(conn)
+    queued = enqueue(database_url) if requeue_decks else 0
+    log.info("freq rebuild: release %d, %d freq_rank change(s), %d deck build(s) queued",
+             release_id, changed, queued)  # fmt: skip
+    return FreqRebuildResult(release_id, tuple(results), changed, queued)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m kotobaya_worker.jobs.freq_rebuild")
+    parser.add_argument("--lists", help="comma-separated list slugs (default: all configured)")
+    parser.add_argument("--no-decks", action="store_true", help="do not queue deck-build jobs")
+    args = parser.parse_args(argv)
+    logs.configure()
+    slugs = [s.strip() for s in args.lists.split(",") if s.strip()] if args.lists else None
+    result = rebuild_freq(
+        os.environ["DATABASE_URL"], DictSources.from_env(), slugs, requeue_decks=not args.no_decks
+    )
+    print(json.dumps(result.to_json(), indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
