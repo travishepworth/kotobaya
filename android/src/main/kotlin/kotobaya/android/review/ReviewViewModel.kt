@@ -71,6 +71,9 @@ interface ReviewIntents {
     fun syncNow() {}
     fun playAudio(sha256: String) {}
     fun openActions(cardId: String) {}
+
+    /** AND-REVIEW-INFO: the back side's "Open in dictionary"; the session is kept so back returns to this revealed card. */
+    fun openInDictionary(extras: BackExtras) {}
     fun perform(cardId: String, action: ReviewAction) {}
     fun flag(cardId: String, colour: Int) {}
     fun undoAction(cardId: String) {}
@@ -104,6 +107,11 @@ internal class AudioPlayer(private val blobs: BlobResolver) {
     }
 }
 
+private fun openInDictionaryTab(t: kotobaya.android.nav.DictTarget) = when (t) {
+    is kotobaya.android.nav.DictTarget.Word -> kotobaya.android.nav.DictJump.openWord(t.seq)
+    is kotobaya.android.nav.DictTarget.Kanji -> kotobaya.android.nav.DictJump.openKanji(t.literal)
+}
+
 private fun <L : LearningTables> ReviewBackend<L>.actionsOf(): ReviewActions<L> = newActions()
 
 /**
@@ -117,6 +125,8 @@ class ReviewViewModel(
     private val deckId: String? = null,
     private val onSessionEnd: () -> Unit = {},
     io: CoroutineDispatcher = Dispatchers.IO,
+    /** Where "Open in dictionary" goes (the app-wide [kotobaya.android.nav.DictJump]); injectable for tests. */
+    private val jump: (kotobaya.android.nav.DictTarget) -> Unit = ::openInDictionaryTab,
 ) : StateViewModel<ReviewUiState>(ReviewUiState(available = backend != null, canSync = backend?.syncNow != null), io), ReviewIntents {
     private val audio = backend?.let { AudioPlayer(it.blobs) }
     private val actions: ReviewActions<*>? = backend?.actionsOf()
@@ -140,12 +150,13 @@ class ReviewViewModel(
 
     /** 'Retry' after [ReviewState.Failed]: starts a fresh session. */
     override fun retry() {
-        leave()
+        leaveNow()
         enter()
     }
 
     /** The screen is shown: starts a session unless one is running. */
     fun enter() {
+        keepOnLeave = false
         val b = backend ?: return
         if (sessionJob != null) return
         update { it.copy(review = ReviewState.Loading) }
@@ -228,8 +239,24 @@ class ReviewViewModel(
         }
     }
 
-    /** The screen went away: ends the session (a later [enter] starts a new one). */
+    /**
+     * AND-REVIEW-INFO: set when the screen is covered by the dictionary (a page pushed over it): the next [leave] only
+     * silences audio, so the session (same card, same side, no answer lost) is still there when [enter] runs again.
+     */
+    @Volatile
+    private var keepOnLeave = false
+
+    /** The screen went away: ends the session (a later [enter] starts a new one), unless it only went under the dictionary. */
     fun leave() {
+        if (keepOnLeave && session != null) {
+            audio?.release()
+            return
+        }
+        leaveNow()
+    }
+
+    private fun leaveNow() {
+        keepOnLeave = false
         val s = session
         sessionJob?.cancel()
         sessionJob = null
@@ -241,7 +268,7 @@ class ReviewViewModel(
     }
 
     override fun onCleared() {
-        leave()
+        leaveNow()
     }
 
     private fun withSession(block: (ReviewSession<*>) -> Unit) {
@@ -291,6 +318,15 @@ class ReviewViewModel(
         launchIo {
             val played = runCatching { a.play(sha256) }.getOrDefault(false)
             update { it.copy(audioMissing = !played) }
+        }
+    }
+
+    override fun openInDictionary(extras: BackExtras) {
+        val seq = extras.entrySeq
+        val literal = extras.kanjiLiteral
+        when {
+            seq != null -> { keepOnLeave = true; jump(kotobaya.android.nav.DictTarget.Word(seq)) }
+            literal != null -> { keepOnLeave = true; jump(kotobaya.android.nav.DictTarget.Kanji(literal)) }
         }
     }
 

@@ -95,6 +95,8 @@ data class ShownCard(
     val noExamplePattern: String? = null,
     /** The card's note (sibling burying between queue builds). */
     val noteId: String = "",
+    /** C-25: the back side's example words, deck chips and "Open in dictionary" target (computed with the card). */
+    val extras: BackExtras = BackExtras(),
 )
 
 /** What the screen shows. */
@@ -168,6 +170,7 @@ class ReviewSession<L : LearningTables>(
     private val scheduler: Scheduler = FsrsScheduler,
     private val dictionary: DictionaryLookup = DictionaryLookup { null },
     private val kanji: KanjiLookup = KanjiLookup { null },
+    private val kanjiWords: KanjiWordSource = KanjiWordSource { emptyList() },
     private val mediaUrlTemplate: String = CardPage.MEDIA_URL_TEMPLATE,
     private val timings: (ReviewTiming) -> Unit = ReviewTiming.LOG,
     /** A full queue build runs after an answer once the last one is this old (cards that became due meanwhile, sync). */
@@ -840,6 +843,9 @@ class ReviewSession<L : LearningTables>(
         ShownCard(
             token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews,
             cloze?.sentenceId, pattern, noteId,
+            // C-25: a failure here costs the extras, never the card
+            runCatching { BackExtrasBuilder.build(t, note, kanjiData, kanjiWords, dictionary) }
+                .getOrElse { BackExtras(entrySeq = entry, kanjiLiteral = CardRows.str(note["kanji_literal"])) },
         )
     }
 

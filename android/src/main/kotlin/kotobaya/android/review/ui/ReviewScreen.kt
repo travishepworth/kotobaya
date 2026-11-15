@@ -60,7 +60,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotobaya.android.R
-import kotobaya.android.nav.DictJump
 import kotobaya.android.i18n.T
 import kotobaya.android.review.ReviewAction
 import kotobaya.android.review.ReviewActionsUiState
@@ -267,11 +266,6 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
                     add(KbMenuItem(T(R.string.review_action_flag), KbIcons.Flag) { flags = true })
                     add(KbMenuItem(T(if (state.actions.buried) R.string.review_action_unbury else R.string.review_action_bury)) { intents.perform(card.cardId, ReviewAction.BURY) })
                     add(KbMenuItem(T(if (s?.suspended == true) R.string.review_action_unsuspend else R.string.review_action_suspend)) { intents.perform(card.cardId, ReviewAction.SUSPEND) })
-                    // After the reveal only, and inside the overflow menu: no tap target on the card or grade bar.
-                    val seq = s?.entrySeq
-                    if (seq != null && (state.review as? ReviewState.Showing)?.side == CardSide.BACK) {
-                        add(KbMenuItem(T(R.string.review_action_dictionary), KbIcons.Book) { DictJump.openWord(seq) })
-                    }
                     if (s?.entrySeq != null) {
                         add(
                             KbMenuItem(T(if (s.wordOverride == "never_forget") R.string.review_action_clear_never_forget else R.string.review_action_never_forget)) {
@@ -351,7 +345,11 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
                 )
             },
     ) {
-        CardContent(rendered, intents::mediaFile, Modifier.fillMaxSize().graphicsLayer { alpha = reveal.value })
+        Column(Modifier.fillMaxSize()) {
+            CardContent(rendered, intents::mediaFile, Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = reveal.value })
+            // AND-REVIEW-INFO: example words, deck chips and the dictionary button, from the prefetched card
+            if (side == CardSide.BACK) BackPanel(card.extras, intents, Modifier.graphicsLayer { alpha = reveal.value })
+        }
         if (rendered.audio.isNotEmpty()) {
             Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End) {
                 KbIconButton(KbIcons.Audio, T(R.string.review_play_audio), { intents.playAudio(rendered.audio.first()) }, variant = KbIconVariant.Tonal)

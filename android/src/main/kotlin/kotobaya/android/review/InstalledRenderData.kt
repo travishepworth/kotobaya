@@ -39,3 +39,26 @@ class InstalledRenderData(private val dict: InstalledDictionary) : DictionaryLoo
         fun kanjiData(k: KanjiDetail): KanjiData = KanjiData(k.literal, k.meanings, k.onReadings, k.kunReadings, k.strokeCount)
     }
 }
+
+/**
+ * The example-word candidates of a kanji from the installed dictionary (C-25): every entry with an `entry_kanji` row for
+ * the literal that is not retired. Runs through [InstalledDictionary.formRows]'s statement runner: column 1 carries the
+ * headword, column 2 `reading|freq_rank` (empty rank = unranked). No dictionary installed: no words.
+ */
+class InstalledKanjiWords(private val dict: InstalledDictionary) : KanjiWordSource {
+    override fun words(literal: String): List<DictWord> = try {
+        dict.formRows(SQL, listOf(literal)) { true }.orEmpty().mapNotNull { r ->
+            val reading = r.norm.substringBefore('|')
+            val rank = r.norm.substringAfter('|', "").toIntOrNull()
+            DictWord(r.seq, r.form, reading, rank)
+        }
+    } catch (e: RuntimeException) {
+        runCatching { Log.w(ScreenLog.TAG, "review kanji words: lookup failed: ${e.javaClass.simpleName}") }
+        emptyList()
+    }
+
+    private companion object {
+        const val SQL = "SELECT e.seq, e.headword, e.headword_reading || '|' || coalesce(e.freq_rank, '') FROM entry_kanji k " +
+            "JOIN dict_entry e ON e.seq = k.seq WHERE k.literal = ? AND e.retired = 0"
+    }
+}

@@ -46,4 +46,10 @@
     <string name="review_deck_done_next">Next learning card in this deck is due at %1$s.</string>
     <string name="review_deck_done_continue">Continue with all due cards</string>
     <string name="review_deck_done_back">Back to decks</string>
+    <string name="review_open_dictionary">Open in dictionary</string>
+    <string name="review_examples_title">Example words</string>
+    <string name="review_example_on">on</string>
+    <string name="review_example_kun">kun</string>
+    <string name="review_decks_title">In decks</string>
+    <string name="review_decks_more">+%1$d more</string>
 </resources>

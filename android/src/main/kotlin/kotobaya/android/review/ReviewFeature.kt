@@ -67,6 +67,7 @@ val reviewFeature = FeatureEntry(
                 },
                 dictionary = renderData,
                 kanji = renderData,
+                kanjiWords = InstalledKanjiWords(get<kotobaya.android.dict.InstalledDictionary>()),
                 store = client.store,
                 minter = client.minter,
                 queue = get<LocalQueueLoader>().asQueueSource(),
