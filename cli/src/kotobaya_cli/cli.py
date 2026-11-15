@@ -33,6 +33,16 @@ def _ranged(low: int, high: int, what: str) -> Callable[[str], int]:
     return parse
 
 
+def _watch_format(text: str) -> str:
+    # Imported here so one-shot commands never pay for the watch module.
+    from kotobaya_cli.watch import validate_format
+
+    try:
+        return validate_format(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def _positive_float(text: str) -> float:
     try:
         value = float(text)
@@ -65,6 +75,26 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     daemon.add_argument("--config", type=Path, metavar="PATH", help="config.toml location")
+
+    watch_cmd = commands_sub.add_parser(
+        "watch",
+        help="stream review state for widgets (reconnects while the daemon is down)",
+        description=(
+            "Relays the review daemon's state to stdout, one line per state. Needs the daemon "
+            "running; while it is down, prints conn offline and retries. No token or server "
+            "needed."
+        ),
+    )
+    watch_cmd.add_argument(
+        "--format",
+        type=_watch_format,
+        default="json",
+        metavar="FORMAT",
+        help=(
+            "json (default, the daemon's state line), waybar (waybar custom module JSON), or a "
+            "template such as '{conn} {new} {learning} {review}'"
+        ),
+    )
 
     cards = commands_sub.add_parser("cards", help="work with cards")
     cards_sub = cards.add_subparsers(dest="cards_command", required=True, metavar="ACTION")
@@ -125,6 +155,18 @@ def dispatch(
     raise CliError(f"unknown command {args.command!r}")
 
 
+def _run_watch(
+    args: argparse.Namespace,
+    environ: Mapping[str, str],
+    out: TextIO,
+    sleep: Callable[[float], None],
+) -> int:
+    from kotobaya_cli.daemon.server import Paths
+    from kotobaya_cli.watch import run_watch
+
+    return run_watch(Paths.from_env(environ).sock, args.format, out, sleep)
+
+
 def _api_error_text(exc: ApiException) -> str:
     if exc.status == 401:
         return TOKEN_REJECTED
@@ -168,6 +210,8 @@ def main(
     try:
         if args.command == "daemon":
             return _run_daemon(args, environ)
+        if args.command == "watch":
+            return _run_watch(args, environ, out, sleep)
         settings = load_settings(args.server, environ)
         api = make_api(settings)
         return dispatch(args, api, out, err, sleep)
