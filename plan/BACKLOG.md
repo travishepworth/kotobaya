@@ -806,6 +806,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-KANJI-DECKS — android kanji "Appears in decks" (review back + kanji detail) above example words · model: sonnet · risk: med · deps: AND-REVIEW-INFO · status: MERGED (ticket: plan/tickets/AND-KANJI-DECKS.md)
 
 ### Keep going + New badge (2026-11-15, user request)
-- C-26 — core QueueLimits.keepGoing + GET /review/queue keep_going + more-available signal + QueueItem.is_new · model: opus (architect) · risk: high · deps: — · status: RUNNING (ticket: plan/tickets/C-26.md)
-- WEB-KEEPGOING — web keep going (done screen + Today) + New badge · model: sonnet · risk: low · deps: C-26 · status: TODO (ticket: plan/tickets/WEB-KEEPGOING.md)
-- AND-KEEPGOING — android keep going (Empty + Today button) + New badge, offline · model: sonnet · risk: med · deps: C-26 · status: TODO (ticket: plan/tickets/AND-KEEPGOING.md)
+- C-26 — core QueueLimits.keepGoing + GET /review/queue keep_going + more-available signal + QueueItem.is_new · model: opus (architect) · risk: high · deps: — · status: MERGED (ticket: plan/tickets/C-26.md)
+- WEB-KEEPGOING — web keep going (done screen + Today) + New badge · model: sonnet · risk: low · deps: C-26 · status: RUNNING (ticket: plan/tickets/WEB-KEEPGOING.md)
+- AND-KEEPGOING — android keep going (Empty + Today button) + New badge, offline · model: sonnet · risk: med · deps: C-26 · status: RUNNING (ticket: plan/tickets/AND-KEEPGOING.md)

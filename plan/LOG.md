@@ -1143,3 +1143,6 @@
 2026-11-15T05:48:35Z C-26 DISPATCH architect(opus) (keep going queue override + is_new; WEB/AND-KEEPGOING follow)
 2026-11-15T06:02:25Z C-26 HANDOFF + CHECK_GREEN (contracts/core/server); reviewer + architect pass dispatched
 2026-11-15T06:04:29Z C-26 REVIEW_APPROVE (5 minors) + ARCHITECT CHANGES 1 major (keep-going session end undefined) -> attempt 2 (incl. summary more_available)
+2026-11-15T06:22:07Z C-26 ARCHITECT_PASS APPROVE r2 + CHECK_GREEN + MERGE ac6c1879 (2 attempts)
+2026-11-15T06:22:07Z WEB-KEEPGOING DISPATCH writer; AND-KEEPGOING DISPATCH writer
+2026-11-15T06:22:07Z RELEASE worker 0.1.18 pushed; helm upgrade BLOCKED: kube OIDC login expired (browser auth) — waiting on user
