@@ -6,26 +6,29 @@
 	import Select from '../../lib/ui/Select.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
 	import { tc, type CardsMessageKey } from '../../lib/cards/messages';
-	import { BULK_KINDS, BulkBarState, type Deck, type Selector } from '../../lib/state/cards.svelte';
+	import { BULK_KINDS, BulkBarState, WORD_BULK_KINDS, type Card, type Deck, type Selector } from '../../lib/state/cards.svelte';
 	import { tb } from './messages';
 
 	interface Props {
 		selector: Selector;
 		scopeText: string;
 		decks: Deck[];
+		/** Loaded cards, to resolve the dictionary entries of an id selection. */
+		cards: Card[];
 		canSelectMatching: boolean;
 		onselectmatching: () => void;
 		onclear: () => void;
 		onapplied: () => void;
 	}
-	let { selector, scopeText, decks, canSelectMatching, onselectmatching, onclear, onapplied }: Props = $props();
+	let { selector, scopeText, decks, cards, canSelectMatching, onselectmatching, onclear, onapplied }: Props = $props();
 
 	const s = new BulkBarState(
 		() => selector,
-		() => onapplied()
+		() => onapplied(),
+		() => cards
 	);
 	const busy = $derived(s.phase === 'checking' || s.phase === 'applying');
-	const kinds = BULK_KINDS.map((k) => ({ value: k, label: tc(`bulk.action.${k}` as CardsMessageKey) }));
+	const kinds = [...BULK_KINDS, ...WORD_BULK_KINDS].map((k) => ({ value: k, label: tc(`bulk.action.${k}` as CardsMessageKey) }));
 	const deckOptions = $derived([{ value: '', label: tc('bulk.deckPick') }, ...decks.map((d) => ({ value: d.id, label: d.name }))]);
 	let flagText = $state('0');
 	$effect(() => {
@@ -63,6 +66,14 @@
 		{/if}
 	</div>
 	<div aria-live="polite">
+		{#if (s.phase === 'confirm' || s.phase === 'applying') && s.words}
+			<Banner tone="info">{tc('bulk.wordsDry', { cards: s.words.cards, words: s.words.seqs.length, skipped: s.words.skipped })}</Banner>
+		{/if}
+		{#if s.phase === 'done' && s.words && s.wordsDone}
+			<Banner tone={s.wordsDone.failed > 0 ? 'warning' : 'success'}>
+				{tc('bulk.wordsDone', { words: s.wordsDone.updated, skipped: s.words.skipped, failed: s.wordsDone.failed })}
+			</Banner>
+		{/if}
 		{#if (s.phase === 'confirm' || s.phase === 'applying') && s.dry}
 			<Banner tone={s.kind === 'delete' ? 'warning' : 'info'}>
 				{tc('bulk.dryRun', { matched: s.dry.matched, changed: s.dry.changed, skipped: s.dry.skipped })}

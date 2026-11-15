@@ -51,6 +51,8 @@ const en = {
 	'bulk.action.reschedule': 'Set due date',
 	'bulk.action.reset': 'Reset to new',
 	'bulk.action.delete': 'Delete',
+	'bulk.action.never_forget': 'Never forget (words)',
+	'bulk.action.clear_never_forget': 'Clear never forget (words)',
 	'bulk.tags': 'Tags (space separated)',
 	'bulk.deck': 'Target deck',
 	'bulk.deckPick': 'Choose a deck…',
@@ -66,6 +68,8 @@ const en = {
 	'bulk.cancel': 'Cancel',
 	'bulk.deleteWarn': 'Deleting cards cannot be undone from here.',
 	'bulk.result': 'Done: {matched} cards matched, {changed} changed, {skipped} skipped.',
+	'bulk.wordsDry': 'Dry run: {cards} cards matched, {words} words would change, {skipped} cards have no dictionary entry and would be skipped.',
+	'bulk.wordsDone': 'Done: {words} words updated, {skipped} cards skipped (no dictionary entry), {failed} failed.',
 	'bulk.invalidInput': 'Fill in the action parameters first.',
 	'bulk.failed': 'The bulk action failed: {detail}'
 } as const;

@@ -89,6 +89,7 @@
 				selector={s.selector}
 				scopeText={s.allMatching ? tb('br.selectedAll') : tb('br.selected', { n: s.selected.size })}
 				decks={s.userDecks}
+				cards={s.cards}
 				canSelectMatching={!s.allMatching && s.appliedQuery !== ''}
 				onselectmatching={() => s.selectAllMatching()}
 				onclear={() => s.clearSelection()}
