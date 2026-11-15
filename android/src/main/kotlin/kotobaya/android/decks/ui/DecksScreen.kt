@@ -228,7 +228,7 @@ private fun DeckDetail(state: DecksUiState, intents: DecksIntents, showBack: Boo
     val deck = state.deck
     val words = state.words
     val limit = state.limit
-    state.actionWord?.let { DeckWordSheet(it, deck?.type == "user", intents) }
+    state.actionWord?.let { DeckWordSheet(it, deck?.type == "user", intents, state.actionCards) }
     if (state.selecting) BackHandler(onBack = intents::endSelecting)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {

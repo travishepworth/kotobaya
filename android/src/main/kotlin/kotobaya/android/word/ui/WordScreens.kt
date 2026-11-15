@@ -38,6 +38,8 @@ import kotobaya.android.i18n.T
 import kotobaya.android.search.ui.cardStateRes
 import kotobaya.android.search.ui.statusRes
 import kotobaya.android.ui.components.KbBanner
+import kotobaya.android.ui.components.KbButton
+import kotobaya.android.ui.components.KbButtonVariant
 import kotobaya.android.ui.components.KbDivider
 import kotobaya.android.ui.components.KbEmptyState
 import kotobaya.android.ui.components.KbEmptyTone
@@ -76,7 +78,13 @@ private val MEASURE = 680.dp
  * ([onKanji]). [onBack] null hides the back button (list–detail).
  */
 @Composable
-fun WordDetailScreen(load: WordLoad?, onBack: (() -> Unit)?, onKanji: (String) -> Unit = {}) {
+fun WordDetailScreen(
+    load: WordLoad?,
+    onBack: (() -> Unit)?,
+    onKanji: (String) -> Unit = {},
+    onNeverForget: (() -> Unit)? = null,
+    onSuspend: ((cardIds: List<String>, suspend: Boolean) -> Unit)? = null,
+) {
     Column(Modifier.fillMaxSize()) {
         if (onBack != null) KbTopBar("", onBack = onBack, backLabel = T(R.string.word_back))
         Column(
@@ -92,7 +100,7 @@ fun WordDetailScreen(load: WordLoad?, onBack: (() -> Unit)?, onKanji: (String) -
                         tone = KbEmptyTone.Error,
                         page = true,
                     )
-                    is WordLoad.Found -> WordBody(load.detail, onKanji)
+                    is WordLoad.Found -> WordBody(load.detail, onKanji, onNeverForget, onSuspend)
                 }
             }
         }
@@ -110,7 +118,12 @@ private fun WordSkeleton() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WordBody(d: WordDetail, onKanji: (String) -> Unit) {
+private fun WordBody(
+    d: WordDetail,
+    onKanji: (String) -> Unit,
+    onNeverForget: (() -> Unit)?,
+    onSuspend: ((List<String>, Boolean) -> Unit)?,
+) {
     val c = KbTheme.colors
     var tab by rememberSaveable(d.seq) { mutableStateOf(WordTab.SENSES) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -121,6 +134,13 @@ private fun WordBody(d: WordDetail, onKanji: (String) -> Unit) {
         FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             KbStateChip(wordStatusTone(d.status), T(statusRes(d.status)))
             if (d.notes.isNotEmpty()) KbTagChip(T(R.string.word_in_your_cards))
+        }
+        if (onNeverForget != null) {
+            val nf = d.status == "never_forget"
+            KbButton(
+                T(if (nf) R.string.review_action_clear_never_forget else R.string.review_action_never_forget), onNeverForget,
+                Modifier.padding(top = 4.dp), variant = if (nf) KbButtonVariant.Tonal else KbButtonVariant.Outline,
+            )
         }
         if (d.retired) KbBanner(T(R.string.word_retired), Modifier.padding(top = 8.dp), kind = KbFeedback.Warning)
         val others = (d.kanjiForms + d.readings).filter { it != d.headword && it != d.reading }.distinct()
@@ -148,7 +168,17 @@ private fun WordBody(d: WordDetail, onKanji: (String) -> Unit) {
             WordTab.CARDS -> if (d.notes.isEmpty()) {
                 KbEmptyState(T(R.string.word_no_notes), icon = KbIcons.Cards)
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { d.notes.forEach { NoteBlock(it) } }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val all = d.notes.flatMap { it.cards }
+                    if (onSuspend != null && all.isNotEmpty()) {
+                        val allSuspended = all.all { it.suspended }
+                        KbButton(
+                            T(if (allSuspended) R.string.word_unsuspend_all else R.string.word_suspend_all),
+                            { onSuspend(all.map { it.cardId }, !allSuspended) }, variant = KbButtonVariant.Outline,
+                        )
+                    }
+                    d.notes.forEach { NoteBlock(it, onSuspend) }
+                }
             }
         }
     }
@@ -191,7 +221,7 @@ private fun KanjiTile(literal: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NoteBlock(n: NoteView) {
+private fun NoteBlock(n: NoteView, onSuspend: ((List<String>, Boolean) -> Unit)? = null) {
     KbPanel(padding = PaddingValues(0.dp)) {
         if (n.title.isNotEmpty()) {
             Text(n.title, style = jaTitle(), color = KbTheme.colors.text, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
@@ -202,10 +232,18 @@ private fun NoteBlock(n: NoteView) {
                 title = card.kind.replaceFirstChar { it.uppercase() },
                 titleStyle = KbTheme.type.body,
                 trailing = {
-                    KbStateChip(
-                        cardStateOf(card.state, card.suspended),
-                        if (card.suspended) T(R.string.search_card_suspended) else T(cardStateRes(card.state)),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KbStateChip(
+                            cardStateOf(card.state, card.suspended),
+                            if (card.suspended) T(R.string.search_card_suspended) else T(cardStateRes(card.state)),
+                        )
+                        if (onSuspend != null) {
+                            KbButton(
+                                T(if (card.suspended) R.string.review_action_unsuspend else R.string.review_action_suspend),
+                                { onSuspend(listOf(card.cardId), !card.suspended) }, variant = KbButtonVariant.Quiet,
+                            )
+                        }
+                    }
                 },
             )
         }
@@ -215,7 +253,7 @@ private fun NoteBlock(n: NoteView) {
 /** A note without a dictionary entry (reached from a card result). [load] null while loading. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NoteDetailScreen(load: NoteLoad?, onBack: (() -> Unit)?) {
+fun NoteDetailScreen(load: NoteLoad?, onBack: (() -> Unit)?, onSuspend: ((List<String>, Boolean) -> Unit)? = null) {
     val c = KbTheme.colors
     Column(Modifier.fillMaxSize()) {
         if (onBack != null) KbTopBar(T(R.string.note_title), onBack = onBack, backLabel = T(R.string.word_back))
@@ -240,7 +278,7 @@ fun NoteDetailScreen(load: NoteLoad?, onBack: (() -> Unit)?) {
                                 Text(load.mnemonic, style = KbTheme.type.body.ja(), color = c.text, modifier = Modifier.padding(top = 6.dp))
                             }
                         }
-                        NoteBlock(load.note.copy(title = ""))
+                        NoteBlock(load.note.copy(title = ""), onSuspend)
                     }
                 }
             }
