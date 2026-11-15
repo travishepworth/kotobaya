@@ -17,6 +17,7 @@ import pytest
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 
 from kotobaya_cli.daemon.backend import BackendError, EventStream, iter_sse_events
+from kotobaya_cli.daemon.journal import AnswerEntry
 from kotobaya_cli.daemon.protocol import (
     Action,
     AnswerCmd,
@@ -77,6 +78,12 @@ class FakeBackend:
         if self.error:
             raise self.error
         return _Stream()
+
+    def post_answer(self, entry: AnswerEntry) -> None:
+        raise BackendError("offline")
+
+    def post_undo(self, review_id: str) -> None:
+        raise BackendError("offline")
 
 
 @pytest.fixture

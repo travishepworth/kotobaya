@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -91,22 +91,38 @@ class Session:
     def set_notice(self, text: str) -> None:
         self.notice = text
 
-    def apply_queue(self, snapshot: QueueSnapshot, *, check_current: bool) -> None:
+    def apply_queue(
+        self,
+        snapshot: QueueSnapshot,
+        *,
+        check_current: bool,
+        pending: Mapping[str, str] | None = None,
+    ) -> None:
         """Take a refetched queue. The card on screen is replaced only when `check_current` is set
-        and the server no longer has it (reviewed elsewhere, suspended, deleted)."""
+        and the server no longer has it (reviewed elsewhere, suspended, deleted).
+
+        `pending` maps card ids with unsent journal entries to the latest one's op
+        ("answer" / "undo"): a card with an unsent answer is left out (the snapshot may predate
+        the POST), and a card with any unsent entry is never replaced as "gone"."""
+        pending = pending or {}
+        items = [i for i in snapshot.items if pending.get(i.card_id) != "answer"]
         self.counts = snapshot.counts
         self.day_ends_at = snapshot.day_ends_at
         current = self.current
         if current is None:
-            self.queue = list(snapshot.items)
+            self.queue = items
             if self.queue:
                 self._new_card_shown()
-        elif check_current and all(i.card_id != current.card_id for i in snapshot.items):
-            self.queue = list(snapshot.items)
+        elif (
+            check_current
+            and current.card_id not in pending
+            and all(i.card_id != current.card_id for i in items)
+        ):
+            self.queue = items
             self.notice = "reviewed elsewhere"
             self._new_card_shown()
         else:
-            self.queue = [current] + [i for i in snapshot.items if i.card_id != current.card_id]
+            self.queue = [current] + [i for i in items if i.card_id != current.card_id]
 
     def reveal(self) -> None:
         if self.current is not None and not self.revealed:
@@ -133,6 +149,9 @@ class Session:
         """Seam for CLI-REVIEW undo: put a card back at the head, unrevealed."""
         self.queue = [entry] + [i for i in self.queue if i.card_id != entry.card_id]
         self._new_card_shown()
+
+    def now(self) -> datetime:
+        return self._clock()
 
     def duration_ms(self) -> int:
         """Answer time minus max(shown_at, last widget-visible action), capped at 60 s."""

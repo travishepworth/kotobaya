@@ -1,0 +1,525 @@
+"""CLI-REVIEW: journal-first answers and undo, retry/replay with the same id, terminal drops,
+reviewed-elsewhere replacement and five-button mapping."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import shutil
+import tempfile
+import threading
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from kotobaya_cli.daemon.backend import BackendError, EventStream
+from kotobaya_cli.daemon.journal import AnswerEntry, Journal, UndoEntry
+from kotobaya_cli.daemon.protocol import Action, AnswerCmd
+from kotobaya_cli.daemon.review import ReviewHandler
+from kotobaya_cli.daemon.server import Daemon, Paths
+from kotobaya_cli.daemon.session import CardEntry, Counts, QueueSnapshot
+
+DAY_END = "2026-11-15T19:00:00.000Z"
+T0 = datetime(2026, 11, 15, 9, 0, tzinfo=UTC)
+
+
+def snapshot(*ids: str) -> QueueSnapshot:
+    return QueueSnapshot([CardEntry(i, "recognition") for i in ids], Counts(1, 2, 3), DAY_END)
+
+
+class _Stream:
+    def __iter__(self) -> Iterator[str]:
+        return iter(())
+
+    def close(self) -> None:
+        return None
+
+
+class FakeServer:
+    """Fake backend that dedupes review ids like the server: one review.logged per id."""
+
+    def __init__(self, journal_path: Path | None = None) -> None:
+        self.snap = snapshot("a", "b", "c")
+        self.buttons = 4
+        self.journal_path = journal_path
+        self.events: list[str] = []
+        self.answers: list[AnswerEntry] = []
+        self.undos: list[str] = []
+        self.logged: dict[str, int] = {}
+        self.answer_errors: list[BackendError] = []  # raised (and consumed) before applying
+        self.lose_response = False  # apply, then fail as if the response was lost
+        self.undo_errors: list[BackendError] = []
+        self.on_disk_at_post: list[list[str]] = []
+        self.lock = threading.Lock()
+
+    def fetch_queue(self) -> QueueSnapshot:
+        return self.snap
+
+    def fetch_grading_buttons(self) -> int:
+        return self.buttons
+
+    def open_events(self) -> EventStream:
+        return _Stream()
+
+    def post_answer(self, entry: AnswerEntry) -> None:
+        with self.lock:
+            self.events.append(f"post:{entry.id}")
+            if self.journal_path is not None:
+                self.on_disk_at_post.append([e.id for e in Journal(self.journal_path).entries])
+            self.answers.append(entry)
+            if self.answer_errors:
+                raise self.answer_errors.pop(0)
+            if entry.id not in self.logged:
+                self.logged[entry.id] = 1  # a re-sent id returns 200 and emits nothing
+                self.snap = QueueSnapshot(
+                    [i for i in self.snap.items if i.card_id != entry.card_id],
+                    self.snap.counts,
+                    DAY_END,
+                )
+            if self.lose_response:
+                self.lose_response = False
+                raise BackendError("offline", "read timeout")
+
+    def post_undo(self, review_id: str) -> None:
+        with self.lock:
+            self.undos.append(review_id)
+            if self.undo_errors:
+                raise self.undo_errors.pop(0)
+
+
+@pytest.fixture
+def paths() -> Iterator[Paths]:
+    root = Path(tempfile.mkdtemp(prefix="kbr"))
+    yield Paths(root / "in", root / "sock", root / "state" / "journal")
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def make(server: FakeServer, paths: Paths, **kw: Any) -> tuple[Daemon, ReviewHandler]:
+    kw.setdefault("retry_base_s", 0.01)
+    handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: 540, **kw)
+    daemon = Daemon(server, paths, clock=lambda: T0, handler=handler, timer_seconds=3600)
+    return daemon, handler
+
+
+def st(state: dict[str, object]) -> dict[str, Any]:
+    return state
+
+
+def ids(daemon: Daemon) -> list[str]:
+    return [c.card_id for c in daemon.session.queue]
+
+
+# ---- journal ------------------------------------------------------------------
+
+
+def test_journal_roundtrip_and_atomic_rewrite(paths: Paths) -> None:
+    j = Journal(paths.journal)
+    assert j.entries == []
+    a = AnswerEntry("01", "a", 3, "good", "2026-11-15T09:00:00.000Z", 1200, 540)
+    u = UndoEntry("01", "a")
+    j.append(a)
+    j.append(u)
+    assert Journal(paths.journal).entries == [a, u]
+    j.remove(a)
+    assert Journal(paths.journal).entries == [u]
+    assert not paths.journal.with_name("journal.tmp").exists()
+
+
+def test_corrupt_journal_lines_are_preserved_not_silently_dropped(paths: Paths) -> None:
+    good = AnswerEntry("01", "a", 3, "good", "2026-11-15T09:00:00.000Z", 0, 0)
+    paths.journal.parent.mkdir(parents=True)
+    paths.journal.write_text(json.dumps(good.to_json()) + "\n{broken\n")
+    j = Journal(paths.journal)
+    assert j.entries == [good]
+    assert j.notice is not None and "corrupt" in j.notice
+    kept = list(paths.journal.parent.glob("journal.corrupt.*"))
+    assert len(kept) == 1 and "{broken" in kept[0].read_text()
+
+
+# ---- answer -------------------------------------------------------------------
+
+
+def test_journal_written_and_fsynced_before_post_answer(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    server = FakeServer(paths.journal)
+    real_fsync = os.fsync
+
+    def fsync(fd: int) -> None:
+        server.events.append("fsync")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        server.events.clear()
+        out = st(await daemon.handle(AnswerCmd("good")))
+        assert out["card"]["id"] == "b"  # advanced at once, before the POST
+        assert out["last"] == {"rating": "good", "undoable": True}
+        await handler.idle()
+        assert server.events.index("fsync") < server.events.index(f"post:{server.answers[0].id}")
+        assert server.on_disk_at_post == [[server.answers[0].id]]
+        sent = server.answers[0]
+        assert (sent.card_id, sent.rating, sent.button) == ("a", 3, "good")
+        assert sent.reviewed_at == "2026-11-15T09:00:00.000Z" and sent.utc_offset_min == 540
+        assert Journal(paths.journal).entries == []
+        assert handler.pending_count() == 0
+
+    asyncio.run(scenario())
+
+
+def test_retry_reuses_same_id_no_double_review_logged(paths: Paths) -> None:
+    server = FakeServer()
+    server.answer_errors = [BackendError("offline"), BackendError("offline", "HTTP 503")]
+    server.lose_response = True
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert len(server.answers) == 4  # two failures, one lost response, one success
+        assert len({a.id for a in server.answers}) == 1
+        assert len({a.reviewed_at for a in server.answers}) == 1
+        assert server.logged == {server.answers[0].id: 1}
+        assert handler.pending_count() == 0
+
+    asyncio.run(scenario())
+
+
+def test_daemon_crash_between_journal_and_post_replays_exactly_once(paths: Paths) -> None:
+    server = FakeServer()
+
+    async def first_life() -> str:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        server.answer_errors = [BackendError("offline")] * 1000  # the POST never lands
+        await daemon.handle(AnswerCmd("easy"))
+        await asyncio.sleep(0.05)
+        assert handler.pending_count() == 1
+        handler.close()  # the process dies here
+        return Journal(paths.journal).entries[0].id
+
+    review_id = asyncio.run(first_life())
+    assert server.logged == {}
+    server.answer_errors = []
+
+    async def second_life() -> None:
+        daemon, handler = make(server, paths)
+        assert handler.pending_count() == 1
+        await daemon.refetch()  # coming online replays the journal
+        await handler.idle()
+        assert handler.pending_count() == 0
+        assert ids(daemon) == ["b", "c"]
+
+    asyncio.run(second_life())
+    assert server.logged == {review_id: 1}
+    assert server.answers[-1].id == review_id
+
+
+def test_crash_after_post_before_journal_removal_replays_without_double_log(
+    paths: Paths,
+) -> None:
+    server = FakeServer()
+    server.lose_response = True
+
+    async def first_life() -> None:
+        daemon, handler = make(server, paths, retry_base_s=3600)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await asyncio.sleep(0.05)
+        handler.close()
+
+    asyncio.run(first_life())
+    assert len(Journal(paths.journal).entries) == 1
+
+    async def second_life() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await handler.idle()
+
+    asyncio.run(second_life())
+    assert list(server.logged.values()) == [1]
+    assert len({a.id for a in server.answers}) == 1 and len(server.answers) == 2
+    assert Journal(paths.journal).entries == []
+
+
+@pytest.mark.parametrize("status", [409, 410, 422])
+def test_terminal_4xx_drops_the_entry_with_a_notice(paths: Paths, status: int) -> None:
+    server = FakeServer()
+    server.answer_errors = [BackendError("terminal", f"HTTP {status}")]
+    notices: list[object] = []
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        original = daemon.emit
+
+        def spy() -> dict[str, object]:
+            state = original()
+            notices.append(state["notice"])
+            return state
+
+        daemon.emit = spy  # type: ignore[method-assign]
+        await handler.idle()
+        assert handler.pending_count() == 0
+        assert Journal(paths.journal).entries == []
+        assert len(server.answers) == 1  # not retried
+
+    asyncio.run(scenario())
+    assert any(isinstance(n, str) and str(status) in n for n in notices)
+
+
+def test_auth_failure_keeps_entry_and_sets_conn_auth(paths: Paths) -> None:
+    server = FakeServer()
+    server.answer_errors = [BackendError("auth", "HTTP 401")]
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert daemon.session.conn == "auth"
+        assert handler.pending_count() == 1
+        out = st(await daemon.handle(AnswerCmd("good")))  # no reviewing without a valid token
+        assert out["notice"] is not None and out["card"]["id"] == "b"
+        assert handler.pending_count() == 1
+        await daemon.refetch()  # token works again → replay
+        await handler.idle()
+        assert handler.pending_count() == 0 and len(server.logged) == 1
+
+    asyncio.run(scenario())
+
+
+def test_offline_answer_is_refused_and_nothing_journaled(paths: Paths) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        daemon.session.conn = "offline"
+        out = st(await daemon.handle(AnswerCmd("good")))
+        assert out["notice"] == "offline" and out["card"]["id"] == "a"
+        assert handler.pending_count() == 0 and not paths.journal.exists()
+
+    asyncio.run(scenario())
+
+
+def test_answer_with_no_card_is_a_notice(paths: Paths) -> None:
+    server = FakeServer()
+    server.snap = snapshot()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        out = st(await daemon.handle(AnswerCmd("good")))
+        assert out["notice"] == "nothing to review" and handler.pending_count() == 0
+
+    asyncio.run(scenario())
+
+
+def test_five_button_mode_always_sends_a_mode_button(paths: Paths) -> None:
+    server = FakeServer()
+    server.buttons = 5
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        out = st(await daemon.handle(AnswerCmd("something")))
+        await handler.idle()
+        assert [(a.rating, a.button) for a in server.answers] == [(3, "okay"), (1, "something")]
+        assert out["last"]["rating"] == "something"
+
+    asyncio.run(scenario())
+
+
+def test_duration_is_measured_from_shown_or_last_action(paths: Paths) -> None:
+    server = FakeServer()
+    now = [T0]
+    handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: -300)
+    daemon = Daemon(server, paths, clock=lambda: now[0], handler=handler, timer_seconds=3600)
+
+    async def scenario() -> None:
+        await daemon.refetch()
+        now[0] += timedelta(seconds=4)
+        await daemon.handle(Action("reveal"))
+        now[0] += timedelta(seconds=2)
+        await daemon.handle(AnswerCmd("hard"))
+        await handler.idle()
+        assert server.answers[0].duration_ms == 2000
+        assert server.answers[0].utc_offset_min == -300
+
+    asyncio.run(scenario())
+
+
+# ---- the card on screen -------------------------------------------------------
+
+
+def test_current_card_replaced_only_when_gone_from_the_queue(paths: Paths) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths, retry_base_s=3600)
+        await daemon.refetch()
+        server.answer_errors = [BackendError("offline")]
+        await daemon.handle(AnswerCmd("good"))  # a answered, POST pending
+        await asyncio.sleep(0.02)
+        assert handler.pending_count() == 1
+        # The server still lists a (POST not landed): it must not come back.
+        await daemon.refetch(check_current=True, emit=False)
+        assert ids(daemon) == ["b", "c"]
+        assert daemon.session.notice is None
+        # Timer refetch with a new order: the card on screen stays.
+        server.snap = snapshot("c", "b", "d")
+        await daemon.refetch(emit=False)
+        assert ids(daemon)[0] == "b" and daemon.session.notice is None
+        # sync.changed and b is still there: no swap.
+        await daemon.refetch(check_current=True, emit=False)
+        assert ids(daemon)[0] == "b" and daemon.session.notice is None
+        # sync.changed and b is gone (reviewed elsewhere): replaced with a notice.
+        server.snap = snapshot("c", "d")
+        await daemon.refetch(check_current=True, emit=False)
+        assert ids(daemon) == ["c", "d"]
+        assert daemon.session.notice == "reviewed elsewhere"
+        handler.close()
+
+    asyncio.run(scenario())
+
+
+def test_stale_snapshot_from_before_the_post_landed_does_not_resurrect_the_card(
+    paths: Paths,
+) -> None:
+    server = FakeServer()
+    handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: 0)
+    daemon = Daemon(server, paths, clock=lambda: T0, handler=handler, timer_seconds=3600)
+    stale = snapshot("a", "b", "c")
+
+    async def scenario() -> None:
+        await daemon.refetch()
+        gate = threading.Event()
+        original = server.post_answer
+
+        def slow_post(entry: AnswerEntry) -> None:
+            gate.wait(2)
+            original(entry)
+
+        server.post_answer = slow_post  # type: ignore[method-assign]
+        await daemon.handle(AnswerCmd("good"))
+        before = handler.pending_cards()
+        assert before == {"a": "answer"}
+        # A refetch that started while a was pending must keep filtering it even if the POST
+        # lands before the snapshot is applied.
+        daemon.session.apply_queue(stale, check_current=False, pending=before)
+        assert ids(daemon) == ["b", "c"]
+        gate.set()
+        await handler.idle()
+        assert ids(daemon) == ["b", "c"]
+
+    asyncio.run(scenario())
+
+
+# ---- undo ---------------------------------------------------------------------
+
+
+def test_undo_targets_the_last_answered_id(paths: Paths) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await daemon.handle(Action("reveal"))
+        await daemon.handle(AnswerCmd("again"))
+        await handler.idle()
+        last_id = server.answers[-1].id
+        assert server.answers[-1].card_id == "b"
+        out = st(await daemon.handle(Action("undo")))
+        assert out["card"]["id"] == "b" and out["card"]["revealed"] is False
+        assert out["last"] == {"rating": "again", "undoable": False}
+        await handler.idle()
+        assert server.undos == [last_id]
+        again = st(await daemon.handle(Action("undo")))
+        assert again["notice"] == "nothing to undo" and server.undos == [last_id]
+
+    asyncio.run(scenario())
+
+
+def test_undo_is_journaled_and_sent_after_its_pending_answer(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths, retry_base_s=3600)
+        await daemon.refetch()
+        server.answer_errors = [BackendError("offline")]
+        await daemon.handle(AnswerCmd("good"))
+        await asyncio.sleep(0.02)
+        out = st(await daemon.handle(Action("undo")))
+        assert out["card"]["id"] == "a"
+        kinds = [type(e).__name__ for e in Journal(paths.journal).entries]
+        assert kinds == ["AnswerEntry", "UndoEntry"]
+        assert out["pending"] == 2
+        # The undone card has an unsent undo: a sync.changed refetch must not replace it.
+        await daemon.refetch(check_current=True, emit=False)
+        assert ids(daemon)[0] == "a" and daemon.session.notice is None
+        handler.close()
+
+    asyncio.run(scenario())
+
+    async def replay() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await handler.idle()
+        assert handler.pending_count() == 0
+
+    asyncio.run(replay())
+    answer_id = server.answers[-1].id
+    assert server.undos == [answer_id]
+    assert list(server.logged) == [answer_id]
+
+
+def test_undo_of_a_review_the_server_never_saw_is_dropped_with_a_notice(paths: Paths) -> None:
+    server = FakeServer()
+    server.undo_errors = [BackendError("terminal", "HTTP 404")]
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        await daemon.handle(Action("undo"))
+        await handler.idle()
+        assert handler.pending_count() == 0 and len(server.undos) == 1
+
+    asyncio.run(scenario())
+
+
+def test_reviewed_at_is_utc_ms_and_offset_is_clamped(paths: Paths) -> None:
+    from datetime import timezone
+
+    from kotobaya_cli.daemon.review import iso_ms
+
+    jst = timezone(timedelta(hours=9))
+    assert iso_ms(datetime(2026, 11, 16, 3, 4, 5, 678900, tzinfo=jst)) == (
+        "2026-11-15T18:04:05.678Z"
+    )
+    server = FakeServer()
+
+    async def scenario() -> None:
+        handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: 5000)
+        daemon = Daemon(server, paths, clock=lambda: T0, handler=handler, timer_seconds=3600)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert server.answers[0].utc_offset_min == 1080
+
+    asyncio.run(scenario())

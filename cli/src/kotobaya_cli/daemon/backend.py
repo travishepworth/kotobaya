@@ -13,8 +13,12 @@ from kotobaya_client.api.settings_api import SettingsApi
 from kotobaya_client.api_client import ApiClient
 from kotobaya_client.configuration import Configuration
 from kotobaya_client.exceptions import ApiException, OpenApiException
+from kotobaya_client.models.review_answer_request import ReviewAnswerRequest
+from kotobaya_client.models.review_button import ReviewButton
+from kotobaya_client.models.review_undo_request import ReviewUndoRequest
 
 from kotobaya_cli.api import Settings
+from kotobaya_cli.daemon.journal import AnswerEntry
 from kotobaya_cli.daemon.session import CardEntry, Counts, QueueSnapshot, format_interval
 
 QUEUE_LIMIT = 20
@@ -57,6 +61,10 @@ class Backend(Protocol):
     def fetch_grading_buttons(self) -> int: ...
 
     def open_events(self) -> EventStream: ...
+
+    def post_answer(self, entry: AnswerEntry) -> None: ...
+
+    def post_undo(self, review_id: str) -> None: ...
 
 
 def iter_sse_events(chunks: Iterable[bytes]) -> Iterator[str]:
@@ -155,6 +163,36 @@ class HttpBackend:
             if setting.key == GRADING_KEY and setting.value == 5:
                 return 5
         return 4
+
+    def post_answer(self, entry: AnswerEntry) -> None:
+        """POST /review/answer with the journaled body, unchanged on every retry."""
+        try:
+            request = ReviewAnswerRequest(
+                id=entry.id,
+                card_id=entry.card_id,
+                rating=entry.rating,
+                button=ReviewButton(entry.button),
+                reviewed_at=datetime.fromisoformat(entry.reviewed_at),
+                duration_ms=entry.duration_ms,
+                utc_offset_min=entry.utc_offset_min,
+            )
+        except ValueError as exc:  # a journal entry the contract cannot carry: never retry
+            raise BackendError("terminal", "invalid entry") from exc
+        try:
+            self._review.answer_review(request, _request_timeout=HTTP_TIMEOUT)
+        except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
+            raise classify(exc) from exc
+
+    def post_undo(self, review_id: str) -> None:
+        """POST /review/undo; an already undone review is a 200, so retries are safe."""
+        try:
+            request = ReviewUndoRequest(review_id=review_id)
+        except ValueError as exc:
+            raise BackendError("terminal", "invalid entry") from exc
+        try:
+            self._review.undo_review(request, _request_timeout=HTTP_TIMEOUT)
+        except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
+            raise classify(exc) from exc
 
     def open_events(self) -> EventStream:
         pool = self._client.rest_client.pool_manager

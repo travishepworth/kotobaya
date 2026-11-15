@@ -17,6 +17,7 @@ from typing import Protocol
 
 from kotobaya_cli.api import CliError
 from kotobaya_cli.daemon.backend import Backend, BackendError, EventStream, classify
+from kotobaya_cli.daemon.journal import Journal
 from kotobaya_cli.daemon.protocol import (
     MAX_LINE_BYTES,
     Action,
@@ -28,6 +29,7 @@ from kotobaya_cli.daemon.protocol import (
     parse_fifo_line,
     parse_socket_request,
 )
+from kotobaya_cli.daemon.review import ReviewHandler
 from kotobaya_cli.daemon.session import Clock, Session, utc_now
 
 TIMER_SECONDS = 60.0
@@ -64,6 +66,14 @@ class AnswerHandler(Protocol):
 
     def pending_count(self) -> int: ...
 
+    def pending_cards(self) -> dict[str, str]:
+        """Card id -> op ("answer" / "undo") of its latest unsent journal entry."""
+        ...
+
+    def close(self) -> None:
+        """Cancel background sends; the journal keeps whatever is unsent."""
+        ...
+
 
 class NoAnswers:
     """Default until CLI-REVIEW: answering is not available, with a notice."""
@@ -79,6 +89,12 @@ class NoAnswers:
 
     def pending_count(self) -> int:
         return 0
+
+    def pending_cards(self) -> dict[str, str]:
+        return {}
+
+    def close(self) -> None:
+        return None
 
 
 def dumps(state: dict[str, object]) -> str:
@@ -206,6 +222,9 @@ class Daemon:
 
     async def _fetch_once(self, check_current: bool) -> None:
         was_ok = self.session.conn == "ok"
+        # A snapshot may predate a POST that lands while it is in flight: also filter what was
+        # pending when the fetch started.
+        pending = self.handler.pending_cards()
         try:
             if self._settings_stale:
                 self.session.grading_buttons = await asyncio.to_thread(
@@ -218,7 +237,8 @@ class Daemon:
             self.session.conn = "auth" if classify(exc).kind == "auth" else "offline"
             return
         self.session.conn = "ok"
-        self.session.apply_queue(snapshot, check_current=check_current)
+        pending.update(self.handler.pending_cards())
+        self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
         if not was_ok:
             await self.handler.on_online(self)
 
@@ -407,6 +427,7 @@ class Daemon:
             await self._stop.wait()
         finally:
             self._stop_thread.set()
+            self.handler.close()
             for task in (worker, timer, initial):
                 task.cancel()
             loop.remove_reader(fd)
@@ -422,7 +443,8 @@ class Daemon:
 def run_daemon(backend: Backend, paths: Paths) -> int:
     """Blocking entry point for `kotobaya daemon`."""
     try:
-        asyncio.run(Daemon(backend, paths).run())
+        handler = ReviewHandler(Journal(paths.journal))
+        asyncio.run(Daemon(backend, paths, handler=handler).run())
     except OSError as exc:
         raise CliError(f"daemon cannot start: {exc}") from exc
     except KeyboardInterrupt:
