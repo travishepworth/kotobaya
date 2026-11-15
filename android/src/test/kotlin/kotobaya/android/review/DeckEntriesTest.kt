@@ -52,6 +52,9 @@ class DeckEntriesTest {
             if (seq == UNKNOWN_SEQ || seq in UNKNOWN_RANGE) null
             else DictionaryData(expressions[seq] ?: "語$seq", "ご", emptyList(), listOf("word $seq"), emptyList())
         },
+        reader = object : kotobaya.android.notes.LearningReader {
+            override fun <R> read(block: (kotobaya.sync.client.apply.LearningTables) -> R): R = d.store.read { block(it.learning) }
+        },
     )
     private val expressions = HashMap<Long, String>()
 
@@ -273,6 +276,22 @@ class DeckEntriesTest {
         d.clock.now += 86_400_000
         loader.load()
         assertEquals(listOf(4500L, 4501L), deckNotes().map { it.first })
+    }
+
+    /** Planning reads only: a load that mints nothing takes no write transaction and fires no commit listener. */
+    @Test
+    fun aLoadThatMintsNothingCommitsNothing() {
+        setting("scheduler.new_per_day", "1")
+        listDeck((5300L until 5340L).toList())
+        loader.load() // draws and materializes one entry
+        var commits = 0
+        d.store.onCommit { commits++ }
+        repeat(3) { loader.load() } // plans the window again each time; the allowance is used up
+        loader.load(keepGoing = true).queue.toMaterialize.let { assertTrue(it.isEmpty()) }
+        assertEquals(1, commits, "only the keep-going load's materialization committed")
+        val before = commits
+        repeat(2) { loader.load() }
+        assertEquals(before, commits)
     }
 
     /** A refused mint (rebuild pending) creates nothing; the load still returns the queue. */

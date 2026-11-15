@@ -122,14 +122,21 @@ class NoteCreator<L : LearningTables>(
     private val dictionary: (Long) -> DictionaryData? = { null },
     /** Whether a dictionary is installed ([materialize] creates nothing without one). */
     private val dictionaryAvailable: () -> Boolean = { true },
+    /**
+     * Reads outside a write transaction (production: the store's reader connections). [plan] runs on every queue load
+     * and must not take the write lock nor fire commit listeners; null reads through [DeviceStore.transaction].
+     */
+    private val reader: LearningReader? = null,
 ) : kotobaya.android.queue.EntryMaterializer {
+    private fun <R> readTables(block: (LearningTables) -> R): R = reader?.read(block) ?: store.transaction { block(it.learning) }
+
     override fun ready(): Boolean = dictionaryAvailable()
 
     /** C-27: the plan of each entry ([DeckEntryPlan]); an entry left out is never passed to the builder. */
     override fun plan(entries: List<kotobaya.android.queue.EntryRef>, burySiblings: Boolean): Map<kotobaya.android.queue.EntryRef, kotobaya.android.queue.EntryPlan> {
         if (entries.isEmpty()) return emptyMap()
-        return store.transaction { tx ->
-            val plan = DeckEntryPlan(tx.learning, dictionary, kanjiData, generator)
+        return readTables { tables ->
+            val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
             entries.mapNotNull { ref ->
                 val dict = plan.dict(ref.entrySeq) ?: return@mapNotNull null
                 val deck = plan.deck(ref.deckId)
@@ -153,6 +160,15 @@ class NoteCreator<L : LearningTables>(
      */
     override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> {
         if (entries.isEmpty()) return emptySet()
+        // nothing to create (each entry has a live note by now, or no dictionary entry or kind): no write transaction
+        val anything = readTables { tables ->
+            val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
+            entries.any { e ->
+                plan.dict(e.entrySeq) != null && DuplicateCheck.byEntry(tables, e.entrySeq) == null &&
+                    plan.vocabKinds(e.entrySeq, plan.deck(e.deckId)).isNotEmpty()
+            }
+        }
+        if (!anything) return emptySet()
         val created = store.transaction { tx ->
             val tables = tx.learning
             val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)

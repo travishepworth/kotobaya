@@ -51,6 +51,11 @@ val notesModule = module {
             words = get(),
             dictionary = kotobaya.android.review.InstalledRenderData(dict).let { data -> { seq: Long -> data.lookup(seq) } },
             dictionaryAvailable = { dict.isAvailable() },
+            reader = get<SqlDelightDeviceStore>().let { s ->
+                object : LearningReader {
+                    override fun <R> read(block: (LearningTables) -> R): R = s.read { block(it.learning) }
+                }
+            },
         )
     }
     // AND-KEEPGOING-FIX: the queue loader materializes drawn deck entries through note creation
