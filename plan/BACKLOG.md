@@ -800,3 +800,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - WEB-DECK-INSPECT — web deck detail filters (new/learning/known/ignored), sort, per-word + bulk status actions · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/WEB-DECK-INSPECT.md)
 - AND-DECK-INSPECT — android deck detail filters, per-word + bulk status actions, offline via word.status_* ops · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/AND-DECK-INSPECT.md)
 - AND-DECK-LABELS — android: online /dict/headwords fill + local cache for deck words outside the top60k device dict · model: sonnet · risk: med · deps: AND-DECK-INSPECT · status: MERGED (ticket: plan/tickets/AND-DECK-LABELS.md)
+
+### Frequency-list deck homophone fan-out (2026-11-15, user report)
+- WRK-FREQ-MATCH — one entry per freq-source row (jpdb/bccwj/cejc), rebuild entry_freq + list decks · model: opus · risk: high · deps: — · status: RUNNING (ticket: plan/tickets/WRK-FREQ-MATCH.md)

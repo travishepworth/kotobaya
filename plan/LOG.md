@@ -1130,3 +1130,4 @@
 2026-11-15T04:46:50Z AND-DECK-LABELS CHECK_GREEN + MERGE 6575708f
 2026-11-15T04:46:50Z RELEASE APK 0.1.18 PIN 9a4fa136 release build started (AND-DECK-INSPECT + AND-DECK-LABELS)
 2026-11-15T04:48:23Z RELEASE APK 0.1.18 INSTALLED (pin 9a4fa136, code 118, cert ec6b7f45 ok)
+2026-11-15T04:57:35Z WRK-FREQ-MATCH DISPATCH writer-senior (freq-list decks fan kana term out to all homophones; jpdb/bccwj/cejc)
