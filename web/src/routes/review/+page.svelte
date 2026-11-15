@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Review: the product. A full-height card, the answer reveal, and the grade bar in the thumb zone.
 	// Keyboard-first on desktop (Space, 1-4/5, U, E, ?), one-handed on phones.
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Banner from '../../lib/ui/Banner.svelte';
@@ -30,6 +30,22 @@
 	let body: HTMLDivElement | undefined = $state();
 	// True while part of the card is below the fold: a fade at the bottom says the card scrolls.
 	let moreBelow = $state(false);
+
+	onDestroy(() => s.dispose());
+
+	// ADR-033 waiting state: the display ticks once a second; the refetch itself is one timer in the state.
+	let nowMs = $state(Date.now());
+	$effect(() => {
+		if (!s.waiting) return;
+		nowMs = Date.now();
+		const t = setInterval(() => (nowMs = Date.now()), 1000);
+		return () => clearInterval(t);
+	});
+	const countdown = $derived.by(() => {
+		const due = s.nextLearningDueAt;
+		const sec = due ? Math.max(0, Math.ceil((due.getTime() - nowMs) / 1000)) : 0;
+		return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+	});
 
 	const drillSource = $derived(page.url.searchParams.get('drill'));
 
@@ -89,7 +105,7 @@
 	/* ---------- header figures ---------- */
 
 	const remaining = $derived(
-		s.isDrill || s.keepGoing || !s.counts ? s.items.length : s.counts._new + s.counts.learning + s.counts.review
+		s.isDrill || !s.counts ? s.items.length : s.counts._new + s.counts.learning + s.counts.review
 	);
 	const done = $derived(s.history.length);
 	const total = $derived(done + remaining);
@@ -230,6 +246,7 @@
 </script>
 
 <svelte:window onkeydown={onKeydown} />
+<svelte:document onvisibilitychange={() => document.visibilityState === 'visible' && s.onVisible()} />
 <svelte:head><title>{rv('rv.title')} · Kotobaya</title></svelte:head>
 
 <div class="review">
@@ -238,7 +255,7 @@
 		<div class="status">
 			<div class="line">
 				<h1 class="mode">{modeLabel}</h1>
-				{#if s.loaded && s.counts && !s.isDrill && !s.keepGoing && remaining > 0}
+				{#if s.loaded && s.counts && !s.isDrill && remaining > 0}
 					<p class="counts">
 						<span class="count new"><i aria-hidden="true"></i>{rv('rv.count.new', { n: s.counts._new })}</span>
 						<span class="count learning"><i aria-hidden="true"></i>{rv('rv.count.learning', { n: s.counts.learning })}</span>
@@ -298,8 +315,12 @@
 					<EmptyState
 						size="page"
 						art="enso"
-						title={s.keepGoing ? rv('rv.caughtUp.title') : s.moreAvailable ? rv('rv.doneNow.title') : rv('rv.done.title')}
-						body={s.keepGoing
+						title={s.waiting
+							? rv('rv.waiting.title')
+							: s.keepGoing ? rv('rv.caughtUp.title') : s.moreAvailable ? rv('rv.doneNow.title') : rv('rv.done.title')}
+						body={s.waiting
+							? rv('rv.waiting.body', { time: countdown })
+							: s.keepGoing
 							? rv('rv.caughtUp.body')
 							: s.dayEndsAt && !s.moreAvailable
 								? rv('rv.done.next', { time: timeOf(s.dayEndsAt) })

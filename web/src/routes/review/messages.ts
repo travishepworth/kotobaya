@@ -34,6 +34,8 @@ const en = {
 	'rv.done.title': 'All done for today',
 	'rv.done.next': 'New cards and the next reviews unlock at {time}.',
 	'rv.done.body': 'Nothing else is due right now.',
+	'rv.waiting.title': 'Waiting for the next card',
+	'rv.waiting.body': 'Next card in {time}. It appears here by itself.',
 	'rv.doneNow.title': 'Done for now',
 	'rv.caughtUp.title': 'All caught up',
 	'rv.caughtUp.body': 'Nothing else is available right now.',
