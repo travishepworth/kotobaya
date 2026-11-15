@@ -1122,3 +1122,4 @@
 2026-11-15T04:08:46Z RELEASE APK 0.1.17 INSTALLED (adb install -r; user 10 present). kby installed to ~/.local/bin (backup kby.bak-pre-serve), daemon restarted; serve + do refusal verified live
 2026-11-15T04:23:13Z WEB-DECK-INSPECT DISPATCH writer (deck detail status filters + per-word/bulk actions; user request)
 2026-11-15T04:23:13Z AND-DECK-INSPECT DISPATCH writer (offline deck detail filters + word.status_* actions)
+2026-11-15T04:26:57Z WEB-DECK-INSPECT CHECK_GREEN + MERGE f30dfcdf (no chip counts: coverage is token-based; reader not refactored onto shared component)
