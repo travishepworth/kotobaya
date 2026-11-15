@@ -2,26 +2,22 @@
 
 STATUS: DONE
 BRANCH: t/AND-KEEPGOING-FIX
-CHECK: `make check MODULE=android` → green except the known flake BackNavigationTest.searchBackClosesTheDetail (passes when rerun alone)
+CHECK: `make check MODULE=android` → green except the known flake BackNavigationTest.searchBackClosesTheDetail
 
 ## Changed (≤ 6 lines)
-- LocalQueueLoader: passes real pendingEntries: live `e:<seq>` items of enabled decks that have no live note, capped per deck at the build's largest new budget. When a build returns `toMaterialize`, an injected EntryMaterializer creates the notes and the loader builds again (at most 3 rounds). Review, Today counts, widget and deck sessions all get these cards.
-- NoteCreator.materialize: in one transaction, mints `note.created` (origin `deck`, entry_seq, vocab type) and `card.created` for the deck's `card_kinds` (empty fronts skipped), plus add_kanji notes. Wired via Koin.
-- ReviewSession: an empty memory queue always rebuilds before ending. In keep going, a learn-ahead card waits until a build has seen every answer, so a failed card no longer blocks the next batch (the phone's "same 2 cards").
-- A config change keeps the session; the keep-going end screen says nothing is left today.
+- Aligned with C-27 (read from t/C-27-materialize, contracts/core/README.md "C-27"; not on main yet). Pending entries: enabled decks' live `e:<seq>` items whose entry is in the local dictionary, has no live note and no user-deleted note, override filter applied, first 2×budget per deck in (position, item_key) order.
+- Pending entries are passed only after a complete pull (`materializeAllowed`: unpaired, or no sync running, 0 failures, last_sync_at set, no rebuild).
+- NoteCreator.materialize mints C-27 ops: vocab `note.created` {entry_seq, fields {}, origin deck}, `card.created` for every kindsForNewNote kind, add_kanji `auto_kanji` notes (deduped in the mint). Skips an entry with a live note. Loader rebuilds after.
+- ReviewSession: always rebuilds before ending. In keep going, learn-ahead waits for a fresh build. A config change keeps the session.
 
 ## Acceptance → tests
-- 300 due (cap 200) + 40 new → KeepGoingTest.keepGoingServesEveryDueReviewAndEveryNewCardWithoutStopping
-- Defect 1 (failed before the fix) → KeepGoingTest.aKeepGoingBuildThatSawEveryAnswerButOneIsNotFinal
-- Materialized ops and counts → DeckEntriesTest.drawnDeckEntriesBecomeNotesAndCardsThroughOps
-- Keep going through 60 deck entries → DeckEntriesTest.keepGoingDrawsThroughMoreThanFortyDeckEntries
-- Repeat loop (failed before the fix) → DeckEntriesTest.aFailedCardDoesNotCrowdOutTheNextBatch
-- Config change → ReviewInfoTest.aConfigurationChangeKeepsTheSession
+- KeepGoingTest: 300 due + 40 new without a stop; defect-1 regression
+- DeckEntriesTest (8): C-27 ops; user-deleted entry dropped; unknown entries don't starve; mid-pull gate; refused mint; add_kanji dedup; keep going through 60 entries; repeat loop
+- ReviewInfoTest.aConfigurationChangeKeepsTheSession
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Convergence rests on SYNC.md 4 (skip an entry with a live local note) and 8.1 (the server merges a second note for the same entry_seq). No contract change needed.
-- Entries the dictionary lacks are not materialized and still use budget each build. Process death still drops keep going (C-26 forbids saved state).
-- Today/widget loads now mint ops (by design: same cards everywhere).
+- Deviation: a normal build's bound uses max(own budget, keep-going batch). Otherwise budget 0 hides entries from rule-6 `moreAvailable`, and the button disappears.
+- Convergence: SYNC.md 4 + 8.1. Rebase after C-27 merges (no contract edits here).

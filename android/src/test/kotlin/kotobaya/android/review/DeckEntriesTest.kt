@@ -5,13 +5,16 @@ import kotobaya.android.notes.CandidateSource
 import kotobaya.android.notes.EntryCandidate
 import kotobaya.android.notes.EntryMatcher
 import kotobaya.android.notes.NoteCreator
+import kotobaya.android.queue.EntryMaterializer
 import kotobaya.android.queue.LocalQueueLoader
+import kotobaya.android.queue.materializeAllowed
 import kotobaya.android.sync.SqlLearningTables
 import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.render.DictionaryData
 import kotobaya.contracts.sync.JsonString
 import kotobaya.sync.client.store.UuidV7Source
+import kotobaya.sync.client.store.bookkeeping
 import org.junit.After
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -44,9 +47,21 @@ class DeckEntriesTest {
             override fun candidates(text: String): List<EntryCandidate> = emptyList()
         }),
         UuidV7Source(Random(11)), d.clock,
-        dictionary = { seq -> if (seq == UNKNOWN_SEQ) null else DictionaryData("語$seq", "ご", emptyList(), listOf("word $seq"), emptyList()) },
+        dictionary = { seq ->
+            if (seq == UNKNOWN_SEQ || seq in UNKNOWN_RANGE) null
+            else DictionaryData(expressions[seq] ?: "語$seq", "ご", emptyList(), listOf("word $seq"), emptyList())
+        },
     )
-    private val loader = LocalQueueLoader(d.db, { d.clock.now }, materializer = creator)
+    private val expressions = HashMap<Long, String>()
+
+    /** The materializer as production gates it ([syncReady] stands in for the sync coordinator's state). */
+    private var syncReady = true
+    private val gated = object : EntryMaterializer {
+        override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>) = creator.materialize(entries)
+        override fun knows(entrySeq: Long) = creator.knows(entrySeq)
+        override fun ready() = creator.ready() && syncReady
+    }
+    private val loader = LocalQueueLoader(d.db, { d.clock.now }, materializer = gated)
 
     @After
     fun close() {
@@ -59,10 +74,10 @@ class DeckEntriesTest {
     }
 
     /** A list deck (server-created, so not through device ops) holding `e:<seq>` for [seqs], in that order. */
-    private fun listDeck(seqs: List<Long>) {
+    private fun listDeck(seqs: List<Long>, settings: String = "{}") {
         d.driver.execute(
             null,
-            "INSERT INTO deck (id, name, type, created_at, updated_at) VALUES ('$deckId', 'JLPT', 'list', 0, 0)",
+            "INSERT INTO deck (id, name, type, settings, created_at, updated_at) VALUES ('$deckId', 'JLPT', 'list', '$settings', 0, 0)",
             0,
         )
         seqs.forEachIndexed { i, seq ->
@@ -88,7 +103,7 @@ class DeckEntriesTest {
     fun drawnDeckEntriesBecomeNotesAndCardsThroughOps() {
         setting("scheduler.new_per_day", "5")
         setting("scheduler.new_per_session", "10")
-        // entry 1001 is known (never introduced); UNKNOWN_SEQ is not in the dictionary (skipped, not created empty)
+        // entry 1001 is known (never introduced); UNKNOWN_SEQ is not in the dictionary (never pending: uses no budget)
         listDeck(listOf(1000L, 1001L, UNKNOWN_SEQ) + (1002L until 1030L))
         d.driver.execute(
             null,
@@ -99,12 +114,12 @@ class DeckEntriesTest {
 
         val loaded = loader.load()
         val notes = deckNotes()
-        assertEquals(listOf(1000L, 1002L, 1003L, 1004L), notes.map { it.first }, "the drawn entries, in deck order")
+        assertEquals(listOf(1000L, 1002L, 1003L, 1004L, 1005L), notes.map { it.first }, "the drawn entries, in deck order")
         assertTrue(notes.all { (_, id) -> d.ops("card.created").any { d.str(it, "note_id") == id } }, "each note has cards")
         val newItems = loaded.queue.items.filter { it.kind == QueueItemKind.NEW }
-        assertEquals(4, newItems.size, "budget 5: four created now, the unknown entry still pending")
+        assertEquals(5, newItems.size, "budget 5; the unknown entry used none of it")
         assertEquals(5, loaded.counts.new)
-        assertEquals(listOf(UNKNOWN_SEQ), loaded.queue.toMaterialize.map { it.entrySeq })
+        assertTrue(loaded.queue.toMaterialize.isEmpty())
         d.store.read { tx ->
             for ((_, id) in notes) {
                 val note = checkNotNull(tx.learning.get(kotobaya.sync.client.apply.LearningTable.NOTE, listOf(JsonString(id))))
@@ -192,7 +207,97 @@ class DeckEntriesTest {
         assertTrue(shown.subList(firstRepeat, shown.size).none { it.kind == QueueItemKind.NEW }, "no new card after the first repeat")
     }
 
+    /** Review finding 1: entries the dictionary lacks never use the new budget, so the deck's later entries come. */
+    @Test
+    fun entriesMissingFromTheDictionaryDoNotStarveTheRest() {
+        setting("scheduler.new_per_day", "5")
+        listDeck(UNKNOWN_RANGE.toList() + (4100L until 4110L))
+        val loaded = loader.load()
+        assertEquals((4100L until 4105L).toList(), deckNotes().map { it.first })
+        assertEquals(5, loaded.queue.items.count { it.kind == QueueItemKind.NEW })
+        assertEquals(5, loaded.counts.new)
+        assertTrue(loaded.queue.toMaterialize.isEmpty())
+    }
+
+    /** Review finding 2: nothing is materialized while a pull is incomplete; the queue still builds, without entries. */
+    @Test
+    fun nothingIsMaterializedUntilAPullHasCompleted() {
+        setting("scheduler.new_per_day", "5")
+        listDeck((4200L until 4210L).toList())
+        syncReady = false
+        val waiting = loader.load()
+        assertTrue(deckNotes().isEmpty(), "no notes minted mid-pull")
+        assertTrue(waiting.queue.toMaterialize.isEmpty() && waiting.queue.items.isEmpty())
+        assertEquals(0, waiting.counts.new)
+        syncReady = true
+        assertEquals(5, loader.load().queue.items.count { it.kind == QueueItemKind.NEW })
+
+        // the production gate: a paired device only after a complete pull, nothing running, no failure, no rebuild
+        assertTrue(materializeAllowed(paired = false, syncRunning = true, failures = 3, lastSyncAt = null, rebuildPending = true))
+        assertTrue(materializeAllowed(paired = true, syncRunning = false, failures = 0, lastSyncAt = 1, rebuildPending = false))
+        assertFalse(materializeAllowed(paired = true, syncRunning = false, failures = 0, lastSyncAt = null, rebuildPending = false), "never pulled")
+        assertFalse(materializeAllowed(paired = true, syncRunning = true, failures = 0, lastSyncAt = 1, rebuildPending = false), "pulling")
+        assertFalse(materializeAllowed(paired = true, syncRunning = false, failures = 1, lastSyncAt = 1, rebuildPending = false), "cut off")
+        assertFalse(materializeAllowed(paired = true, syncRunning = false, failures = 0, lastSyncAt = 1, rebuildPending = true), "rebuild")
+    }
+
+    /**
+     * C-27: the ops are the normative ones (fields {}, origin deck, every kind of kindsForNewNote), and a user-deleted
+     * note drops its entry for good while a merge loser does not count as deleted.
+     */
+    @Test
+    fun opsFollowC27AndAUserDeletedNoteIsNotRecreated() {
+        setting("scheduler.new_per_day", "1")
+        listDeck((4500L until 4510L).toList())
+        loader.load()
+        val (seq, noteId) = deckNotes().single()
+        assertEquals(4500L, seq)
+        val created = d.ops("note.created").single { d.str(it, "id") == noteId }
+        assertEquals(kotobaya.contracts.sync.JsonObject(emptyMap()), d.payload(created)["fields"])
+        val type = kotobaya.cards.BuiltInNoteTypes.ALL.single { it.id == NoteCreator.VOCAB_NOTE_TYPE_ID }.info
+        val kinds = d.ops("card.created").filter { d.str(it, "note_id") == noteId }.mapNotNull { d.str(it, "kind") }
+        assertEquals(kotobaya.cards.DefaultCardGenerator.kindsForNewNote(type, null).sorted(), kinds.sorted())
+
+        // the user deletes the word's note: the entry is gone for good, the next one is drawn instead
+        assertIs<kotobaya.sync.client.mint.MintResult.Minted>(
+            d.stack.minter.mint(
+                kotobaya.contracts.sync.OpType.NOTE_DELETED,
+                kotobaya.contracts.sync.JsonObject(linkedMapOf("id" to JsonString(noteId))),
+            ),
+        )
+        d.clock.now += 86_400_000
+        loader.load()
+        assertEquals(listOf(4500L, 4501L), deckNotes().map { it.first })
+    }
+
+    /** A refused mint (rebuild pending) creates nothing; the load still returns the queue. */
+    @Test
+    fun aRefusedMintStillReturnsTheQueue() {
+        setting("scheduler.new_per_day", "3")
+        listDeck((4300L until 4310L).toList())
+        d.seed(1)
+        d.store.transaction { it.bookkeeping.rebuildPending = true }
+        val loaded = loader.load()
+        assertTrue(deckNotes().isEmpty())
+        assertTrue(loaded.queue.toMaterialize.isNotEmpty(), "drawn, not created")
+        assertEquals(3, loaded.queue.toMaterialize.size + loaded.queue.items.count { it.kind == QueueItemKind.NEW })
+        assertEquals(3, loaded.counts.new)
+    }
+
+    /** add_kanji: two words sharing a kanji in one mint get one kanji note for it. */
+    @Test
+    fun addKanjiCreatesEachKanjiOnceWithinOneMint() {
+        setting("scheduler.new_per_day", "5")
+        expressions[4400L] = "日本"
+        expressions[4401L] = "日曜"
+        listDeck(listOf(4400L, 4401L), settings = """{"add_kanji":"before"}""")
+        loader.load()
+        assertEquals(listOf("日", "本", "曜"), d.ops("note.created").mapNotNull { d.str(it, "kanji_literal") })
+        assertEquals(2, deckNotes().size)
+    }
+
     private companion object {
         const val UNKNOWN_SEQ = 1999L
+        val UNKNOWN_RANGE = 4000L until 4030L
     }
 }

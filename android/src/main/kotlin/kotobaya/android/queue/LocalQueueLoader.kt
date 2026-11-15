@@ -168,7 +168,7 @@ class LocalQueueLoader(
                 deckIds = memberships[r.note_id].orEmpty().map(DeckMembership::deckId),
             )
         }
-        val pending = pendingEntries(decks, deckFilter, settings)
+        val pending = pendingEntries(decks, deckFilter, settings, keepGoing)
         val input = QueueInput(
             now = now,
             day = day,
@@ -233,22 +233,42 @@ class LocalQueueLoader(
         }
 
     /**
-     * The pending entries of the enabled decks (of [deckFilter] only, if set), at most the build's largest new budget
-     * per deck: the builder takes at most that many new cards and entries from any one deck (rule 4 budget; the
-     * normal build's `moreAvailable` runs rule 6 with the keep-going batch), so later entries could never be drawn.
+     * C-27 pending entries of the enabled decks (of [deckFilter] only, if set; selection rules in the query): only
+     * entries the installed dictionary has ([EntryMaterializer.knows]; one it lacks would be drawn by every build and
+     * use up the new budget), and none while the materializer is not [EntryMaterializer.ready] (no dictionary, or a pull
+     * in progress: the notes for those entries may still be on their way). Per deck the first `2 × budget` (C-27) in
+     * `(position, item_key)` order. A normal build uses the larger of its own budget and the keep-going batch: its
+     * `moreAvailable` runs rule 6 over the same entries, and with today's new cards used up (budget 0) it would
+     * otherwise see none (passing more than the bound leaves the result unchanged).
      */
-    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings): List<PendingEntry> {
-        val limit = maxOf(minOf(settings.newPerDay, settings.newPerSession), QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH, 1).toLong()
+    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoing: Boolean): List<PendingEntry> {
+        val m = materializer ?: return emptyList()
+        if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList()
+        val keepGoingBudget = maxOf(1, QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH)
+        val budget = if (keepGoing) keepGoingBudget else maxOf(0, minOf(settings.newPerDay, settings.newPerSession), keepGoingBudget)
+        val limit = 2 * budget
+        val page = maxOf(limit * 2, MIN_PENDING_PAGE).toLong()
         return decks.filter { it.enabled && (deckFilter == null || it.id == deckFilter) }.flatMap { deck ->
-            q.pendingDeckEntries(deck.id, limit).executeAsList().map { r ->
-                PendingEntry(
-                    deckId = deck.id,
-                    entrySeq = checkNotNull(r.entry_seq),
-                    position = r.position,
-                    itemKey = r.item_key,
-                    wordOverride = r.override_status?.let { w -> WordStatus.entries.firstOrNull { it.wire == w } },
-                )
+            val out = ArrayList<PendingEntry>()
+            var offset = 0L
+            while (out.size < limit) {
+                val rows = q.pendingDeckEntries(deck.id, page, offset).executeAsList()
+                for (r in rows) {
+                    val seq = checkNotNull(r.entry_seq)
+                    if (!runCatching { m.knows(seq) }.getOrDefault(false)) continue
+                    out += PendingEntry(
+                        deckId = deck.id,
+                        entrySeq = seq,
+                        position = r.position,
+                        itemKey = r.item_key,
+                        wordOverride = r.override_status?.let { w -> WordStatus.entries.firstOrNull { it.wire == w } },
+                    )
+                    if (out.size == limit) break
+                }
+                if (rows.size < page) break
+                offset += page
             }
+            out
         }
     }
 
@@ -301,6 +321,7 @@ class LocalQueueLoader(
         const val LEARN_AHEAD_MS: Long = 1_200_000
         private const val HOUR_MS = 3_600_000L
         private const val MAX_MATERIALIZE_ROUNDS = 3
+        private const val MIN_PENDING_PAGE = 64
         private val HTML_TAG = Regex("<[^>]*>")
     }
 }
@@ -312,4 +333,22 @@ class LocalQueueLoader(
  */
 fun interface EntryMaterializer {
     fun materialize(entries: List<PendingEntry>): Int
+
+    /**
+     * False while creating notes for entries could duplicate notes that already exist elsewhere and have not arrived
+     * yet (a pull in progress or interrupted), or while nothing can be created (no dictionary): the loader then
+     * passes no pending entries at all, so none uses up the new budget.
+     */
+    fun ready(): Boolean = true
+
+    /** Whether [materialize] can create a note for [entrySeq] (the installed dictionary has it). */
+    fun knows(entrySeq: Long): Boolean = true
 }
+
+/**
+ * When a paired device may materialize deck entries: after a complete pull (`last_sync_at` set by a cycle that pulled
+ * until `has_more` was false), with no cycle running, no failed cycle since (a pull cut off mid-way counts as one) and
+ * no rebuild pending. An unpaired device has nothing to pull and may always.
+ */
+fun materializeAllowed(paired: Boolean, syncRunning: Boolean, failures: Int, lastSyncAt: Long?, rebuildPending: Boolean): Boolean =
+    !paired || (!syncRunning && failures == 0 && lastSyncAt != null && !rebuildPending)

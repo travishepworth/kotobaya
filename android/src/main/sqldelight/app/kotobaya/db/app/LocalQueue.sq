@@ -96,15 +96,16 @@ FROM (
 WHERE due < :horizon
 GROUP BY bucket;
 
--- AND-KEEPGOING-FIX: pending entries (QueueBuilder PendingEntry) of one deck: live e:<seq> items with no live note for
--- the entry, minus entries whose override the builder never introduces (rule 4), in deck order. The caller bounds them
--- by the build's new budget (a deck cannot supply more than that), so a 10k-word list deck is not read whole.
+-- AND-KEEPGOING-FIX, C-27 (contracts/core/README.md "C-27: pending entries and materialization"): pending entries of
+-- one deck in (position, item_key) order: live e:<seq> items whose entry has no live note and no user-deleted note
+-- (deleted, not a merge loser: deleting a deck word's note drops it for good), minus the overrides the builder never
+-- introduces. The loader pages through them, keeping entries the installed dictionary has, up to its per-deck bound.
 pendingDeckEntries:
 SELECT di.entry_seq, di.position, di.item_key, ws.override_status
 FROM deck_item di
 LEFT JOIN word_status ws ON ws.entry_seq = di.entry_seq
 WHERE di.deck_id = :deckId AND di.deleted_at IS NULL AND di.entry_seq IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM note n WHERE n.entry_seq = di.entry_seq AND n.deleted_at IS NULL)
+  AND NOT EXISTS (SELECT 1 FROM note n WHERE n.entry_seq = di.entry_seq AND (n.deleted_at IS NULL OR n.merged_into_id IS NULL))
   AND (ws.override_status IS NULL OR ws.override_status NOT IN ('known', 'never_forget', 'blacklisted', 'ignored'))
 ORDER BY di.position, di.item_key
-LIMIT :limit;
+LIMIT :limit OFFSET :offset;
