@@ -49,8 +49,11 @@ val notesModule = module {
             },
             afterCreate = { koin.getOrNull<SyncTriggers>()?.localChange() },
             words = get(),
+            dictionary = kotobaya.android.review.InstalledRenderData(dict).let { data -> { seq: Long -> data.lookup(seq) } },
         )
     }
+    // AND-KEEPGOING-FIX: the queue loader materializes drawn deck entries through note creation
+    single<kotobaya.android.queue.EntryMaterializer> { get<NoteCreator<SqlLearningTables>>() }
 }
 
 /** THE registration for featureEntries. */

@@ -118,7 +118,58 @@ class NoteCreator<L : LearningTables>(
     private val afterCreate: () -> Unit = {},
     /** AND-TAKO-PERF2: the duplicate word rule's index (caught up in each create's transaction); null = read every note. */
     private val words: NoteWordIndex? = null,
-) {
+    /** Dictionary data of an entry (the installed dictionary), for [materialize]'s empty-front rule; null when unknown. */
+    private val dictionary: (Long) -> DictionaryData? = { null },
+) : kotobaya.android.queue.EntryMaterializer {
+    /**
+     * AND-KEEPGOING-FIX: the queue drew these deck entries (`ReviewQueue.toMaterialize`): creates each entry's note
+     * (`origin` = `deck`, `entry_seq`, the vocab note type) and default cards (the deck's `card_kinds`, minus empty
+     * fronts; kanji notes first per the deck's `add_kanji`, as [create]) in ONE store transaction. SYNC.md 4: an entry
+     * that already has a live local note is skipped (never knowingly a second note per entry); a note another replica
+     * created meanwhile for the same entry is merged by the server (SYNC.md 8.1, "words are learned once"). An entry
+     * the installed dictionary does not know is skipped (its cards would render empty). Returns the notes created.
+     */
+    override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Int {
+        if (entries.isEmpty()) return 0
+        val data = entries.map { it.entrySeq }.distinct().associateWith { seq -> runCatching { dictionary(seq) }.getOrNull() }
+        val created = store.transaction { tx ->
+            val tables = tx.learning
+            val type = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(VOCAB_NOTE_TYPE_ID)))
+                ?.takeIf { (it["deleted_at"] ?: JsonNull) == JsonNull }?.let(::noteTypeInfo) ?: return@transaction 0
+            val now = clock.nowMs()
+            val requests = ArrayList<MintRequest>()
+            val done = HashSet<Long>()
+            for (e in entries) {
+                val dict = data[e.entrySeq] ?: continue
+                if (!done.add(e.entrySeq) || DuplicateCheck.byEntry(tables, e.entrySeq) != null) continue
+                val deck = tables.get(LearningTable.DECK, listOf(JsonString(e.deckId)))?.takeIf { (it["deleted_at"] ?: JsonNull) == JsonNull }
+                val addKanji = deck?.let(::addKanjiMode) ?: AddKanjiMode.OFF
+                if (addKanji != AddKanjiMode.OFF) requests += kanjiRequests(tables, dict.expression, addKanji, now, ArrayList(), requests)
+                val noteId = ids.newOpId(now)
+                requests += MintRequest(
+                    OpType.NOTE_CREATED,
+                    obj(
+                        "id" to JsonString(noteId),
+                        "note_type_id" to JsonString(VOCAB_NOTE_TYPE_ID),
+                        "entry_seq" to JsonNumber(e.entrySeq.toDouble()),
+                        "origin" to JsonString(DECK_ORIGIN),
+                    ),
+                )
+                for (kind in generator.kindsForNewNote(type, deck?.let(::cardKinds))) {
+                    if (DefaultCardRenderer.frontIsEmpty(type, kind, emptyMap(), dictionary = dict)) continue
+                    requests += cardRequest(ids.newOpId(now), noteId, kind)
+                }
+            }
+            if (requests.isEmpty()) return@transaction 0
+            when (minter.mintAll(requests)) {
+                is MintResult.Refused -> 0
+                is MintResult.Minted -> requests.count { it.type == OpType.NOTE_CREATED && (it.payload.members["origin"] as? JsonString)?.value == DECK_ORIGIN }
+            }
+        }
+        if (created > 0) runCatching { afterCreate() }
+        return created
+    }
+
     /** [phase] gets each step's wall time in ms (`match`, `index`, `duplicate`, `mint`), for the caller's debug log. */
     fun create(request: NoteRequest, phase: (String, Long) -> Unit = { _, _ -> }): CreateResult {
         val word = EntryMatcher.clean(request.word)
@@ -190,22 +241,7 @@ class NoteCreator<L : LearningTables>(
         val addKanji = deck?.let(::addKanjiMode) ?: AddKanjiMode.OFF
         if (addKanji != AddKanjiMode.OFF && type.baseType == NoteBaseType.VOCAB) {
             val expression = word?.takeIf(EntryMatcher::containsKanji) ?: entry?.headword ?: word.orEmpty()
-            val kanjiType = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(KANJI_NOTE_TYPE_ID)))?.let(::noteTypeInfo)
-            if (kanjiType != null) {
-                for (literal in generator.kanjiToAdd(expression, liveKanji(tables, expression), addKanji)) {
-                    val id = ids.newOpId(now)
-                    kanjiNoteIds += id
-                    requests += MintRequest(
-                        OpType.NOTE_CREATED,
-                        obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
-                    )
-                    val kd = kanjiData(literal) ?: KanjiData(literal, emptyList(), emptyList(), emptyList())
-                    for (kind in generator.kindsForNewNote(kanjiType, null)) {
-                        if (DefaultCardRenderer.frontIsEmpty(kanjiType, kind, emptyMap(), kanji = kd)) continue
-                        requests += cardRequest(ids.newOpId(now), id, kind)
-                    }
-                }
-            }
+            requests += kanjiRequests(tables, expression, addKanji, now, kanjiNoteIds, emptyList())
         }
 
         val note = LinkedHashMap<String, JsonValue>()
@@ -250,6 +286,37 @@ class NoteCreator<L : LearningTables>(
         }
     }
 
+    /**
+     * Kanji notes (`origin = auto_kanji`) and their default cards for the kanji of [expression] that have no live kanji
+     * note, neither in [tables] nor among [earlier] requests of the same mint (two words sharing a kanji).
+     */
+    private fun kanjiRequests(
+        tables: LearningTables,
+        expression: String,
+        addKanji: AddKanjiMode,
+        now: Long,
+        kanjiNoteIds: MutableList<String>,
+        earlier: List<MintRequest>,
+    ): List<MintRequest> {
+        val kanjiType = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(KANJI_NOTE_TYPE_ID)))?.let(::noteTypeInfo) ?: return emptyList()
+        val pending = earlier.mapNotNullTo(HashSet()) { (it.payload.members["kanji_literal"] as? JsonString)?.value }
+        val out = ArrayList<MintRequest>()
+        for (literal in generator.kanjiToAdd(expression, liveKanji(tables, expression) + pending, addKanji)) {
+            val id = ids.newOpId(now)
+            kanjiNoteIds += id
+            out += MintRequest(
+                OpType.NOTE_CREATED,
+                obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
+            )
+            val kd = kanjiData(literal) ?: KanjiData(literal, emptyList(), emptyList(), emptyList())
+            for (kind in generator.kindsForNewNote(kanjiType, null)) {
+                if (DefaultCardRenderer.frontIsEmpty(kanjiType, kind, emptyMap(), kanji = kd)) continue
+                out += cardRequest(ids.newOpId(now), id, kind)
+            }
+        }
+        return out
+    }
+
     private fun cardRequest(id: String, noteId: String, kind: String) =
         MintRequest(OpType.CARD_CREATED, obj("id" to JsonString(id), "note_id" to JsonString(noteId), "kind" to JsonString(kind)))
 
@@ -269,6 +336,9 @@ class NoteCreator<L : LearningTables>(
 
         /** Tag of a note created without a dictionary match; a later re-match removes it. */
         const val UNMATCHED_TAG: String = "unmatched"
+
+        /** `note.origin` of a note created because the queue drew its deck entry (OPS.md `note.created`). */
+        const val DECK_ORIGIN: String = "deck"
 
         /** Device-local `sync_state` key (the `client.*` namespace) recording which note a request id created. */
         const val REQUEST_KEY_PREFIX: String = "client.note_request."

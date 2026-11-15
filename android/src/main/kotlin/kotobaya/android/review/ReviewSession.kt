@@ -701,6 +701,7 @@ class ReviewSession<L : LearningTables>(
     private fun pickLocked(now: Long): QueueItem? {
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
         main.removeFirstOrNull()?.let { return it }
+        if (!learnAheadAllowedLocked()) return null
         learning.filter { aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
         return null
     }
@@ -708,7 +709,15 @@ class ReviewSession<L : LearningTables>(
     private fun peekLocked(now: Long): QueueItem? =
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.item
             ?: main.firstOrNull()
-            ?: learning.filter { aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.item
+            ?: learning.filter { learnAheadAllowedLocked() && aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.item
+
+    /**
+     * AND-KEEPGOING-FIX: rule 5 serves learn-ahead cards only once nothing else is left. A keep-going build holds one
+     * new batch, so an empty [main] says nothing about the next batch until a build has seen every answer: until then
+     * a not-yet-due learning card waits (the session rebuilds first). Without this a card graded Again/Hard (due again
+     * within learn-ahead) came back after every answer while new cards were left, and the next batch never loaded.
+     */
+    private fun learnAheadAllowedLocked(): Boolean = !keepGoing || commitCount + pending.size <= commitsAtBuild
 
     /**
      * A learning card not yet due may be shown ahead of time (builder rules 2 and 5). AND-DECKEND: in a deck session
