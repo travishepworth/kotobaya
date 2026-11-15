@@ -122,9 +122,12 @@ fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -
             onSessionEnd ?: { koin.getOrNull<SyncTriggers>()?.reviewSessionEnded(); Unit },
         )
     }
+    val activity = androidx.compose.ui.platform.LocalContext.current.findActivity()
     DisposableEffect(vm) {
         vm.enter()
-        onDispose { vm.leave() }
+        // AND-KEEPGOING-FIX: a configuration change (rotation, dark mode, ...) is not leaving the screen; the session
+        // (and its keep-going mode) carries on in the retained view model.
+        onDispose { vm.leave(changingConfigurations = activity?.isChangingConfigurations == true) }
     }
     val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(vm, owner) {
@@ -136,4 +139,10 @@ fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -
     }
     val state by vm.state.collectAsState()
     ReviewScreen(state, vm)
+}
+
+private tailrec fun Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

@@ -33,6 +33,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 
 /** AND-REVIEW-INFO: example words and deck chips from the local replica; opening the dictionary keeps the revealed card. */
@@ -326,6 +327,29 @@ class ReviewInfoTest {
         vm.leave() // a real leave ends the session as before
         vm.enter()
         assertEquals(CardSide.FRONT, assertIs<ReviewState.Showing>(vm.state.value.review).side)
+        vm.leave()
+    }
+
+    /** AND-KEEPGOING-FIX: a configuration change is not leaving the screen; the session (and keep-going mode) carries on. */
+    @Test
+    fun aConfigurationChangeKeepsTheSession() {
+        val assets = ApplicationProvider.getApplicationContext<Application>().assets
+        val backend = DemoStore(DemoData.load(assets)).reviewBackend()
+        val vm = ReviewViewModel(backend, io = Dispatchers.Unconfined)
+        vm.enter()
+        vm.keepGoing()
+        assertTrue(vm.state.value.meta.keepingGoing)
+        vm.flip()
+        val before = assertIs<ReviewState.Showing>(vm.state.value.review)
+        vm.leave(changingConfigurations = true)
+        vm.enter()
+        val after = assertIs<ReviewState.Showing>(vm.state.value.review)
+        assertEquals(before.card.token, after.card.token)
+        assertEquals(CardSide.BACK, after.side)
+        assertTrue(vm.state.value.meta.keepingGoing, "keep going survives")
+        vm.leave() // a real leave ends the visit: the next one starts normally
+        vm.enter()
+        assertFalse(vm.state.value.meta.keepingGoing)
         vm.leave()
     }
 }

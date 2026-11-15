@@ -484,12 +484,11 @@ class ReviewSession<L : LearningTables>(
         synchronized(lock) {
             if (pending.isNotEmpty()) return null
             val waiting = awaitingFor ?: return@synchronized
-            if (showFromMemoryLocked(waiting)) return@synchronized
-            // nothing in memory: a build that already saw every answer but this one (requeued above) is final
-            // (a deck session always builds: whether other decks have cards due decides what comes next)
-            // (C-26: only in keep-going mode; a normal build that still held the answered card cannot say whether
-            // keep going has more, so a normal session rebuilds once at its end)
-            if (allDecks == null && keepGoing && commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
+            showFromMemoryLocked(waiting)
+            // Nothing in memory: always rebuild before ending. No earlier build is final: a normal one that still held
+            // the answered card cannot say whether keep going has more, a deck session needs to know whether other
+            // decks have cards due, and a keep-going build holds only one new batch (AND-KEEPGOING-FIX), so the
+            // session ends only when a fresh build has nothing to show.
         }
         if (synchronized(lock) { awaitingFor != null }) {
             rebuildMs = rebuild("end of queue")

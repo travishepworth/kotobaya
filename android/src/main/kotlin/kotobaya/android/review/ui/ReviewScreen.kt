@@ -519,6 +519,8 @@ private fun Finished(
                     stats == null && meta.moreAvailable -> R.string.review_done_for_now_body
                     stats == null && meta.keepingGoing -> R.string.review_caught_up_body
                     stats == null -> R.string.review_finished_body
+                    // AND-KEEPGOING-FIX: keep going ends only when nothing at all is left today
+                    meta.keepingGoing && !meta.moreAvailable -> R.string.review_caught_up_body
                     else -> R.string.review_summary_body
                 },
             ),

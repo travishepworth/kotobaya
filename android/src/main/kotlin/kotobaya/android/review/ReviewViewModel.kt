@@ -251,9 +251,13 @@ class ReviewViewModel(
     @Volatile
     private var keepOnLeave = false
 
-    /** The screen went away: ends the session (a later [enter] starts a new one), unless it only went under the dictionary. */
-    fun leave() {
-        if (keepOnLeave && session != null) {
+    /**
+     * The screen went away: ends the session (a later [enter] starts a new one), unless it only went under the
+     * dictionary or [changingConfigurations] (the activity is recreated around the retained view model: the visit,
+     * its session and keep-going mode carry on; C-26 keeps it out of saved state, so process death still ends it).
+     */
+    fun leave(changingConfigurations: Boolean = false) {
+        if ((keepOnLeave || changingConfigurations) && session != null) {
             audio?.release()
             return
         }
