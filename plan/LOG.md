@@ -1114,3 +1114,6 @@
 2026-11-15T03:37:42Z AND-REVIEW-INFO CHECK_GREEN + REVIEW_CHANGES 1 major (t.all() over 4 learning tables per kanji card on load/tap path) + deck lookup scans -> attempt 2 (same writer)
 2026-11-15T03:38:42Z CLI-KBY DISPATCH writer (user spec; base = installed ~/.local/bin/kby; uncommitted repo draft scrapped per user)
 2026-11-15T03:44:05Z CLI-KBY CHECK_GREEN (97 tests) + MERGE af5ad121 (daemon refuses hidden grades, hidden card publishes no answer; kby serve/do --rev)
+2026-11-15T03:44:23Z AND-REVIEW-INFO REVIEW_CHANGES r2 (3 point queries per candidate word; 日 ~6-12k queries/card) -> ESCALATE writer-senior attempt 3 (per-build primitive sets)
+2026-11-15T03:54:08Z AND-REVIEW-INFO HANDOFF attempt 3 (BackExtrasIndex per rebuild); check + review r3
+2026-11-15T03:54:40Z AND-REVIEW-INFO REVIEW_APPROVE r3 + CHECK_GREEN + MERGE d04531d2 (3 attempts, 1 escalation; minors -> FOLLOWUPS)
