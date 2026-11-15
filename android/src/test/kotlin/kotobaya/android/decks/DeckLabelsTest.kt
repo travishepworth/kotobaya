@@ -40,16 +40,16 @@ class DeckLabelsTest {
     fun entryItemsShowTheHeadwordNotTheKeyWhenTheDictionaryHasThem() {
         fixture()
         val words = DeckRepository(driver, loader, dict).words("d1", 50, 0)
-        assertEquals(listOf("猫", "犬", "鳥", "e:999"), words.map { it.label })
+        assertEquals(listOf("猫", "犬", "鳥", ""), words.map { it.label })
         assertEquals("ねこ · cat", words[0].detail)
         assertEquals("とり · bird", words[2].detail)
         assertFalse(words.take(3).any { it.label.startsWith("e:") })
     }
 
     @Test
-    fun withoutADictionaryTheKeyIsTheLastResort() {
+    fun withoutADictionaryTheLabelIsEmptyNeverTheKey() {
         fixture()
         val words = DeckRepository(driver, loader, null).words("d1", 50, 0)
-        assertEquals(listOf("e:1358280", "e:1", "鳥", "e:999"), words.map { it.label })
+        assertEquals(listOf("", "", "鳥", ""), words.map { it.label })
     }
 }

@@ -50,7 +50,29 @@ enum class DeckContent {
  * A word of a deck. [label] is, in order: the note's expression, the dictionary headword, the item key (last resort).
  * [detail] is the reading and first gloss (the note's fields, else the dictionary's).
  */
-data class DeckWord(val itemKey: String, val label: String, val entrySeq: Long? = null, val detail: String = "")
+data class DeckWord(
+    val itemKey: String,
+    val label: String,
+    val entrySeq: Long? = null,
+    val detail: String = "",
+    /** Effective status (`coalesce(override, auto, new)`); `new` for a missing `word_status` row and for `n:` items. */
+    val status: String = "new",
+    /** A live note of the user holds this word (else "Add to my notes" applies). */
+    val hasNote: Boolean = true,
+    val reading: String = "",
+)
+
+/** Status filter of a deck's word list; [statuses] null = no filter. */
+enum class DeckFilter(val statuses: List<String>?) {
+    ALL(null),
+    NEW(listOf("new")),
+    LEARNING(listOf("learning")),
+    KNOWN(listOf("known", "never_forget")),
+    IGNORED(listOf("blacklisted", "ignored")),
+}
+
+/** Order of a deck's word list: the deck's own, or by how often the word occurs in it (most first). */
+enum class DeckSort { DECK_ORDER, FREQUENCY }
 
 /**
  * Read-only view of decks over the local replica. Counts come from [LocalQueueLoader.load] with the deck filter,
@@ -69,7 +91,13 @@ interface DeckSource {
 
     fun deck(id: String): DeckSummary?
 
-    fun words(deckId: String, limit: Int, offset: Int): List<DeckWord>
+    fun words(deckId: String, limit: Int, offset: Int, filter: DeckFilter = DeckFilter.ALL, sort: DeckSort = DeckSort.DECK_ORDER): List<DeckWord>
+
+    /** Live items per filter, from one grouped query. Every [DeckFilter] is a key. */
+    fun statusCounts(deckId: String): Map<DeckFilter, Int> = DeckFilter.entries.associateWith { 0 }
+
+    /** Entry seqs of every live word item matching [filter] (not paged), for "select all". */
+    fun entrySeqs(deckId: String, filter: DeckFilter): List<Long> = emptyList()
 }
 
 /** [decks] with [queue], the counts of the unfiltered queue built in the same load. */
@@ -100,24 +128,50 @@ class DeckRepository(
 
     override fun deck(id: String): DeckSummary? = rows().firstOrNull { it.id == id }?.let { summary(it, loader.load()) }
 
-    /** Live items of [deckId] in the deck's order, [limit] from [offset]. */
-    override fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> = query(
-        "SELECT di.item_key, di.entry_seq, (SELECT n.fields FROM note n WHERE n.deleted_at IS NULL AND " +
-            "(n.entry_seq = di.entry_seq OR n.id = di.note_id) LIMIT 1) " +
-            "FROM deck_item di WHERE di.deck_id = ? AND di.deleted_at IS NULL ORDER BY di.position, di.item_key LIMIT ? OFFSET ?",
-        3,
-        { bindString(0, deckId); bindLong(1, limit.toLong()); bindLong(2, offset.toLong()) },
-    ) { c -> Triple(c.getString(0).orEmpty(), c.getLong(1), c.getString(2)) }.let(::labelled)
+    /** Live items of [deckId] matching [filter], [limit] from [offset]; status from one join on `word_status`'s key. */
+    override fun words(deckId: String, limit: Int, offset: Int, filter: DeckFilter, sort: DeckSort): List<DeckWord> {
+        val order = if (sort == DeckSort.FREQUENCY) "di.occurrence_count DESC, di.position, di.item_key" else "di.position, di.item_key"
+        return query(
+            "SELECT di.item_key, di.entry_seq, (SELECT n.fields FROM note n WHERE n.deleted_at IS NULL AND " +
+                "(n.entry_seq = di.entry_seq OR n.id = di.note_id) LIMIT 1), $STATUS " +
+                "FROM deck_item di LEFT JOIN word_status ws ON ws.entry_seq = di.entry_seq " +
+                "WHERE di.deck_id = ? AND di.deleted_at IS NULL${statusClause(filter)} ORDER BY $order LIMIT ? OFFSET ?",
+            3,
+            { bindString(0, deckId); bindLong(1, limit.toLong()); bindLong(2, offset.toLong()) },
+        ) { c -> Quad(c.getString(0).orEmpty(), c.getLong(1), c.getString(2), c.getString(3) ?: "new") }.let(::labelled)
+    }
 
-    private fun labelled(rows: List<Triple<String, Long?, String?>>): List<DeckWord> {
+    override fun statusCounts(deckId: String): Map<DeckFilter, Int> {
+        val byStatus = query(
+            "SELECT $STATUS, COUNT(*) FROM deck_item di LEFT JOIN word_status ws ON ws.entry_seq = di.entry_seq " +
+                "WHERE di.deck_id = ? AND di.deleted_at IS NULL GROUP BY 1",
+            1,
+            { bindString(0, deckId) },
+        ) { c -> (c.getString(0) ?: "new") to (c.getLong(1) ?: 0L).toInt() }.toMap()
+        return DeckFilter.entries.associateWith { f -> f.statuses?.sumOf { byStatus[it] ?: 0 } ?: byStatus.values.sum() }
+    }
+
+    override fun entrySeqs(deckId: String, filter: DeckFilter): List<Long> = query(
+        "SELECT di.entry_seq FROM deck_item di LEFT JOIN word_status ws ON ws.entry_seq = di.entry_seq " +
+            "WHERE di.deck_id = ? AND di.deleted_at IS NULL AND di.entry_seq IS NOT NULL${statusClause(filter)} ORDER BY di.position, di.item_key",
+        1,
+        { bindString(0, deckId) },
+    ) { c -> c.getLong(0) ?: 0L }
+
+    private fun statusClause(filter: DeckFilter): String =
+        filter.statuses?.let { " AND $STATUS IN (${it.joinToString(",") { s -> "'$s'" }})" }.orEmpty()
+
+    private data class Quad(val key: String, val seq: Long?, val fields: String?, val status: String)
+
+    private fun labelled(rows: List<Quad>): List<DeckWord> {
         val missing = rows.filter { (_, seq, fields) -> seq != null && (fields == null || fieldOf(fields, "expression") == null) }
-        val labels = if (missing.isEmpty()) emptyMap() else runCatching { labeler?.labels(missing.mapNotNull { it.second }) }.getOrNull().orEmpty()
-        return rows.map { (key, seq, fields) ->
+        val labels = if (missing.isEmpty()) emptyMap() else runCatching { labeler?.labels(missing.mapNotNull { it.seq }) }.getOrNull().orEmpty()
+        return rows.map { (key, seq, fields, status) ->
             val l = seq?.let(labels::get)
             val expression = fields?.let { fieldOf(it, "expression") }
             val reading = fields?.let { fieldOf(it, "reading") } ?: l?.reading.orEmpty()
             val meaning = fields?.let { fieldOf(it, "meaning") } ?: l?.gloss.orEmpty()
-            DeckWord(key, expression ?: l?.headword?.takeIf { it.isNotEmpty() } ?: key, seq, listOf(reading, meaning).filter { it.isNotBlank() }.joinToString(" · "))
+            DeckWord(key, expression ?: l?.headword?.takeIf { it.isNotEmpty() } ?: "", seq, listOf(reading, meaning).filter { it.isNotBlank() }.joinToString(" · "), status, fields != null, reading)
         }
     }
 
@@ -172,6 +226,11 @@ class DeckRepository(
         2,
         { bindString(0, deckId); bindString(1, deckId) },
     ) { c -> (c.getLong(0) ?: 0L).toInt() }.singleOrNull() ?: 0
+
+    private companion object {
+        /** Effective status; the same coalesce `word_status.status` holds, kept explicit so a row never disagrees. */
+        const val STATUS = "COALESCE(ws.override_status, ws.auto_status, 'new')"
+    }
 
     private fun fieldOf(fields: String, key: String): String? {
         val v = (DefaultCanonicalJson.decode(fields).value as? JsonObject)?.members?.get(key) as? JsonString

@@ -2,6 +2,9 @@ package kotobaya.android.decks.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +36,10 @@ import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.nav.DictJump
 import kotobaya.android.decks.DeckContent
+import kotobaya.android.decks.DeckFilter
+import kotobaya.android.decks.DeckSort
+import kotobaya.android.ui.components.KbFilterChip
+import kotobaya.android.ui.components.KbSegmented
 import kotobaya.android.decks.DeckSummary
 import kotobaya.android.decks.DeckWord
 import kotobaya.android.decks.DecksIntents
@@ -92,7 +99,7 @@ fun DecksScreen(state: DecksUiState, intents: DecksIntents, study: @Composable (
                 Box(Modifier.width(1.dp).fillMaxHeight().background(KbTheme.colors.border))
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     if (state.mode == DecksMode.DETAIL) {
-                        DeckDetail(state.deck, state.words, state.limit, intents, showBack = false)
+                        DeckDetail(state, intents, showBack = false)
                     } else {
                         KbEmptyState(T(R.string.decks_select_title), body = T(R.string.decks_select_body), icon = KbIcons.Decks, page = true, modifier = Modifier.align(Alignment.Center))
                     }
@@ -100,7 +107,7 @@ fun DecksScreen(state: DecksUiState, intents: DecksIntents, study: @Composable (
             }
         } else if (state.mode == DecksMode.DETAIL) {
             BackHandler(onBack = intents::back)
-            DeckDetail(state.deck, state.words, state.limit, intents, showBack = true)
+            DeckDetail(state, intents, showBack = true)
         } else {
             DeckList(state.decks, null, intents, state.loadFailed)
         }
@@ -214,12 +221,21 @@ private fun DeckRow(d: DeckSummary, selected: Boolean, onClick: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, intents: DecksIntents, showBack: Boolean) {
+private fun DeckDetail(state: DecksUiState, intents: DecksIntents, showBack: Boolean) {
     val c = KbTheme.colors
+    val deck = state.deck
+    val words = state.words
+    val limit = state.limit
+    state.actionWord?.let { DeckWordSheet(it, deck?.type == "user", intents) }
+    if (state.selecting) BackHandler(onBack = intents::endSelecting)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             if (showBack) KbTopBar("", onBack = intents::back, backLabel = T(R.string.decks_back))
+        }
+        if (state.selecting) {
+            stickyHeader(key = "selection") { SelectionBar(state, intents) }
         }
         if (deck == null) {
             item {
@@ -264,6 +280,7 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                     }
                 }
                 KbSectionTitle(T(R.string.decks_words), Modifier.padding(top = 8.dp))
+                FilterBar(state, intents)
             }
         }
         item {
@@ -271,16 +288,13 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                 KbPanel(padding = PaddingValues(0.dp)) {
                     when {
                         words == null -> KbSkeletonRows(4)
-                        words.isEmpty() -> KbEmptyState(contentLabel(deck.content) ?: T(R.string.decks_words_empty), icon = KbIcons.Book)
+                        words.isEmpty() -> KbEmptyState(
+                            if (state.filter != DeckFilter.ALL) T(R.string.decks_filter_empty) else contentLabel(deck.content) ?: T(R.string.decks_words_empty),
+                            icon = KbIcons.Book,
+                        )
                         else -> words.forEachIndexed { i, w ->
                             if (i > 0) KbDivider(inset = 16.dp)
-                            KbListRow(
-                                w.label,
-                                supporting = w.detail.ifEmpty { null },
-                                titleStyle = KbTheme.type.jpBody.copy(lineHeight = KbTheme.type.titleSm.lineHeight).ja(),
-                                titleMaxLines = 2,
-                                trailing = w.entrySeq?.let { seq -> { KbIconButton(KbIcons.Book, T(R.string.dict_open), { DictJump.openWord(seq) }) } },
-                            )
+                            WordRow(w, state, intents)
                         }
                     }
                 }
@@ -292,6 +306,95 @@ private fun DeckDetail(deck: DeckSummary?, words: List<DeckWord>?, limit: Int, i
                     KbButton(T(R.string.decks_more), intents::more, variant = KbButtonVariant.Outline)
                 }
             }
+        }
+    }
+}
+
+/** One word: status badge, label; tap opens the action sheet (toggles in selection mode), long-press selects. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun WordRow(w: DeckWord, state: DecksUiState, intents: DecksIntents) {
+    val hasStatus = w.entrySeq != null
+    val picked = w.entrySeq != null && w.entrySeq in state.selection
+    KbListRow(
+        w.label.ifEmpty { T(R.string.decks_word_unavailable) },
+        modifier = Modifier.combinedClickable(
+            onClick = { if (state.selecting) intents.toggleSelected(w) else intents.openActions(w) },
+            onLongClick = { if (hasStatus && !state.selecting) intents.startSelecting(w) },
+            onClickLabel = T(R.string.decks_row_actions, w.label),
+        ),
+        supporting = w.detail.ifEmpty { null },
+        titleStyle = KbTheme.type.jpBody.copy(lineHeight = KbTheme.type.titleSm.lineHeight).ja(),
+        titleMaxLines = 2,
+        selected = picked,
+        chevron = false,
+        leading = if (state.selecting && hasStatus) {
+            { if (picked) androidx.compose.material3.Icon(KbIcons.Check, null, tint = KbTheme.colors.primary) }
+        } else null,
+        trailing = {
+            if (hasStatus) KbTagChip(statusLabel(w.status))
+        },
+    )
+}
+
+@Composable
+private fun statusLabel(status: String): String = T(
+    when (status) {
+        "known" -> R.string.decks_status_known
+        "never_forget" -> R.string.decks_status_never_forget
+        "blacklisted" -> R.string.decks_status_blacklisted
+        "ignored" -> R.string.decks_status_ignored
+        "learning" -> R.string.decks_status_learning
+        else -> R.string.decks_status_new
+    },
+)
+
+@Composable
+private fun filterLabel(f: DeckFilter): String = T(
+    when (f) {
+        DeckFilter.ALL -> R.string.decks_filter_all
+        DeckFilter.NEW -> R.string.decks_filter_new
+        DeckFilter.LEARNING -> R.string.decks_filter_learning
+        DeckFilter.KNOWN -> R.string.decks_filter_known
+        DeckFilter.IGNORED -> R.string.decks_filter_ignored
+    },
+)
+
+/** Status chips with their counts, and the sort. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FilterBar(state: DecksUiState, intents: DecksIntents) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (f in DeckFilter.entries) {
+                KbFilterChip(
+                    T(R.string.decks_filter_chip, filterLabel(f), state.counts[f] ?: 0),
+                    state.filter == f,
+                    { intents.setFilter(f) },
+                )
+            }
+        }
+        KbSegmented(
+            listOf(DeckSort.DECK_ORDER to T(R.string.decks_sort_deck), DeckSort.FREQUENCY to T(R.string.decks_sort_frequency)),
+            state.sort,
+            intents::setSort,
+        )
+    }
+}
+
+/** Multi-select toolbar: count, select all, bulk Known / Ignore / Reset, cancel. */
+@Composable
+private fun SelectionBar(state: DecksUiState, intents: DecksIntents) {
+    Column(Modifier.fillMaxWidth().background(KbTheme.colors.surfaceRaised).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KbIconButton(KbIcons.Close, T(R.string.decks_select_cancel), intents::endSelecting)
+            Text(T(R.string.decks_select_count, state.selection.size), style = KbTheme.type.title, color = KbTheme.colors.text, modifier = Modifier.weight(1f))
+            KbButton(T(R.string.decks_select_all), intents::selectAllVisible, variant = KbButtonVariant.Quiet)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KbButton(T(R.string.decks_act_known), { intents.setSelectionStatus("known") }, Modifier.weight(1f), variant = KbButtonVariant.Outline)
+            KbButton(T(R.string.decks_act_ignore), { intents.setSelectionStatus("ignored") }, Modifier.weight(1f), variant = KbButtonVariant.Outline)
+            KbButton(T(R.string.decks_act_reset), { intents.setSelectionStatus(null) }, Modifier.weight(1f), variant = KbButtonVariant.Outline)
         }
     }
 }

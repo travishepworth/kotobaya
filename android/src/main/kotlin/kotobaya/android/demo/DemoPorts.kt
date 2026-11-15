@@ -3,6 +3,8 @@ package kotobaya.android.demo
 import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotobaya.android.decks.DeckFilter
+import kotobaya.android.decks.DeckSort
 import kotobaya.android.decks.DeckSource
 import kotobaya.android.decks.DecksOverview
 import kotobaya.android.decks.DeckSummary
@@ -268,7 +270,7 @@ class DemoDeckSource(private val data: DemoData) : DeckSource {
 
     override fun deck(id: String): DeckSummary? = data.decks.firstOrNull { it.optString("id") == id }?.let(::summary)
 
-    override fun words(deckId: String, limit: Int, offset: Int): List<DeckWord> =
+    override fun words(deckId: String, limit: Int, offset: Int, filter: DeckFilter, sort: DeckSort): List<DeckWord> =
         data.deckItems(deckId).drop(offset).take(limit).map { item ->
             val note = data.notes.firstOrNull { it.optLong("entry_seq") == item.optLong("entry_seq") && item.has("entry_seq") }
             DeckWord(item.optString("item_key"), note?.let { data.titleOf(it) } ?: item.optString("item_key"))
