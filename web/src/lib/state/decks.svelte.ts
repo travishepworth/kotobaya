@@ -1,20 +1,44 @@
 // Deck screens (/decks, /decks/new, /decks/[id]): list, create/edit form, items of user/list decks.
+import { untrack } from 'svelte';
 import { goto } from '$app/navigation';
-import type { Deck, DeckItem, DeckListCatalogueEntry } from '../api/generated';
+import type { Deck, DeckItem, DeckListCatalogueEntry, WordStatusValue } from '../api/generated';
 import { readProblem, ResponseError } from '../api/client';
+import { NoteTypesApi, NotesApi, WordsApi } from '../api/generated';
+import { apiConfig } from '../api/client';
 import { decksApi } from '../decks/api';
 import { emptyDraft, parseNumbers, toCreate, toDraft, toPatch, type DeckDraft } from '../decks/draft';
 import { td, type DeckMessageKey } from '../decks/messages';
 import { EMPTY_VOCABULARY, loadVocabulary } from '../decks/vocabulary';
 import type { SearchVocabulary } from '../core/index';
 import { pushToast } from '../toasts.svelte';
+import { wordNoteCreate } from '../ui/deckPicker';
 import { parseQuery } from './search';
+import {
+	applyBulk,
+	applyStatusAction,
+	filterStatusParam,
+	matchesFilter,
+	type DeckFilter,
+	type DeckSort,
+	type StatusAction,
+	type WordStatusApi
+} from './deckInspect';
 
 export type { Deck, DeckItem, DeckListCatalogueEntry } from '../api/generated';
 export type { DeckDraft } from '../decks/draft';
 export type { SearchVocabulary } from '../core/index';
 export { parseNumbers } from '../decks/draft';
+export { DECK_FILTERS, type DeckFilter, type DeckSort, type SettableStatus, type StatusAction } from './deckInspect';
 export { completeQuery, parseQuery } from './search';
+
+const wordsApi = new WordsApi(apiConfig);
+const notesApi = new NotesApi(apiConfig);
+const noteTypesApi = new NoteTypesApi(apiConfig);
+
+const wordStatusApi: WordStatusApi = {
+	set: async (seq, status) => (await wordsApi.setWordStatus({ seq, wordStatusSet: { status } })).status,
+	clear: async (seq) => (await wordsApi.clearWordStatus({ seq })).status
+};
 
 export const DECK_TYPE_KEYS: Record<string, DeckMessageKey> = {
 	user: 'decks.type.user',
@@ -173,32 +197,53 @@ export class DeckItemsState {
 	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
 	loadFailed = $state(false);
 	private retryMore = false;
+	filter = $state<DeckFilter>('all');
+	sort = $state<DeckSort>('position');
+	/** Selected item keys (bulk actions). */
+	selected = $state<Set<string>>(new Set());
+	/** Bulk progress while running; null otherwise. */
+	progress = $state<{ done: number; total: number } | null>(null);
+	/** Keys of rows with a call in flight. */
+	pending = $state<Set<string>>(new Set());
+	private req = 0;
+	private vocabTypeId: string | null = null;
 
 	readonly #deck: () => Deck;
 	readonly editable = $derived.by(() => this.#deck().type === 'user');
+	readonly selectedItems = $derived(this.items.filter((i) => this.selected.has(i.itemKey) && i.entrySeq != null));
 
 	constructor(deck: () => Deck) {
 		this.#deck = deck;
 		$effect(() => {
 			const d = deck();
 			// Smart decks have no items (the server answers 409 not_applicable).
-			if (d.type !== 'smart') void this.fetch(d.id, null);
+			if (d.type !== 'smart') untrack(() => void this.fetch(d.id, null));
 			else this.loaded = true;
 		});
 	}
 
-	/** Reads no state before its first await, so it is safe to start from an effect. */
+	/** A newer request supersedes an older one (filter switches while a page is in flight). */
 	private async fetch(deckId: string, cursor: string | null): Promise<void> {
+		const mine = ++this.req;
 		try {
-			const page = await decksApi.listDeckItems({ deckId, limit: 50, cursor: cursor ?? undefined });
+			const page = await decksApi.listDeckItems({
+				deckId,
+				limit: 50,
+				cursor: cursor ?? undefined,
+				status: filterStatusParam(this.filter),
+				sort: this.sort
+			});
+			if (mine !== this.req) return;
 			this.items = cursor !== null ? [...this.items, ...page.items] : page.items;
 			this.cursor = page.nextCursor;
 			this.loadFailed = false;
+			if (cursor === null) this.selected = new Set();
 		} catch {
+			if (mine !== this.req) return;
 			this.loadFailed = true; // the client already toasted
 			this.retryMore = cursor !== null;
 		} finally {
-			this.loaded = true;
+			if (mine === this.req) this.loaded = true;
 		}
 	}
 
@@ -208,6 +253,109 @@ export class DeckItemsState {
 
 	async load(more: boolean): Promise<void> {
 		await this.fetch(this.#deck().id, more ? this.cursor : null);
+	}
+
+	/** Switching filter or sort restarts from the first page (cursors are only valid for the same parameters). */
+	async setView(filter: DeckFilter, sort: DeckSort): Promise<void> {
+		this.filter = filter;
+		this.sort = sort;
+		this.cursor = null;
+		await this.fetch(this.#deck().id, null);
+	}
+
+	/** Items with a word entry carry a status; custom-note rows (`n:`) do not. */
+	hasStatus(item: DeckItem): boolean {
+		return item.entrySeq != null;
+	}
+
+	toggle(key: string): void {
+		const next = new Set(this.selected);
+		if (!next.delete(key)) next.add(key);
+		this.selected = next;
+	}
+
+	/** Select every status-bearing row on the loaded pages, or clear when all already are. */
+	toggleAll(): void {
+		const keys = this.items.filter((i) => this.hasStatus(i)).map((i) => i.itemKey);
+		this.selected = keys.length > 0 && keys.every((k) => this.selected.has(k)) ? new Set() : new Set(keys);
+	}
+
+	/** Write the new status into the row, or drop the row when it no longer matches the filter. */
+	private applyStatus(key: string, status: WordStatusValue): void {
+		this.items = this.items.flatMap((i) => {
+			if (i.itemKey !== key) return [i];
+			if (!matchesFilter(this.filter, status)) return [];
+			return [{ ...i, status, entry: i.entry ? { ...i.entry, status } : i.entry }];
+		});
+		if (!this.items.some((i) => i.itemKey === key) && this.selected.has(key)) {
+			const next = new Set(this.selected);
+			next.delete(key);
+			this.selected = next;
+		}
+	}
+
+	private setPending(key: string, on: boolean): void {
+		const next = new Set(this.pending);
+		if (on) next.add(key);
+		else next.delete(key);
+		this.pending = next;
+	}
+
+	/** Set or reset one word's status (PUT/DELETE /words/{seq}/status). */
+	async act(item: DeckItem, action: StatusAction): Promise<void> {
+		if (item.entrySeq == null) return;
+		this.setPending(item.itemKey, true);
+		try {
+			this.applyStatus(item.itemKey, await applyStatusAction(wordStatusApi, item.entrySeq, action));
+			pushToast(td('decks.statusUpdated'), 'info');
+		} catch {
+			/* toast shown */
+		} finally {
+			this.setPending(item.itemKey, false);
+		}
+	}
+
+	/** One status call per selected entry; failures are counted and reported, never dropped silently. */
+	async bulk(action: StatusAction): Promise<void> {
+		const items = this.selectedItems;
+		if (items.length === 0 || this.progress) return;
+		this.progress = { done: 0, total: items.length };
+		try {
+			const r = await applyBulk(wordStatusApi, items, action, (done, total) => (this.progress = { done, total }));
+			for (const [key, status] of r.updated) this.applyStatus(key, status);
+			if (r.failed.length > 0) {
+				pushToast(td('decks.bulkFailed', { failed: r.failed.length, total: items.length }), 'error');
+				this.selected = new Set(r.failed.map((f) => f.itemKey));
+			} else {
+				pushToast(td('decks.bulkDone', { n: r.updated.size }), 'info');
+			}
+		} finally {
+			this.progress = null;
+		}
+	}
+
+	/** "Add to my notes" for a word row (Vocab note type, no deck). A duplicate note counts as already added. */
+	async mine(item: DeckItem): Promise<void> {
+		const seq = item.entrySeq;
+		if (seq == null) return;
+		this.setPending(item.itemKey, true);
+		try {
+			if (this.vocabTypeId === null) {
+				const types = await noteTypesApi.listNoteTypes({});
+				this.vocabTypeId = types.items.find((n) => n.baseType === 'vocab' && n.deletedAt === null)?.id ?? null;
+			}
+			if (this.vocabTypeId === null) {
+				pushToast(td('decks.noVocabType'), 'error');
+				return;
+			}
+			const note = await notesApi.createNote({ noteCreate: wordNoteCreate(this.vocabTypeId, seq, null) });
+			this.items = this.items.map((i) => (i.itemKey === item.itemKey && i.entry ? { ...i, entry: { ...i.entry, noteId: note.id } } : i));
+			pushToast(td('decks.mined'), 'info');
+		} catch (e) {
+			if (e instanceof ResponseError && e.response.status === 409) pushToast(td('decks.mined'), 'info');
+		} finally {
+			this.setPending(item.itemKey, false);
+		}
 	}
 
 	async add(): Promise<void> {
