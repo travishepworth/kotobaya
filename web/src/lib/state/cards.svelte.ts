@@ -11,10 +11,32 @@ import { DictRef, renderPreview, sortKinds, type CardSide, type Rendered } from 
 
 export type { Card, CardBulkResult, Deck, NoteType } from '../api/generated';
 export type { SearchVocabulary } from '../core/index';
-export { BULK_KINDS, ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
+export { BULK_KINDS, noteLabel, ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
 export type { BulkKind, BulkParams, Selector } from '../cards/model';
 export { completeQuery, parseQuery } from './search';
 export { earliestDue, maxLapses, rowSelection, type NoteRow } from './noteRows';
+
+/** Runs one best-effort load; the client already toasted a failure. */
+async function loadSafe(load: () => Promise<unknown>): Promise<void> {
+	try {
+		await load();
+	} catch {
+		/* toast shown; the page still works without it */
+	}
+}
+
+/** Every note type, deleted ones included: a note keeps pointing at a type that was since deleted or replaced. */
+export async function loadNoteTypes(): Promise<Map<string, NoteType>> {
+	return new Map((await noteTypesApi.listNoteTypes({ includeDeleted: true })).items.map((n) => [n.id, n]));
+}
+
+/** The note's own type, else the built-in type of its base type (so a preview never fails on a missing type row). */
+export function resolveNoteType(types: ReadonlyMap<string, NoteType>, id: string, baseType: string): NoteType | undefined {
+	const own = types.get(id);
+	if (own) return own;
+	const same = [...types.values()].filter((t) => t.baseType === baseType && t.deletedAt === null);
+	return same.find((t) => t.builtin) ?? same[0];
+}
 
 /** The /cards screen. */
 export class CardsPage {
@@ -38,6 +60,8 @@ export class CardsPage {
 	activeId = $state<string | null>(null);
 	/** Headwords of dictionary notes, filled lazily from the preview's entry fetches. */
 	headwords = $state<Map<number, string>>(new Map());
+	/** Headword batches in flight: a row without a name yet shows a skeleton, not an id. */
+	pendingLabels = $state(0);
 	/** Bumped for every new search so a slow page of an older query is dropped. */
 	private generation = 0;
 
@@ -52,15 +76,10 @@ export class CardsPage {
 
 	/** Call once on mount: loads the completion vocabulary and the first page. */
 	start(): void {
-		void (async () => {
-			try {
-				this.vocabulary = await loadVocabulary();
-				this.userDecks = (await decksApi.listDecks({ type: 'user' })).items;
-				this.noteTypes = new Map((await noteTypesApi.listNoteTypes({})).items.map((n) => [n.id, n]));
-			} catch {
-				/* toast shown; the page still works without completions */
-			}
-		})();
+		// Independent loads: one failing (toast shown) must not leave the others empty (note types drive the preview).
+		void loadSafe(async () => (this.vocabulary = await loadVocabulary()));
+		void loadSafe(async () => (this.userDecks = (await decksApi.listDecks({ type: 'user' })).items));
+		void loadSafe(async () => (this.noteTypes = await loadNoteTypes()));
 		this.search();
 	}
 
@@ -110,11 +129,16 @@ export class CardsPage {
 	/** One batch call for the dictionary notes of a freshly loaded page; failures keep the id fallback. */
 	private async loadHeadwords(items: Card[]): Promise<void> {
 		const seqs = items.flatMap((c) => (c.note?.entrySeq != null ? [c.note.entrySeq] : []));
-		await fetchHeadwords(seqs, (found) => {
-			const next = new Map(this.headwords);
-			for (const h of found) next.set(h.seq, h.headword);
-			this.headwords = next;
-		});
+		this.pendingLabels += 1;
+		try {
+			await fetchHeadwords(seqs, (found) => {
+				const next = new Map(this.headwords);
+				for (const h of found) next.set(h.seq, h.headword);
+				this.headwords = next;
+			});
+		} finally {
+			this.pendingLabels -= 1;
+		}
 	}
 
 	search(): void {
@@ -172,7 +196,12 @@ export class CardsPage {
 	}
 
 	noteTypeOf(c: Card): NoteType | undefined {
-		return c.note ? this.noteTypes.get(c.note.noteTypeId) : undefined;
+		return c.note ? resolveNoteType(this.noteTypes, c.note.noteTypeId, c.note.type) : undefined;
+	}
+
+	/** Note-type field keys in template order, for labelling rows (the stored field object has no order). */
+	fieldOrderOf(c: Card): string[] {
+		return this.noteTypeOf(c)?.fields.map((f) => f.key) ?? [];
 	}
 }
 

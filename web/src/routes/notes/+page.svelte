@@ -6,11 +6,13 @@
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
 	import Select from '../../lib/ui/Select.svelte';
+	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
+	import { ut } from '../../lib/ui/messages';
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
 	import type { TableColumn } from '../../lib/ui/kinds';
 	import { tn } from '../../lib/notes/messages';
-	import { BASE_TYPES, NotesPage, rowLabel, type Note, type NoteBaseType } from '../../lib/state/notes.svelte';
+	import { BASE_TYPES, NotesPage, fieldText, noteLabel, rowLabel, type Note, type NoteBaseType } from '../../lib/state/notes.svelte';
 	import BrowseLayout from '../cards/BrowseLayout.svelte';
 	import { tb, type BrowseKey } from '../cards/messages';
 	import NoteEditor from './NoteEditor.svelte';
@@ -35,12 +37,15 @@
 
 	// Dictionary-backed notes are named by their headword; others by their first field.
 	function label(n: Note): string {
-		const hw = n.entrySeq != null ? headwordMap.get(n.entrySeq) : undefined;
-		return hw ?? rowLabel(n, n.id, headwordMap);
+		return rowLabel(n, n.id, headwordMap, s.fieldOrderOf(n));
+	}
+	// Unnamed and headwords still loading: a skeleton, never the raw id.
+	function loadingLabel(n: Note): boolean {
+		return s.pendingLabels > 0 && noteLabel(n, headwordMap, s.fieldOrderOf(n)) === null;
 	}
 	function meaning(n: Note): string {
 		const hw = n.entrySeq != null ? s.headwords.get(n.entrySeq) : undefined;
-		return hw?.gloss ?? '';
+		return hw?.gloss || fieldText(n.fields, 'meaning');
 	}
 	function submit(e: Event): void {
 		e.preventDefault();
@@ -79,7 +84,9 @@
 
 {#snippet cell(n: Note, col: TableColumn)}
 	{#if col.key === 'note'}
-		<button type="button" class="link" onclick={() => s.activate(n)}>{label(n)}</button>
+		<button type="button" class="link" onclick={() => s.activate(n)}>
+			{#if loadingLabel(n)}<span class="kb-sr">{ut('ui.loading')}</span><Skeleton shape="text" count={1} />{:else}{label(n)}{/if}
+		</button>
 	{:else if col.key === 'meaning'}
 		<span class="muted">{meaning(n)}</span>
 	{:else if col.key === 'type'}
@@ -129,7 +136,7 @@
 	{#if s.active}
 		<NoteEditor
 			note={s.active}
-			noteType={s.noteTypes.get(s.active.noteTypeId)}
+			noteType={s.noteTypeOf(s.active)}
 			onentry={(seq, e) => s.entryLoaded(seq, e)}
 			onsaved={(n) => s.saved(n)}
 			ondeleted={(id) => s.deleted(id)}

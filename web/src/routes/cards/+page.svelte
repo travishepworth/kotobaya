@@ -6,6 +6,8 @@
 	import Chip from '../../lib/ui/Chip.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
+	import Skeleton from '../../lib/ui/Skeleton.svelte';
+	import { ut } from '../../lib/ui/messages';
 	import QueryField from '../../lib/ui/QueryField.svelte';
 	import VirtualTable from '../../lib/ui/VirtualTable.svelte';
 	import { kindLabel, stateLabel, stateOf } from '../../lib/ui/cardState';
@@ -14,6 +16,7 @@
 		CardsPage,
 		earliestDue,
 		maxLapses,
+		noteLabel,
 		rowLabel,
 		rowSelection,
 		type Card,
@@ -49,8 +52,11 @@
 	}
 	// Dictionary-backed notes are named by their headword; others by their first field.
 	function label(c: Card): string {
-		const hw = c.note?.entrySeq != null ? s.headwords.get(c.note.entrySeq) : undefined;
-		return hw ?? rowLabel(c.note, c.noteId, s.headwords);
+		return rowLabel(c.note, c.noteId, s.headwords, s.fieldOrderOf(c));
+	}
+	// Unnamed and headwords still loading: a skeleton, never the raw id.
+	function loadingLabel(c: Card): boolean {
+		return s.pendingLabels > 0 && noteLabel(c.note, s.headwords, s.fieldOrderOf(c)) === null;
 	}
 	function clearSearch(): void {
 		s.draft = '';
@@ -94,7 +100,7 @@
 
 {#snippet cell(row: NoteRow<Card>, col: TableColumn)}
 	{#if col.key === 'word'}
-		{label(row.cards[0])}
+		{#if loadingLabel(row.cards[0])}<span class="kb-sr">{ut('ui.loading')}</span><Skeleton shape="text" count={1} />{:else}{label(row.cards[0])}{/if}
 	{:else if col.key === 'cards'}
 		<span class="cards">
 			{#each row.cards as c (c.id)}

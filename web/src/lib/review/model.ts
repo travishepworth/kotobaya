@@ -18,11 +18,12 @@ export function toCoreNoteType(nt: ApiNoteType): CoreNoteType {
 		fieldKeys: nt.fields.map((f) => f.key),
 		templates: Object.entries(nt.templates).map(([kind, tpl]) => ({
 			kind,
-			isDefault: tpl._default,
-			front: tpl.front,
-			back: tpl.back
+			isDefault: tpl._default ?? false,
+			// A built-in template is stored as null; a wire form that omits the key must not reach the core as undefined.
+			front: tpl.front ?? null,
+			back: tpl.back ?? null
 		})),
-		css: nt.css
+		css: nt.css ?? ''
 	};
 }
 

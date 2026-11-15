@@ -53,6 +53,7 @@ const en = {
 	'app.signedInAs': 'Signed in as {name}',
 	'app.nav.home': 'Today',
 	'app.nav.review': 'Review',
+	'app.nav.search': 'Search',
 	'app.nav.dictionary': 'Dictionary',
 	'app.nav.browse': 'Browse',
 	'app.nav.decks': 'Decks',

@@ -31,8 +31,8 @@ export function renderPreview(p: PreviewInput): Rendered {
 			card: renderCard({
 				noteType: toCoreNoteType(p.noteType),
 				kind: p.kind,
-				fields: p.fields,
-				mnemonic: p.mnemonic,
+				fields: p.fields ?? {},
+				mnemonic: p.mnemonic ?? '',
 				dictionary: toDictionary(p.entry),
 				kanji: toKanji(p.kanji),
 				...(p.cloze !== undefined ? { cloze: p.cloze } : {}),

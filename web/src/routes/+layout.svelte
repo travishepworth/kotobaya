@@ -22,6 +22,7 @@
 	const nav: NavItem[] = [
 		{ href: '/', label: ut('app.nav.home'), icon: 'home' },
 		{ href: '/review', label: ut('app.nav.review'), icon: 'review' },
+		{ href: '/search', label: ut('app.nav.search'), icon: 'search' },
 		{ href: '/dictionary', label: ut('app.nav.dictionary'), icon: 'dictionary' },
 		{ href: '/cards', label: ut('app.nav.browse'), icon: 'browse' },
 		{ href: '/decks', label: ut('app.nav.decks'), icon: 'decks' },

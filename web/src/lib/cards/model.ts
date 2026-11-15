@@ -35,31 +35,67 @@ export function plainText(html: string): string {
 		.trim();
 }
 
-/** First non-empty field value of a note, as a one-line summary. */
-export function noteSummary(fields: Record<string, string>): string {
+/** First non-empty field value of a note, as a one-line summary (in the given key order, then in object order). */
+export function noteSummary(fields: Record<string, string> | null | undefined, order: readonly string[] = []): string {
+	if (!fields) return '';
+	for (const k of order) {
+		const s = plainText(fields[k] ?? '');
+		if (s) return s;
+	}
 	for (const v of Object.values(fields)) {
-		const s = plainText(v);
+		const s = plainText(v ?? '');
 		if (s) return s;
 	}
 	return '';
 }
 
-/** Row label: field summary, else the dictionary headword, else the kanji literal, else the short note id. */
-export function rowLabel(
-	note: { fields: Record<string, string>; entrySeq?: number | null; kanjiLiteral?: string | null } | null | undefined,
-	noteId: string,
-	headwords?: ReadonlyMap<number, string>
-): string {
-	if (note) {
-		const s = noteSummary(note.fields);
-		if (s) return s;
-		if (note.entrySeq != null) {
-			const h = headwords?.get(note.entrySeq);
-			if (h) return h;
-		}
-		if (note.kanjiLiteral) return note.kanjiLiteral;
+/** Field keys that name the note itself; a stored field object has no reliable key order (jsonb sorts keys by length). */
+const WORD_KEYS = ['expression', 'literal', 'word', 'front'];
+
+interface LabelNote {
+	fields?: Record<string, string> | null;
+	entrySeq?: number | null;
+	kanjiLiteral?: string | null;
+}
+
+/**
+ * The note's name, or null when nothing names it yet (a dictionary note whose headword is still loading).
+ * Order: the expression field, the dictionary headword, the kanji literal, the reading, then the first non-empty field
+ * in note-type order. Takoboto notes carry only some fields, so the first stored field is often the meaning.
+ */
+export function noteLabel(
+	note: LabelNote | null | undefined,
+	headwords?: ReadonlyMap<number, string>,
+	fieldOrder: readonly string[] = []
+): string | null {
+	if (!note) return null;
+	for (const k of WORD_KEYS) {
+		const v = plainText(note.fields?.[k] ?? '');
+		if (v) return v;
 	}
-	return noteId.slice(0, 8);
+	if (note.entrySeq != null) {
+		const h = headwords?.get(note.entrySeq);
+		if (h) return h;
+	}
+	if (note.kanjiLiteral) return note.kanjiLiteral;
+	const reading = plainText(note.fields?.reading ?? '');
+	if (reading) return reading;
+	return noteSummary(note.fields, fieldOrder) || null;
+}
+
+/** Plain text of one note field ('' when absent). */
+export function fieldText(fields: Record<string, string> | null | undefined, key: string): string {
+	return plainText(fields?.[key] ?? '');
+}
+
+/** Row label: `noteLabel`, else the short note id (last resort; callers show a skeleton while labels load). */
+export function rowLabel(
+	note: LabelNote | null | undefined,
+	noteId: string,
+	headwords?: ReadonlyMap<number, string>,
+	fieldOrder: readonly string[] = []
+): string {
+	return noteLabel(note, headwords, fieldOrder) ?? noteId.slice(0, 8);
 }
 
 export type BulkKind =

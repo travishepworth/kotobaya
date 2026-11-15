@@ -2,9 +2,10 @@
 import type { DictEntry, Note, NoteBaseType, NotePatch, NoteType } from '../api/generated';
 import { fetchHeadwords } from '../cards/api';
 import { PAGE_SIZE } from '../cards/model';
-import { noteTypesApi, notesApi } from '../notes/api';
+import { notesApi } from '../notes/api';
 import { dictFieldValues } from '../notes/dict';
 import { HeadwordMap } from '../notes/headwords.svelte';
+import { loadNoteTypes, resolveNoteType } from './cards.svelte';
 import { withPinned } from './noteLink';
 import { tn } from '../notes/messages';
 import { pushToast } from '../toasts.svelte';
@@ -12,7 +13,8 @@ import { DictRef, renderPreview, sortKinds, type CardSide, type Rendered } from 
 
 export type { DictEntry, Note, NoteBaseType, NoteSummary, NoteType } from '../api/generated';
 export { HeadwordMap } from '../notes/headwords.svelte';
-export { ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
+export { fieldText, noteLabel, ROW_HEIGHT, rowLabel, windowRange } from '../cards/model';
+export { resolveNoteType } from './cards.svelte';
 
 export const BASE_TYPES: NoteBaseType[] = ['vocab', 'kanji', 'phrase', 'grammar', 'sentence', 'custom'];
 
@@ -32,6 +34,8 @@ export class NotesPage {
 	/** Cursor of a failed "load more", so `retry` asks for the same page again. */
 	private retryCursor: string | null = null;
 	readonly headwords = new HeadwordMap();
+	/** Headword batches in flight: a row without a name yet shows a skeleton, not an id. */
+	pendingLabels = $state(0);
 	private generation = 0;
 	/** The deep-linked note, kept in the list across the initial page load (which would otherwise replace it). */
 	private pinned: Note | null = null;
@@ -39,11 +43,19 @@ export class NotesPage {
 
 	readonly active = $derived(this.notes.find((n) => n.id === this.activeId) ?? null);
 
+	noteTypeOf(n: Note): NoteType | undefined {
+		return resolveNoteType(this.noteTypes, n.noteTypeId, n.type);
+	}
+
+	fieldOrderOf(n: Note): string[] {
+		return this.noteTypeOf(n)?.fields.map((f) => f.key) ?? [];
+	}
+
 	/** Call once on mount. */
 	start(deepLink: string | null): void {
 		void (async () => {
 			try {
-				this.noteTypes = new Map((await noteTypesApi.listNoteTypes({})).items.map((n) => [n.id, n]));
+				this.noteTypes = await loadNoteTypes();
 			} catch {
 				/* toast shown; previews just report the missing type */
 			}
@@ -79,10 +91,11 @@ export class NotesPage {
 			this.loadFailed = false;
 			this.notes = reset ? withPinned(res.items, this.pinned) : [...this.notes, ...res.items];
 			this.cursor = res.nextCursor;
+			this.pendingLabels += 1;
 			void fetchHeadwords(
 				res.items.flatMap((n) => (n.entrySeq != null ? [n.entrySeq] : [])),
 				(found) => this.headwords.putHeadwords(found)
-			);
+			).finally(() => (this.pendingLabels -= 1));
 		} catch {
 			if (gen !== this.generation) return;
 			this.loadFailed = true;
