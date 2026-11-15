@@ -1061,3 +1061,5 @@
 2026-11-15T01:15:36Z WEB-PRIO DISPATCH writer-light (web decks list sorted desc + labels say higher-first; queue is lower-first)
 2026-11-15T01:17:34Z WEB-REVIEW-FAST DISPATCH writer (web review reverts to Show answer on fast double click)
 2026-11-15T01:18:02Z WEB-PRIO CHECK_GREEN + MERGE c1cc2264 (decks asc draw order, lower-first labels, mined hint)
+2026-11-15T01:21:00Z WEB-ADD2DECK, AND-ADD2DECK DISPATCH writer x2 (user: no good way to add to deck; note view + dictionary buttons)
+2026-11-15T01:21:00Z DICT objectstore OOMKilled (512Mi) during refresh -> values objectStore limit 2Gi (helm rev 21); refresh re-run
