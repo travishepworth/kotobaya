@@ -189,8 +189,13 @@ def test_empty_day_has_null_card_and_text_fields_are_optional() -> None:
     assert state["card"] is None and state["counts"] == {"new": 0, "learning": 0, "review": 0}
     entry = CardEntry("a", "vocab", None, {"front": "猫", "back": "cat", "reading": "ねこ"})
     s.apply_queue(QueueSnapshot([entry], Counts(1, 0, 0), DAY_END), check_current=False)
+    hidden = check_state(s.state())["card"]
+    assert hidden["front"] == "猫"
+    assert not {"back", "reading", "sentence"} & hidden.keys()  # A2: answer-side stays hidden
+    s.reveal()
     card = check_state(s.state())["card"]
-    assert card["front"] == "猫" and card["reading"] == "ねこ" and "sentence" not in card
+    assert card["front"] == "猫" and card["back"] == "cat" and card["reading"] == "ねこ"
+    assert "sentence" not in card
 
 
 # ---- daemon: full state on every line --------------------------------------

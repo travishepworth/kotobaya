@@ -32,6 +32,10 @@ ACTIONS (instant; written to the daemon FIFO, several run in order)
   kby -3 | good          kby -4 | easy            kby -R | refresh    refetch the queue
   kby -n | next          reveal if hidden, else good (needs a running `kby stream`)
   five-button names also work: nothing, something, okay
+  kby do ACTION [--rev REV]       one action for GUI widgets: reveal again hard good easy undo skip
+                                  refresh next. Exit 2 (stderr only) if unknown or not enabled in
+                                  the current state. With --rev a stale click is dropped (exit 0)
+                                  and the next `serve` line says "Ignored: screen changed".
 
 STREAM (long-lived, one waybar-style JSON line per state change)
   kby                             same as `kby -f`
@@ -40,6 +44,19 @@ STREAM (long-lived, one waybar-style JSON line per state change)
   kby -f [WIDGET] --text          just the text, one plain line per state
   kby stream --raw                the daemon's state JSON, unchanged
   kby stream --jq 'FILTER'        the daemon's state piped through your own jq filter
+
+SERVE (machine interface for GUI widgets; data only, no widget confs)
+  kby serve                       one compact JSON line per state change, flushed at once, forever.
+                                  Offline / auth / error never end it: they are lines too.
+  line (v 1): {"v":1, "state":"loading|front|back|done|offline|auth|error",
+               "rev":"<card_id>:<n>" (changes every line; send it back as `kby do ... --rev`),
+               "text":"語 12", "counts":{"new","learning","review"},
+               "card":null|{"id","kind","front"; "reading","sentence","back" only when revealed},
+               "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
+               "error":null|"...",
+               "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next":
+                          {"enabled":bool, "hint":"1m" (grades; only when known)}}}
+  Each line is also written to $XDG_RUNTIME_DIR/kotobaya/state.json (temp file + rename).
 
 WIDGETS (${XDG_CONFIG_HOME:-~/.config}/kotobaya/widgets/NAME.conf)
   kby click WIDGET BUTTON         run the action WIDGET binds to BUTTON in the current state
@@ -75,6 +92,11 @@ PY
 # occur inside card text, where quotes are escaped.
 state_name() {
   local s=$1
+  # A `kby serve` line (also written to the cache) names its state itself.
+  if [[ $s =~ ^\{\"v\":1,\"state\":\"([a-z]+)\" ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return
+  fi
   if [[ -z $s || $s != *'"conn":"ok"'* ]]; then
     if [[ $s == *'"conn":"auth"'* ]]; then echo auth; else echo offline; fi
   elif [[ $s == *'"card":null'* ]]; then
@@ -111,6 +133,188 @@ send() {
   # 1<> never blocks, but on a missing path it would create a regular file: check first.
   [[ -p $FIFO ]] || die "daemon not running (no FIFO at $FIFO)"
   printf '%s\n' "${out[@]}" 1<>"$FIFO"
+}
+
+# ---------------------------------------------------------------- do
+
+DO_ACTIONS=" reveal again hard good easy undo skip refresh next "
+NOTICE_FILE="$RUNTIME_DIR/kby-notice" # one-shot note for the next `serve` line
+STALE_NOTICE="Ignored: screen changed"
+
+fail2() { printf 'kby: %s\n' "$*" >&2; exit 2; }
+
+# The rev of a state line: serve lines carry one; a raw daemon state only has the card id, so
+# its rev is "<card_id>:" (compared by card id alone).
+state_rev() {
+  local s=$1
+  if [[ $s =~ ^\{\"v\":1,\"state\":\"[a-z]+\",\"rev\":\"([^\"]*)\" ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+  elif [[ $s =~ \"card\":\{\"id\":\"([^\"]*)\" ]]; then
+    printf '%s:' "${BASH_REMATCH[1]}"
+  elif [[ -n $s ]]; then
+    printf -- '-:'
+  fi
+}
+
+# Is ACTION enabled in STATE (UNDOABLE: true|false)? Same table as `serve`'s "actions".
+action_enabled() {
+  local state=$1 undoable=$2 action=$3
+  case $action in
+    refresh) return 0 ;;
+    reveal) [[ $state == front ]] ;;
+    again | hard | good | easy) [[ $state == back ]] ;;
+    skip | next) [[ $state == front || $state == back ]] ;;
+    undo) [[ $undoable == true ]] ;;
+    *) return 1 ;;
+  esac
+}
+
+do_action() {
+  local action="" rev="" have_rev=0
+  while (($#)); do
+    case $1 in
+      --rev) (($# >= 2)) || fail2 "--rev needs a value"; rev=$2 have_rev=1; shift ;;
+      --rev=*) rev=${1#--rev=} have_rev=1 ;;
+      -*) fail2 "unknown option $1 (usage: kby do ACTION [--rev REV])" ;;
+      *) [[ -z $action ]] || fail2 "usage: kby do ACTION [--rev REV]"; action=${1,,} ;;
+    esac
+    shift
+  done
+  [[ -n $action ]] || fail2 "usage: kby do ACTION [--rev REV]"
+  [[ $DO_ACTIONS == *" $action "* ]] ||
+    fail2 "unknown action '$action' (one of:${DO_ACTIONS% })"
+
+  local s state undoable=false cur
+  s=$(current_state_json)
+  if ((have_rev)); then
+    cur=$(state_rev "$s")
+    # Stale click: drop it, and have the daemon emit a line that carries the notice.
+    if [[ -z $cur || ${rev%:*} != "${cur%:*}" || (${cur: -1} != : && $rev != "$cur") ]]; then
+      mkdir -p -- "$RUNTIME_DIR"
+      printf '%s' "$STALE_NOTICE" >"$NOTICE_FILE.$BASHPID" &&
+        mv -f -- "$NOTICE_FILE.$BASHPID" "$NOTICE_FILE"
+      (send refresh) 2>/dev/null || true
+      return 0
+    fi
+  fi
+  state=$(state_name "$s")
+  [[ $s == *'"undoable":true'* ]] && undoable=true
+  action_enabled "$state" "$undoable" "$action" ||
+    fail2 "'$action' is not available while the card is: $state"
+  KBY_STATE=$state send "$action"
+}
+
+# ---------------------------------------------------------------- serve
+
+# jq program: one daemon state (or null) -> one serve line. Answer-side fields only when revealed.
+# shellcheck disable=SC2016 # jq source, not shell
+JQ_SERVE='
+def nz: if . == "" then null else . end;
+def statename($s):
+  if $s == null then "loading"
+  elif $s.conn != "ok" then (if $s.conn == "auth" then "auth" else "offline" end)
+  elif $s.card != null then (if $s.card.revealed then "back" else "front" end)
+  elif $s.counts == null then "loading" else "done" end;
+def nonull: with_entries(select(.value != null));
+def one($t; $n): ($t | gsub("\\s*\n\\s*"; " ")) as $v
+  | if ($v | length) > $n then $v[0:($n - 1)] + "…" else $v end;
+def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
+($force | nz) as $force | ($err | nz) as $err | ($notice | nz) as $notice
+| $raw as $s
+| ($force // statename($s)) as $st
+| (if $s == null then null else $s.card end) as $k
+| (($s.counts // null) // {new: 0, learning: 0, review: 0}) as $c
+| ($c.new + $c.learning + $c.review) as $due
+| ($k.revealed // false) as $rev
+| (($s.last.undoable // false) and ($st == "front" or $st == "back" or $st == "done")) as $undo
+| ($k.previews // {}) as $p
+| ($st == "front" or $st == "back") as $card
+| {v: 1, state: $st,
+   rev: "\($k.id // "-"):\($n)",
+   text: (if $card then "\(one($k.front // "語"; 24)) \($due)"
+          elif $st == "done" then "語 ✓"
+          elif $st == "loading" then "語 …"
+          else "語 \($st)" end),
+   counts: {new: $c.new, learning: $c.learning, review: $c.review},
+   card: (if $k == null then null
+          else ({id: $k.id, kind: $k.kind, front: $k.front}
+                + (if $rev then {reading: $k.reading, sentence: $k.sentence, back: $k.back} else {} end))
+               | nonull end),
+   last: {rating: ($s.last.rating // null), undoable: $undo},
+   notice: ([$notice, $s.notice] | map(select(. != null and . != "")) | join("; ") | nz),
+   error: ($err // (if $st == "offline" then "daemon not reachable (systemctl --user status kotobaya)"
+                    elif $st == "auth" then "token rejected: the PAT needs scopes read and review"
+                    else null end)),
+   actions: {
+     reveal: act($st == "front"; null),
+     again: act($st == "back"; $p.again), hard: act($st == "back"; $p.hard),
+     good: act($st == "back"; $p.good), easy: act($st == "back"; $p.easy),
+     undo: act($undo; null), skip: act($card; null), refresh: act(true; null),
+     next: act($card; null)}}
+'
+
+SERVE_WPID="" SERVE_N=0 SERVE_ERRF=""
+
+serve_cleanup() {
+  [[ -z $SERVE_WPID ]] || kill "$SERVE_WPID" 2>/dev/null || true
+  rm -f -- "$CACHE" "$SERVE_ERRF" 2>/dev/null || true
+}
+
+# serve_emit RAW_JSON|null [FORCE_STATE [ERROR]]: print, flush and cache one line.
+serve_emit() {
+  local raw=$1 force=${2:-} err=${3:-} notice="" line tmp="$CACHE.serve.$BASHPID"
+  SERVE_N=$((SERVE_N + 1))
+  if [[ -f $NOTICE_FILE ]] && mv -f -- "$NOTICE_FILE" "$NOTICE_FILE.$BASHPID" 2>/dev/null; then
+    notice=$(<"$NOTICE_FILE.$BASHPID")
+    rm -f -- "$NOTICE_FILE.$BASHPID"
+  fi
+  line=$(jq -nc --argjson raw "$raw" --argjson n "$SERVE_N" \
+    --arg force "$force" --arg err "$err" --arg notice "$notice" "$JQ_SERVE" 2>/dev/null) ||
+    line=$(jq -nc --argjson n "$SERVE_N" --arg err "${err:-state could not be rendered}" \
+      '{v:1,state:"error",rev:"-:\($n)",text:"語 error",counts:{new:0,learning:0,review:0},card:null,
+        last:{rating:null,undoable:false},notice:null,error:$err,
+        actions:{reveal:{enabled:false},again:{enabled:false},hard:{enabled:false},
+                 good:{enabled:false},easy:{enabled:false},undo:{enabled:false},
+                 skip:{enabled:false},refresh:{enabled:true},next:{enabled:false}}}')
+  # Cache first: whoever reacts to a printed line (`kby do --rev`) finds the same line there.
+  printf '%s\n' "$line" >"$tmp" && mv -f -- "$tmp" "$CACHE"
+  printf '%s\n' "$line"
+}
+
+serve() {
+  command -v jq >/dev/null || die "jq not found"
+  # shellcheck disable=SC2174 # only the runtime dir itself needs the mode
+  mkdir -p -m 700 -- "$RUNTIME_DIR"
+  rm -f -- "$NOTICE_FILE"
+  SERVE_ERRF="$RUNTIME_DIR/.kby-serve-err.$BASHPID"
+  trap serve_cleanup EXIT
+  trap 'exit 0' TERM INT HUP PIPE
+
+  serve_emit null
+  local backoff=1 fd line rc err
+  while :; do
+    if command -v "$KBY_CLI" >/dev/null; then
+      exec {fd}< <(exec "$KBY_CLI" watch --format json 2>"$SERVE_ERRF")
+      SERVE_WPID=$!
+      while IFS= read -r -u "$fd" line; do
+        [[ -n $line ]] || continue
+        backoff=1
+        serve_emit "$line"
+      done
+      exec {fd}<&-
+      rc=0
+      wait "$SERVE_WPID" 2>/dev/null || rc=$?
+      SERVE_WPID=""
+      err=$(tail -n 1 -- "$SERVE_ERRF" 2>/dev/null || true)
+      err="kotobaya watch exited (status $rc)${err:+: $err}"
+    else
+      err="'$KBY_CLI' not found (set KBY_CLI)"
+    fi
+    serve_emit null error "$err"
+    sleep "$backoff" &
+    wait $! || true
+    backoff=$((backoff < 10 ? backoff * 2 : 10))
+  done
 }
 
 # ---------------------------------------------------------------- widgets
@@ -327,6 +531,8 @@ main() {
   case $1 in
     help | -h | --help) usage ;;
     -f | --follow | stream | watch | --text | --json | --raw | --jq) [[ $1 == -* && $1 != -f && $1 != --follow ]] || shift; stream "$@" ;;
+    serve) shift; (($# == 0)) || die "usage: kby serve"; serve ;;
+    do) shift; do_action "$@" ;;
     click) shift; click "$@" ;;
     widget | widgets) shift; widget_cmd "$@" ;;
     fields) echo "$FIELDS" | tr ' ' '\n' | grep . ;;

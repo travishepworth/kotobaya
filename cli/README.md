@@ -116,3 +116,42 @@ bind = $mainMod, S, exec, echo skip 1<>$XDG_RUNTIME_DIR/kotobaya/in
 ```
 
 Use a modifier, not a bare number key, so the bindings do not fire while you type elsewhere.
+
+## kby: machine interface for GUI widgets
+
+`bin/kby` is a bash wrapper (needs `jq`; install it on your PATH yourself). Besides the shell
+actions (`kby -1..-4 -r -u -s -R -n`), `kby -f` and `kby click`, it has two commands for widgets
+that draw their own buttons. Both ignore widget confs.
+
+The daemon refuses grades on a hidden card, and publishes `back`, `reading` and `sentence` only
+after reveal (`front`, `previews` and `id`/`kind` are always there).
+
+`kby serve` prints one compact JSON line per daemon state change, flushed at once, and never
+exits on errors (`offline`, `auth` and `error` are lines; it retries with 1 s doubling to 10 s).
+The first line is `loading`. Each line is also written to `$XDG_RUNTIME_DIR/kotobaya/state.json`
+(temp file + rename). Use either `serve` or `-f`, not both: they share that file. SIGTERM stops
+it and the `kotobaya watch` child.
+
+```json
+{"v":1,"state":"front|back|done|loading|offline|auth|error","rev":"<card_id>:<n>",
+ "text":"猫 12","counts":{"new":3,"learning":2,"review":7},
+ "card":null,
+ "last":{"rating":null,"undoable":false},"notice":null,"error":null,
+ "actions":{"reveal":{"enabled":true},"again":{"enabled":false,"hint":"1m"},
+            "hard":{...},"good":{...},"easy":{...},"undo":{"enabled":false},
+            "skip":{"enabled":true},"refresh":{"enabled":true},"next":{"enabled":true}}}
+```
+
+- `card` is `null` or `{"id","kind","front"}`, plus `reading`, `sentence`, `back` only when
+  revealed (absent, never empty, when the server has none).
+- `rev` changes on every line (`-` stands for "no card"); send it back with each action.
+- `notice` appears on one line only. `hint` (next interval per grade) only when known.
+- Enabled: `reveal` on front; grades on back; `skip`/`next` on front and back (`next` = reveal if
+  hidden, else good); `undo` only when `last.undoable`; `refresh` always.
+
+`kby do ACTION [--rev REV]` sends one action (`reveal again hard good easy undo skip refresh
+next`) to the daemon FIFO and returns at once (no reply; the result is the next `serve` line).
+Unknown or not-enabled actions print to stderr and exit 2. With `--rev`, if REV is not the
+current rev (read from `state.json`; with no `serve` running, compared by card id against the
+daemon's status) the action is dropped, exit 0, and the next `serve` line carries the notice
+`Ignored: screen changed`.

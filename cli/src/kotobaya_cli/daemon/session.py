@@ -163,7 +163,8 @@ class Session:
     def _card_dict(self, entry: CardEntry) -> dict[str, object]:
         card: dict[str, object] = {"id": entry.card_id, "kind": entry.kind}
         if entry.text:
-            for name in TEXT_FIELDS:
+            # While hidden only the front leaves the daemon; the rest is answer-side.
+            for name in TEXT_FIELDS if self.revealed else ("front",):
                 value = entry.text.get(name)
                 if value is not None:
                     card[name] = value

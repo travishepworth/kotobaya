@@ -29,6 +29,12 @@ DAY_END = "2026-11-15T19:00:00.000Z"
 T0 = datetime(2026, 11, 15, 9, 0, tzinfo=UTC)
 
 
+async def grade(daemon: Daemon, button: str) -> dict[str, object]:
+    """Reveal the current card, then grade it (the daemon refuses grading a hidden card)."""
+    await daemon.handle(Action("reveal"))
+    return await daemon.handle(AnswerCmd(button))
+
+
 def snapshot(*ids: str) -> QueueSnapshot:
     return QueueSnapshot([CardEntry(i, "recognition") for i in ids], Counts(1, 2, 3), DAY_END)
 
@@ -161,7 +167,7 @@ def test_journal_written_and_fsynced_before_post_answer(
         daemon, handler = make(server, paths)
         await daemon.refetch()
         server.events.clear()
-        out = st(await daemon.handle(AnswerCmd("good")))
+        out = st(await grade(daemon, "good"))
         assert out["card"]["id"] == "b"  # advanced at once, before the POST
         assert out["last"] == {"rating": "good", "undoable": True}
         await handler.idle()
@@ -176,6 +182,28 @@ def test_journal_written_and_fsynced_before_post_answer(
     asyncio.run(scenario())
 
 
+def test_grade_on_a_hidden_card_is_refused_and_changes_nothing(paths: Paths) -> None:
+    server = FakeServer(paths.journal)
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        before = daemon.session.state()
+        out = st(await daemon.handle(AnswerCmd("good")))
+        assert out["notice"] == "reveal the card before grading"
+        assert {**out, "notice": None} == {**before, "notice": None}
+        assert out["card"]["id"] == "a" and out["last"] is None and not out["card"]["revealed"]
+        await handler.idle()
+        assert server.answers == [] and Journal(paths.journal).entries == []
+        await daemon.handle(Action("reveal"))
+        out = st(await daemon.handle(AnswerCmd("good")))  # revealed: grading works
+        assert out["card"]["id"] == "b" and out["last"] == {"rating": "good", "undoable": True}
+        await handler.idle()
+        assert len(server.answers) == 1
+
+    asyncio.run(scenario())
+
+
 def test_retry_reuses_same_id_no_double_review_logged(paths: Paths) -> None:
     server = FakeServer()
     server.answer_errors = [BackendError("offline"), BackendError("offline", "HTTP 503")]
@@ -184,7 +212,7 @@ def test_retry_reuses_same_id_no_double_review_logged(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert len(server.answers) == 4  # two failures, one lost response, one success
         assert len({a.id for a in server.answers}) == 1
@@ -202,7 +230,7 @@ def test_daemon_crash_between_journal_and_post_replays_exactly_once(paths: Paths
         daemon, handler = make(server, paths)
         await daemon.refetch()
         server.answer_errors = [BackendError("offline")] * 1000  # the POST never lands
-        await daemon.handle(AnswerCmd("easy"))
+        await grade(daemon, "easy")
         await asyncio.sleep(0.05)
         assert handler.pending_count() == 1
         handler.close()  # the process dies here
@@ -234,7 +262,7 @@ def test_crash_after_post_before_journal_removal_replays_without_double_log(
     async def first_life() -> None:
         daemon, handler = make(server, paths, retry_base_s=3600)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await asyncio.sleep(0.05)
         handler.close()
 
@@ -261,7 +289,7 @@ def test_terminal_4xx_drops_the_entry_with_a_notice(paths: Paths, status: int) -
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         original = daemon.emit
 
         def spy() -> dict[str, object]:
@@ -286,11 +314,11 @@ def test_auth_failure_keeps_entry_and_sets_conn_auth(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert daemon.session.conn == "auth"
         assert handler.pending_count() == 1
-        out = st(await daemon.handle(AnswerCmd("good")))  # no reviewing without a valid token
+        out = st(await grade(daemon, "good"))  # no reviewing without a valid token
         assert out["notice"] is not None and out["card"]["id"] == "b"
         assert handler.pending_count() == 1
         await daemon.refetch()  # token works again → replay
@@ -307,7 +335,7 @@ def test_offline_answer_is_refused_and_nothing_journaled(paths: Paths) -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
         daemon.session.conn = "offline"
-        out = st(await daemon.handle(AnswerCmd("good")))
+        out = st(await grade(daemon, "good"))
         assert out["notice"] == "offline" and out["card"]["id"] == "a"
         assert handler.pending_count() == 0 and not paths.journal.exists()
 
@@ -321,7 +349,7 @@ def test_answer_with_no_card_is_a_notice(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        out = st(await daemon.handle(AnswerCmd("good")))
+        out = st(await grade(daemon, "good"))
         assert out["notice"] == "nothing to review" and handler.pending_count() == 0
 
     asyncio.run(scenario())
@@ -334,8 +362,8 @@ def test_five_button_mode_always_sends_a_mode_button(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
-        out = st(await daemon.handle(AnswerCmd("something")))
+        await grade(daemon, "good")
+        out = st(await grade(daemon, "something"))
         await handler.idle()
         assert [(a.rating, a.button) for a in server.answers] == [(3, "okay"), (1, "something")]
         assert out["last"]["rating"] == "something"
@@ -354,7 +382,7 @@ def test_duration_is_measured_from_shown_or_last_action(paths: Paths) -> None:
         now[0] += timedelta(seconds=4)
         await daemon.handle(Action("reveal"))
         now[0] += timedelta(seconds=2)
-        await daemon.handle(AnswerCmd("hard"))
+        await grade(daemon, "hard")
         await handler.idle()
         assert server.answers[0].duration_ms == 2000
         assert server.answers[0].utc_offset_min == -300
@@ -372,7 +400,7 @@ def test_current_card_replaced_only_when_gone_from_the_queue(paths: Paths) -> No
         daemon, handler = make(server, paths, retry_base_s=3600)
         await daemon.refetch()
         server.answer_errors = [BackendError("offline")]
-        await daemon.handle(AnswerCmd("good"))  # a answered, POST pending
+        await grade(daemon, "good")  # a answered, POST pending
         await asyncio.sleep(0.02)
         assert handler.pending_count() == 1
         # The server still lists a (POST not landed): it must not come back.
@@ -414,7 +442,7 @@ def test_stale_snapshot_from_before_the_post_landed_does_not_resurrect_the_card(
             original(entry)
 
         server.post_answer = slow_post  # type: ignore[method-assign]
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         before = handler.pending_cards()
         assert before == {"a": "answer"}
         # A refetch that started while a was pending must keep filtering it even if the POST
@@ -437,9 +465,9 @@ def test_undo_targets_the_last_answered_id(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await daemon.handle(Action("reveal"))
-        await daemon.handle(AnswerCmd("again"))
+        await grade(daemon, "again")
         await handler.idle()
         last_id = server.answers[-1].id
         assert server.answers[-1].card_id == "b"
@@ -463,7 +491,7 @@ def test_undo_is_journaled_and_sent_after_its_pending_answer(
         daemon, handler = make(server, paths, retry_base_s=3600)
         await daemon.refetch()
         server.answer_errors = [BackendError("offline")]
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await asyncio.sleep(0.02)
         out = st(await daemon.handle(Action("undo")))
         assert out["card"]["id"] == "a"
@@ -496,7 +524,7 @@ def test_undo_of_a_review_the_server_never_saw_is_dropped_with_a_notice(paths: P
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         await daemon.handle(Action("undo"))
         await handler.idle()
@@ -520,7 +548,7 @@ def test_reviewed_at_is_utc_ms_and_offset_is_clamped(paths: Paths) -> None:
         handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: 5000)
         daemon = Daemon(server, paths, clock=lambda: T0, handler=handler, timer_seconds=3600)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert server.answers[0].utc_offset_min == 1080
 
@@ -589,7 +617,7 @@ def test_unexpected_4xx_keeps_the_entry_and_retries_with_one_notice(paths: Paths
             return state
 
         daemon.emit = spy  # type: ignore[method-assign]
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert handler.pending_count() == 0
         assert len(server.answers) == 4 and len({a.id for a in server.answers}) == 1
@@ -606,10 +634,10 @@ def test_forbidden_is_sticky_and_keeps_the_journal(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, handler = make(server, paths)
         await daemon.refetch()
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert handler.pending_count() == 1 and daemon.session.conn == "ok"
-        out = st(await daemon.handle(AnswerCmd("good")))
+        out = st(await grade(daemon, "good"))
         assert out["notice"] == FORBIDDEN_NOTICE and out["card"]["id"] == "b"
         daemon.session.conn = "offline"
         await daemon.refetch()  # coming back online does not resend while forbidden
@@ -637,7 +665,7 @@ def test_terminal_drop_of_last_answer_makes_it_not_undoable_and_drops_its_undo(
         daemon, handler = make(server, paths, retry_base_s=3600)
         await daemon.refetch()
         server.answer_errors = [BackendError("offline")]
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await asyncio.sleep(0.02)
         handler.close()  # stop the sender sleeping in backoff
         await daemon.handle(Action("undo"))  # queued behind the unsent answer
@@ -655,7 +683,7 @@ def test_terminal_drop_of_last_answer_makes_it_not_undoable_and_drops_its_undo(
         server.snap = snapshot("x", "y")
         await daemon.refetch()
         server.answer_errors = [BackendError("terminal", "HTTP 409")]
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         last = daemon.session.last
         assert last is not None and last.undoable is False
@@ -684,13 +712,13 @@ def test_failed_journal_write_leaves_no_entry_and_no_second_id(
         await daemon.refetch()
         for _ in range(2):  # pressing again while the disk is full (the worker turns the
             with pytest.raises(OSError):  # exception into an "internal error" notice)
-                await daemon.handle(AnswerCmd("good"))
+                await grade(daemon, "good")
             assert ids(daemon) == ["a", "b", "c"] and daemon.session.last is None
             assert handler.pending_count() == 0
         assert not paths.journal.exists()
         assert not paths.journal.with_name("journal.tmp").exists()
         full[0] = False  # space frees up
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         await handler.idle()
         assert len(server.logged) == 1 and len(server.answers) == 1
 
@@ -739,7 +767,7 @@ def test_snapshot_fetched_before_the_answer_does_not_reshow_an_acked_card(paths:
         server.fetch_queue = slow_stale_fetch  # type: ignore[method-assign]
         fetch = asyncio.create_task(daemon.refetch())  # starts before the answer
         await asyncio.sleep(0.02)
-        await daemon.handle(AnswerCmd("good"))
+        await grade(daemon, "good")
         for _ in range(100):  # the POST is acked while the stale fetch is in flight
             if handler.pending_count() == 0:
                 break

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kotobaya.invalid/cli/state.v1.json",
   "title": "kotobaya daemon state, v1",
-  "description": "One full state per NDJSON line. Never a delta. Card text fields appear once the server sends QueueItem.text (ARCH-CARD-TEXT); until then card has only id, kind, revealed and previews.",
+  "description": "One full state per NDJSON line. Never a delta. Card text fields appear once the server sends QueueItem.text (ARCH-CARD-TEXT), and back/reading/sentence only after reveal; until then card has only id, kind, revealed and previews.",
   "type": "object",
   "additionalProperties": false,
   "required": ["v", "conn", "counts", "day_ends_at", "card", "last", "pending", "notice"],

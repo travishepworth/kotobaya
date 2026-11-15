@@ -184,7 +184,10 @@ class Daemon:
         if isinstance(cmd, Invalid):
             session.set_notice(cmd.notice)
         elif isinstance(cmd, AnswerCmd):
-            await self.handler.answer(self, cmd.button)
+            if session.current is not None and not session.revealed:
+                session.set_notice("reveal the card before grading")  # nothing else changes
+            else:
+                await self.handler.answer(self, cmd.button)
         elif isinstance(cmd, Action):
             if cmd.name == "reveal":
                 session.reveal()
