@@ -1139,3 +1139,5 @@
 2026-11-15T05:27:13Z AND-KANJI-DECKS CHECK_GREEN + MERGE 4b960c8f (chips display-only; no nav hook)
 2026-11-15T05:42:18Z WRK-FREQ-MATCH HANDOFF attempt 3 (899 green; top-1k deferred+ambiguous jpdb 3, bccwj 5, cejc 9); re-review r3
 2026-11-15T05:45:44Z WRK-FREQ-MATCH REVIEW_APPROVE r3 + CHECK_GREEN + MERGE 69ab28ff (3 attempts)
+2026-11-15T05:45:57Z RELEASE worker 0.1.18 + APK 0.1.19 PIN 624d4305 build started (WRK-FREQ-MATCH; AND-KANJI-DECKS)
+2026-11-15T05:48:35Z C-26 DISPATCH architect(opus) (keep going queue override + is_new; WEB/AND-KEEPGOING follow)
