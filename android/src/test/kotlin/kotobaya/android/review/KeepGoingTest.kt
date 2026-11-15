@@ -197,4 +197,48 @@ class KeepGoingTest {
         assertIs<ReviewState.Summary>(s.state.value)
         assertFalse(s.meta.value.moreAvailable)
     }
+
+    /**
+     * Phone log 2026-11-15: a relearning card answered Again/Hard (due again within learn-ahead) was served 5 times in
+     * 11 s while due reviews were still left, because the in-memory queue ran dry and the session took that as "nothing
+     * else left". A learn-ahead card may be served only once a build that saw every answer still has nothing else.
+     */
+    @Test
+    fun aLearnAheadCardWaitsForAFreshBuildWhenTheInMemoryQueueRunsDry() {
+        val reviews = d.seed(4)
+        makeDueReviews(reviews)
+        val loader = LocalQueueLoader(d.db, { d.clock.now }).asQueueSource()
+        var builds = 0
+        val partialFirst = object : QueueSource {
+            override fun load(newShownThisSession: Int) = loader.load(newShownThisSession)
+
+            override fun loadSession(newShownThisSession: Int, keepGoing: Boolean): SessionQueue {
+                val built = loader.loadSession(newShownThisSession, keepGoing)
+                if (builds++ > 0) return built
+                return built.copy(queue = built.queue.copy(items = built.queue.items.take(2)))
+            }
+        }
+        val s = session(source = partialFirst)
+        s.start()
+        val lapsed = assertIs<ReviewState.Showing>(s.state.value).card
+        d.clock.now += 2_000
+        assertTrue(s.answer(lapsed.token, Button.AGAIN))
+        val second = answerShown(s)
+        val next = assertIs<ReviewState.Showing>(s.state.value).card
+        assertTrue(next.cardId != lapsed.cardId, "the relearning card came back ahead of due reviews")
+        assertEquals(QueueItemKind.REVIEW, next.kind)
+
+        // every due review is served before the lapsed card comes back ahead of time
+        val served = ArrayList<String>()
+        while (s.state.value is ReviewState.Showing) {
+            val card = assertIs<ReviewState.Showing>(s.state.value).card
+            served += card.cardId
+            d.clock.now += 2_000
+            assertTrue(s.answer(card.token, Button.GOOD))
+            check(served.size < 50)
+        }
+        val rest = reviews - lapsed.cardId - second.cardId
+        val firstRepeat = served.indexOf(lapsed.cardId)
+        assertEquals(rest.toSet(), served.take(if (firstRepeat < 0) served.size else firstRepeat).toSet(), "order: $served")
+    }
 }
