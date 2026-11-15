@@ -1,0 +1,351 @@
+#!/usr/bin/env bash
+# kby — review from the shell, keybindings and bar widgets, on top of `kotobaya daemon`.
+#
+# Actions are pure bash (a FIFO write, no Python on the keypress path). Streams wrap
+# `kotobaya watch` and render through jq using widget files in
+# ${XDG_CONFIG_HOME:-~/.config}/kotobaya/widgets/NAME.conf. Run `kby help` for usage.
+set -euo pipefail
+
+# Bars and widgets are often started with a PATH that lacks ~/.local/bin: look there too.
+export PATH="$PATH:$HOME/.local/bin"
+KBY_CLI=${KBY_CLI:-kotobaya}
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/kotobaya-$(id -u)}/kotobaya"
+FIFO="$RUNTIME_DIR/in"
+SOCK="$RUNTIME_DIR/sock"
+CACHE="$RUNTIME_DIR/state.json" # last state seen by any `kby stream`; read by `next` and `click`
+WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
+
+DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh "
+FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
+card_id kind front back reading sentence revealed preview_again preview_hard preview_good
+preview_easy"
+
+die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+kby — drive the kotobaya review daemon from keybindings and widgets
+
+ACTIONS (instant; written to the daemon FIFO, several run in order)
+  kby -r | reveal        show the back            kby -u | undo       undo last answer
+  kby -1 | again         kby -2 | hard            kby -s | skip       move card to the back
+  kby -3 | good          kby -4 | easy            kby -R | refresh    refetch the queue
+  kby -n | next          reveal if hidden, else good (needs a running `kby stream`)
+  five-button names also work: nothing, something, okay
+
+STREAM (long-lived, one waybar-style JSON line per state change)
+  kby                             same as `kby -f`
+  kby -f [WIDGET]                 {"text","tooltip","class","alt","state","buttons"} per line
+                                  (rendered from WIDGET; default: built-in)
+  kby -f [WIDGET] --text          just the text, one plain line per state
+  kby stream --raw                the daemon's state JSON, unchanged
+  kby stream --jq 'FILTER'        the daemon's state piped through your own jq filter
+
+WIDGETS (${XDG_CONFIG_HOME:-~/.config}/kotobaya/widgets/NAME.conf)
+  kby click WIDGET BUTTON         run the action WIDGET binds to BUTTON in the current state
+  kby widget new NAME             write a commented starter widget
+  kby widget list | path NAME | show NAME
+  kby fields                      template fields
+
+OTHER
+  kby status                      current state JSON (cache, else asks the daemon)
+  kby state                       current state name: front back done loading offline auth
+EOF
+}
+
+# ---------------------------------------------------------------- state
+
+# Echo the current state JSON: the stream cache if present, else one status request.
+current_state_json() {
+  if [[ -s $CACHE ]]; then
+    cat -- "$CACHE"
+  elif [[ -S $SOCK ]]; then
+    python3 -I - "$SOCK" <<'PY' 2>/dev/null || true
+import socket, sys
+s = socket.socket(socket.AF_UNIX)
+s.settimeout(2)
+s.connect(sys.argv[1])
+s.sendall(b'{"cmd":"status"}\n')
+print(s.makefile("r").readline().strip())
+PY
+  fi
+}
+
+# Map a state JSON line to its state name. Pure bash: a structural "revealed":true can't
+# occur inside card text, where quotes are escaped.
+state_name() {
+  local s=$1
+  if [[ -z $s || $s != *'"conn":"ok"'* ]]; then
+    if [[ $s == *'"conn":"auth"'* ]]; then echo auth; else echo offline; fi
+  elif [[ $s == *'"card":null'* ]]; then
+    if [[ $s == *'"counts":null'* ]]; then echo loading; else echo 'done'; fi
+  elif [[ $s == *'"revealed":true'* ]]; then
+    echo back
+  else
+    echo front
+  fi
+}
+
+# ---------------------------------------------------------------- actions
+
+# Resolve words to daemon commands and write them to the FIFO in one atomic write.
+send() {
+  local word state=${KBY_STATE:-} out=()
+  for word in "$@"; do
+    word=${word,,}
+    if [[ $word == next ]]; then
+      [[ -n $state ]] || state=$(state_name "$(current_state_json)")
+      case $state in
+        front) word=reveal ;;
+        back) word=good ;;
+        *) continue ;;
+      esac
+    elif [[ $word == none || -z $word ]]; then
+      continue
+    elif [[ $DAEMON_ACTIONS != *" $word "* ]]; then
+      die "unknown action '$word' (try: kby help)"
+    fi
+    out+=("$word")
+  done
+  ((${#out[@]})) || return 0
+  # 1<> never blocks, but on a missing path it would create a regular file: check first.
+  [[ -p $FIFO ]] || die "daemon not running (no FIFO at $FIFO)"
+  printf '%s\n' "${out[@]}" 1<>"$FIFO"
+}
+
+# ---------------------------------------------------------------- widgets
+
+widget_file() {
+  [[ $1 =~ ^[A-Za-z0-9_-]+$ ]] || die "widget names use letters, digits, - and _ only"
+  printf '%s/%s.conf' "$WIDGET_DIR" "$1"
+}
+
+default_widget() {
+  cat <<'EOF'
+# kotobaya widget. key = value; '#' starts a comment line.
+#
+# States: front (card hidden), back (revealed), done (nothing due), loading, offline, auth.
+#
+# text[.STATE]     the line shown. text.STATE wins over text.
+# tooltip[.STATE]  hover text (--json only).
+# class[.STATE]    CSS class (--json only). Default: {state}.
+# Templates: {field} or {field:N} (cut to N chars with …). `kby fields` lists the fields.
+text         = 語 {new}/{learning}/{review}
+text.front   = 語 {new}/{learning}/{review}  {front:30}
+text.back    = 語 {front:20} 【{reading:15}】 {back:40}
+text.done    = 語 ✓
+text.loading = 語 …
+text.offline = 語 offline
+text.auth    = 語 token rejected
+tooltip      = new {new} · learning {learning} · review {review} · pending {pending}  {notice}
+tooltip.offline = daemon not reachable (systemctl --user status kotobaya)
+tooltip.auth = token rejected: the PAT needs scopes read and review
+tooltip.back = again {preview_again} · hard {preview_hard} · good {preview_good} · easy {preview_easy}
+
+# button.NAME[.STATE] = ACTION...  (NAME is anything your bar sends to `kby click`)
+# ACTION: reveal again hard good easy undo skip refresh next none (several: space-separated),
+# or `!command` to run a shell command instead.
+button.left             = next
+button.right            = undo
+button.middle           = skip
+button.scroll-up.back   = good
+button.scroll-down.back = again
+button.1.back           = again
+button.2.back           = hard
+button.3.back           = good
+button.4.back           = easy
+EOF
+}
+
+# Echo the widget config for NAME (empty NAME = built-in default).
+widget_conf() {
+  if [[ -z ${1:-} ]]; then
+    default_widget
+  else
+    local f
+    f=$(widget_file "$1")
+    [[ -r $f ]] || die "no widget '$1' ($f); create it with: kby widget new $1"
+    cat -- "$f"
+  fi
+}
+
+# Look up KEY in a config on stdin (pure bash; used on the click path).
+conf_get() {
+  local key=$1 line k v
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+    [[ $line == *=* ]] || continue
+    k=${line%%=*} v=${line#*=}
+    k=${k//[[:space:]]/}
+    v=${v#"${v%%[![:space:]]*}"} v=${v%"${v##*[![:space:]]}"}
+    if [[ $k == "$key" ]]; then printf '%s' "$v"; return 0; fi
+  done
+  return 1
+}
+
+click() {
+  (($# == 2)) || die "usage: kby click WIDGET BUTTON"
+  local conf state action
+  conf=$(widget_conf "$1")
+  state=$(state_name "$(current_state_json)")
+  action=$(conf_get "button.$2.$state" <<<"$conf") ||
+    action=$(conf_get "button.$2" <<<"$conf") || return 0
+  if [[ $action == '!'* ]]; then
+    KBY_STATE=$state exec sh -c "${action#!}"
+  fi
+  # shellcheck disable=SC2086 # split the action list on spaces
+  KBY_STATE=$state send $action
+}
+
+widget_cmd() {
+  local sub=${1:-list}
+  shift || true
+  case $sub in
+    list)
+      [[ -d $WIDGET_DIR ]] || return 0
+      local f
+      for f in "$WIDGET_DIR"/*.conf; do [[ -e $f ]] && basename -- "$f" .conf; done
+      ;;
+    path) widget_file "${1:?usage: kby widget path NAME}"; echo ;;
+    show) widget_conf "${1:?usage: kby widget show NAME}" ;;
+    new)
+      local f
+      f=$(widget_file "${1:?usage: kby widget new NAME}")
+      [[ -e $f ]] && die "$f already exists"
+      mkdir -p -- "$WIDGET_DIR"
+      default_widget >"$f"
+      echo "$f"
+      ;;
+    *) die "unknown: kby widget $sub" ;;
+  esac
+}
+
+# ---------------------------------------------------------------- streams
+
+# jq program: flatten a daemon state, pick per-state templates, fill them.
+# shellcheck disable=SC2016 # jq source, not shell
+JQ_RENDER='
+def conf: [ $conf | split("\n")[]
+            | select(test("^\\s*(#|$)") | not)
+            | capture("^\\s*(?<k>[^=\\s]+)\\s*=\\s*(?<v>.*?)\\s*$")? ]
+          | map({(.k): .v}) | add // {};
+def statename:
+  if .conn != "ok" then (if .conn == "auth" then "auth" else "offline" end)
+  elif .card != null then (if .card.revealed then "back" else "front" end)
+  elif .counts == null then "loading" else "done" end;
+def flat($s):
+  (.counts // {}) as $c | (.card // {}) as $k | ($k.previews // {}) as $p | (.last // {}) as $l
+  | { state: $s, conn: .conn,
+      new: ($c.new // 0), learning: ($c.learning // 0), review: ($c.review // 0),
+      total: (($c.new // 0) + ($c.learning // 0) + ($c.review // 0)),
+      due: (($c.new // 0) + ($c.learning // 0) + ($c.review // 0)),
+      pending: (.pending // 0), day_ends_at: (.day_ends_at // ""), notice: (.notice // ""),
+      last_rating: ($l.rating // ""), undoable: (($l.undoable // false) | tostring),
+      card_id: ($k.id // ""), kind: ($k.kind // ""), front: ($k.front // ""),
+      back: ($k.back // ""), reading: ($k.reading // ""), sentence: ($k.sentence // ""),
+      revealed: (($k.revealed // false) | tostring),
+      preview_again: ($p.again // ""), preview_hard: ($p.hard // ""),
+      preview_good: ($p.good // ""), preview_easy: ($p.easy // "") };
+def fill($f):
+  gsub("\\{(?<k>[a-z_]+)(:(?<n>[0-9]+))?\\}";
+       (($f[.k] // "") | tostring | gsub("\\s*\n\\s*"; " ")) as $v
+       | if .n == null then $v
+         elif ($v | length) > (.n | tonumber) then $v[0:((.n | tonumber) - 1)] + "…"
+         else $v end);
+def pick($w; $key; $s; $dflt): $w["\($key).\($s)"] // $w[$key] // $dflt;
+def buttons($w; $s):
+  [ $w | keys[] | capture("^button\\.(?<b>[^.]+)") .b ] | unique
+  | map({(.): (pick($w; "button.\(.)"; $s; "none")
+               | if . == "next" then
+                   (if $s == "front" then "reveal" elif $s == "back" then "good" else "none" end)
+                 else . end)})
+  | add // {};
+conf as $w | statename as $s | flat($s) as $f
+| $f + { text: (pick($w; "text"; $s; "{new}/{learning}/{review}") | fill($f) | sub("\\s+$"; "")),
+    tooltip: (pick($w; "tooltip"; $s; "") | fill($f) | sub("\\s+$"; "")),
+    class: (pick($w; "class"; $s; "{state}") | fill($f)),
+    alt: $s, state: $s, buttons: buttons($w; $s) }
+| if $json then . else .text end
+'
+
+check_templates() {
+  local conf=$1 name
+  while IFS= read -r name; do
+    [[ " ${FIELDS//$'\n'/ } " == *" $name "* ]] ||
+      die "unknown template field {$name}; known: $(tr '\n' ' ' <<<"$FIELDS")"
+  done < <(grep -v '^[[:space:]]*#' <<<"$conf" | grep -oE '\{[a-z_]+(:[0-9]+)?\}' |
+    sed -E 's/^\{([a-z_]+).*/\1/' | sort -u)
+}
+
+# Mirror every raw state line into the cache so `next` and `click` stay pure bash.
+cache_writer() {
+  local line tmp="$CACHE.$BASHPID"
+  mkdir -p -- "$RUNTIME_DIR"
+  while IFS= read -r line; do
+    printf '%s\n' "$line" >"$tmp" && mv -f -- "$tmp" "$CACHE"
+  done
+}
+
+stream_die() {
+  printf '{"text":"語 error","tooltip":"kby: %s","class":"error","alt":"error","state":"error"}\n' "$1"
+  die "$1"
+}
+
+stream() {
+  local widget="" mode=json filter=""
+  while (($#)); do
+    case $1 in
+      --json) mode=json ;;
+      --text) mode=text ;;
+      --raw) mode=raw ;;
+      --jq) mode=jq filter=${2:?--jq needs a filter}; shift ;;
+      -*) die "unknown stream option $1" ;;
+      *) widget=$1 ;;
+    esac
+    shift
+  done
+  # A widget shows stdout only, so report a missing tool there as well as on stderr.
+  command -v "$KBY_CLI" >/dev/null || stream_die "'$KBY_CLI' not found (set KBY_CLI)"
+  command -v jq >/dev/null || stream_die "jq not found"
+
+  local conf
+  conf=$(widget_conf "$widget")
+  check_templates "$conf"
+
+  "$KBY_CLI" watch --format json | tee >(cache_writer) | case $mode in
+    raw) cat ;;
+    jq) jq --unbuffered -c "$filter" ;;
+    json) jq --unbuffered -c --arg conf "$conf" --argjson json true "$JQ_RENDER" ;;
+    text) jq --unbuffered -r --arg conf "$conf" --argjson json false "$JQ_RENDER" ;;
+  esac
+}
+
+# ---------------------------------------------------------------- main
+
+main() {
+  (($#)) || { stream; exit; }
+  case $1 in
+    help | -h | --help) usage ;;
+    -f | --follow | stream | watch | --text | --json | --raw | --jq) [[ $1 == -* && $1 != -f && $1 != --follow ]] || shift; stream "$@" ;;
+    click) shift; click "$@" ;;
+    widget | widgets) shift; widget_cmd "$@" ;;
+    fields) echo "$FIELDS" | tr ' ' '\n' | grep . ;;
+    status) current_state_json ;;
+    state) state_name "$(current_state_json)" ;;
+    *)
+      local words=() a
+      for a in "$@"; do
+        case $a in
+          -r) words+=(reveal) ;; -1) words+=(again) ;; -2) words+=(hard) ;;
+          -3) words+=(good) ;; -4) words+=(easy) ;; -u) words+=(undo) ;;
+          -s) words+=(skip) ;; -R) words+=(refresh) ;; -n) words+=(next) ;;
+          -*) die "unknown flag $a (try: kby help)" ;;
+          *) words+=("$a") ;;
+        esac
+      done
+      send "${words[@]}"
+      ;;
+  esac
+}
+
+main "$@"
