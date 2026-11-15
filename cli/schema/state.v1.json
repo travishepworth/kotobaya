@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotobaya.invalid/cli/state.v1.json",
+  "title": "kotobaya daemon state, v1",
+  "description": "One full state per NDJSON line. Never a delta. Card text fields appear once the server sends QueueItem.text (ARCH-CARD-TEXT); until then card has only id, kind, revealed and previews.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "conn", "counts", "day_ends_at", "card", "last", "pending", "notice"],
+  "properties": {
+    "v": {"const": 1},
+    "conn": {"enum": ["ok", "offline", "auth"]},
+    "counts": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["new", "learning", "review"],
+          "properties": {
+            "new": {"type": "integer", "minimum": 0},
+            "learning": {"type": "integer", "minimum": 0},
+            "review": {"type": "integer", "minimum": 0}
+          }
+        }
+      ]
+    },
+    "day_ends_at": {"type": ["string", "null"]},
+    "card": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind", "revealed"],
+          "properties": {
+            "id": {"type": "string"},
+            "kind": {"type": "string"},
+            "front": {"type": "string"},
+            "back": {"type": "string"},
+            "reading": {"type": "string"},
+            "sentence": {"type": "string"},
+            "revealed": {"type": "boolean"},
+            "previews": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["again", "hard", "good", "easy"],
+              "properties": {
+                "again": {"type": "string"},
+                "hard": {"type": "string"},
+                "good": {"type": "string"},
+                "easy": {"type": "string"}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "last": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rating", "undoable"],
+          "properties": {
+            "rating": {"type": "string"},
+            "undoable": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "pending": {"type": "integer", "minimum": 0},
+    "notice": {"type": ["string", "null"]}
+  }
+}

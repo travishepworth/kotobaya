@@ -56,6 +56,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands_sub.add_parser("health", help="check that the server is up")
 
+    daemon = commands_sub.add_parser(
+        "daemon",
+        help="run the review daemon (FIFO + socket in, state stream out)",
+        description=(
+            "Long-lived review daemon. Reads url / token_file / token_cmd from "
+            "~/.config/kotobaya/config.toml; KOTOBAYA_URL and KOTOBAYA_TOKEN override."
+        ),
+    )
+    daemon.add_argument("--config", type=Path, metavar="PATH", help="config.toml location")
+
     cards = commands_sub.add_parser("cards", help="work with cards")
     cards_sub = cards.add_subparsers(dest="cards_command", required=True, metavar="ACTION")
     find = cards_sub.add_parser("find", help="search cards with the card search language")
@@ -132,6 +142,16 @@ def _api_error_text(exc: ApiException) -> str:
     return f"HTTP {exc.status}: {reason}"
 
 
+def _run_daemon(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
+    # Imported here so one-shot commands never pay for the daemon modules.
+    from kotobaya_cli.config import load_daemon_settings
+    from kotobaya_cli.daemon.backend import HttpBackend
+    from kotobaya_cli.daemon.server import Paths, run_daemon
+
+    settings = load_daemon_settings(args.server, environ, args.config)
+    return run_daemon(HttpBackend(settings), Paths.from_env(environ))
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -146,6 +166,8 @@ def main(
     out = sys.stdout if stdout is None else stdout
     err = sys.stderr if stderr is None else stderr
     try:
+        if args.command == "daemon":
+            return _run_daemon(args, environ)
         settings = load_settings(args.server, environ)
         api = make_api(settings)
         return dispatch(args, api, out, err, sleep)

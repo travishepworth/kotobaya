@@ -1,0 +1,179 @@
+"""Session state: the single source of truth behind every emitted line. No I/O here."""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+STATE_VERSION = 1
+DURATION_CAP_MS = 60_000
+TEXT_FIELDS = ("front", "back", "reading", "sentence")
+Clock = Callable[[], datetime]
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+@dataclass(frozen=True)
+class CardEntry:
+    """One queued card. `text` stays None until the server sends QueueItem.text (ARCH-CARD-TEXT)."""
+
+    card_id: str
+    kind: str
+    previews: dict[str, str] | None = None
+    text: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class Counts:
+    new: int
+    learning: int
+    review: int
+
+
+@dataclass(frozen=True)
+class QueueSnapshot:
+    items: list[CardEntry]
+    counts: Counts
+    day_ends_at: str
+
+
+@dataclass(frozen=True)
+class Last:
+    rating: str
+    undoable: bool
+    review_id: str  # kept for undo; not part of the emitted state
+
+
+def format_interval(due_at: datetime, interval_days: int, now: datetime) -> str:
+    """'10m', '3h', '3d', '2mo', '1y' for a rating's next due time."""
+    if interval_days <= 0:
+        minutes = max(1, math.ceil((due_at - now).total_seconds() / 60))
+        return f"{minutes}m" if minutes < 60 else f"{math.ceil(minutes / 60)}h"
+    if interval_days < 30:
+        return f"{interval_days}d"
+    if interval_days < 365:
+        return f"{interval_days // 30}mo"
+    return f"{interval_days // 365}y"
+
+
+class Session:
+    """Queue prefix (head = current card), counts, reveal flag and timing."""
+
+    def __init__(self, clock: Clock = utc_now) -> None:
+        self._clock = clock
+        self.conn = "offline"
+        self.counts: Counts | None = None
+        self.day_ends_at: str | None = None
+        self.queue: list[CardEntry] = []
+        self.revealed = False
+        self.shown_at = clock()
+        self.last_action_at = self.shown_at
+        self.last: Last | None = None
+        self.pending = 0
+        self.notice: str | None = None
+        self.grading_buttons = 4
+
+    @property
+    def current(self) -> CardEntry | None:
+        return self.queue[0] if self.queue else None
+
+    # ---- mutation -----------------------------------------------------------
+
+    def _new_card_shown(self) -> None:
+        self.revealed = False
+        self.shown_at = self._clock()
+        self.last_action_at = self.shown_at
+
+    def set_notice(self, text: str) -> None:
+        self.notice = text
+
+    def apply_queue(self, snapshot: QueueSnapshot, *, check_current: bool) -> None:
+        """Take a refetched queue. The card on screen is replaced only when `check_current` is set
+        and the server no longer has it (reviewed elsewhere, suspended, deleted)."""
+        self.counts = snapshot.counts
+        self.day_ends_at = snapshot.day_ends_at
+        current = self.current
+        if current is None:
+            self.queue = list(snapshot.items)
+            if self.queue:
+                self._new_card_shown()
+        elif check_current and all(i.card_id != current.card_id for i in snapshot.items):
+            self.queue = list(snapshot.items)
+            self.notice = "reviewed elsewhere"
+            self._new_card_shown()
+        else:
+            self.queue = [current] + [i for i in snapshot.items if i.card_id != current.card_id]
+
+    def reveal(self) -> None:
+        if self.current is not None and not self.revealed:
+            self.revealed = True
+            self.last_action_at = self._clock()
+
+    def skip(self) -> bool:
+        """Move the current card behind the prefetched ones. False when there is nothing to skip to."""
+        if len(self.queue) < 2:
+            return False
+        self.queue.append(self.queue.pop(0))
+        self._new_card_shown()
+        return True
+
+    def pop_current(self) -> CardEntry | None:
+        """Seam for CLI-REVIEW: drop the answered head and show the next prefetched card."""
+        if not self.queue:
+            return None
+        answered = self.queue.pop(0)
+        self._new_card_shown()
+        return answered
+
+    def push_front(self, entry: CardEntry) -> None:
+        """Seam for CLI-REVIEW undo: put a card back at the head, unrevealed."""
+        self.queue = [entry] + [i for i in self.queue if i.card_id != entry.card_id]
+        self._new_card_shown()
+
+    def duration_ms(self) -> int:
+        """Answer time minus max(shown_at, last widget-visible action), capped at 60 s."""
+        start = max(self.shown_at, self.last_action_at)
+        return min(DURATION_CAP_MS, max(0, int((self._clock() - start).total_seconds() * 1000)))
+
+    # ---- output -------------------------------------------------------------
+
+    def _card_dict(self, entry: CardEntry) -> dict[str, object]:
+        card: dict[str, object] = {"id": entry.card_id, "kind": entry.kind}
+        if entry.text:
+            for name in TEXT_FIELDS:
+                value = entry.text.get(name)
+                if value is not None:
+                    card[name] = value
+        card["revealed"] = self.revealed
+        if entry.previews:
+            card["previews"] = dict(entry.previews)
+        return card
+
+    def state(self) -> dict[str, object]:
+        """The full state object (schema/state.v1.json). Does not clear the notice."""
+        counts = self.counts
+        current = self.current
+        return {
+            "v": STATE_VERSION,
+            "conn": self.conn,
+            "counts": None
+            if counts is None
+            else {"new": counts.new, "learning": counts.learning, "review": counts.review},
+            "day_ends_at": self.day_ends_at,
+            "card": None if current is None else self._card_dict(current),
+            "last": None
+            if self.last is None
+            else {"rating": self.last.rating, "undoable": self.last.undoable},
+            "pending": self.pending,
+            "notice": self.notice,
+        }
+
+    def take_state(self) -> dict[str, object]:
+        """State for an emitted line: a notice is one-shot, so it is cleared afterwards."""
+        state = self.state()
+        self.notice = None
+        return state

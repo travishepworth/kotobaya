@@ -41,15 +41,22 @@ class Api:
     jobs: JobsApi
 
 
-def load_settings(server: str | None, env: Mapping[str, str]) -> Settings:
-    """Resolve the server (`--server` wins over KOTOBAYA_URL) and the PAT."""
-    url = (server or env.get(ENV_URL, "")).strip().rstrip("/")
-    if not url:
-        raise CliError(f"no server: pass --server or set {ENV_URL}")
+def normalize_url(url: str) -> str:
+    """Validate a server URL and make it end with /api/v1."""
+    url = url.strip().rstrip("/")
     if not url.startswith(("http://", "https://")):
         raise CliError("server URL must start with http:// or https://")
     if not url.endswith(API_PREFIX):
         url += API_PREFIX
+    return url
+
+
+def load_settings(server: str | None, env: Mapping[str, str]) -> Settings:
+    """Resolve the server (`--server` wins over KOTOBAYA_URL) and the PAT."""
+    url = (server or env.get(ENV_URL, "")).strip()
+    if not url:
+        raise CliError(f"no server: pass --server or set {ENV_URL}")
+    url = normalize_url(url)
     token = env.get(ENV_TOKEN, "")
     if not token:
         raise CliError(f"{ENV_TOKEN} is not set")
