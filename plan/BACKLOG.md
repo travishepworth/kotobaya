@@ -768,3 +768,21 @@ UI-FOUND (B1) split into web/app halves: the Android half rewrites the same IO/V
 ### Phase 2 splits and additions (2026-11-12, planner + orchestrator)
 T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(server)/T210b(web); T213→T213a/T213b. New: C-4 (jpdb import contract vs ADR-009, additive), T214 (web jpdb import screen). Ticket files in plan/tickets/ are authoritative for these; parent rows above are superseded.
 - C-4 status: MERGED · C-10 MERGED · C-9 MERGED · T207c MERGED · F-1 MERGED · W-3 MERGED · W-2 MERGED · C-8 MERGED · F-2 MERGED · F-3 MERGED · F-4 MERGED · C-7 MERGED (settings keys + QueueInput) · T202d MERGED · C-6 MERGED (storable values: U+0000, int4 max, instant cap; BREAKING, no data yet) · C-5 MERGED (ECMA pattern semantics, depth limit; from T202a review) · T201a MERGED · T201b MERGED · T202a MERGED · T202b MERGED · T202c MERGED · T203 MERGED · T204 MERGED · T205 MERGED · T206 MERGED · T207a MERGED · T207b MERGED · T208 MERGED · T209 MERGED · T210a MERGED · T210b MERGED · T211 MERGED · T212 MERGED (web half) · T212b MERGED · T213a MERGED · T213b MERGED · T214 MERGED
+
+### Desktop-widget CLI daemon (2026-11-15, human-approved design: docs/CLI-DAEMON.md @ c1e00bc8)
+Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
+
+### ARCH-CARD-TEXT — Plain-text card render on QueueItem (`text {front, back, reading?, sentence?}`), core render on the server for every card kind
+- model: fable (→ opus, ADR-004) · risk: medium (contract change: reviewer + architect pass) · deps: — · paths: contracts/api, core, server, clients/ (regenerated) · status: TODO (ticket: plan/tickets/ARCH-CARD-TEXT.md)
+
+### CLI-DAEMON — Long-running daemon: FIFO + unix socket, SSE cache, config.toml, systemd user unit, state object + cli/schema/state.v1.json
+- model: sonnet · risk: medium · deps: T604 · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-DAEMON.md)
+
+### CLI-REVIEW — Journal-first answer/undo, idempotent retry + crash replay, reviewed-elsewhere replacement, five-button mapping, duration_ms
+- model: opus · risk: medium · deps: CLI-DAEMON (card text needs ARCH-CARD-TEXT) · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-REVIEW.md)
+
+### CLI-WATCH — `kotobaya watch` json/waybar/template + reconnect loop; waybar/eww/Hyprland examples in cli/README.md
+- model: haiku · risk: low · deps: CLI-DAEMON · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-WATCH.md)
+
+### API-GUIDE — Task-oriented API usage guide ("to do X, run Y": curl + CLI), docs/API-GUIDE.md
+- model: haiku · risk: low · deps: — · paths: docs/API-GUIDE.md, cli/README.md (link only), docs/RUNBOOK.md (link only) · status: TODO (ticket: plan/tickets/API-GUIDE.md)

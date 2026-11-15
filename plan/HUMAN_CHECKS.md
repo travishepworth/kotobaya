@@ -244,3 +244,9 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - Verify (Private Space): Home hero shows ~183 reviews (not "caught up"); Review tab shows a rendered card front (no Chromium "ERR_HTTP_RESPONSE_CODE_FAILURE" page, no blank expression); logcat (user-10 PID) free of KotobayaLoad card-failure lines.
 - Server unchanged (stays 0.1.11, helm rev 18): 0.1.12 is Android-only.
 - Known: study day rolls over at 04:00 UTC = 13:00 JST (scheduler.timezone default UTC) -> FOLLOWUPS.
+
+## CLI daemon (CLI-DAEMON, CLI-REVIEW, CLI-WATCH; docs/CLI-DAEMON.md)
+- [ ] Mint a PAT with scopes read + review only (Settings > Tokens); put it in ~/.config/kotobaya/config.toml (token_file or token_cmd) with url.
+- [ ] Enable the user unit: `systemctl --user enable --now kotobaya` (cli/systemd/kotobaya.service).
+- [ ] Wire waybar (or eww) from the cli/README.md example + a keybinding (`echo good 1<>$XDG_RUNTIME_DIR/kotobaya/in`).
+- [ ] Do 20 reviews from the keyboard; confirm counts match web and phone afterwards.

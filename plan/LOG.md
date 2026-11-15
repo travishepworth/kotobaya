@@ -1075,3 +1075,4 @@
 2026-11-15T01:33:26Z AND-DECKEND evidence: phone log 10:22:55-10:23:04 'rebuild ahead items=1' loop, 6 extra committed reviews of one learning card in a deck session; sent to writer
 2026-11-15T01:33:34Z AND-ADD2DECK CHECK_GREEN + MERGE (see next line) (search detail: add to notes/deck, KbDeckPicker, offline ops)
 2026-11-15T01:33:59Z AND-ADD2DECK MERGE ce4af9cf (first ff failed: main got c1e00bc8 docs/CLI-DAEMON.md from another session; branch restored from 6e2b5cf0 and rebased; docs-only, android check still valid)
+2026-11-15T01:34:55Z PLAN CLI daemon tickets ARCH-CARD-TEXT, CLI-DAEMON, CLI-REVIEW, CLI-WATCH (docs/CLI-DAEMON.md) + API-GUIDE (user request) added
