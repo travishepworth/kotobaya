@@ -139,8 +139,11 @@
 								/>
 							</svg>
 							<div>
-								<h2 id="due-title">{th('home.doneTitle')}</h2>
+								<h2 id="due-title">{summary.moreAvailable ? th('home.doneNow') : th('home.doneTitle')}</h2>
 								<p>{nextDue(summary.nextDueAt)}</p>
+								{#if summary.moreAvailable}
+									<Button variant="primary" href="/review?more=1" icon="review">{th('home.keepGoing')}</Button>
+								{/if}
 							</div>
 						</div>
 					{/if}

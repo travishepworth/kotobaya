@@ -125,6 +125,14 @@ export class ReviewPage {
 	items = $state<QueueItem[]>([]);
 	counts = $state<ReviewQueueCounts | null>(null);
 	dayEndsAt = $state<Date | null>(null);
+	/**
+	 * Keep going: UI state of this one visit only (never persisted). Fetches with keep_going=true; dropped when
+	 * the study day changes from the day it started.
+	 */
+	keepGoing = $state(false);
+	/** `more_available` of the last scheduled fetch. */
+	moreAvailable = $state(false);
+	private keepGoingDay: number | null = null;
 	noteTypes = $state<Map<string, NoteType>>(new Map());
 	presets = $state<Map<string, Preset>>(new Map());
 	fiveButtons = $state(false);
@@ -265,7 +273,18 @@ export class ReviewPage {
 	private async fetchQueue(guard = false): Promise<void> {
 		if (this.isDrill) return;
 		const epoch = this.epoch;
-		const q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT });
+		let q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: this.keepGoing });
+		if (this.keepGoing) {
+			const day = q.studyDay.getTime();
+			if (this.keepGoingDay === null) this.keepGoingDay = day;
+			else if (this.keepGoingDay !== day) {
+				// A new study day: keep going ends, back to the normal queue.
+				this.keepGoing = false;
+				this.keepGoingDay = null;
+				q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: false });
+			}
+		}
+		this.moreAvailable = q.moreAvailable ?? false;
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
 		// (with its flip state); only what comes after it is replaced.
@@ -310,8 +329,11 @@ export class ReviewPage {
 	}
 
 	/** Load settings and the queue (or a drill session for `source`). Reads no state synchronously. */
-	start(source: string | null): void {
+	start(source: string | null, keepGoing = false): void {
 		this.drillSource = source;
+		this.keepGoing = keepGoing && source === null;
+		this.keepGoingDay = null;
+		this.moreAvailable = false;
 		this.loaded = false;
 		this.loadFailed = false;
 		this.drillUnavailable = false;
@@ -331,7 +353,23 @@ export class ReviewPage {
 
 	/** Load again after a failed start (same drill source). */
 	retry(): void {
-		this.start(this.drillSource);
+		this.start(this.drillSource, this.keepGoing);
+	}
+
+	/** Switch this visit to keep-going mode and fetch the next batch. */
+	async keepGoingOn(): Promise<void> {
+		this.keepGoing = true;
+		this.keepGoingDay = null;
+		this.busy = true;
+		this.refreshFailed = false;
+		try {
+			await this.fetchQueue();
+		} catch {
+			this.keepGoing = false;
+			this.refreshFailed = true; // toast shown
+		} finally {
+			this.busy = false;
+		}
 	}
 
 	async reload(): Promise<void> {

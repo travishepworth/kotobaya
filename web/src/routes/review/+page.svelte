@@ -34,8 +34,9 @@
 	const drillSource = $derived(page.url.searchParams.get('drill'));
 
 	// (Re)load whenever the drill source changes; start() reads no state, so this runs once per source.
+	const more = $derived(page.url.searchParams.get('more') === '1');
 	$effect(() => {
-		s.start(drillSource);
+		s.start(drillSource, more);
 	});
 
 	/* ---------- answer in view ---------- */
@@ -88,7 +89,7 @@
 	/* ---------- header figures ---------- */
 
 	const remaining = $derived(
-		s.isDrill || !s.counts ? s.items.length : s.counts._new + s.counts.learning + s.counts.review
+		s.isDrill || s.keepGoing || !s.counts ? s.items.length : s.counts._new + s.counts.learning + s.counts.review
 	);
 	const done = $derived(s.history.length);
 	const total = $derived(done + remaining);
@@ -232,7 +233,7 @@
 		<div class="status">
 			<div class="line">
 				<h1 class="mode">{modeLabel}</h1>
-				{#if s.loaded && s.counts && !s.isDrill && remaining > 0}
+				{#if s.loaded && s.counts && !s.isDrill && !s.keepGoing && remaining > 0}
 					<p class="counts">
 						<span class="count new"><i aria-hidden="true"></i>{rv('rv.count.new', { n: s.counts._new })}</span>
 						<span class="count learning"><i aria-hidden="true"></i>{rv('rv.count.learning', { n: s.counts.learning })}</span>
@@ -292,12 +293,19 @@
 					<EmptyState
 						size="page"
 						art="enso"
-						title={rv('rv.done.title')}
-						body={s.dayEndsAt ? rv('rv.done.next', { time: timeOf(s.dayEndsAt) }) : rv('rv.done.body')}
+						title={s.keepGoing ? rv('rv.caughtUp.title') : s.moreAvailable ? rv('rv.doneNow.title') : rv('rv.done.title')}
+						body={s.keepGoing
+							? rv('rv.caughtUp.body')
+							: s.dayEndsAt && !s.moreAvailable
+								? rv('rv.done.next', { time: timeOf(s.dayEndsAt) })
+								: rv('rv.done.body')}
 					>
 						{#snippet action()}
 							<div class="done-actions">
-								<Button variant="primary" href="/">{rv('rv.done.today')}</Button>
+								{#if s.moreAvailable && !s.keepGoing}
+									<Button variant="primary" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.keepGoing')}</Button>
+								{/if}
+								<Button variant={s.moreAvailable && !s.keepGoing ? 'outline' : 'primary'} href="/">{rv('rv.done.today')}</Button>
 								<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
 								{#if s.history.length > 0}
 									<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
@@ -313,6 +321,7 @@
 				<article class="card enter" class:flipped={s.flipped} class:compact class:more-below={moreBelow} aria-live="polite">
 					<div class="card-body" bind:this={body} onscroll={measure}>
 						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
+						{#if s.current.isNew}<span class="new-badge">{rv('rv.newBadge')}</span>{/if}
 						{#if s.rendered === null}
 							<!-- unreachable: current is set -->
 						{:else if s.rendered.ok}
@@ -565,6 +574,16 @@
 		left: var(--kb-space-4);
 		font: var(--kb-type-caption);
 		color: var(--kb-color-text-muted);
+	}
+	.new-badge {
+		position: absolute;
+		top: var(--kb-space-3);
+		right: var(--kb-space-4);
+		font: var(--kb-type-caption);
+		color: var(--kb-color-state-new);
+		border: 1px solid currentColor;
+		border-radius: var(--kb-radius-sm, 4px);
+		padding: 0 var(--kb-space-2);
 	}
 	.dict-link {
 		display: flex;

@@ -9,6 +9,8 @@ const en = {
 	'home.review': '{n} to review',
 	'home.eta': 'About {n} min',
 	'home.etaShort': 'Under a minute',
+	'home.keepGoing': 'Keep going',
+	'home.doneNow': 'Done for now',
 	'home.start': 'Start review',
 	'home.doneTitle': 'All done for today',
 	'home.nextDue': 'Next reviews at {time}.',
