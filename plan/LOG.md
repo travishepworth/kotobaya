@@ -1102,3 +1102,7 @@
 2026-11-15T02:33:06Z ARCH-CARD-TEXT HANDOFF attempt 2 (writer died uncommitted; orchestrator committed db36e0b5-rebased); checks + architect re-pass dispatched
 2026-11-15T02:34:17Z ARCH-CARD-TEXT ARCHITECT_PASS CHANGES r2: pitch major fixed; clients not regenerated (contracts check red) -> attempt 3 (architect)
 2026-11-15T02:43:58Z ARCH-CARD-TEXT CHECK_GREEN (contracts/core/server) + MERGE 40bd6b94 (3 attempts; clients regenerated)
+2026-11-15T02:44:18Z C-25 DISPATCH architect(opus) (review extras: kanji example picker, QueueItem.decks/kanji_examples, deck_ids)
+2026-11-15T03:11:23Z C-25 HANDOFF (KanjiExamplePicker, QueueItem.decks/deck_count/kanji_examples, deck_ids; 91 files incl clients); checks + reviewer + architect pass dispatched
+2026-11-15T03:12:17Z C-25 ARCHITECT_PASS APPROVE (3 minors -> FOLLOWUPS); waiting on reviewer + checks
+2026-11-15T03:12:29Z C-25 REVIEW_APPROVE + ARCHITECT APPROVE + CHECK_GREEN + MERGE ee1fecdd (4+3 minors -> FOLLOWUPS)
