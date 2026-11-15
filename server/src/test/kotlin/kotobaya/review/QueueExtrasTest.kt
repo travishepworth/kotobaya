@@ -178,8 +178,9 @@ class QueueExtrasTest : SyncFixture() {
         // the review queue builds its items the same way
         val q = client.call(HttpMethod.Get, "/review/queue?limit=200", bearer = t)
         assertEquals(200, q.status.value)
-        val items = q.json()["items"]
-        assertTrue(items.size() > 0)
+        // C-27: the queue also materializes deck entries without notes (e.g. 食堂); compare the seeded cards only.
+        val items = q.json()["items"].filter { it["card"]["id"].asText() in byCard }
+        assertTrue(items.isNotEmpty())
         for (item in items) {
             val drill = byCard.getValue(item["card"]["id"].asText())
             for (key in listOf("decks", "deck_count", "kanji_examples")) assertEquals(drill[key], item[key], key)

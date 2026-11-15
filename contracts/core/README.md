@@ -234,3 +234,32 @@ The normal Review entry point and the Today counts always use `keepGoing = false
 `keep_going=false`. Never persist it (no saved state, no preference). A device checks the day on
 every rebuild: if `day.startMs` differs from the day keep going started, it drops the flag and
 builds normally.
+
+## C-27: pending entries and materialization (ADR-032)
+
+**Which entries a loader passes as `QueueInput.pendingEntries`** (every platform, normative): deck
+items `e:<seq>` (`deck_item.deleted_at IS NULL`) of live, **enabled**, non-smart decks, such that
+- the dictionary entry `seq` exists locally (`ref.dict_entry`; a device without the dictionary
+  entry skips it until it has it);
+- no **live** note holds `entry_seq = seq`;
+- no **user-deleted** note held it: no note with `entry_seq = seq`, `deleted_at IS NOT NULL` and
+  `merged_into_id IS NULL` (merge losers do not count). Deleting the note of a deck word drops it
+  for good; it is never re-created by the queue (adding a note by hand still works);
+- `word_status.override_status` is not KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED (the builder
+  skips those anyway; filtering first keeps the bound below exact).
+
+A loader may pass only the first `2 × budget` such entries per deck in `(position, item_key)`
+order, with `budget` = `max(1, keepGoingNewBatch)` when keeping going, else `max(0, min(newPerDay,
+newPerSession))`: the builder draws at most `budget` entries in total and skips an entry otherwise
+only when another deck already drew the same `entrySeq`, so the result is identical.
+
+**Materializing `toMaterialize`** (every platform, same ops): for each entry, in order, skip it if a
+live note now holds the entry; else, if the drawing deck's `add_kanji` is **present** and not `off`
+(SCHEMA.md 6.2), one kanji note per `CardGenerator.kanjiToAdd(headword, live kanji literals, mode)`
+(`origin` `auto_kanji`, built-in kanji type, `kindsForNewNote(kanji type, null)`); then
+`note.created` {built-in vocab type `…0101`, `entry_seq`, `fields` `{}`, `origin` `deck`} and one
+`card.created` per `kindsForNewNote(vocab type, deck card_kinds)`. Then rebuild. The server does
+this inside `GET /review/queue` as the server device (openapi `getReviewQueue`); a device does it
+locally through its op path. A device and the server creating a note for the same entry converge
+by SYNC.md 8.1 (the note that held the entry first on the server survives; the other's cards and
+their reviews are merged into it).

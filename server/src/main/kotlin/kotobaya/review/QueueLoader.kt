@@ -7,6 +7,7 @@ import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.DeckMembership
+import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueDeck
 import kotobaya.contracts.queue.QueueInput
@@ -30,8 +31,13 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  *   (`last_review_id` = `Reserved.REPLAY_REFUSED_ID`, SYNC.md 9.4: the loader MUST NOT pass it, QueueInput.candidates);
  * - `add_kanji` of a deck counts only when it is exactly `"off"`, `"before"` or `"alongside"`, else it falls back to
  *   `scheduler.kanji_before_vocab` (SCHEMA.md 6.2);
- * - entry items `e:<seq>` of enabled decks without a live note are **not** passed as pending entries: `GET
- *   /review/queue` emits no ops (`x-emits-ops` is empty), so it cannot create their notes.
+ * - pending entries (C-27, ADR-032, contracts/core README "C-27"): entry items `e:<seq>` of live, enabled, non-smart
+ *   decks whose entry exists in `ref.dict_entry`, that no live note holds, that no **user-deleted** note held
+ *   (a tombstoned note with that `entry_seq` and no `merged_into_id`: deleting a deck word's note drops it, it is never
+ *   resurrected) and whose override is not KNOWN / NEVER_FORGET / BLACKLISTED / IGNORED. Only the first
+ *   `2 × budget` per deck in `(position, item_key)` order are passed: the builder draws at most `budget` entries in
+ *   total and skips an entry only for an excluded override (filtered here) or because another deck already drew the
+ *   same `entry_seq` (at most `budget` such skips), so the result equals passing every entry.
  */
 internal class QueueLoader(private val dsl: DSLContext) {
     fun load(
@@ -43,6 +49,10 @@ internal class QueueLoader(private val dsl: DSLContext) {
     ): LoadedQueue {
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day
         val decks = loadDecks(settings)
+        val pending = pendingEntries(
+            if (keepGoing) maxOf(1, keepGoingNewBatch) else maxOf(0, minOf(settings.newPerDay, settings.newPerSession)),
+            deckFilter,
+        )
 
         // Candidates: NEW cards, and started cards that can come due before the day ends.
         val rows = dsl.fetch(
@@ -103,11 +113,40 @@ internal class QueueLoader(private val dsl: DSLContext) {
             decks = decks,
             candidates = candidates,
             today = today,
-            pendingEntries = emptyList(),
+            pendingEntries = pending,
             decklessPriority = settings.minedPriority,
             decklessAddKanji = settings.decklessAddKanji,
         )
         return LoadedQueue(input, candidates)
+    }
+
+    /** See the class KDoc. [budget] is the most new cards one build can draw (ignoring today's count, so an upper bound). */
+    private fun pendingEntries(budget: Int, deckFilter: String?): List<PendingEntry> {
+        if (budget <= 0) return emptyList()
+        return dsl.fetch(
+            "select deck_id, entry_seq, position, item_key from (" +
+                "select di.deck_id::text as deck_id, di.entry_seq, di.position, di.item_key, " +
+                "row_number() over (partition by di.deck_id order by di.position, di.item_key) as rn " +
+                "from app.deck_item di " +
+                "join app.deck d on d.id = di.deck_id and d.deleted_at is null and d.enabled and d.type <> 'smart' " +
+                "left join app.word_status ws on ws.entry_seq = di.entry_seq " +
+                "where di.deleted_at is null and di.entry_seq is not null " +
+                "and (?::uuid is null or di.deck_id = ?::uuid) " +
+                "and exists (select 1 from ref.dict_entry de where de.seq = di.entry_seq) " +
+                "and not exists (select 1 from app.note n where n.entry_seq = di.entry_seq " +
+                "  and (n.deleted_at is null or n.merged_into_id is null)) " +
+                "and (ws.override_status is null or ws.override_status not in ('known', 'never_forget', 'blacklisted', 'ignored'))" +
+                ") x where rn <= ? order by deck_id, position, item_key",
+            deckFilter, deckFilter, 2L * budget,
+        ).map { r ->
+            PendingEntry(
+                deckId = r.get(0, String::class.java),
+                entrySeq = (r.get(1) as Number).toLong(),
+                position = (r.get(2) as Number).toLong(),
+                itemKey = r.get(3, String::class.java),
+                wordOverride = null,
+            )
+        }
     }
 
     private fun loadDecks(settings: ReviewSettings): List<QueueDeck> =

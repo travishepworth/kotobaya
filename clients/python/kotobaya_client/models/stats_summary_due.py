@@ -29,7 +29,7 @@ class StatsSummaryDue(BaseModel):
     Remaining today under the current limits (same as `ReviewQueue.counts`).
     """ # noqa: E501
     learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Learning and relearning cards due before the day ends.")
-    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce.")
+    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).")
     review: Annotated[int, Field(strict=True, ge=0)] = Field(description="Review cards due.")
     __properties: ClassVar[List[str]] = ["learning", "new", "review"]
 

@@ -69,7 +69,8 @@ class TestReviewQueue(unittest.TestCase):
                         text = null, )
                     ],
                 more_available = True,
-                study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date()
+                study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),
+                to_materialize = 0
             )
         else:
             return ReviewQueue(

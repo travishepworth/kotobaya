@@ -13,6 +13,7 @@ Name | Type
 `items` | [Array&lt;QueueItem&gt;](QueueItem.md)
 `moreAvailable` | boolean
 `studyDay` | Date
+`toMaterialize` | number
 
 ## Example
 
@@ -27,6 +28,7 @@ const example = {
   "items": null,
   "moreAvailable": null,
   "studyDay": null,
+  "toMaterialize": null,
 } satisfies ReviewQueue
 
 console.log(example)

@@ -216,7 +216,7 @@ def test_front_lines_omit_answer_fields_and_back_lines_carry_them(kenv: Env) -> 
     en = {k: v["enabled"] for k, v in front["actions"].items()}
     assert en == {
         "reveal": True, "again": False, "hard": False, "good": False, "easy": False,
-        "undo": False, "skip": True, "refresh": True, "next": True,
+        "undo": False, "skip": True, "refresh": True, "next": True, "keep_going": False,
     }  # fmt: skip
     assert front["actions"]["good"] == {"enabled": False, "hint": "1d"}
     en = {k: v["enabled"] for k, v in back["actions"].items()}

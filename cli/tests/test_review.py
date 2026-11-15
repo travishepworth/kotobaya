@@ -20,7 +20,7 @@ from conftest import FakeHttp
 from kotobaya_cli.api import Settings
 from kotobaya_cli.daemon.backend import BackendError, EventStream, HttpBackend
 from kotobaya_cli.daemon.journal import AnswerEntry, Journal, UndoEntry
-from kotobaya_cli.daemon.protocol import Action, AnswerCmd
+from kotobaya_cli.daemon.protocol import Action, AnswerCmd, parse_fifo_line, parse_socket_request
 from kotobaya_cli.daemon.review import FORBIDDEN_NOTICE, ReviewHandler
 from kotobaya_cli.daemon.server import Daemon, Paths
 from kotobaya_cli.daemon.session import CardEntry, Counts, QueueSnapshot
@@ -64,7 +64,7 @@ class FakeServer:
         self.on_disk_at_post: list[list[str]] = []
         self.lock = threading.Lock()
 
-    def fetch_queue(self) -> QueueSnapshot:
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot:
         return self.snap
 
     def fetch_grading_buttons(self) -> int:
@@ -759,7 +759,7 @@ def test_snapshot_fetched_before_the_answer_does_not_reshow_an_acked_card(paths:
         stale = snapshot("a", "b", "c")
         fresh_fetch = server.fetch_queue
 
-        def slow_stale_fetch() -> QueueSnapshot:
+        def slow_stale_fetch(keep_going: bool = False) -> QueueSnapshot:
             server.fetch_queue = fresh_fetch  # type: ignore[method-assign]
             gate.wait(2)
             return stale
@@ -781,3 +781,92 @@ def test_snapshot_fetched_before_the_answer_does_not_reshow_an_acked_card(paths:
         assert handler.pending_cards() == {}  # forgotten once a later fetch was applied
 
     asyncio.run(scenario())
+
+
+# ---- keep going (C-26/C-27) ---------------------------------------------------
+
+
+class KeepGoingServer(FakeServer):
+    """Normal queue: one card, then empty with more_available. Keep going: batches of 3 unanswered
+    cards out of 10; once, a response with no item but entries still to materialize."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.all = [f"c{i}" for i in range(10)]
+        self.flags: list[bool] = []
+        self.hiccup = True
+
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot:
+        with self.lock:
+            self.flags.append(keep_going)
+            done = {a.card_id for a in self.answers}
+            left = [i for i in self.all if i not in done]
+            counts = Counts(len(left), 0, 0)
+            if not keep_going:
+                items = left[:1] if not done else []
+                return QueueSnapshot(
+                    [CardEntry(i, "meaning") for i in items], counts, DAY_END,
+                    more_available=not items and bool(left), study_day="2026-11-15",
+                )
+            if len(done) == 4 and self.hiccup:
+                self.hiccup = False
+                return QueueSnapshot([], counts, DAY_END, study_day="2026-11-15", to_materialize=3)
+            return QueueSnapshot(
+                [CardEntry(i, "meaning") for i in left[:3]], counts, DAY_END, study_day="2026-11-15"
+            )
+
+
+def test_keep_going_streams_every_card_once_and_ends_on_an_empty_keep_going_fetch(
+    paths: Paths,
+) -> None:
+    server = KeepGoingServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await grade(daemon, "good")
+        await handler.idle()
+        out = st(daemon.session.state())
+        assert out["card"] is None and out["more_available"] is True and out["keep_going"] is False
+        out = st(await daemon.handle(Action("keep_going")))
+        assert out["keep_going"] is True and out["card"] is not None
+        shown = ["c0"]
+        for _ in range(20):
+            card = daemon.session.current
+            if card is None:
+                break
+            shown.append(card.card_id)
+            await grade(daemon, "good")
+            await handler.idle()
+        assert shown == server.all  # every card once, in order, through the materialize hiccup
+        out = st(daemon.session.state())
+        assert out["card"] is None and out["keep_going"] is True and out["more_available"] is False
+        assert all(server.flags[server.flags.index(True) :])  # every fetch after the action keeps going
+
+    asyncio.run(scenario())
+
+
+def test_keep_going_ends_when_the_study_day_changes(paths: Paths) -> None:
+    server = KeepGoingServer()
+
+    async def scenario() -> None:
+        daemon, _handler = make(server, paths)
+        await daemon.handle(Action("keep_going"))
+        assert daemon.session.keep_going_day == "2026-11-15"
+        original = server.fetch_queue
+
+        def next_day(keep_going: bool = False) -> QueueSnapshot:
+            snap = original(keep_going)
+            return QueueSnapshot(snap.items, snap.counts, DAY_END, study_day="2026-11-16")
+
+        server.fetch_queue = next_day  # type: ignore[method-assign]
+        await daemon.refetch()
+        assert daemon.session.keep_going is False
+        assert server.flags[-1] is False
+
+    asyncio.run(scenario())
+
+
+def test_keep_going_is_a_fifo_and_socket_action() -> None:
+    assert parse_fifo_line("keep_going\n") == Action("keep_going")
+    assert parse_socket_request('{"cmd": "keep_going"}') == Action("keep_going")

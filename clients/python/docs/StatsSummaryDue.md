@@ -7,7 +7,7 @@ Remaining today under the current limits (same as `ReviewQueue.counts`).
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **learning** | **int** | Learning and relearning cards due before the day ends. | 
-**new** | **int** | New cards still to introduce. | 
+**new** | **int** | New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them). | 
 **review** | **int** | Review cards due. | 
 
 ## Example

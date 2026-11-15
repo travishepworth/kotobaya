@@ -45,8 +45,18 @@ echo good   1<>$XDG_RUNTIME_DIR/kotobaya/in
 ```
 
 Actions: `reveal`, `again`, `hard`, `good`, `easy`, `nothing`, `something`, `okay`, `undo`,
-`skip`, `refresh`. The five-button names (`nothing`, `something`, `okay`) are mapped to the
-user's button mode, so `good` and `again` work in both modes.
+`skip`, `refresh`, `keep_going`. The five-button names (`nothing`, `something`, `okay`) are mapped to the
+user's button mode, so `good` and `again` work in both modes. On the socket the same names are
+`{"cmd": "..."}`.
+
+**Keep going** (same semantics as the web and Android). When the queue is done under today's
+limits, the state has `"card": null` and `"more_available": true`; send `keep_going` to continue
+past every limit: all reviews due today first (no review cap), then new cards in batches, refilled
+automatically after each answer. Deck words that have no note yet become new cards on the server
+when it builds the queue; the daemon never creates notes itself. It ends only when a keep-going
+fetch is empty (`"card": null`, `"keep_going": true`, `"more_available": false`: nothing is left
+today). Keep going lives in the daemon's memory: it stops when the study day changes and when the
+daemon restarts. The state carries `"keep_going"` (bool) and `"more_available"` (bool).
 
 ## watch
 
@@ -137,9 +147,11 @@ it and the `kotobaya watch` child.
  "text":"猫 12","counts":{"new":3,"learning":2,"review":7},
  "card":null,
  "last":{"rating":null,"undoable":false},"notice":null,"error":null,
+ "keep_going":false,"more_available":false,
  "actions":{"reveal":{"enabled":true},"again":{"enabled":false,"hint":"1m"},
             "hard":{...},"good":{...},"easy":{...},"undo":{"enabled":false},
-            "skip":{"enabled":true},"refresh":{"enabled":true},"next":{"enabled":true}}}
+            "skip":{"enabled":true},"refresh":{"enabled":true},"next":{"enabled":true},
+            "keep_going":{"enabled":false}}}
 ```
 
 - `card` is `null` or `{"id","kind","front"}`, plus `reading`, `sentence`, `back` only when
@@ -147,10 +159,14 @@ it and the `kotobaya watch` child.
 - `rev` changes on every line (`-` stands for "no card"); send it back with each action.
 - `notice` appears on one line only. `hint` (next interval per grade) only when known.
 - Enabled: `reveal` on front; grades on back; `skip`/`next` on front and back (`next` = reveal if
-  hidden, else good); `undo` only when `last.undoable`; `refresh` always.
+  hidden, else good); `undo` only when `last.undoable`; `refresh` always; `keep_going` when `done`,
+  `more_available` and not already keeping going.
+- `keep_going` and `more_available` are the daemon's (see "Keep going" above): `done` with
+  `more_available` means "done for now, keep going has more"; `done` while `keep_going` means
+  nothing is left today.
 
 `kby do ACTION [--rev REV]` sends one action (`reveal again hard good easy undo skip refresh
-next`) to the daemon FIFO and returns at once (no reply; the result is the next `serve` line).
+next keep_going`) to the daemon FIFO and returns at once (no reply; the result is the next `serve` line).
 Unknown or not-enabled actions print to stderr and exit 2. With `--rev`, if REV is not the
 current rev (read from `state.json`; with no `serve` running, compared by card id against the
 daemon's status) the action is dropped, exit 0, and the next `serve` line carries the notice

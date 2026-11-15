@@ -30,10 +30,11 @@ from kotobaya_cli.daemon.protocol import (
     parse_socket_request,
 )
 from kotobaya_cli.daemon.review import ReviewHandler
-from kotobaya_cli.daemon.session import Clock, Session, utc_now
+from kotobaya_cli.daemon.session import Clock, QueueSnapshot, Session, utc_now
 
 TIMER_SECONDS = 60.0
 MAX_BACKOFF_S = 30.0
+KEEP_GOING_RETRIES = 3  # C-27: refetches of a keep-going response with only entries left to materialize
 
 
 @dataclass(frozen=True)
@@ -200,6 +201,11 @@ class Daemon:
                 await self.handler.undo(self)
             elif cmd.name == "refresh":
                 await self.refetch(emit=False)
+            elif cmd.name == "keep_going":
+                # C-26/C-27: same semantics as the web: past today's limits until a keep-going fetch is empty.
+                session.keep_going = True
+                session.keep_going_day = None
+                await self.refetch(emit=False)
         return self.emit()
 
     async def _worker(self) -> None:
@@ -247,17 +253,41 @@ class Daemon:
                     self.backend.fetch_grading_buttons
                 )
                 self._settings_stale = False
-            snapshot = await asyncio.to_thread(self.backend.fetch_queue)
+            snapshot = await self._fetch_snapshot()
         except Exception as exc:  # noqa: BLE001
             self._settings_stale = True
             self.session.conn = "auth" if classify(exc).kind == "auth" else "offline"
             return
         self.session.conn = "ok"
+        self.session.more_available = snapshot.more_available
         pending.update(self.handler.pending_cards())
         self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
         self.handler.end_fetch(token)
         if not was_ok:
             await self.handler.on_online(self)
+
+    async def _fetch_snapshot(self) -> QueueSnapshot:
+        """One queue fetch, with keep going when it is on (C-26/C-27).
+
+        Keep going is dropped when the study day differs from the one it started in (then the normal
+        queue is fetched). A keep-going response with no item but deck entries the server still has
+        to turn into cards (`to_materialize` > 0) is fetched again, so keep going ends only on a
+        truly empty keep-going fetch."""
+        session = self.session
+        if not session.keep_going:
+            return await asyncio.to_thread(self.backend.fetch_queue)
+        snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
+        if session.keep_going_day is None:
+            session.keep_going_day = snapshot.study_day
+        elif snapshot.study_day != session.keep_going_day:
+            session.keep_going = False
+            session.keep_going_day = None
+            return await asyncio.to_thread(self.backend.fetch_queue)
+        for _ in range(KEEP_GOING_RETRIES):
+            if snapshot.items or snapshot.to_materialize <= 0:
+                break
+            snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
+        return snapshot
 
     def _day_end_wait(self) -> float:
         end = self.session.day_ends_at

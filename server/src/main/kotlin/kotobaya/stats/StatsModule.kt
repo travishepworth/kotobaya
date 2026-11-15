@@ -140,7 +140,8 @@ class StatsModule(
                 "study_day" to day.date.toString(),
                 "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
                 "due" to linkedMapOf(
-                    "new" to items.count { it.kind == QueueItemKind.NEW },
+                    // C-27: deck entries drawn but not yet materialized are new cards still to introduce.
+                    "new" to items.count { it.kind == QueueItemKind.NEW } + built.toMaterialize.size,
                     "learning" to items.count { it.kind == QueueItemKind.LEARNING } + laterLearning,
                     "review" to items.count { it.kind == QueueItemKind.REVIEW },
                 ),

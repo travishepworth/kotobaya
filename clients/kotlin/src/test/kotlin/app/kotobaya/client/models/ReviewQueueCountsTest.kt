@@ -39,7 +39,7 @@ class ReviewQueueCountsTest : ShouldSpec() {
             //modelInstance.learning shouldBe ("TODO")
         }
 
-        // to test the property `new` - New cards still to introduce today.
+        // to test the property `new` - New cards still to introduce today, including drawn deck entries not yet materialized (`to_materialize`, C-27).
         should("test new") {
             // uncomment below to test the property
             //modelInstance.new shouldBe ("TODO")

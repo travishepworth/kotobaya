@@ -24,7 +24,7 @@ export interface ReviewQueueCounts {
      */
     learning: number;
     /**
-     * New cards still to introduce today.
+     * New cards still to introduce today, including drawn deck entries not yet materialized (`to_materialize`, C-27).
      */
     _new: number;
     /**

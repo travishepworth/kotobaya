@@ -30,7 +30,7 @@ import com.google.gson.annotations.SerializedName
  * Remaining today under the current limits (same as `ReviewQueue.counts`).
  *
  * @param learning Learning and relearning cards due before the day ends.
- * @param new New cards still to introduce.
+ * @param new New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).
  * @param review Review cards due.
  */
 
@@ -41,7 +41,7 @@ data class StatsSummaryDue (
     @SerializedName("learning")
     val learning: kotlin.Int,
 
-    /* New cards still to introduce. */
+    /* New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them). */
     @SerializedName("new")
     val new: kotlin.Int,
 

@@ -1013,6 +1013,14 @@ For cards, "live" means the card's own `deleted_at IS NULL` (the note may be tom
   or W is tombstoned, nothing is emitted.
 - `media` and `list` decks have natural keys but no merge rule; they are created only by the
   server (OPS.md, `deck.created`).
+- **Deck entries materialized twice (C-27, ADR-032).** The server creates notes for drawn deck
+  entries inside `GET /review/queue` (`origin` `deck`, server device), under the sync lock and
+  only when no live note holds the entry, so the server never creates the duplicate itself. A
+  device that materialized the same `e:<seq>` offline (contracts/core README "C-27") pushes a
+  `note.created` that collides here: whichever note held the entry first on the server survives
+  (device first: the server sees a live holder and creates nothing; server first: the device's
+  note is the loser), the loser's cards are merged into the survivor's by step 2, and reviews on
+  them replay on the survivor (8.3, 9.1). One live note per entry; no review is lost.
 
 ### 8.2 Applying `note.merged` / `card.merged` (every replica)
 
@@ -2046,7 +2054,7 @@ listed op(s) on the server and passing them through the op-apply path.
 | Table | Ops | API operations |
 |---|---|---|
 | `note_type` | `note_type.created` / `updated` / `deleted` | `GET/POST /note-types`, `GET/PATCH/DELETE /note-types/{id}` |
-| `note` | `note.created` / `updated` / `deleted` / `merged` | `GET/POST /notes`, `GET/PATCH/DELETE /notes/{id}`, `POST /cards/bulk` (tags → `note.updated`), `POST /ankiconnect` (`addNote`) |
+| `note` | `note.created` / `updated` / `deleted` / `merged` | `GET/POST /notes`, `GET/PATCH/DELETE /notes/{id}`, `POST /cards/bulk` (tags → `note.updated`), `POST /ankiconnect` (`addNote`), `GET /review/queue` (deck materialization, C-27) |
 | `card` | `card.created` / `suspended` / `unsuspended` / `buried` / `unburied` / `flag_set` / `preset_set` / `deleted` / `merged` | `GET/POST /cards`, `GET/PATCH/DELETE /cards/{id}`, `POST /cards/bulk`, `GET /review/queue` |
 | `review_log` | `review.logged`, `review.undone` | `POST /review/answer`, `POST /review/undo`, `POST /cards/bulk/schedule` (reschedule/reset → `manual`; scope `review`), `GET /cards/{id}/reviews`, `POST /import/jpdb/history` (history import job: server-minted ops with `import_source`) |
 | `word_status` | `word.status_set`, `word.status_cleared` | `GET/PUT/DELETE /words/{seq}/status`; `POST /import/jpdb/history` (job, origin `jpdb_import`) |

@@ -7,7 +7,7 @@ Cards remaining today under the current limits (whole queue, not only `items`; u
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **learning** | **int** | Cards in learning or relearning due before the day ends. | 
-**new** | **int** | New cards still to introduce today. | 
+**new** | **int** | New cards still to introduce today, including drawn deck entries not yet materialized (&#x60;to_materialize&#x60;, C-27). | 
 **review** | **int** | Review cards due today (including overdue). | 
 
 ## Example

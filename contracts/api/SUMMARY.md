@@ -245,7 +245,7 @@ operation starts; "(consequence)" = emitted by the op-apply path. Every op also 
 | Table | Ops | API operations |
 |---|---|---|
 | `note_type` | `note_type.created/updated/deleted` | `listNoteTypes`, `getNoteType`, `createNoteType`, `updateNoteType`, `deleteNoteType` |
-| `note` | `note.created/updated/deleted`; `note.merged` (consequence) | `listNotes`, `getNote`, `createNote`, `updateNote`, `deleteNote`, `bulkCards`, `ankiConnect`, `importJpdbHistory` |
+| `note` | `note.created/updated/deleted`; `note.merged` (consequence) | `listNotes`, `getNote`, `createNote`, `updateNote`, `deleteNote`, `bulkCards`, `ankiConnect`, `importJpdbHistory`, `getReviewQueue` (deck materialization, C-27) |
 | `card` | `card.created/suspended/unsuspended/buried/unburied/flag_set/preset_set/deleted`; `card.merged` (consequence) | `listCards`, `getCard`, `createCard`, `updateCard`, `deleteCard`, `bulkCards`, `createNote`, `getReviewQueue`, `listLeeches` |
 | `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkScheduleCards`, `listCardReviews`, `importJpdbHistory`, `getStatsHeatmap`, `getStatsRetention`, `getStatsCalibration` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `getWordStatus`, `setWordStatus`, `clearWordStatus`, `getStatsKnownWords`, `importJpdbHistory` |
@@ -590,3 +590,32 @@ attempt 1 is gone). Needs node and python3; network on first run.
   serves new cards past tomorrow's limit). `StatsSummary.more_available` (same core signal, no
   extra queue call for the Today page). `more_available` may mean only the session cap is reached
   ("done for now"); in keep-going mode `counts.new` is the batch.
+
+## C-27 changes: deck entries become new cards in `getReviewQueue` (ADR-032)
+
+- **`getReviewQueue` materializes.** The server passes deck entries without notes (core
+  `PendingEntry`) to the builder; when the build draws some (`toMaterialize`, within the normal
+  new-card budget or the keep-going batch) and the caller holds `review` or `write`, it mints, as
+  the server device in one op transaction under the sync lock, `note.created` (`origin` `deck`,
+  built-in vocab type, `fields` `{}`) + `card.created` per default kind (or the drawing deck's
+  `card_kinds`), preceded by `auto_kanji` kanji notes if the deck's present `add_kanji` asks;
+  then rebuilds (≤ 3 rounds) and answers. `x-emits-ops: [note.created, card.created]` — the only
+  GET that emits (check_contract.py `GET_EMITS`). Idempotent per `entry_seq`: an entry a live note
+  holds is skipped; a fetch that draws nothing emits nothing.
+- **`ReviewQueue.to_materialize`** (integer, additive): drawn entries still without notes (0 for a
+  caller that may review; the count for a `read`-only caller). `counts.new` and
+  `StatsSummary.due.new` include them.
+- **Pending entries** (contracts/core README "C-27"): `e:<seq>` of live enabled non-smart decks,
+  entry in `ref.dict_entry`, no live note, **no user-deleted note** for the entry (deleting a
+  deck word's note drops it for good), override not known/never_forget/blacklisted/ignored.
+- **Devices** converge by SYNC.md 8.1 (the first holder of `entry_seq` survives; the other's cards
+  and reviews merge into it); server test `DeckMaterializeTest`.
+- Cross-check: `note` and `card` rows gain `getReviewQueue` (it was already listed for `card`).
+- Rejected: a separate `POST` "fill"/materialize endpoint the client calls (a UI-driven workaround;
+  every client would have to remember it, and a read of the queue would still show nothing);
+  client-side minting on the web/CLI (re-implements the device path, needs dictionary data);
+  materializing every pending entry up front (35k notes for decks the user may never reach).
+- Worth a second look: (1) **a GET that emits ops** (scope `read` is enough to call it; only
+  `review`/`write` callers materialize); (2) **user-deleted notes block re-materialization**
+  (otherwise a deleted deck word comes back on the next fetch); (3) **kanji notes are created
+  for a deck with a present `add_kanji`** (SCHEMA.md 6.2 says adding a vocab card creates them).

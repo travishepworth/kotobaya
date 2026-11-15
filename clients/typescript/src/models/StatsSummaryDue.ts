@@ -24,7 +24,7 @@ export interface StatsSummaryDue {
      */
     learning: number;
     /**
-     * New cards still to introduce.
+     * New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).
      */
     _new: number;
     /**

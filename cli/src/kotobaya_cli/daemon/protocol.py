@@ -16,13 +16,13 @@ BUTTON_RATING = {
 }
 FOUR_BUTTONS = ("again", "hard", "good", "easy")
 FIVE_BUTTONS = ("nothing", "something", "hard", "okay", "easy")
-ACTIONS = ("reveal", "undo", "skip", "refresh")
+ACTIONS = ("reveal", "undo", "skip", "refresh", "keep_going")
 MAX_LINE_BYTES = 4096  # FIFO writes under PIPE_BUF are atomic; anything longer is junk
 
 
 @dataclass(frozen=True)
 class Action:
-    """reveal / undo / skip / refresh."""
+    """reveal / undo / skip / refresh / keep_going."""
 
     name: str
 
@@ -70,7 +70,7 @@ def parse_fifo_line(line: str) -> Command | None:
 
 
 def parse_socket_request(line: str) -> Command:
-    """Parse one socket request: {"cmd": "status|next|answer|reveal|undo|refresh|subscribe"}."""
+    """Parse one socket request: {"cmd": "status|next|answer|reveal|undo|refresh|keep_going|subscribe"}."""
     try:
         request = json.loads(line)
     except ValueError:
@@ -84,7 +84,7 @@ def parse_socket_request(line: str) -> Command:
         return SubscribeCmd()
     if cmd == "next":
         return Action("skip")
-    if cmd in ("reveal", "undo", "refresh", "skip"):
+    if cmd in ("reveal", "undo", "refresh", "skip", "keep_going"):
         return Action(str(cmd))
     if cmd == "answer":
         rating = request.get("rating")

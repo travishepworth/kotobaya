@@ -39,6 +39,10 @@ class QueueSnapshot:
     items: list[CardEntry]
     counts: Counts
     day_ends_at: str
+    # C-26/C-27: `more_available`, `study_day` and `to_materialize` of the response.
+    more_available: bool = False
+    study_day: str | None = None
+    to_materialize: int = 0
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,10 @@ class Session:
         self.pending = 0
         self.notice: str | None = None
         self.grading_buttons = 4
+        # Keep going (C-26/C-27): in memory only, for this daemon run; dropped on a study-day change.
+        self.keep_going = False
+        self.keep_going_day: str | None = None
+        self.more_available = False
 
     @property
     def current(self) -> CardEntry | None:
@@ -190,6 +198,8 @@ class Session:
             else {"rating": self.last.rating, "undoable": self.last.undoable},
             "pending": self.pending,
             "notice": self.notice,
+            "keep_going": self.keep_going,
+            "more_available": self.more_available,
         }
 
     def take_state(self) -> dict[str, object]:

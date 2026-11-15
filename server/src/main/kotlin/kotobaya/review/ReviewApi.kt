@@ -9,6 +9,8 @@ import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.queue.QueueBuilder
 import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
+import kotobaya.contracts.queue.ReviewQueue
+import kotobaya.auth.authenticated
 import kotobaya.notes.Errors
 import kotobaya.notes.Reply
 import kotobaya.notes.UUID_RE
@@ -24,6 +26,7 @@ import kotobaya.server.formatInstant
 import kotobaya.server.json
 import kotobaya.server.respondJson
 import kotobaya.sync.OpApply
+import org.jooq.DSLContext
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -38,6 +41,9 @@ private const val FUTURE_TOLERANCE_MS = 5 * 60_000L
 private const val BEFORE_CARD_MS = 24 * 3_600_000L
 private val ALL_KINDS = setOf("new", "learning", "review")
 
+/** C-27: materialize-and-rebuild rounds per fetch. */
+private const val MATERIALIZE_ROUNDS = 3
+
 /** `getReviewQueue`, `answerReview`, `undoReview`. */
 internal class ReviewApi(
     private val db: Database,
@@ -45,6 +51,7 @@ internal class ReviewApi(
     private val scheduler: Scheduler,
     private val builder: QueueBuilder,
     private val clock: () -> Instant,
+    private val materializer: DeckMaterializer = DeckMaterializer(),
 ) {
     suspend fun queue(call: ApplicationCall) {
         val q = call.request.queryParameters
@@ -64,55 +71,99 @@ internal class ReviewApi(
         e.throwIfAny()
 
         val nowMs = clock().toEpochMilli()
-        val body = db.tx { dsl ->
+        val req = QueueRequest(nowMs, limit, deckId, kinds, keepGoing)
+        // C-27 (ADR-032): deck entries the builder draws become notes and cards here, the one materialization path
+        // for API clients. Only for a caller that may review (`review` or `write`), and only when new cards are asked for.
+        val scopes = call.authenticated?.principal?.scopes.orEmpty()
+        val mayMaterialize = "new" in kinds && ("review" in scopes || "write" in scopes)
+        // A cheap read first: most fetches draw no pending entry and never take the sync lock.
+        val first = db.tx { dsl ->
             if (deckId != null && !dsl.fetchExists(dsl.selectOne().from("app.deck").where("id = ?::uuid and deleted_at is null", deckId))) {
                 throw Problems.notFound("No live deck $deckId.")
             }
-            val settings = ReviewSettings.load(dsl)
-            // C-26: keep going is a per-request override (core rule 6); the batch is the page size.
-            val loaded = QueueLoader(dsl).load(nowMs, settings, deckId, keepGoing = keepGoing, keepGoingNewBatch = limit)
-            val queue = builder.build(loaded.input)
-            val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour)
-
-            val items = queue.items
-            // Learning cards due later today (outside learn-ahead) still count as remaining today.
-            val shown = items.mapTo(HashSet()) { it.cardId }
-            val laterLearning = loaded.candidates.count { c ->
-                c.cardId !in shown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
-                    (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride !in BLOCKED &&
-                    c.dueAt != null && c.dueAt!! < day.day.endMs
-            }
-            val counts = json.createObjectNode()
-                .put("new", items.count { it.kind == QueueItemKind.NEW })
-                .put("learning", items.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
-                .put("review", items.count { it.kind == QueueItemKind.REVIEW })
-            fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
-            val wanted = items.filter(::inKinds).take(limit)
-            // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
-            // All kinds: the core's own signal (the server passes no pending entries, so it is the same test).
-            // A kinds filter: one extra keep-going build, only when the filtered page is empty.
-            val moreAvailable = if (kinds == ALL_KINDS) {
-                queue.moreAvailable
-            } else {
-                !keepGoing && wanted.isEmpty() &&
-                    builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).items.any(::inKinds)
-            }
-            val views = ReviewViews(dsl, settings.leechThreshold)
-            val rendered = views.items(
-                wanted.map { it.cardId },
-                wanted.associate { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" },
-                nowMs, scheduler,
-            )
-            linkedMapOf(
-                "items" to rendered,
-                "counts" to counts,
-                "study_day" to day.date.toString(),
-                "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
-                "generated_at" to formatInstant(Instant.ofEpochMilli(nowMs)),
-                "more_available" to moreAvailable,
-            )
+            val built = buildQueue(dsl, req)
+            if (mayMaterialize && built.queue.toMaterialize.isNotEmpty()) null else render(dsl, req, built)
         }
-        call.respondJson(body)
+        if (first != null) {
+            call.respondJson(first)
+            return
+        }
+        val reply = opApply.rest(call.callerTokenId()) { tx ->
+            var built = buildQueue(tx.dsl, req)
+            var rounds = 0
+            // Each round creates notes for the entries drawn, then rebuilds: their cards now take those places. A round
+            // can free a slot (e.g. an add_kanji group that no longer fits), so a few rounds; anything left is reported
+            // in `to_materialize` and drawn by the next fetch.
+            while (built.queue.toMaterialize.isNotEmpty() && rounds < MATERIALIZE_ROUNDS) {
+                materializer.materialize(tx, built.queue.toMaterialize)
+                built = buildQueue(tx.dsl, req)
+                rounds++
+            }
+            Reply(HttpStatusCode.OK, json.valueToTree(render(tx.dsl, req, built)), tx.lastSeq)
+        }
+        call.send(reply)
+    }
+
+    private class QueueRequest(val nowMs: Long, val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean)
+
+    private class Built(val settings: ReviewSettings, val loaded: LoadedQueue, val queue: ReviewQueue)
+
+    private fun buildQueue(dsl: DSLContext, r: QueueRequest): Built {
+        val settings = ReviewSettings.load(dsl)
+        // C-26: keep going is a per-request override (core rule 6); the batch is the page size.
+        val loaded = QueueLoader(dsl).load(r.nowMs, settings, r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
+        return Built(settings, loaded, builder.build(loaded.input))
+    }
+
+    private fun render(dsl: DSLContext, r: QueueRequest, b: Built): Map<String, Any?> {
+        val nowMs = r.nowMs
+        val settings = b.settings
+        val loaded = b.loaded
+        val queue = b.queue
+        val kinds = r.kinds
+        val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour)
+
+        val items = queue.items
+        // Learning cards due later today (outside learn-ahead) still count as remaining today.
+        val shown = items.mapTo(HashSet()) { it.cardId }
+        val laterLearning = loaded.candidates.count { c ->
+            c.cardId !in shown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
+                (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride !in BLOCKED &&
+                c.dueAt != null && c.dueAt!! < day.day.endMs
+        }
+        val counts = json.createObjectNode()
+            // C-27: a drawn deck entry without a note yet is a new card still to introduce.
+            .put("new", items.count { it.kind == QueueItemKind.NEW } + queue.toMaterialize.size)
+            .put("learning", items.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
+            .put("review", items.count { it.kind == QueueItemKind.REVIEW })
+        fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
+        val wanted = items.filter(::inKinds).take(r.limit)
+        // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
+        // All kinds: the core's own signal (it counts pending entries too). A kinds filter: one extra keep-going
+        // build, only when the filtered page is empty; drawn entries count when `new` is asked for.
+        val moreAvailable = if (kinds == ALL_KINDS) {
+            queue.moreAvailable
+        } else {
+            !r.keepGoing && wanted.isEmpty() &&
+                builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).let { kg ->
+                    kg.items.any(::inKinds) || ("new" in kinds && kg.toMaterialize.isNotEmpty())
+                }
+        }
+        val views = ReviewViews(dsl, settings.leechThreshold)
+        val rendered = views.items(
+            wanted.map { it.cardId },
+            wanted.associate { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" },
+            nowMs, scheduler,
+        )
+        return linkedMapOf(
+            "items" to rendered,
+            "counts" to counts,
+            "study_day" to day.date.toString(),
+            "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
+            "generated_at" to formatInstant(Instant.ofEpochMilli(nowMs)),
+            "more_available" to moreAvailable,
+            "to_materialize" to if ("new" in kinds) queue.toMaterialize.size else 0,
+        )
     }
 
     suspend fun answer(call: ApplicationCall) {

@@ -64,7 +64,7 @@ class FakeBackend:
         self.error: BackendError | None = None
         self.buttons = 4
 
-    def fetch_queue(self) -> QueueSnapshot:
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot:
         if self.error:
             raise self.error
         return self.snap

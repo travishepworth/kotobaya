@@ -290,6 +290,36 @@ The three end states for a client:
 - `items` empty, `more_available` false: nothing left to show now for this `kinds`,
   with or without keep going (`counts.learning` > 0 means a learning card is due later
   today).
+- `items` empty and `to_materialize` > 0 (C-27; only for a caller without the `review`
+  and `write` scopes): new cards exist but are deck entries without notes yet; a
+  caller that may review gets them materialized by its own fetch.
+A keep-going client ends the session only on a keep-going response with empty `items`
+and `to_materialize` 0; anything else is followed by another fetch once the local
+queue empties.
+
+**Deck entries become cards here (C-27, ADR-032).** Deck items `e:<seq>` with no note
+are new cards too (core `PendingEntry`; which entries qualify: contracts/core README
+"C-27"). The server passes them to the core builder, and when its build draws some
+(`ReviewQueue.toMaterialize`, bounded by the same new-card budget as the cards: the
+daily and session limits, or the keep-going batch) and the caller holds `review` or
+`write`, the server creates them before answering, in one op transaction as the
+**server device**: per drawn entry, in the builder's order, the kanji notes the drawing
+deck's present `add_kanji` asks for (`note.created` `origin` `auto_kanji` + their
+default `card.created`, SCHEMA.md 6.2), then `note.created` {built-in vocab type,
+`entry_seq`, `fields` `{}`, `origin` `deck`} and one `card.created` per default kind of
+the vocab note type, or per the drawing deck's `card_kinds`. It then rebuilds (at most
+3 rounds) and returns that queue. This is the only place an API client's deck entries
+become notes: clients never mint these ops or call anything else for it; a device
+builds offline from the same core output and mints the same ops itself.
+- **Idempotent.** The transaction holds the sync lock and skips an entry a live note
+  already holds, so repeated or concurrent fetches never create a second note; a
+  fetch that draws nothing emits nothing (and takes no lock).
+- **Devices.** A device that created a note for the same entry offline converges by
+  SYNC.md 8.1 (the note that held the entry first survives; the other's cards and
+  reviews are merged into it).
+- **Read-only callers** (`read` only) get the queue without materializing: drawn
+  entries are counted in `counts.new` and `to_materialize`, not in `items`.
+- `Kotobaya-Seq` is set when ops were emitted.
 
 Each item carries everything needed to render and grade the card: the card with its note
 summary, the dictionary entry (when the note references one that exists), the example

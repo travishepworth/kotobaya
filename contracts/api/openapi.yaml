@@ -2187,6 +2187,36 @@ paths:
         - `items` empty, `more_available` false: nothing left to show now for this `kinds`,
           with or without keep going (`counts.learning` > 0 means a learning card is due later
           today).
+        - `items` empty and `to_materialize` > 0 (C-27; only for a caller without the `review`
+          and `write` scopes): new cards exist but are deck entries without notes yet; a
+          caller that may review gets them materialized by its own fetch.
+        A keep-going client ends the session only on a keep-going response with empty `items`
+        and `to_materialize` 0; anything else is followed by another fetch once the local
+        queue empties.
+
+        **Deck entries become cards here (C-27, ADR-032).** Deck items `e:<seq>` with no note
+        are new cards too (core `PendingEntry`; which entries qualify: contracts/core README
+        "C-27"). The server passes them to the core builder, and when its build draws some
+        (`ReviewQueue.toMaterialize`, bounded by the same new-card budget as the cards: the
+        daily and session limits, or the keep-going batch) and the caller holds `review` or
+        `write`, the server creates them before answering, in one op transaction as the
+        **server device**: per drawn entry, in the builder's order, the kanji notes the drawing
+        deck's present `add_kanji` asks for (`note.created` `origin` `auto_kanji` + their
+        default `card.created`, SCHEMA.md 6.2), then `note.created` {built-in vocab type,
+        `entry_seq`, `fields` `{}`, `origin` `deck`} and one `card.created` per default kind of
+        the vocab note type, or per the drawing deck's `card_kinds`. It then rebuilds (at most
+        3 rounds) and returns that queue. This is the only place an API client's deck entries
+        become notes: clients never mint these ops or call anything else for it; a device
+        builds offline from the same core output and mints the same ops itself.
+        - **Idempotent.** The transaction holds the sync lock and skips an entry a live note
+          already holds, so repeated or concurrent fetches never create a second note; a
+          fetch that draws nothing emits nothing (and takes no lock).
+        - **Devices.** A device that created a note for the same entry offline converges by
+          SYNC.md 8.1 (the note that held the entry first survives; the other's cards and
+          reviews are merged into it).
+        - **Read-only callers** (`read` only) get the queue without materializing: drawn
+          entries are counted in `counts.new` and `to_materialize`, not in `items`.
+        - `Kotobaya-Seq` is set when ops were emitted.
 
         Each item carries everything needed to render and grade the card: the card with its note
         summary, the dictionary entry (when the note references one that exists), the example
@@ -2194,6 +2224,7 @@ paths:
         with, and a preview of the next due time per rating. Grammar cards also carry
         `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core
         picker with the rules on `GrammarCardSentence` (drill sessions use the same rules).
+      x-emits-ops: [note.created, card.created]
       security:
         - bearerAuth: [read]
         - sessionCookie: [read]
@@ -9382,7 +9413,8 @@ components:
             new:
               type: integer
               minimum: 0
-              description: New cards still to introduce today.
+              description: New cards still to introduce today, including drawn deck entries not yet materialized
+                (`to_materialize`, C-27).
               examples:
               - 8
             learning:
@@ -9417,10 +9449,25 @@ components:
             per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says "done
             for now", not "done for today". Computed only in the empty
             case, so it costs a second queue build only then. For a request without `kinds` it
-            equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries).
+            equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries
+            (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the
+            server's keep-going test.
             Servers implementing C-26 always send it; absent (older server) is treated as false.
           examples:
           - true
+        to_materialize:
+          type: integer
+          minimum: 0
+          description: |
+            C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew
+            as new cards that are still not notes: the length of the core's
+            `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds`
+            excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3
+            materialization rounds ran out (then the next fetch continues). For a `read`-only
+            caller it is the entries it cannot materialize; they are included in `counts.new`.
+            Absent (older server) is treated as 0.
+          examples:
+          - 0
     ReviewAnswerRequest:
       type: object
       description: An answer to a card.
@@ -11379,7 +11426,8 @@ components:
             new:
               type: integer
               minimum: 0
-              description: New cards still to introduce.
+              description: New cards still to introduce, including deck entries the build draws that have no note yet
+                (C-27; this endpoint never creates them).
             learning:
               type: integer
               minimum: 0
@@ -14323,6 +14371,7 @@ components:
         day_ends_at: '2026-11-12T19:00:00.000Z'
         generated_at: '2026-11-12T09:30:00.000Z'
         more_available: false
+        to_materialize: 0
     ReviewResult:
       value:
         review:

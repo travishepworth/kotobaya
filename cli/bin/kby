@@ -15,7 +15,7 @@ SOCK="$RUNTIME_DIR/sock"
 CACHE="$RUNTIME_DIR/state.json" # last state seen by any `kby stream`; read by `next` and `click`
 WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 
-DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh "
+DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
 card_id kind front back reading sentence revealed preview_again preview_hard preview_good
 preview_easy"
@@ -31,9 +31,10 @@ ACTIONS (instant; written to the daemon FIFO, several run in order)
   kby -1 | again         kby -2 | hard            kby -s | skip       move card to the back
   kby -3 | good          kby -4 | easy            kby -R | refresh    refetch the queue
   kby -n | next          reveal if hidden, else good (needs a running `kby stream`)
+  kby keep_going         past today's limits until nothing is left (this daemon run, this day)
   five-button names also work: nothing, something, okay
   kby do ACTION [--rev REV]       one action for GUI widgets: reveal again hard good easy undo skip
-                                  refresh next. Exit 2 (stderr only) if unknown or not enabled in
+                                  refresh next keep_going. Exit 2 (stderr only) if unknown or not enabled in
                                   the current state. With --rev a stale click is dropped (exit 0)
                                   and the next `serve` line says "Ignored: screen changed".
 
@@ -53,8 +54,8 @@ SERVE (machine interface for GUI widgets; data only, no widget confs)
                "text":"語 12", "counts":{"new","learning","review"},
                "card":null|{"id","kind","front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
-               "error":null|"...",
-               "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next":
+               "keep_going":bool, "more_available":bool, "error":null|"...",
+               "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next","keep_going":
                           {"enabled":bool, "hint":"1m" (grades; only when known)}}}
   Each line is also written to $XDG_RUNTIME_DIR/kotobaya/state.json (temp file + rename).
 
@@ -137,7 +138,7 @@ send() {
 
 # ---------------------------------------------------------------- do
 
-DO_ACTIONS=" reveal again hard good easy undo skip refresh next "
+DO_ACTIONS=" reveal again hard good easy undo skip refresh next keep_going "
 NOTICE_FILE="$RUNTIME_DIR/kby-notice" # one-shot note for the next `serve` line
 STALE_NOTICE="Ignored: screen changed"
 
@@ -161,6 +162,7 @@ action_enabled() {
   local state=$1 undoable=$2 action=$3
   case $action in
     refresh) return 0 ;;
+    keep_going) [[ $state == done ]] ;;
     reveal) [[ $state == front ]] ;;
     again | hard | good | easy) [[ $state == back ]] ;;
     skip | next) [[ $state == front || $state == back ]] ;;
@@ -241,6 +243,8 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
                 + (if $rev then {reading: $k.reading, sentence: $k.sentence, back: $k.back} else {} end))
                | nonull end),
    last: {rating: ($s.last.rating // null), undoable: $undo},
+   keep_going: ($s.keep_going // false),
+   more_available: ($s.more_available // false),
    notice: ([$notice, $s.notice] | map(select(. != null and . != "")) | join("; ") | nz),
    error: ($err // (if $st == "offline" then "daemon not reachable (systemctl --user status kotobaya)"
                     elif $st == "auth" then "token rejected: the PAT needs scopes read and review"
@@ -250,7 +254,8 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
      again: act($st == "back"; $p.again), hard: act($st == "back"; $p.hard),
      good: act($st == "back"; $p.good), easy: act($st == "back"; $p.easy),
      undo: act($undo; null), skip: act($card; null), refresh: act(true; null),
-     next: act($card; null)}}
+     next: act($card; null),
+     keep_going: act($st == "done" and ($s.more_available // false) and (($s.keep_going // false) | not); null)}}
 '
 
 SERVE_WPID="" SERVE_N=0 SERVE_ERRF=""
@@ -275,7 +280,8 @@ serve_emit() {
         last:{rating:null,undoable:false},notice:null,error:$err,
         actions:{reveal:{enabled:false},again:{enabled:false},hard:{enabled:false},
                  good:{enabled:false},easy:{enabled:false},undo:{enabled:false},
-                 skip:{enabled:false},refresh:{enabled:true},next:{enabled:false}}}')
+                 skip:{enabled:false},refresh:{enabled:true},next:{enabled:false},
+                 keep_going:{enabled:false}}}')
   # Cache first: whoever reacts to a printed line (`kby do --rev`) finds the same line there.
   printf '%s\n' "$line" >"$tmp" && mv -f -- "$tmp" "$CACHE"
   printf '%s\n' "$line"

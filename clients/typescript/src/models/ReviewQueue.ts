@@ -59,7 +59,9 @@ export interface ReviewQueue {
      * per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says "done
      * for now", not "done for today". Computed only in the empty
      * case, so it costs a second queue build only then. For a request without `kinds` it
-     * equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries).
+     * equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries
+     * (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the
+     * server's keep-going test.
      * Servers implementing C-26 always send it; absent (older server) is treated as false.
      * 
      */
@@ -68,6 +70,17 @@ export interface ReviewQueue {
      * The current study day.
      */
     studyDay: Date;
+    /**
+     * C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew
+     * as new cards that are still not notes: the length of the core's
+     * `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds`
+     * excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3
+     * materialization rounds ran out (then the next fetch continues). For a `read`-only
+     * caller it is the entries it cannot materialize; they are included in `counts.new`.
+     * Absent (older server) is treated as 0.
+     * 
+     */
+    toMaterialize?: number;
 }
 
 /**
@@ -98,6 +111,7 @@ export function ReviewQueueFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'items': ((json['items'] as Array<any>).map(QueueItemFromJSON)),
         'moreAvailable': json['more_available'] == null ? undefined : json['more_available'],
         'studyDay': (json['study_day'] == null ? json['study_day'] : parseDate(json['study_day'])),
+        'toMaterialize': json['to_materialize'] == null ? undefined : json['to_materialize'],
     };
 }
 
@@ -118,6 +132,7 @@ export function ReviewQueueToJSONTyped(value?: ReviewQueue | null, ignoreDiscrim
         'items': ((value['items'] as Array<any>).map(QueueItemToJSON)),
         'more_available': value['moreAvailable'],
         'study_day': value['studyDay'] == null ? value['studyDay'] : serializeDate(value['studyDay']),
+        'to_materialize': value['toMaterialize'],
     };
 }
 

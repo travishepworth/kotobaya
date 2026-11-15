@@ -11,7 +11,9 @@ Checks (T004 acceptance):
      alternative `{}` is allowed only together with `x-auth: body-key` and a known
      `x-body-key-scope` (POST /ankiconnect: token in the JSON body).
   2. Every non-GET operation declares `x-emits-ops` (possibly empty): the sync ops the server
-     emits on the caller's behalf (CLAUDE.md rule 8). GET operations must not declare it.
+     emits on the caller's behalf (CLAUDE.md rule 8). GET operations must not declare it, except
+     those in GET_EMITS (C-27, ADR-032: `getReviewQueue` materializes drawn deck entries), which
+     must declare it.
   3. Every JSON request body and every JSON response has at least one example.
   4. Every operationId appears in SUMMARY.md (the spec-resource -> operationId checklist), and
      every operationId named in the checklist tables exists.
@@ -33,6 +35,7 @@ import sys
 SCOPES = {"read", "write", "review", "import", "admin"}
 PUBLIC = {"getHealth", "login", "pairDevice"}
 ANY_CREDENTIAL = {"getPrincipal", "reportClientErrors"}
+GET_EMITS = {"getReviewQueue"}
 METHODS = ("get", "put", "post", "delete", "patch", "head", "options")
 TABLES = [
     "note_type", "note", "card", "review_log", "word_status", "deck", "deck_item", "confusable",
@@ -96,9 +99,15 @@ for path, item in spec["paths"].items():
                         err("%s: %s must name exactly one known scope, got %r" % (where, scheme, scopes))
 
         # 2. emitted ops
-        if method == "get":
+        if method == "get" and oid not in GET_EMITS:
             if "x-emits-ops" in op:
                 err("%s: GET must not declare x-emits-ops" % where)
+        elif method == "get":
+            if not op.get("x-emits-ops"):
+                err("%s: listed in GET_EMITS but declares no x-emits-ops" % where)
+            for name in op.get("x-emits-ops", []):
+                if name not in known_ops:
+                    err("%s: x-emits-ops names %s, which is not an op in contracts/db/SCHEMA.md" % (where, name))
         elif oid not in ("login", "logout", "pairDevice", "createPairing"):
             if "x-emits-ops" not in op:
                 err("%s: mutating operation without x-emits-ops" % where)

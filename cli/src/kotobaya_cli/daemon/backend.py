@@ -93,7 +93,7 @@ class EventStream(Protocol):
 
 
 class Backend(Protocol):
-    def fetch_queue(self) -> QueueSnapshot: ...
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot: ...
 
     def fetch_grading_buttons(self) -> int: ...
 
@@ -149,9 +149,12 @@ class HttpBackend:
         self._review = ReviewApi(self._client)
         self._app_settings = SettingsApi(self._client)
 
-    def fetch_queue(self) -> QueueSnapshot:
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot:
+        """GET /review/queue. The server turns drawn deck entries into cards inside this call (C-27)."""
         try:
-            queue = self._review.get_review_queue(limit=QUEUE_LIMIT, _request_timeout=HTTP_TIMEOUT)
+            queue = self._review.get_review_queue(
+                limit=QUEUE_LIMIT, keep_going=keep_going, _request_timeout=HTTP_TIMEOUT
+            )
         except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
             raise classify(exc) from exc
         now = datetime.now(UTC)
@@ -189,6 +192,9 @@ class HttpBackend:
             counts=Counts(new=c.new, learning=c.learning, review=c.review),
             day_ends_at=queue.day_ends_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
             + f"{queue.day_ends_at.microsecond // 1000:03d}Z",
+            more_available=bool(queue.more_available),
+            study_day=queue.study_day.isoformat(),
+            to_materialize=queue.to_materialize or 0,
         )
 
     def fetch_grading_buttons(self) -> int:

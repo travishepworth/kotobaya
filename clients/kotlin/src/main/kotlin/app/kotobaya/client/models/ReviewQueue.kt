@@ -36,7 +36,8 @@ import com.google.gson.annotations.SerializedName
  * @param generatedAt When the queue was built.
  * @param items Cards in the order to show them.
  * @param studyDay The current study day.
- * @param moreAvailable C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries). Servers implementing C-26 always send it; absent (older server) is treated as false. 
+ * @param moreAvailable C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. 
+ * @param toMaterialize C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. 
  */
 
 
@@ -61,9 +62,13 @@ data class ReviewQueue (
     @SerializedName("study_day")
     val studyDay: java.time.LocalDate,
 
-    /* C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries). Servers implementing C-26 always send it; absent (older server) is treated as false.  */
+    /* C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false.  */
     @SerializedName("more_available")
-    val moreAvailable: kotlin.Boolean? = null
+    val moreAvailable: kotlin.Boolean? = null,
+
+    /* C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0.  */
+    @SerializedName("to_materialize")
+    val toMaterialize: kotlin.Int? = null
 
 ) {
 

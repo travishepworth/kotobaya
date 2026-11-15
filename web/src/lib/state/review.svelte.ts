@@ -23,6 +23,11 @@ export type { GradeButton } from '../review/model';
 export type { Rendered } from './preview.svelte';
 
 const QUEUE_LIMIT = 20;
+/**
+ * C-27: refetches when a keep-going response has no item yet but the server still has deck entries to turn into
+ * cards (`to_materialize` > 0 after its materialization rounds) or after a refresh that was dropped as stale.
+ */
+const KEEP_GOING_RETRIES = 3;
 
 /**
  * One tap on a grade button. Created synchronously at the tap (so a second tap on the same card instance is
@@ -268,12 +273,20 @@ export class ReviewPage {
 
 	/**
 	 * Fetch the scheduled queue. With `guard`, the result is dropped when the local queue changed meanwhile
-	 * (a tap or undo): applying it would bring back a card that was just answered.
+	 * (a tap or undo): applying it would bring back a card that was just answered. Returns whether it was applied.
+	 *
+	 * The server turns deck entries into new cards inside this fetch (C-27); the client never creates them.
+	 * Keep going is an endless stream: a keep-going response that has no item yet while the server reports
+	 * entries still to materialize is fetched again, so the end screen shows only for a truly empty keep-going
+	 * fetch.
 	 */
-	private async fetchQueue(guard = false): Promise<void> {
-		if (this.isDrill) return;
+	private async fetchQueue(guard = false): Promise<boolean> {
+		if (this.isDrill) return false;
 		const epoch = this.epoch;
 		let q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: this.keepGoing });
+		for (let i = 0; i < KEEP_GOING_RETRIES && this.keepGoing && q.items.length === 0 && (q.toMaterialize ?? 0) > 0; i++) {
+			q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: true });
+		}
 		if (this.keepGoing) {
 			const day = q.studyDay.getTime();
 			if (this.keepGoingDay === null) this.keepGoingDay = day;
@@ -285,7 +298,7 @@ export class ReviewPage {
 			}
 		}
 		this.moreAvailable = q.moreAvailable ?? false;
-		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return;
+		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
 		// (with its flip state); only what comes after it is replaced.
 		const fresh = q.items.filter((i) => !outbox.hasCard(i.card.id));
@@ -298,13 +311,21 @@ export class ReviewPage {
 		this.dayEndsAt = q.dayEndsAt;
 		this.refreshFailed = false;
 		this.syncCard();
+		return true;
 	}
 
-	/** Refresh the queue and counts once no answer is in flight. */
+	/**
+	 * Refresh the queue and counts once no answer is in flight. In keep-going mode a refresh that was dropped as
+	 * stale while nothing is left on screen and nothing is in flight is tried again: no later answer would trigger
+	 * another one, and keep going must not stop while the server has cards.
+	 */
 	private async refresh(): Promise<void> {
 		if (this.isDrill || outbox.pending.length > 0) return;
 		try {
-			await this.fetchQueue(true);
+			for (let i = 0; i <= KEEP_GOING_RETRIES; i++) {
+				const applied = await this.fetchQueue(true);
+				if (applied || !this.keepGoing || this.current || outbox.pending.length > 0) break;
+			}
 		} catch {
 			this.refreshFailed = true; // toast shown; the view offers a retry when there is nothing to show
 		}

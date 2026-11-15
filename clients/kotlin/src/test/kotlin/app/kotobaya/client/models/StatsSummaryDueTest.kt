@@ -39,7 +39,7 @@ class StatsSummaryDueTest : ShouldSpec() {
             //modelInstance.learning shouldBe ("TODO")
         }
 
-        // to test the property `new` - New cards still to introduce.
+        // to test the property `new` - New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).
         should("test new") {
             // uncomment below to test the property
             //modelInstance.new shouldBe ("TODO")
