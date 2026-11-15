@@ -1106,3 +1106,5 @@
 2026-11-15T03:11:23Z C-25 HANDOFF (KanjiExamplePicker, QueueItem.decks/deck_count/kanji_examples, deck_ids; 91 files incl clients); checks + reviewer + architect pass dispatched
 2026-11-15T03:12:17Z C-25 ARCHITECT_PASS APPROVE (3 minors -> FOLLOWUPS); waiting on reviewer + checks
 2026-11-15T03:12:29Z C-25 REVIEW_APPROVE + ARCHITECT APPROVE + CHECK_GREEN + MERGE ee1fecdd (4+3 minors -> FOLLOWUPS)
+2026-11-15T03:12:46Z WEB-REVIEW-INFO DISPATCH writer; AND-REVIEW-INFO DISPATCH writer
+2026-11-15T03:14:39Z WEB-REVIEW-INFO CHECK_GREEN + MERGE 48a817be (BackExtras: kanji examples + deck chips)

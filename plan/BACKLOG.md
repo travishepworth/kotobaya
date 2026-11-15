@@ -789,6 +789,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### Review back-side extras + Android back (2026-11-15, user request)
 - C-25 — kanji example picker (core) + QueueItem.decks/kanji_examples + deck_ids on DictEntry/Note · model: opus (architect) · risk: high · deps: ARCH-CARD-TEXT · status: MERGED ee1fecdd
-- WEB-REVIEW-INFO — web review back extras · model: sonnet · risk: low · deps: C-25 · status: TODO
+- WEB-REVIEW-INFO — web review back extras · model: sonnet · risk: low · deps: C-25 · status: MERGED 48a817be
 - AND-REVIEW-INFO — android review back extras + Open in dictionary button · model: sonnet · risk: med · deps: C-25, AND-BACK · status: TODO
 - AND-BACK — android smart back across the app (review back = undo) · model: sonnet · risk: med · deps: — · status: MERGED b621443a
