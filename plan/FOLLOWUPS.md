@@ -469,3 +469,4 @@
 - WRK-FREQ-MATCH minors: BCCWJ り→りょ (classical aux should win); CEJC タケ→茸 (prefer first reading = row reading); is_near 2r+50 heuristic
 - C-26 minors: server passes no pending entries (device moreAvailable may differ); server newShownThisSession always 0
 - AND-KEEPGOING: keep going only for all-decks sessions; normal session now rebuilds once at end (moreAvailable)
+- AND-KEEPGOING-FIX minors: deck entries absent from the device dictionary (scope top60k) are never materialized on device (server/web does it); keep going lost on process death (C-26 forbids persistence); learn-ahead tail rebuilds on each answer (latency); a note the user deleted for a deck entry gets re-materialized (match C-27 server behaviour, ADR line); tests for add_kanji dedup / card_kinds / 3-round bound.
