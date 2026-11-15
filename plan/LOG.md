@@ -1047,3 +1047,4 @@
 2026-11-15T00:22:16Z AND-TAKO-PERF2 HANDOFF attempt 2 (major fixed per writer, lock scope, sfld index, rebuild test); re-review
 2026-11-15T00:22:27Z AND-TAKO-PERF2 CHECK_GREEN attempt 2 (awaiting re-review)
 2026-11-15T00:22:44Z AND-TAKO-PERF2 REVIEW_APPROVE r2 + MERGE a3f8d203
+2026-11-15T00:22:53Z AND-REVIEW-SNAPPY REVIEW_APPROVE (6 minors -> FOLLOWUPS)
