@@ -1089,3 +1089,4 @@
 2026-11-15T01:47:51Z ADR-028 DECIDE (human): keep rule 5 learn-ahead re-serve in all-decks session
 2026-11-15T01:49:16Z CLI-REVIEW REVIEW_CHANGES 2 majors (any 4xx terminal drops answers; journal append before durable write -> double review) -> attempt 2 (+minors 3-6)
 2026-11-15T01:49:56Z API-GUIDE MERGE 7f92fcc7 (docs/API-GUIDE.md, 31 recipes checked vs openapi; cli/README link -> CLI-WATCH)
+2026-11-15T01:51:12Z PLAN C-25, WEB-REVIEW-INFO, AND-REVIEW-INFO, AND-BACK (+ADR-029/030 provisional); AND-BACK next free slot, C-25 after ARCH-CARD-TEXT
