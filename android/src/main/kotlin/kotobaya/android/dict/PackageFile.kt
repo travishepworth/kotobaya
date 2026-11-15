@@ -3,18 +3,17 @@ package kotobaya.android.dict
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteStatement
+import android.util.JsonReader
+import android.util.JsonToken
 import com.github.luben.zstd.ZstdInputStream
 import java.io.File
-import java.io.InputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 
 /** The installed (or staged) release as its own `dict_release` row says (authoritative, DICT_PACKAGE 5). */
 data class PackageInfo(val releaseId: Long, val scope: String, val version: String, val userVersion: Int)
@@ -66,9 +65,6 @@ internal object PackageFile {
             ZstdInputStream(raw).use { z -> dest.outputStream().use { z.copyTo(it, 1 shl 16) } }
         }
     }
-
-    fun decompressToBytes(src: File): ByteArray =
-        src.inputStream().buffered().use { raw -> ZstdInputStream(raw).use(InputStream::readBytes) }
 
     fun sha256Hex(file: File): String {
         val md = MessageDigest.getInstance("SHA-256")
@@ -149,41 +145,58 @@ internal object PackageFile {
 
     // ------------------------------------------------------------------ diff (3.4)
 
+    /** Envelope and per-table metadata of a diff, read without its row arrays. */
+    private class DiffHead {
+        var format: String? = null
+        var formatVersion: Long = -1
+        var from: Long = -1
+        var to: Long = -1
+        var scope: String? = null
+        val tables = mutableMapOf<String, TableHead>()
+        var counts: Map<String, Long?>? = null
+        var digests: Map<String, String?>? = null
+    }
+
+    private class TableHead {
+        var columns: List<String>? = null
+        var pk: List<String>? = null
+        var hasUpsert = false
+        var hasDelete = false
+    }
+
     /**
-     * Applies the diff JSON [diffBytes] to [file] (a copy of the installed file). Throws [PackageException] after a
-     * rollback on any failed check; the file is then unusable for this diff.
+     * Applies the decompressed diff JSON in [diffFile] to [file] (a copy of the installed file). Throws
+     * [PackageException] after a rollback on any failed check; the file is then unusable for this diff.
+     *
+     * The diff is streamed from disk three times (validate, deletes, upserts) so the `all` scope's row arrays are
+     * never held in memory at once; a DOM parse of them exhausted the 256 MB app heap on device.
      */
-    fun applyDiff(file: File, diffBytes: ByteArray, artifactScope: String, artifactFrom: Long, artifactTo: Long) {
-        val doc = try {
-            JSONObject(String(diffBytes, Charsets.UTF_8))
-        } catch (e: JSONException) {
-            throw PackageException("diff is not JSON: ${e.message}")
-        }
+    fun applyDiff(file: File, diffFile: File, artifactScope: String, artifactFrom: Long, artifactTo: Long) {
+        val head = jsonPass(diffFile) { readHead(it) }
         // Step 1
-        if (doc.optString("format") != DictSchema.DIFF_FORMAT) throw PackageException("wrong diff format")
-        if (doc.optInt("format_version", -1) != DictSchema.DIFF_VERSION) throw PackageException("unsupported diff version")
-        val from = doc.optLong("from_release", -1)
-        val to = doc.optLong("to_release", -1)
-        val scope = doc.optString("scope")
+        if (head.format != DictSchema.DIFF_FORMAT) throw PackageException("wrong diff format")
+        if (head.formatVersion != DictSchema.DIFF_VERSION.toLong()) throw PackageException("unsupported diff version")
+        val from = head.from
+        val to = head.to
+        val scope = head.scope
         if (from != artifactFrom || to != artifactTo || scope != artifactScope) {
             throw PackageException("diff envelope does not match artifact")
         }
-        val tables = doc.optJSONObject("tables") ?: throw PackageException("tables missing")
-        val counts = doc.optJSONObject("row_counts") ?: throw PackageException("row_counts missing")
-        val digests = doc.optJSONObject("table_digests") ?: throw PackageException("table_digests missing")
+        val counts = head.counts ?: throw PackageException("row_counts missing")
+        val digests = head.digests ?: throw PackageException("table_digests missing")
+        if (head.tables.isEmpty()) throw PackageException("tables missing")
         val names = DictSchema.tables.map { it.name }.toSet()
-        for (o in listOf(tables, counts, digests)) {
-            if (o.keys().asSequence().toSet() != names) throw PackageException("table set is not exactly the 11 tables")
+        for (keys in listOf(head.tables.keys, counts.keys, digests.keys)) {
+            if (keys != names) throw PackageException("table set is not exactly the 11 tables")
         }
         for (t in DictSchema.tables) {
-            val td = tables.optJSONObject(t.name) ?: throw PackageException("${t.name}: not an object")
-            if (strings(td.optJSONArray("columns")) != t.columns || strings(td.optJSONArray("pk")) != t.pk) {
+            val td = head.tables.getValue(t.name)
+            if (td.columns != t.columns || td.pk != t.pk) {
                 throw PackageException("${t.name}: columns/pk differ from the device schema")
             }
-            if (td.optJSONArray("upsert") == null || td.optJSONArray("delete") == null) {
-                throw PackageException("${t.name}: upsert/delete missing")
-            }
+            if (!td.hasUpsert || !td.hasDelete) throw PackageException("${t.name}: upsert/delete missing")
         }
+        val byName = DictSchema.tables.associateBy { it.name }
         val db = openWritable(file)
         try {
             db.pragma("PRAGMA journal_mode=DELETE") { }
@@ -194,35 +207,41 @@ internal object PackageFile {
             if (info.releaseId != from || info.scope != scope) throw PackageException("installed file is not the diff base")
             db.beginTransaction()
             try {
-                for (t in DictSchema.tables.reversed()) {
-                    val del = tables.getJSONObject(t.name).getJSONArray("delete")
-                    val sql = "DELETE FROM \"${t.name}\" WHERE " + t.pk.joinToString(" AND ") { "\"$it\" = ?" }
-                    db.compileStatement(sql).use { st ->
-                        for (i in 0 until del.length()) {
-                            st.clearBindings()
-                            bindAll(st, del.getJSONArray(i), t.pk.size, t.name)
-                            st.executeUpdateDelete()
+                // Foreign keys are off and checked at the end, so per-table order is all that matters:
+                // every delete runs before any upsert.
+                jsonPass(diffFile) { r ->
+                    forEachRowArray(r, "delete") { name, rows ->
+                        val t = byName.getValue(name)
+                        val sql = "DELETE FROM \"${t.name}\" WHERE " + t.pk.joinToString(" AND ") { "\"$it\" = ?" }
+                        db.compileStatement(sql).use { st ->
+                            forEachRow(rows) {
+                                st.clearBindings()
+                                bindAll(st, rows, t.pk.size, t.name)
+                                st.executeUpdateDelete()
+                            }
                         }
                     }
                 }
-                for (t in DictSchema.tables) {
-                    val up = tables.getJSONObject(t.name).getJSONArray("upsert")
-                    val sql = "INSERT OR REPLACE INTO \"${t.name}\" (" + t.columns.joinToString(", ") { "\"$it\"" } +
-                        ") VALUES (" + t.columns.joinToString(", ") { "?" } + ")"
-                    db.compileStatement(sql).use { st ->
-                        for (i in 0 until up.length()) {
-                            st.clearBindings()
-                            bindAll(st, up.getJSONArray(i), t.columns.size, t.name)
-                            st.executeInsert()
+                jsonPass(diffFile) { r ->
+                    forEachRowArray(r, "upsert") { name, rows ->
+                        val t = byName.getValue(name)
+                        val sql = "INSERT OR REPLACE INTO \"${t.name}\" (" + t.columns.joinToString(", ") { "\"$it\"" } +
+                            ") VALUES (" + t.columns.joinToString(", ") { "?" } + ")"
+                        db.compileStatement(sql).use { st ->
+                            forEachRow(rows) {
+                                st.clearBindings()
+                                bindAll(st, rows, t.columns.size, t.name)
+                                st.executeInsert()
+                            }
                         }
                     }
                 }
                 for (t in DictSchema.tables) {
                     val n = rowCount(db, t.name)
-                    if (n != counts.optLong(t.name, -1)) throw PackageException("${t.name}: row count $n != ${counts.opt(t.name)}")
+                    if (n != (counts[t.name] ?: -1L)) throw PackageException("${t.name}: row count $n != ${counts[t.name]}")
                 }
                 for (t in DictSchema.tables) {
-                    if (tableDigest(db, t) != digests.optString(t.name)) throw PackageException("${t.name}: digest mismatch")
+                    if (tableDigest(db, t) != digests[t.name]) throw PackageException("${t.name}: digest mismatch")
                 }
                 val after = info(db)
                 if (after == null || after.releaseId != to || after.scope != scope) {
@@ -239,19 +258,145 @@ internal object PackageFile {
         for (s in SIDE) File(file.path + s).delete()
     }
 
-    private fun strings(a: JSONArray?): List<String>? = a?.let { arr -> (0 until arr.length()).map { arr.optString(it) } }
+    /** One streaming read of the diff; malformed JSON becomes a [PackageException]. */
+    private fun <T> jsonPass(diffFile: File, body: (JsonReader) -> T): T =
+        try {
+            JsonReader(diffFile.bufferedReader(Charsets.UTF_8, 1 shl 16)).use { r ->
+                val out = body(r)
+                if (r.peek() != JsonToken.END_DOCUMENT) throw PackageException("diff is not JSON: trailing data")
+                out
+            }
+        } catch (e: IOException) {
+            throw PackageException("diff is not JSON: ${e.message}")
+        } catch (e: IllegalStateException) {
+            throw PackageException("diff is not JSON: ${e.message}")
+        } catch (e: NumberFormatException) {
+            throw PackageException("diff is not JSON: ${e.message}")
+        }
 
-    private fun bindAll(st: SQLiteStatement, row: JSONArray, expected: Int, table: String) {
-        if (row.length() != expected) throw PackageException("$table: row has ${row.length()} values, expected $expected")
-        for (i in 0 until expected) {
-            when (val v = row.get(i)) {
-                JSONObject.NULL -> st.bindNull(i + 1)
-                is Int -> st.bindLong(i + 1, v.toLong())
-                is Long -> st.bindLong(i + 1, v)
-                is String -> st.bindString(i + 1, v)
-                else -> throw PackageException("$table: unsupported JSON value ${v.javaClass.simpleName}")
+    private fun readHead(r: JsonReader): DiffHead {
+        val h = DiffHead()
+        if (r.peek() != JsonToken.BEGIN_OBJECT) throw PackageException("diff is not a JSON object")
+        r.beginObject()
+        while (r.hasNext()) {
+            when (r.nextName()) {
+                "format" -> h.format = optString(r)
+                "format_version" -> h.formatVersion = optLong(r) ?: -1
+                "from_release" -> h.from = optLong(r) ?: -1
+                "to_release" -> h.to = optLong(r) ?: -1
+                "scope" -> h.scope = optString(r)
+                "tables" -> readObject(r) { name -> h.tables[name] = readTableHead(r) }
+                "row_counts" -> h.counts = mutableMapOf<String, Long?>().also { m -> readObject(r) { m[it] = optLong(r) } }
+                "table_digests" -> h.digests = mutableMapOf<String, String?>().also { m -> readObject(r) { m[it] = optString(r) } }
+                else -> r.skipValue()
             }
         }
+        r.endObject()
+        return h
+    }
+
+    private fun readTableHead(r: JsonReader): TableHead {
+        val t = TableHead()
+        if (r.peek() != JsonToken.BEGIN_OBJECT) {
+            r.skipValue()
+            return t
+        }
+        r.beginObject()
+        while (r.hasNext()) {
+            when (r.nextName()) {
+                "columns" -> t.columns = optStrings(r)
+                "pk" -> t.pk = optStrings(r)
+                "upsert" -> { t.hasUpsert = r.peek() == JsonToken.BEGIN_ARRAY; r.skipValue() }
+                "delete" -> { t.hasDelete = r.peek() == JsonToken.BEGIN_ARRAY; r.skipValue() }
+                else -> r.skipValue()
+            }
+        }
+        r.endObject()
+        return t
+    }
+
+    /** Calls [onArray] with the reader positioned at each table's [key] array (validated by [readHead]). */
+    private fun forEachRowArray(r: JsonReader, key: String, onArray: (String, JsonReader) -> Unit) {
+        r.beginObject()
+        while (r.hasNext()) {
+            if (r.nextName() != "tables") {
+                r.skipValue()
+                continue
+            }
+            r.beginObject()
+            while (r.hasNext()) {
+                val name = r.nextName()
+                r.beginObject()
+                while (r.hasNext()) {
+                    if (r.nextName() == key) onArray(name, r) else r.skipValue()
+                }
+                r.endObject()
+            }
+            r.endObject()
+        }
+        r.endObject()
+    }
+
+    /** Iterates the rows of the array at the reader; [onRow] must consume exactly one row array. */
+    private inline fun forEachRow(r: JsonReader, onRow: () -> Unit) {
+        r.beginArray()
+        while (r.hasNext()) onRow()
+        r.endArray()
+    }
+
+    private inline fun readObject(r: JsonReader, onKey: (String) -> Unit) {
+        if (r.peek() != JsonToken.BEGIN_OBJECT) {
+            r.skipValue()
+            return
+        }
+        r.beginObject()
+        while (r.hasNext()) onKey(r.nextName())
+        r.endObject()
+    }
+
+    private fun optString(r: JsonReader): String? = when (r.peek()) {
+        JsonToken.STRING, JsonToken.NUMBER -> r.nextString()
+        else -> { r.skipValue(); null }
+    }
+
+    private fun optLong(r: JsonReader): Long? = when (r.peek()) {
+        JsonToken.NUMBER, JsonToken.STRING -> r.nextString().toLongOrNull()
+        else -> { r.skipValue(); null }
+    }
+
+    private fun optStrings(r: JsonReader): List<String>? {
+        if (r.peek() != JsonToken.BEGIN_ARRAY) {
+            r.skipValue()
+            return null
+        }
+        val out = mutableListOf<String>()
+        r.beginArray()
+        while (r.hasNext()) out += optString(r) ?: ""
+        r.endArray()
+        return out
+    }
+
+    /** Binds one row array from the reader: JSON null, integer or string only. */
+    private fun bindAll(st: SQLiteStatement, r: JsonReader, expected: Int, table: String) {
+        if (r.peek() != JsonToken.BEGIN_ARRAY) throw PackageException("$table: row is not an array")
+        r.beginArray()
+        var i = 0
+        while (r.hasNext()) {
+            if (i >= expected) throw PackageException("$table: row has more than $expected values")
+            when (r.peek()) {
+                JsonToken.NULL -> { r.nextNull(); st.bindNull(i + 1) }
+                JsonToken.NUMBER -> {
+                    val lit = r.nextString()
+                    val v = lit.toLongOrNull() ?: throw PackageException("$table: unsupported JSON number $lit")
+                    st.bindLong(i + 1, v)
+                }
+                JsonToken.STRING -> st.bindString(i + 1, r.nextString())
+                else -> throw PackageException("$table: unsupported JSON value ${r.peek()}")
+            }
+            i++
+        }
+        r.endArray()
+        if (i != expected) throw PackageException("$table: row has $i values, expected $expected")
     }
 
     // ------------------------------------------------------------------ durable swap (5.8)

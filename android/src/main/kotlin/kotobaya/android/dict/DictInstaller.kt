@@ -61,7 +61,9 @@ class DictInstaller(
         } catch (e: CancellationException) {
             stateFlow.value = InstallState.Idle
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Errors too (e.g. OutOfMemoryError): the state must reach Finished or the UI shows a run forever.
+            log("dict: update failed: $e")
             InstallResult.Failed(e.message ?: e.javaClass.simpleName)
         }
         withContext(work) { store.cleanStaging() }
@@ -180,22 +182,22 @@ class DictInstaller(
         withContext(work) {
             onWork("diff")
             store.cleanStaging()
+            val json = File(store.downloads, a.blobHash + ".json")
             try {
                 store.installed.copyTo(store.staging, overwrite = true)
-                val bytes = PackageFile.decompressToBytes(blob)
-                PackageFile.applyDiff(store.staging, bytes, a.scope, a.fromRelease ?: -1, release.id)
+                PackageFile.decompress(blob, json)
+                PackageFile.applyDiff(store.staging, json, a.scope, a.fromRelease ?: -1, release.id)
             } catch (e: PackageException) {
                 store.cleanStaging()
                 throw DiffFailed(e.message ?: "package")
             } catch (e: com.github.luben.zstd.ZstdException) {
                 store.cleanStaging()
                 throw DiffFailed("zstd: ${e.message}")
-            } catch (e: org.json.JSONException) {
-                store.cleanStaging()
-                throw DiffFailed("json: ${e.message}")
             } catch (e: android.database.SQLException) {
                 store.cleanStaging()
                 throw DiffFailed("sqlite: ${e.message}")
+            } finally {
+                json.delete()
             }
             blob.delete()
             swap()
