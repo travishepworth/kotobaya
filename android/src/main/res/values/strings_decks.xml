@@ -55,6 +55,9 @@
     <string name="decks_act_never_forget">Never forget</string>
     <string name="decks_act_ignore">Ignore</string>
     <string name="decks_act_blacklist">Blacklist</string>
+    <string name="decks_act_current">%1$s ✓</string>
+    <string name="decks_act_suspend">Suspend cards</string>
+    <string name="decks_act_unsuspend">Unsuspend cards</string>
     <string name="decks_act_reset">Reset to automatic</string>
     <string name="decks_act_add_note">Add to my notes</string>
     <string name="decks_act_remove">Remove from deck</string>

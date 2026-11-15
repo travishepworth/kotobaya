@@ -38,6 +38,12 @@ interface SearchPort {
 
     /** Creates the note (and default cards) for a word, in [deckId] when given, all in one step. */
     suspend fun addToNotes(word: String, reading: String, deckId: String?): AddNoteOutcome = AddNoteOutcome.Failed
+
+    /** Word page: sets the word's status override (null clears it); false when nothing could be written. */
+    suspend fun setWordStatus(seq: Long, status: String?): Boolean = false
+
+    /** Word page: suspends / unsuspends the given cards; false when nothing could be written. */
+    suspend fun setCardsSuspended(cardIds: Collection<String>, suspend: Boolean): Boolean = false
 }
 
 enum class AddNoteOutcome { Added, Duplicate, Failed }
@@ -50,7 +56,14 @@ class AppSearchPort(
     private val mine: MyCardsLookup? = null,
     private val deckOps: SearchDeckOps? = null,
     private val kanjiDecks: KanjiDecksLookup? = null,
+    private val wordOps: kotobaya.android.decks.DeckWordActions? = null,
 ) : SearchPort {
+    override suspend fun setWordStatus(seq: Long, status: String?) =
+        wordOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.setStatus(listOf(seq), status) != null }.getOrDefault(false) } } ?: false
+
+    override suspend fun setCardsSuspended(cardIds: Collection<String>, suspend: Boolean) =
+        wordOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.setCardsSuspended(cardIds, suspend) != null }.getOrDefault(false) } } ?: false
+
     override suspend fun kanjiDecks(literal: String): List<Pair<String, Int>> =
         kanjiDecks?.let { k -> withContext(Dispatchers.IO) { runCatching { k.lookup(literal) }.getOrDefault(emptyList()) } } ?: emptyList()
 
@@ -157,6 +170,12 @@ interface SearchIntents {
     fun addNote(deckId: String?) {}
     fun createDeck(name: String) {}
     fun dismissAddNote() {}
+
+    /** Word page: toggles the never-forget override of the open word. */
+    fun toggleNeverForget() {}
+
+    /** Word page: suspends (or, when [suspend] is false, unsuspends) the given cards of the open word or note. */
+    fun setCardsSuspended(cardIds: List<String>, suspend: Boolean) {}
 }
 
 /**
@@ -328,6 +347,38 @@ class SearchViewModel(
     private suspend fun SearchPort.addNote(sheet: DeckSheet, deckId: String?) = addToNotes(sheet.word, sheet.reading, deckId)
 
     override fun dismissAddNote() = update { it.copy(addNote = null) }
+
+    override fun toggleNeverForget() {
+        val d = (current.detail as? SearchDetail.Word)?.takeIf { it.load is WordLoad.Found } ?: return
+        val status = (d.load as WordLoad.Found).detail.status
+        launchIo {
+            port.setWordStatus(d.seq, if (status == "never_forget") null else "never_forget")
+            reloadDetail()
+        }
+    }
+
+    override fun setCardsSuspended(cardIds: List<String>, suspend: Boolean) {
+        if (cardIds.isEmpty()) return
+        launchIo {
+            port.setCardsSuspended(cardIds, suspend)
+            reloadDetail()
+        }
+    }
+
+    /** Reloads the open word or note after a write, so its chips follow. */
+    private suspend fun reloadDetail() {
+        when (val d = current.detail) {
+            is SearchDetail.Word -> {
+                val load = port.word(d.seq)
+                update { s -> if ((s.detail as? SearchDetail.Word)?.seq == d.seq) s.copy(detail = SearchDetail.Word(d.seq, load)) else s }
+            }
+            is SearchDetail.Note -> {
+                val load = port.note(d.noteId)
+                update { s -> if ((s.detail as? SearchDetail.Note)?.noteId == d.noteId) s.copy(detail = SearchDetail.Note(d.noteId, load)) else s }
+            }
+            null -> Unit
+        }
+    }
 
     companion object {
         const val PAGE: Int = 50

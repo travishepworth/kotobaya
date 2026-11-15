@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotobaya.android.queue.QueueCounts
+import kotobaya.android.review.actions.WordCardState
 import kotobaya.android.sync.SyncStatusView
 import kotobaya.android.vm.StateViewModel
 
@@ -43,6 +44,8 @@ data class DecksUiState(
     val selection: Set<Long> = emptySet(),
     /** The word whose action sheet is open. */
     val actionWord: DeckWord? = null,
+    /** Live cards of [actionWord] (null while loading); the sheet's suspend toggle shows only when non-empty. */
+    val actionCards: List<WordCardState>? = null,
     /** The last load threw (logged as `KotobayaLoad`); the next sync change or refresh tries again. */
     val loadFailed: Boolean = false,
 )
@@ -65,6 +68,8 @@ interface DecksIntents {
     fun closeActions() {}
     /** [status] null = reset to automatic. */
     fun setStatus(word: DeckWord, status: String?) {}
+    /** Suspends every live card of the word, or unsuspends them when [suspend] is false. */
+    fun setCardsSuspended(word: DeckWord, suspend: Boolean) {}
     fun removeFromDeck(word: DeckWord) {}
     fun addToNotes(word: DeckWord) {}
     fun startSelecting(word: DeckWord) {}
@@ -205,9 +210,23 @@ class DecksViewModel(
         reload()
     }
 
-    override fun openActions(word: DeckWord) = update { it.copy(actionWord = word) }
+    override fun openActions(word: DeckWord) {
+        update { it.copy(actionWord = word, actionCards = null) }
+        val seq = word.entrySeq ?: return
+        val a = actions ?: return update { it.copy(actionCards = emptyList()) }
+        launchIo {
+            val cards = a.wordCards(seq)
+            update { s -> if (s.actionWord?.itemKey == word.itemKey) s.copy(actionCards = cards) else s }
+        }
+    }
 
-    override fun closeActions() = update { it.copy(actionWord = null) }
+    override fun closeActions() = update { it.copy(actionWord = null, actionCards = null) }
+
+    override fun setCardsSuspended(word: DeckWord, suspend: Boolean) {
+        val seq = word.entrySeq ?: return
+        update { it.copy(actionWord = null, actionCards = null) }
+        write { it.setCardsSuspended(seq, suspend) }
+    }
 
     /** Runs a write on IO, then reloads: the lists and counts follow the replica without a manual refresh. */
     private fun write(block: (DeckWordActions) -> Unit) {

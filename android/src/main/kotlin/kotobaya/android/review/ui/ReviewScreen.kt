@@ -219,6 +219,9 @@ private fun handleKey(key: Key, review: ReviewState, prefs: ReviewPrefs, intents
         (key == Key.Spacebar || key == Key.Enter) && showing.side == CardSide.FRONT -> { intents.flip(); true }
         key == Key.U -> { intents.undo(); true }
         key == Key.E -> { intents.edit(showing.card.cardId); true }
+        key == Key.S -> { intents.perform(showing.card.cardId, ReviewAction.SUSPEND); true }
+        key == Key.N -> { intents.perform(showing.card.cardId, ReviewAction.NEVER_FORGET); true }
+        key == Key.B -> { intents.perform(showing.card.cardId, ReviewAction.BURY); true }
         showing.side == CardSide.BACK -> {
             val digit = listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five).indexOf(key)
             val b = prefs.buttons.getOrNull(digit)

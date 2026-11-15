@@ -5,6 +5,8 @@ import kotobaya.android.notes.NoteCreator
 import kotobaya.android.notes.NoteRequest
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlLearningTables
+import kotobaya.android.review.actions.WordCardState
+import kotobaya.android.review.actions.WordCardSuspension
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -23,6 +25,15 @@ interface DeckWordActions {
      * Returns the number of ops minted, or null when the minter refused.
      */
     fun setStatus(entrySeqs: Collection<Long>, status: String?): Int?
+
+    /** Live cards of the word's notes with their suspended flag (empty: the word has no cards). */
+    fun wordCards(entrySeq: Long): List<WordCardState> = emptyList()
+
+    /** Suspends / unsuspends every live card of [entrySeq]; the ops minted, null when refused. */
+    fun setCardsSuspended(entrySeq: Long, suspend: Boolean): Int? = 0
+
+    /** The same for the given card ids (the word page). */
+    fun setCardsSuspended(cardIds: Collection<String>, suspend: Boolean): Int? = 0
 
     /** Takes the word off the user deck (`deck.item_removed`). */
     fun removeFromDeck(deckId: String, entrySeq: Long): Boolean
@@ -65,6 +76,16 @@ class SqlDeckWordActions(
         if (count > 0) runCatching { afterChange() }
         return count
     }
+
+    private val suspension = WordCardSuspension(store, minter)
+
+    override fun wordCards(entrySeq: Long): List<WordCardState> = suspension.cardsOf(entrySeq)
+
+    override fun setCardsSuspended(entrySeq: Long, suspend: Boolean): Int? =
+        suspension.setForWord(entrySeq, suspend).also { if ((it ?: 0) > 0) runCatching { afterChange() } }
+
+    override fun setCardsSuspended(cardIds: Collection<String>, suspend: Boolean): Int? =
+        suspension.setForCards(cardIds, suspend).also { if ((it ?: 0) > 0) runCatching { afterChange() } }
 
     override fun removeFromDeck(deckId: String, entrySeq: Long): Boolean =
         membership.set(deckId, DeckTarget(entrySeq = entrySeq), member = false).let { it == null || it is MintResult.Minted }

@@ -46,6 +46,8 @@
     <string name="search_retry">Try again</string>
     <string name="search_no_results_words">Check the spelling, or try kana, romaji or an English word.</string>
     <string name="search_no_results_cards">Try fewer conditions, or check the deck name.</string>
+    <string name="word_suspend_all">Suspend all cards</string>
+    <string name="word_unsuspend_all">Unsuspend all cards</string>
     <string name="word_in_your_cards">In your cards</string>
     <string name="word_also">Also %1$s</string>
     <string name="word_tab_senses">Senses (%1$d)</string>

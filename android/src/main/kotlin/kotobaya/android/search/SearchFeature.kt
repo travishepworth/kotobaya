@@ -92,6 +92,7 @@ private val searchModule = module {
                 get<NoteCreator<SqlLearningTables>>(),
             ),
             KanjiDecksLookup.over(SqlBackExtrasIndex(get<SqlDriver>(named("syncAppDriver"))), InstalledKanjiWords(get<InstalledDictionary>())),
+            koin.getOrNull<kotobaya.android.decks.DeckWordActions>(),
         )
     }
     single {

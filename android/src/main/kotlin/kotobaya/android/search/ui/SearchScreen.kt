@@ -112,8 +112,8 @@ private fun Detail(open: SearchDetail, state: SearchUiState, intents: SearchInte
                     intents.closeDetail()
                     intents.setQuery(k)
                     intents.search()
-                })
-                is SearchDetail.Note -> NoteDetailScreen(open.load, onBack = onBack)
+                }, onNeverForget = intents::toggleNeverForget, onSuspend = intents::setCardsSuspended)
+                is SearchDetail.Note -> NoteDetailScreen(open.load, onBack = onBack, onSuspend = intents::setCardsSuspended)
             }
         }
         DeckActions(open, state, intents)
