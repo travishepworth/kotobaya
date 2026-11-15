@@ -1051,3 +1051,4 @@
 2026-11-15T00:26:05Z AND-REVIEW-SNAPPY CHECK_GREEN + MERGE 4899ca89
 2026-11-15T00:27:10Z RELEASE 0.1.14 PIN cb54637e RELEASE build ~/kotobaya-apk/kotobaya-0.1.14-release.apk code 114 cert ec6b7f45 ok, not debuggable (AND-TAKO-PERF2, AND-REVIEW-SNAPPY)
 2026-11-15T00:34:35Z WEB-TAKO-SEARCH DISPATCH writer; web Takoboto notes wrong text + preview fail; ADR-026 extended to web. kubectl OIDC expired (logs pending user login)
+2026-11-15T00:40:45Z WEB-TAKO-SEARCH CHECK_GREEN + MERGE 3f2e0dbb (rowLabel jsonb key order bug; note types incl. deleted; /search merged). Needs web deploy (kubectl auth expired)
