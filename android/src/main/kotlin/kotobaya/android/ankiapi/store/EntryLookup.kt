@@ -18,6 +18,9 @@ fun interface EntryLookup {
      */
     fun forms(seqs: Collection<Long>): Map<Long, HeadwordForms> =
         seqs.mapNotNull { seq -> headword(seq)?.let { seq to HeadwordForms(it.word, it.reading) } }.toMap()
+
+    /** Which dictionary answers (changes when another one is installed); indexes built from it rebuild then. */
+    fun identity(): String = ""
 }
 
 /** [EntryLookup] over the installed dictionary, with a small per-process cache of [headword]. */
@@ -51,6 +54,9 @@ class InstalledEntryLookup(private val dict: InstalledDictionary, private val ca
         }
         return out
     }
+
+    override fun identity(): String =
+        runCatching { dict.info() }.getOrNull()?.let { "${it.releaseId}:${it.scope}:${it.version}" } ?: "none"
 
     private companion object {
         const val CHUNK = 500

@@ -116,20 +116,36 @@ class NoteCreator<L : LearningTables>(
     private val kanjiData: (String) -> KanjiData? = { null },
     private val generator: CardGenerator = DefaultCardGenerator,
     private val afterCreate: () -> Unit = {},
+    /** AND-TAKO-PERF2: the duplicate word rule's index (caught up in each create's transaction); null = read every note. */
+    private val words: NoteWordIndex? = null,
 ) {
-    fun create(request: NoteRequest): CreateResult {
+    /** [phase] gets each step's wall time in ms (`match`, `index`, `duplicate`, `mint`), for the caller's debug log. */
+    fun create(request: NoteRequest, phase: (String, Long) -> Unit = { _, _ -> }): CreateResult {
         val word = EntryMatcher.clean(request.word)
         val reading = EntryMatcher.clean(request.reading)
         if (word == null && reading == null) return CreateResult.Refused(CreateRefusal.NoWord)
         // the dictionary is another database: read it before the learning transaction
-        val match = matcher.match(word, reading)
-        val result = store.transaction { tx -> createIn(tx, request, word, reading, match) }
+        val match = timed("match", phase) { matcher.match(word, reading) }
+        val result = store.transaction { tx -> createIn(tx, request, word, reading, match, phase) }
         if (result is CreateResult.Created && !result.retried) runCatching { afterCreate() }
         return result
     }
 
-    private fun createIn(tx: StoreTransaction<L>, req: NoteRequest, word: String?, reading: String?, match: MatchResult): CreateResult {
+    private fun <T> timed(name: String, phase: (String, Long) -> Unit, block: () -> T): T {
+        val t0 = System.nanoTime()
+        return block().also { phase(name, (System.nanoTime() - t0) / 1_000_000) }
+    }
+
+    private fun createIn(
+        tx: StoreTransaction<L>,
+        req: NoteRequest,
+        word: String?,
+        reading: String?,
+        match: MatchResult,
+        phase: (String, Long) -> Unit,
+    ): CreateResult {
         val tables = tx.learning
+        words?.let { w -> timed("index", phase) { runCatching { w.catchUp(tables) } } }
         val requestKey = req.requestId?.takeIf { it.isNotBlank() }?.let { REQUEST_KEY_PREFIX + it }
         requestKey?.let { tx.syncState.get(it) }?.let { MergeReaders.resolveNote(tables, it) }?.let { note ->
             val id = (note.getValue("id") as JsonString).value
@@ -148,7 +164,9 @@ class NoteCreator<L : LearningTables>(
         }
 
         val entry = (match as? MatchResult.Matched)?.entry?.takeIf { type.baseType == NoteBaseType.VOCAB }
-        val existing = if (type.baseType == NoteBaseType.VOCAB) DuplicateCheck.find(tables, entry?.seq, word ?: reading, reading) else null
+        val existing = timed("duplicate", phase) {
+            if (type.baseType == NoteBaseType.VOCAB) DuplicateCheck.find(tables, entry?.seq, word ?: reading, reading, words) else null
+        }
         if (existing != null && !req.force) return CreateResult.Duplicate(existing)
         val forced = existing != null
         val entrySeq = entry?.seq?.takeUnless { forced }
@@ -174,7 +192,7 @@ class NoteCreator<L : LearningTables>(
             val expression = word?.takeIf(EntryMatcher::containsKanji) ?: entry?.headword ?: word.orEmpty()
             val kanjiType = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(KANJI_NOTE_TYPE_ID)))?.let(::noteTypeInfo)
             if (kanjiType != null) {
-                for (literal in generator.kanjiToAdd(expression, liveKanji(tables), addKanji)) {
+                for (literal in generator.kanjiToAdd(expression, liveKanji(tables, expression), addKanji)) {
                     val id = ids.newOpId(now)
                     kanjiNoteIds += id
                     requests += MintRequest(
@@ -223,7 +241,7 @@ class NoteCreator<L : LearningTables>(
             }
         }
 
-        return when (val minted = minter.mintAll(requests)) {
+        return when (val minted = timed("mint", phase) { minter.mintAll(requests) }) {
             is MintResult.Refused -> CreateResult.Refused(CreateRefusal.Mint(minted.reason))
             is MintResult.Minted -> {
                 requestKey?.let { tx.syncState.put(it, noteId) }
@@ -235,9 +253,15 @@ class NoteCreator<L : LearningTables>(
     private fun cardRequest(id: String, noteId: String, kind: String) =
         MintRequest(OpType.CARD_CREATED, obj("id" to JsonString(id), "note_id" to JsonString(noteId), "kind" to JsonString(kind)))
 
-    private fun liveKanji(tables: LearningTables): Set<String> =
-        tables.where(LearningTable.NOTE, "type", JsonString("kanji")).filter(DuplicateCheck::isLive)
-            .mapNotNull { (it["kanji_literal"] as? JsonString)?.value }.toSet()
+    /**
+     * The characters of [expression] that already have a live kanji note. [CardGenerator.kanjiToAdd] only asks about
+     * the expression's own characters, so look those up (`note_kanji_idx`) instead of reading every kanji note.
+     */
+    private fun liveKanji(tables: LearningTables, expression: String): Set<String> =
+        expression.codePoints().toArray().map { String(Character.toChars(it)) }.toSet().filterTo(HashSet()) { ch ->
+            tables.where(LearningTable.NOTE, "kanji_literal", JsonString(ch))
+                .any { DuplicateCheck.isLive(it) && it["type"] == JsonString("kanji") }
+        }
 
     companion object {
         const val VOCAB_NOTE_TYPE_ID: String = "00000000-0000-7000-8000-000000000101"

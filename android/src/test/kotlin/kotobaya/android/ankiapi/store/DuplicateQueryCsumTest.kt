@@ -55,10 +55,20 @@ class DuplicateQueryCsumTest {
     private fun csum(n: AnkiNote) = AnkiContract.fieldChecksum(n.fields[0])
 
     @Test
-    fun csumQueryReturnsTheSameRowsAsFilteringTheUnfilteredQuery() {
+    fun csumQueryReturnsTheSameRowsAsFilteringTheUnfilteredQuery() = sameRows(indexed = false)
+
+    /** AND-TAKO-PERF2: the same answers from the checksum index (the notes made outside the store are pending changes). */
+    @Test
+    fun indexedCsumQueryReturnsTheSameRowsAsFilteringTheUnfilteredQuery() = sameRows(indexed = true)
+
+    private fun sameRows(indexed: Boolean) {
         val d = RoboDevice(app)
         val entries = Counting(dict)
-        val s = takobotoStore(d, memoryMap(app), FakeSource(dict), entries = entries)
+        val s = if (indexed) {
+            indexedStore(d, memoryMap(app), FakeSource(dict), entries = entries).also { it.warmIndexes() }
+        } else {
+            takobotoStore(d, memoryMap(app), FakeSource(dict), entries = entries)
+        }
         // entry-linked notes made outside the API: no fields.expression, headword from the dictionary
         assertIs<CreateResult.Created>(noteCreator(d, FakeSource(dict), seed = 13).create(NoteRequest(word = "食べる", reading = "たべる")))
         assertIs<CreateResult.Created>(noteCreator(d, FakeSource(dict), seed = 14).create(NoteRequest(word = "上手", reading = "うわて")))

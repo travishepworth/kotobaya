@@ -1,5 +1,6 @@
 package kotobaya.android.notes
 
+import app.cash.sqldelight.db.SqlDriver
 import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotobaya.android.di.FeatureEntry
@@ -12,7 +13,11 @@ import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.mint.OpMinter
 import kotobaya.sync.client.store.Clock
 import kotobaya.sync.client.store.UuidV7Source
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+
+/** The app database driver the sync store writes through (syncModule's `SYNC_DRIVER`); note indexes live in that file. */
+val APP_DB_DRIVER = named("syncAppDriver")
 
 /** Note creation over the shared sync store, minter and installed dictionary (T305b). */
 val notesModule = module {
@@ -26,6 +31,9 @@ val notesModule = module {
             get(),
         )
     }
+    // AND-TAKO-PERF2: device-only note change feed and the duplicate word rule's index
+    single { NoteChangeLog(get<SqlDriver>(APP_DB_DRIVER)) }
+    single { NoteWordIndex(get<SqlDriver>(APP_DB_DRIVER), get()) }
     single {
         val dict = get<InstalledDictionary>()
         val koin = getKoin()
@@ -39,6 +47,7 @@ val notesModule = module {
                 dict.kanji(literal)?.let { KanjiData(it.literal, it.meanings, it.onReadings, it.kunReadings, it.strokeCount) }
             },
             afterCreate = { koin.getOrNull<SyncTriggers>()?.localChange() },
+            words = get(),
         )
     }
 }

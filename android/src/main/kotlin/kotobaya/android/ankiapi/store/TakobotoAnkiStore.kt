@@ -22,7 +22,9 @@ import kotobaya.android.notes.DuplicateCheck
 import kotobaya.android.notes.EntryMatcher
 import kotobaya.android.notes.LearningReader
 import kotobaya.android.notes.NoteCreator
+import kotobaya.android.notes.NoteIndex
 import kotobaya.android.notes.NoteRequest
+import kotobaya.android.notes.NoteWordIndex
 import kotobaya.contracts.sync.JsonArray
 import kotobaya.contracts.sync.JsonNull
 import kotobaya.contracts.sync.JsonNumber
@@ -83,6 +85,10 @@ class TakobotoAnkiStore<L : LearningTables>(
     private val entries: EntryLookup,
     private val ids: OpIdSource,
     private val clock: Clock,
+    /** AND-TAKO-PERF2: the duplicate word rule's index (as [NoteCreator]'s); null = read every note. */
+    private val words: NoteWordIndex? = null,
+    /** AND-TAKO-PERF2: the `csum` duplicate query's index; null = checksum every vocab note. */
+    private val csums: ChecksumIndex? = null,
 ) : AnkiStore {
     private val lock = Any()
 
@@ -92,6 +98,35 @@ class TakobotoAnkiStore<L : LearningTables>(
 
     /** Creates the Takoboto Vocab note type if absent (idempotent; called at app start and before each add). */
     fun ensureNoteType(): EnsureResult = synchronized(lock) { noteTypes.ensure() }
+
+    /**
+     * Builds or catches up the lookup indexes (called at app start, in the background), so the first Takoboto call
+     * after an upgrade or a new dictionary does not pay for reading every note. Returns the notes indexed.
+     */
+    fun warmIndexes(): Int = synchronized(lock) {
+        val t0 = System.nanoTime()
+        val n = listOfNotNull(words, csums).sumOf { refresh(it) }
+        ProviderCallLog.log("  indexes warmed: $n note(s) read in ${msSince(t0)} ms")
+        n
+    }
+
+    /**
+     * Catches up [index]. A due rebuild is computed on a plain read first ([NoteIndex.prepare]), so the write
+     * transaction only stores entries (inside a caller's transaction everything joins it).
+     */
+    private fun <E> refresh(index: NoteIndex<E>): Int {
+        store.transaction { index.install() }
+        val prepared = reader.read { t -> index.prepare(t) }
+        return store.transaction { tx -> index.catchUp(tx.learning, prepared) }
+    }
+
+    /** Catches up the checksum index. Errors leave it to the next call (lookups then scan or see pending changes). */
+    private fun catchUpChecksums(): Long {
+        val index = csums ?: return 0
+        val t0 = System.nanoTime()
+        runCatching { refresh(index) }.onFailure { ProviderCallLog.log("  checksum index catch-up failed: $it") }
+        return msSince(t0)
+    }
 
     // --- decks -------------------------------------------------------------------------------------
 
@@ -225,23 +260,40 @@ class TakobotoAnkiStore<L : LearningTables>(
     // --- notes -------------------------------------------------------------------------------------
 
     override fun findNotes(filter: NoteFilter): List<AnkiNote> = synchronized(lock) {
+        val t0 = System.nanoTime()
         val all = defs()
         val requested = filter.modelId?.let { id -> all.firstOrNull { it.model.id == id } ?: return emptyList() }
         // sfld: the word itself; ask DuplicateCheck (dictionary match + local notes)
         val bySortField = filter.sortField?.let { duplicates.find(it, null)?.noteId ?: return emptyList() }
-        reader.read { t ->
-            val rows: List<Row> = if (bySortField != null) {
-                listOfNotNull(t.get(LearningTable.NOTE, listOf(JsonString(bySortField))))
-            } else {
-                t.where(LearningTable.NOTE, "type", JsonString("vocab")).filter(DuplicateCheck::isLive)
+        val checksums = filter.checksums
+        // AND-TAKO-PERF2: a csum query reads only the notes the checksum index names (then checks them like any row),
+        // when every model a row can be read with has an indexed first field. Otherwise every vocab note is read.
+        var catchUpMs = 0L
+        val firstKeys = (requested?.let(::listOf) ?: all).map { it.keys.first() }.toSet()
+        val candidates: List<String>? = csums?.takeIf { bySortField == null && checksums != null }?.let { index ->
+            if (firstKeys.any { it == null || it !in ChecksumIndex.KEYS }) return@let null
+            if (!index.usable()) catchUpMs = catchUpChecksums()
+            index.candidates(firstKeys.filterNotNull().toSet(), checksums.orEmpty())
+        }
+        val tLookup = System.nanoTime()
+        val result = reader.read { t ->
+            val rows: List<Row> = when {
+                bySortField != null -> listOfNotNull(t.get(LearningTable.NOTE, listOf(JsonString(bySortField))))
+                candidates != null -> candidates.mapNotNull { t.get(LearningTable.NOTE, listOf(JsonString(it))) }
+                    .filter { DuplicateCheck.isLive(it) && it["type"] == JsonString("vocab") }
+                else -> t.where(LearningTable.NOTE, "type", JsonString("vocab")).filter(DuplicateCheck::isLive)
             }
             // AND-TAKO-PERF: no per-row work before the checksum filter except hashing. Links are read once
             // (only needed to pick a row's model when none was requested); dictionary headwords of entry-linked
             // notes come from one batched lookup ([EntryLookup.forms]) instead of a full entry read per note.
-            val links: MutableMap<String, NoteLink>? = if (requested == null) HashMap(map.noteLinks()) else null
+            val links: MutableMap<String, NoteLink>? = when {
+                requested != null -> null
+                // index candidates: only their links (AND-TAKO-PERF2)
+                candidates != null -> rows.mapNotNull { r -> str(r, "id")?.let(map::noteByKotobayaId) }.associateByTo(HashMap()) { it.noteId }
+                else -> HashMap(map.noteLinks())
+            }
             fun defOf(noteId: String): Def =
                 requested ?: links?.get(noteId)?.let { l -> all.firstOrNull { it.model.id == l.modelId } } ?: all.first()
-            val checksums = filter.checksums
             val forms: Map<Long, HeadwordForms> = if (checksums == null) {
                 emptyMap()
             } else {
@@ -267,8 +319,15 @@ class TakobotoAnkiStore<L : LearningTables>(
                 val link = linkFor(cid, cdef.model.id).also { links?.put(cid, it) }
                 out[cid] = view(canonical, cdef, link.ankiId)
             }
-            out.values.toList()
+            out.values.toList() to rows.size
         }
+        if (checksums != null) {
+            ProviderCallLog.log(
+                "  csum query: ${if (candidates != null) "index" else "scan"} rows=${result.second} hits=${result.first.size} " +
+                    "catchUp=$catchUpMs ms lookup=${(tLookup - t0) / 1_000_000 - catchUpMs} ms check=${msSince(tLookup)} ms total=${msSince(t0)} ms",
+            )
+        }
+        result.first
     }
 
     /** `values(row, def)[0]` (the field Anki's `csum` is taken over), with headwords from [forms] where possible. */
@@ -288,7 +347,7 @@ class TakobotoAnkiStore<L : LearningTables>(
     private fun canonical(t: LearningTables, row: Row): Row? {
         val seq = (row["entry_seq"] as? JsonNumber)?.value?.toLong()
         val f = fieldsOf(row)
-        val e = DuplicateCheck.find(t, seq, EntryMatcher.clean(f["expression"]), EntryMatcher.clean(f["reading"]))
+        val e = DuplicateCheck.find(t, seq, EntryMatcher.clean(f["expression"]), EntryMatcher.clean(f["reading"]), words)
         return e?.let { t.get(LearningTable.NOTE, listOf(JsonString(it.noteId))) } ?: row
     }
 
@@ -305,6 +364,24 @@ class TakobotoAnkiStore<L : LearningTables>(
 
     /** [addNote] with the outcome: a duplicate creates nothing and answers with the existing note. */
     fun add(note: NewNote): AddOutcome = synchronized(lock) {
+        // AND-TAKO-PERF2: per-phase wall times, logged once per add (logcat tag KotobayaAnkiApi)
+        val phases = LinkedHashMap<String, Long>()
+        val t0 = System.nanoTime()
+        var mark = t0
+        fun lap(name: String) {
+            val now = System.nanoTime()
+            phases[name] = (now - mark) / 1_000_000
+            mark = now
+        }
+        try {
+            return addTimed(note, phases, ::lap)
+        } finally {
+            phases["total"] = msSince(t0)
+            ProviderCallLog.log("  add phases: ${phases.entries.joinToString(" ") { "${it.key}=${it.value}" }} ms")
+        }
+    }
+
+    private fun addTimed(note: NewNote, phases: MutableMap<String, Long>, lap: (String) -> Unit): AddOutcome {
         val all = defs()
         val def = all.firstOrNull { it.model.id == note.modelId } ?: throw AnkiStoreException.NotFound("model ${note.modelId}")
         if (note.fields.size != def.model.fields.size) {
@@ -312,6 +389,7 @@ class TakobotoAnkiStore<L : LearningTables>(
         }
         val ankiDeck = note.deckId ?: selectedDeckId()
         val deckId = kotobayaDeck(ankiDeck)
+        lap("decks")
         val noteTypeId = when (val e = noteTypes.ensure()) {
             is EnsureResult.Ready -> e.noteTypeId
             is EnsureResult.Refused -> {
@@ -330,15 +408,22 @@ class TakobotoAnkiStore<L : LearningTables>(
             fields = fields,
             noteTypeId = noteTypeId,
         )
-        when (val r = creator.create(request)) {
+        lap("noteType")
+        val r = creator.create(request) { name, ms -> phases["create.$name"] = ms }
+        lap("create")
+        if (r is CreateResult.Created) {
+            catchUpChecksums() // the new note, so the next query need not look at pending changes
+            lap("csumIndex")
+        }
+        return when (r) {
             is CreateResult.Created -> {
                 map.increment(AnkiIds.COUNT_ADDED)
-                AddOutcome.Added(viewOf(r.noteId, def, ankiDeck), r.noteId)
+                AddOutcome.Added(viewOf(r.noteId, def, ankiDeck), r.noteId).also { lap("view") }
             }
             is CreateResult.Duplicate -> {
                 map.increment(AnkiIds.COUNT_DUPLICATE)
                 ProviderCallLog.log("  duplicate of an existing note; nothing created")
-                AddOutcome.Duplicate(viewOf(r.existing.noteId, def, ankiDeck), r.existing.noteId)
+                AddOutcome.Duplicate(viewOf(r.existing.noteId, def, ankiDeck), r.existing.noteId).also { lap("view") }
             }
             is CreateResult.Refused -> {
                 map.increment(AnkiIds.COUNT_REFUSED)
@@ -453,6 +538,8 @@ class TakobotoAnkiStore<L : LearningTables>(
         const val ORIGIN_API: String = "api"
 
         private fun str(row: Row, col: String): String? = (row[col] as? JsonString)?.value
+
+        private fun msSince(t0: Long): Long = (System.nanoTime() - t0) / 1_000_000
 
         private fun notDeleted(row: Row): Boolean = (row["deleted_at"] ?: JsonNull) == JsonNull
 

@@ -26,6 +26,11 @@ import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.notes.DuplicateCheck
 import kotobaya.android.notes.LearningReader
 import kotobaya.android.notes.NoteCreator
+import kotobaya.android.notes.APP_DB_DRIVER
+import kotobaya.android.notes.NoteChangeLog
+import kotobaya.android.notes.NoteWordIndex
+import kotobaya.android.ankiapi.store.ChecksumIndex
+import app.cash.sqldelight.db.SqlDriver
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlLearningTables
 import kotobaya.sync.client.apply.LearningTable
@@ -60,6 +65,7 @@ val takobotoModule = module {
         val minter = get<OpMinter<SqlLearningTables>>()
         val ids = UuidV7Source(SecureRandom().asKotlinRandom())
         val clock = Clock { System.currentTimeMillis() }
+        val entries = InstalledEntryLookup(get<InstalledDictionary>())
         TakobotoAnkiStore<SqlLearningTables>(
             store = store,
             reader = object : LearningReader {
@@ -70,15 +76,21 @@ val takobotoModule = module {
             creator = get<NoteCreator<SqlLearningTables>>(),
             duplicates = get<DuplicateCheck>(),
             map = get(),
-            entries = InstalledEntryLookup(get<InstalledDictionary>()),
+            entries = entries,
             ids = ids,
             clock = clock,
+            words = get<NoteWordIndex>(),
+            csums = ChecksumIndex(get<SqlDriver>(APP_DB_DRIVER), get<NoteChangeLog>(), entries),
         )
     }
     single<AnkiStore> { get<TakobotoAnkiStore<SqlLearningTables>>() }
     single(named("takobotoStartup"), createdAtStart = true) {
         val koin = getKoin()
-        TakobotoStartup { koin.get<TakobotoAnkiStore<SqlLearningTables>>().ensureNoteType() }.also { it.start() }
+        TakobotoStartup {
+            val s = koin.get<TakobotoAnkiStore<SqlLearningTables>>()
+            s.ensureNoteType()
+            s.warmIndexes() // AND-TAKO-PERF2: build/catch up the lookup indexes before Takoboto asks
+        }.also { it.start() }
     }
 }
 

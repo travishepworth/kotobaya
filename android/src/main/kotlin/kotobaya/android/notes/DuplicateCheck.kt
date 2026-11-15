@@ -56,29 +56,41 @@ class DuplicateCheck(private val reader: LearningReader, private val matcher: En
     fun findByEntry(seq: Long): ExistingNote? = reader.read { byEntry(it, seq) }
 
     companion object {
-        /** [find] on [tables] (inside a caller's transaction). [expression] and [reading] must be cleaned. */
-        fun find(tables: LearningTables, seq: Long?, expression: String?, reading: String?): ExistingNote? =
-            seq?.let { byEntry(tables, it) } ?: expression?.let { byWord(tables, it, reading, includeMatched = seq == null) }
+        /**
+         * [find] on [tables] (inside a caller's transaction). [expression] and [reading] must be cleaned. With [words]
+         * (AND-TAKO-PERF2) the word rule reads only the notes the index names instead of every vocab note; the same
+         * check runs on each, so the answer is the same. When the index cannot answer, every note is read as before.
+         */
+        fun find(tables: LearningTables, seq: Long?, expression: String?, reading: String?, words: NoteWordIndex? = null): ExistingNote? =
+            seq?.let { byEntry(tables, it) } ?: expression?.let { byWord(tables, it, reading, includeMatched = seq == null, words) }
 
         fun byEntry(tables: LearningTables, seq: Long): ExistingNote? =
             oldest(tables.where(LearningTable.NOTE, "entry_seq", JsonNumber(seq.toDouble())).filter(::isLive))
 
-        private fun byWord(tables: LearningTables, expression: String, reading: String?, includeMatched: Boolean): ExistingNote? =
-            oldest(
-                (
-                    if (includeMatched) {
-                        tables.where(LearningTable.NOTE, "type", JsonString("vocab"))
-                    } else {
-                        tables.where(LearningTable.NOTE, "entry_seq", JsonNull)
-                    }
-                    ).filter { row ->
+        private fun byWord(
+            tables: LearningTables,
+            expression: String,
+            reading: String?,
+            includeMatched: Boolean,
+            words: NoteWordIndex?,
+        ): ExistingNote? {
+            val rows = words?.candidates(expression)?.mapNotNull { tables.get(LearningTable.NOTE, listOf(JsonString(it))) }
+                ?: if (includeMatched) {
+                    tables.where(LearningTable.NOTE, "type", JsonString("vocab"))
+                } else {
+                    tables.where(LearningTable.NOTE, "entry_seq", JsonNull)
+                }
+            return oldest(
+                rows.filter { row ->
                     if (!isLive(row) || row["type"] != JsonString("vocab")) return@filter false
+                    if (!includeMatched && (row["entry_seq"] ?: JsonNull) != JsonNull) return@filter false
                     val fields = (row["fields"] as? JsonObject)?.members.orEmpty()
                     val e = EntryMatcher.clean((fields["expression"] as? JsonString)?.value) ?: return@filter false
                     val r = EntryMatcher.clean((fields["reading"] as? JsonString)?.value)
                     e == expression && (reading == null || r == null || EntryMatcher.fold(r) == EntryMatcher.fold(reading))
                 },
             )
+        }
 
         internal fun isLive(row: Row): Boolean =
             (row["deleted_at"] ?: JsonNull) == JsonNull && (row["merged_into_id"] ?: JsonNull) == JsonNull

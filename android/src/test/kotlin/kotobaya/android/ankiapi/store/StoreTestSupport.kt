@@ -11,7 +11,9 @@ import kotobaya.android.notes.DuplicateCheck
 import kotobaya.android.notes.EntryMatcher
 import kotobaya.android.notes.FakeSource
 import kotobaya.android.notes.LearningReader
+import kotobaya.android.notes.NoteChangeLog
 import kotobaya.android.notes.NoteCreator
+import kotobaya.android.notes.NoteWordIndex
 import kotobaya.android.notes.T0
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlDevice
@@ -61,7 +63,8 @@ class RoboDevice(
     override val clock = TestClock(T0)
     val transport = TestTransport(server)
     private var restarts = 0
-    private lateinit var driver: AndroidSqliteDriver
+    lateinit var driver: AndroidSqliteDriver
+        private set
     override lateinit var store: SqlDelightDeviceStore
         private set
     lateinit var stack: Stack<SqlLearningTables>
@@ -128,6 +131,36 @@ fun takobotoStore(
 )
 
 fun memoryMap(context: Context): SqliteAnkiIdMap = SqliteAnkiIdMap(context, null)
+
+/** AND-TAKO-PERF2: the device-only note indexes over a [RoboDevice]'s database (as the app wires them). */
+class Indexes(d: RoboDevice, entries: EntryLookup = FAKE_ENTRIES) {
+    val log = NoteChangeLog(d.driver)
+    val words = NoteWordIndex(d.driver, log)
+    val csums = ChecksumIndex(d.driver, log, entries)
+}
+
+/** [takobotoStore] with the lookup indexes wired like production (its creator uses the word index too). */
+fun indexedStore(
+    d: RoboDevice,
+    map: AnkiIdMap,
+    source: CandidateSource = FakeSource(DICT),
+    seed: Int = 7,
+    entries: EntryLookup = FAKE_ENTRIES,
+    indexes: Indexes = Indexes(d, entries),
+): TakobotoAnkiStore<SqlLearningTables> = TakobotoAnkiStore(
+    store = d.store,
+    reader = reader(d),
+    minter = d.minter,
+    noteTypes = ensurer(d, seed),
+    creator = NoteCreator(d.store, d.minter, EntryMatcher(source), UuidV7Source(Random(seed)), d.clock, words = indexes.words),
+    duplicates = duplicates(d, source),
+    map = map,
+    entries = entries,
+    ids = UuidV7Source(Random(seed + 1)),
+    clock = d.clock,
+    words = indexes.words,
+    csums = indexes.csums,
+)
 
 /** A pending (not yet pushed) op of a device: its wire type, entity id and payload. */
 data class Pending(val type: String, val entityId: String, val payload: JsonObject)
