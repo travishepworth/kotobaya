@@ -118,42 +118,62 @@ class NoteCreator<L : LearningTables>(
     private val afterCreate: () -> Unit = {},
     /** AND-TAKO-PERF2: the duplicate word rule's index (caught up in each create's transaction); null = read every note. */
     private val words: NoteWordIndex? = null,
-    /** Dictionary data of an entry (the installed dictionary): its headword for add_kanji; null = not installed (C-27). */
+    /** Dictionary data of an entry (the installed dictionary), for C-27 materialization; null = not installed. */
     private val dictionary: (Long) -> DictionaryData? = { null },
     /** Whether a dictionary is installed ([materialize] creates nothing without one). */
     private val dictionaryAvailable: () -> Boolean = { true },
 ) : kotobaya.android.queue.EntryMaterializer {
     override fun ready(): Boolean = dictionaryAvailable()
 
-    override fun knows(entrySeq: Long): Boolean = runCatching { dictionary(entrySeq) }.getOrNull() != null
+    /** C-27: the plan of each entry ([DeckEntryPlan]); an entry left out is never passed to the builder. */
+    override fun plan(entries: List<kotobaya.android.queue.EntryRef>, burySiblings: Boolean): Map<kotobaya.android.queue.EntryRef, kotobaya.android.queue.EntryPlan> {
+        if (entries.isEmpty()) return emptyMap()
+        return store.transaction { tx ->
+            val plan = DeckEntryPlan(tx.learning, dictionary, kanjiData, generator)
+            entries.mapNotNull { ref ->
+                val dict = plan.dict(ref.entrySeq) ?: return@mapNotNull null
+                val deck = plan.deck(ref.deckId)
+                if (plan.vocabKinds(ref.entrySeq, deck).isEmpty()) return@mapNotNull null
+                ref to kotobaya.android.queue.EntryPlan(
+                    expressionKanji = DeckEntryPlan.expressionKanji(dict.expression),
+                    newKanjiCards = plan.newKanjiCards(dict.expression, deck, burySiblings),
+                )
+            }.toMap()
+        }
+    }
 
     /**
-     * AND-KEEPGOING-FIX, C-27 (contracts/core/README.md "C-27: pending entries and materialization", the same ops as
-     * the server): for each drawn entry (`ReviewQueue.toMaterialize`), in order, in ONE store transaction: skip it if a
-     * live note holds the entry (SYNC.md 4: never knowingly a second note per entry); else, if the drawing deck's
-     * `add_kanji` is present and not `off`, the kanji notes of `kanjiToAdd(headword, live kanji, mode)` (`auto_kanji`,
-     * `kindsForNewNote(kanji type, null)`); then `note.created` {vocab type, `entry_seq`, `fields` {}, `origin` `deck`}
-     * and one `card.created` per `kindsForNewNote(vocab type, deck card_kinds)`. A note another replica created for the
-     * same entry converges by SYNC.md 8.1. An entry the installed dictionary lacks is skipped (the loader never passes
-     * one). Returns the notes created.
+     * AND-KEEPGOING-FIX, C-27 (contracts/core/README.md "C-27: pending entries and materialization"; the same ops as the
+     * server): for each drawn entry (`ReviewQueue.toMaterialize`), in order, in ONE store transaction: skip it if a live
+     * note holds the entry (SYNC.md 4: never knowingly a second note per entry) or its dictionary entry is missing;
+     * else the kanji notes of [DeckEntryPlan.kanjiToCreate] (`origin` `auto_kanji`), each with
+     * [DeckEntryPlan.kanjiKinds]; then `note.created` {vocab type, `entry_seq`, `fields` {}, `origin` `deck`} and one
+     * `card.created` per [DeckEntryPlan.vocabKinds] (an entry without any is skipped). A note another replica created
+     * for the same entry converges by SYNC.md 8.1. Returns the ids of the vocab notes created.
      */
-    override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Int {
-        if (entries.isEmpty()) return 0
-        val data = entries.map { it.entrySeq }.distinct().associateWith { seq -> runCatching { dictionary(seq) }.getOrNull() }
+    override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> {
+        if (entries.isEmpty()) return emptySet()
         val created = store.transaction { tx ->
             val tables = tx.learning
-            val type = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(VOCAB_NOTE_TYPE_ID)))
-                ?.takeIf { (it["deleted_at"] ?: JsonNull) == JsonNull }?.let(::noteTypeInfo) ?: return@transaction 0
+            val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
             val now = clock.nowMs()
             val requests = ArrayList<MintRequest>()
+            val notes = LinkedHashSet<String>()
             val done = HashSet<Long>()
             for (e in entries) {
-                val dict = data[e.entrySeq] ?: continue
+                val dict = plan.dict(e.entrySeq) ?: continue
                 if (!done.add(e.entrySeq) || DuplicateCheck.byEntry(tables, e.entrySeq) != null) continue
-                val deck = tables.get(LearningTable.DECK, listOf(JsonString(e.deckId)))?.takeIf { (it["deleted_at"] ?: JsonNull) == JsonNull }
-                val addKanji = deck?.let(::addKanjiMode) ?: AddKanjiMode.OFF
-                if (addKanji != AddKanjiMode.OFF) {
-                    requests += kanjiRequests(tables, dict.expression, addKanji, now, ArrayList(), requests, skipEmptyFronts = false)
+                val deck = plan.deck(e.deckId)
+                val kinds = plan.vocabKinds(e.entrySeq, deck)
+                if (kinds.isEmpty()) continue
+                for (literal in plan.kanjiToCreate(dict.expression, deck)) {
+                    val id = ids.newOpId(now)
+                    requests += MintRequest(
+                        OpType.NOTE_CREATED,
+                        obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
+                    )
+                    for (kind in plan.kanjiKinds(literal)) requests += cardRequest(ids.newOpId(now), id, kind)
+                    plan.kanjiCreated(literal)
                 }
                 val noteId = ids.newOpId(now)
                 requests += MintRequest(
@@ -166,15 +186,16 @@ class NoteCreator<L : LearningTables>(
                         "origin" to JsonString(DECK_ORIGIN),
                     ),
                 )
-                for (kind in generator.kindsForNewNote(type, deck?.let(::cardKinds))) requests += cardRequest(ids.newOpId(now), noteId, kind)
+                for (kind in kinds) requests += cardRequest(ids.newOpId(now), noteId, kind)
+                notes += noteId
             }
-            if (requests.isEmpty()) return@transaction 0
+            if (requests.isEmpty()) return@transaction emptySet<String>()
             when (minter.mintAll(requests)) {
-                is MintResult.Refused -> 0
-                is MintResult.Minted -> requests.count { it.type == OpType.NOTE_CREATED && (it.payload.members["origin"] as? JsonString)?.value == DECK_ORIGIN }
+                is MintResult.Refused -> emptySet()
+                is MintResult.Minted -> notes
             }
         }
-        if (created > 0) runCatching { afterCreate() }
+        if (created.isNotEmpty()) runCatching { afterCreate() }
         return created
     }
 
@@ -305,8 +326,6 @@ class NoteCreator<L : LearningTables>(
         now: Long,
         kanjiNoteIds: MutableList<String>,
         earlier: List<MintRequest>,
-        /** [create]'s rule (a kind whose front renders empty is not created); C-27 materialization creates every kind. */
-        skipEmptyFronts: Boolean = true,
     ): List<MintRequest> {
         val kanjiType = tables.get(LearningTable.NOTE_TYPE, listOf(JsonString(KANJI_NOTE_TYPE_ID)))?.let(::noteTypeInfo) ?: return emptyList()
         val pending = earlier.mapNotNullTo(HashSet()) { (it.payload.members["kanji_literal"] as? JsonString)?.value }
@@ -320,7 +339,7 @@ class NoteCreator<L : LearningTables>(
             )
             val kd = kanjiData(literal) ?: KanjiData(literal, emptyList(), emptyList(), emptyList())
             for (kind in generator.kindsForNewNote(kanjiType, null)) {
-                if (skipEmptyFronts && DefaultCardRenderer.frontIsEmpty(kanjiType, kind, emptyMap(), kanji = kd)) continue
+                if (DefaultCardRenderer.frontIsEmpty(kanjiType, kind, emptyMap(), kanji = kd)) continue
                 out += cardRequest(ids.newOpId(now), id, kind)
             }
         }

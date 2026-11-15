@@ -106,16 +106,19 @@ class LocalQueueLoader(
         awaitReady()
         return gate.run(LoadKey(newShownThisSession, deckFilter, keepGoing)) {
             var loaded = build(newShownThisSession, deckFilter, keepGoing)
-            // A drawn entry needs its note and cards first (ReviewQueue.toMaterialize), then a rebuild draws those cards.
-            // The second build normally has nothing left to materialize; the bound only guards against a materializer
-            // that keeps creating without the entries leaving the pending set.
-            repeat(MAX_MATERIALIZE_ROUNDS) {
-                val todo = loaded.queue.toMaterialize
-                val m = materializer
-                if (todo.isEmpty() || m == null) return@run loaded
+            // C-27 rounds (as the server): a drawn entry needs its note and cards first (ReviewQueue.toMaterialize), then
+            // a rebuild draws those cards in its place. Another round only if the last one's notes reached `items`, so a
+            // mismatch between what was drawn and what shows can never create notes that are not shown.
+            var rounds = 0
+            val m = materializer
+            while (m != null && loaded.queue.toMaterialize.isNotEmpty() && rounds < MAX_MATERIALIZE_ROUNDS) {
                 // a failed write costs this build its new entries, never the queue (Today, widget, review keep working)
-                if (runCatching { m.materialize(todo) }.getOrDefault(0) == 0) return@run loaded
+                val created = runCatching { m.materialize(loaded.queue.toMaterialize) }.getOrDefault(emptySet())
+                if (created.isEmpty()) break
                 loaded = build(newShownThisSession, deckFilter, keepGoing)
+                rounds++
+                val noteOf = loaded.input.candidates.associate { it.cardId to it.noteId }
+                if (loaded.queue.items.none { noteOf[it.cardId] in created }) break
             }
             loaded
         }
@@ -233,37 +236,41 @@ class LocalQueueLoader(
         }
 
     /**
-     * C-27 pending entries of the enabled decks (of [deckFilter] only, if set; selection rules in the query): only
-     * entries the installed dictionary has ([EntryMaterializer.knows]; one it lacks would be drawn by every build and
-     * use up the new budget), and none while the materializer is not [EntryMaterializer.ready] (no dictionary, or a pull
-     * in progress: the notes for those entries may still be on their way). Per deck the first `2 × budget` (C-27) in
-     * `(position, item_key)` order. A normal build uses the larger of its own budget and the keep-going batch: its
-     * `moreAvailable` runs rule 6 over the same entries, and with today's new cards used up (budget 0) it would
-     * otherwise see none (passing more than the bound leaves the result unchanged).
+     * C-27 pending entries of the enabled decks (of [deckFilter] only, if set): the query's rules (no live or
+     * user-deleted note, override filter) plus the [materializer]'s plan (dictionary entry installed, at least one vocab
+     * kind; `expressionKanji` and `newKanjiCards` for the builder's add_kanji group). None while the materializer is
+     * not [EntryMaterializer.ready] (no dictionary, or a pull in progress: the notes may still be on their way). Per deck
+     * the first `2 * B + 16` in `(position, item_key)` order, `B` = the keep-going batch when keeping going, else the
+     * larger of it and `min(newPerDay, newPerSession)` (`moreAvailable` probes with the batch); later ones are reached by
+     * a later build.
      */
     private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoing: Boolean): List<PendingEntry> {
         val m = materializer ?: return emptyList()
         if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList()
-        val keepGoingBudget = maxOf(1, QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH)
-        val budget = if (keepGoing) keepGoingBudget else maxOf(0, minOf(settings.newPerDay, settings.newPerSession), keepGoingBudget)
-        val limit = 2 * budget
-        val page = maxOf(limit * 2, MIN_PENDING_PAGE).toLong()
+        val batch = maxOf(1, QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH)
+        val budget = if (keepGoing) batch else maxOf(batch, minOf(settings.newPerDay, settings.newPerSession))
+        val window = 2 * budget + 16
+        val page = maxOf(window * 2, MIN_PENDING_PAGE).toLong()
         return decks.filter { it.enabled && (deckFilter == null || it.id == deckFilter) }.flatMap { deck ->
             val out = ArrayList<PendingEntry>()
             var offset = 0L
-            while (out.size < limit) {
+            while (out.size < window) {
                 val rows = q.pendingDeckEntries(deck.id, page, offset).executeAsList()
+                val plans = runCatching { m.plan(rows.map { EntryRef(deck.id, checkNotNull(it.entry_seq)) }, settings.burySiblings) }
+                    .getOrDefault(emptyMap())
                 for (r in rows) {
-                    val seq = checkNotNull(r.entry_seq)
-                    if (!runCatching { m.knows(seq) }.getOrDefault(false)) continue
+                    val ref = EntryRef(deck.id, checkNotNull(r.entry_seq))
+                    val plan = plans[ref] ?: continue
                     out += PendingEntry(
                         deckId = deck.id,
-                        entrySeq = seq,
+                        entrySeq = ref.entrySeq,
                         position = r.position,
                         itemKey = r.item_key,
                         wordOverride = r.override_status?.let { w -> WordStatus.entries.firstOrNull { it.wire == w } },
+                        expressionKanji = plan.expressionKanji,
+                        newKanjiCards = plan.newKanjiCards,
                     )
-                    if (out.size == limit) break
+                    if (out.size == window) break
                 }
                 if (rows.size < page) break
                 offset += page
@@ -326,23 +333,29 @@ class LocalQueueLoader(
     }
 }
 
-/**
- * AND-KEEPGOING-FIX: creates the note (origin `deck`, the entry's `entry_seq`) and default cards of each drawn pending
- * entry through the device's op path (SYNC.md 4), skipping an entry that has a live note by then. Returns how many
- * notes it created (0: nothing to do, or minting was refused).
- */
-fun interface EntryMaterializer {
-    fun materialize(entries: List<PendingEntry>): Int
+/** A deck entry `e:<seq>` of one deck. */
+data class EntryRef(val deckId: String, val entrySeq: Long)
 
+/** C-27: what the builder needs to know of an entry's add_kanji group (`PendingEntry.expressionKanji`, `newKanjiCards`). */
+data class EntryPlan(val expressionKanji: List<String>, val newKanjiCards: Int)
+
+/**
+ * AND-KEEPGOING-FIX, C-27 (contracts/core README "C-27"): plans and creates deck entries' notes and cards through the
+ * device's op path (production: [kotobaya.android.notes.NoteCreator] over `DeckEntryPlan`, so both agree).
+ */
+interface EntryMaterializer {
     /**
      * False while creating notes for entries could duplicate notes that already exist elsewhere and have not arrived
-     * yet (a pull in progress or interrupted), or while nothing can be created (no dictionary): the loader then
-     * passes no pending entries at all, so none uses up the new budget.
+     * yet (a pull in progress or interrupted), or while nothing can be created (no dictionary): the loader then passes
+     * no pending entries at all, so none uses up the new budget.
      */
     fun ready(): Boolean = true
 
-    /** Whether [materialize] can create a note for [entrySeq] (the installed dictionary has it). */
-    fun knows(entrySeq: Long): Boolean = true
+    /** The plan of each entry that may be passed (dictionary entry installed, at least one vocab card kind); others are absent. */
+    fun plan(entries: List<EntryRef>, burySiblings: Boolean): Map<EntryRef, EntryPlan>
+
+    /** Creates the notes and cards of the drawn [entries]; returns the ids of the vocab notes created (empty: none, or refused). */
+    fun materialize(entries: List<PendingEntry>): Set<String>
 }
 
 /**

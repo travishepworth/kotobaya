@@ -1,23 +1,23 @@
 # HANDOFF AND-KEEPGOING-FIX
 
 STATUS: DONE
-BRANCH: t/AND-KEEPGOING-FIX
-CHECK: `make check MODULE=android` → green except the known flake BackNavigationTest.searchBackClosesTheDetail
+BRANCH: t/AND-KEEPGOING-FIX (rebased on main 5dfeec90, C-27 merged)
+CHECK: `make check MODULE=android` → 388 tests, only the known flake BackNavigationTest.searchBackClosesTheDetail failed
 
 ## Changed (≤ 6 lines)
-- Aligned with C-27 (read from t/C-27-materialize, contracts/core/README.md "C-27"; not on main yet). Pending entries: enabled decks' live `e:<seq>` items whose entry is in the local dictionary, has no live note and no user-deleted note, override filter applied, first 2×budget per deck in (position, item_key) order.
-- Pending entries are passed only after a complete pull (`materializeAllowed`: unpaired, or no sync running, 0 failures, last_sync_at set, no rebuild).
-- NoteCreator.materialize mints C-27 ops: vocab `note.created` {entry_seq, fields {}, origin deck}, `card.created` for every kindsForNewNote kind, add_kanji `auto_kanji` notes (deduped in the mint). Skips an entry with a live note. Loader rebuilds after.
-- ReviewSession: always rebuilds before ending. In keep going, learn-ahead waits for a fresh build. A config change keeps the session.
+- C-27 exactly, mirroring server DeckEntryPlan: new android `notes/DeckEntryPlan`, shared by planning and minting. card_kinds falls back to default kinds; empty fronts dropped; entries with no kind left are never passed; blocked kanji = live or user-deleted.
+- LocalQueueLoader: fills PendingEntry.expressionKanji/newKanjiCards. Per-deck window 2·B+16. Another round (max 3) only if the last round's notes reach `items`. Pull-complete gate kept.
+- `headwordOf` is now wired to the installed dictionary (it had no production source), so deck notes (fields {}) get the expressionKanji they were drawn with.
+- ReviewSession: rebuilds before ending; in keep going, learn-ahead waits for a fresh build. A config change keeps the session.
 
 ## Acceptance → tests
 - KeepGoingTest: 300 due + 40 new without a stop; defect-1 regression
-- DeckEntriesTest (8): C-27 ops; user-deleted entry dropped; unknown entries don't starve; mid-pull gate; refused mint; add_kanji dedup; keep going through 60 entries; repeat loop
+- DeckEntriesTest (11), incl. add_kanji allowance 1 over 3 rebuilds (no unshown notes; fails with newKanjiCards = 0); deleted kanji not recreated; card_kinds [] → defaults; user-deleted entry; mid-pull gate; refused mint
 - ReviewInfoTest.aConfigurationChangeKeepsTheSession
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Deviation: a normal build's bound uses max(own budget, keep-going batch). Otherwise budget 0 hides entries from rule-6 `moreAvailable`, and the button disappears.
-- Convergence: SYNC.md 4 + 8.1. Rebase after C-27 merges (no contract edits here).
+- Headword cache lives for the process: after a dictionary update, a changed headword shows after a restart.
+- Convergence: SYNC.md 4 + 8.1 (README C-27).

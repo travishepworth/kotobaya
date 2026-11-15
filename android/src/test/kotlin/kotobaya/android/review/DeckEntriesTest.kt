@@ -6,6 +6,7 @@ import kotobaya.android.notes.EntryCandidate
 import kotobaya.android.notes.EntryMatcher
 import kotobaya.android.notes.NoteCreator
 import kotobaya.android.queue.EntryMaterializer
+import kotobaya.android.queue.EntryRef
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.materializeAllowed
 import kotobaya.android.sync.SqlLearningTables
@@ -58,10 +59,16 @@ class DeckEntriesTest {
     private var syncReady = true
     private val gated = object : EntryMaterializer {
         override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>) = creator.materialize(entries)
-        override fun knows(entrySeq: Long) = creator.knows(entrySeq)
+        override fun plan(entries: List<EntryRef>, burySiblings: Boolean) = creator.plan(entries, burySiblings)
         override fun ready() = creator.ready() && syncReady
     }
-    private val loader = LocalQueueLoader(d.db, { d.clock.now }, materializer = gated)
+
+    /** As production: a deck note (fields {}) takes its expression kanji from the dictionary headword. */
+    private val loader = LocalQueueLoader(
+        d.db, { d.clock.now },
+        headwordOf = { seq -> if (seq == UNKNOWN_SEQ || seq in UNKNOWN_RANGE) null else expressions[seq] ?: "語$seq" },
+        materializer = gated,
+    )
 
     @After
     fun close() {
@@ -254,9 +261,7 @@ class DeckEntriesTest {
         assertEquals(4500L, seq)
         val created = d.ops("note.created").single { d.str(it, "id") == noteId }
         assertEquals(kotobaya.contracts.sync.JsonObject(emptyMap()), d.payload(created)["fields"])
-        val type = kotobaya.cards.BuiltInNoteTypes.ALL.single { it.id == NoteCreator.VOCAB_NOTE_TYPE_ID }.info
-        val kinds = d.ops("card.created").filter { d.str(it, "note_id") == noteId }.mapNotNull { d.str(it, "kind") }
-        assertEquals(kotobaya.cards.DefaultCardGenerator.kindsForNewNote(type, null).sorted(), kinds.sorted())
+        assertEquals(defaultVocabKinds(4500L), kindsOf(noteId))
 
         // the user deletes the word's note: the entry is gone for good, the next one is drawn instead
         assertIs<kotobaya.sync.client.mint.MintResult.Minted>(
@@ -287,13 +292,81 @@ class DeckEntriesTest {
     /** add_kanji: two words sharing a kanji in one mint get one kanji note for it. */
     @Test
     fun addKanjiCreatesEachKanjiOnceWithinOneMint() {
-        setting("scheduler.new_per_day", "5")
+        setting("scheduler.new_per_day", "10")
         expressions[4400L] = "日本"
         expressions[4401L] = "日曜"
         listDeck(listOf(4400L, 4401L), settings = """{"add_kanji":"before"}""")
         loader.load()
         assertEquals(listOf("日", "本", "曜"), d.ops("note.created").mapNotNull { d.str(it, "kanji_literal") })
         assertEquals(2, deckNotes().size)
+    }
+
+    /** C-27 (final): with add_kanji, an entry is drawn as its whole group; one that does not fit is never created. */
+    @Test
+    fun anAddKanjiGroupThatDoesNotFitIsNeverMaterialized() {
+        setting("scheduler.new_per_day", "1")
+        expressions[5000L] = "日本"
+        expressions[5001L] = "すし"
+        listDeck(listOf(5000L, 5001L, 5002L), settings = """{"add_kanji":"before"}""")
+        repeat(3) { round ->
+            val loaded = loader.load()
+            val noteOf = loaded.input.candidates.associate { it.cardId to it.noteId }
+            val shownNotes = loaded.queue.items.mapNotNullTo(HashSet()) { noteOf[it.cardId] }
+            assertTrue(deckNotes().all { (_, id) -> id in shownNotes }, "round $round: every created note is in the queue")
+            assertTrue(loaded.queue.toMaterialize.isEmpty())
+            d.clock.now += 1_000
+        }
+        assertEquals(listOf(5001L), deckNotes().map { it.first }, "日本 (1 + 2 kanji cards) never fits an allowance of 1")
+        assertTrue(d.ops("note.created").none { d.str(it, "kanji_literal") != null }, "no kanji note created for it")
+    }
+
+    /** C-27: a kanji note the user deleted is never re-created by add_kanji. */
+    @Test
+    fun aUserDeletedKanjiNoteIsNotRecreated() {
+        setting("scheduler.new_per_day", "10")
+        val kanjiNote = "01931f3e-0000-7000-8000-00000000c001"
+        assertIs<kotobaya.sync.client.mint.MintResult.Minted>(
+            d.stack.minter.mint(
+                kotobaya.contracts.sync.OpType.NOTE_CREATED,
+                kotobaya.contracts.sync.JsonObject(
+                    linkedMapOf(
+                        "id" to JsonString(kanjiNote),
+                        "note_type_id" to JsonString(NoteCreator.KANJI_NOTE_TYPE_ID),
+                        "kanji_literal" to JsonString("日"),
+                    ),
+                ),
+            ),
+        )
+        assertIs<kotobaya.sync.client.mint.MintResult.Minted>(
+            d.stack.minter.mint(kotobaya.contracts.sync.OpType.NOTE_DELETED, kotobaya.contracts.sync.JsonObject(linkedMapOf("id" to JsonString(kanjiNote)))),
+        )
+        expressions[5100L] = "日本"
+        listDeck(listOf(5100L), settings = """{"add_kanji":"before"}""")
+        loader.load()
+        assertEquals(listOf(5100L), deckNotes().map { it.first })
+        assertEquals(listOf("日", "本"), d.ops("note.created").mapNotNull { d.str(it, "kanji_literal") }, "only 本 is new")
+    }
+
+    /** C-27: deck card_kinds [] (or no valid kind) falls back to the vocab type's default kinds. */
+    @Test
+    fun emptyCardKindsFallBackToTheDefaultKinds() {
+        setting("scheduler.new_per_day", "10")
+        listDeck(listOf(5200L), settings = """{"card_kinds":[]}""")
+        loader.load()
+        val (_, noteId) = deckNotes().single()
+        assertEquals(defaultVocabKinds(5200L), kindsOf(noteId))
+        assertTrue(kindsOf(noteId).isNotEmpty())
+    }
+
+    private fun kindsOf(noteId: String): List<String> =
+        d.ops("card.created").filter { d.str(it, "note_id") == noteId }.mapNotNull { d.str(it, "kind") }.sorted()
+
+    /** The vocab type's default kinds minus those whose front renders empty for the entry (C-27 step 2). */
+    private fun defaultVocabKinds(seq: Long): List<String> {
+        val type = kotobaya.cards.BuiltInNoteTypes.VOCAB.info
+        val dict = DictionaryData(expressions[seq] ?: "語$seq", "ご", emptyList(), listOf("word $seq"), emptyList())
+        return kotobaya.cards.DefaultCardGenerator.kindsForNewNote(type, null)
+            .filterNot { kotobaya.render.DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), dictionary = dict) }.sorted()
     }
 
     private companion object {
