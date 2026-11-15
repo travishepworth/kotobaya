@@ -219,6 +219,78 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(1, limited.size)
     }
 
+    private suspend fun ApplicationTestBuilder.fetchQueue(t: String, query: String = ""): JsonNode {
+        val r = client.call(HttpMethod.Get, "/review/queue$query", bearer = t)
+        assertEquals(200, r.status.value)
+        return r.json()
+    }
+
+    /** ADR-033: no learn-ahead; the waiting card is reported as `next_learning_due_at` and counted. */
+    @Test
+    fun aLearningCardNotYetDueIsNotServedButReportedAndCounted() = reviewApp {
+        val t = token()
+        val card = cardOf(note(t, "x"), "meaning")
+        assertEquals(200, answer(t, card, 4).status.value)
+        advance(60L * 24 * 40)
+        assertEquals(200, answer(t, card, 1).status.value)
+        assertEquals("relearning", cache(card)["state"])
+        val due = db.txBlocking { it.fetchOne("select (extract(epoch from due_at) * 1000)::bigint from app.card where id = ?::uuid", card)!!.get(0) as Number }.toLong()
+        assertEquals(syncNow.get().toEpochMilli() + 10 * 60_000L, due, "relearning step is 10 minutes")
+        for (q in listOf("", "?keep_going=true", "?kinds=review")) {
+            val r = fetchQueue(t, q)
+            assertEquals(0, r["items"].size(), q)
+            assertEquals(Instant.ofEpochMilli(due), Instant.parse(r["next_learning_due_at"].asText()), q)
+            assertEquals(1, r["counts"]["learning"].asInt(), q)
+        }
+        advance(9)
+        assertEquals(0, queueIds(t).size, "still not due 1 minute early")
+        advance(1)
+        val r = fetchQueue(t)
+        assertEquals(listOf(card), r["items"].map { it["card"]["id"].asText() })
+        assertTrue(!r.has("next_learning_due_at"))
+        assertEquals(1, r["counts"]["learning"].asInt())
+        assertEquals(1, fetchSummaryLearning(t))
+    }
+
+    private suspend fun ApplicationTestBuilder.fetchSummaryLearning(t: String): Int {
+        val r = client.call(HttpMethod.Get, "/stats/summary", bearer = t)
+        assertEquals(200, r.status.value)
+        return r.json()["due"]["learning"].asInt()
+    }
+
+    @Test
+    fun countsIgnoreKeepGoingWhileItemsStillServeNewCards() = reviewApp {
+        val t = token()
+        setting("scheduler.new_per_day", "1")
+        listOf("a", "b", "c").forEach { note(t, it) }
+        val first = fetchQueue(t)
+        assertEquals(200, answer(t, first["items"][0]["card"]["id"].asText(), 4).status.value)
+        val normal = fetchQueue(t)
+        val kg = fetchQueue(t, "?keep_going=true")
+        assertEquals(0, normal["items"].size())
+        assertTrue(kg["items"].size() > 0, "keep going still serves new cards")
+        assertEquals(normal["counts"], kg["counts"])
+        assertEquals(0, kg["counts"]["new"].asInt())
+        assertEquals(normal["counts"]["new"].asInt(), fetchSummaryNew(t))
+    }
+
+    private suspend fun ApplicationTestBuilder.fetchSummaryNew(t: String): Int =
+        client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()["due"]["new"].asInt()
+
+    @Test
+    fun aCardAnsweredAgainIsNotReturnedByTheNextFetch() = reviewApp {
+        val t = token()
+        val card = cardOf(note(t, "x"), "meaning")
+        assertEquals(listOf(card), queueIds(t))
+        assertEquals(200, answer(t, card, 1).status.value)
+        val r = fetchQueue(t)
+        assertEquals(0, r["items"].size(), "the only learning card is not due again yet")
+        assertEquals(1, r["counts"]["learning"].asInt())
+        assertTrue(r.has("next_learning_due_at"))
+        advance(2)
+        assertEquals(listOf(card), queueIds(t))
+    }
+
     /** C-26: `keep_going`, `more_available` in both empty cases, and `is_new`. */
     @Test
     fun keepGoingPassesTheNewLimitAndMoreAvailableTellsDoneFromOut() = reviewApp {
@@ -255,7 +327,7 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(2, moreIds.size, "one card per remaining note (siblings buried), past new_per_day")
         assertTrue(more["items"].all { it["is_new"].asBoolean() })
         assertEquals(false, more["more_available"].asBoolean())
-        assertEquals(2, more["counts"]["new"].asInt())
+        assertEquals(0, more["counts"]["new"].asInt(), "ADR-033: counts are the normal build's, not the keep-going batch")
         assertEquals(1, fetch("?keep_going=true&limit=1")["items"].size(), "the batch is limit")
         val noteOf = { id: String -> notesMade.first { n -> n["cards"].any { it["id"].asText() == id } }["id"].asText() }
         assertEquals(2, moreIds.map(noteOf).toSet().size)

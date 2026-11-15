@@ -128,18 +128,25 @@ internal class ReviewApi(
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour)
 
         val items = queue.items
-        // Learning cards due later today (outside learn-ahead) still count as remaining today.
-        val shown = items.mapTo(HashSet()) { it.cardId }
+        // ADR-033: counts always describe the normal build, so every client shows the same numbers; keep going only
+        // changes `items`. Same loaded input, no extra DB load.
+        val normal = if (r.keepGoing) {
+            builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = false)))
+        } else {
+            queue
+        }
+        val nItems = normal.items
+        val nShown = nItems.mapTo(HashSet()) { it.cardId }
         val laterLearning = loaded.candidates.count { c ->
-            c.cardId !in shown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
+            c.cardId !in nShown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
                 (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride !in BLOCKED &&
                 c.dueAt != null && c.dueAt!! < day.day.endMs
         }
         val counts = json.createObjectNode()
             // C-27: a drawn deck entry without a note yet is a new card still to introduce.
-            .put("new", items.count { it.kind == QueueItemKind.NEW } + queue.toMaterialize.size)
-            .put("learning", items.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
-            .put("review", items.count { it.kind == QueueItemKind.REVIEW })
+            .put("new", nItems.count { it.kind == QueueItemKind.NEW } + normal.toMaterialize.size)
+            .put("learning", nItems.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
+            .put("review", nItems.count { it.kind == QueueItemKind.REVIEW })
         fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
         val wanted = items.filter(::inKinds).take(r.limit)
         // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
@@ -159,7 +166,7 @@ internal class ReviewApi(
             wanted.associate { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" },
             nowMs, scheduler,
         )
-        return linkedMapOf(
+        val out = linkedMapOf<String, Any?>(
             "items" to rendered,
             "counts" to counts,
             "study_day" to day.date.toString(),
@@ -168,6 +175,9 @@ internal class ReviewApi(
             "more_available" to moreAvailable,
             "to_materialize" to if ("new" in kinds) queue.toMaterialize.size else 0,
         )
+        // ADR-033: omitted when no learning card is waiting later today.
+        queue.nextLearningDueAt?.let { out["next_learning_due_at"] = formatInstant(Instant.ofEpochMilli(it)) }
+        return out
     }
 
     suspend fun answer(call: ApplicationCall) {
