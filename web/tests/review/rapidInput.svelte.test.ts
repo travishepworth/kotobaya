@@ -20,7 +20,7 @@ vi.mock('../../src/lib/review/api', () => ({
 	settingsApi: {}
 }));
 
-import { ReviewPage } from '../../src/lib/state/review.svelte';
+import { ReviewPage, resetOutboxForTests } from '../../src/lib/state/review.svelte';
 
 const card = (id: string): QueueItem => ({ card: { id, presetId: 'p' }, reviewType: 'schedule' }) as unknown as QueueItem;
 const good = { rating: 3 } as never;
@@ -54,7 +54,10 @@ function setup(ids: string[]): { page: ReviewPage; sent: Sent[]; dispose: () => 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe('rapid review input', () => {
-	beforeEach(() => vi.resetAllMocks());
+	beforeEach(() => {
+		vi.resetAllMocks();
+		resetOutboxForTests();
+	});
 
 	it('reveal then an immediate grade click advances once and submits once', async () => {
 		const { page, sent, dispose } = setup(['a', 'b', 'c']);
@@ -166,6 +169,75 @@ describe('rapid review input', () => {
 		expect(api.undoReview).toHaveBeenCalledTimes(1);
 		expect(api.undoReview.mock.calls[0][0].reviewUndoRequest.reviewId).toBe(sentId);
 		expect(page.items.map((i) => i.card.id)).toEqual(['a', 'b']);
+		dispose();
+	});
+
+	it('a stale queue fetch resolving after a further tap does not bring back the answered card', async () => {
+		const { page, sent, dispose } = setup(['a', 'b', 'c']);
+		let resolveStale!: () => void;
+		api.getReviewQueue.mockImplementationOnce(
+			() =>
+				new Promise((res) => {
+					resolveStale = () => res({ items: ['a', 'b', 'c'].map(card), counts: null, dayEndsAt: new Date() });
+				})
+		);
+		page.flip();
+		void page.grade(good);
+		await settle(); // a recorded; the refresh is now hanging with the old list
+		page.flip();
+		void page.grade(good); // b tapped while it hangs
+		resolveStale();
+		await settle();
+		expect(page.items.map((i) => i.card.id)).toEqual(['c']);
+		expect(sent.map((x) => x.cardId)).toEqual(['a', 'b']);
+		dispose();
+	});
+
+	it('a page opened while an answer is in flight does not list that card again', async () => {
+		const first = setup(['a', 'b', 'c']);
+		let release!: () => void;
+		api.answerReview.mockImplementationOnce(
+			(req: { reviewAnswerRequest: Sent }) =>
+				new Promise((res) => {
+					release = () => {
+						first.sent.push({ cardId: req.reviewAnswerRequest.cardId, id: req.reviewAnswerRequest.id });
+						res({ review: { id: 'r' } });
+					};
+				})
+		);
+		first.page.flip();
+		void first.page.grade(good);
+		await settle();
+		first.dispose(); // left /review
+		let second!: ReviewPage;
+		const dispose2 = $effect.root(() => {
+			second = new ReviewPage();
+		});
+		api.getReviewQueue.mockResolvedValue({ items: ['a', 'b', 'c'].map(card), counts: null, dayEndsAt: new Date() });
+		await second.reload();
+		expect(second.items.map((i) => i.card.id)).toEqual(['b', 'c']);
+		release();
+		await settle();
+		dispose2();
+	});
+
+	it('a refresh keeps the card on screen, back showing', async () => {
+		const { page, dispose } = setup(['a', 'b', 'c']);
+		let resolveRefresh!: () => void;
+		api.getReviewQueue.mockImplementationOnce(
+			() =>
+				new Promise((res) => {
+					resolveRefresh = () => res({ items: ['x', 'b', 'c'].map(card), counts: null, dayEndsAt: new Date() });
+				})
+		);
+		page.flip();
+		void page.grade(good);
+		await settle(); // a recorded; the refresh hangs
+		page.flip(); // b's back is showing
+		resolveRefresh(); // a learning card x is now first on the server
+		await settle();
+		expect(page.items.map((i) => i.card.id)).toEqual(['b', 'x', 'c']);
+		expect(page.flipped).toBe(true);
 		dispose();
 	});
 });

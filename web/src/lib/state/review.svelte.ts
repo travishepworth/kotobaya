@@ -33,15 +33,91 @@ interface PendingAnswer {
 	item: QueueItem;
 	shownAt: number;
 	req: ReviewAnswerRequest;
+	/** The page that tapped it: it restores its own queue and history if the send fails. */
+	page: ReviewPage;
 	state: 'queued' | 'sending' | 'sent' | 'failed' | 'cancelled';
 	done: Promise<void>;
 	settle: () => void;
 }
 
 /**
+ * Answers tapped but not yet recorded. A module singleton, so they survive leaving /review and coming back
+ * (a new page must not list a card whose answer is still on its way), and so a tab close can be warned about.
+ */
+class Outbox {
+	pending: PendingAnswer[] = [];
+	tail: Promise<void> = Promise.resolve();
+	count = $state(0);
+	/** card id -> answer id of a failed submit, reused on the retry so a request that did land cannot double-log. */
+	readonly retryIds = new Map<string, string>();
+	private warning = false;
+
+	add(e: PendingAnswer): void {
+		this.pending.push(e);
+		this.sync();
+		if (!this.warning && typeof window !== 'undefined') {
+			this.warning = true;
+			window.addEventListener('beforeunload', (ev) => {
+				if (this.pending.length > 0) ev.preventDefault();
+			});
+		}
+	}
+
+	remove(es: PendingAnswer[]): void {
+		this.pending = this.pending.filter((e) => !es.includes(e));
+		this.sync();
+	}
+
+	hasCard(id: string): boolean {
+		return this.pending.some((e) => e.item.card.id === id);
+	}
+
+	private sync(): void {
+		this.count = this.pending.length;
+	}
+}
+
+const outbox = new Outbox();
+
+/** Test hook: forget all pending state. */
+export function resetOutboxForTests(): void {
+	outbox.pending = [];
+	outbox.tail = Promise.resolve();
+	outbox.count = 0;
+	outbox.retryIds.clear();
+}
+
+/**
  * The /review screen. Construct during component init (it registers an effect that resets the
  * per-card state whenever another card comes up), then call `start(drillSource)` from an effect.
  */
+async function Outbox_send(entry: PendingAnswer): Promise<void> {
+	if (entry.state !== 'queued') return; // withdrawn after an earlier failure, or undone before it was sent
+	entry.state = 'sending';
+	try {
+		const r = await reviewApi.answerReview({ reviewAnswerRequest: entry.req });
+		entry.state = 'sent';
+		outbox.remove([entry]);
+		entry.page.sent(entry, r.review.id);
+	} catch {
+		// The client toasted the error. Withdraw this tap and those queued behind it, each page puts its own back.
+		entry.state = 'failed';
+		const later = outbox.pending.slice(outbox.pending.indexOf(entry) + 1).filter((e) => e.state === 'queued');
+		for (const e of later) {
+			e.state = 'cancelled';
+			e.settle();
+		}
+		outbox.remove([entry, ...later]);
+		outbox.retryIds.set(entry.item.card.id, entry.answerId);
+		for (const pg of new Set([entry.page, ...later.map((e) => e.page)])) {
+			const mine = [entry, ...later].filter((e) => e.page === pg);
+			pg.restore(mine, mine.includes(entry) ? entry : null);
+		}
+	}
+	await entry.page.afterSend(); // no-op while more taps are queued behind this one
+	entry.settle();
+}
+
 export class ReviewPage {
 	loaded = $state(false);
 	/** The settings or the queue could not be loaded; the view offers `retry`. */
@@ -63,22 +139,19 @@ export class ReviewPage {
 	/** Drill source of the running session; null for the scheduled queue. Set by `start`. */
 	drillSource = $state<string | null>(null);
 	/** Answers tapped but not yet recorded by the server (the screen has already moved on). */
-	pendingCount = $state(0);
+	/** The queue could not be refreshed after the answers were recorded and nothing is left to show. */
+	refreshFailed = $state(false);
 	private shownAt = Date.now();
 	private lastCardId = '';
-	private pending: PendingAnswer[] = [];
-	private tail: Promise<void> = Promise.resolve();
 	/** Bumped on every local change to the queue; a queue fetch that started before it is stale and dropped. */
 	private epoch = 0;
-	/** card id -> answer id of a failed submit, reused on the retry so a request that did land cannot double-log. */
-	private readonly retryIds = new Map<string, string>();
 	private readonly utcOffsetMin = -new Date().getTimezoneOffset();
 
 	readonly isDrill = $derived(this.drillSource !== null);
 	readonly buttons = $derived<GradeButton[]>(this.fiveButtons ? BUTTONS_5 : BUTTONS_4);
 	readonly current = $derived<QueueItem | undefined>(this.items[0]);
 	/** Nothing to show yet, but answers are still being recorded: the queue will be refreshed when they are. */
-	readonly settling = $derived(this.pendingCount > 0 && !this.current);
+	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
 	readonly gradeKeys = $derived(this.fiveButtons ? '1-5' : '1-4');
 	readonly reviewTypeKey = $derived<ReviewMessageKey | null>(
 		this.current?.reviewType === 'drill'
@@ -147,7 +220,7 @@ export class ReviewPage {
 	/** If the card on screen is not the one the per-card state belongs to, reset that state. */
 	private syncCard(): void {
 		const id = this.current?.card.id ?? '';
-		if (id !== this.lastCardId) this.showCard(id, this.retryIds.get(id) ?? uuidv7(), false, Date.now());
+		if (id !== this.lastCardId) this.showCard(id, outbox.retryIds.get(id) ?? uuidv7(), false, Date.now());
 	}
 
 	private showCard(cardId: string, answerId: string, flipped: boolean, shownAt: number): void {
@@ -193,21 +266,35 @@ export class ReviewPage {
 		if (this.isDrill) return;
 		const epoch = this.epoch;
 		const q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT });
-		if (guard && (epoch !== this.epoch || this.pending.length > 0)) return;
-		this.items = q.items;
+		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return;
+		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
+		// (with its flip state); only what comes after it is replaced.
+		const fresh = q.items.filter((i) => !outbox.hasCard(i.card.id));
+		const cur = this.current;
+		this.items =
+			cur && fresh.some((i) => i.card.id === cur.card.id)
+				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
+				: fresh;
 		this.counts = q.counts;
 		this.dayEndsAt = q.dayEndsAt;
+		this.refreshFailed = false;
 		this.syncCard();
 	}
 
-	/** Refresh the queue and counts once no answer is in flight. Failures are toasted by the client. */
+	/** Refresh the queue and counts once no answer is in flight. */
 	private async refresh(): Promise<void> {
-		if (this.isDrill || this.pending.length > 0) return;
+		if (this.isDrill || outbox.pending.length > 0) return;
 		try {
 			await this.fetchQueue(true);
 		} catch {
-			/* toast shown; the local queue stays */
+			this.refreshFailed = true; // toast shown; the view offers a retry when there is nothing to show
 		}
+	}
+
+	/** Refresh once every queued answer (also those of an earlier visit) has been sent. */
+	private async refreshWhenIdle(): Promise<void> {
+		await outbox.tail;
+		await this.refresh();
 	}
 
 	private async fetchDrill(source: string): Promise<void> {
@@ -233,6 +320,7 @@ export class ReviewPage {
 				await this.loadStatic();
 				if (source !== null) await this.fetchDrill(source);
 				else await this.fetchQueue();
+				if (source === null && outbox.pending.length > 0) void this.refreshWhenIdle();
 			} catch {
 				this.loadFailed = true; // the client already toasted
 			} finally {
@@ -248,10 +336,11 @@ export class ReviewPage {
 
 	async reload(): Promise<void> {
 		this.busy = true;
+		this.refreshFailed = false;
 		try {
 			await this.fetchQueue();
 		} catch {
-			/* toast shown */
+			this.refreshFailed = true; // toast shown
 		} finally {
 			this.busy = false;
 		}
@@ -324,62 +413,46 @@ export class ReviewPage {
 				rating: b.rating,
 				...(b.button ? { button: b.button } : {}),
 				mode: item.reviewType === 'drill' || item.reviewType === 'cram' ? item.reviewType : 'schedule',
+				reviewedAt: new Date(),
 				durationMs: Math.max(0, Date.now() - this.shownAt),
 				utcOffsetMin: this.utcOffsetMin
 			},
+			page: this,
 			state: 'queued',
 			done,
 			settle
 		};
 		// Synchronously, before anything awaits: the card is gone and the next one is on its front.
-		this.retryIds.delete(item.card.id);
-		this.pending.push(entry);
-		this.pendingCount = this.pending.length;
+		outbox.retryIds.delete(item.card.id);
+		outbox.add(entry);
 		this.history = [...this.history, { reviewId: entry.answerId, item }];
 		this.items = this.items.slice(1);
 		this.epoch++;
 		this.newPress();
-		this.tail = this.tail.then(() => this.send(entry));
+		outbox.tail = outbox.tail.then(() => Outbox_send(entry));
 		return done;
 	}
 
-	private async send(entry: PendingAnswer): Promise<void> {
-		if (entry.state !== 'queued') return; // withdrawn after an earlier failure, or undone before it was sent
-		entry.state = 'sending';
-		try {
-			const r = await reviewApi.answerReview({ reviewAnswerRequest: entry.req });
-			entry.state = 'sent';
-			this.history = this.history.map((h) => (h.reviewId === entry.answerId ? { ...h, reviewId: r.review.id } : h));
-			this.dropPending(entry);
-		} catch {
-			// The client toasted the error. Put this card, and the taps queued behind it, back in order.
-			this.fail(entry);
-		}
-		await this.refresh(); // no-op while more taps are queued behind this one
-		entry.settle();
+	afterSend(): Promise<void> {
+		return this.refresh();
 	}
 
-	private dropPending(entry: PendingAnswer): void {
-		this.pending = this.pending.filter((e) => e !== entry);
-		this.pendingCount = this.pending.length;
+	/** The answer was recorded: its history entry now carries the server's review id. */
+	sent(entry: PendingAnswer, reviewId: string): void {
+		this.history = this.history.map((h) => (h.reviewId === entry.answerId ? { ...h, reviewId } : h));
 	}
 
-	private fail(entry: PendingAnswer): void {
-		entry.state = 'failed';
-		const later = this.pending.slice(this.pending.indexOf(entry) + 1).filter((e) => e.state === 'queued');
-		const withdrawn = [entry, ...later];
-		for (const e of later) {
-			e.state = 'cancelled';
-			e.settle();
-		}
-		this.pending = this.pending.filter((e) => !withdrawn.includes(e));
-		this.pendingCount = this.pending.length;
+	/**
+	 * A send failed: put these cards (the failed one first, then the taps withdrawn behind it) back at the
+	 * front in order. The failed card comes back on its back so the retry is one tap.
+	 */
+	restore(withdrawn: PendingAnswer[], failed: PendingAnswer | null): void {
 		const ids = new Set(withdrawn.map((e) => e.answerId));
 		this.history = this.history.filter((h) => !ids.has(h.reviewId));
 		this.items = [...withdrawn.map((e) => e.item), ...this.items];
 		this.epoch++;
-		this.retryIds.set(entry.item.card.id, entry.answerId);
-		this.showCard(entry.item.card.id, entry.answerId, true, entry.shownAt);
+		if (failed) this.showCard(failed.item.card.id, failed.answerId, true, failed.shownAt);
+		else this.syncCard();
 	}
 
 	async undo(): Promise<void> {
@@ -391,12 +464,12 @@ export class ReviewPage {
 		this.busy = true;
 		try {
 			let last = this.history[this.history.length - 1];
-			const entry = this.pending.find((e) => e.answerId === last.reviewId);
+			const entry = outbox.pending.find((e) => e.answerId === last.reviewId);
 			if (entry?.state === 'queued') {
 				// Never sent: withdraw it, nothing to undo on the server.
 				entry.state = 'cancelled';
 				entry.settle();
-				this.dropPending(entry);
+				outbox.remove([entry]);
 				this.history = this.history.slice(0, -1);
 				this.items = [last.item, ...this.items];
 				this.epoch++;

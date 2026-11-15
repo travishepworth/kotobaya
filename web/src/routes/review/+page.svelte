@@ -264,9 +264,9 @@
 					<Skeleton shape="text" count={2} />
 				</div>
 			</div>
-		{:else if s.loadFailed}
+		{:else if s.loadFailed || (s.refreshFailed && !s.current)}
 			<div class="finished">
-				<LoadError size="page" title={rv('rv.loadFailed')} onretry={() => s.retry()} />
+				<LoadError size="page" title={rv('rv.loadFailed')} onretry={() => (s.loadFailed ? s.retry() : void s.reload())} />
 			</div>
 		{:else if s.drillUnavailable}
 			<div class="finished">
