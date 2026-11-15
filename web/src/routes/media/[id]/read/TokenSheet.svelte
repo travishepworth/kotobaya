@@ -7,6 +7,8 @@
 	import Skeleton from '../../../../lib/ui/Skeleton.svelte';
 	import TextField from '../../../../lib/ui/TextField.svelte';
 	import { tr } from '../../../../lib/reader/messages';
+	import { WordCardsState } from '../../../../lib/state/wordCards.svelte';
+	import { pushToast } from '../../../../lib/toasts.svelte';
 	import { STATUS_ACTIONS, STATUS_VALUE, showEdit, TokenPopupState, type Sentence } from '../../../../lib/state/reader.svelte';
 
 	interface Props {
@@ -23,6 +25,15 @@
 		() => ({ onoverride, onstatus })
 	);
 	let open = $state(true);
+	const cards = new WordCardsState();
+	$effect(() => {
+		const seq = vm.token?.seq;
+		if (seq != null) void cards.load(seq);
+	});
+	async function toggleCards(seq: number): Promise<void> {
+		const was = cards.allSuspended;
+		if (await cards.toggle(seq)) pushToast(tr(was ? 'rd.cardsUnsuspended' : 'rd.cardsSuspended'), 'info');
+	}
 	let splitText = $state('1');
 	$effect(() => {
 		const n = Number(splitText);
@@ -46,8 +57,15 @@
 				<div class="acts">
 					<Button variant="primary" icon="plus" onclick={() => vm.mine()}>{tr('rd.mine')}</Button>
 					{#each STATUS_ACTIONS as k (k)}
-						<Button variant="outline" size="sm" onclick={() => vm.mark(STATUS_VALUE[k])}>{tr(k)}</Button>
+						{@const on = vm.entry.status === STATUS_VALUE[k]}
+						<Button variant={on ? 'tonal' : 'outline'} size="sm" icon={on ? 'check' : undefined} aria-pressed={on} onclick={() => vm.mark(STATUS_VALUE[k])}>{tr(k)}</Button>
 					{/each}
+					{#if cards.hasCards}
+						{@const seq = vm.entry.seq}
+						<Button variant="outline" size="sm" icon="pause" disabled={cards.busy} onclick={() => toggleCards(seq)}>
+							{tr(cards.allSuspended ? 'rd.unsuspendCards' : 'rd.suspendCards')}
+						</Button>
+					{/if}
 					<DictionaryLink look="text" seq={vm.entry.seq} />
 				</div>
 			{/if}
