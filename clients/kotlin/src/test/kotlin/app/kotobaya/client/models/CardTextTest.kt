@@ -33,7 +33,7 @@ class CardTextTest : ShouldSpec() {
         // uncomment below to create an instance of CardText
         //val modelInstance = CardText()
 
-        // to test the property `back` - The answer (what the back adds to the front). Clients show it only once revealed; it is always sent. May be empty.
+        // to test the property `back` - The answer (what the back adds to the front). Clients show it only once revealed; it is always sent. May be empty. It contains the reading where the kind reveals it, so a layout that prints `reading` separately should not also print the whole `back`.
         should("test back") {
             // uncomment below to test the property
             //modelInstance.back shouldBe ("TODO")
@@ -51,7 +51,7 @@ class CardTextTest : ShouldSpec() {
             //modelInstance.reading shouldBe ("TODO")
         }
 
-        // to test the property `sentence` - The note's `sentence` field (`[kanji]` mode) as front-safe context, for every base type except sentence; null when empty. Not part of `front` or `back` under built-in templates (a custom template may include it). Not the grammar cloze sentence.
+        // to test the property `sentence` - The context sentence the built-in front shows (the note's `sentence` field, `[kanji]` mode), for every base type except sentence; null when empty. Not part of `front` or `back` under built-in templates (a custom template may include it). Not the grammar cloze sentence.
         should("test sentence") {
             // uncomment below to test the property
             //modelInstance.sentence shouldBe ("TODO")

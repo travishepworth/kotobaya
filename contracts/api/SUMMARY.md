@@ -498,8 +498,10 @@ attempt 1 is gone). Needs node and python3; network on first run.
 
 - `QueueItem.text` (`CardText`: `front`, `back`, `reading`, `sentence`), filled by the server
   with the core's `DefaultCardTextRenderer` (contract: `core/.../contracts/render/CardTextRenderer.kt`)
-  for every item of `getReviewQueue` and `createDrillSession`. Optional on the wire (older
-  servers omit it); `reading`/`sentence` are required-nullable inside `CardText`.
+  for every item of `getReviewQueue` and `createDrillSession` whose note type the server can
+  render. Optional on the wire: omitted for an item with an unknown note type (the item is
+  still returned, no error) and by older servers; `reading`/`sentence` are required-nullable
+  inside `CardText`.
 - Per-kind rules are a table (front lines / back lines per built-in base type and kind); custom
   templates and unknown kinds fall back to the text of the HTML render (only the fallback drops
   back lines that repeat the front, i.e. `{{FrontSide}}`). The fronts ask the same question as

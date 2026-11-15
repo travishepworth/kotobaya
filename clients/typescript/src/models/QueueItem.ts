@@ -115,9 +115,13 @@ export interface QueueItem {
      * core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML
      * renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`,
      * `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients
-     * (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every
-     * item from servers that implement it (both `getReviewQueue` and `createDrillSession`);
-     * absent from older servers, which clients treat as "no text" (show counts only).
+     * (the CLI daemon, desktop widgets) that must not re-implement rendering. Servers that
+     * implement it send it on every item (both `getReviewQueue` and `createDrillSession`)
+     * whose note type they can render. Absent when the item's note type is unknown to the
+     * server (its note-type row is missing and `card.note.type` is not a built-in base type;
+     * the item is still returned, never an error) and on every item from older servers. Clients treat an absent `text` as
+     * "no text" for that item (show counts only) and must not infer the server's version
+     * from it.
      * 
      */
     text?: CardText;
