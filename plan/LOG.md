@@ -1059,3 +1059,4 @@
 2026-11-15T00:59:11Z QA-0114 phone reviews: tap->next card 0.1-1.6 ms, paint 36-71 ms, commit ~15 ms bg; ~20 answers, no crash. Web 0.1.12: 126 requests all 200 (cards/notes/dict/search/kanji). Only /meta probe reports
 2026-11-15T01:08:08Z DICT freq_lists jpdb (Kuuuube v2.2 kana), bccwj (SUW+LUW), cejc (everyday conversation; Netflix had no pinnable source) pinned in values; helm rev 20; dict-refresh 01a1dcbf queued
 2026-11-15T01:15:36Z WEB-PRIO DISPATCH writer-light (web decks list sorted desc + labels say higher-first; queue is lower-first)
+2026-11-15T01:17:34Z WEB-REVIEW-FAST DISPATCH writer (web review reverts to Show answer on fast double click)
