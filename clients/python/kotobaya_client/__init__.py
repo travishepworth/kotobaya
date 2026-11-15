@@ -73,6 +73,7 @@ __all__ = [
     "CardState",
     "CardSuspendedSchema",
     "CardTemplate",
+    "CardText",
     "CardUnburiedSchema",
     "CardUnsuspendedSchema",
     "ClientErrorItem",
@@ -389,6 +390,7 @@ from kotobaya_client.models.card_preset_set_schema import CardPresetSetSchema as
 from kotobaya_client.models.card_state import CardState as CardState
 from kotobaya_client.models.card_suspended_schema import CardSuspendedSchema as CardSuspendedSchema
 from kotobaya_client.models.card_template import CardTemplate as CardTemplate
+from kotobaya_client.models.card_text import CardText as CardText
 from kotobaya_client.models.card_unburied_schema import CardUnburiedSchema as CardUnburiedSchema
 from kotobaya_client.models.card_unsuspended_schema import CardUnsuspendedSchema as CardUnsuspendedSchema
 from kotobaya_client.models.client_error_item import ClientErrorItem as ClientErrorItem

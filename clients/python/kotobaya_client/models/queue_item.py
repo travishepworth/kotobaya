@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from kotobaya_client.models.card import Card
+from kotobaya_client.models.card_text import CardText
 from kotobaya_client.models.dict_entry import DictEntry
 from kotobaya_client.models.grammar_card_sentence import GrammarCardSentence
 from kotobaya_client.models.kanji import Kanji
@@ -40,7 +41,8 @@ class QueueItem(BaseModel):
     preview: Optional[SchedulePreview] = Field(description="Null for drill and cram items.")
     review_type: StrictStr = Field(description="Review type an answer will be logged with.")
     sentence: Optional[Sentence] = Field(description="Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null, and null when `grammar_sentence` is null.")
-    __properties: ClassVar[List[str]] = ["card", "entry", "grammar_sentence", "kanji", "preview", "review_type", "sentence"]
+    text: Optional[CardText] = Field(default=None, description="ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every item from servers that implement it (both `getReviewQueue` and `createDrillSession`); absent from older servers, which clients treat as \"no text\" (show counts only). ")
+    __properties: ClassVar[List[str]] = ["card", "entry", "grammar_sentence", "kanji", "preview", "review_type", "sentence", "text"]
 
     @field_validator('review_type')
     def review_type_validate_enum(cls, value):
@@ -106,6 +108,9 @@ class QueueItem(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of sentence
         if self.sentence:
             _dict['sentence'] = self.sentence.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of text
+        if self.text:
+            _dict['text'] = self.text.to_dict()
         # set to None if entry (nullable) is None
         # and model_fields_set contains the field
         if self.entry is None and "entry" in self.model_fields_set:
@@ -149,7 +154,8 @@ class QueueItem(BaseModel):
             "kanji": Kanji.from_dict(obj["kanji"]) if obj.get("kanji") is not None else None,
             "preview": SchedulePreview.from_dict(obj["preview"]) if obj.get("preview") is not None else None,
             "review_type": obj.get("review_type"),
-            "sentence": Sentence.from_dict(obj["sentence"]) if obj.get("sentence") is not None else None
+            "sentence": Sentence.from_dict(obj["sentence"]) if obj.get("sentence") is not None else None,
+            "text": CardText.from_dict(obj["text"]) if obj.get("text") is not None else None
         })
         return _obj
 

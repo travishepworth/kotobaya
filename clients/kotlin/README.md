@@ -391,6 +391,7 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.CardPatch](docs/CardPatch.md)
  - [app.kotobaya.client.models.CardState](docs/CardState.md)
  - [app.kotobaya.client.models.CardTemplate](docs/CardTemplate.md)
+ - [app.kotobaya.client.models.CardText](docs/CardText.md)
  - [app.kotobaya.client.models.Cardburiedschema](docs/Cardburiedschema.md)
  - [app.kotobaya.client.models.Cardcreatedschema](docs/Cardcreatedschema.md)
  - [app.kotobaya.client.models.Carddeletedschema](docs/Carddeletedschema.md)

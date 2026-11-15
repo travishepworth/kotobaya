@@ -8,7 +8,10 @@ import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.PresetRow
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.dict.SearchText
+import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.grammar.cards.GrammarCardSentenceSource
+import kotobaya.notes.NoteViews
+import kotobaya.notes.toNoteTypeInfo
 import kotobaya.server.formatInstant
 import kotobaya.server.json
 import org.jooq.DSLContext
@@ -81,6 +84,8 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
     fun items(cards: List<String>, reviewTypes: Map<String, String>, nowMs: Long, scheduler: Scheduler): List<ObjectNode> {
         val views = cards(cards)
         val presets = if (reviewTypes.values.any { it == "scheduled" || it == "learning" }) loadPresets(dsl) else emptyMap()
+        val noteViews = NoteViews(dsl)
+        val noteTypes = HashMap<String, NoteTypeInfo?>()
         return cards.mapNotNull { id ->
             val v = views[id] ?: return@mapNotNull null
             val type = reviewTypes[id] ?: "learning"
@@ -96,6 +101,9 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.set<JsonNode>("sentence", picked?.first ?: json.nullNode())
             if (grammarCloze) item.set<JsonNode>("grammar_sentence", picked?.second ?: json.nullNode())
             item.put("review_type", type)
+            // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client.
+            val info = noteTypes.getOrPut(v.noteType) { noteViews.noteType(v.noteType)?.toNoteTypeInfo() }
+            item.set<JsonNode>("text", QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"]))
             if (type == "drill" || type == "cram") {
                 item.putNull("preview")
             } else {

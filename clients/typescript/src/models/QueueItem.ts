@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CardText } from './CardText';
+import {
+    CardTextFromJSON,
+    CardTextFromJSONTyped,
+    CardTextToJSON,
+    CardTextToJSONTyped,
+} from './CardText';
 import type { SchedulePreview } from './SchedulePreview';
 import {
     SchedulePreviewFromJSON,
@@ -103,6 +110,17 @@ export interface QueueItem {
      * Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null, and null when `grammar_sentence` is null.
      */
     sentence: Sentence | null;
+    /**
+     * ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared
+     * core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML
+     * renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`,
+     * `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients
+     * (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every
+     * item from servers that implement it (both `getReviewQueue` and `createDrillSession`);
+     * absent from older servers, which clients treat as "no text" (show counts only).
+     * 
+     */
+    text?: CardText;
 }
 
 
@@ -147,6 +165,7 @@ export function QueueItemFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'preview': SchedulePreviewFromJSON(json['preview']),
         'reviewType': json['review_type'],
         'sentence': SentenceFromJSON(json['sentence']),
+        'text': json['text'] == null ? undefined : CardTextFromJSON(json['text']),
     };
 }
 
@@ -168,6 +187,7 @@ export function QueueItemToJSONTyped(value?: QueueItem | null, ignoreDiscriminat
         'preview': SchedulePreviewToJSON(value['preview']),
         'review_type': value['reviewType'],
         'sentence': SentenceToJSON(value['sentence']),
+        'text': CardTextToJSON(value['text']),
     };
 }
 

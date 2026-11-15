@@ -27,6 +27,7 @@ docs/CardPresetSetSchema.md
 docs/CardState.md
 docs/CardSuspendedSchema.md
 docs/CardTemplate.md
+docs/CardText.md
 docs/CardUnburiedSchema.md
 docs/CardUnsuspendedSchema.md
 docs/CardsApi.md
@@ -351,6 +352,7 @@ src/models/CardPresetSetSchema.ts
 src/models/CardState.ts
 src/models/CardSuspendedSchema.ts
 src/models/CardTemplate.ts
+src/models/CardText.ts
 src/models/CardUnburiedSchema.ts
 src/models/CardUnsuspendedSchema.ts
 src/models/ClientErrorItem.ts

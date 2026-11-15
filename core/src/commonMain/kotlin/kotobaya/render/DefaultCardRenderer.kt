@@ -224,31 +224,8 @@ public object DefaultCardRenderer : CardRenderer {
         fun value(key: String): String = resolve(key).first
 
         /** [value] with where it came from. */
-        private fun resolve(key: String): Pair<String, FieldSource> {
-            val raw = input.fields[key] ?: ""
-            if (raw.isNotBlank()) return raw to FieldSource.NOTE
-            val d = input.dictionary
-            if (d != null) {
-                val filled = when (key) {
-                    "expression" -> d.expression
-                    "reading" -> Furigana.bracketOf(d)
-                    "meaning" -> d.glosses.joinToString("; ")
-                    else -> ""
-                }
-                if (filled.isNotBlank()) return escapeHtml(filled) to FieldSource.DICTIONARY
-            }
-            val k = input.kanji
-            if (k != null && input.noteType.baseType == NoteBaseType.KANJI) {
-                val filled = when (key) {
-                    "literal" -> k.literal
-                    "keyword" -> k.meanings.joinToString("; ")
-                    "readings" -> (k.onyomi + k.kunyomi).joinToString("、")
-                    else -> ""
-                }
-                if (filled.isNotBlank()) return escapeHtml(filled) to FieldSource.KANJI
-            }
-            return raw to FieldSource.EMPTY
-        }
+        private fun resolve(key: String): Pair<String, FieldSource> =
+            resolveField(input.fields, input.dictionary, input.kanji, input.noteType.baseType, key)
 
         private fun pitch(): String {
             val d = input.dictionary ?: return ""
@@ -283,6 +260,40 @@ public object DefaultCardRenderer : CardRenderer {
                 else -> unknown()
             }
         }
+    }
+
+    /**
+     * A field's value as an HTML fragment and where it came from (shared with [DefaultCardTextRenderer]): a non-blank
+     * note value wins; else the dictionary fill (`expression`, `reading`, `meaning`); else, for kanji notes, the kanji fill.
+     */
+    internal fun resolveField(
+        fields: Map<String, String>,
+        dictionary: DictionaryData?,
+        kanji: KanjiData?,
+        baseType: NoteBaseType,
+        key: String,
+    ): Pair<String, FieldSource> {
+        val raw = fields[key] ?: ""
+        if (raw.isNotBlank()) return raw to FieldSource.NOTE
+        if (dictionary != null) {
+            val filled = when (key) {
+                "expression" -> dictionary.expression
+                "reading" -> Furigana.bracketOf(dictionary)
+                "meaning" -> dictionary.glosses.joinToString("; ")
+                else -> ""
+            }
+            if (filled.isNotBlank()) return escapeHtml(filled) to FieldSource.DICTIONARY
+        }
+        if (kanji != null && baseType == NoteBaseType.KANJI) {
+            val filled = when (key) {
+                "literal" -> kanji.literal
+                "keyword" -> kanji.meanings.joinToString("; ")
+                "readings" -> (kanji.onyomi + kanji.kunyomi).joinToString("、")
+                else -> ""
+            }
+            if (filled.isNotBlank()) return escapeHtml(filled) to FieldSource.KANJI
+        }
+        return raw to FieldSource.EMPTY
     }
 
     private val SPAN_PARTS = setOf("blank", "answer", "spot")

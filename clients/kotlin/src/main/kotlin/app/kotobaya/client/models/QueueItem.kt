@@ -24,6 +24,7 @@
 package app.kotobaya.client.models
 
 import app.kotobaya.client.models.Card
+import app.kotobaya.client.models.CardText
 import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.GrammarCardSentence
 import app.kotobaya.client.models.Kanji
@@ -42,6 +43,7 @@ import com.google.gson.annotations.SerializedName
  * @param sentence Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null, and null when `grammar_sentence` is null.
  * @param grammarSentence C-15 (additive). The example sentence and span to show for a card of a grammar note (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0 first). Null for all other cards, and for grammar cards with no usable candidate. Absent (older server) is treated as null. The rules are on `GrammarCardSentence`.  Clients pass it to the core renderer unchanged as `RenderInput.cloze` / `JsRenderInput.cloze` (`sentence_id` → `sentenceId`, `text`, `start_offset` → `start`, `end_offset` → `end`, `translation`), keep showing it for the whole showing of this item (front, back, undo of a later card, redisplay), and send `sentence_id` back as `ReviewAnswerRequest.sentence_id`. When it is null for a grammar card, they render with `cloze = null` (the renderer emits the `missing_cloze` warning) and SHOULD show an i18n \"no example sentence yet\" notice with the point's pattern. 
  * @param kanji For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null.
+ * @param text ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every item from servers that implement it (both `getReviewQueue` and `createDrillSession`); absent from older servers, which clients treat as \"no text\" (show counts only). 
  */
 
 
@@ -73,7 +75,11 @@ data class QueueItem (
 
     /* For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null. */
     @SerializedName("kanji")
-    val kanji: Kanji? = null
+    val kanji: Kanji? = null,
+
+    /* ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every item from servers that implement it (both `getReviewQueue` and `createDrillSession`); absent from older servers, which clients treat as \"no text\" (show counts only).  */
+    @SerializedName("text")
+    val text: CardText? = null
 
 ) {
 

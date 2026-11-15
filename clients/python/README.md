@@ -456,6 +456,7 @@ Class | Method | HTTP request | Description
  - [CardState](docs/CardState.md)
  - [CardSuspendedSchema](docs/CardSuspendedSchema.md)
  - [CardTemplate](docs/CardTemplate.md)
+ - [CardText](docs/CardText.md)
  - [CardUnburiedSchema](docs/CardUnburiedSchema.md)
  - [CardUnsuspendedSchema](docs/CardUnsuspendedSchema.md)
  - [ClientErrorItem](docs/ClientErrorItem.md)

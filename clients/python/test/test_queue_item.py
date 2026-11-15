@@ -215,7 +215,12 @@ class TestQueueItem(unittest.TestCase):
                     tokens = [
                         { }
                         ], 
-                    unknown_count = 0, )
+                    unknown_count = 0, ),
+                text = kotobaya_client.models.card_text.CardText(
+                    back = '', 
+                    front = '', 
+                    reading = '0', 
+                    sentence = '0', )
             )
         else:
             return QueueItem(

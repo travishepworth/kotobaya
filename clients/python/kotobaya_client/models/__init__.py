@@ -36,6 +36,7 @@ from kotobaya_client.models.card_preset_set_schema import CardPresetSetSchema
 from kotobaya_client.models.card_state import CardState
 from kotobaya_client.models.card_suspended_schema import CardSuspendedSchema
 from kotobaya_client.models.card_template import CardTemplate
+from kotobaya_client.models.card_text import CardText
 from kotobaya_client.models.card_unburied_schema import CardUnburiedSchema
 from kotobaya_client.models.card_unsuspended_schema import CardUnsuspendedSchema
 from kotobaya_client.models.client_error_item import ClientErrorItem

@@ -49,7 +49,8 @@ class TestReviewQueue(unittest.TestCase):
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 
-                        sentence = null, )
+                        sentence = null, 
+                        text = null, )
                     ],
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date()
             )
@@ -69,7 +70,8 @@ class TestReviewQueue(unittest.TestCase):
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 
-                        sentence = null, )
+                        sentence = null, 
+                        text = null, )
                     ],
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),
         )

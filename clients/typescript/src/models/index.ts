@@ -23,6 +23,7 @@ export * from './CardPresetSetSchema';
 export * from './CardState';
 export * from './CardSuspendedSchema';
 export * from './CardTemplate';
+export * from './CardText';
 export * from './CardUnburiedSchema';
 export * from './CardUnsuspendedSchema';
 export * from './ClientErrorItem';

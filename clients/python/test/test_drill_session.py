@@ -44,7 +44,8 @@ class TestDrillSession(unittest.TestCase):
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 
-                        sentence = null, )
+                        sentence = null, 
+                        text = null, )
                     ],
                 mode = 'drill'
             )
@@ -59,7 +60,8 @@ class TestDrillSession(unittest.TestCase):
                         kanji = null, 
                         preview = null, 
                         review_type = 'scheduled', 
-                        sentence = null, )
+                        sentence = null, 
+                        text = null, )
                     ],
                 mode = 'drill',
         )

@@ -14,6 +14,7 @@ Name | Type
 `preview` | [SchedulePreview](SchedulePreview.md)
 `reviewType` | string
 `sentence` | [Sentence](Sentence.md)
+`text` | [CardText](CardText.md)
 
 ## Example
 
@@ -29,6 +30,7 @@ const example = {
   "preview": null,
   "reviewType": null,
   "sentence": null,
+  "text": null,
 } satisfies QueueItem
 
 console.log(example)

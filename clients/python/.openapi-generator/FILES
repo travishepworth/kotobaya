@@ -29,6 +29,7 @@ docs/CardPresetSetSchema.md
 docs/CardState.md
 docs/CardSuspendedSchema.md
 docs/CardTemplate.md
+docs/CardText.md
 docs/CardUnburiedSchema.md
 docs/CardUnsuspendedSchema.md
 docs/CardsApi.md
@@ -358,6 +359,7 @@ kotobaya_client/models/card_preset_set_schema.py
 kotobaya_client/models/card_state.py
 kotobaya_client/models/card_suspended_schema.py
 kotobaya_client/models/card_template.py
+kotobaya_client/models/card_text.py
 kotobaya_client/models/card_unburied_schema.py
 kotobaya_client/models/card_unsuspended_schema.py
 kotobaya_client/models/client_error_item.py
@@ -645,6 +647,7 @@ test/test_card_preset_set_schema.py
 test/test_card_state.py
 test/test_card_suspended_schema.py
 test/test_card_template.py
+test/test_card_text.py
 test/test_card_unburied_schema.py
 test/test_card_unsuspended_schema.py
 test/test_cards_api.py

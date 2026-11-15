@@ -26,6 +26,7 @@ docs/CardPresetSetSchema.md
 docs/CardState.md
 docs/CardSuspendedSchema.md
 docs/CardTemplate.md
+docs/CardText.md
 docs/CardUnburiedSchema.md
 docs/CardUnsuspendedSchema.md
 docs/CardsApi.md
@@ -355,6 +356,7 @@ src/main/kotlin/app/kotobaya/client/models/CardPage.kt
 src/main/kotlin/app/kotobaya/client/models/CardPatch.kt
 src/main/kotlin/app/kotobaya/client/models/CardState.kt
 src/main/kotlin/app/kotobaya/client/models/CardTemplate.kt
+src/main/kotlin/app/kotobaya/client/models/CardText.kt
 src/main/kotlin/app/kotobaya/client/models/Cardburiedschema.kt
 src/main/kotlin/app/kotobaya/client/models/Cardcreatedschema.kt
 src/main/kotlin/app/kotobaya/client/models/Carddeletedschema.kt
@@ -662,6 +664,7 @@ src/test/kotlin/app/kotobaya/client/models/CardStateTest.kt
 src/test/kotlin/app/kotobaya/client/models/CardSuspendedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/CardTemplateTest.kt
 src/test/kotlin/app/kotobaya/client/models/CardTest.kt
+src/test/kotlin/app/kotobaya/client/models/CardTextTest.kt
 src/test/kotlin/app/kotobaya/client/models/CardUnburiedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/CardUnsuspendedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/ClientErrorItemTest.kt

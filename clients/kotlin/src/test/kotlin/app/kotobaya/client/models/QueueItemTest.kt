@@ -28,6 +28,7 @@ import io.kotlintest.specs.ShouldSpec
 
 import app.kotobaya.client.models.QueueItem
 import app.kotobaya.client.models.Card
+import app.kotobaya.client.models.CardText
 import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.GrammarCardSentence
 import app.kotobaya.client.models.Kanji
@@ -79,6 +80,12 @@ class QueueItemTest : ShouldSpec() {
         should("test kanji") {
             // uncomment below to test the property
             //modelInstance.kanji shouldBe ("TODO")
+        }
+
+        // to test the property `text` - ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every item from servers that implement it (both `getReviewQueue` and `createDrillSession`); absent from older servers, which clients treat as \"no text\" (show counts only). 
+        should("test text") {
+            // uncomment below to test the property
+            //modelInstance.text shouldBe ("TODO")
         }
 
     }

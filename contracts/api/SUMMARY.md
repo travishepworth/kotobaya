@@ -493,3 +493,23 @@ attempt 1 is gone). Needs node and python3; network on first run.
 - `JobResultDeckBuild` gains `list_key`, `changed`, `unmatched`; `JobResultDictRefresh` gains
   `vocab_lists` (per-list row accounting). No new operation; `deck-build` semantics and the
   internal `deck-publish` hand-off are in `contracts/db/VOCAB_LISTS.md`.
+
+## ARCH-CARD-TEXT changes (additive): plain-text card render on `QueueItem`
+
+- `QueueItem.text` (`CardText`: `front`, `back`, `reading`, `sentence`), filled by the server
+  with the core's `DefaultCardTextRenderer` (contract: `core/.../contracts/render/CardTextRenderer.kt`)
+  for every item of `getReviewQueue` and `createDrillSession`. Optional on the wire (older
+  servers omit it); `reading`/`sentence` are required-nullable inside `CardText`.
+- Per-kind rules are a table (front lines / back lines per built-in base type and kind); custom
+  templates and unknown kinds fall back to the text of the HTML render. `back` never repeats a
+  front line, so a widget can print `front` then `back`.
+- Dictionary data on the server is built from the item's `entry` like the web review screen:
+  headword, headword reading, every gloss of every sense in order, pitch of the headword reading.
+- No DB change, no sync op, no learning-data table touched; cross-check table unchanged.
+- Rejected: client-side text rendering in Python (CLI-DAEMON forbids re-implementing rendering);
+  stripping the HTML render for every kind (the back repeats the front, the pitch is spans, the
+  cloze blank is markup); exposing render warnings on the wire (i18n keys for UIs only).
+- Worth a second look: (1) `back` includes the reading line, so `reading` duplicates it — a
+  layout showing both must pick one; (2) pitch notation `ꜜ` after the downstep mora, heiban
+  unmarked; (3) all senses' glosses (web) rather than first-sense only (Android's offline fill),
+  so long entries give a long `meaning` line.

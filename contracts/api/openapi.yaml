@@ -8887,6 +8887,91 @@ components:
           - $ref: '#/components/schemas/SchedulePreview'
           - type: 'null'
           description: Null for drill and cram items.
+        text:
+          $ref: '#/components/schemas/CardText'
+          description: |
+            ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared
+            core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML
+            renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`,
+            `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients
+            (the CLI daemon, desktop widgets) that must not re-implement rendering. Present on every
+            item from servers that implement it (both `getReviewQueue` and `createDrillSession`);
+            absent from older servers, which clients treat as "no text" (show counts only).
+    CardText:
+      type: object
+      description: |
+        ARCH-CARD-TEXT. Plain-text render of one card. No HTML, entities or markup; lines are
+        separated by `\n` (U+000A) and no line is empty or has leading/trailing spaces. Normative
+        rules are the KDoc of `kotobaya.contracts.render.CardTextRenderer` (core); summary:
+
+        **Text of a field**: the value resolved exactly as for the HTML render (a non-blank note
+        field wins, else the dictionary fill for `expression` / `reading` / `meaning`, else for kanji
+        notes the kanji fill for `literal` / `keyword` / `readings`), furigana off, tags removed,
+        entities decoded, audio and images dropped; `<br>`, `<hr>` and `div p ul ol li` boundaries
+        are line breaks. Bracket furigana `漢字[かんじ]`: `[kanji]` mode keeps the base, `[kana]`
+        mode the reading; other fields keep the brackets as typed.
+
+        **Per kind** (built-in templates; front → back):
+        | base / kind | front | back |
+        |---|---|---|
+        | vocab, phrase / meaning; vocab / reading | expression[kanji] | reading[kana], meaning |
+        | vocab, phrase / listening | (empty) | expression[kanji], reading[kana], meaning |
+        | vocab, phrase / production | meaning | expression[kanji], reading[kana] |
+        | vocab / pitch | expression[kanji] | pitch line (`たべꜜもの`; several patterns joined by ` / `), else reading[kana] |
+        | kanji / keyword | literal | keyword, readings |
+        | kanji / writing | keyword | literal, readings |
+        | kanji / components | literal | notes |
+        | grammar / cloze | sentence with the span as `＿＿＿`, translation | sentence with the span in `【】`, pattern, meaning, translation |
+        | grammar / spot | sentence | sentence with the span in `【】`, pattern, meaning, translation |
+        | grammar / recognition | pattern | meaning |
+        | grammar / production | meaning | pattern |
+        | sentence / comprehension | sentence[kanji] | reading[kana], translation |
+        | sentence / listening | (empty) | sentence[kanji], reading[kana], translation |
+        | custom / basic | front | back |
+
+        Each cell is one or more lines; empty values contribute none. A back line equal to a front
+        line or to an earlier back line is omitted (a kana-only word shows no reading line). The
+        grammar sentence and translation are `QueueItem.grammar_sentence`; when it is null, front
+        = pattern and back = meaning. A kind with a custom template (or not in the table) is the
+        text of the HTML render: front = its front, back = its back minus lines already on the front.
+      required:
+      - front
+      - back
+      - reading
+      - sentence
+      properties:
+        front:
+          type: string
+          description: The question. Empty iff it has no text (audio-only `listening` fronts, or an empty note);
+            clients then show their own placeholder (e.g. "listening card").
+          examples:
+          - 食べ物
+        back:
+          type: string
+          description: The answer (what the back adds to the front). Clients show it only once revealed; it is
+            always sent. May be empty.
+          examples:
+          - "たべもの\nfood; provisions"
+        reading:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          description: The kana reading (`reading[kana]` of vocab, phrase and sentence notes) or the readings of a
+            kanji note (`readings`); null when empty and for grammar and custom notes. Answer-side information,
+            already contained in `back` where the kind shows it; for layouts that place it separately.
+          examples:
+          - たべもの
+        sentence:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          description: The note's `sentence` field (`[kanji]` mode) as front-safe context, for every base type
+            except sentence; null when empty. Not part of `front` or `back` under built-in templates (a custom
+            template may include it). Not the grammar cloze sentence.
+          examples:
+          - 美味しい食べ物
     GrammarCardSentence:
       type: object
       description: |
@@ -13799,6 +13884,11 @@ components:
             easy:
               due_at: '2027-01-09T09:30:00.000Z'
               interval_days: 58
+          text:
+            front: 食べる
+            back: "たべる\nto eat; to live on (e.g. a salary); to subsist on"
+            reading: たべる
+            sentence: パンを食べる
         - card:
             id: 01931f40-1a2b-7c3d-8e4f-000000000c09
             note_id: 01931f40-1a2b-7c3d-8e4f-000000000a09
@@ -13942,6 +14032,11 @@ components:
             easy:
               due_at: '2026-12-28T09:30:00.000Z'
               interval_days: 46
+          text:
+            front: ＿＿＿。
+            back: "【行かざるを得ない】。\n〜ざるを得ない\ncannot help but; have no choice but to"
+            reading: null
+            sentence: null
         counts:
           new: 8
           learning: 3
