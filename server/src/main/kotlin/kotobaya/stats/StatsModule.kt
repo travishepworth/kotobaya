@@ -113,7 +113,8 @@ class StatsModule(
             val settings = ReviewSettings.load(dsl)
             val day = todayOf(settings, nowMs)
             val loaded = QueueLoader(dsl).load(nowMs, settings)
-            val items = builder.build(loaded.input).items
+            val built = builder.build(loaded.input)
+            val items = built.items
             val shown = items.mapTo(HashSet()) { it.cardId }
             val laterLearning = loaded.candidates.count { c ->
                 c.cardId !in shown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
@@ -157,6 +158,8 @@ class StatsModule(
                 ),
                 "streak_days" to streak,
                 "next_due_at" to next?.let { formatInstant(Instant.ofEpochMilli(it.toLong())) },
+                // C-26: the core signal of the same normal build behind `due` (Today page Keep going).
+                "more_available" to built.moreAvailable,
             )
         }
         call.respondJson(body)

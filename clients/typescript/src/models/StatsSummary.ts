@@ -54,6 +54,17 @@ export interface StatsSummary {
      */
     due: StatsSummaryDue;
     /**
+     * C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered
+     * normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the
+     * normal queue is empty and a keep-going queue would not be (the core's
+     * `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep
+     * going without an extra queue call. As there, true may mean only that the per-session
+     * new-card cap is reached ("done for now", not necessarily "done for today"). Servers
+     * implementing C-26 always send it; absent (older server) is treated as false.
+     * 
+     */
+    moreAvailable?: boolean;
+    /**
      * Earliest `due_at` in the future among live unsuspended cards; null if none.
      */
     nextDueAt: Date | null;
@@ -98,6 +109,7 @@ export function StatsSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'dayEndsAt': (json['day_ends_at'] == null ? json['day_ends_at'] : parseDateTime(json['day_ends_at'])),
         'doneToday': StatsSummaryDoneTodayFromJSON(json['done_today']),
         'due': StatsSummaryDueFromJSON(json['due']),
+        'moreAvailable': json['more_available'] == null ? undefined : json['more_available'],
         'nextDueAt': (json['next_due_at'] == null ? null : parseDateTime(json['next_due_at'])),
         'streakDays': json['streak_days'],
         'studyDay': (json['study_day'] == null ? json['study_day'] : parseDate(json['study_day'])),
@@ -119,6 +131,7 @@ export function StatsSummaryToJSONTyped(value?: StatsSummary | null, ignoreDiscr
         'day_ends_at': value['dayEndsAt'] == null ? value['dayEndsAt'] : serializeDateTime(value['dayEndsAt']),
         'done_today': StatsSummaryDoneTodayToJSON(value['doneToday']),
         'due': StatsSummaryDueToJSON(value['due']),
+        'more_available': value['moreAvailable'],
         'next_due_at': value['nextDueAt'] == null ? value['nextDueAt'] : serializeDateTime(value['nextDueAt']),
         'streak_days': value['streakDays'],
         'study_day': value['studyDay'] == null ? value['studyDay'] : serializeDate(value['studyDay']),

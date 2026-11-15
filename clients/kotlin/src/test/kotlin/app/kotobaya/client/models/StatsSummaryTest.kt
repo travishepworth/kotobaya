@@ -78,5 +78,11 @@ class StatsSummaryTest : ShouldSpec() {
             //modelInstance.totals shouldBe ("TODO")
         }
 
+        // to test the property `moreAvailable` - C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false. 
+        should("test moreAvailable") {
+            // uncomment below to test the property
+            //modelInstance.moreAvailable shouldBe ("TODO")
+        }
+
     }
 }

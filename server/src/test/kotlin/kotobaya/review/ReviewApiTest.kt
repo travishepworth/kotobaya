@@ -26,7 +26,10 @@ class ReviewApiTest : SyncFixture() {
     private val review by lazy { ReviewModule(db, sync.opApply) }
     private val vocab = "00000000-0000-7000-8000-000000000101"
 
-    private fun reviewApp(block: suspend ApplicationTestBuilder.() -> Unit) = app(extraHandlers = notes.handlers + review.handlers, block = block)
+    private val stats by lazy { kotobaya.stats.StatsModule(db, clock = { syncNow.get() }) }
+
+    private fun reviewApp(block: suspend ApplicationTestBuilder.() -> Unit) =
+        app(extraHandlers = notes.handlers + review.handlers + stats.handlers, block = block)
 
     private fun token() = mint(TokenKind.PERSONAL, listOf("read", "write", "review")).second
 
@@ -227,16 +230,24 @@ class ReviewApiTest : SyncFixture() {
             assertEquals(200, r.status.value)
             return r.json()
         }
+        suspend fun summaryMore(): Boolean {
+            val r = client.call(HttpMethod.Get, "/stats/summary", bearer = t)
+            assertEquals(200, r.status.value)
+            return r.json()["more_available"].asBoolean()
+        }
         val first = fetch("")
         assertEquals(1, first["items"].size())
         assertTrue(first["items"][0]["is_new"].asBoolean())
         assertEquals(false, first["more_available"].asBoolean())
+        assertEquals(false, summaryMore())
         // Easy graduates it straight to review (due in days): the normal queue is now empty under the limit.
         val introduced = first["items"][0]["card"]["id"].asText()
         assertEquals(200, answer(t, introduced, 4).status.value)
         val done = fetch("")
         assertEquals(0, done["items"].size())
         assertEquals(true, done["more_available"].asBoolean(), "done for today, keep going has more")
+        assertEquals(true, summaryMore(), "the Today summary carries the same signal")
+        assertEquals(true, fetch("?kinds=new,review")["more_available"].asBoolean(), "kinds filter: extra build")
         assertEquals(false, fetch("?kinds=learning,review")["more_available"].asBoolean(), "keep going adds no learning/review cards")
 
         val more = fetch("?keep_going=true")
@@ -254,6 +265,7 @@ class ReviewApiTest : SyncFixture() {
         val out = fetch("")
         assertEquals(0, out["items"].size())
         assertEquals(false, out["more_available"].asBoolean(), "nothing left at all")
+        assertEquals(false, summaryMore())
         assertEquals(0, fetch("?keep_going=true")["items"].size())
         // still counted as introduced today: the normal limit stays used up
         assertEquals(0, fetch("")["counts"]["new"].asInt())

@@ -584,3 +584,9 @@ attempt 1 is gone). Needs node and python3; network on first run.
   review caps are lifted too**, not only `reviews_per_day` (otherwise "out" could still hide due
   reviews); (3) **the batch is `limit`** on the server and 10 on devices, and an add_kanji group
   may overshoot it so a large group never stalls keep going.
+- Attempt 2 (architect pass): **scope is normative** — keep going is UI state for one visit to the
+  review screen, cleared on leaving it, on a `study_day` change and on app restart; the normal
+  Review entry and Today counts always use `keep_going=false` (so an SPA left open overnight never
+  serves new cards past tomorrow's limit). `StatsSummary.more_available` (same core signal, no
+  extra queue call for the Today page). `more_available` may mean only the session cap is reached
+  ("done for now"); in keep-going mode `counts.new` is the batch.

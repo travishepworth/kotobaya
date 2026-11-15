@@ -45,6 +45,7 @@ class TestStatsSummary(unittest.TestCase):
                     learning = 0, 
                     new = 0, 
                     review = 0, ),
+                more_available = True,
                 next_due_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 streak_days = 0,
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),

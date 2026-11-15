@@ -55,7 +55,9 @@ export interface ReviewQueue {
      * the request had `keep_going=false` (or omitted it); `items` is empty; and the same
      * request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a
      * non-empty `items`. False otherwise - always with `keep_going=true`, and whenever
-     * `items` is non-empty. Independent of `counts.learning`. Computed only in the empty
+     * `items` is non-empty. Independent of `counts.learning`. True also when only the
+     * per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says "done
+     * for now", not "done for today". Computed only in the empty
      * case, so it costs a second queue build only then. For a request without `kinds` it
      * equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries).
      * Servers implementing C-26 always send it; absent (older server) is treated as false.

@@ -255,8 +255,9 @@ deck priority order, sibling burying, interleaving and the per-session new-card 
 come from the core. The response is a prefix of today's queue: the first `limit` cards
 in the order they should be shown. It is **not** a reservation: fetch again after
 answering (each answer can change what comes next - learning steps, sibling burying).
-Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all
-counts zero means done for the study day.
+Suspended, buried, deleted and merged-away cards never appear. An empty `items` is one of
+the end states listed under "Keep going" below; tell them apart with `more_available`
+and `counts.learning`.
 
 **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with
 `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule
@@ -268,12 +269,27 @@ burying, deck priority and order, disabled decks, learning and learn-ahead) is u
 Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
 per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
 on every fetch while the user keeps going. Cards answered this way are ordinary reviews
-and count against today's limits as usual. The three end states for a client:
+and count against today's limits as usual. In keep-going mode `counts.new` is the new
+cards of this batch (about `limit`), not the total of new cards that remain.
+
+**Keep-going scope (normative).** Keep going is UI state scoped to one visit to the
+review screen. It is cleared when the user leaves the review screen, when the study day
+(`study_day` of the responses; the local date of `StudyDay` on a device) differs from
+the one it was started in, and on app restart. The normal Review entry point and the
+Today counts always use `keep_going=false`. A client therefore never persists the flag
+(no app-lifetime store, no local storage) and compares each keep-going response's
+`study_day` with the day keep going started; on a mismatch it drops the flag and
+re-fetches with `keep_going=false`.
+
+The three end states for a client:
 - `items` non-empty: show them.
 - `items` empty, `more_available` true (only possible with `keep_going=false`): done
-  for today under the limits; offer Keep going (re-fetch with `keep_going=true`).
-- `items` empty, `more_available` false: nothing left to show now, with or without keep
-  going (`counts.learning` > 0 means a learning card is due later today).
+  under the limits; offer Keep going (re-fetch with `keep_going=true`). This includes
+  the case where only the per-session new-card cap (`scheduler.new_per_session`) is
+  reached, so the UI says "done for now", not "done for today".
+- `items` empty, `more_available` false: nothing left to show now for this `kinds`,
+  with or without keep going (`counts.learning` > 0 means a learning card is due later
+  today).
 
 Each item carries everything needed to render and grade the card: the card with its note
 summary, the dictionary entry (when the note references one that exists), the example
@@ -323,7 +339,7 @@ with kotobaya_client.ApiClient(configuration) as api_client:
     limit = 20 # int | Maximum number of cards to return. (optional) (default to 20)
     deck_id = '01931f40-2000-7000-8000-000000000d01' # str | Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise). (optional)
     kinds = ["new","learning","review"] # List[str] | Which queue sections to include, comma-separated. Default all three. (optional) (default to ["new","learning","review"])
-    keep_going = False # bool | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`).  (optional) (default to False)
+    keep_going = False # bool | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Keep going is UI state scoped to one visit to the review screen: it is cleared when the user leaves the review screen, when `study_day` differs from the day it was started in, and on app restart; the normal Review entry point and the Today counts always send `false` (see \"Keep-going scope\" in the description). Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`).  (optional) (default to False)
 
     try:
         # The next cards to review, built by the shared core's queue builder.
@@ -344,7 +360,7 @@ Name | Type | Description  | Notes
  **limit** | **int**| Maximum number of cards to return. | [optional] [default to 20]
  **deck_id** | **str**| Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (&#x60;404&#x60; otherwise). | [optional] 
  **kinds** | [**List[str]**](str.md)| Which queue sections to include, comma-separated. Default all three. | [optional] [default to [&quot;new&quot;,&quot;learning&quot;,&quot;review&quot;]]
- **keep_going** | **bool**| C-26 (additive). &#x60;true&#x60; &#x3D; keep going past today&#39;s limits (see the description; core &#x60;QueueBuilder&#x60; rule 6, with &#x60;keepGoingNewBatch &#x3D; limit&#x60;). Default &#x60;false&#x60; &#x3D; the normal queue, exactly as before C-26. Only the literal values &#x60;true&#x60; and &#x60;false&#x60; are accepted; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going&#x60; and &#x60;code &#x3D; invalid_value&#x60;. Older servers ignore the parameter (they return the normal queue and no &#x60;more_available&#x60;).  | [optional] [default to False]
+ **keep_going** | **bool**| C-26 (additive). &#x60;true&#x60; &#x3D; keep going past today&#39;s limits (see the description; core &#x60;QueueBuilder&#x60; rule 6, with &#x60;keepGoingNewBatch &#x3D; limit&#x60;). Default &#x60;false&#x60; &#x3D; the normal queue, exactly as before C-26. Keep going is UI state scoped to one visit to the review screen: it is cleared when the user leaves the review screen, when &#x60;study_day&#x60; differs from the day it was started in, and on app restart; the normal Review entry point and the Today counts always send &#x60;false&#x60; (see \&quot;Keep-going scope\&quot; in the description). Only the literal values &#x60;true&#x60; and &#x60;false&#x60; are accepted; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going&#x60; and &#x60;code &#x3D; invalid_value&#x60;. Older servers ignore the parameter (they return the normal queue and no &#x60;more_available&#x60;).  | [optional] [default to False]
 
 ### Return type
 

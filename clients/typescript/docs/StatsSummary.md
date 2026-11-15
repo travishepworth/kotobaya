@@ -10,6 +10,7 @@ Name | Type
 `dayEndsAt` | Date
 `doneToday` | [StatsSummaryDoneToday](StatsSummaryDoneToday.md)
 `due` | [StatsSummaryDue](StatsSummaryDue.md)
+`moreAvailable` | boolean
 `nextDueAt` | Date
 `streakDays` | number
 `studyDay` | Date
@@ -25,6 +26,7 @@ const example = {
   "dayEndsAt": null,
   "doneToday": null,
   "due": null,
+  "moreAvailable": null,
   "nextDueAt": null,
   "streakDays": null,
   "studyDay": null,

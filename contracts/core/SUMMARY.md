@@ -129,3 +129,6 @@ Worth a second look:
   materialize every pending entry of every deck on one tap).
 - Worth a second look: (1) reviews strictly before new under keep going; (2) per-deck review caps
   lifted as well; (3) batch overshoot by add_kanji groups.
+- Attempt 2: rule 6 "Scope" (one review-screen visit; cleared on leave, study-day change, restart;
+  never persisted), `newShownThisSession` keeps counting during keep going, and `moreAvailable` may
+  be true when only the session cap is reached ("done for now").

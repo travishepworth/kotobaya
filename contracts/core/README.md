@@ -222,6 +222,15 @@ batch and counted for `moreAvailable`; batch < 1 = 1; `isNew` exactly for NEW it
 
 The device builds with `QueueLimits(keepGoing = true)` (leave `keepGoingNewBatch` at its default)
 while the user keeps going, on every rebuild, and with `keepGoing = false` otherwise. "Out" =
-`items` and `toMaterialize` empty: show Keep going iff `moreAvailable`, else "done" (plus
-`nextLearningDueAt` if set). Materialize `toMaterialize` exactly as in a normal build. Show the
-"New" badge from `QueueItem.isNew`. Keep going is not persisted: a new session starts normal.
+`items` and `toMaterialize` empty: show Keep going iff `moreAvailable` (say "done for now": it is
+also true when only the session cap is reached), else "done" (plus `nextLearningDueAt` if set).
+Materialize `toMaterialize` exactly as in a normal build. Keep incrementing `newShownThisSession`
+for new cards shown while keeping going. Show the "New" badge from `QueueItem.isNew`.
+
+**Scope (normative).** Keep going is UI state scoped to one visit to the review screen. It is
+cleared when the user leaves the review screen, when the study day (the local date of `StudyDay`
+on a device; `study_day` in the API) differs from the one it was started in, and on app restart.
+The normal Review entry point and the Today counts always use `keepGoing = false` /
+`keep_going=false`. Never persist it (no saved state, no preference). A device checks the day on
+every rebuild: if `day.startMs` differs from the day keep going started, it drops the flag and
+builds normally.

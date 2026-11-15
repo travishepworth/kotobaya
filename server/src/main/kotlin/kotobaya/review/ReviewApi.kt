@@ -36,6 +36,7 @@ private val BLOCKED = setOf(WordStatus.KNOWN, WordStatus.NEVER_FORGET, WordStatu
 private const val CLOCK_FLOOR_MS = 1_577_836_800_000L
 private const val FUTURE_TOLERANCE_MS = 5 * 60_000L
 private const val BEFORE_CARD_MS = 24 * 3_600_000L
+private val ALL_KINDS = setOf("new", "learning", "review")
 
 /** `getReviewQueue`, `answerReview`, `undoReview`. */
 internal class ReviewApi(
@@ -51,9 +52,9 @@ internal class ReviewApi(
         val limit = q["limit"]?.let { v -> v.toIntOrNull()?.takeIf { it in 1..200 } ?: run { e.add("/limit", "out_of_range", "Must be 1 to 200."); null } } ?: 20
         val deckId = q["deck_id"]?.let { v -> if (UUID_RE.matches(v)) v else { e.add("/deck_id", "invalid_value", "Must be a lowercase UUID."); null } }
         val kinds = q["kinds"]?.split(',')?.let { parts ->
-            parts.filter { it !in setOf("new", "learning", "review") }.forEach { e.add("/kinds", "invalid_value", "Unknown kind $it.") }
+            parts.filter { it !in ALL_KINDS }.forEach { e.add("/kinds", "invalid_value", "Unknown kind $it.") }
             parts.toSet()
-        } ?: setOf("new", "learning", "review")
+        } ?: ALL_KINDS
         // C-26: only the literal values `true` / `false`.
         val keepGoing = when (val v = q["keep_going"]) {
             null, "false" -> false
@@ -88,8 +89,14 @@ internal class ReviewApi(
             fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
             val wanted = items.filter(::inKinds).take(limit)
             // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
-            val moreAvailable = !keepGoing && wanted.isEmpty() &&
-                builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).items.any(::inKinds)
+            // All kinds: the core's own signal (the server passes no pending entries, so it is the same test).
+            // A kinds filter: one extra keep-going build, only when the filtered page is empty.
+            val moreAvailable = if (kinds == ALL_KINDS) {
+                queue.moreAvailable
+            } else {
+                !keepGoing && wanted.isEmpty() &&
+                    builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).items.any(::inKinds)
+            }
             val views = ReviewViews(dsl, settings.leechThreshold)
             val rendered = views.items(
                 wanted.map { it.cardId },

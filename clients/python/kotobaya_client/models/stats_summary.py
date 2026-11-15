@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.stats_summary_done_today import StatsSummaryDoneToday
@@ -35,11 +35,12 @@ class StatsSummary(BaseModel):
     day_ends_at: datetime = Field(description="Instant the study day rolls over.")
     done_today: StatsSummaryDoneToday
     due: StatsSummaryDue
+    more_available: Optional[StrictBool] = Field(default=None, description="C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false. ")
     next_due_at: Optional[datetime] = Field(description="Earliest `due_at` in the future among live unsuspended cards; null if none.")
     streak_days: Annotated[int, Field(strict=True, ge=0)] = Field(description="Consecutive study days with at least one review, ending today or yesterday.")
     study_day: date = Field(description="The current study day.")
     totals: StatsSummaryTotals
-    __properties: ClassVar[List[str]] = ["day_ends_at", "done_today", "due", "next_due_at", "streak_days", "study_day", "totals"]
+    __properties: ClassVar[List[str]] = ["day_ends_at", "done_today", "due", "more_available", "next_due_at", "streak_days", "study_day", "totals"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -109,6 +110,7 @@ class StatsSummary(BaseModel):
             "day_ends_at": obj.get("day_ends_at"),
             "done_today": StatsSummaryDoneToday.from_dict(obj["done_today"]) if obj.get("done_today") is not None else None,
             "due": StatsSummaryDue.from_dict(obj["due"]) if obj.get("due") is not None else None,
+            "more_available": obj.get("more_available"),
             "next_due_at": obj.get("next_due_at"),
             "streak_days": obj.get("streak_days"),
             "study_day": obj.get("study_day"),

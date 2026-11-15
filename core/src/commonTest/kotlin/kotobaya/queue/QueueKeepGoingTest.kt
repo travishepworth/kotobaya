@@ -92,6 +92,10 @@ class QueueKeepGoingTest {
             card(5, override = kotobaya.contracts.WordStatus.KNOWN),
             card(6, override = kotobaya.contracts.WordStatus.BLACKLISTED),
             card(8, buriedUntil = NOW + 1),
+            card(11, override = kotobaya.contracts.WordStatus.NEVER_FORGET),
+            card(12, override = kotobaya.contracts.WordStatus.IGNORED),
+            review(13, past).copy(wordOverride = kotobaya.contracts.WordStatus.NEVER_FORGET),
+            learning(14, past).copy(wordOverride = kotobaya.contracts.WordStatus.IGNORED),
         )
         val t = listOf(today(10, note = 9, type = ReviewType.LEARNING), today(90, introducedNew = true, type = ReviewType.LEARNING))
         val q = build(input(c, limits = limits(newPerDay = 1).keepGoing(), today = t))

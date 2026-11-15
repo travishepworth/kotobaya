@@ -167,7 +167,8 @@ public data class QueueLimits(
      * [newPerDay], [newPerSession] / [newShownThisSession], `QueueDeck.reviewsPerDay`,
      * `QueueDeck.newPerDay`), bounds new cards per build by [keepGoingNewBatch] instead and puts
      * reviews before new cards; every other rule is unchanged ([QueueBuilder] rule 6). Default
-     * false = the behaviour before C-26, bit for bit.
+     * false = the behaviour before C-26, bit for bit. Scope: one visit to the review screen,
+     * cleared on leaving it, on a study-day change and on app restart (rule 6 "Scope").
      */
     public val keepGoing: Boolean = false,
     /**
@@ -270,7 +271,10 @@ public data class ReviewQueue(
      * whenever the normal queue is non-empty (a learn-ahead item counts). Independent of
      * [nextLearningDueAt]; both may be set (the UI may offer keep going while a learning card waits).
      *
-     * For an empty normal queue: `moreAvailable` → "done for today" plus a Keep going action;
+     * It is also true when only the session cap is exhausted (rule 6), so the UI says "done for
+     * now", not "done for today".
+     *
+     * For an empty normal queue: `moreAvailable` → "done for now" plus a Keep going action;
      * `!moreAvailable` → nothing is left today (apart from [nextLearningDueAt]). For a keep-going
      * build, empty `items` and `toMaterialize` mean truly out of cards.
      */
@@ -378,7 +382,17 @@ public data class ReviewQueue(
  *    today's normal limits; they never raise tomorrow's allowance (limits are per study day).
  *    **moreAvailable** (`keepGoing` false): after rules 1–5, only when `items` and
  *    `toMaterialize` are both empty, the builder runs the same input under rule 6 and sets it to
- *    whether that result is non-empty.
+ *    whether that result is non-empty. It is also true when only the session cap
+ *    (`newPerSession − newShownThisSession`) is exhausted, so the UI says "done for now", not
+ *    "done for today".
+ *    **Session counter.** `newShownThisSession` keeps incrementing for every new card shown in
+ *    keep-going mode (the UI counts as always); rule 6 just ignores it. After keep going ends the
+ *    session cap is therefore usually exhausted for the rest of that session.
+ *    **Scope (normative).** Keep going is UI state scoped to one visit to the review screen. It
+ *    is cleared when the user leaves the review screen, when the study day (the local date of
+ *    [StudyDay] on a device; `study_day` in the API) differs from the one it was started in, and
+ *    on app restart. The normal Review entry point and the Today counts always build with
+ *    `keepGoing = false`. It is never persisted.
  *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
  *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
  *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`
