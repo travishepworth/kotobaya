@@ -1108,3 +1108,5 @@
 2026-11-15T03:12:29Z C-25 REVIEW_APPROVE + ARCHITECT APPROVE + CHECK_GREEN + MERGE ee1fecdd (4+3 minors -> FOLLOWUPS)
 2026-11-15T03:12:46Z WEB-REVIEW-INFO DISPATCH writer; AND-REVIEW-INFO DISPATCH writer
 2026-11-15T03:14:39Z WEB-REVIEW-INFO CHECK_GREEN + MERGE 48a817be (BackExtras: kanji examples + deck chips)
+2026-11-15T03:20:33Z RELEASE 0.1.16 server+web PIN 99cf5a19 build started (ARCH-CARD-TEXT, C-25, WEB-REVIEW-INFO; fixes CLI daemon empty card text: deployed api 0.1.11 predates QueueItem.text). APK -> next
+2026-11-15T03:29:41Z RELEASE 0.1.16 DEPLOYED helm rev 24 (pin 99cf5a19; api+web 0.1.16, worker stays 0.1.11). Live queue: 50/50 items carry text, kanji_examples + decks present; CLI daemon restarted, card text OK

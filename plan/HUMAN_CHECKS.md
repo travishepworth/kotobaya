@@ -251,3 +251,4 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - [ ] Enable the user unit: `systemctl --user enable --now kotobaya` (cli/systemd/kotobaya.service).
 - [ ] Wire waybar (or eww) from the cli/README.md example + a keybinding (`echo good 1<>$XDG_RUNTIME_DIR/kotobaya/in`).
 - [ ] Do 20 reviews from the keyboard; confirm counts match web and phone afterwards.
+- [ ] run 28: server+web 0.1.16 live (helm rev 24, pin 99cf5a19). Fixes CLI daemon empty card text (api 0.1.11 predated QueueItem.text). Check web review back: kanji example words (ON/KUN) + deck chips. Commit your cli/bin/kby + cli/README.md changes.
