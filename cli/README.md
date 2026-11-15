@@ -143,7 +143,7 @@ The first line is `loading`. Each line is also written to `$XDG_RUNTIME_DIR/koto
 it and the `kotobaya watch` child.
 
 ```json
-{"v":1,"state":"front|back|done|loading|offline|auth|error","rev":"<card_id>:<n>",
+{"v":1,"state":"front|back|waiting|done|loading|offline|auth|error","rev":"<card_id>:<n>",
  "text":"猫 12","counts":{"new":3,"learning":2,"review":7},
  "card":null,
  "last":{"rating":null,"undoable":false},"notice":null,"error":null,
@@ -164,6 +164,7 @@ it and the `kotobaya watch` child.
 - `keep_going` and `more_available` are the daemon's (see "Keep going" above): `done` with
   `more_available` means "done for now, keep going has more"; `done` while `keep_going` means
   nothing is left today.
+- `waiting` (ADR-033): nothing due now but a learning card falls due today; `next_due_at` (UTC) and `next_due_in` (m:ss, fixed when the line was written) are set, the daemon refetches at that instant (+1 s), and no card is ever shown early. Counts are the server's, passed through unchanged.
 
 `kby do ACTION [--rev REV]` sends one action (`reveal again hard good easy undo skip refresh
 next keep_going`) to the daemon FIFO and returns at once (no reply; the result is the next `serve` line).

@@ -31,10 +31,14 @@ from kotobaya_cli.daemon.protocol import (
 )
 from kotobaya_cli.daemon.review import ReviewHandler
 from kotobaya_cli.daemon.session import Clock, QueueSnapshot, Session, utc_now
+from kotobaya_cli.watch import next_due_in
 
 TIMER_SECONDS = 60.0
 MAX_BACKOFF_S = 30.0
-KEEP_GOING_RETRIES = 3  # C-27: refetches of a keep-going response with only entries left to materialize
+NEXT_DUE_SLACK_S = 1.0  # ADR-033: refetch this long after a learning card's due instant
+KEEP_GOING_RETRIES = (
+    3  # C-27: refetches of a keep-going response with only entries left to materialize
+)
 
 
 @dataclass(frozen=True)
@@ -153,6 +157,8 @@ class Daemon:
         self._want_check = False
         self._settings_stale = True
         self._stop = asyncio.Event()
+        self._timer_wake = asyncio.Event()
+        self._last_tick: str | None = None
         self._stop_thread = threading.Event()
         self._stream: EventStream | None = None
         self._fifo_buf = b""
@@ -263,6 +269,7 @@ class Daemon:
         pending.update(self.handler.pending_cards())
         self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
         self.handler.end_fetch(token)
+        self._timer_wake.set()
         if not was_ok:
             await self.handler.on_online(self)
 
@@ -289,20 +296,54 @@ class Daemon:
             snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
         return snapshot
 
-    def _day_end_wait(self) -> float:
-        end = self.session.day_ends_at
-        if end is None:
-            return self._timer_seconds
+    def _seconds_until(self, instant: str | None) -> float | None:
+        if instant is None:
+            return None
         try:
-            seconds = (datetime.fromisoformat(end) - self._clock()).total_seconds()
+            return (datetime.fromisoformat(instant) - self._clock()).total_seconds()
         except ValueError:
-            return self._timer_seconds
-        return min(self._timer_seconds, max(1.0, seconds))
+            return None
+
+    def _timer_wait(self) -> float:
+        """Seconds to the next periodic refetch: min of the timer, the day end and, while the
+        queue is empty, the next learning card's due instant (+ slack; ADR-033)."""
+        wait = self._timer_seconds
+        day_end = self._seconds_until(self.session.day_ends_at)
+        if day_end is not None:
+            wait = min(wait, max(1.0, day_end))
+        if self.session.current is None:
+            due = self._seconds_until(self.session.next_due_at)
+            if due is not None:
+                wait = min(wait, max(0.0, due) + NEXT_DUE_SLACK_S)
+        return wait
+
+    def tick(self) -> bool:
+        """While waiting (ADR-033), re-emit the state when the m:ss countdown text changed, so a
+        widget rendering `next_due_in` counts down. Emits nothing in any other state."""
+        session = self.session
+        if session.conn != "ok" or session.current is not None or session.next_due_at is None:
+            self._last_tick = None
+            return False
+        text = next_due_in(session.next_due_at, self._clock())
+        if text == self._last_tick:
+            return False
+        self._last_tick = text
+        self.emit()
+        return True
+
+    async def _ticker(self) -> None:
+        while True:
+            await asyncio.sleep(1.0)
+            self.tick()
 
     async def _timer(self) -> None:
         while True:
-            await asyncio.sleep(self._day_end_wait())
-            await self.refetch()
+            self._timer_wake.clear()
+            try:
+                # A fetch that changes the schedule wakes this to recompute the wait.
+                await asyncio.wait_for(self._timer_wake.wait(), self._timer_wait())
+            except TimeoutError:
+                await self.refetch()
 
     # ---- SSE (thread) -------------------------------------------------------
 
@@ -470,12 +511,13 @@ class Daemon:
         thread.start()
         initial = asyncio.create_task(self.refetch())
         timer = asyncio.create_task(self._timer())
+        ticker = asyncio.create_task(self._ticker())
         try:
             await self._stop.wait()
         finally:
             self._stop_thread.set()
             self.handler.close()
-            for task in (worker, timer, initial):
+            for task in (worker, timer, ticker, initial):
                 task.cancel()
             loop.remove_reader(fd)
             os.close(fd)
