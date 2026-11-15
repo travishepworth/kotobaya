@@ -18,10 +18,13 @@ import kotobaya.server.json
  * screen's (`web/src/lib/review/model.ts`), so the text says what the web shows.
  */
 internal object QueueText {
-    /** `CardText` JSON for one item. [noteType] null (row missing) falls back to the built-in type of `note.type`. */
-    fun of(noteType: NoteTypeInfo?, card: JsonNode, entry: JsonNode?, kanji: JsonNode?, grammarSentence: JsonNode?): ObjectNode {
+    /**
+     * `CardText` JSON for one item. [noteType] null (row missing) falls back to the built-in type of `note.type`; null
+     * when that is unknown too (the item then has no `text`, the rest of the page is unaffected).
+     */
+    fun of(noteType: NoteTypeInfo?, card: JsonNode, entry: JsonNode?, kanji: JsonNode?, grammarSentence: JsonNode?): ObjectNode? {
         val note = card["note"]
-        val info = noteType ?: BuiltInNoteTypes.ALL.first { it.info.baseType.wire == note["type"].asText() }.info
+        val info = noteType ?: BuiltInNoteTypes.ALL.firstOrNull { it.info.baseType.wire == note["type"]?.asText() }?.info ?: return null
         val fields = LinkedHashMap<String, String>()
         note["fields"]?.fields()?.forEach { (k, v) -> if (v.isTextual) fields[k] = v.asText() }
         val out = DefaultCardTextRenderer.renderText(
@@ -45,11 +48,11 @@ internal object QueueText {
 
     private fun strings(n: JsonNode?): List<String> = n?.mapNotNull { it.takeIf(JsonNode::isTextual)?.asText() }.orEmpty()
 
-    /** Headword, its reading over the whole headword, every gloss of every sense in order, the headword reading's pitch. */
+    /** Headword, its reading over the whole headword, every gloss of every sense in order, the headword reading's pitch (none without a row for it). */
     fun dictionaryData(e: JsonNode): DictionaryData {
         val headword = e["headword"].asText()
         val reading = e["headword_reading"].asText()
-        val pitch = e["pitch"]?.let { p -> p.firstOrNull { it["reading"]?.asText() == reading } ?: p.firstOrNull() }
+        val pitch = e["pitch"]?.let { p -> p.firstOrNull { it["reading"]?.asText() == reading } }
         return DictionaryData(
             expression = headword,
             reading = reading,

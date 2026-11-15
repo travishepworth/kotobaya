@@ -29,9 +29,17 @@ public object DefaultCardTextRenderer : CardTextRenderer {
         val template = input.noteType.templates.firstOrNull { it.kind == input.kind }
         val custom = template != null && (template.front != null || template.back != null)
         val sides = if (custom) null else ctx.rule(base, input.kind)
-        val (front, back) = sides ?: ctx.fallback()
-        val backLines = ArrayList<String>()
-        for (line in back) if (line !in front && line !in backLines) backLines.add(line)
+        val front: List<String>
+        val backLines: List<String>
+        if (sides != null) {
+            front = sides.first
+            backLines = sides.second
+        } else {
+            // only the HTML fallback de-duplicates: it removes what `{{FrontSide}}` repeated on the back
+            val (f, back) = ctx.fallback()
+            front = f
+            backLines = ArrayList<String>().also { out -> for (line in back) if (line !in f && line !in out) out.add(line) }
+        }
         val reading = when (base) {
             NoteBaseType.VOCAB, NoteBaseType.PHRASE, NoteBaseType.SENTENCE -> ctx.field("reading", TextMode.KANA)
             NoteBaseType.KANJI -> ctx.field("readings")
@@ -102,7 +110,8 @@ public object DefaultCardTextRenderer : CardTextRenderer {
                 "reading" -> if (base == NoteBaseType.VOCAB) expression() to reading() + meaning() else null
                 "listening" -> emptyList<String>() to expression() + reading() + meaning()
                 "production" -> meaning() to expression() + reading()
-                "pitch" -> if (base == NoteBaseType.VOCAB) expression() to pitch().ifEmpty { reading() } else null
+                // the HTML front is expression + {{kana:reading}}: the question is the pitch, not the reading
+                "pitch" -> if (base == NoteBaseType.VOCAB) expression() + reading() to pitch() else null
                 else -> null
             }
             NoteBaseType.KANJI -> when (kind) {
@@ -137,9 +146,9 @@ public object DefaultCardTextRenderer : CardTextRenderer {
             fun marked(inner: String) = if (!valid) text else text.substring(0, c.start) + inner + text.substring(c.end)
             val translation = c.translation?.let { lines(Sanitizer.stripSentinels(it)) }.orEmpty()
             val answer = lines(marked(MARK_OPEN + (if (valid) text.substring(c.start, c.end) else "") + MARK_CLOSE)) +
-                field("pattern") + meaning() + translation
-            val front = if (kind == "cloze") lines(marked(BLANK)) + translation else lines(text)
-            return front to answer
+                field("pattern") + meaning()
+            // cloze shows the translation as the hint on the front; spot reveals it on the back
+            return if (kind == "cloze") lines(marked(BLANK)) + translation to answer else lines(text) to answer + translation
         }
 
         /** The pitch line of the contract, or empty. */
@@ -147,9 +156,9 @@ public object DefaultCardTextRenderer : CardTextRenderer {
             val d = input.dictionary ?: return emptyList()
             val morae = Pitch.morae(Sanitizer.stripSentinels(d.reading))
             if (morae.isEmpty()) return emptyList()
-            val patterns = d.pitchDrops.distinct().filter { it >= 0 }.map { drop ->
+            val patterns = d.pitchDrops.filter { it in 0..morae.size }.map { drop ->
                 morae.mapIndexed { i, m -> if (i + 1 == drop) m + DOWNSTEP else m }.joinToString("")
-            }
+            }.distinct()
             return lines(patterns.joinToString(" / "))
         }
 

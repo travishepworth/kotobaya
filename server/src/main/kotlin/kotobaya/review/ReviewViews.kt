@@ -103,7 +103,7 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.put("review_type", type)
             // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client.
             val info = noteTypes.getOrPut(v.noteType) { noteViews.noteType(v.noteType)?.toNoteTypeInfo() }
-            item.set<JsonNode>("text", QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"]))
+            QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"])?.let { item.set<JsonNode>("text", it) }
             if (type == "drill" || type == "cram") {
                 item.putNull("preview")
             } else {

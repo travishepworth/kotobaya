@@ -36,7 +36,7 @@ class TextRenderGoldenTest {
         "vocab/reading" to t("食べ物", "たべもの\nfood; something to eat", vocabReading, vocabSentence),
         "vocab/listening" to t("", "食べ物\nたべもの\nfood; something to eat", vocabReading, vocabSentence),
         "vocab/production" to t("food; something to eat", "食べ物\nたべもの", vocabReading, vocabSentence),
-        "vocab/pitch" to t("食べ物", "たべもꜜの / たべꜜもの", vocabReading, vocabSentence),
+        "vocab/pitch" to t("食べ物\n$vocabReading", "たべもꜜの / たべꜜもの", vocabReading, vocabSentence),
         "kanji/keyword" to t("食", "eat; food\n$kanjiReadings", kanjiReadings, null),
         "kanji/writing" to t("eat; food", "食\n$kanjiReadings", kanjiReadings, null),
         "kanji/components" to t("食", "人 + 良", kanjiReadings, null),
@@ -84,9 +84,9 @@ class TextRenderGoldenTest {
 
     @Test
     fun takobotoShapedNoteRendersFromTheDictionary() {
-        // fields {} + entry_seq: everything comes from the dictionary; no pitch data -> the pitch back is the reading
+        // fields {} + entry_seq: everything comes from the dictionary; no pitch data -> the pitch back is empty
         assertEquals(t("食べる", "たべる\nto eat; to live on (e.g. a salary)", "たべる", null), vocab("meaning", emptyMap(), taberu))
-        assertEquals(t("食べる", "たべる", "たべる", null), vocab("pitch", emptyMap(), taberu))
+        assertEquals(t("食べる\nたべる", "", "たべる", null), vocab("pitch", emptyMap(), taberu))
         assertEquals(t("to eat; to live on (e.g. a salary)", "食べる\nたべる", "たべる", null), vocab("production", emptyMap(), taberu))
     }
 
@@ -99,9 +99,11 @@ class TextRenderGoldenTest {
     }
 
     @Test
-    fun kanaOnlyWordHasNoDuplicateReadingLine() {
+    fun tableRulesDoNotDeDuplicate() {
+        // a kana-only word keeps its reading line; a meaning equal to the expression is kept
         val arigatou = DictionaryData("ありがとう", "ありがとう", emptyList(), listOf("thank you"), listOf(2))
-        assertEquals(t("ありがとう", "thank you", "ありがとう", null), vocab("meaning", emptyMap(), arigatou))
+        assertEquals(t("ありがとう", "ありがとう\nthank you", "ありがとう", null), vocab("meaning", emptyMap(), arigatou))
+        assertEquals(t("OK", "OK", null, null), vocab("meaning", mapOf("expression" to "OK", "meaning" to "OK"), null))
     }
 
     @Test
@@ -112,8 +114,9 @@ class TextRenderGoldenTest {
     @Test
     fun pitchLineMarksDownstepsAfterTheMora() {
         val kyou = DictionaryData("今日", "きょう", emptyList(), emptyList(), listOf(1, 0, 2, 1, 7, -1))
-        // atamadaka, heiban (no mark), odaka (mark after the last mora), duplicate dropped, out of range unmarked, negative skipped
-        assertEquals("きょꜜう / きょう / きょうꜜ / きょう", vocab("pitch", emptyMap(), kyou).back)
+        // atamadaka, heiban (no mark), odaka (mark after the last mora); duplicate, out of range and negative skipped
+        assertEquals("きょꜜう / きょう / きょうꜜ", vocab("pitch", emptyMap(), kyou).back)
+        assertEquals("", vocab("pitch", emptyMap(), kyou.copy(pitchDrops = listOf(3, -2))).back)
     }
 
     private val grammar = RenderFixtures.NOTES.first { it.type == BuiltInNoteTypes.GRAMMAR }
@@ -132,7 +135,7 @@ class TextRenderGoldenTest {
     fun invalidClozeSpanShowsTheSentenceUnmarked() {
         val bad = ClozeSentence(null, "行かざるを得ない。", 5, 50, " ")
         assertEquals(
-            t("行かざるを得ない。", "〜ざるを得ない\ncannot help but", null, null, "invalid_cloze"),
+            t("行かざるを得ない。", "行かざるを得ない。\n〜ざるを得ない\ncannot help but", null, null, "invalid_cloze"),
             grammarText("cloze", bad),
         )
     }
@@ -159,6 +162,6 @@ class TextRenderGoldenTest {
                 "<img src=\"blob:${RenderFixtures.IMAGE}\" alt=\"pic\"><script>bad()</script><ruby>漢<rt>かん</rt></ruby>",
         )
         val out = DefaultCardTextRenderer.renderText(TextRenderInput(BuiltInNoteTypes.CUSTOM.info, "basic", fields, null, null))
-        assertEquals(t("a&b\nc d　e x", "x\ny\n漢", null, null, "dropped_tag"), out)
+        assertEquals(t("a&b\nc d　e x", "x\nx\ny\n漢", null, null, "dropped_tag"), out)
     }
 }

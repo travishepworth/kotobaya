@@ -501,10 +501,13 @@ attempt 1 is gone). Needs node and python3; network on first run.
   for every item of `getReviewQueue` and `createDrillSession`. Optional on the wire (older
   servers omit it); `reading`/`sentence` are required-nullable inside `CardText`.
 - Per-kind rules are a table (front lines / back lines per built-in base type and kind); custom
-  templates and unknown kinds fall back to the text of the HTML render. `back` never repeats a
-  front line, so a widget can print `front` then `back`.
+  templates and unknown kinds fall back to the text of the HTML render (only the fallback drops
+  back lines that repeat the front, i.e. `{{FrontSide}}`). The fronts ask the same question as
+  the HTML fronts (vocab `pitch`: expression and reading; the back is the pitch line only).
 - Dictionary data on the server is built from the item's `entry` like the web review screen:
-  headword, headword reading, every gloss of every sense in order, pitch of the headword reading.
+  headword, headword reading, every gloss of every sense in order; pitch only from the row for
+  the headword reading (no row: no pitch). A note whose type row and built-in type are both
+  unknown gets no `text` (the rest of the page is unaffected).
 - No DB change, no sync op, no learning-data table touched; cross-check table unchanged.
 - Rejected: client-side text rendering in Python (CLI-DAEMON forbids re-implementing rendering);
   stripping the HTML render for every kind (the back repeats the front, the pitch is spans, the

@@ -30,11 +30,14 @@ public data class TextRenderInput(
 public data class CardText(
     /** The question side. `""` iff the question has no text (audio-only `listening` fronts, or an empty note). */
     public val front: String,
-    /** The answer: what the back adds to the front (lines equal to a front line are omitted). May be `""`. */
+    /**
+     * The answer: what the back adds to the front, per the table of [CardTextRenderer]. May be `""`. It includes the
+     * reading where the kind reveals it, so a layout that prints [reading] separately should not also print all of it.
+     */
     public val back: String,
     /** The kana reading (vocab, phrase, sentence) or the readings (kanji), or null when empty / not applicable. Answer-side information. */
     public val reading: String?,
-    /** Context sentence safe to show with the front (the note's `sentence` field), or null. Never set for sentence or grammar cloze text. */
+    /** The context sentence the built-in front shows (the note's `sentence` field), or null. Never set for sentence notes; not the grammar cloze sentence. */
     public val sentence: String?,
     /** Non-fatal problems as i18n keys `render.warning.<code>` (same codes as [RenderedCard.warnings]); empty when clean. */
     public val warnings: List<String>,
@@ -48,7 +51,8 @@ public data class CardText(
  * **Text of a field** under a mode (`html`, `kanji`, `kana`): the value resolved exactly as
  * [CardRenderer] does (a non-blank `note.fields[key]` wins, else the [DictionaryData] / [KanjiData]
  * fill), sanitised with furigana off (bracket furigana `漢字[かんじ]`: `kanji` mode keeps the base,
- * `kana` mode the reading, `html` mode leaves the brackets as typed; `<ruby>` keeps its base text,
+ * `kana` mode the reading, `html` mode keeps the brackets as typed, exactly like the HTML render's
+ * `{{key}}`; `<ruby>` keeps its base text,
  * `rt`/`rp` are dropped), then reduced to text: tags removed, entities decoded, `[sound:…]`, images and
  * audio buttons dropped; `<br>`, `<hr>` and the start and end of `div p ul ol li` are line breaks.
  *
@@ -65,11 +69,11 @@ public data class CardText(
  * | vocab / reading | expression[kanji] | reading[kana], meaning |
  * | vocab, phrase / listening | — | expression[kanji], reading[kana], meaning |
  * | vocab, phrase / production | meaning | expression[kanji], reading[kana] |
- * | vocab / pitch | expression[kanji] | pitch, or reading[kana] when there is no pitch line |
+ * | vocab / pitch | expression[kanji], reading[kana] | pitch (empty when there is no pitch line) |
  * | kanji / keyword | literal | keyword, readings |
  * | kanji / writing | keyword | literal, readings |
  * | kanji / components | literal | notes |
- * | grammar / cloze | cloze sentence with the span replaced by `＿＿＿`; cloze translation | marked sentence, pattern, meaning, cloze translation |
+ * | grammar / cloze | cloze sentence with the span replaced by `＿＿＿`, cloze translation | marked sentence, pattern, meaning |
  * | grammar / spot | cloze sentence | marked sentence, pattern, meaning, cloze translation |
  * | grammar / recognition | pattern | meaning |
  * | grammar / production | meaning | pattern |
@@ -83,17 +87,19 @@ public data class CardText(
  * unmarked (front and back) and warning `invalid_cloze`. The cloze translation counts only if non-blank.
  *
  * **Pitch line**: from [DictionaryData] only (`reading`, `pitchDrops`); absent when there is no dictionary
- * data or no drops. One pattern per distinct non-negative drop in the given order, joined with `" / "`:
- * the reading's morae (small kana join the preceding mora, as in the HTML pitch) with `ꜜ` (U+A71C)
- * inserted after mora `drop` when `1 <= drop <= mora count`; heiban (0) and out-of-range drops carry no
- * mark. Example: `たべもの`, drops `[3, 2]` → `たべもꜜの / たべꜜもの`.
+ * data or no drops in `0..mora count`. One pattern per drop in that range, in the given order, written
+ * as the reading's morae (small kana join the preceding mora, as in the HTML pitch) with `ꜜ` (U+A71C)
+ * inserted after mora `drop` (heiban, 0, has no mark); drops outside the range are skipped; identical
+ * pattern strings are kept once; patterns are joined with `" / "`.
+ * Example: `たべもの`, drops `[3, 2]` → `たべもꜜの / たべꜜもの`.
  *
- * **Back de-duplication** (all rules): a back line equal to a front line, or to an earlier back line, is
- * omitted. So a kana-only word (expression = reading) has no reading line on the back of `meaning`.
+ * The table's lines are output as listed, with no de-duplication (a meaning equal to the expression
+ * is kept).
  *
  * **Fallback** (a custom template on either side, or a (base type, kind) not in the table, e.g. a custom
- * kind): front = the lines of [CardRenderer] FRONT output; back = the lines of its BACK output after
- * de-duplication (which removes what `{{FrontSide}}` repeated). Rendered with furigana and pitch off,
+ * kind): front = the lines of [CardRenderer] FRONT output; back = the lines of its BACK output minus
+ * every line equal to a front line or to an earlier back line (this removes what `{{FrontSide}}`
+ * repeated; only the fallback de-duplicates). Rendered with furigana and pitch off,
  * no mnemonic. An unknown kind with no template gives `""`/`""` and warning `unknown_kind`.
  *
  * **reading**: vocab, phrase, sentence: reading[kana]; kanji: readings; grammar, custom: null.

@@ -8909,7 +8909,8 @@ components:
         notes the kanji fill for `literal` / `keyword` / `readings`), furigana off, tags removed,
         entities decoded, audio and images dropped; `<br>`, `<hr>` and `div p ul ol li` boundaries
         are line breaks. Bracket furigana `漢字[かんじ]`: `[kanji]` mode keeps the base, `[kana]`
-        mode the reading; other fields keep the brackets as typed.
+        mode the reading; every other field (HTML mode) keeps the brackets as typed, exactly as the
+        HTML render's `{{key}}` does.
 
         **Per kind** (built-in templates; front → back):
         | base / kind | front | back |
@@ -8917,11 +8918,11 @@ components:
         | vocab, phrase / meaning; vocab / reading | expression[kanji] | reading[kana], meaning |
         | vocab, phrase / listening | (empty) | expression[kanji], reading[kana], meaning |
         | vocab, phrase / production | meaning | expression[kanji], reading[kana] |
-        | vocab / pitch | expression[kanji] | pitch line (`たべꜜもの`; several patterns joined by ` / `), else reading[kana] |
+        | vocab / pitch | expression[kanji], reading[kana] | pitch line (`たべꜜもの`; several patterns joined by ` / `); empty without pitch data |
         | kanji / keyword | literal | keyword, readings |
         | kanji / writing | keyword | literal, readings |
         | kanji / components | literal | notes |
-        | grammar / cloze | sentence with the span as `＿＿＿`, translation | sentence with the span in `【】`, pattern, meaning, translation |
+        | grammar / cloze | sentence with the span as `＿＿＿`, translation | sentence with the span in `【】`, pattern, meaning |
         | grammar / spot | sentence | sentence with the span in `【】`, pattern, meaning, translation |
         | grammar / recognition | pattern | meaning |
         | grammar / production | meaning | pattern |
@@ -8929,11 +8930,14 @@ components:
         | sentence / listening | (empty) | sentence[kanji], reading[kana], translation |
         | custom / basic | front | back |
 
-        Each cell is one or more lines; empty values contribute none. A back line equal to a front
-        line or to an earlier back line is omitted (a kana-only word shows no reading line). The
-        grammar sentence and translation are `QueueItem.grammar_sentence`; when it is null, front
-        = pattern and back = meaning. A kind with a custom template (or not in the table) is the
-        text of the HTML render: front = its front, back = its back minus lines already on the front.
+        Each cell is one or more lines, output as listed; empty values contribute none. The pitch
+        line is built from the entry's pitch row for `headword_reading` only (none: empty back).
+        The grammar sentence and translation are `QueueItem.grammar_sentence`; when it is null,
+        front = pattern and back = meaning. A kind with a custom template (or not in the table) is
+        the text of the HTML render: front = its front, back = its back minus lines equal to a
+        front line or an earlier back line (removes what `{{FrontSide}}` repeated).
+
+        Fields added to `CardText` later will be optional, so clients must ignore unknown members.
       required:
       - front
       - back
@@ -8949,7 +8953,8 @@ components:
         back:
           type: string
           description: The answer (what the back adds to the front). Clients show it only once revealed; it is
-            always sent. May be empty.
+            always sent. May be empty. It contains the reading where the kind reveals it, so a layout that prints
+            `reading` separately should not also print the whole `back`.
           examples:
           - "たべもの\nfood; provisions"
         reading:
@@ -8967,8 +8972,8 @@ components:
           - string
           - 'null'
           minLength: 1
-          description: The note's `sentence` field (`[kanji]` mode) as front-safe context, for every base type
-            except sentence; null when empty. Not part of `front` or `back` under built-in templates (a custom
+          description: The context sentence the built-in front shows (the note's `sentence` field, `[kanji]` mode),
+            for every base type except sentence; null when empty. Not part of `front` or `back` under built-in templates (a custom
             template may include it). Not the grammar cloze sentence.
           examples:
           - 美味しい食べ物

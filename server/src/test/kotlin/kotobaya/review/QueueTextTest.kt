@@ -81,6 +81,14 @@ class QueueTextTest : SyncFixture() {
     }
 
     @Test
+    fun pitchComesOnlyFromTheHeadwordReadingsRow() {
+        val entry = json.readTree(
+            """{"headword":"今日","headword_reading":"きょう","senses":[],"pitch":[{"reading":"こんにち","positions":[1]}]}""",
+        )
+        assertEquals(emptyList(), QueueText.dictionaryData(entry).pitchDrops)
+    }
+
+    @Test
     fun takobotoShapedNoteRendersFrontAndBackFromTheDictionaryInTheQueue() = reviewApp {
         seedReference()
         val t = token()
@@ -137,7 +145,7 @@ class QueueTextTest : SyncFixture() {
             "vocab/reading" to text("食べる", "たべる\n$meaning", "たべる", null),
             "vocab/listening" to text("", "食べる\nたべる\n$meaning", "たべる", null),
             "vocab/production" to text(meaning, "食べる\nたべる", "たべる", null),
-            "vocab/pitch" to text("食べる", "たべꜜる", "たべる", null),
+            "vocab/pitch" to text("食べる\nたべる", "たべꜜる", "たべる", null),
             "kanji/keyword" to text("食", "eat; food\nショク、た.べる", "ショク、た.べる", null),
             "kanji/writing" to text("eat; food", "食\nショク、た.べる", "ショク、た.べる", null),
             "kanji/components" to text("食", "", "ショク、た.べる", null),
