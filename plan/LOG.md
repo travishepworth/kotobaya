@@ -1153,3 +1153,4 @@
 2026-11-15T06:35:09Z RELEASE APK 0.1.19 rebuild PIN cc8fe927 (adds AND-KEEPGOING; prior 0.1.19 build never installed)
 2026-11-15T07:20:40Z RELEASE 0.1.18 DEPLOYED helm rev 26 (api/web c960233b, worker 624d4305); APK 0.1.19 INSTALLED (pin cc8fe927)
 2026-11-15T07:22:06Z FREQ_REBUILD ran on live (freq_rank_changed 15879; 3 freq decks + 3 JLPT republished, content_version bump). Conversation deck そう: 16 -> 6 (kanji-row words 層/総/僧/草/沿う + 然う)
+- run 30: user reported keep going stops + web unable to review. Root cause: deck entries never materialized (pendingEntries empty on server+device). C-27 (architect, 2 rounds, reviewer+architect approved) + AND-KEEPGOING-FIX (3 rounds, approved). Deployed api/web 0.1.19; APK 0.1.20 built.
