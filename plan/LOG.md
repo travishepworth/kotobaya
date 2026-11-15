@@ -1134,3 +1134,6 @@
 2026-11-15T05:11:36Z WRK-FREQ-MATCH HANDOFF + CHECK_GREEN (885 tests); reviewer dispatched
 2026-11-15T05:13:14Z WRK-FREQ-MATCH REVIEW_CHANGES 2 majors (kana row falls back to next homophone when winner claimed: とき→鴇; katakana loanword beats word: もの→モノ) + tie minors -> attempt 2
 2026-11-15T05:18:26Z AND-KANJI-DECKS DISPATCH writer (user request: kanji appears-in-decks above words-used-in)
+2026-11-15T05:20:45Z WRK-FREQ-MATCH HANDOFF attempt 2 (890 tests green per writer); re-review dispatched
+2026-11-15T05:24:27Z WRK-FREQ-MATCH REVIEW_CHANGES r2: prev 6 fixed; 2 new majors on real sources (own kanji-row rank tier too low: いくら→イクラ, つく→吐く; hiragana→katakana-only: ている→テール) -> attempt 3
+2026-11-15T05:27:13Z AND-KANJI-DECKS CHECK_GREEN + MERGE 4b960c8f (chips display-only; no nav hook)
