@@ -32,12 +32,13 @@ private val DECK_SELECT = "select jsonb_build_object(" +
     "'item_count', case when d.type = 'smart' then 0 else (select count(*) from (${visibleItems("d.id")}) v) end, " +
     "'created_at', ${ts("d.created_at")}, 'updated_at', ${ts("d.updated_at")}, 'deleted_at', ${ts("d.deleted_at")})::text from app.deck d"
 
-private const val ENTRY_SUMMARY = "jsonb_build_object('seq', e.seq, 'headword', e.headword, 'headword_reading', e.headword_reading, " +
+private val ENTRY_SUMMARY = "jsonb_build_object('seq', e.seq, 'headword', e.headword, 'headword_reading', e.headword_reading, " +
     "'is_common', e.is_common, " +
     "'glosses', coalesce((select jsonb_agg(g ->> 'text') from jsonb_array_elements(e.senses -> 0 -> 'gloss') g), '[]'::jsonb), " +
     "'pos', to_jsonb(e.pos), 'freq_rank', e.freq_rank, 'retired', e.retired_release_id is not null, " +
     "'status', coalesce(ws.status, 'new'), " +
-    "'note_id', (select vn.id from app.note vn where vn.entry_seq = e.seq and vn.deleted_at is null limit 1))"
+    "'note_id', (select vn.id from app.note vn where vn.entry_seq = e.seq and vn.deleted_at is null limit 1), " +
+    "'deck_ids', to_jsonb(" + DeckMembership.entryDeckIdsSql("e.seq") + "))"
 
 internal enum class ItemSort(val wire: String, val order: String) {
     POSITION("position", "v.position, v.identity"),

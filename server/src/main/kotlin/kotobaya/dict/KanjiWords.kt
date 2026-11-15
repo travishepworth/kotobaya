@@ -58,7 +58,7 @@ internal class KanjiWordsApi(private val db: Database) {
                     "e.freq_rank, e.retired_release_id is not null as retired, " +
                     "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status, " +
                     "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null limit 1) as note_id, " +
-                    "$occExpr as occ, coalesce(e.freq_rank, $no) as f, " +
+                    "$occExpr as occ, coalesce(e.freq_rank, $no) as f, ${kotobaya.decks.DeckMembership.entryDeckIdsSql("e.seq")} as deck_ids, " +
                     "(select coalesce(json_agg(json_build_object('deck_id', d.id, 'name', d.name, 'type', d.type, " +
                     "'occurrence_count', x.occurrence_count) order by d.name collate \"C\", d.id), '[]'::json)::text " +
                     "from app.deck_item x join app.deck d on d.id = x.deck_id " +
@@ -105,6 +105,7 @@ internal class KanjiWordsApi(private val db: Database) {
                     "retired" to r.get("retired", Boolean::class.java),
                     "status" to r.get("status", String::class.java),
                     "note_id" to r.get("note_id", String::class.java),
+                    "deck_ids" to r.get("deck_ids", Array<String>::class.java).toList(),
                     "decks" to json.readTree(r.get("decks", String::class.java)),
                 )
                 Row(item, r.get("occ", Int::class.java), r.get("f", Int::class.java))

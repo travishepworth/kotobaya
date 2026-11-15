@@ -101,11 +101,12 @@ internal class DictApi(private val db: Database) {
     private class Summary(
         val seq: Long, val headword: String, val reading: String, val common: Boolean, val glosses: List<String>,
         val pos: List<String>, val freq: Int?, val retired: Boolean, val status: String, val noteId: String?,
+        val deckIds: List<String>,
     ) {
         fun toMap() = linkedMapOf(
             "seq" to seq, "headword" to headword, "headword_reading" to reading, "is_common" to common,
             "glosses" to glosses, "pos" to pos, "freq_rank" to freq, "retired" to retired,
-            "status" to status, "note_id" to noteId,
+            "status" to status, "note_id" to noteId, "deck_ids" to deckIds,
         )
     }
 
@@ -135,7 +136,8 @@ internal class DictApi(private val db: Database) {
             "select e.seq, e.headword, e.headword_reading, e.is_common, e.senses->0->'gloss' as glosses, e.pos, " +
                 "e.freq_rank, e.retired_release_id is not null as retired, h.g, " +
                 "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status, " +
-                "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null limit 1) as note_id " +
+                "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null limit 1) as note_id, " +
+                "${kotobaya.decks.DeckMembership.entryDeckIdsSql("e.seq")} as deck_ids " +
                 "from hits h join ref.dict_entry e on e.seq = h.seq where e.retired_release_id is null ",
         )
         if (commonOnly) sql.append("and e.is_common ")
@@ -155,7 +157,7 @@ internal class DictApi(private val db: Database) {
                     r.get("headword_reading", String::class.java), r.get("is_common", Boolean::class.java),
                     glossTexts(r.get("glosses", String::class.java)), r.get("pos", Array<String>::class.java).toList(),
                     freq, r.get("retired", Boolean::class.java), r.get("status", String::class.java),
-                    r.get("note_id", String::class.java),
+                    r.get("note_id", String::class.java), r.get("deck_ids", Array<String>::class.java).toList(),
                 ),
             )
         }
@@ -225,6 +227,7 @@ internal class DictApi(private val db: Database) {
             "kanji" to kanji.toList(),
             "status" to status,
             "note_id" to noteId,
+            "deck_ids" to kotobaya.decks.DeckMembership.ofEntries(dsl, listOf(seq))[seq].orEmpty(),
         )
     }
 

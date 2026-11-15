@@ -7,6 +7,7 @@ import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.PresetRow
 import kotobaya.contracts.fsrs.Scheduler
+import kotobaya.decks.DeckMembership
 import kotobaya.dict.SearchText
 import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.grammar.cards.GrammarCardSentenceSource
@@ -86,13 +87,21 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
         val presets = if (reviewTypes.values.any { it == "scheduled" || it == "learning" }) loadPresets(dsl) else emptyMap()
         val noteViews = NoteViews(dsl)
         val noteTypes = HashMap<String, NoteTypeInfo?>()
+        // C-25: decks, entry deck_ids and example-word candidates of the whole page, a fixed number of statements.
+        val pageNotes = views.values.map { it.json["note"] }
+        val extras = QueueExtras.load(
+            dsl,
+            noteIds = pageNotes.map { it["id"].asText() },
+            entrySeqs = pageNotes.mapNotNull { n -> n["entry_seq"].takeUnless { it.isNull }?.asLong() },
+            literals = pageNotes.mapNotNull { n -> n["kanji_literal"].takeUnless { it.isNull }?.asText() },
+        )
         return cards.mapNotNull { id ->
             val v = views[id] ?: return@mapNotNull null
             val type = reviewTypes[id] ?: "learning"
             val note = v.json["note"]
             val item = json.createObjectNode()
             item.set<JsonNode>("card", v.json)
-            item.set<JsonNode>("entry", note["entry_seq"].takeUnless { it.isNull }?.let { entry(note["entry_seq"].asLong()) } ?: json.nullNode())
+            item.set<JsonNode>("entry", note["entry_seq"].takeUnless { it.isNull }?.let { s -> entry(s.asLong(), extras.entryDeckIds(s.asLong())) } ?: json.nullNode())
             item.set<JsonNode>("kanji", note["kanji_literal"].takeUnless { it.isNull }?.let { kanji(it.asText()) } ?: json.nullNode())
             // C-15: grammar cards (not production) show a rotating example sentence from the user's media.
             val gid = note["grammar_point_id"].takeUnless { it.isNull }?.asText()
@@ -101,6 +110,8 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.set<JsonNode>("sentence", picked?.first ?: json.nullNode())
             if (grammarCloze) item.set<JsonNode>("grammar_sentence", picked?.second ?: json.nullNode())
             item.put("review_type", type)
+            extras.putDecks(item, note["id"].asText())
+            note["kanji_literal"].takeUnless { it.isNull }?.let { item.set<JsonNode>("kanji_examples", extras.kanjiExamples(it.asText(), item["kanji"])) }
             // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client.
             val info = noteTypes.getOrPut(v.noteType) { noteViews.noteType(v.noteType)?.toNoteTypeInfo() }
             QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"])?.let { item.set<JsonNode>("text", it) }
@@ -124,8 +135,11 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
 
     // ---------------------------------------------------------------- dictionary (same shapes as GET /dict/entries/{seq}, /kanji/{literal})
 
-    /** `DictEntry` JSON, or null when the entry is not in the dictionary. */
-    fun entry(seq: Long): JsonNode? {
+    /**
+     * `DictEntry` JSON, or null when the entry is not in the dictionary. [deckIds] is its `deck_ids` when the caller
+     * already loaded it for a batch (C-25), else it is read here.
+     */
+    fun entry(seq: Long, deckIds: List<String>? = null): JsonNode? {
         val e = dsl.fetchOne("select * from ref.dict_entry where seq = ?", seq) ?: return null
         val freqs = dsl.fetch(
             "select f.list_id, f.rank from ref.entry_freq f join ref.freq_list l on l.id = f.list_id where f.seq = ? order by l.priority",
@@ -157,6 +171,7 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
                 "kanji" to kanji.toList(),
                 "status" to status,
                 "note_id" to noteId,
+                "deck_ids" to (deckIds ?: DeckMembership.ofEntries(dsl, listOf(seq))[seq].orEmpty()),
             ),
         )
     }

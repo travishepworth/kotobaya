@@ -86,7 +86,7 @@ class ParseApiTest : SyncFixture() {
         assertTrue(entries[1]["status"].asText() in setOf("new", "learning"))
         assertEquals(note, entries[1]["note_id"].asText())
         assertEquals(listOf("a", "b"), entries[0]["glosses"].map { it.asText() })
-        assertEquals(setOf("seq", "headword", "headword_reading", "is_common", "glosses", "pos", "freq_rank", "retired", "status", "note_id"), entries[0].fieldNames().asSequence().toSet())
+        assertEquals(setOf("seq", "headword", "headword_reading", "is_common", "glosses", "pos", "freq_rank", "retired", "status", "note_id", "deck_ids"), entries[0].fieldNames().asSequence().toSet())
     }
 
     @Test

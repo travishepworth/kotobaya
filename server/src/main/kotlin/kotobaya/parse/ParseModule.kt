@@ -86,7 +86,8 @@ class ParseModule(private val db: Database, opApply: OpApply, private val parser
             "select e.seq, e.headword, e.headword_reading, e.is_common, e.senses->0->'gloss' as glosses, e.pos, e.freq_rank, " +
                 "e.retired_release_id is not null as retired, " +
                 "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status, " +
-                "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null order by n.created_at, n.id limit 1) as note_id " +
+                "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null order by n.created_at, n.id limit 1) as note_id, " +
+                "${kotobaya.decks.DeckMembership.entryDeckIdsSql("e.seq")} as deck_ids " +
                 "from ref.dict_entry e where e.seq = any(?::bigint[]) order by e.seq",
             seqs,
         ).map { r ->
@@ -102,6 +103,7 @@ class ParseModule(private val db: Database, opApply: OpApply, private val parser
                 "retired" to r.get("retired", Boolean::class.java),
                 "status" to r.get("status", String::class.java),
                 "note_id" to r.get("note_id", String::class.java),
+                "deck_ids" to r.get("deck_ids", Array<String>::class.java).toList(),
             )
         }
 }

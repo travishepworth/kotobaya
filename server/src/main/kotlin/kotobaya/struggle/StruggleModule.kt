@@ -250,7 +250,8 @@ internal class HotWords(private val dsl: DSLContext, private val now: Long) {
         val r = dsl.fetchOne(
             "select e.seq, e.headword, e.headword_reading, e.is_common, e.senses->0->'gloss' as glosses, e.pos, e.freq_rank, " +
                 "e.retired_release_id is not null as retired, " +
-                "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status " +
+                "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status, " +
+                "${kotobaya.decks.DeckMembership.entryDeckIdsSql("e.seq")} as deck_ids " +
                 "from ref.dict_entry e where e.seq = ?",
             seq,
         ) ?: return null
@@ -266,6 +267,7 @@ internal class HotWords(private val dsl: DSLContext, private val now: Long) {
             "retired" to r.get("retired", Boolean::class.java),
             "status" to r.get("status", String::class.java),
             "note_id" to noteId,
+            "deck_ids" to r.get("deck_ids", Array<String>::class.java).toList(),
         )
     }
 }

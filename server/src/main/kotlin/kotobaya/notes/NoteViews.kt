@@ -25,7 +25,7 @@ private val NOTE_EXPR = "jsonb_build_object(" +
     "'mnemonic', n.mnemonic, 'source_sentence', n.source_sentence, 'source_sentence_id', n.source_sentence_id, " +
     "'source_media_id', n.source_media_id, 'origin', n.origin, 'created_by_device_id', n.created_by_device_id, " +
     "'created_at', ${ts("n.created_at")}, 'updated_at', ${ts("n.updated_at")}, 'deleted_at', ${ts("n.deleted_at")}, " +
-    "'merged_into_id', n.merged_into_id)"
+    "'merged_into_id', n.merged_into_id, 'deck_ids', " + kotobaya.decks.DeckMembership.noteDeckIdsSql("n") + ")"
 
 private val NOTE_JSON = "select $NOTE_EXPR::text from app.note n"
 
