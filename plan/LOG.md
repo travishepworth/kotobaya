@@ -1076,3 +1076,4 @@
 2026-11-15T01:33:34Z AND-ADD2DECK CHECK_GREEN + MERGE (see next line) (search detail: add to notes/deck, KbDeckPicker, offline ops)
 2026-11-15T01:33:59Z AND-ADD2DECK MERGE ce4af9cf (first ff failed: main got c1e00bc8 docs/CLI-DAEMON.md from another session; branch restored from 6e2b5cf0 and rebased; docs-only, android check still valid)
 2026-11-15T01:34:55Z PLAN CLI daemon tickets ARCH-CARD-TEXT, CLI-DAEMON, CLI-REVIEW, CLI-WATCH (docs/CLI-DAEMON.md) + API-GUIDE (user request) added
+2026-11-15T01:35:21Z ARCH-CARD-TEXT DISPATCH architect(opus); CLI-DAEMON DISPATCH writer. Queued: API-GUIDE (next free slot), CLI-REVIEW + CLI-WATCH (after CLI-DAEMON)
