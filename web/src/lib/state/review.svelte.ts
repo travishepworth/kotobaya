@@ -23,6 +23,10 @@ export type { GradeButton } from '../review/model';
 export type { Rendered } from './preview.svelte';
 
 const QUEUE_LIMIT = 20;
+/** ADR-033: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
+const WAKE_SLACK_MS = 1000;
+/** ... and never sooner than this after the previous one, so a clock skew cannot turn waiting into polling. */
+const WAKE_MIN_MS = 3000;
 /**
  * C-27: refetches when a keep-going response has no item yet but the server still has deck entries to turn into
  * cards (`to_materialize` > 0 after its materialization rounds) or after a refresh that was dropped as stale.
@@ -56,8 +60,21 @@ class Outbox {
 	/** card id -> answer id of a failed submit, reused on the retry so a request that did land cannot double-log. */
 	readonly retryIds = new Map<string, string>();
 	private warning = false;
+	/** Count of answers ever added, and the card ids of the latest ones (to drop them from stale fetches). */
+	seq = 0;
+	private added: { seq: number; id: string }[] = [];
+
+	/** Card ids answered after fetch number `seq` began, plus those still in flight. */
+	answeredSince(seq: number): Set<string> {
+		const ids = new Set(this.pending.map((e) => e.item.card.id));
+		for (const a of this.added) if (a.seq > seq) ids.add(a.id);
+		return ids;
+	}
 
 	add(e: PendingAnswer): void {
+		this.seq++;
+		this.added.push({ seq: this.seq, id: e.item.card.id });
+		if (this.added.length > 200) this.added.splice(0, this.added.length - 200);
 		this.pending.push(e);
 		this.sync();
 		if (!this.warning && typeof window !== 'undefined') {
@@ -137,6 +154,10 @@ export class ReviewPage {
 	keepGoing = $state(false);
 	/** `more_available` of the last scheduled fetch. */
 	moreAvailable = $state(false);
+	/** ADR-033: when the next learning card of the last scheduled fetch falls due (null: none). */
+	nextLearningDueAt = $state<Date | null>(null);
+	private wakeTimer: ReturnType<typeof setTimeout> | null = null;
+	private lastWake = 0;
 	private keepGoingDay: number | null = null;
 	noteTypes = $state<Map<string, NoteType>>(new Map());
 	presets = $state<Map<string, Preset>>(new Map());
@@ -165,6 +186,10 @@ export class ReviewPage {
 	readonly current = $derived<QueueItem | undefined>(this.items[0]);
 	/** Nothing to show yet, but answers are still being recorded: the queue will be refreshed when they are. */
 	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
+	/** Nothing to show, but a learning card falls due later today: the screen counts down to it. */
+	readonly waiting = $derived(
+		!this.isDrill && !this.current && !this.settling && this.nextLearningDueAt !== null
+	);
 	readonly gradeKeys = $derived(this.fiveButtons ? '1-5' : '1-4');
 	readonly reviewTypeKey = $derived<ReviewMessageKey | null>(
 		this.current?.reviewType === 'drill'
@@ -283,6 +308,8 @@ export class ReviewPage {
 	private async fetchQueue(guard = false): Promise<boolean> {
 		if (this.isDrill) return false;
 		const epoch = this.epoch;
+		const outboxSeq = outbox.seq;
+		const pendingAtStart = new Set(outbox.pending.map((e) => e.item.card.id));
 		let q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: this.keepGoing });
 		for (let i = 0; i < KEEP_GOING_RETRIES && this.keepGoing && q.items.length === 0 && (q.toMaterialize ?? 0) > 0; i++) {
 			q = await reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing: true });
@@ -301,7 +328,10 @@ export class ReviewPage {
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
 		// (with its flip state); only what comes after it is replaced.
-		const fresh = q.items.filter((i) => !outbox.hasCard(i.card.id));
+		// Also those answered while this request was in flight: the server may have built the queue before it
+		// applied them, and an unguarded fetch (start, reload) is not dropped by the epoch.
+		const answered = outbox.answeredSince(outboxSeq);
+		const fresh = q.items.filter((i) => !answered.has(i.card.id) && !pendingAtStart.has(i.card.id));
 		const cur = this.current;
 		this.items =
 			cur && fresh.some((i) => i.card.id === cur.card.id)
@@ -309,22 +339,61 @@ export class ReviewPage {
 				: fresh;
 		this.counts = q.counts;
 		this.dayEndsAt = q.dayEndsAt;
+		this.nextLearningDueAt = q.nextLearningDueAt ?? null;
 		this.refreshFailed = false;
 		this.syncCard();
+		this.scheduleWake();
 		return true;
 	}
 
+	/** ADR-033 waiting state: fetch again when the next learning card falls due (one timer, no polling loop). */
+	private scheduleWake(): void {
+		this.clearWake();
+		const due = this.nextLearningDueAt;
+		if (this.isDrill || !due) return;
+		const delay = Math.max(due.getTime() - Date.now() + WAKE_SLACK_MS, this.lastWake + WAKE_MIN_MS - Date.now(), 0);
+		this.wakeTimer = setTimeout(() => void this.wake(), delay);
+	}
+
+	private clearWake(): void {
+		if (this.wakeTimer !== null) clearTimeout(this.wakeTimer);
+		this.wakeTimer = null;
+	}
+
+	private async wake(): Promise<void> {
+		this.wakeTimer = null;
+		this.lastWake = Date.now();
+		await this.refreshWhenIdle();
+		// A fetch that failed or was dropped leaves no timer behind: keep the schedule alive.
+		if (this.nextLearningDueAt && this.wakeTimer === null && !this.isDrill) this.scheduleWake();
+	}
+
+	/** The tab became visible again: timers are throttled while hidden, so catch up at once if the card is due. */
+	onVisible(): void {
+		const due = this.nextLearningDueAt;
+		if (this.isDrill || !due || this.busy) return;
+		if (Date.now() >= due.getTime() && Date.now() - this.lastWake >= WAKE_MIN_MS) {
+			this.clearWake();
+			void this.wake();
+		} else if (this.wakeTimer === null) this.scheduleWake();
+	}
+
+	/** Leaving the screen: no timer outlives it. */
+	dispose(): void {
+		this.clearWake();
+	}
+
 	/**
-	 * Refresh the queue and counts once no answer is in flight. In keep-going mode a refresh that was dropped as
-	 * stale while nothing is left on screen and nothing is in flight is tried again: no later answer would trigger
-	 * another one, and keep going must not stop while the server has cards.
+	 * Refresh the queue and counts once no answer is in flight. A refresh that was dropped as stale while nothing
+	 * is left on screen and nothing is in flight is tried again (in any mode): no later answer would trigger
+	 * another one, and the screen would show an end state while the server has cards.
 	 */
 	private async refresh(): Promise<void> {
 		if (this.isDrill || outbox.pending.length > 0) return;
 		try {
 			for (let i = 0; i <= KEEP_GOING_RETRIES; i++) {
 				const applied = await this.fetchQueue(true);
-				if (applied || !this.keepGoing || this.current || outbox.pending.length > 0) break;
+				if (applied || this.current || outbox.pending.length > 0) break;
 			}
 		} catch {
 			this.refreshFailed = true; // toast shown; the view offers a retry when there is nothing to show
@@ -355,6 +424,8 @@ export class ReviewPage {
 		this.keepGoing = keepGoing && source === null;
 		this.keepGoingDay = null;
 		this.moreAvailable = false;
+		this.nextLearningDueAt = null;
+		this.clearWake();
 		this.loaded = false;
 		this.loadFailed = false;
 		this.drillUnavailable = false;
