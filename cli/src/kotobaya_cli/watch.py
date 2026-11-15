@@ -57,12 +57,12 @@ def _flag(value: object) -> str:
     return "true" if value else "false"
 
 
-def _next_due_in(instant: object) -> str:
+def _next_due_in(instant: object, now: datetime | None = None) -> str:
     """ADR-033: m:ss from now to the next learning card's due instant; "" when none or unparsable."""
     if not isinstance(instant, str) or not instant:
         return ""
     try:
-        seconds = (datetime.fromisoformat(instant) - datetime.now(UTC)).total_seconds()
+        seconds = (datetime.fromisoformat(instant) - (now or datetime.now(UTC))).total_seconds()
     except ValueError:
         return ""
     total = max(0, int(seconds))
@@ -101,6 +101,7 @@ def _fields(state: State) -> dict[str, object]:
     }
 
 
+next_due_in = _next_due_in
 FIELD_NAMES = frozenset(_fields(_SAMPLE))
 
 
@@ -246,4 +247,4 @@ def _write(out: TextIO, render: Renderer, state: State) -> None:
     out.flush()
 
 
-__all__ = ["offline_state", "renderer", "run_watch", "validate_format"]
+__all__ = ["next_due_in", "offline_state", "renderer", "run_watch", "validate_format"]

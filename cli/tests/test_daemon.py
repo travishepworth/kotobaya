@@ -376,3 +376,40 @@ def test_refetch_at_next_due_returns_the_card(
         await asyncio.wait_for(task, 3)
 
     asyncio.run(scenario())
+
+
+def test_waiting_re_emits_once_per_changed_second_with_a_decreasing_countdown(
+    paths: Paths,
+) -> None:
+    from kotobaya_cli.watch import _fields
+
+    clock = [datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)]
+    daemon = Daemon(FakeBackend(), paths, clock=lambda: clock[0], timer_seconds=3600)
+    daemon.session.conn = "ok"
+    due = (clock[0] + timedelta(seconds=600)).isoformat()
+    daemon.session.apply_queue(_waiting(due), check_current=False)
+    sub = _Sub()
+    daemon._subscribers.add(sub)  # type: ignore[arg-type]
+    assert daemon.tick() is True
+    assert daemon.tick() is False  # same second: no extra line
+    clock[0] += timedelta(seconds=1)
+    assert daemon.tick() is True
+    first, second = (json.loads(x) for x in sub.lines)
+    assert first["next_due_at"] == second["next_due_at"] == due
+    from kotobaya_cli import watch
+
+    a = watch.next_due_in(first["next_due_at"], clock[0] - timedelta(seconds=1))
+    b = watch.next_due_in(second["next_due_at"], clock[0])
+    assert (a, b) == ("10:00", "9:59")
+    assert _fields(second)["next_due_in"] != ""
+    daemon.session.apply_queue(snapshot("a"), check_current=False)
+    clock[0] += timedelta(seconds=1)
+    assert daemon.tick() is False  # a card is shown: nothing emitted
+
+
+class _Sub:
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def put(self, line: str) -> None:
+        self.lines.append(line)

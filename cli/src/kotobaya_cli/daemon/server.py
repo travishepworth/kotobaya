@@ -31,6 +31,7 @@ from kotobaya_cli.daemon.protocol import (
 )
 from kotobaya_cli.daemon.review import ReviewHandler
 from kotobaya_cli.daemon.session import Clock, QueueSnapshot, Session, utc_now
+from kotobaya_cli.watch import next_due_in
 
 TIMER_SECONDS = 60.0
 MAX_BACKOFF_S = 30.0
@@ -157,6 +158,7 @@ class Daemon:
         self._settings_stale = True
         self._stop = asyncio.Event()
         self._timer_wake = asyncio.Event()
+        self._last_tick: str | None = None
         self._stop_thread = threading.Event()
         self._stream: EventStream | None = None
         self._fifo_buf = b""
@@ -314,6 +316,25 @@ class Daemon:
             if due is not None:
                 wait = min(wait, max(0.0, due) + NEXT_DUE_SLACK_S)
         return wait
+
+    def tick(self) -> bool:
+        """While waiting (ADR-033), re-emit the state when the m:ss countdown text changed, so a
+        widget rendering `next_due_in` counts down. Emits nothing in any other state."""
+        session = self.session
+        if session.conn != "ok" or session.current is not None or session.next_due_at is None:
+            self._last_tick = None
+            return False
+        text = next_due_in(session.next_due_at, self._clock())
+        if text == self._last_tick:
+            return False
+        self._last_tick = text
+        self.emit()
+        return True
+
+    async def _ticker(self) -> None:
+        while True:
+            await asyncio.sleep(1.0)
+            self.tick()
 
     async def _timer(self) -> None:
         while True:
@@ -490,12 +511,13 @@ class Daemon:
         thread.start()
         initial = asyncio.create_task(self.refetch())
         timer = asyncio.create_task(self._timer())
+        ticker = asyncio.create_task(self._ticker())
         try:
             await self._stop.wait()
         finally:
             self._stop_thread.set()
             self.handler.close()
-            for task in (worker, timer, initial):
+            for task in (worker, timer, ticker, initial):
                 task.cancel()
             loop.remove_reader(fd)
             os.close(fd)

@@ -2,7 +2,7 @@
 
 STATUS: DONE
 BRANCH: worktree-agent-a5f2b24f65c4c69d9 (main merged in first for the contract commit)
-CHECK: `make check-cli` equivalent (pytest 104, mypy --strict, ruff) → green
+CHECK: `make check-cli` equivalent (pytest 105, mypy --strict, ruff) → green
 
 ## Changed
 - backend.py/session.py: `next_learning_due_at` -> snapshot -> state `next_due_at` (only with no card; schema updated). Counts pass through unchanged (no client count logic).
@@ -16,7 +16,7 @@ CHECK: `make check-cli` equivalent (pytest 104, mypy --strict, ruff) → green
 - none
 
 ## For the reviewer
-- The countdown is fixed when a line is written (no per-second re-emit); the widget updates on the next state line.
+- Countdown: daemon `tick()` runs every 1 s and re-emits the state only while waiting and when the m:ss text changed (no extra lines in other states); kby/watch compute `next_due_in` at render time, so it counts down. Test: test_waiting_re_emits_once_per_changed_second_with_a_decreasing_countdown.
 
 ## User reinstall steps
 1. `cd <repo>/cli && uv tool install --reinstall .`
