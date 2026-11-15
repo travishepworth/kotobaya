@@ -1127,3 +1127,4 @@
 2026-11-15T04:38:58Z AND-DECK-LABELS DISPATCH writer (fill missing deck labels via /dict/headwords + local cache)
 2026-11-15T04:39:19Z RELEASE web 0.1.17 PIN c09a22ef build started (WEB-DECK-INSPECT)
 2026-11-15T04:42:54Z RELEASE web 0.1.17 DEPLOYED helm rev 25 (api stays 0.1.16, worker 0.1.11)
+2026-11-15T04:46:50Z AND-DECK-LABELS CHECK_GREEN + MERGE 6575708f
