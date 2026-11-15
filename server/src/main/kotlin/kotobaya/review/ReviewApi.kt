@@ -33,7 +33,9 @@ import java.time.format.DateTimeParseException
 
 private val ANSWER_KEYS = setOf("id", "card_id", "rating", "button", "mode", "duration_ms", "reviewed_at", "utc_offset_min", "sentence_id")
 private val BUTTON_RATING = mapOf("again" to 1, "nothing" to 1, "something" to 1, "hard" to 2, "good" to 3, "okay" to 3, "easy" to 4)
-private val BLOCKED = setOf(WordStatus.KNOWN, WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
+// Core QueueBuilder rule 1: these overrides make a card ineligible. KNOWN only stops introducing NEW cards (rule 4), so a
+// learning card of a KNOWN word is still served and must be counted (same numbers as the device, ADR-033).
+private val BLOCKED = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
 
 /** `FLOOR` of `answerReview`: 2020-01-01T00:00:00Z. */
 private const val CLOCK_FLOOR_MS = 1_577_836_800_000L

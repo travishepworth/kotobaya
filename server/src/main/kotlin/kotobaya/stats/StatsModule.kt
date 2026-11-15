@@ -32,7 +32,8 @@ import java.time.temporal.IsoFields
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.min
 
-private val BLOCKED = setOf("known", "never_forget", "blacklisted", "ignored")
+// Core QueueBuilder rule 1 (KNOWN only stops introducing NEW cards; its learning cards still count). ADR-033.
+private val BLOCKED = setOf("never_forget", "blacklisted", "ignored")
 private const val HOUR_MS = 3_600_000L
 private const val MAX_RANGE_DAYS = 3660L
 private const val BINS = 20
