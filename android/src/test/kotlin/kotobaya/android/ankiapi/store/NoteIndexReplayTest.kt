@@ -2,6 +2,7 @@ package kotobaya.android.ankiapi.store
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -11,6 +12,10 @@ import kotobaya.android.ankiapi.provider.NewNote
 import kotobaya.android.ankiapi.provider.NoteFilter
 import kotobaya.android.ankiapi.provider.ProviderCallLog
 import kotobaya.android.notes.CreateResult
+import kotobaya.android.notes.DICT
+import kotobaya.android.notes.EntryMatcher
+import kotobaya.android.notes.FakeSource
+import kotobaya.android.notes.NoteCreator
 import kotobaya.android.notes.DEVICE_A
 import kotobaya.android.notes.DEVICE_B
 import kotobaya.android.notes.NoteRequest
@@ -21,6 +26,7 @@ import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.OpType
 import kotobaya.sync.client.mint.MintResult
 import kotobaya.sync.client.protocol.CycleResult
+import kotobaya.sync.client.store.UuidV7Source
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -113,8 +119,12 @@ class NoteIndexReplayTest {
         val dup = phone.store.add(NewNote(mid, listOf("ほげほげ", "", "", "", ""), emptyList(), AnkiIds.INBOX_DECK_ID, "jp.takoboto"))
         assertEquals(hoge, assertIs<AddOutcome.Duplicate>(dup).noteId, "replayed unmatched note is found by its word")
 
+        assertEquals(listOf(hoge), phone.store.findNotes(NoteFilter(mid, sortField = "ほげほげ")).map { it.guid }, "sfld query")
+
         update(other, hoge, "ふがふが")
         sync(other, phone.d)
+        assertEquals(listOf(hoge), phone.store.findNotes(NoteFilter(mid, sortField = "ふがふが")).map { it.guid }, "sfld, new word")
+        assertEquals(emptyList(), phone.store.findNotes(NoteFilter(mid, sortField = "ほげほげ")), "sfld, old word")
         val again = phone.store.add(NewNote(mid, listOf("ふがふが", "", "", "", ""), emptyList(), AnkiIds.INBOX_DECK_ID, "jp.takoboto"))
         assertEquals(hoge, assertIs<AddOutcome.Duplicate>(again).noteId, "found by its new word")
         val freed = phone.store.add(NewNote(mid, listOf("ほげほげ", "", "", "", ""), emptyList(), AnkiIds.INBOX_DECK_ID, "jp.takoboto"))
@@ -150,6 +160,71 @@ class NoteIndexReplayTest {
         assertEquals(listOf(b), index.candidates(setOf("expression"), setOf(AnkiContract.fieldChecksum("猫"))), "from the index itself")
         assertEquals(listOf(a), index.candidates(setOf("expression"), setOf(AnkiContract.fieldChecksum("食べる"))))
         assertEquals(null, phone.d.store.read { index.prepare(it.learning) }, "no rebuild due any more")
+    }
+
+    /**
+     * Review major (attempt 2): first start, no cursors. The csum rebuild is prepared on a read at head H; a pulled
+     * note (H+1) and a local add (whose word catch-up prunes the log up to its own cursor) land before it is stored.
+     * The pulled note must still be indexed.
+     */
+    @Test
+    fun aPreparedRebuildIsDiscardedWhenAnotherIndexPrunedChangesAfterIt() {
+        val server = TestServer(T0)
+        val phone = Phone(app, server)
+        val other = RoboDevice(app, server, deviceId = DEVICE_B).also { it.clock.now = T0 + 1_000 }
+        val local = created(noteCreator(phone.d, seed = 3).create(NoteRequest(word = "食べる", reading = "たべる")))
+        val idx = phone.idx
+        phone.d.store.transaction { tx ->
+            idx.words.install()
+            idx.csums.install()
+            idx.words.catchUp(tx.learning)
+        }
+        val prepared = phone.d.store.read { idx.csums.prepare(it.learning) }
+        assertTrue(prepared != null, "a rebuild is due")
+        val preparedHead = idx.log.head()
+
+        val neko = created(noteCreator(other, seed = 4).create(NoteRequest(word = "猫", reading = "ねこ")))
+        sync(other, phone.d) // pulled: H+1
+        val creator = NoteCreator(
+            phone.d.store, phone.d.minter, EntryMatcher(FakeSource(DICT)),
+            UuidV7Source(Random(9)), phone.d.clock, words = idx.words,
+        )
+        created(creator.create(NoteRequest(word = "ほげほげ"))) // word catch-up advances notes.word and prunes
+        created(creator.create(NoteRequest(word = "ふがふが")))
+        assertTrue(idx.log.countAfter(preparedHead) < idx.log.head() - preparedHead, "the interleaving pruned changes after H")
+
+        phone.d.store.transaction { idx.csums.catchUp(it.learning, prepared) }
+        phone.check("猫", listOf(neko), "pulled while the rebuild was prepared")
+        phone.check("食べる", listOf(local), "older note")
+        assertTrue(idx.csums.usable())
+    }
+
+    /** Review minor #6: a server restore (log reset + rebuild: every note cleared and re-pulled) keeps both indexes right. */
+    @Test
+    fun indexesAgreeWithTheScanAfterALogResetAndRebuild() {
+        val server = TestServer(T0)
+        val phone = Phone(app, server)
+        val other = RoboDevice(app, server, deviceId = DEVICE_B).also { it.clock.now = T0 + 1_000 }
+        val neko = created(noteCreator(other, seed = 4).create(NoteRequest(word = "猫", reading = "ねこ")))
+        val hoge = created(noteCreator(other, seed = 5).create(NoteRequest(word = "ほげほげ")))
+        sync(other, phone.d)
+        val durable = server.loggedOpIds().size.toLong()
+        update(other, neko, "子猫")
+        sync(other, phone.d)
+        phone.store.warmIndexes()
+        phone.check("子猫", listOf(neko), "before the restore")
+
+        server.restore(durable, "0193a1b2-00ee-7000-8000-000000000002") // the edit is lost
+        repeat(3) { phone.d.sync() }
+        assertIs<CycleResult.Completed>(phone.d.sync())
+        phone.check("猫", listOf(neko), "after rebuild, not caught up")
+        phone.check("子猫", emptyList(), "after rebuild, not caught up")
+        phone.check("ほげほげ", listOf(hoge), "after rebuild, not caught up")
+        phone.store.warmIndexes()
+        phone.check("猫", listOf(neko), "after rebuild, caught up")
+        phone.check("子猫", emptyList(), "after rebuild, caught up")
+        val dup = phone.store.add(NewNote(mid, listOf("ほげほげ", "", "", "", ""), emptyList(), AnkiIds.INBOX_DECK_ID, "jp.takoboto"))
+        assertEquals(hoge, assertIs<AddOutcome.Duplicate>(dup).noteId, "word rule after rebuild")
     }
 
     @Test

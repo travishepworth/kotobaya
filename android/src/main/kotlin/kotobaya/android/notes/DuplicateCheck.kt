@@ -42,14 +42,19 @@ data class ExistingNote(
  *
  * Used by [NoteCreator], by T305c for AnkiDroid's duplicate query and by T311 for `canAddNotes`.
  */
-class DuplicateCheck(private val reader: LearningReader, private val matcher: EntryMatcher) {
+class DuplicateCheck(
+    private val reader: LearningReader,
+    private val matcher: EntryMatcher,
+    /** AND-TAKO-PERF2: the word rule's index (read-only lookups); null = read every note. */
+    private val words: NoteWordIndex? = null,
+) {
     /** Matches [word]/[reading] against the dictionary, then [find]s on the local tables. */
     fun find(word: String?, reading: String?): ExistingNote? {
         val w = EntryMatcher.clean(word)
         val r = EntryMatcher.clean(reading)
         if (w == null && r == null) return null
         val seq = (matcher.match(w, r) as? MatchResult.Matched)?.entry?.seq
-        return reader.read { find(it, seq, w ?: r, r) }
+        return reader.read { find(it, seq, w ?: r, r, words) }
     }
 
     /** The live note holding entry [seq], if any. */

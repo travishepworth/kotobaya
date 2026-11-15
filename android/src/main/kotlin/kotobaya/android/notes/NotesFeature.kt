@@ -29,6 +29,7 @@ val notesModule = module {
                 override fun <R> read(block: (LearningTables) -> R): R = store.read { block(it.learning) }
             },
             get(),
+            get<NoteWordIndex>(),
         )
     }
     // AND-TAKO-PERF2: device-only note change feed and the duplicate word rule's index

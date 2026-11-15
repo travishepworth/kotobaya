@@ -19,6 +19,7 @@ import kotobaya.sync.client.apply.Row
  * - A rebuild can be computed outside the write transaction ([prepare], on a plain read) and handed to [catchUp],
  *   so the write lock is held only to store the entries. That is safe because the log head is read BEFORE the
  *   rows: every change the rows may miss has a later sequence number and is folded in after the rebuilt entries.
+ *   If another index pruned any of those changes meanwhile, [catchUp] discards the prepared rebuild and recomputes.
  * - [lookup] (anywhere) answers in ONE statement from the index UNION the notes changed since the cursor, in
  *   note rowid order. Entries are only candidates: callers re-read each row and check it, so a pending or stale
  *   entry can never produce a wrong answer, only a row to discard. Null when the index cannot answer (never
@@ -79,7 +80,10 @@ abstract class NoteIndex<E>(
         var cursor = log.cursor(consumer)
         var read = 0
         if (reinstalled || cursor == null || cursor.stamp != stamp) {
-            val p = prepared?.takeIf { !reinstalled && it.stamp == stamp }
+            // A prepared rebuild needs every change after its head still in the log: another consumer may have
+            // pruned some meanwhile (this one had no cursor holding them back). Sequence numbers are gapless
+            // (AUTOINCREMENT, only pruning deletes), so a short count means a lost change: recompute here.
+            val p = prepared?.takeIf { !reinstalled && it.stamp == stamp && log.countAfter(it.head) == log.head() - it.head }
                 ?: tables.where(LearningTable.NOTE, "type", JsonString("vocab")).let { rows ->
                     Prepared(log.head(), stamp, rows.size, compute(rows))
                 }

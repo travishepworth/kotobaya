@@ -153,7 +153,7 @@ fun indexedStore(
     minter = d.minter,
     noteTypes = ensurer(d, seed),
     creator = NoteCreator(d.store, d.minter, EntryMatcher(source), UuidV7Source(Random(seed)), d.clock, words = indexes.words),
-    duplicates = duplicates(d, source),
+    duplicates = DuplicateCheck(reader(d), EntryMatcher(source), indexes.words),
     map = map,
     entries = entries,
     ids = UuidV7Source(Random(seed + 1)),

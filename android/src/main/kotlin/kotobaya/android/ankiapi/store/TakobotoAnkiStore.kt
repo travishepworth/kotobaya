@@ -103,21 +103,22 @@ class TakobotoAnkiStore<L : LearningTables>(
      * Builds or catches up the lookup indexes (called at app start, in the background), so the first Takoboto call
      * after an upgrade or a new dictionary does not pay for reading every note. Returns the notes indexed.
      */
-    fun warmIndexes(): Int = synchronized(lock) {
+    fun warmIndexes(): Int {
         val t0 = System.nanoTime()
         val n = listOfNotNull(words, csums).sumOf { refresh(it) }
         ProviderCallLog.log("  indexes warmed: $n note(s) read in ${msSince(t0)} ms")
-        n
+        return n
     }
 
     /**
-     * Catches up [index]. A due rebuild is computed on a plain read first ([NoteIndex.prepare]), so the write
-     * transaction only stores entries (inside a caller's transaction everything joins it).
+     * Catches up [index]. A due rebuild is computed on a plain read first ([NoteIndex.prepare]) without the store
+     * lock (seconds on a phone at first start; Takoboto calls go on meanwhile), so only the write transaction that
+     * stores the entries holds it. Inside a caller's transaction everything joins it.
      */
     private fun <E> refresh(index: NoteIndex<E>): Int {
         store.transaction { index.install() }
         val prepared = reader.read { t -> index.prepare(t) }
-        return store.transaction { tx -> index.catchUp(tx.learning, prepared) }
+        return synchronized(lock) { store.transaction { tx -> index.catchUp(tx.learning, prepared) } }
     }
 
     /** Catches up the checksum index. Errors leave it to the next call (lookups then scan or see pending changes). */
