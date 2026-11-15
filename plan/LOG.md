@@ -1057,3 +1057,5 @@
 2026-11-15T00:53:13Z RELEASE web 0.1.12 DEPLOYED helm rev 19 (pin ef0e511f; api/worker 0.1.11); phone 0.1.14 RELEASE build INSTALLED, startup OK (rebuild 43 ms, first paint 584 ms); API logs: only /meta probe reports
 2026-11-15T00:55:12Z QA-0114 phone: Takoboto existing word dup hit 10 ms; new word csum 1 ms + insert 29 ms (was 37.7 s on 0.1.12, 7.6 s on 0.1.13)
 2026-11-15T00:59:11Z QA-0114 phone reviews: tap->next card 0.1-1.6 ms, paint 36-71 ms, commit ~15 ms bg; ~20 answers, no crash. Web 0.1.12: 126 requests all 200 (cards/notes/dict/search/kanji). Only /meta probe reports
+2026-11-15T01:08:08Z DICT freq_lists jpdb (Kuuuube v2.2 kana), bccwj (SUW+LUW), cejc (everyday conversation; Netflix had no pinnable source) pinned in values; helm rev 20; dict-refresh 01a1dcbf queued
+2026-11-15T01:15:36Z WEB-PRIO DISPATCH writer-light (web decks list sorted desc + labels say higher-first; queue is lower-first)
