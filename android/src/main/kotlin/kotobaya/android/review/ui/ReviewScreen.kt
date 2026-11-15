@@ -261,11 +261,12 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
         if (card != null) {
             Box {
                 KbIconButton(KbIcons.More, T(R.string.review_actions_menu), { intents.openActions(card.cardId); menu = true })
-                val s = state.actions.card
+                val mine = state.actions.cardId == card.cardId
+                val s = state.actions.card.takeIf { mine }
                 val items = buildList {
                     add(KbMenuItem(T(R.string.review_action_edit), KbIcons.Edit) { intents.edit(card.cardId) })
                     add(KbMenuItem(T(R.string.review_action_flag), KbIcons.Flag) { flags = true })
-                    add(KbMenuItem(T(if (state.actions.buried) R.string.review_action_unbury else R.string.review_action_bury)) { intents.perform(card.cardId, ReviewAction.BURY) })
+                    add(KbMenuItem(T(if (mine && state.actions.buried) R.string.review_action_unbury else R.string.review_action_bury)) { intents.perform(card.cardId, ReviewAction.BURY) })
                     add(KbMenuItem(T(if (s?.suspended == true) R.string.review_action_unsuspend else R.string.review_action_suspend)) { intents.perform(card.cardId, ReviewAction.SUSPEND) })
                     if (s?.entrySeq != null) {
                         add(

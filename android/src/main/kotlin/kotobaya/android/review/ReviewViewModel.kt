@@ -23,6 +23,8 @@ import kotobaya.sync.client.apply.LearningTables
 data class ReviewActionsUiState(
     /** The card's suspend / bury / flag / word-status state, read when the menu opens; null until then. */
     val card: CardActionState? = null,
+    /** The card [card] and [buried] describe; the menu ignores them for any other card. */
+    val cardId: String? = null,
     /** [card] is buried until a time still in the future (the menu offers Unbury). */
     val buried: Boolean = false,
     @StringRes val message: Int? = null,
@@ -191,7 +193,7 @@ class ReviewViewModel(
                             review = st,
                             meta = m,
                             audioMissing = if (changed) false else u.audioMissing,
-                            actions = if (newCard) u.actions.copy(card = null, buried = false, editing = null) else u.actions,
+                            actions = if (newCard) u.actions.copy(card = null, cardId = null, buried = false, editing = null) else u.actions,
                         )
                     }
                     // Autoplay the front's audio once per displayed card.
@@ -348,7 +350,12 @@ class ReviewViewModel(
         val b = backend ?: return
         val s = a.stateOf(cardId)
         val buried = s?.buriedUntil?.let { it > b.clock() } ?: false
-        update { it.copy(actions = it.actions.copy(card = s, buried = buried)) }
+        update {
+            // Only for the card on screen: after Suspend / Never forget the session has already moved on, and a late
+            // read of the previous card must not label the next card's menu ("Unsuspend", "Clear never forget").
+            if ((it.review as? ReviewState.Showing)?.card?.cardId != cardId) it
+            else it.copy(actions = it.actions.copy(card = s, cardId = cardId, buried = buried))
+        }
     }
 
     /** The overflow menu opens: re-reads the card's state. */
