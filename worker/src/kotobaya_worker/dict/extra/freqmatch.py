@@ -6,30 +6,29 @@ at most one wins, deterministically (smallest key):
 * term written with kanji (or anything not pure kana): candidates having the term as a kanji
   form (and the reading, if given). Key: the kanji form carries a JMdict priority tag
   (``common``) > it is the entry's first kanji form > the entry is not a bound form > lowest seq.
-* kana-only term: candidates having the term as a reading. Key, in order:
+* kana-only term: candidates having the term as a reading. A hiragana term only matches a
+  reading spelt that way (ている is not テイル "tail"); a katakana term also matches hiragana
+  readings. "Kanji rows" below are the rows of the same source that map to an entry.
 
-  1. exact script: the term as written (NFKC, before katakana folding) is one of the entry's
-     readings, so もの is 物 and not the loanword モノ;
-  2. a priority-tagged kana word: the reading is ``common`` and the entry has no kanji form in
-     real use (none, or only rK/sK/oK forms: 然う, 居る);
-  3. the reading is ``common`` (とき is 時, not the untagged uk 鴇 "ibis");
-  4. usually-kana level (index.kana_level: no real kanji, ``uk`` on the first sense, ``uk`` on a
-     later sense, kanji word);
-  5. best rank of a kanji row of the same source mapped to the entry;
-  6. the reading is the entry's first reading;
-  7. not a bound form (aux / affix: -そう loses to the adverb そう).
-
-  If the winner is owned by a kanji row of the same source and is not a usually-kana word
-  (level >= 2), the row is ``deferred``: it never falls back to the next homophone. If two
-  candidates tie on the whole key the row is ``ambiguous`` (かた: 過多, 潟, 型, 肩, 方 are all
-  priority-tagged kanji words) and maps to nothing.
+  1. Paired: a candidate a kanji row maps at the row's exact rank wins outright. jpdb lists the
+     kana spelling of a word as its own row at the same rank (the ``㋕`` marker), e.g. いくら
+     and 幾ら/いくら at 711, so the pair is one word and needs no marker parsing.
+  2. Far kanji words are not candidates: an entry with real kanji (level >= 2) whose kanji row
+     ranks much worse than this row (``is_near``) is a different word. た (5) is the past
+     auxiliary, not 他 (198); ます (12) is 〼, not 増す (1773).
+  3. Key, in order: exact script (the term as written is one of the entry's readings) >
+     a priority-tagged kana word (``common`` reading, no kanji form in real use: 然う, 居る) >
+     rank of a near kanji row > ``common`` reading > usually-kana level (index.kana_level) >
+     the matching reading is the entry's first, judged in the term's own script > not a
+     bound form (aux / affix: -そう loses to the adverb そう).
+  4. If the winner has a near kanji row and is not a usually-kana word (level >= 2) the row
+     is ``deferred`` (CEJC とる 500 belongs to 取る 123): never a fall back to the next
+     homophone. If the top two tie on the whole key and are kanji words the row is
+     ``ambiguous`` (かた: 過多, 潟, 型, 肩, 方); tied kana words are spelt alike (ああ "ah" /
+     ああ "like that") and take the lowest seq.
 
 Rows with no candidate are ``unmatched``. ``rows == mapped + unmatched + deferred +
 ambiguous``; nothing is dropped silently.
-
-The Yomitan ``㋕`` display marker (jpdb kana lists) is not used: it says which spelling was
-counted, while the entry is fixed by the term and reading either way, and a kana term already
-says it is the kana spelling.
 
 The media parser (``parse.match.match_seq``) ranks with Sudachi POS, a derived reading and
 ``freq_rank``; a list row has neither POS nor (always) a reading, and ``freq_rank`` is what
@@ -40,6 +39,7 @@ from __future__ import annotations
 
 import unicodedata
 from collections.abc import Iterable, Mapping
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 
 from ..normalize import normalize_form
@@ -77,6 +77,16 @@ _KanaKey = tuple[int, int, int, int, int, int, int]
 DEFER_LEVEL = 2  # kana_level from which a kanji row of the same source owns the entry
 
 
+def is_near(claimed_rank: int, rank: int) -> bool:
+    """The kanji row and the kana row plausibly count the same word: the kanji spelling ranks
+    better than, or not far below, the kana spelling. た (5) vs 他 (198) is far: different words."""
+    return claimed_rank <= 2 * rank + 50
+
+
+def _is_hiragana_term(written: str) -> bool:
+    return not any(0x30A1 <= ord(c) <= 0x30FA or 0x30FD <= ord(c) <= 0x30FF for c in written)
+
+
 def _kana_key(
     idx: EntryIndex, written: str, norm: str, seq: int, claimed: Mapping[int, int]
 ) -> _KanaKey:
@@ -85,10 +95,12 @@ def _kana_key(
     return (
         0 if (seq, written) in idx.exact_readings else 1,
         0 if common and level == 0 else 1,
+        claimed.get(seq, _NO_RANK),
         0 if common else 1,
         level,
-        claimed.get(seq, _NO_RANK),
-        0 if idx.reading_ord.get((seq, norm), 0) == 0 else 1,
+        0
+        if idx.exact_readings.get((seq, written), idx.reading_ord.get((seq, norm), 0)) == 0
+        else 1,
         1 if seq in idx.bound else 0,
     )
 
@@ -97,27 +109,71 @@ def _kana_key(
 class Pick:
     seq: int | None
     deferred: bool = False  # the winner is owned by a kanji row of the same source
-    ambiguous: bool = False  # two candidates tie on the whole key
+    ambiguous: bool = False  # two kanji words tie on the whole key
+
+
+def _pick_kana(
+    idx: EntryIndex,
+    term: str,
+    norm: str,
+    cands: list[int],
+    claimed: Mapping[int, int],
+    claimed_at: Mapping[int, AbstractSet[int]],
+    rank: int | None,
+) -> Pick:
+    written = unicodedata.normalize("NFKC", term)
+    if _is_hiragana_term(written):
+        # ている is not テイル "tail": a reading that exists only in katakana does not match.
+        cands = [s for s in cands if (s, written) in idx.exact_readings]
+        if not cands:
+            return Pick(None)
+    if rank is not None:
+        # The same word listed twice at one rank (jpdb ㋕ pairs: いくら and 幾ら/いくら at 711).
+        paired = [s for s in cands if rank in claimed_at.get(s, ())]
+        if paired:
+            return Pick(min(paired, key=lambda s: (_kana_key(idx, written, norm, s, claimed), s)))
+        # A kanji word the source ranked far from this row is a different word (た the past
+        # auxiliary is not 他, ranked 198 against 5; だけ is not 岳): it is no candidate.
+        far = {
+            s
+            for s in cands
+            if s in claimed
+            and not is_near(claimed[s], rank)
+            and idx.kana_level.get(s, 3) >= DEFER_LEVEL
+        }
+        if far:
+            cands = [s for s in cands if s not in far]
+            if not cands:
+                return Pick(None, deferred=True)
+        claimed = {s: claimed[s] for s in cands if s in claimed and is_near(claimed[s], rank)}
+    ranked = sorted((_kana_key(idx, written, norm, s, claimed), s) for s in cands)
+    key, seq = ranked[0]
+    if seq in claimed and idx.kana_level.get(seq, 3) >= DEFER_LEVEL:
+        return Pick(None, deferred=True)
+    if len(ranked) > 1 and ranked[1][0] == key and key[4] > 0:
+        # Kanji words that tie (かた: 過多, 潟, 型, 肩, 方) are different words: no winner.
+        # Tied kana words (ああ "ah" / ああ "like that") are spelt the same: lowest seq.
+        return Pick(None, ambiguous=True)
+    return Pick(seq)
 
 
 def pick(
-    idx: EntryIndex, term: str, reading: str | None, claimed: Mapping[int, int] | None = None
+    idx: EntryIndex,
+    term: str,
+    reading: str | None,
+    claimed: Mapping[int, int] | None = None,
+    *,
+    rank: int | None = None,
+    claimed_at: Mapping[int, AbstractSet[int]] | None = None,
 ) -> Pick:
-    """The one entry for a row. ``claimed``: seq -> best rank of the source's kanji rows
-    mapped to it (empty when the row is looked up on its own)."""
-    claimed = claimed or {}
+    """The one entry for a row of rank ``rank``. ``claimed``: seq -> best rank of the source's
+    kanji rows mapped to it; ``claimed_at``: seq -> every such rank (both empty when the row is
+    looked up on its own)."""
     norm = normalize_form(term)
     if is_kana_term(norm):
         cands = _filter_reading(idx, idx.kana_norm.get(norm, ()), reading)
         if cands:
-            written = unicodedata.normalize("NFKC", term)
-            ranked = sorted((_kana_key(idx, written, norm, s, claimed), s) for s in cands)
-            key, seq = ranked[0]
-            if seq in claimed and idx.kana_level.get(seq, 3) >= DEFER_LEVEL:
-                return Pick(None, deferred=True)
-            if len(ranked) > 1 and ranked[1][0] == key:
-                return Pick(None, ambiguous=True)
-            return Pick(seq)
+            return _pick_kana(idx, term, norm, cands, claimed or {}, claimed_at or {}, rank)
     else:
         cands = _filter_reading(idx, idx.kanji_norm.get(norm, ()), reading)
         if cands:
@@ -137,8 +193,11 @@ def pick_entry(
 class FreqMapping:
     best: dict[int, int]  # seq -> best (lowest) rank over the rows mapped to it
     row_seqs: list[int | None] = field(default_factory=list)  # per input row, input order
-    deferred: int = 0
-    ambiguous: int = 0
+    # per input row: "mapped" | "unmatched" | "deferred" | "ambiguous"
+    row_status: list[str] = field(default_factory=list)
+
+    def _count(self, status: str) -> int:
+        return sum(st == status for st in self.row_status)
 
     @property
     def rows(self) -> int:
@@ -146,11 +205,25 @@ class FreqMapping:
 
     @property
     def mapped(self) -> int:
-        return sum(s is not None for s in self.row_seqs)
+        return self._count("mapped")
 
     @property
     def unmatched(self) -> int:
-        return self.rows - self.mapped - self.deferred - self.ambiguous
+        return self._count("unmatched")
+
+    @property
+    def deferred(self) -> int:
+        return self._count("deferred")
+
+    @property
+    def ambiguous(self) -> int:
+        return self._count("ambiguous")
+
+
+def _status(p: Pick) -> str:
+    if p.seq is not None:
+        return "mapped"
+    return "deferred" if p.deferred else "ambiguous" if p.ambiguous else "unmatched"
 
 
 def map_freq_rows(idx: EntryIndex, rows: Iterable[FreqRow]) -> FreqMapping:
@@ -158,22 +231,24 @@ def map_freq_rows(idx: EntryIndex, rows: Iterable[FreqRow]) -> FreqMapping:
     rows = list(rows)
     kana = [is_kana_term(normalize_form(r.term)) for r in rows]
     out: list[int | None] = [None] * len(rows)
+    status = ["unmatched"] * len(rows)
     claimed: dict[int, int] = {}
+    claimed_at: dict[int, set[int]] = {}
     for i, r in enumerate(rows):
         if not kana[i]:
             seq = pick_entry(idx, r.term, r.reading)
             out[i] = seq
-            if seq is not None and (seq not in claimed or r.rank < claimed[seq]):
-                claimed[seq] = r.rank
-    deferred = ambiguous = 0
+            if seq is not None:
+                status[i] = "mapped"
+                claimed[seq] = min(claimed.get(seq, r.rank), r.rank)
+                claimed_at.setdefault(seq, set()).add(r.rank)
     for i, r in enumerate(rows):
         if kana[i]:
-            p = pick(idx, r.term, r.reading, claimed)
+            p = pick(idx, r.term, r.reading, claimed, rank=r.rank, claimed_at=claimed_at)
             out[i] = p.seq
-            deferred += p.deferred
-            ambiguous += p.ambiguous
+            status[i] = _status(p)
     best: dict[int, int] = {}
     for r, seq in zip(rows, out, strict=True):
         if seq is not None and (seq not in best or r.rank < best[seq]):
             best[seq] = r.rank
-    return FreqMapping(best, out, deferred, ambiguous)
+    return FreqMapping(best, out, status)

@@ -160,7 +160,68 @@ def test_kata_ties_are_ambiguous_not_lowest_seq(idx: EntryIndex) -> None:
     assert m.row_seqs == [1516925, 1258950, None] and (m.deferred, m.ambiguous) == (1, 0)
 
 
-def test_masu_is_never_a_wrong_word(idx: EntryIndex) -> None:
-    # 〼 (the polite auxiliary) has no priority tag; 升 and 増す tie: no winner, counted.
+def test_masu_alone_is_never_a_wrong_word(idx: EntryIndex) -> None:
+    # Without the source's rows: 〼 (the polite auxiliary) has no priority tag and 升 / 増す
+    # tie, so there is no winner (counted). With them, see test_far_kanji_row_is_a_different_word.
     p = pick(idx, "ます", None)
     assert p.seq is None and p.ambiguous
+
+
+# Attempt 3: the source's own rows decide before JMdict tags (real ranks from the pinned lists).
+TA_PAST, TA_OTHER = 2654250, 1949190  # た aux "did"; 他 "other"
+TORU, TORU_EAT = 1326980, 2021030  # 取る; 摂る (uk)
+TSUKU, TSUKU_BREATHE = 1495740, 1444150  # 付く; 吐く (uk)
+TEERU = 1078940  # テール / テイル "tail"
+AA_AH, AA_LIKE_THAT = 1565440, 2085080  # 嗚呼 (rK) "ah!"; ああ "like that": both common
+ZU_NOT, ZU_PLURAL = 2829645, 2731770  # ず aux "not"; 流 ズ/ず "-s"
+IKURA, IKURA_ROE = 1219980, 1021180  # 幾ら (uk); イクラ
+
+
+def test_kana_row_paired_at_the_same_rank_takes_the_kanji_rows_entry(idx: EntryIndex) -> None:
+    # jpdb lists いくら and 幾ら/いくら both at 711 (the ㋕ pair): one word.
+    m = map_freq_rows(idx, [FreqRow("いくら", None, 711), FreqRow("幾ら", "いくら", 711)])
+    assert m.row_seqs == [IKURA, IKURA] and IKURA_ROE not in m.best
+    # A paired kanji word is taken too (jpdb 物/もの and もの at 43), no deferral.
+    m = map_freq_rows(idx, [FreqRow("もの", None, 43), FreqRow("物", "もの", 43)])
+    assert m.row_seqs == [MONO, MONO] and m.row_status == ["mapped", "mapped"]
+
+
+def test_near_kanji_row_outranks_a_usually_kana_homophone(idx: EntryIndex) -> None:
+    # CEJC: とる 500, 取る 123 -> the kanji row owns it, not 摂る (uk). BCCWJ つく 85 / 付く 143.
+    m = map_freq_rows(idx, [FreqRow("とる", None, 500), FreqRow("取る", "とる", 123)])
+    assert m.row_seqs == [None, TORU] and m.row_status[0] == "deferred"
+    assert TORU_EAT not in m.best
+    m = map_freq_rows(idx, [FreqRow("つく", None, 85), FreqRow("付く", "つく", 143)])
+    assert m.row_seqs == [None, TSUKU] and TSUKU_BREATHE not in m.best
+
+
+def test_far_kanji_row_is_a_different_word(idx: EntryIndex) -> None:
+    # BCCWJ: た 5 vs 他 198 / 多 2943 / 田 7731, ます 12 vs 増す 1773 / 升 15821: the
+    # auxiliaries, not deferred.
+    m = map_freq_rows(
+        idx,
+        [FreqRow("た", "た", 5), FreqRow("他", "た", 198), FreqRow("多", "た", 2943),
+         FreqRow("田", "た", 7731), FreqRow("ます", "ます", 12), FreqRow("増す", "ます", 1773),
+         FreqRow("升", "ます", 15821)],
+    )  # fmt: skip
+    assert m.row_seqs[0] == TA_PAST and m.row_seqs[1] == TA_OTHER
+    assert m.row_seqs[4] == MASU_POLITE and m.row_seqs[5] == MASU_INCREASE
+    assert m.mapped == m.rows
+
+
+def test_hiragana_term_never_matches_a_katakana_only_reading(idx: EntryIndex) -> None:
+    assert TEERU in idx.match("ている")  # folded keys collide
+    m = map_freq_rows(idx, [FreqRow("ている", "ている", 13)])
+    assert m.row_seqs == [None] and m.row_status == ["unmatched"]
+    assert pick_entry(idx, "テイル", None) == TEERU  # katakana terms still match
+
+
+def test_tied_kana_words_take_the_lowest_seq_not_ambiguous(idx: EntryIndex) -> None:
+    p = pick(idx, "ああ", None)
+    assert p.seq == AA_AH and not p.ambiguous and AA_LIKE_THAT > AA_AH
+
+
+def test_first_reading_is_judged_in_the_terms_own_script(idx: EntryIndex) -> None:
+    # 流 has ズ first and ず second; the aux ず has ず first.
+    assert pick_entry(idx, "ず", None) == ZU_NOT
+    assert ZU_PLURAL in idx.match("ず")

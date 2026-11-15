@@ -569,6 +569,44 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1021180</ent_seq>
+<r_ele>
+<reb>イクラ</reb>
+<re_pri>gai1</re_pri>
+</r_ele>
+<r_ele>
+<reb>いくら</reb>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<xref>筋子</xref>
+<field>&food;</field>
+<lsource xml:lang="rus">ikra</lsource>
+<gloss>salted salmon roe</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1078940</ent_seq>
+<r_ele>
+<reb>テール</reb>
+</r_ele>
+<r_ele>
+<reb>テイル</reb>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>tail</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<xref>テールコート</xref>
+<misc>&abbr;</misc>
+<misc>&rare;</misc>
+<gloss>tailcoat</gloss>
+<gloss>tails</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1127800</ent_seq>
 <r_ele>
 <reb>マス</reb>
@@ -886,6 +924,42 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1219980</ent_seq>
+<k_ele>
+<keb>幾ら</keb>
+<ke_pri>ichi1</ke_pri>
+<ke_pri>news2</ke_pri>
+<ke_pri>nf37</ke_pri>
+</k_ele>
+<r_ele>
+<reb>いくら</reb>
+<re_pri>ichi1</re_pri>
+<re_pri>news2</re_pri>
+<re_pri>nf37</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<pos>&adv;</pos>
+<misc>&uk;</misc>
+<gloss>how much</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<misc>&uk;</misc>
+<s_inf>after a rounded number, esp. a sum of money</s_inf>
+<gloss>something over</gloss>
+<gloss>and something</gloss>
+<gloss>-odd</gloss>
+</sense>
+<sense>
+<pos>&adv;</pos>
+<misc>&uk;</misc>
+<s_inf>as いくら...〜ても, いくら...〜でも, etc.</s_inf>
+<gloss>however (much)</gloss>
+<gloss>no matter how</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1250090</ent_seq>
 <k_ele>
 <keb>型</keb>
@@ -1105,6 +1179,159 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1326980</ent_seq>
+<k_ele>
+<keb>取る</keb>
+<ke_pri>ichi1</ke_pri>
+<ke_pri>news1</ke_pri>
+<ke_pri>nf06</ke_pri>
+</k_ele>
+<r_ele>
+<reb>とる</reb>
+<re_pri>ichi1</re_pri>
+<re_pri>news1</re_pri>
+<re_pri>nf06</re_pri>
+</r_ele>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take</gloss>
+<gloss>to pick up</gloss>
+<gloss>to grab</gloss>
+<gloss>to catch</gloss>
+<gloss>to hold</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to pass</gloss>
+<gloss>to hand</gloss>
+<gloss>to give</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to get</gloss>
+<gloss>to obtain</gloss>
+<gloss>to acquire</gloss>
+<gloss>to win</gloss>
+<gloss>to receive</gloss>
+<gloss>to earn</gloss>
+<gloss>to take (e.g. a vacation)</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to adopt (a method, proposal, etc.)</gloss>
+<gloss>to take (a measure, attitude, etc.)</gloss>
+<gloss>to choose</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to remove</gloss>
+<gloss>to get rid of</gloss>
+<gloss>to take off</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take away</gloss>
+<gloss>to steal</gloss>
+<gloss>to rob</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<xref>摂る</xref>
+<gloss>to eat</gloss>
+<gloss>to have (e.g. lunch)</gloss>
+<gloss>to take (e.g. vitamins)</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to pick (e.g. flowers)</gloss>
+<gloss>to gather</gloss>
+<gloss>to extract (e.g. juice)</gloss>
+<gloss>to catch (e.g. fish)</gloss>
+<gloss>to harvest (a crop)</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take up (time, space)</gloss>
+<gloss>to occupy</gloss>
+<gloss>to spare</gloss>
+<gloss>to set aside</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to secure</gloss>
+<gloss>to reserve</gloss>
+<gloss>to save</gloss>
+<gloss>to put aside</gloss>
+<gloss>to keep</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take (e.g. a joke)</gloss>
+<gloss>to interpret</gloss>
+<gloss>to understand</gloss>
+<gloss>to make out</gloss>
+<gloss>to grasp</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to record</gloss>
+<gloss>to take down</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to subscribe to (e.g. a newspaper)</gloss>
+<gloss>to take</gloss>
+<gloss>to buy</gloss>
+<gloss>to get</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to order</gloss>
+<gloss>to have delivered</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to charge</gloss>
+<gloss>to fine</gloss>
+<gloss>to take (tax)</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take (e.g. a wife)</gloss>
+<gloss>to take on (e.g. an apprentice)</gloss>
+<gloss>to adopt</gloss>
+<gloss>to accept</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to take control of</gloss>
+<gloss>to take (the rudder)</gloss>
+</sense>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<gloss>to compete (in sumo, cards, etc.)</gloss>
+<gloss>to play</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1346290</ent_seq>
 <k_ele>
 <keb>升</keb>
@@ -1289,6 +1516,71 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1407450</ent_seq>
+<k_ele>
+<keb>多</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>た</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<pos>&pref;</pos>
+<gloss>multi-</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1442730</ent_seq>
+<k_ele>
+<keb>田</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>た</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>rice field</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1444150</ent_seq>
+<k_ele>
+<keb>吐く</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>つく</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vt;</pos>
+<misc>&uk;</misc>
+<gloss>to breathe out</gloss>
+<gloss>to breathe</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vt;</pos>
+<misc>&uk;</misc>
+<gloss>to tell (a lie)</gloss>
+<gloss>to use (foul language)</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vt;</pos>
+<xref>吐く・はく・1</xref>
+<misc>&uk;</misc>
+<gloss>to vomit</gloss>
+<gloss>to throw up</gloss>
+<gloss>to spit up</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1467640</ent_seq>
 <k_ele>
 <keb>猫</keb>
@@ -1337,6 +1629,115 @@ various information fields.
 <misc>&uk;</misc>
 <misc>&sl;</misc>
 <gloss>bottom (submissive partner of a homosexual relationship)</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1495740</ent_seq>
+<k_ele>
+<keb>付く</keb>
+<ke_pri>spec1</ke_pri>
+</k_ele>
+<k_ele>
+<keb>附く</keb>
+<ke_inf>&rK;</ke_inf>
+</k_ele>
+<r_ele>
+<reb>つく</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to be attached</gloss>
+<gloss>to be connected with</gloss>
+<gloss>to adhere</gloss>
+<gloss>to stick</gloss>
+<gloss>to cling</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to remain imprinted</gloss>
+<gloss>to scar</gloss>
+<gloss>to stain</gloss>
+<gloss>to dye</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to bear (fruit, interest, etc.)</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to be acquired (of a habit, ability, etc.)</gloss>
+<gloss>to increase (of strength, etc.)</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to take root</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to accompany</gloss>
+<gloss>to attend</gloss>
+<gloss>to follow</gloss>
+<gloss>to study with</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to side with</gloss>
+<gloss>to belong to</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<xref>憑く</xref>
+<gloss>to possess</gloss>
+<gloss>to haunt</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<xref>点く・1</xref>
+<gloss>to be lit</gloss>
+<gloss>to catch fire</gloss>
+<gloss>to ignite</gloss>
+<gloss>to be turned on (of a light, appliance, etc.)</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to be settled</gloss>
+<gloss>to be resolved</gloss>
+<gloss>to be decided</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to be given (of a name, price, etc.)</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<gloss>to be sensed</gloss>
+<gloss>to be perceived</gloss>
+</sense>
+<sense>
+<pos>&v5k;</pos>
+<pos>&vi;</pos>
+<s_inf>from 運がつく</s_inf>
+<gloss>to be lucky</gloss>
+</sense>
+<sense>
+<pos>&suf;</pos>
+<pos>&v5k;</pos>
+<xref>付く・づく</xref>
+<s_inf>after -masu stems, onomatopoeic and mimetic words</s_inf>
+<gloss>to become (a state, condition, etc.)</gloss>
 </sense>
 </entry>
 <entry>
@@ -1521,6 +1922,121 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1565440</ent_seq>
+<k_ele>
+<keb>嗚呼</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>噫</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>嗟</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>於乎</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>於戯</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>嗟乎</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<k_ele>
+<keb>吁</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<r_ele>
+<reb>ああ</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<r_ele>
+<reb>あー</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<r_ele>
+<reb>あぁ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>ああっ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>あ〜</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>あーっ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>ああー</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>あ〜あ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>あ〜っ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>ああぁ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>アー</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>アア</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<r_ele>
+<reb>アァ</reb>
+<re_inf>&sk;</re_inf>
+</r_ele>
+<sense>
+<pos>&int;</pos>
+<s_inf>occ. written as 嗚呼, 噫 or 嗟</s_inf>
+<gloss>ah!</gloss>
+<gloss>oh!</gloss>
+<gloss>alas!</gloss>
+</sense>
+<sense>
+<pos>&int;</pos>
+<gloss>yes</gloss>
+<gloss>indeed</gloss>
+<gloss>that is correct</gloss>
+</sense>
+<sense>
+<pos>&int;</pos>
+<s_inf>in exasperation</s_inf>
+<gloss>aah</gloss>
+<gloss>gah</gloss>
+<gloss>argh</gloss>
+</sense>
+<sense>
+<pos>&int;</pos>
+<gloss>hey!</gloss>
+<gloss>yo!</gloss>
+</sense>
+<sense>
+<pos>&int;</pos>
+<gloss>uh huh</gloss>
+<gloss>yeah yeah</gloss>
+<gloss>right</gloss>
+<gloss>gotcha</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1577980</ent_seq>
 <k_ele>
 <keb>居る</keb>
@@ -1586,6 +2102,44 @@ various information fields.
 <misc>&uk;</misc>
 <gloss>Japanese crested ibis (Nipponia nippon)</gloss>
 <gloss>Asian crested ibis</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1949190</ent_seq>
+<k_ele>
+<keb>他</keb>
+<ke_pri>news1</ke_pri>
+<ke_pri>nf03</ke_pri>
+</k_ele>
+<r_ele>
+<reb>た</reb>
+<re_pri>news1</re_pri>
+<re_pri>nf03</re_pri>
+</r_ele>
+<sense>
+<pos>&adv;</pos>
+<pos>&n;</pos>
+<pos>&adj-no;</pos>
+<gloss>other (esp. people and abstract matters)</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>2021030</ent_seq>
+<k_ele>
+<keb>摂る</keb>
+<ke_pri>spec1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>とる</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<sense>
+<pos>&v5r;</pos>
+<pos>&vt;</pos>
+<xref>取る・7</xref>
+<misc>&uk;</misc>
+<gloss>to have (e.g. lunch)</gloss>
+<gloss>to take (e.g. vitamins)</gloss>
 </sense>
 </entry>
 <entry>
@@ -1776,6 +2330,22 @@ various information fields.
 <s_inf>at sentence end after the question marker か</s_inf>
 <gloss>I'm not sure if ...</gloss>
 <gloss>I have my doubts about whether ...</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>2085080</ent_seq>
+<r_ele>
+<reb>ああ</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<sense>
+<pos>&adv;</pos>
+<xref>こう・1</xref>
+<xref>そう・1</xref>
+<xref>どう</xref>
+<s_inf>used for something or someone distant from both speaker and listener</s_inf>
+<gloss>like that</gloss>
+<gloss>so</gloss>
 </sense>
 </entry>
 <entry>
@@ -2017,6 +2587,26 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>2731770</ent_seq>
+<r_ele>
+<reb>ズ</reb>
+</r_ele>
+<r_ele>
+<reb>ず</reb>
+</r_ele>
+<sense>
+<pos>&suf;</pos>
+<misc>&col;</misc>
+<lsource xml:lang="eng"/>
+<gloss>s (pluralizing suffix)</gloss>
+</sense>
+<sense>
+<pos>&suf;</pos>
+<misc>&col;</misc>
+<gloss>'s (possessive suffix)</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>2780660</ent_seq>
 <r_ele>
 <reb>もの</reb>
@@ -2053,6 +2643,28 @@ various information fields.
 <gloss>hitting a ball (with a bat, golf club, etc.)</gloss>
 <gloss>batting</gloss>
 <gloss>stroke</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>2829645</ent_seq>
+<r_ele>
+<reb>ず</reb>
+</r_ele>
+<sense>
+<pos>&aux-v;</pos>
+<xref>ぬ</xref>
+<xref>ずに</xref>
+<s_inf>after the -nai stem of a verb and for サ変 as せ～ず (all senses); continuative form of ぬ</s_inf>
+<gloss>(does) not ..., and</gloss>
+<gloss>(does) not ..., so</gloss>
+<gloss>not (doing)</gloss>
+<gloss>without (doing)</gloss>
+</sense>
+<sense>
+<pos>&aux-v;</pos>
+<xref>ない</xref>
+<misc>&arch;</misc>
+<gloss>not</gloss>
 </sense>
 </entry>
 <entry>

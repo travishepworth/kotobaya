@@ -1,24 +1,23 @@
-# HANDOFF WRK-FREQ-MATCH (attempt 2)
+# HANDOFF WRK-FREQ-MATCH (attempt 3)
 
 STATUS: DONE
 BRANCH: t/WRK-FREQ-MATCH
-CHECK: `make check MODULE=worker` → green (890 passed)
+CHECK: `make check MODULE=worker` → green (899 passed)
 
 ## Changed (≤ 6 lines)
-- `freqmatch.py` kana key, in order: exact script, common kana word, common, kana level, the source's kanji-row rank, reading ord 0, not bound. If a kanji row owns the winner and it is level >= 2, the row is deferred; there is no fallback. A full tie counts as `ambiguous`.
-- `index.py`: kanji forms tagged rK/sK/oK count as no kanji (居る, 然う). Also stores reading ord and exact reading text.
-- `freq_rebuild.py`: takes the extras lock before reading is_current. Queues a fresh deck-build (no dedupe key) when a running one holds the key.
-- Run: `kubectl -n kotobaya exec deploy/kotobaya-worker -- python -m kotobaya_worker.jobs.freq_rebuild`. word_status is keyed by entry_seq, so no data is lost.
+- `freqmatch.py` kana rows: a hiragana term no longer matches katakana-only readings. A kanji row at the same rank wins (jpdb ㋕ pairs). Kanji words the source ranks far away are dropped (`is_near`: claimed ≤ 2r+50).
+- Ranking: a near kanji-row rank now comes right after the common-kana-word tier. The reading-ord check uses the term's own script (ず aux, not ズ). Tied kana words take the lowest seq; only tied kanji words count as ambiguous.
+- `FreqMapping.row_status` records each row's outcome. `index.exact_readings` now holds the ord of each exact reading.
+- Rebuild, lock and deck requeue are unchanged from attempt 2. Run: `kubectl -n kotobaya exec deploy/kotobaya-worker -- python -m kotobaya_worker.jobs.freq_rebuild`
 
 ## Acceptance → tests
-- `test_freqmatch.py` (fixture: 42 real JMdict entries): とき, もの/ます, いる, かた, and the counts test
-- `test_freqmatch_jmdict.py`: the 19 terms, run with and without kanji rows (skipped if the cache is absent)
-- `test_freq_rebuild.py`: lock, running-build requeue
+- `test_freqmatch.py` (56 real JMdict entries): one test each for same-rank pairs, near kanji rows, far kanji rows, the hiragana filter, ああ and ず
+- `test_freqmatch_jmdict.py::test_real_list[jpdb|bccwj|cejc]`: real lists checked against their pins. Covers いくら, げ, つく, とる, ている, た, ます and ああ. Top-1000 deferred+ambiguous must not grow (jpdb 34→3, BCCWJ 19→5, CEJC 18→9). The earlier 19-term tests still pass.
 
 ## New dependencies
-- none
+- none. The real lists are cached in `~/.cache/kotobaya-fixtures/freq/`; the test is skipped if they are missing.
 
 ## For the reviewer (≤ 3 lines)
-- Not mapped, counted as ambiguous: かた, ます (升/増す tie, 〼 untagged), ある without kanji rows. もの→particle 2780660; とこ→床. Tag counts don't help: they pick 要る and 肩.
-- ㋕ not used: it only says which spelling was counted, and term + reading already fix the entry.
-- Device packages update at the next release.
+- jpdb ない(29) maps to 無い, not the auxiliary, because 無い/ない is paired at 29 (your rule 1).
+- た→2654250 and ます→〼 2210290, both untagged in JMdict. ている is unmatched because JMdict has no ている entry.
+- `is_near` is a heuristic: いや (CEJC 52) maps to 否 because 嫌 (202) is just past 2r+50 = 154.

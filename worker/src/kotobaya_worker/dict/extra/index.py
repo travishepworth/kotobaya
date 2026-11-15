@@ -57,7 +57,8 @@ class EntryIndex:
     first_kanji: dict[int, str] = field(default_factory=dict)  # seq -> norm of kanji form 0
     kana_level: dict[int, int] = field(default_factory=dict)  # seq -> see kana_level()
     reading_ord: dict[tuple[int, str], int] = field(default_factory=dict)  # (seq, norm) -> ord
-    exact_readings: set[tuple[int, str]] = field(default_factory=set)  # (seq, NFKC reading)
+    # (seq, NFKC reading as written) -> ord: tells ず from ズ, which share a norm
+    exact_readings: dict[tuple[int, str], int] = field(default_factory=dict)
     bound: set[int] = field(default_factory=set)  # seqs whose first sense is a bound form
 
     def match(self, term: str, reading: str | None = None) -> list[int]:
@@ -79,7 +80,7 @@ class EntryIndex:
         if kind == "reading":
             self.readings.setdefault(seq, {}).setdefault(norm, form)
             self.reading_ord.setdefault((seq, norm), ord_)
-            self.exact_readings.add((seq, unicodedata.normalize("NFKC", form)))
+            self.exact_readings.setdefault((seq, unicodedata.normalize("NFKC", form)), ord_)
         elif ord_ == 0:
             self.first_kanji[seq] = norm
         if common:
