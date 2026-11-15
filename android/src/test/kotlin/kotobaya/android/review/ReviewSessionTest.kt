@@ -49,10 +49,17 @@ class ReviewSessionTest {
         store.transaction { it.syncState.put(SyncStateKeys.DEVICE_ID, device) }
     }
 
-    /** All live, non-refused cards in id order, as a queue (due-ness is not the point here). */
+    /**
+     * All live, non-refused cards in id order, as a queue (due-ness is not the point here, except that a learning card
+     * is in it only once due, as core builds with learn-ahead 0: ADR-033).
+     */
     private val queue = QueueSource {
         val cards = store.learning().all(LearningTable.CARD)
             .filter { CardRows.live(it) && !CardRows.refused(it) }
+            .filter { c ->
+                val st = CardRows.str(c["state"])
+                st != "learning" && st != "relearning" || ((c["due_at"] as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE) <= now
+            }
             .sortedBy { CardRows.str(it["id"]) }
         ReviewQueue(
             cards.map { c ->
@@ -227,9 +234,9 @@ class ReviewSessionTest {
             assertTrue(s.answer(shownToken(s), step.first))
         }
         assertEquals(JsonString("relearning"), cacheOf(id)["state"])
-        // from relearning: undo works too
+        // from relearning: undo works too (once due: no learn-ahead, ADR-033)
         val before = cacheOf(id)
-        now += 1000
+        now = (before["due_at"] as JsonNumber).value.toLong()
         s.start()
         assertTrue(s.answer(shownToken(s), Button.GOOD))
         assertTrue(s.undo())
@@ -273,7 +280,7 @@ class ReviewSessionTest {
             row["rating"] = JsonNumber(9.0)
             tx.learning.put(LearningTable.REVIEW_LOG, row)
         }
-        now += 1000
+        now = (card(shown.cardId)["due_at"] as JsonNumber).value.toLong() // its learning step is over (ADR-033)
         s.start()
         val again = assertIs<ReviewState.Showing>(s.state.value).card
         assertEquals(shown.cardId, again.cardId)

@@ -192,6 +192,7 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
                         }
                         is ReviewState.Summary -> Finished(review.stats, Modifier.weight(1f), state.prefs, null, intents, state.meta)
                         is ReviewState.DeckDone -> Finished(review.stats, Modifier.weight(1f), state.prefs, review, intents)
+                        is ReviewState.Waiting -> Finished(review.stats, Modifier.weight(1f), state.prefs, null, intents, state.meta, waiting = review)
                         is ReviewState.Blocked, is ReviewState.Showing -> {
                             val card = shown
                             if (card == null) {
@@ -259,7 +260,8 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
         }
         KbGlyphButton("ふ", T(R.string.review_furigana), intents::toggleFurigana, selected = meta.furigana, glyphStyle = KbTheme.type.titleSm.copy(localeList = kotobaya.android.ui.theme.JapaneseLocale))
         // On the finished page with nothing to undo the button would be a dead control: hide it.
-        val finished = state.review == ReviewState.Empty || state.review is ReviewState.Summary || state.review is ReviewState.DeckDone
+        val finished = state.review == ReviewState.Empty || state.review is ReviewState.Summary || state.review is ReviewState.DeckDone ||
+            state.review is ReviewState.Waiting
         if (!finished || meta.canUndo) KbIconButton(KbIcons.Undo, T(R.string.review_undo), intents::undo, enabled = meta.canUndo)
         if (card != null) {
             Box {
@@ -483,7 +485,8 @@ private fun ActionToast(actions: ReviewActionsUiState, cardId: String, intents: 
 /**
  * The finished state (DESIGN §5.1): the vermilion ensō, "All done for today", and for a session the count, time and
  * how the answers split. No streaks, no confetti. AND-DECKEND: with [deck], "Deck done", when the deck's next learning
- * card is due, "Continue with all due cards" (when other decks have some) and "Back to decks".
+ * card is due, "Continue with all due cards" (when other decks have some) and "Back to decks". ADR-033: with [waiting],
+ * a live "Next card in m:ss" countdown to the next learning card (the view model resumes the session then).
  */
 @Composable
 private fun Finished(
@@ -493,6 +496,7 @@ private fun Finished(
     deck: ReviewState.DeckDone? = null,
     intents: ReviewIntents? = null,
     meta: ReviewMeta = ReviewMeta(),
+    waiting: ReviewState.Waiting? = null,
 ) {
     val c = KbTheme.colors
     Column(
@@ -501,7 +505,22 @@ private fun Finished(
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
     ) {
         KbEnso(size = 112.dp)
-        Text(
+        if (waiting != null) {
+            Text(
+                T(R.string.review_waiting_title, countdown(waiting.nextDueAt)),
+                style = KbTheme.type.headline,
+                color = c.text,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            Text(
+                T(R.string.review_waiting_body),
+                style = KbTheme.type.body,
+                color = c.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 420.dp),
+            )
+        } else Text(
             T(
                 when {
                     deck != null -> R.string.review_deck_done_title
@@ -516,7 +535,7 @@ private fun Finished(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 12.dp),
         )
-        Text(
+        if (waiting == null) Text(
             T(
                 when {
                     deck != null -> R.string.review_deck_done_body
@@ -574,6 +593,25 @@ private fun Finished(
         val label = if (deckExit != null) R.string.review_deck_done_back else R.string.review_finished_back
         if (exit != null) KbButton(T(label), exit, Modifier.padding(top = 8.dp), variant = KbButtonVariant.Quiet)
     }
+}
+
+/** ADR-033: the time left until [at], ticking every second ("m:ss", "h:mm:ss" from an hour); never negative. */
+@Composable
+private fun countdown(at: Long): String {
+    var now by remember(at) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(at) {
+        // bounded by tick count, not by the wall clock, so a virtual test clock cannot spin here
+        repeat(((at - now).coerceAtLeast(0L) / 1_000L + 1L).toInt()) {
+            if (now >= at) return@LaunchedEffect
+            delay(1_000L - (at - now) % 1_000L)
+            now = System.currentTimeMillis()
+        }
+    }
+    val s = ((at - now).coerceAtLeast(0L) + 999L) / 1_000L
+    val h = (s / 3_600).toInt()
+    val m = (s % 3_600 / 60).toInt()
+    val sec = (s % 60).toInt()
+    return if (h > 0) T(R.string.review_waiting_clock_hms, h, m, sec) else T(R.string.review_waiting_clock_ms, m, sec)
 }
 
 @Composable

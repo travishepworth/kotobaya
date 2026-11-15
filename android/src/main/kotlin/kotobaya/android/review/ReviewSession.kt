@@ -41,18 +41,13 @@ data class SessionQueue(
     val queue: ReviewQueue,
     /** `scheduler.bury_siblings`: a NEW/REVIEW card whose note was answered this session is skipped. */
     val burySiblings: Boolean = false,
-    /** `QueueLimits.learnAheadMs`: a requeued learning card is shown once nothing else is left and it is due within this. */
-    val learnAheadMs: Long = DEFAULT_LEARN_AHEAD_MS,
     /** C-26: the queue is empty but a keep-going build has cards. */
     val moreAvailable: Boolean = false,
     /** C-26: the study day's start of the build (keep going ends when it changes); 0 when the source does not know. */
     val dayStartMs: Long = 0,
-) {
-    companion object {
-        /** The contract default (LocalQueueLoader.LEARN_AHEAD_MS): 20 minutes. */
-        const val DEFAULT_LEARN_AHEAD_MS: Long = 1_200_000
-    }
-}
+    /** ADR-033: the study day's end of the build (a learning card due at or after it does not make the session wait). */
+    val dayEndMs: Long = Long.MAX_VALUE,
+)
 
 /** The queue the session pulls from (T304a's `LocalQueueLoader` in production). */
 fun interface QueueSource {
@@ -112,6 +107,13 @@ sealed interface ReviewState {
 
     /** Nothing to review and nothing answered. */
     data object Empty : ReviewState
+
+    /**
+     * ADR-033: an all-decks session (normal or keep going) has nothing due now, but learning cards fall due later
+     * today. [nextDueAt] is the earliest; the screen counts down to it and resumes the session then (no learn-ahead:
+     * a learning card is never shown before it is due). [stats] is null when nothing was answered yet.
+     */
+    data class Waiting(val stats: SessionStats?, val nextDueAt: Long) : ReviewState
 
     /** The queue could not be loaded or the next card could not be shown (a storage error); the screen offers Retry. */
     data object Failed : ReviewState
@@ -192,8 +194,7 @@ class ReviewSession<L : LearningTables>(
     private val reads: ReviewReads<L>? = null,
     /**
      * AND-DECKEND: non-null makes this a deck session ([queue] is the deck's) and is the all-decks queue. A deck
-     * session serves learn-ahead cards only while this queue has nothing due now, and never the card answered last;
-     * otherwise it ends in [ReviewState.DeckDone], from which [continueWithAll] switches to this queue.
+     * session with nothing due now ends in [ReviewState.DeckDone], from which [continueWithAll] switches to this queue.
      */
     allDue: QueueSource? = null,
 ) {
@@ -221,8 +222,8 @@ class ReviewSession<L : LearningTables>(
         var requeueMs = 0.0
     }
 
-    /** A learning card in the session queue: shown when due, or (if [admitted] by a build, or within learn-ahead) once nothing else is left. */
-    private class Timed(val item: QueueItem, val dueAt: Long, val admitted: Boolean)
+    /** A learning card in the session queue: shown only once due (ADR-033: no learn-ahead). */
+    private class Timed(val item: QueueItem, val dueAt: Long)
 
     private val lock = Any()
     private val commitLock = Any()
@@ -257,7 +258,7 @@ class ReviewSession<L : LearningTables>(
     /** Learning cards with their due instant. */
     private val learning = ArrayList<Timed>()
     private var burySiblings = false
-    private var learnAheadMs = SessionQueue.DEFAULT_LEARN_AHEAD_MS
+    private var dayEndMs = Long.MAX_VALUE
     private var lastBuildAt = Long.MIN_VALUE
 
     /** The queue the session builds from; becomes the all-decks queue on [continueWithAll]. */
@@ -266,10 +267,10 @@ class ReviewSession<L : LearningTables>(
     /** Deck session: the all-decks queue; null for an all-decks session. */
     private var allDecks: QueueSource? = allDue
 
-    /** Deck session: the last build found cards due now outside what the session holds (no learn-ahead then). */
+    /** Deck session: the last build found cards due now outside what the session holds. */
     private var othersDue = false
 
-    /** The last build's `nextLearningDueAt` (deck session: shown in [ReviewState.DeckDone]). */
+    /** The last build's `nextLearningDueAt` ([ReviewState.Waiting], [ReviewState.DeckDone]). */
     private var buildNextLearningDueAt: Long? = null
 
     /** Bumped whenever the queue or rendering inputs change: an older pre-render is dropped. */
@@ -524,7 +525,7 @@ class ReviewSession<L : LearningTables>(
         val state = CardRows.str(row["state"])
         if (state != "learning" && state != "relearning") return
         val due = (row["due_at"] as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE
-        learning += Timed(QueueItem(id, QueueItemKind.LEARNING, null), due, admitted = false)
+        learning += Timed(QueueItem(id, QueueItemKind.LEARNING, null), due)
     }
 
     /**
@@ -651,19 +652,21 @@ class ReviewSession<L : LearningTables>(
         }
     }
 
-    /** Nothing left after a fresh build: the summary, or Empty when nothing was answered. */
+    /**
+     * Nothing due now after a fresh build: a deck session is [ReviewState.DeckDone]; an all-decks session waits for its
+     * next learning card when one falls due later today ([ReviewState.Waiting], ADR-033), else it is the summary, or
+     * Empty when nothing was answered.
+     */
     private fun finishLocked() {
         awaitingFor?.let { it.advanceMs = ReviewTiming.ms(it.tapNs) }
         current = null
         awaitingFor = null
         updateMetaLocked()
         val stats = if (undoStack.isNotEmpty()) stats() else null
+        val next = (learning.map { it.dueAt }.filter { it < dayEndMs } + listOfNotNull(buildNextLearningDueAt)).minOrNull()
         _state.value = when {
-            allDecks != null -> {
-                val now = clock()
-                val next = (learning.map { it.dueAt }.filter { it > now } + listOfNotNull(buildNextLearningDueAt)).minOrNull()
-                ReviewState.DeckDone(stats, next, othersDue)
-            }
+            allDecks != null -> ReviewState.DeckDone(stats, next, othersDue)
+            next != null -> ReviewState.Waiting(stats, next)
             stats != null -> ReviewState.Summary(stats)
             else -> ReviewState.Empty
         }
@@ -697,40 +700,18 @@ class ReviewSession<L : LearningTables>(
         }
     }
 
-    /** Builder rule 2 over time: learning due now, then the built order, then learning within learn-ahead. */
+    /**
+     * Builder rule 2 over time: learning due now, then the built order. ADR-033: a learning card not yet due is never
+     * shown, whatever else is left (no learn-ahead in any session; phone log 2026-11-15: cards answered Again came back
+     * every few seconds at the end of the queue, and 10-minute steps were cut to one minute).
+     */
     private fun pickLocked(now: Long): QueueItem? {
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
-        main.removeFirstOrNull()?.let { return it }
-        if (!learnAheadAllowedLocked()) return null
-        learning.filter { aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
-        return null
+        return main.removeFirstOrNull()
     }
 
     private fun peekLocked(now: Long): QueueItem? =
-        learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.item
-            ?: main.firstOrNull()
-            ?: learning.filter { learnAheadAllowedLocked() && aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.item
-
-    /**
-     * Rule 5 serves learn-ahead cards only once nothing else is left, and an empty [main] says that only for a build
-     * that has seen every answer: the in-memory queue is a snapshot (a keep-going build holds one new batch; any build
-     * goes stale as cards fall due, sync pulls, or limits change). Until a fresh build, a not-yet-due learning card
-     * waits and the session rebuilds first. Without this a card graded Again/Hard (due again within learn-ahead) came
-     * back after every answer while due reviews or new cards were left (AND-KEEPGOING-FIX for keep going; seen in
-     * normal sessions on the phone 2026-11-15: one relearning card 5 times in 11 s).
-     */
-    private fun learnAheadAllowedLocked(): Boolean = commitCount + pending.size <= commitsAtBuild
-
-    /**
-     * A learning card not yet due may be shown ahead of time (builder rules 2 and 5). AND-DECKEND: in a deck session
-     * only while no other deck has cards due now, only within learn-ahead (a build's admission is not enough) and
-     * never the card answered last, so the deck's last card is not served again and again inside its step.
-     */
-    private fun aheadLocked(t: Timed, now: Long): Boolean {
-        if (allDecks == null) return t.admitted || t.dueAt <= now + learnAheadMs
-        if (othersDue || t.dueAt > now + learnAheadMs) return false
-        return t.item.cardId != undoStack.lastOrNull()?.card?.cardId
-    }
+        learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.item ?: main.firstOrNull()
 
     /** Builder rule 1 between builds: a NEW/REVIEW card whose note had another card answered this session. */
     private fun siblingAnsweredLocked(card: ShownCard): Boolean {
@@ -761,7 +742,7 @@ class ReviewSession<L : LearningTables>(
         }
         val dues = duesOf(built.queue)
         val index = loadExtrasIndex()
-        // deck session: the cards due now in every deck (learn-ahead ones left out)
+        // deck session: the cards due now in every deck
         val dueEverywhere: List<String>? = all?.loadSession(shownNew)?.queue?.let { q ->
             val now = clock()
             val d = duesOf(q)
@@ -776,13 +757,13 @@ class ReviewSession<L : LearningTables>(
             for (item in built.queue.items) {
                 if (item.cardId in exclude) continue
                 if (item.kind == QueueItemKind.LEARNING) {
-                    learning += Timed(item, dues[item.cardId] ?: Long.MIN_VALUE, admitted = true)
+                    learning += Timed(item, dues[item.cardId] ?: Long.MIN_VALUE)
                 } else {
                     main += item
                 }
             }
             burySiblings = built.burySiblings
-            learnAheadMs = built.learnAheadMs
+            dayEndMs = built.dayEndMs
             buildNextLearningDueAt = built.queue.nextLearningDueAt
             buildMoreAvailable = built.moreAvailable
             othersDue = dueEverywhere != null && dueEverywhere.any { it !in exclude }

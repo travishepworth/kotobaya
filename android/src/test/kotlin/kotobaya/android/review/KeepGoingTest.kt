@@ -128,7 +128,8 @@ class KeepGoingTest {
             normal += card.cardId
             check(++guard < 5_000) { "normal session did not end" }
         }
-        assertIs<ReviewState.Summary>(s.state.value)
+        // ADR-033: the new cards answered Good wait on their 10-minute step, so the session waits for them
+        assertTrue(s.state.value is ReviewState.Summary || s.state.value is ReviewState.Waiting, "${s.state.value}")
         assertTrue(s.meta.value.moreAvailable, "done for now, Keep going offered")
         assertFalse(s.meta.value.keepingGoing)
         assertEquals(200, normal.count { it in reviews }, "review cap")
@@ -138,8 +139,15 @@ class KeepGoingTest {
         s.startKeepGoing()
         val kept = LinkedHashSet<String>()
         var answers = 0
-        while (s.state.value is ReviewState.Showing) {
-            val card = assertIs<ReviewState.Showing>(s.state.value).card
+        while (true) {
+            val st = s.state.value
+            if (st is ReviewState.Waiting) {
+                // only learning cards not yet due are left: the screen resumes at their due instant
+                d.clock.now = st.nextDueAt
+                s.start()
+                continue
+            }
+            val card = (st as? ReviewState.Showing)?.card ?: break
             d.clock.now += 2_000
             assertTrue(s.answer(card.token, Button.GOOD))
             kept += card.cardId
@@ -199,12 +207,13 @@ class KeepGoingTest {
     }
 
     /**
-     * Phone log 2026-11-15: a relearning card answered Again/Hard (due again within learn-ahead) was served 5 times in
-     * 11 s while due reviews were still left, because the in-memory queue ran dry and the session took that as "nothing
-     * else left". A learn-ahead card may be served only once a build that saw every answer still has nothing else.
+     * Phone log 2026-11-15: a relearning card answered Again/Hard was served 5 times in 11 s while due reviews were
+     * still left, because the in-memory queue ran dry and the session took that as "nothing else left" (learn-ahead).
+     * ADR-033: it is never served before it is due: every due review comes first (through a fresh build when the
+     * in-memory queue runs dry), then the session waits for it and shows it at its due instant.
      */
     @Test
-    fun aLearnAheadCardWaitsForAFreshBuildWhenTheInMemoryQueueRunsDry() {
+    fun aRelearningCardIsNotServedBeforeItsDueWhenTheInMemoryQueueRunsDry() {
         val reviews = d.seed(4)
         makeDueReviews(reviews)
         val loader = LocalQueueLoader(d.db, { d.clock.now }).asQueueSource()
@@ -223,12 +232,14 @@ class KeepGoingTest {
         val lapsed = assertIs<ReviewState.Showing>(s.state.value).card
         d.clock.now += 2_000
         assertTrue(s.answer(lapsed.token, Button.AGAIN))
+        val due = d.store.read { tx ->
+            (CardRows.get(tx.learning, kotobaya.sync.client.apply.LearningTable.CARD, lapsed.cardId)?.get("due_at") as kotobaya.contracts.sync.JsonNumber).value.toLong()
+        }
         val second = answerShown(s)
         val next = assertIs<ReviewState.Showing>(s.state.value).card
         assertTrue(next.cardId != lapsed.cardId, "the relearning card came back ahead of due reviews")
         assertEquals(QueueItemKind.REVIEW, next.kind)
 
-        // every due review is served before the lapsed card comes back ahead of time
         val served = ArrayList<String>()
         while (s.state.value is ReviewState.Showing) {
             val card = assertIs<ReviewState.Showing>(s.state.value).card
@@ -237,8 +248,13 @@ class KeepGoingTest {
             assertTrue(s.answer(card.token, Button.GOOD))
             check(served.size < 50)
         }
-        val rest = reviews - lapsed.cardId - second.cardId
-        val firstRepeat = served.indexOf(lapsed.cardId)
-        assertEquals(rest.toSet(), served.take(if (firstRepeat < 0) served.size else firstRepeat).toSet(), "order: $served")
+        assertEquals((reviews - lapsed.cardId - second.cardId).toSet(), served.toSet(), "order: $served")
+        assertTrue(lapsed.cardId !in served, "not before its due: $served")
+        val waiting = assertIs<ReviewState.Waiting>(s.state.value)
+        assertEquals(due, waiting.nextDueAt)
+        assertTrue(due > d.clock.now)
+        d.clock.now = due
+        s.start()
+        assertEquals(lapsed.cardId to QueueItemKind.LEARNING, assertIs<ReviewState.Showing>(s.state.value).card.let { it.cardId to it.kind })
     }
 }

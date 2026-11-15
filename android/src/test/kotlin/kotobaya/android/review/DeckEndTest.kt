@@ -89,7 +89,7 @@ class DeckEndTest {
         val s = session()
         s.start()
         assertEquals(inDeck, showing(s).cardId)
-        answer(s, Button.AGAIN) // learning, due in 1 min: within learn-ahead
+        answer(s, Button.AGAIN) // learning, due in 1 min
         val done = assertIs<ReviewState.DeckDone>(s.state.value, "the deck is done; the card is not served ahead of its step")
         assertTrue(done.othersDue, "another deck has a card due")
         assertEquals(dueAt(inDeck), done.nextLearningDueAt)
@@ -112,21 +112,26 @@ class DeckEndTest {
     }
 
     @Test
-    fun learnAheadInADeckOnlyWhenNothingIsDueAnywhereAndNeverTheCardJustAnswered() {
+    fun aDecksLearningCardsComeBackOnlyOnceDueEvenWhenNothingIsDueAnywhere() {
+        // ADR-033 (was: learn-ahead in a deck when nothing was due anywhere, never the card just answered)
         val (a, b) = d.seed(2)
         deckOf(a, b)
         val s = session()
         s.start()
-        val shown = ArrayList<Pair<String, QueueItemKind>>()
-        repeat(6) {
-            val st = s.state.value as? ReviewState.Showing ?: return@repeat
-            shown += st.card.cardId to st.card.kind
-            answer(s, Button.AGAIN)
-        }
-        // a, b new; then each learning card ahead of time in turn, never the one just answered
-        assertEquals(listOf(a to QueueItemKind.NEW, b to QueueItemKind.NEW), shown.take(2))
-        assertTrue(shown.zipWithNext().none { (x, y) -> x.first == y.first }, "no card twice in a row: $shown")
-        assertEquals(shown.map { it.first }, logged(), "one op per answer")
+        assertEquals(a, answer(s, Button.AGAIN).cardId)
+        assertEquals(b, answer(s, Button.AGAIN).cardId)
+        val done = assertIs<ReviewState.DeckDone>(s.state.value, "neither is served ahead of its step")
+        assertEquals(minOf(dueAt(a), dueAt(b)), done.nextLearningDueAt)
+        d.clock.now = requireNotNull(done.nextLearningDueAt)
+        s.start() // the screen's wake-up at the due time
+        assertEquals(a to QueueItemKind.LEARNING, showing(s).let { it.cardId to it.kind })
+        val bDue = dueAt(b)
+        answer(s, Button.EASY) // 2 s later: b's step is over too
+        assertEquals(bDue, d.clock.now)
+        assertEquals(b to QueueItemKind.LEARNING, showing(s).let { it.cardId to it.kind })
+        answer(s, Button.EASY)
+        assertNull(assertIs<ReviewState.DeckDone>(s.state.value).nextLearningDueAt)
+        assertEquals(listOf<String?>(a, b, a, b), logged(), "one op per answer")
     }
 
     @Test
@@ -178,13 +183,17 @@ class DeckEndTest {
     }
 
     @Test
-    fun theAllDecksSessionKeepsTheBuilderLearnAheadRule() {
-        // QueueBuilder rule 5: "With only L1 -> L1 (served ahead of time)"; unchanged outside deck sessions
+    fun theAllDecksSessionWaitsForItsOnlyLearningCard() {
+        // ADR-033 (supersedes ADR-028): no learn-ahead outside deck sessions either; the session waits instead
         val (only) = d.seed(1)
         val s = session(deckId = null)
         s.start()
         answer(s, Button.AGAIN)
-        assertEquals(only to QueueItemKind.LEARNING, showing(s).let { it.cardId to it.kind })
+        val waiting = assertIs<ReviewState.Waiting>(s.state.value)
+        assertEquals(dueAt(only), waiting.nextDueAt)
         assertEquals(listOf<String?>(only), logged())
+        d.clock.now = waiting.nextDueAt
+        s.start()
+        assertEquals(only to QueueItemKind.LEARNING, showing(s).let { it.cardId to it.kind })
     }
 }

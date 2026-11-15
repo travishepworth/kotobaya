@@ -135,7 +135,10 @@ class LocalQueueLoaderTest {
         assertEquals(listOf(deck(1)), loaded.input.decks.map { it.id })
 
         val items = loaded.queue.items
-        assertEquals(setOf(card(2), card(4), card(5)), items.filter { it.kind != QueueItemKind.NEW }.map { it.cardId }.toSet())
+        // ADR-033: no learn-ahead. The learning card (5) due in 10 min is not in the queue; it is the next learning due
+        // and still counts as learning to do today (as the server's counts.learning).
+        assertEquals(setOf(card(2), card(4)), items.filter { it.kind != QueueItemKind.NEW }.map { it.cardId }.toSet())
+        assertEquals(NOW + 600_000, loaded.queue.nextLearningDueAt)
         // Sibling burying: N1's REVIEW card (2) is taken, so its NEW card (1) is skipped.
         assertFalse(card(1) in items.map { it.cardId })
         assertEquals(QueueCounts(due = 2, new = 2, learning = 1), loaded.counts)
