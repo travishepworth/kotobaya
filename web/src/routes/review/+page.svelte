@@ -145,6 +145,7 @@
 		{ label: rv('rv.bury'), icon: 'clock', key: 'B', disabled: !s.current, onselect: () => void s.bury() },
 		{ label: rv('rv.suspend'), icon: 'pause', key: 'S', disabled: !s.current, onselect: () => void s.suspend() },
 		{ label: rv('rv.neverForget'), icon: 'sparkle', key: 'N', disabled: !s.current, onselect: () => void s.neverForget() },
+		{ label: rv('rv.blacklist'), icon: 'close', key: 'X', disabled: !s.current, onselect: () => void s.blacklist() },
 		{ label: rv('rv.shortcuts'), icon: 'info', key: '?', onselect: () => (helpOpen = true) }
 	]);
 
@@ -196,6 +197,9 @@
 			case 'n':
 				void s.neverForget();
 				break;
+			case 'x':
+				void s.blacklist();
+				break;
 			case 'f':
 				s.toggleFurigana();
 				break;
@@ -219,6 +223,7 @@
 		['B', rv('rv.key.bury')],
 		['S', rv('rv.key.suspend')],
 		['N', rv('rv.key.never')],
+		['X', rv('rv.key.blacklist')],
 		['?', rv('rv.key.help')],
 		['Esc', rv('rv.key.leave')]
 	]);

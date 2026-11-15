@@ -590,6 +590,15 @@ export class ReviewPage {
 	}
 
 	async neverForget(): Promise<void> {
+		await this.#setWord('never_forget', 'review.neverForgetSet');
+	}
+
+	async blacklist(): Promise<void> {
+		await this.#setWord('blacklisted', 'review.blacklistSet');
+	}
+
+	/** Word-status override on the current card's entry; the word leaves the queue, so show the next card. */
+	async #setWord(status: 'never_forget' | 'blacklisted', done: 'review.neverForgetSet' | 'review.blacklistSet'): Promise<void> {
 		const item = this.current;
 		if (!item || this.busy) return;
 		const seq = item.entry?.seq ?? item.card.note?.entrySeq ?? null;
@@ -599,9 +608,8 @@ export class ReviewPage {
 		}
 		this.busy = true;
 		try {
-			await wordsApi.setWordStatus({ seq, wordStatusSet: { status: 'never_forget' } });
-			pushToast(tr('review.neverForgetSet'));
-			// A never-forget word leaves the queue (builder rule 1), as on the phone: show the next card.
+			await wordsApi.setWordStatus({ seq, wordStatusSet: { status } });
+			pushToast(tr(done));
 			await this.advance();
 		} catch {
 			/* toast shown */
