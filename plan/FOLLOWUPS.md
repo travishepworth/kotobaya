@@ -468,3 +468,4 @@
 - AND-KANJI-DECKS: kanji deck chips should open the deck inspector (needs AppNav hook)
 - WRK-FREQ-MATCH minors: BCCWJ り→りょ (classical aux should win); CEJC タケ→茸 (prefer first reading = row reading); is_near 2r+50 heuristic
 - C-26 minors: server passes no pending entries (device moreAvailable may differ); server newShownThisSession always 0
+- AND-KEEPGOING: keep going only for all-decks sessions; normal session now rebuilds once at end (moreAvailable)

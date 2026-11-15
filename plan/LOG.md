@@ -1147,3 +1147,6 @@
 2026-11-15T06:22:07Z WEB-KEEPGOING DISPATCH writer; AND-KEEPGOING DISPATCH writer
 2026-11-15T06:22:07Z RELEASE worker 0.1.18 pushed; helm upgrade BLOCKED: kube OIDC login expired (browser auth) — waiting on user
 2026-11-15T06:23:38Z WEB-KEEPGOING CHECK_GREEN + MERGE aa8b54aa
+2026-11-15T06:26:48Z RELEASE api+web 0.1.18 PIN c960233b build started (C-26 + WEB-KEEPGOING; worker 0.1.18 from 624d4305)
+2026-11-15T06:32:14Z RELEASE api+web 0.1.18 pushed; values bumped (api/web/worker 0.1.18); deploy waits on kube login
+2026-11-15T06:35:08Z AND-KEEPGOING CHECK_GREEN + MERGE c8e05a6c (AppNav touched for review/keepgoing route; deck sessions ignore keep going)
