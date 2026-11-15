@@ -464,3 +464,4 @@
 - WEB-DECK-INSPECT: reader TokenSheet/UnknownWords not moved onto WordStatusActions; deck chip counts need a per-status count endpoint (contract)
 - AND-DECK-INSPECT: deck list refreshes by ViewModel reload, not SQL Flow; consider deck-item seqs in dict package scope (worker, DICT_PACKAGE SHOULD)
 - AND-DECK-LABELS: server-omitted seqs not negatively cached (re-requested per deck open); BackNavigationTest flaky (Compose idle)
+- WEB-KANJI-DECKS (parity with AND-KANJI-DECKS): web kanji review back/detail 'Appears in decks'

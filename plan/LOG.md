@@ -1131,3 +1131,6 @@
 2026-11-15T04:46:50Z RELEASE APK 0.1.18 PIN 9a4fa136 release build started (AND-DECK-INSPECT + AND-DECK-LABELS)
 2026-11-15T04:48:23Z RELEASE APK 0.1.18 INSTALLED (pin 9a4fa136, code 118, cert ec6b7f45 ok)
 2026-11-15T04:57:35Z WRK-FREQ-MATCH DISPATCH writer-senior (freq-list decks fan kana term out to all homophones; jpdb/bccwj/cejc)
+2026-11-15T05:11:36Z WRK-FREQ-MATCH HANDOFF + CHECK_GREEN (885 tests); reviewer dispatched
+2026-11-15T05:13:14Z WRK-FREQ-MATCH REVIEW_CHANGES 2 majors (kana row falls back to next homophone when winner claimed: とき→鴇; katakana loanword beats word: もの→モノ) + tie minors -> attempt 2
+2026-11-15T05:18:26Z AND-KANJI-DECKS DISPATCH writer (user request: kanji appears-in-decks above words-used-in)

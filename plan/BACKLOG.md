@@ -803,3 +803,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### Frequency-list deck homophone fan-out (2026-11-15, user report)
 - WRK-FREQ-MATCH — one entry per freq-source row (jpdb/bccwj/cejc), rebuild entry_freq + list decks · model: opus · risk: high · deps: — · status: RUNNING (ticket: plan/tickets/WRK-FREQ-MATCH.md)
+- AND-KANJI-DECKS — android kanji "Appears in decks" (review back + kanji detail) above example words · model: sonnet · risk: med · deps: AND-REVIEW-INFO · status: RUNNING (ticket: plan/tickets/AND-KANJI-DECKS.md)
