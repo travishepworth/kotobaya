@@ -20,6 +20,7 @@
 	import type { Grade, GradeOption, MenuItem } from '../../lib/ui/kinds';
 	import { tr } from '../../lib/review/messages';
 	import { ReviewPage, type GradeButton } from '../../lib/state/review.svelte';
+	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
 	import { rv, type ReviewViewKey } from './messages';
 
@@ -318,6 +319,9 @@
 							<CardFrame bind:this={frame} rendered={s.rendered.card} furigana={s.furigana} reveal={s.flipped} />
 							{#if s.noExample && s.flipped}
 								<p class="note">{tr('review.noExampleSentence')}</p>
+							{/if}
+							{#if s.flipped}
+								<BackExtras item={s.current} />
 							{/if}
 							{#if s.flipped}
 								<!-- New tab: leaving would drop the session; a link never takes Space/1-5 (see onKeydown). -->
