@@ -3,6 +3,8 @@ package kotobaya.android.search
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotobaya.android.decks.DeckChoice
+import kotobaya.android.decks.DeckTarget
 import kotobaya.android.vm.StateViewModel
 import kotobaya.android.word.NoteLoad
 import kotobaya.android.word.WordLoad
@@ -21,7 +23,21 @@ interface SearchPort {
 
     /** Which of [seqs] the user has a note for (and in which decks); empty when that is unknown (replica not ready). */
     suspend fun myCards(seqs: Collection<Long>): Map<Long, MyCardInfo> = emptyMap()
+
+    /** AND-ADD2DECK: manual deck membership and "Add to my notes"; the defaults do nothing (no replica). */
+    suspend fun deckChoices(target: DeckTarget): List<DeckChoice> = emptyList()
+
+    /** Puts [target] into / out of the user deck [deckId]; false when nothing could be written. */
+    suspend fun setDeckMember(deckId: String, target: DeckTarget, member: Boolean): Boolean = false
+
+    /** Creates a user deck, returning its id. */
+    suspend fun createDeck(name: String): String? = null
+
+    /** Creates the note (and default cards) for a word, in [deckId] when given, all in one step. */
+    suspend fun addToNotes(word: String, reading: String, deckId: String?): AddNoteOutcome = AddNoteOutcome.Failed
 }
+
+enum class AddNoteOutcome { Added, Duplicate, Failed }
 
 /** [SearchPort] over the app's [WordSearch], [CardSearchBackend] and [WordRepository]. */
 class AppSearchPort(
@@ -29,6 +45,7 @@ class AppSearchPort(
     private val cardSearch: CardSearchBackend,
     private val details: WordRepository,
     private val mine: MyCardsLookup? = null,
+    private val deckOps: SearchDeckOps? = null,
 ) : SearchPort {
     override suspend fun words(q: String, after: String?) = wordSearch.search(q, after)
 
@@ -40,6 +57,19 @@ class AppSearchPort(
 
     override suspend fun myCards(seqs: Collection<Long>): Map<Long, MyCardInfo> =
         mine?.let { m -> withContext(Dispatchers.IO) { runCatching { m.lookup(seqs) }.getOrDefault(emptyMap()) } } ?: emptyMap()
+
+    override suspend fun deckChoices(target: DeckTarget) =
+        deckOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.decks(target) }.getOrDefault(emptyList()) } }.orEmpty()
+
+    override suspend fun setDeckMember(deckId: String, target: DeckTarget, member: Boolean) =
+        deckOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.set(deckId, target, member) }.getOrDefault(false) } } ?: false
+
+    override suspend fun createDeck(name: String) =
+        deckOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.createDeck(name) }.getOrNull() } }
+
+    override suspend fun addToNotes(word: String, reading: String, deckId: String?) =
+        deckOps?.let { o -> withContext(Dispatchers.IO) { runCatching { o.addToNotes(word, reading, deckId) }.getOrDefault(AddNoteOutcome.Failed) } }
+            ?: AddNoteOutcome.Failed
 }
 
 /** A dictionary result; [mine] is non-null when the user has a note for the entry ("In my cards"). */
@@ -70,10 +100,27 @@ sealed interface SearchDetail {
     data class Note(val noteId: String, val load: NoteLoad? = null) : SearchDetail
 }
 
+/** The deck sheet: toggle membership of [target] ([DeckSheetMode.TOGGLE]) or pick the deck for a new note ([DeckSheetMode.ADD_NOTE]). */
+enum class DeckSheetMode { TOGGLE, ADD_NOTE }
+
+data class DeckSheet(
+    val mode: DeckSheetMode,
+    val target: DeckTarget,
+    val decks: List<DeckChoice> = emptyList(),
+    /** For [DeckSheetMode.ADD_NOTE]: the word and reading the note is made from. */
+    val word: String = "",
+    val reading: String = "",
+)
+
 data class SearchUiState(
     val query: String = "",
     val results: SearchResults = SearchResults.Idle,
     val detail: SearchDetail? = null,
+    val sheet: DeckSheet? = null,
+    /** Names of the decks the open detail's word or note is in. */
+    val detailDecks: List<String> = emptyList(),
+    /** The outcome of the last "Add to my notes", shown once. */
+    val addNote: AddNoteOutcome? = null,
 )
 
 /** What the Search screen can ask for (no-ops by default, for previews). */
@@ -87,6 +134,17 @@ interface SearchIntents {
     fun openWord(seq: Long) {}
     fun openNote(noteId: String) {}
     fun closeDetail() {}
+
+    /** Opens the deck sheet for the open detail (toggle membership). */
+    fun openDeckSheet() {}
+    /** Opens the deck sheet to pick the deck of a new note for the open word. */
+    fun openAddNoteSheet(word: String, reading: String) {}
+    fun closeDeckSheet() {}
+    fun toggleDeck(deckId: String) {}
+    /** Creates the note in [deckId] (null = no deck) and closes the sheet. */
+    fun addNote(deckId: String?) {}
+    fun createDeck(name: String) {}
+    fun dismissAddNote() {}
 }
 
 /**
@@ -160,22 +218,96 @@ class SearchViewModel(
     }
 
     override fun openWord(seq: Long) {
-        update { it.copy(detail = SearchDetail.Word(seq)) }
+        update { it.copy(detail = SearchDetail.Word(seq), detailDecks = emptyList(), sheet = null, addNote = null) }
         launchIo {
             val load = port.word(seq)
             update { s -> if ((s.detail as? SearchDetail.Word)?.seq == seq) s.copy(detail = SearchDetail.Word(seq, load)) else s }
+            refreshDetailDecks()
         }
     }
 
     override fun openNote(noteId: String) {
-        update { it.copy(detail = SearchDetail.Note(noteId)) }
+        update { it.copy(detail = SearchDetail.Note(noteId), detailDecks = emptyList(), sheet = null, addNote = null) }
         launchIo {
             val load = port.note(noteId)
             update { s -> if ((s.detail as? SearchDetail.Note)?.noteId == noteId) s.copy(detail = SearchDetail.Note(noteId, load)) else s }
+            refreshDetailDecks()
         }
     }
 
-    override fun closeDetail() = update { it.copy(detail = null) }
+    override fun closeDetail() = update { it.copy(detail = null, sheet = null, detailDecks = emptyList()) }
+
+    private fun targetOf(d: SearchDetail?): DeckTarget? = when (d) {
+        is SearchDetail.Word -> DeckTarget(entrySeq = d.seq)
+        is SearchDetail.Note -> DeckTarget(noteId = d.noteId)
+        null -> null
+    }
+
+    private suspend fun refreshDetailDecks() {
+        val target = targetOf(current.detail) ?: return
+        val names = port.deckChoices(target).filter { it.member }.map { it.name }
+        update { s -> if (targetOf(s.detail) == target) s.copy(detailDecks = names) else s }
+    }
+
+    override fun openDeckSheet() {
+        val target = targetOf(current.detail) ?: return
+        update { it.copy(sheet = DeckSheet(DeckSheetMode.TOGGLE, target)) }
+        launchIo { reloadSheet() }
+    }
+
+    override fun openAddNoteSheet(word: String, reading: String) {
+        val target = targetOf(current.detail) ?: return
+        update { it.copy(sheet = DeckSheet(DeckSheetMode.ADD_NOTE, target, word = word, reading = reading)) }
+        launchIo { reloadSheet() }
+    }
+
+    private suspend fun reloadSheet() {
+        val sheet = current.sheet ?: return
+        val decks = port.deckChoices(sheet.target)
+        update { s -> s.sheet?.takeIf { it.target == sheet.target }?.let { s.copy(sheet = it.copy(decks = decks)) } ?: s }
+    }
+
+    override fun closeDeckSheet() = update { it.copy(sheet = null) }
+
+    override fun toggleDeck(deckId: String) {
+        val sheet = current.sheet ?: return
+        val member = sheet.decks.firstOrNull { it.id == deckId }?.member ?: return
+        launchIo {
+            port.setDeckMember(deckId, sheet.target, !member)
+            reloadSheet()
+            refreshDetailDecks()
+        }
+    }
+
+    override fun createDeck(name: String) {
+        val sheet = current.sheet ?: return
+        launchIo {
+            val id = port.createDeck(name) ?: return@launchIo
+            // in the toggle sheet the new deck takes the item at once; the note sheet picks it (the user taps it)
+            if (sheet.mode == DeckSheetMode.TOGGLE) port.setDeckMember(id, sheet.target, true)
+            reloadSheet()
+            refreshDetailDecks()
+        }
+    }
+
+    override fun addNote(deckId: String?) {
+        val sheet = current.sheet?.takeIf { it.mode == DeckSheetMode.ADD_NOTE } ?: return
+        val seq = (current.detail as? SearchDetail.Word)?.seq
+        update { it.copy(sheet = null) }
+        launchIo {
+            val outcome = port.addNote(sheet, deckId)
+            update { it.copy(addNote = outcome) }
+            if (seq != null && outcome != AddNoteOutcome.Failed) {
+                val load = port.word(seq)
+                update { s -> if ((s.detail as? SearchDetail.Word)?.seq == seq) s.copy(detail = SearchDetail.Word(seq, load)) else s }
+                refreshDetailDecks()
+            }
+        }
+    }
+
+    private suspend fun SearchPort.addNote(sheet: DeckSheet, deckId: String?) = addToNotes(sheet.word, sheet.reading, deckId)
+
+    override fun dismissAddNote() = update { it.copy(addNote = null) }
 
     companion object {
         const val PAGE: Int = 50

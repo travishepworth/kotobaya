@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotobaya.android.R
 import kotobaya.android.i18n.T
+import kotobaya.android.search.AddNoteOutcome
 import kotobaya.android.search.CardHit
+import kotobaya.android.search.DeckSheetMode
 import kotobaya.android.search.SearchDetail
 import kotobaya.android.search.SearchIntents
 import kotobaya.android.search.SearchResults
@@ -32,6 +34,7 @@ import kotobaya.android.search.SearchUiState
 import kotobaya.android.ui.components.KbBanner
 import kotobaya.android.ui.components.KbButton
 import kotobaya.android.ui.components.KbButtonVariant
+import kotobaya.android.ui.components.KbDeckPicker
 import kotobaya.android.ui.components.KbDivider
 import kotobaya.android.ui.components.KbEmptyState
 import kotobaya.android.ui.components.KbEmptyTone
@@ -46,6 +49,8 @@ import kotobaya.android.ui.components.jaTitle
 import kotobaya.android.ui.components.wordStatusTone
 import kotobaya.android.ui.theme.KbFeedback
 import kotobaya.android.ui.theme.KbTheme
+import kotobaya.android.word.NoteLoad
+import kotobaya.android.word.WordLoad
 import kotobaya.android.word.ui.NoteDetailScreen
 import kotobaya.android.word.ui.WordDetailScreen
 import kotobaya.contracts.search.SearchErrorCode
@@ -71,7 +76,7 @@ fun SearchScreen(state: SearchUiState, intents: SearchIntents) {
                 Box(Modifier.width(1.dp).fillMaxHeight().background(KbTheme.colors.border))
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     if (open != null) {
-                        Detail(open, intents, showBack = false)
+                        Detail(open, state, intents, showBack = false)
                     } else {
                         KbEmptyState(
                             T(R.string.search_pick_title), body = T(R.string.search_pick_body), icon = KbIcons.Book, page = true,
@@ -82,7 +87,7 @@ fun SearchScreen(state: SearchUiState, intents: SearchIntents) {
             }
         } else if (open != null) {
             BackHandler(onBack = intents::closeDetail)
-            Detail(open, intents, showBack = true)
+            Detail(open, state, intents, showBack = true)
         } else {
             ResultsPane(state, intents)
         }
@@ -90,15 +95,71 @@ fun SearchScreen(state: SearchUiState, intents: SearchIntents) {
 }
 
 @Composable
-private fun Detail(open: SearchDetail, intents: SearchIntents, showBack: Boolean) {
+private fun Detail(open: SearchDetail, state: SearchUiState, intents: SearchIntents, showBack: Boolean) {
     val onBack = if (showBack) intents::closeDetail else null
-    when (open) {
-        is SearchDetail.Word -> WordDetailScreen(open.load, onBack = onBack, onKanji = { k ->
-            intents.closeDetail()
-            intents.setQuery(k)
-            intents.search()
-        })
-        is SearchDetail.Note -> NoteDetailScreen(open.load, onBack = onBack)
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) {
+            when (open) {
+                is SearchDetail.Word -> WordDetailScreen(open.load, onBack = onBack, onKanji = { k ->
+                    intents.closeDetail()
+                    intents.setQuery(k)
+                    intents.search()
+                })
+                is SearchDetail.Note -> NoteDetailScreen(open.load, onBack = onBack)
+            }
+        }
+        DeckActions(open, state, intents)
+    }
+    DeckSheetHost(state, intents)
+}
+
+/** AND-ADD2DECK: "Add to my notes" (a word with no note) and "Add to deck" under the detail, with the decks it is in. */
+@Composable
+private fun DeckActions(open: SearchDetail, state: SearchUiState, intents: SearchIntents) {
+    val c = KbTheme.colors
+    val word = ((open as? SearchDetail.Word)?.load as? WordLoad.Found)?.detail
+    val ready = word != null || ((open as? SearchDetail.Note)?.load is NoteLoad.Found)
+    if (!ready) return
+    val hasNote = word == null || word.notes.isNotEmpty()
+    Column(
+        Modifier.fillMaxWidth().background(c.surface).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (word != null && hasNote) Text(T(R.string.notes_in_mine), style = KbTheme.type.label, color = c.textMuted)
+        if (state.detailDecks.isNotEmpty()) {
+            Text(T(R.string.notes_in_decks, state.detailDecks.joinToString(", ")), style = KbTheme.type.bodySm, color = c.textMuted)
+        }
+        state.addNote?.let { outcome ->
+            val (text, kind) = when (outcome) {
+                AddNoteOutcome.Added -> R.string.notes_added to KbFeedback.Success
+                AddNoteOutcome.Duplicate -> R.string.notes_duplicate to KbFeedback.Info
+                AddNoteOutcome.Failed -> R.string.notes_add_failed to KbFeedback.Danger
+            }
+            KbBanner(T(text), kind = kind)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (word != null && !hasNote) {
+                KbButton(T(R.string.notes_add), { intents.openAddNoteSheet(word.headword, word.reading) }, Modifier.weight(1f))
+            }
+            KbButton(
+                T(R.string.deck_add), intents::openDeckSheet, Modifier.weight(1f),
+                variant = if (word != null && !hasNote) KbButtonVariant.Tonal else KbButtonVariant.Primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeckSheetHost(state: SearchUiState, intents: SearchIntents) {
+    val sheet = state.sheet ?: return
+    when (sheet.mode) {
+        DeckSheetMode.TOGGLE -> KbDeckPicker(
+            T(R.string.deck_picker_title), sheet.decks, { intents.toggleDeck(it.id) }, intents::createDeck, intents::closeDeckSheet,
+        )
+        DeckSheetMode.ADD_NOTE -> KbDeckPicker(
+            T(R.string.notes_add_title), sheet.decks, { intents.addNote(it.id) }, intents::createDeck, intents::closeDeckSheet,
+            onNone = { intents.addNote(null) },
+        )
     }
 }
 

@@ -22,7 +22,17 @@ import kotobaya.android.pairing.TokenStore
 import kotobaya.android.settings.SettingsStore
 import kotobaya.android.sync.SyncBootstrap
 import kotobaya.android.word.WordRepository
+import java.security.SecureRandom
+import kotlin.random.asKotlinRandom
+import kotobaya.android.decks.DeckMembership
+import kotobaya.android.notes.NoteCreator
+import kotobaya.android.sync.SqlDelightDeviceStore
+import kotobaya.android.sync.SqlLearningTables
+import kotobaya.android.sync.SyncTriggers
 import kotobaya.db.app.AppDatabase
+import kotobaya.sync.client.mint.OpMinter
+import kotobaya.sync.client.store.Clock
+import kotobaya.sync.client.store.UuidV7Source
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -69,6 +79,13 @@ private val searchModule = module {
         AppSearchPort(
             get(), get(), get(),
             MyCardsLookup(get<SqlDriver>(named("syncAppDriver"))) { koin.getOrNull<SyncBootstrap>()?.ready?.isCompleted == true },
+            SearchDeckOps(
+                DeckMembership(
+                    get<SqlDelightDeviceStore>(), get<OpMinter<SqlLearningTables>>(),
+                    UuidV7Source(SecureRandom().asKotlinRandom()), Clock { System.currentTimeMillis() },
+                ) { koin.getOrNull<SyncTriggers>()?.localChange() },
+                get<NoteCreator<SqlLearningTables>>(),
+            ),
         )
     }
     single {

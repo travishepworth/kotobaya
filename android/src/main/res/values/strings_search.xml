@@ -53,4 +53,19 @@
     <string name="word_tab_cards">My cards (%1$d)</string>
     <string name="word_kanji_search">Search words with %1$s</string>
     <string name="note_mnemonic_label">Mnemonic</string>
+    <string name="deck_add">Add to deck</string>
+    <string name="notes_add">Add to my notes</string>
+    <string name="notes_add_title">Add to my notes in…</string>
+    <string name="notes_in_mine">In my notes</string>
+    <string name="notes_in_decks">In decks: %1$s</string>
+    <string name="notes_added">Added to my notes.</string>
+    <string name="notes_duplicate">Already in my notes.</string>
+    <string name="notes_add_failed">Could not add the note.</string>
+    <string name="deck_picker_title">Add to deck</string>
+    <string name="deck_picker_none">No deck</string>
+    <string name="deck_picker_none_hint">Just a note; it is not in any deck.</string>
+    <string name="deck_picker_empty">You have no decks of your own yet. Create one below.</string>
+    <string name="deck_picker_in_deck">In this deck</string>
+    <string name="deck_picker_new_label">New deck</string>
+    <string name="deck_picker_create">Create</string>
 </resources>
