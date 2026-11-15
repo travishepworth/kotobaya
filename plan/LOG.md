@@ -1137,3 +1137,5 @@
 2026-11-15T05:20:45Z WRK-FREQ-MATCH HANDOFF attempt 2 (890 tests green per writer); re-review dispatched
 2026-11-15T05:24:27Z WRK-FREQ-MATCH REVIEW_CHANGES r2: prev 6 fixed; 2 new majors on real sources (own kanji-row rank tier too low: いくら→イクラ, つく→吐く; hiragana→katakana-only: ている→テール) -> attempt 3
 2026-11-15T05:27:13Z AND-KANJI-DECKS CHECK_GREEN + MERGE 4b960c8f (chips display-only; no nav hook)
+2026-11-15T05:42:18Z WRK-FREQ-MATCH HANDOFF attempt 3 (899 green; top-1k deferred+ambiguous jpdb 3, bccwj 5, cejc 9); re-review r3
+2026-11-15T05:45:44Z WRK-FREQ-MATCH REVIEW_APPROVE r3 + CHECK_GREEN + MERGE 69ab28ff (3 attempts)

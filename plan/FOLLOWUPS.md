@@ -466,3 +466,4 @@
 - AND-DECK-LABELS: server-omitted seqs not negatively cached (re-requested per deck open); BackNavigationTest flaky (Compose idle)
 - WEB-KANJI-DECKS (parity with AND-KANJI-DECKS): web kanji review back/detail 'Appears in decks'
 - AND-KANJI-DECKS: kanji deck chips should open the deck inspector (needs AppNav hook)
+- WRK-FREQ-MATCH minors: BCCWJ り→りょ (classical aux should win); CEJC タケ→茸 (prefer first reading = row reading); is_near 2r+50 heuristic
