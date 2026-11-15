@@ -15,7 +15,8 @@
         android:name=".app.KotobayaApp"
         android:label="@string/app_name"
         android:theme="@style/Theme.Kotobaya"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">

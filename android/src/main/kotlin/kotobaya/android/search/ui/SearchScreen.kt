@@ -68,6 +68,14 @@ private val CARD_EXAMPLES = listOf("is:due", "lapses>3", "is:suspended")
 @Composable
 fun SearchScreen(state: SearchUiState, intents: SearchIntents) {
     val open = state.detail
+    // AND-BACK (ADR-030): back closes the deck sheet, then the detail, then clears the query, then leaves.
+    BackHandler(enabled = state.sheet != null || open != null || state.query.isNotEmpty() || state.results != SearchResults.Idle) {
+        when {
+            state.sheet != null -> intents.closeDeckSheet()
+            open != null -> intents.closeDetail()
+            else -> intents.clearQuery()
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize().background(KbTheme.colors.bg)) {
         val listWidth = (maxWidth * 0.4f).coerceAtLeast(360.dp)
         if (maxWidth >= KbTheme.breakpoint.expanded) {
@@ -86,7 +94,6 @@ fun SearchScreen(state: SearchUiState, intents: SearchIntents) {
                 }
             }
         } else if (open != null) {
-            BackHandler(onBack = intents::closeDetail)
             Detail(open, state, intents, showBack = true)
         } else {
             ResultsPane(state, intents)

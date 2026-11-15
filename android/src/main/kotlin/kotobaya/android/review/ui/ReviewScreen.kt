@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -133,6 +134,9 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
     val side = (review as? ReviewState.Showing)?.side ?: CardSide.FRONT
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    // AND-BACK (ADR-030): back undoes the last answer once, then leaves; sheets (their own dialog) close first.
+    val leave = LocalReviewExit.current
+    BackHandler(enabled = leave != null) { if (!intents.backUndo()) leave?.invoke() }
 
     BoxWithConstraints(
         Modifier

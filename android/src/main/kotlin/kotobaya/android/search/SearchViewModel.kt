@@ -135,6 +135,9 @@ interface SearchIntents {
     fun openNote(noteId: String) {}
     fun closeDetail() {}
 
+    /** AND-BACK: back from the results: empties the query and the results. */
+    fun clearQuery() {}
+
     /** Opens the deck sheet for the open detail (toggle membership). */
     fun openDeckSheet() {}
     /** Opens the deck sheet to pick the deck of a new note for the open word. */
@@ -234,6 +237,8 @@ class SearchViewModel(
             refreshDetailDecks()
         }
     }
+
+    override fun clearQuery() = update { it.copy(query = "", results = SearchResults.Idle) }
 
     override fun closeDetail() = update { it.copy(detail = null, sheet = null, detailDecks = emptyList()) }
 

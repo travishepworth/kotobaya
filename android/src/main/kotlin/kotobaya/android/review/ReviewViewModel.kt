@@ -62,6 +62,9 @@ interface ReviewIntents {
     fun answer(token: Long, button: Button) {}
     fun undo() {}
 
+    /** AND-BACK: system back on the review screen; true when it undid the last answer (the screen stays), false = leave. */
+    fun backUndo(): Boolean = false
+
     /** AND-DECKEND: the deck-done page's "Continue with all due cards". */
     fun continueWithAll() {}
     fun toggleFurigana() {}
@@ -253,6 +256,7 @@ class ReviewViewModel(
      * put the card back on screen: only the inline error is added (the session stays).
      */
     override fun answer(token: Long, button: Button) = withSession {
+        back.answered()
         try {
             it.answer(token, button)
         } catch (e: ReviewCommitFailed) {
@@ -261,6 +265,17 @@ class ReviewViewModel(
     }
 
     override fun undo() = withSession { it.undo() }
+
+    private val back = ReviewBackPolicy()
+
+    override fun backUndo(): Boolean {
+        val st = current
+        if (!back.shouldUndo(st.review is ReviewState.Showing, st.meta.canUndo)) return false
+        withSession {
+            if (it.undo()) setResult(R.string.review_back_undone, false, 0)
+        }
+        return true
+    }
 
     override fun continueWithAll() = withSession { it.continueWithAll() }
 

@@ -3,6 +3,7 @@
     <string name="review_not_ready">Reviewing is not available yet: this device has no sync store.</string>
     <string name="review_show_answer">Show answer</string>
     <string name="review_undo">Undo</string>
+    <string name="review_back_undone">Answer undone · back again to leave</string>
     <string name="review_furigana">Furigana</string>
     <string name="review_play_audio">Play audio</string>
     <string name="review_no_audio">Audio is not downloaded yet.</string>

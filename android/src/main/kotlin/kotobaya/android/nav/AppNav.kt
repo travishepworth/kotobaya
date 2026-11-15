@@ -71,7 +71,7 @@ object Routes {
     const val SETTINGS_SECTION = "settings/section"
 }
 
-private val TAB_ROUTES = Tab.entries.map { it.route }.toSet()
+internal val TAB_ROUTES = Tab.entries.map { it.route }.toSet()
 
 /**
  * Every route of the app: the shell's own (Today, Settings: they belong to the shell, which owns the appearance
@@ -165,7 +165,10 @@ fun AppNav(registry: FeatureRegistry) {
     }
     val dictJump by DictJump.pending.collectAsState()
     LaunchedEffect(dictJump) {
-        if (dictJump != null) navigateTo(nav, Routes.SEARCH)
+        if (dictJump != null) {
+            // AND-BACK: from a pushed page (a review, Struggle) the dictionary stacks on top so back returns to it
+            if (route == null || route in TAB_ROUTES) navigateTo(nav, Routes.SEARCH) else nav.navigate(Routes.SEARCH) { launchSingleTop = true }
+        }
     }
     AppShell(
         selected = Tab.of(route),
@@ -195,7 +198,7 @@ fun AppNav(registry: FeatureRegistry) {
 }
 
 /** Tabs replace each other above Today (one Today at the bottom of the stack); pushed pages stack. */
-private fun navigateTo(nav: NavHostController, route: String) {
+internal fun navigateTo(nav: NavHostController, route: String) {
     if (route in TAB_ROUTES) {
         nav.navigate(route) {
             popUpTo(Routes.HOME)
