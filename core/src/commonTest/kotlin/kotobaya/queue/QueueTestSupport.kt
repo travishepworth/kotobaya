@@ -90,8 +90,14 @@ internal fun today(
     decks: List<Int> = emptyList(),
 ): TodayReview = TodayReview(cardId(card), noteId(note), type, introducedNew, countsAsReview, decks.map { deckId(it) })
 
-internal fun entry(deck: Int, seq: Long, position: Long, override: WordStatus? = null): PendingEntry =
-    PendingEntry(deckId(deck), seq, position, "e:$seq", override)
+internal fun entry(
+    deck: Int,
+    seq: Long,
+    position: Long,
+    override: WordStatus? = null,
+    exprKanji: List<String> = emptyList(),
+    newKanjiCards: Int = 0,
+): PendingEntry = PendingEntry(deckId(deck), seq, position, "e:$seq", override, exprKanji, newKanjiCards)
 
 internal fun limits(
     newPerDay: Int = 20,

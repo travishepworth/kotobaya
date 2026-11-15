@@ -1020,7 +1020,10 @@ For cards, "live" means the card's own `deleted_at IS NULL` (the note may be tom
   `note.created` that collides here: whichever note held the entry first on the server survives
   (device first: the server sees a live holder and creates nothing; server first: the device's
   note is the loser), the loser's cards are merged into the survivor's by step 2, and reviews on
-  them replay on the survivor (8.3, 9.1). One live note per entry; no review is lost.
+  them replay on the survivor (8.3, 9.1). One live note per entry, and every review stays in
+  `review_log`, subject to the arrival-order trade-offs of 8.4: a concurrent delete of the
+  survivor hides the merged cards (8.4 items 2–3), and a loser deleted before its push still
+  forwards its values (8.4 item 4).
 
 ### 8.2 Applying `note.merged` / `card.merged` (every replica)
 

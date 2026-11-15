@@ -237,29 +237,61 @@ builds normally.
 
 ## C-27: pending entries and materialization (ADR-032)
 
-**Which entries a loader passes as `QueueInput.pendingEntries`** (every platform, normative): deck
-items `e:<seq>` (`deck_item.deleted_at IS NULL`) of live, **enabled**, non-smart decks, such that
-- the dictionary entry `seq` exists locally (`ref.dict_entry`; a device without the dictionary
-  entry skips it until it has it);
+Materialization is defined once, here, and every platform does exactly this: the server inside
+`GET /review/queue` (openapi `getReviewQueue`, as the server device), a device locally through its
+op path. Clients of the API never create these notes.
+
+**What materializing entry `e:<seq>` drawn by deck D creates** (normative):
+1. Skip the entry if a live note now holds `entry_seq = seq` (idempotent) or the dictionary entry
+   is missing.
+2. **Vocab card kinds** `V` = `CardGenerator.kindsForNewNote(vocab type, D.card_kinds)`; if that is
+   empty (`card_kinds` is `[]` or names no kind of the type), the type's default kinds
+   (`kindsForNewNote(vocab type, null)`). Then drop every kind whose front would render empty:
+   `DefaultCardRenderer.frontIsEmpty(vocab type, kind, {}, dictionary = the entry's data)` (e.g.
+   `listening` without audio; the same rule devices apply when adding a note). If `V` is empty the
+   entry is not materialized, and loaders never pass it (below), so it is never drawn.
+3. **Kanji notes**, only when D's `add_kanji` is **present** and not `off` (SCHEMA.md 6.2):
+   `CardGenerator.kanjiToAdd(headword, blocked, mode)` where `blocked` = the headword's kanji that
+   have a live kanji note **or a user-deleted one** (a kanji note with `deleted_at` set and no
+   `merged_into_id`): a kanji note the user deleted is never re-created. Each, in order:
+   `note.created` {built-in kanji type, `kanji_literal`, `origin` `auto_kanji`} and one
+   `card.created` per default kind of the kanji type whose front is not empty (with the kanji's
+   `ref.kanji` data, or the literal alone).
+4. `note.created` {built-in vocab type `…0101`, `entry_seq`, `fields` `{}`, `origin` `deck`}, then
+   one `card.created` per kind of `V`. Then rebuild.
+
+**Which entries a loader passes as `QueueInput.pendingEntries`** (normative): deck items `e:<seq>`
+(`deck_item.deleted_at IS NULL`) of live, **enabled**, non-smart decks, such that
+- the dictionary entry exists locally (`ref.dict_entry`; a device without it skips it until it has it);
 - no **live** note holds `entry_seq = seq`;
 - no **user-deleted** note held it: no note with `entry_seq = seq`, `deleted_at IS NOT NULL` and
   `merged_into_id IS NULL` (merge losers do not count). Deleting the note of a deck word drops it
   for good; it is never re-created by the queue (adding a note by hand still works);
-- `word_status.override_status` is not KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED (the builder
-  skips those anyway; filtering first keeps the bound below exact).
+- `word_status.override_status` is not KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED;
+- step 2 leaves at least one vocab kind.
 
-A loader may pass only the first `2 × budget` such entries per deck in `(position, item_key)`
-order, with `budget` = `max(1, keepGoingNewBatch)` when keeping going, else `max(0, min(newPerDay,
-newPerSession))`: the builder draws at most `budget` entries in total and skips an entry otherwise
-only when another deck already drew the same `entrySeq`, so the result is identical.
+Each entry carries `expressionKanji` = the headword's distinct kanji (what the loader will pass as
+the card's `QueueCandidate.expressionKanji`) and `newKanjiCards` = over the kanji notes of step 3,
+the number of their card kinds, at most 1 per note when `scheduler.bury_siblings`. The builder
+then draws the entry as the add_kanji group its vocab card will be (QueueBuilder rule 4): an entry
+that would not fit once materialized is never drawn, so nothing is created that the same build
+would not show, and the counts are the same before and after the rebuild.
 
-**Materializing `toMaterialize`** (every platform, same ops): for each entry, in order, skip it if a
-live note now holds the entry; else, if the drawing deck's `add_kanji` is **present** and not `off`
-(SCHEMA.md 6.2), one kanji note per `CardGenerator.kanjiToAdd(headword, live kanji literals, mode)`
-(`origin` `auto_kanji`, built-in kanji type, `kindsForNewNote(kanji type, null)`); then
-`note.created` {built-in vocab type `…0101`, `entry_seq`, `fields` `{}`, `origin` `deck`} and one
-`card.created` per `kindsForNewNote(vocab type, deck card_kinds)`. Then rebuild. The server does
-this inside `GET /review/queue` as the server device (openapi `getReviewQueue`); a device does it
-locally through its op path. A device and the server creating a note for the same entry converge
-by SYNC.md 8.1 (the note that held the entry first on the server survives; the other's cards and
-their reviews are merged into it).
+A loader may pass only the first `2 × B + 16` such entries per deck in `(position, item_key)` order,
+`B` = `max(1, keepGoingNewBatch)` when keeping going, else `max(max(1, keepGoingNewBatch),
+min(newPerDay, newPerSession))` (the larger bound, because `moreAvailable` probes with the
+keep-going batch even when a normal limit is 0). An entry beyond the window is reached by a later
+build.
+
+**Rebuild rounds (server).** After materializing, the server rebuilds; it materializes again (at
+most 3 rounds) only if the previous round's notes appear in `items` (a safety net: a mismatch can
+never create notes that are not shown).
+
+**Convergence.** A device and the server creating a note for the same entry converge by SYNC.md 8.1
+(the note that held the entry first on the server survives; the other's cards and their reviews are
+merged into it; the arrival-order trade-offs of SYNC.md 8.4 apply).
+
+**Tests** (`core/src/commonTest/kotlin/kotobaya/queue/QueuePendingGroupTest.kt`, jvm and js): an
+entry whose group does not fit is not drawn (and `moreAvailable` is true); existing new kanji cards
+join and are taken; OFF = 1 card; the same count before and after materializing; negative
+`newKanjiCards` = 0.

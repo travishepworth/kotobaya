@@ -265,15 +265,18 @@ public object DefaultQueueBuilder : QueueBuilder {
                 out += QueueItem(c.cardId, QueueItemKind.NEW, home)
             }
 
-            /** K of [word]'s add_kanji group: expression order, then kindOrder; one card per note if burying. */
-            fun kanjiGroup(word: QueueCandidate): List<QueueCandidate> {
+            /**
+             * K of an add_kanji group for a word with [expressionKanji] (note [wordNoteId], null for a pending entry):
+             * expression order, then kindOrder; one card per note if burying.
+             */
+            fun kanjiGroup(expressionKanji: List<String>, wordNoteId: Uuid?): List<QueueCandidate> {
                 val group = mutableListOf<QueueCandidate>()
                 val ids = HashSet<Uuid>()
                 val notes = HashSet<Uuid>()
-                for (k in word.expressionKanji) {
+                for (k in expressionKanji) {
                     for (kc in kanjiByLiteral[k].orEmpty()) {
                         if (!available(kc) || kc.cardId in ids) continue
-                        if (limits.burySiblings && (kc.noteId in notes || kc.noteId == word.noteId)) continue
+                        if (limits.burySiblings && (kc.noteId in notes || kc.noteId == wordNoteId)) continue
                         group += kc
                         ids += kc.cardId
                         notes += kc.noteId
@@ -294,10 +297,20 @@ public object DefaultQueueBuilder : QueueBuilder {
                         is NewItem.Entry -> {
                             val e = item.e
                             if (e.wordOverride in excludedEntryOverrides || e.entrySeq in materialized) continue
+                            // C-27: the entry is drawn as the group its vocab card will be, all or nothing.
+                            val grouped = s.addKanji != AddKanjiMode.OFF
+                            val group = if (grouped) kanjiGroup(e.expressionKanji, null) else emptyList()
+                            val created = if (grouped) maxOf(0, e.newKanjiCards) else 0
+                            if (!limits.keepGoing && 1 + group.size + created > budget) return true
                             materialized += e.entrySeq
                             materialize += e
-                            budget--
+                            budget -= 1 + created
                             charge(s.deckId)
+                            for (kc in group) {
+                                take(kc)
+                                budget--
+                                charge((pool[kc] as? Home.Deck)?.deck?.id)
+                            }
                             return true
                         }
                         is NewItem.Card -> {
@@ -305,7 +318,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                             if (!available(c)) continue
                             val withKanji = c.noteBaseType == NoteBaseType.VOCAB &&
                                 c.expressionKanji.isNotEmpty() && s.addKanji != AddKanjiMode.OFF
-                            val group = if (withKanji) kanjiGroup(c) else emptyList()
+                            val group = if (withKanji) kanjiGroup(c.expressionKanji, c.noteId) else emptyList()
                             // Atomic: V fits the source (checked above) and the whole group fits the
                             // budget, or none of it is drawn and V is skipped for this build. Under keep
                             // going (rule 6) any budget >= 1 draws the whole group, so it never starves.

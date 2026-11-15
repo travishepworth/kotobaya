@@ -619,3 +619,11 @@ attempt 1 is gone). Needs node and python3; network on first run.
   `review`/`write` callers materialize); (2) **user-deleted notes block re-materialization**
   (otherwise a deleted deck word comes back on the next fetch); (3) **kanji notes are created
   for a deck with a present `add_kanji`** (SCHEMA.md 6.2 says adding a vocab card creates them).
+
+- **C-27 review (attempt 2).** `PendingEntry.expressionKanji` / `newKanjiCards` (core, additive):
+  the builder draws an entry as the add_kanji group its card will be, so an entry that would not
+  fit is never created (no unshown notes from polling). `card_kinds` `[]` or invalid falls back to
+  the default kinds; kinds with an empty front are skipped; an entry left with no kind is never
+  passed; a user-deleted kanji note is never re-created; the server repeats a materialize round
+  only if the last round's notes reached `items`. The pending-entry query (35k deck items, five
+  decks) loads in ~35 ms warm using `deck_item_order_idx` and `note_live_entry_uq`: no new index.

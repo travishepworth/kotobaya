@@ -2198,14 +2198,18 @@ paths:
         are new cards too (core `PendingEntry`; which entries qualify: contracts/core README
         "C-27"). The server passes them to the core builder, and when its build draws some
         (`ReviewQueue.toMaterialize`, bounded by the same new-card budget as the cards: the
-        daily and session limits, or the keep-going batch) and the caller holds `review` or
-        `write`, the server creates them before answering, in one op transaction as the
-        **server device**: per drawn entry, in the builder's order, the kanji notes the drawing
-        deck's present `add_kanji` asks for (`note.created` `origin` `auto_kanji` + their
-        default `card.created`, SCHEMA.md 6.2), then `note.created` {built-in vocab type,
-        `entry_seq`, `fields` `{}`, `origin` `deck`} and one `card.created` per default kind of
-        the vocab note type, or per the drawing deck's `card_kinds`. It then rebuilds (at most
-        3 rounds) and returns that queue. This is the only place an API client's deck entries
+        daily and session limits, or the keep-going batch; each entry counted as the whole
+        add_kanji group its card will be, so an entry that would not fit is not drawn) and the
+        caller holds `review` or `write`, the server creates them before answering, in one op
+        transaction as the **server device**, exactly as contracts/core README "C-27" defines:
+        per drawn entry, in the builder's order, the kanji notes the drawing deck's present
+        `add_kanji` asks for (`note.created` `origin` `auto_kanji` + their `card.created`s;
+        never a kanji the user deleted), then `note.created` {built-in vocab type, `entry_seq`,
+        `fields` `{}`, `origin` `deck`} and one `card.created` per kind of the drawing deck's
+        `card_kinds` (the vocab type's default kinds when that is absent, empty or invalid),
+        minus kinds whose front would render empty. It then rebuilds and returns that queue; it
+        materializes again (at most 3 rounds) only while the previous round's notes appear in
+        `items`. This is the only place an API client's deck entries
         become notes: clients never mint these ops or call anything else for it; a device
         builds offline from the same core output and mints the same ops itself.
         - **Idempotent.** The transaction holds the sync lock and skips an entry a live note

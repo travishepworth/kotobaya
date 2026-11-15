@@ -145,6 +145,21 @@ public data class PendingEntry(
     public val itemKey: String,
     /** `word_status.override_status` of the entry, or null. */
     public val wordOverride: WordStatus?,
+    /**
+     * C-27 (additive): the distinct kanji of the entry's headword in order of first appearance
+     * (`CardGenerator.kanjiOf`), i.e. the `QueueCandidate.expressionKanji` its vocab card will have
+     * once materialized. Empty = none or unknown (then no existing kanji card joins its group).
+     */
+    public val expressionKanji: List<String> = emptyList(),
+    /**
+     * C-27 (additive): how many NEW kanji cards materializing this entry creates and that therefore
+     * join its add_kanji group although they do not exist yet: over the kanji notes the
+     * materialization creates (`CardGenerator.kanjiToAdd`, only when the deck's `add_kanji` is
+     * **present** and not `off`, SCHEMA.md 6.2; contracts/core README "C-27"), the number of card
+     * kinds each gets, counting at most 1 per note when `burySiblings`. 0 otherwise. Values `< 0`
+     * count as 0.
+     */
+    public val newKanjiCards: Int = 0,
 )
 
 /** Daily and session limits (settings `scheduler.*`, SCHEMA.md 6). */
@@ -259,7 +274,10 @@ public data class QueueItem(
 public data class ReviewQueue(
     /** Cards to show, in order. A card appears at most once. */
     public val items: List<QueueItem>,
-    /** Entries the client should create notes and default cards for (origin `deck`), then rebuild. Bounded by the new limits. */
+    /**
+     * Entries the client should create notes and cards for (origin `deck`; contracts/core README
+     * "C-27"), then rebuild. Bounded by the new limits, each counted as its whole add_kanji group.
+     */
     public val toMaterialize: List<PendingEntry>,
     /** Earliest `dueAt` of a learning card due later today but outside learn-ahead; null if none. */
     public val nextLearningDueAt: InstantMs?,
@@ -319,8 +337,19 @@ public data class ReviewQueue(
  *    (together with its add_kanji cards, below) or one pending entry; an exhausted source is skipped.
  *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
- *    (counting 1 against the budgets) unless their `wordOverride` is KNOWN, NEVER_FORGET,
- *    BLACKLISTED or IGNORED. Cards whose `wordOverride` is KNOWN are not introduced.
+ *    unless their `wordOverride` is KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED. Cards whose
+ *    `wordOverride` is KNOWN are not introduced.
+ *    **Pending entries are drawn as the group their card will be** (C-27): an entry E reached by a
+ *    source whose add_kanji is BEFORE or ALONGSIDE has the group `1 + |K| + newKanjiCards`, K being
+ *    the kanji cards `kanjiGroup` (below) gives for `E.expressionKanji` (as for a vocab card of a
+ *    note not yet in the queue) and `newKanjiCards` the cards its materialization creates; with
+ *    OFF the group is 1. **Atomic** as for a card: E is drawn iff the group fits the budget (keep
+ *    going: budget `>= 1`), else it is skipped for this build and the turn passes. Drawing E
+ *    counts 1 against the drawing source's per-deck limit, the whole group against the budget, and
+ *    takes the K cards (not shown in this build, each charged to its own home new-source like an
+ *    add_kanji card), so the counts are the same before and after E is materialized and rebuilt.
+ *    Without this an entry of a two-kanji word with one new card left would be drawn, created and
+ *    then never fit (C-27 review).
  *    Per-deck limit (remaining, clamped to `>= 0`): `deck.newPerDay` − today's `introducedNew`
  *    reviews whose card's home new-source is that deck (from [TodayReview.deckIds] and the decks
  *    now) − the cards taken in this build whose home new-source is that deck, **including add_kanji

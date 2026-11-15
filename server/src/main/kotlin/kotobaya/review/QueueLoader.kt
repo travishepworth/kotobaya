@@ -34,10 +34,12 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  * - pending entries (C-27, ADR-032, contracts/core README "C-27"): entry items `e:<seq>` of live, enabled, non-smart
  *   decks whose entry exists in `ref.dict_entry`, that no live note holds, that no **user-deleted** note held
  *   (a tombstoned note with that `entry_seq` and no `merged_into_id`: deleting a deck word's note drops it, it is never
- *   resurrected) and whose override is not KNOWN / NEVER_FORGET / BLACKLISTED / IGNORED. Only the first
- *   `2 × budget` per deck in `(position, item_key)` order are passed: the builder draws at most `budget` entries in
- *   total and skips an entry only for an excluded override (filtered here) or because another deck already drew the
- *   same `entry_seq` (at most `budget` such skips), so the result equals passing every entry.
+ *   resurrected), whose override is not KNOWN / NEVER_FORGET / BLACKLISTED / IGNORED, and whose materialization would
+ *   create at least one vocab card ([DeckEntryPlan.vocabKinds]). Each carries `expressionKanji` (the headword's kanji)
+ *   and `newKanjiCards` ([DeckEntryPlan.newKanjiCards] under the deck's present `add_kanji`), so the builder draws it
+ *   as the group its card will be. Only the first `2 × B + 16` per deck in `(position, item_key)` order are passed,
+ *   `B` = the larger of the normal budget bound and the keep-going batch (the `moreAvailable` probe builds with the
+ *   batch even when a normal limit is 0); an entry beyond that is reached by a later build.
  */
 internal class QueueLoader(private val dsl: DSLContext) {
     fun load(
@@ -49,9 +51,11 @@ internal class QueueLoader(private val dsl: DSLContext) {
     ): LoadedQueue {
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day
         val decks = loadDecks(settings)
+        val batch = maxOf(1, keepGoingNewBatch)
         val pending = pendingEntries(
-            if (keepGoing) maxOf(1, keepGoingNewBatch) else maxOf(0, minOf(settings.newPerDay, settings.newPerSession)),
+            if (keepGoing) batch else maxOf(batch, minOf(settings.newPerDay, settings.newPerSession)),
             deckFilter,
+            settings.burySiblings,
         )
 
         // Candidates: NEW cards, and started cards that can come due before the day ends.
@@ -120,12 +124,13 @@ internal class QueueLoader(private val dsl: DSLContext) {
         return LoadedQueue(input, candidates)
     }
 
-    /** See the class KDoc. [budget] is the most new cards one build can draw (ignoring today's count, so an upper bound). */
-    private fun pendingEntries(budget: Int, deckFilter: String?): List<PendingEntry> {
+    /** See the class KDoc. [budget] bounds how many new cards one build can draw (an upper bound). */
+    private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean): List<PendingEntry> {
         if (budget <= 0) return emptyList()
-        return dsl.fetch(
-            "select deck_id, entry_seq, position, item_key from (" +
-                "select di.deck_id::text as deck_id, di.entry_seq, di.position, di.item_key, " +
+        val rows = dsl.fetch(
+            "select x.deck_id, x.entry_seq, x.position, x.item_key, de.headword, de.headword_reading, de.senses::text, " +
+                DeckEntrySettings.columns("d") + " from (" +
+                "select di.deck_id, di.entry_seq, di.position, di.item_key, " +
                 "row_number() over (partition by di.deck_id order by di.position, di.item_key) as rn " +
                 "from app.deck_item di " +
                 "join app.deck d on d.id = di.deck_id and d.deleted_at is null and d.enabled and d.type <> 'smart' " +
@@ -133,18 +138,30 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 "where di.deleted_at is null and di.entry_seq is not null " +
                 "and (?::uuid is null or di.deck_id = ?::uuid) " +
                 "and exists (select 1 from ref.dict_entry de where de.seq = di.entry_seq) " +
+                // No live note (note_live_entry_uq) and no user-deleted note for the entry.
+                "and not exists (select 1 from app.note n where n.entry_seq = di.entry_seq and n.deleted_at is null) " +
                 "and not exists (select 1 from app.note n where n.entry_seq = di.entry_seq " +
-                "  and (n.deleted_at is null or n.merged_into_id is null)) " +
+                "  and n.deleted_at is not null and n.merged_into_id is null) " +
                 "and (ws.override_status is null or ws.override_status not in ('known', 'never_forget', 'blacklisted', 'ignored'))" +
-                ") x where rn <= ? order by deck_id, position, item_key",
-            deckFilter, deckFilter, 2L * budget,
-        ).map { r ->
+                ") x join app.deck d on d.id = x.deck_id join ref.dict_entry de on de.seq = x.entry_seq " +
+                "where x.rn <= ? order by x.deck_id, x.position, x.item_key",
+            deckFilter, deckFilter, 2L * budget + 16,
+        )
+        if (rows.isEmpty()) return emptyList()
+        val plan = DeckEntryPlan(dsl)
+        return rows.mapNotNull { r ->
+            val seq = (r.get(1) as Number).toLong()
+            val dict = EntryDict(seq, r.get(4, String::class.java), r.get(5, String::class.java), EntryDict.glossesOf(r.get(6, String::class.java)))
+            val deck = DeckEntrySettings.of(r.get(7, String::class.java), r.get(8, String::class.java))
+            if (plan.vocabKinds(dict, deck.cardKinds).isEmpty()) return@mapNotNull null
             PendingEntry(
-                deckId = r.get(0, String::class.java),
-                entrySeq = (r.get(1) as Number).toLong(),
+                deckId = r.get(0).toString(),
+                entrySeq = seq,
                 position = (r.get(2) as Number).toLong(),
                 itemKey = r.get(3, String::class.java),
                 wordOverride = null,
+                expressionKanji = plan.kanjiOf(dict.headword),
+                newKanjiCards = plan.newKanjiCards(dict.headword, deck.addKanji, burySiblings),
             )
         }
     }

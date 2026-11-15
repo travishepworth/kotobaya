@@ -2,72 +2,80 @@ package kotobaya.review
 
 import com.fasterxml.jackson.databind.JsonNode
 import kotobaya.cards.BuiltInNoteTypes
-import kotobaya.cards.DefaultCardGenerator
-import kotobaya.contracts.cards.CardGenerator
-import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.sync.OpType
 import kotobaya.notes.NoteViews
 import kotobaya.notes.payload
-import kotobaya.notes.toNoteTypeInfo
 import kotobaya.server.Uuid7
 import kotobaya.server.json
 import kotobaya.sync.OpTx
+import org.jooq.DSLContext
+
+/** A deck's materialization settings: `add_kanji` if **present** (SCHEMA.md 6.2; null = absent) and `card_kinds` (null = absent). */
+internal class DeckEntrySettings(val addKanji: AddKanjiMode?, val cardKinds: List<String>?) {
+    companion object {
+        /** SQL select list for a deck row aliased [alias]: present add_kanji, card_kinds as JSON text. */
+        fun columns(alias: String): String =
+            "case when jsonb_typeof($alias.settings->'add_kanji') = 'string' then $alias.settings->>'add_kanji' end, " +
+                "case when jsonb_typeof($alias.settings->'card_kinds') = 'array' then ($alias.settings->'card_kinds')::text end"
+
+        fun of(addKanji: String?, cardKinds: String?): DeckEntrySettings = DeckEntrySettings(
+            AddKanjiMode.entries.firstOrNull { it.wire == addKanji },
+            cardKinds?.let { text ->
+                val node = json.readTree(text)
+                if (!node.isArray || node.any { !it.isTextual }) null else node.map { it.asText() }
+            },
+        )
+
+        fun load(dsl: DSLContext, deckId: String): DeckEntrySettings =
+            dsl.fetchOptional("select ${columns("d")} from app.deck d where d.id = ?::uuid", deckId)
+                .map { of(it.get(0, String::class.java), it.get(1, String::class.java)) }
+                .orElse(DeckEntrySettings(null, null))
+    }
+}
 
 /**
  * C-27 (ADR-032): turns the core builder's `toMaterialize` into notes and cards, as the server device, through the
  * op-apply path (CLAUDE.md rule 8). Only `GET /review/queue` calls it, inside its op transaction, which holds the
  * sync lock: the "no live note holds this entry" check and the emit cannot race another server transaction, so
  * the server never creates a second live note for an entry. A device that created one offline is merged by
- * SYNC.md 8.1 when it pushes (the server's note, holding the entry first, survives).
+ * SYNC.md 8.1 when it pushes (the note that held the entry first on the server survives).
  *
- * Per entry, in the builder's order (contracts/core README "C-27"):
- * 1. skip it if a live note holds `entry_seq` (created meanwhile; idempotent) or the dictionary entry is gone;
- * 2. if the drawing deck's `settings.add_kanji` is **present** and not `off` (SCHEMA.md 6.2): one kanji note
- *    (`origin` `auto_kanji`, built-in kanji type, default kinds) per kanji of the headword without a live kanji
- *    note ([CardGenerator.kanjiToAdd]), each followed by its `card.created`;
+ * Per entry, in the builder's order (contracts/core README "C-27"; what is created is [DeckEntryPlan]'s, the same
+ * computation that sized the entry's group for the builder):
+ * 1. skip it if a live note holds `entry_seq` (idempotent), the dictionary entry is gone, or no vocab card kind
+ *    is left;
+ * 2. the kanji notes [DeckEntryPlan.kanjiToCreate] (`origin` `auto_kanji`, built-in kanji type), each followed by
+ *    its `card.created`s;
  * 3. `note.created` {built-in vocab type, `entry_seq`, empty `fields` (rendered from the dictionary), `origin`
- *    `deck`}, then one `card.created` per [CardGenerator.kindsForNewNote] with the drawing deck's `card_kinds`.
+ *    `deck`}, then one `card.created` per [DeckEntryPlan.vocabKinds].
  */
-internal class DeckMaterializer(private val cards: CardGenerator = DefaultCardGenerator) {
-    /** Emits the ops for [entries]; returns how many vocab notes it created. */
-    fun materialize(tx: OpTx, entries: List<PendingEntry>): Int {
-        if (entries.isEmpty()) return 0
+internal class DeckMaterializer {
+    /** Emits the ops for [entries]; returns the ids of the vocab notes it created. */
+    fun materialize(tx: OpTx, entries: List<PendingEntry>): List<String> {
+        if (entries.isEmpty()) return emptyList()
         val views = NoteViews(tx.dsl)
-        val vocab = typeInfo(views, BuiltInNoteTypes.VOCAB.id) ?: BuiltInNoteTypes.VOCAB.info
-        val kanjiType = typeInfo(views, BuiltInNoteTypes.KANJI.id)
-        var created = 0
+        val plan = DeckEntryPlan(tx.dsl)
+        val settings = HashMap<String, DeckEntrySettings>()
+        val created = ArrayList<String>()
         for (e in entries) {
             if (views.liveHolder("entry_seq", e.entrySeq) != null) continue
-            val headword = tx.dsl.fetchOptional("select headword from ref.dict_entry where seq = ?", e.entrySeq)
-                .map { it.get(0, String::class.java) }.orElse(null) ?: continue
-            val deck = tx.dsl.fetchOptional(
-                "select case when jsonb_typeof(settings->'add_kanji') = 'string' then settings->>'add_kanji' end, " +
-                    "case when jsonb_typeof(settings->'card_kinds') = 'array' then (settings->'card_kinds')::text end " +
-                    "from app.deck where id = ?::uuid",
-                e.deckId,
-            ).orElse(null)
-            val addKanji = AddKanjiMode.entries.firstOrNull { it.wire == deck?.get(0, String::class.java) } ?: AddKanjiMode.OFF
-            val cardKinds = deck?.get(1, String::class.java)?.let(::stringArray)
+            val dict = tx.dsl.fetchOptional(
+                "select headword, headword_reading, senses::text from ref.dict_entry where seq = ?", e.entrySeq,
+            ).map { EntryDict(e.entrySeq, it.get(0, String::class.java), it.get(1, String::class.java), EntryDict.glossesOf(it.get(2, String::class.java))) }
+                .orElse(null) ?: continue
+            val deck = settings.getOrPut(e.deckId) { DeckEntrySettings.load(tx.dsl, e.deckId) }
+            val vocabKinds = plan.vocabKinds(dict, deck.cardKinds)
+            if (vocabKinds.isEmpty()) continue
 
-            if (addKanji != AddKanjiMode.OFF && kanjiType != null) {
-                val literals = cards.kanjiOf(headword)
-                val existing = if (literals.isEmpty()) {
-                    emptySet()
-                } else {
-                    tx.dsl.fetch(
-                        "select kanji_literal from app.note where kanji_literal = any(?::text[]) and deleted_at is null",
-                        literals.toTypedArray(),
-                    ).map { it.get(0, String::class.java) }.toSet()
-                }
-                for (literal in cards.kanjiToAdd(headword, existing, addKanji)) {
-                    val id = Uuid7.generate().toString()
-                    val p = json.createObjectNode().put("id", id).put("note_type_id", BuiltInNoteTypes.KANJI.id)
-                        .put("kanji_literal", literal).put("origin", "auto_kanji")
-                    tx.emit(OpType.NOTE_CREATED, payload(p))
-                    cards.kindsForNewNote(kanjiType, null).forEach { emitCard(tx, id, it) }
-                }
+            for (literal in plan.kanjiToCreate(dict.headword, deck.addKanji)) {
+                val id = Uuid7.generate().toString()
+                val p = json.createObjectNode().put("id", id).put("note_type_id", BuiltInNoteTypes.KANJI.id)
+                    .put("kanji_literal", literal).put("origin", "auto_kanji")
+                tx.emit(OpType.NOTE_CREATED, payload(p))
+                plan.kanjiKinds(literal).forEach { emitCard(tx, id, it) }
+                plan.kanjiCreated(literal)
             }
 
             val noteId = Uuid7.generate().toString()
@@ -75,23 +83,14 @@ internal class DeckMaterializer(private val cards: CardGenerator = DefaultCardGe
             p.set<JsonNode>("fields", json.createObjectNode())
             p.put("origin", ORIGIN)
             tx.emit(OpType.NOTE_CREATED, payload(p))
-            cards.kindsForNewNote(vocab, cardKinds).forEach { emitCard(tx, noteId, it) }
-            created++
+            vocabKinds.forEach { emitCard(tx, noteId, it) }
+            created += noteId
         }
         return created
     }
 
-    private fun typeInfo(views: NoteViews, id: String): NoteTypeInfo? = views.noteType(id)?.toNoteTypeInfo()
-
     private fun emitCard(tx: OpTx, noteId: String, kind: String) {
         tx.emit(OpType.CARD_CREATED, payload(json.createObjectNode().put("id", Uuid7.generate().toString()).put("note_id", noteId).put("kind", kind)))
-    }
-
-    /** Deck `card_kinds`: a JSON array of strings, else null (absent). */
-    private fun stringArray(text: String): List<String>? {
-        val node = json.readTree(text)
-        if (!node.isArray || node.any { !it.isTextual }) return null
-        return node.map { it.asText() }
     }
 
     companion object {

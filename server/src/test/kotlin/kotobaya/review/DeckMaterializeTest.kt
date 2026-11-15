@@ -150,6 +150,55 @@ class DeckMaterializeTest : SyncFixture() {
         assertEquals(head, count("select max(seq) from app.change"), "no second kanji note either")
     }
 
+    private fun headword(seq: Long, h: String) = db.txBlocking { it.execute("update ref.dict_entry set headword = ? where seq = ?", h, seq) }
+
+    /**
+     * C-27 review finding 1: with one new card left, an entry whose word brings two new kanji (add_kanji before) is a
+     * group of 3 and is never drawn, so polling creates nothing; keep going draws it whole.
+     */
+    @Test
+    fun anEntryWhoseKanjiGroupDoesNotFitIsNeverMaterialized() = reviewApp {
+        val t = token()
+        setting("scheduler.new_per_day", "1")
+        val deck = deckWithEntries(2, base = 9000)
+        headword(9001, "食堂")
+        headword(9002, "会社")
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"before"}}}""")
+        repeat(5) {
+            val q = fetch(t)
+            assertEquals(0, q["items"].size())
+            assertEquals(0, q["to_materialize"].asInt())
+            assertTrue(q["more_available"].asBoolean())
+        }
+        assertEquals(0L, changes("note.created"), "nothing is created that could not be shown")
+        val kg = fetch(t, "?keep_going=true&limit=3")
+        // The whole group: 食 and 堂 kanji cards before the word; the batch of 3 holds nothing else.
+        assertEquals(3, kg["items"].size())
+        assertEquals(listOf("kanji", "kanji", "vocab"), kg["items"].map { it["card"]["note"]["type"].asText() })
+        assertEquals(3L, changes("note.created"))
+        repeat(3) { fetch(t, "?keep_going=true&limit=3") }
+        assertEquals(3L, changes("note.created"), "unanswered: the same group again, nothing more created")
+    }
+
+    @Test
+    fun aUserDeletedKanjiNoteIsNotRecreatedAndEmptyCardKindsFallBackToDefaults() = reviewApp {
+        val t = token()
+        val deck = deckWithEntries(2, base = 9100)
+        headword(9101, "食堂")
+        headword(9102, "食事")
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"alongside","card_kinds":[]}}}""")
+        fetch(t, "?limit=1")
+        val shoku = db.txBlocking { it.fetchValue("select id::text from app.note where kanji_literal = '食' and deleted_at is null") as String }
+        assertEquals(204, client.call(HttpMethod.Delete, "/notes/$shoku", bearer = t).status.value)
+        fetch(t)
+        assertEquals(0L, count("select count(*) from app.note where kanji_literal = '食' and deleted_at is null"), "the user deleted it")
+        assertEquals(1L, count("select count(*) from app.note where kanji_literal = '事' and deleted_at is null"))
+        val vocabKinds = db.txBlocking { d ->
+            d.fetch("select c.kind from app.card c join app.note n on n.id = c.note_id where n.entry_seq = 9102 order by c.kind").map { it.get(0, String::class.java) }
+        }
+        assertEquals(listOf("meaning", "reading"), vocabKinds, "card_kinds [] creates the default kinds, never a note without cards")
+    }
+
     @Test
     fun aReadOnlyCallerSeesPendingEntriesButCreatesNothing() = reviewApp {
         deckWithEntries(5)
