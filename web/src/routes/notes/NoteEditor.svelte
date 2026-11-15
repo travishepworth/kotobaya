@@ -6,6 +6,7 @@
 	// an override, and a field whose text equals the dictionary value is never saved as one.
 	import Button from '../../lib/ui/Button.svelte';
 	import Dialog from '../../lib/ui/Dialog.svelte';
+	import AddToDeck from '../../lib/ui/AddToDeck.svelte';
 	import DictionaryLink from '../../lib/ui/DictionaryLink.svelte';
 	import TextArea from '../../lib/ui/TextArea.svelte';
 	import TextField from '../../lib/ui/TextField.svelte';
@@ -123,6 +124,7 @@
 		<h2 class="title">{tn('notes.edit')}</h2>
 		<DictionaryLink look="text" seq={note.entrySeq} kanji={note.kanjiLiteral} />
 	</div>
+	<AddToDeck target={{ entrySeq: note.entrySeq ?? null, noteId: note.id }} />
 
 	<PreviewPane
 		rendered={s.rendered}

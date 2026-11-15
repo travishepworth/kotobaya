@@ -237,7 +237,21 @@ const en = {
 	'sg.nav.import': 'Import',
 	'sg.nav.noteTypes': 'Note types',
 	'sg.nav.settings': 'Settings',
-	'sg.brand': 'Kotobaya'
+	'sg.brand': 'Kotobaya',
+	'ui.deck.add': 'Add to deck',
+	'ui.deck.title': 'Add to deck',
+	'ui.deck.in': 'In decks',
+	'ui.deck.none': 'You have no decks of your own yet. Create one below.',
+	'ui.deck.listLabel': 'Your decks',
+	'ui.deck.newName': 'New deck name',
+	'ui.deck.create': 'Create deck and add',
+	'ui.deck.added': 'Added to {deck}',
+	'ui.deck.removed': 'Removed from {deck}',
+	'ui.deck.created': 'Deck {deck} created',
+	'ui.deck.loadFailed': 'Could not check which decks hold this.',
+	'ui.deck.done': 'Done',
+	'ui.deck.noDeck': 'No deck',
+	'ui.deck.addToNotesIn': 'Add to my notes in'
 } as const;
 
 export type UiMessageKey = keyof typeof en;

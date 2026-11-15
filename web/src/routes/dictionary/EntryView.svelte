@@ -1,6 +1,9 @@
 <script lang="ts">
 	// A dictionary entry, set for reading: headword ▸ reading + pitch ▸ status and actions ▸ senses / kanji / examples.
+	import AddToDeck from '../../lib/ui/AddToDeck.svelte';
 	import Button from '../../lib/ui/Button.svelte';
+	import Select from '../../lib/ui/Select.svelte';
+	import { ut } from '../../lib/ui/messages';
 	import { noteHref } from '../../lib/state/noteLink';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import GrammarCapture from '../../lib/ui/GrammarCapture.svelte';
@@ -37,6 +40,10 @@
 		if (vm.kanjiOpen !== k) vm.toggleKanji(k);
 	}
 	$effect(() => {
+		// The "Add to my notes in…" chooser needs the user's decks once an entry without a note is shown.
+		if (entry.noteId === null) void vm.loadUserDecks();
+	});
+	$effect(() => {
 		// The kanji tab opens on the first kanji.
 		if (section === 'kanji' && vm.kanjiOpen === null && entry.kanji.length > 0) vm.toggleKanji(entry.kanji[0]);
 	});
@@ -57,11 +64,20 @@
 		</div>
 		<div class="actions">
 			{#if entry.noteId === null}
+				<Select
+					label={ut('ui.deck.addToNotesIn')}
+					hideLabel
+					bind:value={vm.addDeckId}
+					options={[{ value: '', label: ut('ui.deck.noDeck') }, ...vm.userDecks.map((d) => ({ value: d.id, label: d.name }))]}
+				/>
 				<Button variant="tonal" icon="plus" loading={vm.adding} onclick={() => void vm.addNote(entry)}>{dx('dx.addNote')}</Button>
 			{:else}
 				<span class="in"><span class="dot" aria-hidden="true"></span>{dx('dx.inNotes')}</span>
 				<Button variant="quiet" href={noteHref(entry.noteId)} iconEnd="chevronRight">{dx('dx.openNote')}</Button>
 			{/if}
+			{#key entry.noteId}
+				<AddToDeck target={{ entrySeq: entry.seq, noteId: null }} variant="outline" />
+			{/key}
 		</div>
 		<p class="tags">
 			{#if entry.isCommon}<span class="tag strong">{dx('dx.common')}</span>{/if}

@@ -4,6 +4,8 @@ import type { Deck, DictEntry, DictEntrySummary, EntryExamples, Kanji, KanjiWord
 import { decksApi, dictionaryApi, noteTypesApi, notesApi } from '../dictionary/api';
 import { td } from '../dictionary/messages';
 import { pushToast } from '../toasts.svelte';
+import { wordNoteCreate } from '../ui/deckPicker';
+import { loadUserDecks } from './notesDeckPicker.svelte';
 
 export type { Deck, DictEntry, DictEntrySummary, EntryExamples, Kanji, KanjiWord } from '../api/generated';
 
@@ -108,6 +110,24 @@ export class DictionaryPage {
 		}
 	}
 
+	/** The user's live decks for the "Add to my notes in…" chooser; `addDeckId` is the pick ('' = no deck). */
+	userDecks = $state<Deck[]>([]);
+	addDeckId = $state('');
+
+	private decksRequested = false;
+
+	/** Once per page. */
+	async loadUserDecks(): Promise<void> {
+		if (this.decksRequested) return;
+		this.decksRequested = true;
+		try {
+			this.userDecks = await loadUserDecks();
+		} catch {
+			/* toast shown; the chooser just offers "No deck" */
+		}
+	}
+
+	/** Create the note and its default cards; with `addDeckId` the deck item is created in the same call. */
 	async addNote(e: DictEntry): Promise<void> {
 		this.adding = true;
 		try {
@@ -118,7 +138,7 @@ export class DictionaryPage {
 				return;
 			}
 			const note = await notesApi.createNote({
-				noteCreate: { noteTypeId: vocab.id, entrySeq: e.seq, origin: 'manual' }
+				noteCreate: wordNoteCreate(vocab.id, e.seq, this.addDeckId === '' ? null : this.addDeckId)
 			});
 			pushToast(td('dict.added'), 'info');
 			this.entry = { ...e, noteId: note.id };
