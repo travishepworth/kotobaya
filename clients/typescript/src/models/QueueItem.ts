@@ -20,6 +20,13 @@ import {
     CardTextToJSON,
     CardTextToJSONTyped,
 } from './CardText';
+import type { KanjiExample } from './KanjiExample';
+import {
+    KanjiExampleFromJSON,
+    KanjiExampleFromJSONTyped,
+    KanjiExampleToJSON,
+    KanjiExampleToJSONTyped,
+} from './KanjiExample';
 import type { SchedulePreview } from './SchedulePreview';
 import {
     SchedulePreviewFromJSON,
@@ -55,6 +62,13 @@ import {
     SentenceToJSON,
     SentenceToJSONTyped,
 } from './Sentence';
+import type { QueueItemDeck } from './QueueItemDeck';
+import {
+    QueueItemDeckFromJSON,
+    QueueItemDeckFromJSONTyped,
+    QueueItemDeckToJSON,
+    QueueItemDeckToJSONTyped,
+} from './QueueItemDeck';
 import type { Card } from './Card';
 import {
     CardFromJSON,
@@ -73,6 +87,23 @@ export interface QueueItem {
      * The card, with `note`.
      */
     card: Card;
+    /**
+     * C-25 (additive). Number of decks that hold the card's note (the length of its `Note.deck_ids`); `deck_count - decks.length` is the "+N" a client shows after the listed decks. 0 when `decks` is empty. Present iff `decks` is.
+     */
+    deckCount?: number;
+    /**
+     * C-25 (additive, ADR-029). The first 3 of the decks that hold the card's note, in draw
+     * order (`priority` ascending, then `id` ascending): exactly the decks of
+     * `Note.deck_ids` of `card.note` (live decks with a live item `n:<note id>`, incl. items
+     * naming a merge loser of the note, or `e:<entry_seq>`; enabled or not; never smart
+     * decks), each with its name and priority. Empty when the note is in no deck. Sent on
+     * every item (any note type, `getReviewQueue` and `createDrillSession`) by servers that
+     * implement C-25, always together with `deck_count`. Absent on older servers: clients
+     * then show no deck line. It is a snapshot of queue-build time; clients do not update it
+     * when a deck changes while the item is on screen.
+     * 
+     */
+    decks?: Array<QueueItemDeck>;
     /**
      * The note's dictionary entry, or null (no reference, or entry missing).
      */
@@ -98,6 +129,35 @@ export interface QueueItem {
      * For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null.
      */
     kanji?: Kanji | null;
+    /**
+     * C-25 (additive, ADR-029). Example words for the back of a kanji card: up to 3 dictionary
+     * entries containing `card.note.kanji_literal`, chosen by the shared core picker
+     * `KanjiExamplePicker.pick` (contract: `core/.../contracts/dict/KanjiExamples.kt`), in its
+     * pick order. Servers MUST call that core function; they never re-implement the choice.
+     * 
+     * **Inputs.** Kanji readings: `kanji.on_readings` / `kanji.kun_readings` of this item
+     * (`kanji` null: no readings, so every word is `other`). Candidates: the entries of the
+     * current dictionary (not retired) with a `ref.entry_kanji` row for the literal, each
+     * with `headword`, `headword_reading`, `freq_rank`, your effective word status,
+     * `hasNote` = you have a live note with that `entry_seq`, `inDecks` = its `deck_ids` is
+     * not empty. A server may pre-limit the candidates to the picker's window (the first
+     * `CANDIDATE_LIMIT` = 50 in pick order); the result is the same.
+     * 
+     * **The pick** (summary; the core KDoc is normative): words whose headword does not
+     * contain the kanji and words you blacklisted or ignored are left out; your words (status
+     * `learning` / `known` / `never_forget`, a note, or in a deck) come first, then
+     * `freq_rank` ascending (unranked last), then `seq`; the best on'yomi word and the best
+     * kun'yomi word are always included when the window has one; the rest is filled in that
+     * order; the result is listed in that order.
+     * 
+     * Present (possibly empty) iff `card.note.kanji_literal` is non-null, on both
+     * `getReviewQueue` and `createDrillSession`; absent for every other item and on older
+     * servers. Clients treat absent as empty and show the block only on the answer side.
+     * Offline (Android) the same picker runs over the local dictionary: see
+     * `contracts/core/README.md` "C-25".
+     * 
+     */
+    kanjiExamples?: Array<KanjiExample>;
     /**
      * Null for drill and cram items.
      */
@@ -163,9 +223,12 @@ export function QueueItemFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     return {
         
         'card': CardFromJSON(json['card']),
+        'deckCount': json['deck_count'] == null ? undefined : json['deck_count'],
+        'decks': json['decks'] == null ? undefined : ((json['decks'] as Array<any>).map(QueueItemDeckFromJSON)),
         'entry': DictEntryFromJSON(json['entry']),
         'grammarSentence': json['grammar_sentence'] === undefined ? undefined : json['grammar_sentence'] === null ? null : GrammarCardSentenceFromJSON(json['grammar_sentence']),
         'kanji': json['kanji'] === undefined ? undefined : json['kanji'] === null ? null : KanjiFromJSON(json['kanji']),
+        'kanjiExamples': json['kanji_examples'] == null ? undefined : ((json['kanji_examples'] as Array<any>).map(KanjiExampleFromJSON)),
         'preview': SchedulePreviewFromJSON(json['preview']),
         'reviewType': json['review_type'],
         'sentence': SentenceFromJSON(json['sentence']),
@@ -185,9 +248,12 @@ export function QueueItemToJSONTyped(value?: QueueItem | null, ignoreDiscriminat
     return {
         
         'card': CardToJSON(value['card']),
+        'deck_count': value['deckCount'],
+        'decks': value['decks'] == null ? undefined : ((value['decks'] as Array<any>).map(QueueItemDeckToJSON)),
         'entry': DictEntryToJSON(value['entry']),
         'grammar_sentence': GrammarCardSentenceToJSON(value['grammarSentence']),
         'kanji': KanjiToJSON(value['kanji']),
+        'kanji_examples': value['kanjiExamples'] == null ? undefined : ((value['kanjiExamples'] as Array<any>).map(KanjiExampleToJSON)),
         'preview': SchedulePreviewToJSON(value['preview']),
         'review_type': value['reviewType'],
         'sentence': SentenceToJSON(value['sentence']),

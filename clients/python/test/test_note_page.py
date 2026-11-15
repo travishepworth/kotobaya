@@ -64,6 +64,9 @@ class TestNotePage(unittest.TestCase):
                             ], 
                         created_at = null, 
                         created_by_device_id = null, 
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         deleted_at = null, 
                         entry_seq = null, 
                         fields = {
@@ -119,6 +122,9 @@ class TestNotePage(unittest.TestCase):
                             ], 
                         created_at = null, 
                         created_by_device_id = null, 
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         deleted_at = null, 
                         entry_seq = null, 
                         fields = {

@@ -35,6 +35,9 @@ class TestDictEntrySummary(unittest.TestCase):
         model = DictEntrySummary()
         if include_optional:
             return DictEntrySummary(
+                deck_ids = [
+                    'bf325375-e030-fccb-a009-17317c574773'
+                    ],
                 freq_rank = 1,
                 glosses = [
                     ''

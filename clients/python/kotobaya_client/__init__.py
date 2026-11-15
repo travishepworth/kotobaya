@@ -207,6 +207,7 @@ __all__ = [
     "JpdbVocabResolutionPut",
     "JpdbVocabResolutionResult",
     "Kanji",
+    "KanjiExample",
     "KanjiWord",
     "KanjiWordDeck",
     "KanjiWordPage",
@@ -276,6 +277,7 @@ __all__ = [
     "PushResult",
     "PushResultError",
     "QueueItem",
+    "QueueItemDeck",
     "RetentionGroup",
     "ReviewAnswerRequest",
     "ReviewButton",
@@ -524,6 +526,7 @@ from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution as 
 from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut as JpdbVocabResolutionPut
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult as JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji as Kanji
+from kotobaya_client.models.kanji_example import KanjiExample as KanjiExample
 from kotobaya_client.models.kanji_word import KanjiWord as KanjiWord
 from kotobaya_client.models.kanji_word_deck import KanjiWordDeck as KanjiWordDeck
 from kotobaya_client.models.kanji_word_page import KanjiWordPage as KanjiWordPage
@@ -593,6 +596,7 @@ from kotobaya_client.models.push_response import PushResponse as PushResponse
 from kotobaya_client.models.push_result import PushResult as PushResult
 from kotobaya_client.models.push_result_error import PushResultError as PushResultError
 from kotobaya_client.models.queue_item import QueueItem as QueueItem
+from kotobaya_client.models.queue_item_deck import QueueItemDeck as QueueItemDeck
 from kotobaya_client.models.retention_group import RetentionGroup as RetentionGroup
 from kotobaya_client.models.review_answer_request import ReviewAnswerRequest as ReviewAnswerRequest
 from kotobaya_client.models.review_button import ReviewButton as ReviewButton

@@ -34,6 +34,7 @@ class DictEntry(BaseModel):
     """
     A full JMdict entry (`ref.dict_entry` and its satellites) with the caller's overlay.
     """ # noqa: E501
+    deck_ids: Optional[List[Annotated[str, Field(strict=True)]]] = Field(default=None, description="C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this entry as a live item `e:<seq>` (an `app.deck_item` row with `entry_seq` = `seq` and `deleted_at` null), in draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates; empty when none. Smart decks never appear (they have no items) and `n:<note id>` items are not counted (they are on `Note.deck_ids`). The same set of decks as `KanjiWord.decks`, in another order. Servers that implement C-25 send it wherever this schema is returned. Absent on older servers: clients treat absent as \"unknown\" (fall back to scanning `listDeckItems`), never as \"in no deck\". ")
     freq_rank: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Rank in the primary frequency list.")
     freqs: List[DictEntryFreqsInner] = Field(description="Rank per loaded frequency list, ordered by the list's priority.")
     headword: StrictStr = Field(description="Display form.")
@@ -51,7 +52,7 @@ class DictEntry(BaseModel):
     senses: List[DictEntrySensesInner] = Field(description="Senses in JMdict order.")
     seq: Annotated[int, Field(strict=True, ge=1)] = Field(description="JMdict sequence number (`ref.dict_entry.seq`).")
     status: WordStatusValue = Field(description="Your effective word status.")
-    __properties: ClassVar[List[str]] = ["freq_rank", "freqs", "headword", "headword_reading", "is_common", "kanji", "kanji_forms", "language", "misc", "note_id", "pitch", "pos", "readings", "retired", "senses", "seq", "status"]
+    __properties: ClassVar[List[str]] = ["deck_ids", "freq_rank", "freqs", "headword", "headword_reading", "is_common", "kanji", "kanji_forms", "language", "misc", "note_id", "pitch", "pos", "readings", "retired", "senses", "seq", "status"]
 
     @field_validator('note_id', mode="before")
     def note_id_validate_regular_expression(cls, value):
@@ -154,6 +155,7 @@ class DictEntry(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "deck_ids": obj.get("deck_ids"),
             "freq_rank": obj.get("freq_rank"),
             "freqs": [DictEntryFreqsInner.from_dict(_item) for _item in obj["freqs"]] if obj.get("freqs") is not None else None,
             "headword": obj.get("headword"),

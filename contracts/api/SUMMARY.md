@@ -250,7 +250,7 @@ operation starts; "(consequence)" = emitted by the op-apply path. Every op also 
 | `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkScheduleCards`, `listCardReviews`, `importJpdbHistory`, `getStatsHeatmap`, `getStatsRetention`, `getStatsCalibration` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `getWordStatus`, `setWordStatus`, `clearWordStatus`, `getStatsKnownWords`, `importJpdbHistory` |
 | `deck` | `deck.created/updated/deleted`; `deck.content_published` (job) | `listDecks`, `getDeck`, `createDeck`, `updateDeck`, `deleteDeck`, `importMedia`, `importJpdbDeck`, `deleteMedia` |
-| `deck_item` | `deck.item_put`, `deck.item_removed`; snapshot via `deck.content_published` (job) | `listDeckItems`, `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote`, `bulkCards`, `getDeckCoverage`, `listKanjiWords` |
+| `deck_item` | `deck.item_put`, `deck.item_removed`; snapshot via `deck.content_published` (job) | `listDeckItems`, `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote`, `bulkCards`, `getDeckCoverage`, `listKanjiWords`, `getReviewQueue`, `createDrillSession`, `getNote`, `listNotes`, `getDictEntry`, `searchDictionary` |
 | `confusable` | `confusable.confirmed/rejected`; `confusable.suggested` (server; trigger not defined) | `listWordConfusables`, `listConfusables`, `setConfusable` |
 | `grammar_point` | `grammar.created/updated/deleted` | `listGrammarPoints`, `getGrammarPoint`, `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint` |
 | `sentence_grammar_span` | `grammar.span_put`, `grammar.span_removed` | `putGrammarSpan`, `removeGrammarSpan`, `listGrammarExamples`, `testGrammarRules` |
@@ -518,3 +518,42 @@ attempt 1 is gone). Needs node and python3; network on first run.
   layout showing both must pick one; (2) pitch notation `ꜜ` after the downstep mora, heiban
   unmarked; (3) all senses' glosses (web) rather than first-sense only (Android's offline fill),
   so long entries give a long `meaning` line.
+
+## C-25 changes (additive): review back-side extras and deck membership reads (ADR-029)
+
+- **`QueueItem.decks`** (`QueueItemDeck {id, name, priority}`, max 3) + **`deck_count`**: the
+  decks holding the card's note, in draw order `(priority, id)` ascending; `deck_count` is the
+  total, so `deck_count - decks.length` is the UI's "+N". On every item of `getReviewQueue` and
+  `createDrillSession` (any note type; `[]` / `0` when in no deck).
+- **`QueueItem.kanji_examples`** (`KanjiExample {seq, headword, reading, gloss, reading_type:
+  on|kun|other}`, max 3): present (possibly empty) iff `card.note.kanji_literal` is non-null.
+  Chosen by the core `KanjiExamplePicker` (contract `core/.../contracts/dict/KanjiExamples.kt`):
+  the user's words first (status learning/known/never_forget, a live note, or in a deck), then
+  `freq_rank`, then `seq`; the best on'yomi word and the best kun'yomi word are always included
+  when one exists among the first 50; blacklisted/ignored words, retired entries and entries
+  whose headword does not contain the kanji are never shown. `gloss` = first sense joined by `; `.
+- **`deck_ids`** on `DictEntry`, `DictEntrySummary` (so also `KanjiWord`, `DeckItem.entry`,
+  parse and struggle summaries) and `Note`: ids of the live decks holding it, same order. Closes
+  the FOLLOWUPS gap "no 'decks holding entry/note' read" (web no longer has to scan
+  `listDeckItems` of every deck).
+- **Membership rules.** Entry: a live item `e:<seq>` in a live deck (the rule `KanjiWord.decks`
+  already had). Note (`Note.deck_ids`, `QueueItem.decks`): a live item `n:<id>` naming the note
+  or a merge loser of it, or `e:<entry_seq>`; a tombstoned note or a merge loser has none.
+  Deleted decks and tombstoned items never count; disabled decks do; smart decks never appear.
+- All new members are optional on the wire (older servers omit them); clients treat absent
+  `deck_ids` / `decks` as "unknown", absent `kanji_examples` as empty. No DB change, no sync op,
+  no mutation: the cross-check table only gains readers on the `deck_item` row.
+- Server cost: three statements per queue page for all of it (note decks, entry deck ids,
+  example candidates pre-limited to the picker's window in SQL), none per item.
+- Rejected: a `GET /notes/{id}/decks` + `GET /dict/entries/{seq}/decks` pair (N+1 from every
+  list); full `Deck` objects in `QueueItem.decks` (settings and counts nobody shows, and
+  `item_count` is a per-deck subquery); letting each client call `listKanjiWords` and pick in
+  TypeScript (CLAUDE.md: domain logic comes from the core); a `kanji_examples` field on `Kanji`
+  (it would run the picker on every kanji read, and the overlay makes `Kanji` uncacheable).
+- Worth a second look: (1) **smart decks are never listed**, although the queue may have drawn
+  the card through one: membership there is a query evaluation per deck, and "is in deck" for a
+  smart deck changes with every review; (2) **`DictEntry.deck_ids` counts `e:<seq>` items only**,
+  so a note-keyed item (`n:<id>`) of a note that later gained the entry by a merge shows on the
+  `Note` and the `QueueItem` but not on the entry; (3) **blacklisted/ignored words are dropped
+  from the examples** even when they are the kanji's most frequent word, and a kanji whose only
+  on/kun word ranks below the first 50 candidates shows none of that type.

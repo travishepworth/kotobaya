@@ -57,6 +57,8 @@ Package prefix `kotobaya.contracts`.
 | `SearchQueryParser`, AST (`search/Search.kt`) + `search.ebnf` | SPEC Public API › Card search language | T108 |
 | `CardRenderer`, `CardClasses` (`render/CardRenderer.kt`) | ADR-002; `note_type.templates`/`css`, `note.fields` comments | T213 |
 | `RenderOptions.fieldRegions`, `RenderedCard.fields`, `RenderedField`, `FieldSource` (`render/CardRenderer.kt`); `JsRenderInput.fieldRegions`, `JsRenderedField` (`js/CoreJs.kt`) | C-19 (field regions for the WYSIWYG note view, FEAT-x); KDoc "Field regions" on `CardRenderer` | C-19 |
+| `CardTextRenderer`, `TextRenderInput`, `CardText` (`render/CardTextRenderer.kt`) | ARCH-CARD-TEXT (plain-text render for text-only clients; API `CardText`, `QueueItem.text`); CLI-DAEMON "Card content" | ARCH-CARD-TEXT (`kotobaya.render.DefaultCardTextRenderer`) |
+| `KanjiExamplePicker`, `KanjiReadings`, `KanjiExampleCandidate`, `KanjiExample`, `KanjiReadingType` (`dict/KanjiExamples.kt`) | ADR-029; API `QueueItem.kanji_examples`, `KanjiExample` | C-25 (`kotobaya.dict.DefaultKanjiExamplePicker`) |
 | `CoreJs` + `Js*` classes (`js/CoreJs.kt`) | ADR-002 (search parse/complete, card render, FSRS preview for the web) | T108 + T213 + T107 (each fills its methods) |
 
 **The web entry point.** The first ticket that implements a `CoreJs` method adds, in package
@@ -156,6 +158,48 @@ an edit affordance, marked "overridden" when `data-field-source="note"`; the edi
 "reset to dictionary" clears the field (same op). Fields with `rendered: false` have no element to attach to: list
 them next to the card (filtered by `noteType.fieldKeys`) so they can be added. Never parse a region's
 text back into a field value.
+
+**C-25 — kanji example words** (`core/src/commonTest/kotlin/kotobaya/dict/KanjiExamplePickerTest.kt`, jvm and js):
+- `classify` goldens for 15 kanji with their KANJIDIC readings (食 生 日 人 大 行 上 取 語 学 一 手 時 今 受):
+  okurigana, rendaku, gemination, absorbed okurigana (取引, 受付, 物語), jukujikun → OTHER (今日, 大人, 時計).
+- Edges: katakana folding, a headword without the kanji, small kana / `ん` cannot start a neighbour's
+  reading, no gemination at the end and no rendaku at the start of a word, ON wins a tie, a kanji outside the BMP.
+- `pick`: the KDoc example; one ON and one KUN kept when they rank low; tier / rank / seq order; dropped
+  candidates (blacklisted, ignored, headword without the kanji, duplicate seq); `limit` 0, 1, 2, more than
+  there are; the 50-candidate window, and that pre-limiting to the window gives the same result.
+
+## C-25: review back-side extras offline (Android)
+
+The web gets `QueueItem.decks`, `deck_count` and `kanji_examples` from the server. Android builds its
+queue locally and computes the same three values from its replica; nothing here is learning data, no op
+is emitted, nothing is stored. Compute them when the item is built and keep them for the whole showing.
+
+**Example words** (cards whose note has a `kanji_literal`):
+1. Readings: the local `kanji` row of the literal → `KanjiReadings(literal, on_readings, kun_readings)`.
+   No row: empty lists (every word is then `OTHER`; still show the words).
+2. Candidates: the local dictionary entries that are not retired and have an `entry_kanji` row for the
+   literal, each as `KanjiExampleCandidate(seq, headword, headword_reading, freq_rank, status, hasNote, inDecks)`:
+   `status` = local `word_status.status` (no row: `NEW`); `hasNote` = a live local note with that
+   `entry_seq`; `inDecks` = a live local `deck_item` `e:<seq>` in a live local deck. Pass them all, or
+   let SQL return only the picker's window (first `CANDIDATE_LIMIT` in pick order, "pick" 1-3); both give
+   the same result.
+3. `DefaultKanjiExamplePicker.pick(readings, candidates)` → up to 3 `KanjiExample`s, in display order.
+   Never re-rank, filter or re-classify the result. `gloss` for display = the English glosses of the
+   entry's first sense joined with `"; "`.
+4. The dictionary is not installed yet, or has no entry for the kanji: empty list, show no block.
+
+**Decks** (every card; the UI shows them on vocab cards):
+1. The note's decks = live local decks (`deleted_at` null, any `enabled`, `type` ≠ `smart`) with a live
+   `deck_item` (`deleted_at` null) that is `n:<id>` for this note or for a note whose `merged_into_id` is
+   this note, or `e:<entry_seq>` when the note has an `entry_seq`. A tombstoned note has none.
+2. Sort by `priority` ascending, then deck id ascending as lower-case text. Show the first 3 names;
+   "+N" with N = total − 3 when positive.
+3. Edge cases: a deck created offline counts at once; an item whose deck row is missing or tombstoned
+   (deleted parent, or the item arrived before its deck) is skipped; a re-added item (`deck.item_put`
+   after `deck.item_removed`, tombstone cleared) counts again; snapshot-delivered items of media and
+   list decks count like any other; two items of one deck (`e:` and `n:`) are one deck.
+
+The local values may differ from what the server would send while ops are pending; the local replica wins.
 
 ## Follow-ups outside this ticket's paths
 

@@ -32,6 +32,8 @@ import app.kotobaya.client.models.CardText
 import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.GrammarCardSentence
 import app.kotobaya.client.models.Kanji
+import app.kotobaya.client.models.KanjiExample
+import app.kotobaya.client.models.QueueItemDeck
 import app.kotobaya.client.models.SchedulePreview
 import app.kotobaya.client.models.Sentence
 
@@ -70,6 +72,18 @@ class QueueItemTest : ShouldSpec() {
             //modelInstance.sentence shouldBe ("TODO")
         }
 
+        // to test the property `deckCount` - C-25 (additive). Number of decks that hold the card's note (the length of its `Note.deck_ids`); `deck_count - decks.length` is the \"+N\" a client shows after the listed decks. 0 when `decks` is empty. Present iff `decks` is.
+        should("test deckCount") {
+            // uncomment below to test the property
+            //modelInstance.deckCount shouldBe ("TODO")
+        }
+
+        // to test the property `decks` - C-25 (additive, ADR-029). The first 3 of the decks that hold the card's note, in draw order (`priority` ascending, then `id` ascending): exactly the decks of `Note.deck_ids` of `card.note` (live decks with a live item `n:<note id>`, incl. items naming a merge loser of the note, or `e:<entry_seq>`; enabled or not; never smart decks), each with its name and priority. Empty when the note is in no deck. Sent on every item (any note type, `getReviewQueue` and `createDrillSession`) by servers that implement C-25, always together with `deck_count`. Absent on older servers: clients then show no deck line. It is a snapshot of queue-build time; clients do not update it when a deck changes while the item is on screen. 
+        should("test decks") {
+            // uncomment below to test the property
+            //modelInstance.decks shouldBe ("TODO")
+        }
+
         // to test the property `grammarSentence` - C-15 (additive). The example sentence and span to show for a card of a grammar note (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0 first). Null for all other cards, and for grammar cards with no usable candidate. Absent (older server) is treated as null. The rules are on `GrammarCardSentence`.  Clients pass it to the core renderer unchanged as `RenderInput.cloze` / `JsRenderInput.cloze` (`sentence_id` → `sentenceId`, `text`, `start_offset` → `start`, `end_offset` → `end`, `translation`), keep showing it for the whole showing of this item (front, back, undo of a later card, redisplay), and send `sentence_id` back as `ReviewAnswerRequest.sentence_id`. When it is null for a grammar card, they render with `cloze = null` (the renderer emits the `missing_cloze` warning) and SHOULD show an i18n \"no example sentence yet\" notice with the point's pattern. 
         should("test grammarSentence") {
             // uncomment below to test the property
@@ -80,6 +94,12 @@ class QueueItemTest : ShouldSpec() {
         should("test kanji") {
             // uncomment below to test the property
             //modelInstance.kanji shouldBe ("TODO")
+        }
+
+        // to test the property `kanjiExamples` - C-25 (additive, ADR-029). Example words for the back of a kanji card: up to 3 dictionary entries containing `card.note.kanji_literal`, chosen by the shared core picker `KanjiExamplePicker.pick` (contract: `core/.../contracts/dict/KanjiExamples.kt`), in its pick order. Servers MUST call that core function; they never re-implement the choice.  **Inputs.** Kanji readings: `kanji.on_readings` / `kanji.kun_readings` of this item (`kanji` null: no readings, so every word is `other`). Candidates: the entries of the current dictionary (not retired) with a `ref.entry_kanji` row for the literal, each with `headword`, `headword_reading`, `freq_rank`, your effective word status, `hasNote` = you have a live note with that `entry_seq`, `inDecks` = its `deck_ids` is not empty. A server may pre-limit the candidates to the picker's window (the first `CANDIDATE_LIMIT` = 50 in pick order); the result is the same.  **The pick** (summary; the core KDoc is normative): words whose headword does not contain the kanji and words you blacklisted or ignored are left out; your words (status `learning` / `known` / `never_forget`, a note, or in a deck) come first, then `freq_rank` ascending (unranked last), then `seq`; the best on'yomi word and the best kun'yomi word are always included when the window has one; the rest is filled in that order; the result is listed in that order.  Present (possibly empty) iff `card.note.kanji_literal` is non-null, on both `getReviewQueue` and `createDrillSession`; absent for every other item and on older servers. Clients treat absent as empty and show the block only on the answer side. Offline (Android) the same picker runs over the local dictionary: see `contracts/core/README.md` \"C-25\". 
+        should("test kanjiExamples") {
+            // uncomment below to test the property
+            //modelInstance.kanjiExamples shouldBe ("TODO")
         }
 
         // to test the property `text` - ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Servers that implement it send it on every item (both `getReviewQueue` and `createDrillSession`) whose note type they can render. Absent when the item's note type is unknown to the server (its note-type row is missing and `card.note.type` is not a built-in base type; the item is still returned, never an error) and on every item from older servers. Clients treat an absent `text` as \"no text\" for that item (show counts only) and must not infer the server's version from it. 

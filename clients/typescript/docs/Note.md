@@ -10,6 +10,7 @@ Name | Type
 `cards` | [Array&lt;Card&gt;](Card.md)
 `createdAt` | Date
 `createdByDeviceId` | string
+`deckIds` | Array&lt;string&gt;
 `deletedAt` | Date
 `entrySeq` | number
 `fields` | { [key: string]: string; }
@@ -38,6 +39,7 @@ const example = {
   "cards": null,
   "createdAt": null,
   "createdByDeviceId": null,
+  "deckIds": null,
   "deletedAt": null,
   "entrySeq": null,
   "fields": null,

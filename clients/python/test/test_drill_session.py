@@ -39,9 +39,24 @@ class TestDrillSession(unittest.TestCase):
                 items = [
                     kotobaya_client.models.queue_item.QueueItem(
                         card = null, 
+                        deck_count = 0, 
+                        decks = [
+                            kotobaya_client.models.queue_item_deck.QueueItemDeck(
+                                id = null, 
+                                name = '0', 
+                                priority = 56, )
+                            ], 
                         entry = null, 
                         grammar_sentence = null, 
                         kanji = null, 
+                        kanji_examples = [
+                            kotobaya_client.models.kanji_example.KanjiExample(
+                                gloss = '', 
+                                headword = '0', 
+                                reading = '0', 
+                                reading_type = 'on', 
+                                seq = 1, )
+                            ], 
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 
@@ -55,9 +70,24 @@ class TestDrillSession(unittest.TestCase):
                 items = [
                     kotobaya_client.models.queue_item.QueueItem(
                         card = null, 
+                        deck_count = 0, 
+                        decks = [
+                            kotobaya_client.models.queue_item_deck.QueueItemDeck(
+                                id = null, 
+                                name = '0', 
+                                priority = 56, )
+                            ], 
                         entry = null, 
                         grammar_sentence = null, 
                         kanji = null, 
+                        kanji_examples = [
+                            kotobaya_client.models.kanji_example.KanjiExample(
+                                gloss = '', 
+                                headword = '0', 
+                                reading = '0', 
+                                reading_type = 'on', 
+                                seq = 1, )
+                            ], 
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 

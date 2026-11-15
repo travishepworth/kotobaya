@@ -37,6 +37,9 @@ class TestParseResult(unittest.TestCase):
             return ParseResult(
                 entries = [
                     kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         freq_rank = 1, 
                         glosses = [
                             ''
@@ -65,6 +68,9 @@ class TestParseResult(unittest.TestCase):
             return ParseResult(
                 entries = [
                     kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         freq_rank = 1, 
                         glosses = [
                             ''

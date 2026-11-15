@@ -8,9 +8,12 @@ One card to show, with everything needed to render and grade it.
 Name | Type
 ------------ | -------------
 `card` | [Card](Card.md)
+`deckCount` | number
+`decks` | [Array&lt;QueueItemDeck&gt;](QueueItemDeck.md)
 `entry` | [DictEntry](DictEntry.md)
 `grammarSentence` | [GrammarCardSentence](GrammarCardSentence.md)
 `kanji` | [Kanji](Kanji.md)
+`kanjiExamples` | [Array&lt;KanjiExample&gt;](KanjiExample.md)
 `preview` | [SchedulePreview](SchedulePreview.md)
 `reviewType` | string
 `sentence` | [Sentence](Sentence.md)
@@ -24,9 +27,12 @@ import type { QueueItem } from '@kotobaya/api-client'
 // TODO: Update the object below with actual values
 const example = {
   "card": null,
+  "deckCount": null,
+  "decks": null,
   "entry": null,
   "grammarSentence": null,
   "kanji": null,
+  "kanjiExamples": null,
   "preview": null,
   "reviewType": null,
   "sentence": null,

@@ -170,6 +170,7 @@ docs/JpdbVocabResolution.md
 docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
+docs/KanjiExample.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -245,6 +246,7 @@ docs/PushResponse.md
 docs/PushResult.md
 docs/PushResultError.md
 docs/QueueItem.md
+docs/QueueItemDeck.md
 docs/RetentionGroup.md
 docs/ReviewAnswerRequest.md
 docs/ReviewApi.md
@@ -486,6 +488,7 @@ src/models/JpdbVocabResolution.ts
 src/models/JpdbVocabResolutionPut.ts
 src/models/JpdbVocabResolutionResult.ts
 src/models/Kanji.ts
+src/models/KanjiExample.ts
 src/models/KanjiWord.ts
 src/models/KanjiWordDeck.ts
 src/models/KanjiWordPage.ts
@@ -555,6 +558,7 @@ src/models/PushResponse.ts
 src/models/PushResult.ts
 src/models/PushResultError.ts
 src/models/QueueItem.ts
+src/models/QueueItemDeck.ts
 src/models/RetentionGroup.ts
 src/models/ReviewAnswerRequest.ts
 src/models/ReviewButton.ts

@@ -81,3 +81,35 @@ Worth a second look:
    is what lets the web offer them, but it also lists keys a custom template only tests with `{{#key}}`.
 3. **Mnemonic, pitch and cloze sentence are not regions.** They are not note fields. If the note
    view should edit the mnemonic in place, that is a small follow-up (a marker on `kb-mnemonic`).
+
+## C-25 changes (additive): example words for kanji cards (ADR-029)
+- **What.** New `KanjiExamplePicker` (`contracts/dict/KanjiExamples.kt`), implemented once in `commonMain`
+  (`kotobaya.dict.DefaultKanjiExamplePicker`). `classify` says how a word reads a kanji (on / kun / other)
+  from the kanji's own KANJIDIC readings; `pick` chooses up to 3 example words. The server calls it to
+  fill `QueueItem.kanji_examples`; Android calls it offline. Not exported to JS: the web shows what the
+  server sends.
+- **classify.** The word's reading is aligned to its headword: kana must match, every other character
+  takes at least one kana, and the kanji takes one of its readings — on'yomi (also geminated, 学校 がっ),
+  kun'yomi stems (also with the okurigana absorbed, 取引 とり), both also voiced by rendaku when not
+  word-initial. The longest reading that fits wins; a tie goes to on'yomi; nothing fits → other.
+- **pick.** Drop blacklisted/ignored words and entries whose headword lacks the kanji. Order: the user's
+  words (learning/known/never_forget, has a note, or in a deck), then frequency rank, then seq. Look at
+  the first 50 only. Take the best on'yomi word, the best kun'yomi word, fill up to 3, show in that order.
+
+Rejected:
+- Aligning with the readings of the *other* kanji too (a full furigana solver). More accurate on a few
+  compounds, but the picker would need the whole kanji table as input on every host.
+- JMdict furigana data (JmdictFurigana) as a new reference table: a DB contract change and a download
+  for a display hint.
+- Classifying in SQL or per client. Three implementations of rendaku rules would drift.
+- Ranking by frequency only (ticket wording "by frequency"): the user asked for the smartest pick, and a
+  word they are learning is a better hook than a more frequent stranger.
+
+Worth a second look:
+1. **Heuristic misfires are accepted.** Irregular readings come out as `other` (日本 にほん), and a
+   jukujikun whose tail equals a short kun stem comes out as `kun` (下手 へた via `た-`). It only decides
+   the small on/kun tag and which words get the two reserved places.
+2. **The user's words outrank frequency entirely.** A rank-20 000 word in one of their decks beats the
+   kanji's most common word. With many deck words the three examples are all "theirs".
+3. **Window of 50.** A kanji whose only kun'yomi word is beyond its first 50 candidates shows no kun
+   word. The window is what lets the server pre-limit in SQL (one statement per queue page).

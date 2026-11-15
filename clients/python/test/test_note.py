@@ -62,6 +62,9 @@ class TestNote(unittest.TestCase):
                     ],
                 created_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 created_by_device_id = 'bf325375-e030-fccb-a009-17317c574773',
+                deck_ids = [
+                    'bf325375-e030-fccb-a009-17317c574773'
+                    ],
                 deleted_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 entry_seq = 1,
                 fields = {

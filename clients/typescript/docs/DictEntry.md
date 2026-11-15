@@ -7,6 +7,7 @@ A full JMdict entry (`ref.dict_entry` and its satellites) with the caller\'s ove
 
 Name | Type
 ------------ | -------------
+`deckIds` | Array&lt;string&gt;
 `freqRank` | number
 `freqs` | [Array&lt;DictEntryFreqsInner&gt;](DictEntryFreqsInner.md)
 `headword` | string
@@ -32,6 +33,7 @@ import type { DictEntry } from '@kotobaya/api-client'
 
 // TODO: Update the object below with actual values
 const example = {
+  "deckIds": null,
   "freqRank": null,
   "freqs": null,
   "headword": null,

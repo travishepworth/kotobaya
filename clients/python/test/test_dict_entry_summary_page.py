@@ -37,6 +37,9 @@ class TestDictEntrySummaryPage(unittest.TestCase):
             return DictEntrySummaryPage(
                 items = [
                     kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         freq_rank = 1, 
                         glosses = [
                             ''
@@ -58,6 +61,9 @@ class TestDictEntrySummaryPage(unittest.TestCase):
             return DictEntrySummaryPage(
                 items = [
                     kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                        deck_ids = [
+                            'bf325375-e030-fccb-a009-17317c574773'
+                            ], 
                         freq_rank = 1, 
                         glosses = [
                             ''

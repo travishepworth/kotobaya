@@ -38,6 +38,9 @@ class TestDeckItem(unittest.TestCase):
                 added_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 deck_id = 'bf325375-e030-fccb-a009-17317c574773',
                 entry = kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                    deck_ids = [
+                        'bf325375-e030-fccb-a009-17317c574773'
+                        ], 
                     freq_rank = 1, 
                     glosses = [
                         ''
@@ -64,6 +67,9 @@ class TestDeckItem(unittest.TestCase):
                 added_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 deck_id = 'bf325375-e030-fccb-a009-17317c574773',
                 entry = kotobaya_client.models.dict_entry_summary.DictEntrySummary(
+                    deck_ids = [
+                        'bf325375-e030-fccb-a009-17317c574773'
+                        ], 
                     freq_rank = 1, 
                     glosses = [
                         ''

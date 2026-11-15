@@ -24,6 +24,7 @@
 | **tags** | **kotlin.collections.List&lt;kotlin.String&gt;** | Tags, de-duplicated, sorted ascending. &#x60;leech&#x60; is never stored. |  |
 | **type** | [**NoteBaseType**](NoteBaseType.md) | Equals the note type&#39;s &#x60;base_type&#x60;. |  |
 | **updatedAt** | [**java.time.OffsetDateTime**](java.time.OffsetDateTime.md) | Last change. |  |
+| **deckIds** | **kotlin.collections.List&lt;kotlin.String&gt;** | C-25 (additive). Ids of your live decks (&#x60;deleted_at&#x60; null; enabled or not) that hold this note: a live item &#x60;n:&lt;id&gt;&#x60; (&#x60;app.deck_item.note_id&#x60;, &#x60;deleted_at&#x60; null) whose &#x60;&lt;id&gt;&#x60; is this note or a merge loser of it (&#x60;merged_into_id&#x60; &#x3D; this note&#39;s id), or, when &#x60;entry_seq&#x60; is non-null, a live item &#x60;e:&lt;entry_seq&gt;&#x60;. This is the membership the review queue uses (core &#x60;DeckMembership&#x60;) minus smart decks, which never appear. Draw order: &#x60;deck.priority&#x60; ascending, then deck id ascending (order of the lower-case UUID text). No duplicates. Always empty for a tombstoned note and for a merge loser (ask the survivor). Servers that implement C-25 send it on every &#x60;Note&#x60;. Absent on older servers: clients treat absent as \&quot;unknown\&quot;, never as \&quot;in no deck\&quot;.  |  [optional] |
 
 
 

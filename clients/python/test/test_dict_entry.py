@@ -35,6 +35,9 @@ class TestDictEntry(unittest.TestCase):
         model = DictEntry()
         if include_optional:
             return DictEntry(
+                deck_ids = [
+                    'bf325375-e030-fccb-a009-17317c574773'
+                    ],
                 freq_rank = 1,
                 freqs = [
                     kotobaya_client.models.dict_entry_freqs_inner.DictEntryFreqsInner(

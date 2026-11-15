@@ -35,6 +35,9 @@ class TestKanjiWord(unittest.TestCase):
         model = KanjiWord()
         if include_optional:
             return KanjiWord(
+                deck_ids = [
+                    'bf325375-e030-fccb-a009-17317c574773'
+                    ],
                 freq_rank = 1,
                 glosses = [
                     ''

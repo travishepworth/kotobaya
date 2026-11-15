@@ -47,6 +47,19 @@ export interface Note {
      */
     createdByDeviceId: string;
     /**
+     * C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold
+     * this note: a live item `n:<id>` (`app.deck_item.note_id`, `deleted_at` null) whose
+     * `<id>` is this note or a merge loser of it (`merged_into_id` = this note's id), or,
+     * when `entry_seq` is non-null, a live item `e:<entry_seq>`. This is the membership the
+     * review queue uses (core `DeckMembership`) minus smart decks, which never appear.
+     * Draw order: `deck.priority` ascending, then deck id ascending (order of the
+     * lower-case UUID text). No duplicates. Always empty for a tombstoned note and for a
+     * merge loser (ask the survivor). Servers that implement C-25 send it on every `Note`.
+     * Absent on older servers: clients treat absent as "unknown", never as "in no deck".
+     * 
+     */
+    deckIds?: Array<string>;
+    /**
      * Tombstone.
      */
     deletedAt: Date | null;
@@ -158,6 +171,7 @@ export function NoteFromJSONTyped(json: any, ignoreDiscriminator: boolean): Note
         'cards': ((json['cards'] as Array<any>).map(CardFromJSON)),
         'createdAt': (json['created_at'] == null ? json['created_at'] : parseDateTime(json['created_at'])),
         'createdByDeviceId': json['created_by_device_id'],
+        'deckIds': json['deck_ids'] == null ? undefined : json['deck_ids'],
         'deletedAt': (json['deleted_at'] == null ? null : parseDateTime(json['deleted_at'])),
         'entrySeq': json['entry_seq'],
         'fields': json['fields'],
@@ -192,6 +206,7 @@ export function NoteToJSONTyped(value?: Note | null, ignoreDiscriminator: boolea
         'cards': ((value['cards'] as Array<any>).map(CardToJSON)),
         'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'created_by_device_id': value['createdByDeviceId'],
+        'deck_ids': value['deckIds'],
         'deleted_at': value['deletedAt'] == null ? value['deletedAt'] : serializeDateTime(value['deletedAt']),
         'entry_seq': value['entrySeq'],
         'fields': value['fields'],

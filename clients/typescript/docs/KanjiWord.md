@@ -7,6 +7,7 @@ A dictionary entry containing the requested kanji, with the decks that hold it (
 
 Name | Type
 ------------ | -------------
+`deckIds` | Array&lt;string&gt;
 `freqRank` | number
 `glosses` | Array&lt;string&gt;
 `headword` | string
@@ -26,6 +27,7 @@ import type { KanjiWord } from '@kotobaya/api-client'
 
 // TODO: Update the object below with actual values
 const example = {
+  "deckIds": null,
   "freqRank": null,
   "glosses": null,
   "headword": null,

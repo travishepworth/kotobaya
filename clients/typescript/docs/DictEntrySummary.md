@@ -7,6 +7,7 @@ Short form of a dictionary entry with the caller\'s overlay.
 
 Name | Type
 ------------ | -------------
+`deckIds` | Array&lt;string&gt;
 `freqRank` | number
 `glosses` | Array&lt;string&gt;
 `headword` | string
@@ -25,6 +26,7 @@ import type { DictEntrySummary } from '@kotobaya/api-client'
 
 // TODO: Update the object below with actual values
 const example = {
+  "deckIds": null,
   "freqRank": null,
   "glosses": null,
   "headword": null,

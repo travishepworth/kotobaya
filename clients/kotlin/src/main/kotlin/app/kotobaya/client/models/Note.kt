@@ -51,6 +51,7 @@ import com.google.gson.annotations.SerializedName
  * @param tags Tags, de-duplicated, sorted ascending. `leech` is never stored.
  * @param type Equals the note type's `base_type`.
  * @param updatedAt Last change.
+ * @param deckIds C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this note: a live item `n:<id>` (`app.deck_item.note_id`, `deleted_at` null) whose `<id>` is this note or a merge loser of it (`merged_into_id` = this note's id), or, when `entry_seq` is non-null, a live item `e:<entry_seq>`. This is the membership the review queue uses (core `DeckMembership`) minus smart decks, which never appear. Draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates. Always empty for a tombstoned note and for a merge loser (ask the survivor). Servers that implement C-25 send it on every `Note`. Absent on older servers: clients treat absent as \"unknown\", never as \"in no deck\". 
  */
 
 
@@ -134,7 +135,11 @@ data class Note (
 
     /* Last change. */
     @SerializedName("updated_at")
-    val updatedAt: java.time.OffsetDateTime
+    val updatedAt: java.time.OffsetDateTime,
+
+    /* C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this note: a live item `n:<id>` (`app.deck_item.note_id`, `deleted_at` null) whose `<id>` is this note or a merge loser of it (`merged_into_id` = this note's id), or, when `entry_seq` is non-null, a live item `e:<entry_seq>`. This is the membership the review queue uses (core `DeckMembership`) minus smart decks, which never appear. Draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates. Always empty for a tombstoned note and for a merge loser (ask the survivor). Servers that implement C-25 send it on every `Note`. Absent on older servers: clients treat absent as \"unknown\", never as \"in no deck\".  */
+    @SerializedName("deck_ids")
+    val deckIds: kotlin.collections.List<kotlin.String>? = null
 
 ) {
 

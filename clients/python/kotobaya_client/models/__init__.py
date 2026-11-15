@@ -170,6 +170,7 @@ from kotobaya_client.models.jpdb_vocab_resolution import JpdbVocabResolution
 from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolutionPut
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji
+from kotobaya_client.models.kanji_example import KanjiExample
 from kotobaya_client.models.kanji_word import KanjiWord
 from kotobaya_client.models.kanji_word_deck import KanjiWordDeck
 from kotobaya_client.models.kanji_word_page import KanjiWordPage
@@ -239,6 +240,7 @@ from kotobaya_client.models.push_response import PushResponse
 from kotobaya_client.models.push_result import PushResult
 from kotobaya_client.models.push_result_error import PushResultError
 from kotobaya_client.models.queue_item import QueueItem
+from kotobaya_client.models.queue_item_deck import QueueItemDeck
 from kotobaya_client.models.retention_group import RetentionGroup
 from kotobaya_client.models.review_answer_request import ReviewAnswerRequest
 from kotobaya_client.models.review_button import ReviewButton

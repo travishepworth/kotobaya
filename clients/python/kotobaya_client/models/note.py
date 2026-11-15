@@ -34,6 +34,7 @@ class Note(BaseModel):
     cards: List[Card] = Field(description="Live cards of the note, ordered by kind. Their `note` property is omitted.")
     created_at: datetime = Field(description="Creation time.")
     created_by_device_id: Annotated[str, Field(strict=True)] = Field(description="Origin device of the creating op.")
+    deck_ids: Optional[List[Annotated[str, Field(strict=True)]]] = Field(default=None, description="C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this note: a live item `n:<id>` (`app.deck_item.note_id`, `deleted_at` null) whose `<id>` is this note or a merge loser of it (`merged_into_id` = this note's id), or, when `entry_seq` is non-null, a live item `e:<entry_seq>`. This is the membership the review queue uses (core `DeckMembership`) minus smart decks, which never appear. Draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates. Always empty for a tombstoned note and for a merge loser (ask the survivor). Servers that implement C-25 send it on every `Note`. Absent on older servers: clients treat absent as \"unknown\", never as \"in no deck\". ")
     deleted_at: Optional[datetime] = Field(description="Tombstone.")
     entry_seq: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Dictionary entry (vocab notes); null when unmatched.")
     fields: Dict[str, StrictStr] = Field(description="Field values by key: HTML fragments; audio as `[sound:<sha256>]`, images as `<img src=\"blob:<sha256>\">`. For referenced notes an empty or missing field means \"render from the dictionary\".")
@@ -51,7 +52,7 @@ class Note(BaseModel):
     tags: List[StrictStr] = Field(description="Tags, de-duplicated, sorted ascending. `leech` is never stored.")
     type: NoteBaseType = Field(description="Equals the note type's `base_type`.")
     updated_at: datetime = Field(description="Last change.")
-    __properties: ClassVar[List[str]] = ["cards", "created_at", "created_by_device_id", "deleted_at", "entry_seq", "fields", "grammar_point_id", "id", "kanji_literal", "language", "merged_into_id", "mnemonic", "note_type_id", "origin", "source_media_id", "source_sentence", "source_sentence_id", "tags", "type", "updated_at"]
+    __properties: ClassVar[List[str]] = ["cards", "created_at", "created_by_device_id", "deck_ids", "deleted_at", "entry_seq", "fields", "grammar_point_id", "id", "kanji_literal", "language", "merged_into_id", "mnemonic", "note_type_id", "origin", "source_media_id", "source_sentence", "source_sentence_id", "tags", "type", "updated_at"]
 
     @field_validator('created_by_device_id', mode="before")
     def created_by_device_id_validate_regular_expression(cls, value):
@@ -216,6 +217,7 @@ class Note(BaseModel):
             "cards": [Card.from_dict(_item) for _item in obj["cards"]] if obj.get("cards") is not None else None,
             "created_at": obj.get("created_at"),
             "created_by_device_id": obj.get("created_by_device_id"),
+            "deck_ids": obj.get("deck_ids"),
             "deleted_at": obj.get("deleted_at"),
             "entry_seq": obj.get("entry_seq"),
             "fields": obj.get("fields"),

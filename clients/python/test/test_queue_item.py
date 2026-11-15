@@ -58,7 +58,17 @@ class TestQueueItem(unittest.TestCase):
                     step = 0, 
                     suspended = True, 
                     updated_at = null, ),
+                deck_count = 0,
+                decks = [
+                    kotobaya_client.models.queue_item_deck.QueueItemDeck(
+                        id = null, 
+                        name = '0', 
+                        priority = 56, )
+                    ],
                 entry = kotobaya_client.models.dict_entry.DictEntry(
+                    deck_ids = [
+                        'bf325375-e030-fccb-a009-17317c574773'
+                        ], 
                     freq_rank = 1, 
                     freqs = [
                         kotobaya_client.models.dict_entry_freqs_inner.DictEntryFreqsInner(
@@ -179,6 +189,14 @@ class TestQueueItem(unittest.TestCase):
                         ], 
                     radical = '', 
                     stroke_count = 1, ),
+                kanji_examples = [
+                    kotobaya_client.models.kanji_example.KanjiExample(
+                        gloss = '', 
+                        headword = '0', 
+                        reading = '0', 
+                        reading_type = 'on', 
+                        seq = 1, )
+                    ],
                 preview = kotobaya_client.models.schedule_preview.SchedulePreview(
                     again = kotobaya_client.models.schedule_preview_option.SchedulePreviewOption(
                         due_at = null, 
@@ -248,6 +266,9 @@ class TestQueueItem(unittest.TestCase):
                     suspended = True, 
                     updated_at = null, ),
                 entry = kotobaya_client.models.dict_entry.DictEntry(
+                    deck_ids = [
+                        'bf325375-e030-fccb-a009-17317c574773'
+                        ], 
                     freq_rank = 1, 
                     freqs = [
                         kotobaya_client.models.dict_entry_freqs_inner.DictEntryFreqsInner(

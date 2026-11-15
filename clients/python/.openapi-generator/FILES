@@ -172,6 +172,7 @@ docs/JpdbVocabResolution.md
 docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
+docs/KanjiExample.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -247,6 +248,7 @@ docs/PushResponse.md
 docs/PushResult.md
 docs/PushResultError.md
 docs/QueueItem.md
+docs/QueueItemDeck.md
 docs/RetentionGroup.md
 docs/ReviewAnswerRequest.md
 docs/ReviewApi.md
@@ -493,6 +495,7 @@ kotobaya_client/models/jpdb_vocab_resolution.py
 kotobaya_client/models/jpdb_vocab_resolution_put.py
 kotobaya_client/models/jpdb_vocab_resolution_result.py
 kotobaya_client/models/kanji.py
+kotobaya_client/models/kanji_example.py
 kotobaya_client/models/kanji_word.py
 kotobaya_client/models/kanji_word_deck.py
 kotobaya_client/models/kanji_word_page.py
@@ -562,6 +565,7 @@ kotobaya_client/models/push_response.py
 kotobaya_client/models/push_result.py
 kotobaya_client/models/push_result_error.py
 kotobaya_client/models/queue_item.py
+kotobaya_client/models/queue_item_deck.py
 kotobaya_client/models/retention_group.py
 kotobaya_client/models/review_answer_request.py
 kotobaya_client/models/review_button.py
@@ -790,6 +794,7 @@ test/test_jpdb_vocab_resolution.py
 test/test_jpdb_vocab_resolution_put.py
 test/test_jpdb_vocab_resolution_result.py
 test/test_kanji.py
+test/test_kanji_example.py
 test/test_kanji_word.py
 test/test_kanji_word_deck.py
 test/test_kanji_word_page.py
@@ -865,6 +870,7 @@ test/test_push_response.py
 test/test_push_result.py
 test/test_push_result_error.py
 test/test_queue_item.py
+test/test_queue_item_deck.py
 test/test_retention_group.py
 test/test_review_answer_request.py
 test/test_review_api.py

@@ -169,6 +169,7 @@ docs/JpdbVocabResolution.md
 docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
+docs/KanjiExample.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -244,6 +245,7 @@ docs/PushResponse.md
 docs/PushResult.md
 docs/PushResultError.md
 docs/QueueItem.md
+docs/QueueItemDeck.md
 docs/RetentionGroup.md
 docs/ReviewAnswerRequest.md
 docs/ReviewApi.md
@@ -497,6 +499,7 @@ src/main/kotlin/app/kotobaya/client/models/JpdbVocabResolution.kt
 src/main/kotlin/app/kotobaya/client/models/JpdbVocabResolutionPut.kt
 src/main/kotlin/app/kotobaya/client/models/JpdbVocabResolutionResult.kt
 src/main/kotlin/app/kotobaya/client/models/Kanji.kt
+src/main/kotlin/app/kotobaya/client/models/KanjiExample.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWord.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWordDeck.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWordPage.kt
@@ -566,6 +569,7 @@ src/main/kotlin/app/kotobaya/client/models/PushResponse.kt
 src/main/kotlin/app/kotobaya/client/models/PushResult.kt
 src/main/kotlin/app/kotobaya/client/models/PushResultError.kt
 src/main/kotlin/app/kotobaya/client/models/QueueItem.kt
+src/main/kotlin/app/kotobaya/client/models/QueueItemDeck.kt
 src/main/kotlin/app/kotobaya/client/models/RetentionGroup.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewAnswerRequest.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewButton.kt
@@ -797,6 +801,7 @@ src/test/kotlin/app/kotobaya/client/models/JpdbVocabResolutionPutTest.kt
 src/test/kotlin/app/kotobaya/client/models/JpdbVocabResolutionResultTest.kt
 src/test/kotlin/app/kotobaya/client/models/JpdbVocabResolutionTest.kt
 src/test/kotlin/app/kotobaya/client/models/JpdbVocabTest.kt
+src/test/kotlin/app/kotobaya/client/models/KanjiExampleTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiWordDeckTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiWordPageTest.kt
@@ -866,6 +871,7 @@ src/test/kotlin/app/kotobaya/client/models/PushRequestTest.kt
 src/test/kotlin/app/kotobaya/client/models/PushResponseTest.kt
 src/test/kotlin/app/kotobaya/client/models/PushResultErrorTest.kt
 src/test/kotlin/app/kotobaya/client/models/PushResultTest.kt
+src/test/kotlin/app/kotobaya/client/models/QueueItemDeckTest.kt
 src/test/kotlin/app/kotobaya/client/models/QueueItemTest.kt
 src/test/kotlin/app/kotobaya/client/models/RetentionGroupTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewAnswerRequestTest.kt

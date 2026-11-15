@@ -63,6 +63,19 @@ import {
  */
 export interface DictEntry {
     /**
+     * C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold
+     * this entry as a live item `e:<seq>` (an `app.deck_item` row with `entry_seq` = `seq`
+     * and `deleted_at` null), in draw order: `deck.priority` ascending, then deck id
+     * ascending (order of the lower-case UUID text). No duplicates; empty when none. Smart
+     * decks never appear (they have no items) and `n:<note id>` items are not counted (they
+     * are on `Note.deck_ids`). The same set of decks as `KanjiWord.decks`, in another order.
+     * Servers that implement C-25 send it wherever this schema is returned. Absent on
+     * older servers: clients treat absent as "unknown" (fall back to scanning
+     * `listDeckItems`), never as "in no deck".
+     * 
+     */
+    deckIds?: Array<string>;
+    /**
      * Rank in the primary frequency list.
      */
     freqRank: number | null;
@@ -168,6 +181,7 @@ export function DictEntryFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     }
     return {
         
+        'deckIds': json['deck_ids'] == null ? undefined : json['deck_ids'],
         'freqRank': json['freq_rank'],
         'freqs': ((json['freqs'] as Array<any>).map(DictEntryFreqsInnerFromJSON)),
         'headword': json['headword'],
@@ -199,6 +213,7 @@ export function DictEntryToJSONTyped(value?: DictEntry | null, ignoreDiscriminat
 
     return {
         
+        'deck_ids': value['deckIds'],
         'freq_rank': value['freqRank'],
         'freqs': ((value['freqs'] as Array<any>).map(DictEntryFreqsInnerToJSON)),
         'headword': value['headword'],

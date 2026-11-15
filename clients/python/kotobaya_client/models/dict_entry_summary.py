@@ -29,6 +29,7 @@ class DictEntrySummary(BaseModel):
     """
     Short form of a dictionary entry with the caller's overlay.
     """ # noqa: E501
+    deck_ids: Optional[List[Annotated[str, Field(strict=True)]]] = Field(default=None, description="C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this entry as a live item `e:<seq>` (an `app.deck_item` row with `entry_seq` = `seq` and `deleted_at` null), in draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates; empty when none. Smart decks never appear (they have no items) and `n:<note id>` items are not counted (they are on `Note.deck_ids`). The same set of decks as `KanjiWord.decks`, in another order. Servers that implement C-25 send it wherever this schema is returned. Absent on older servers: clients treat absent as \"unknown\" (fall back to scanning `listDeckItems`), never as \"in no deck\". ")
     freq_rank: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Rank in the primary frequency list, or null.")
     glosses: List[StrictStr] = Field(description="English glosses of the first sense, in order.")
     headword: StrictStr = Field(description="First kanji form, or first reading for kana-only entries.")
@@ -39,7 +40,7 @@ class DictEntrySummary(BaseModel):
     retired: StrictBool = Field(description="The entry is no longer in JMdict.")
     seq: Annotated[int, Field(strict=True, ge=1)] = Field(description="JMdict sequence number (`ref.dict_entry.seq`).")
     status: WordStatusValue = Field(description="Your effective word status (`new` when there is no row).")
-    __properties: ClassVar[List[str]] = ["freq_rank", "glosses", "headword", "headword_reading", "is_common", "note_id", "pos", "retired", "seq", "status"]
+    __properties: ClassVar[List[str]] = ["deck_ids", "freq_rank", "glosses", "headword", "headword_reading", "is_common", "note_id", "pos", "retired", "seq", "status"]
 
     @field_validator('note_id', mode="before")
     def note_id_validate_regular_expression(cls, value):
@@ -112,6 +113,7 @@ class DictEntrySummary(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "deck_ids": obj.get("deck_ids"),
             "freq_rank": obj.get("freq_rank"),
             "glosses": obj.get("glosses"),
             "headword": obj.get("headword"),
