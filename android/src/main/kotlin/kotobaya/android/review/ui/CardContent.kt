@@ -154,6 +154,9 @@ val LocalCardContent = staticCompositionLocalOf<(@Composable (card: RenderedCard
  */
 val LocalReviewExit = staticCompositionLocalOf<(() -> Unit)?> { null }
 
+/** AND-DECKEND: the Decks tab's study page supplies "Back to decks" for the deck-done page; null elsewhere. */
+val LocalDeckExit = staticCompositionLocalOf<(() -> Unit)?> { null }
+
 /** Draws [card] with the provided [LocalCardContent] or the WebView. */
 @Composable
 internal fun CardContent(card: RenderedCard, mediaFile: (String) -> File?, modifier: Modifier) {

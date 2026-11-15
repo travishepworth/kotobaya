@@ -70,5 +70,7 @@ class ReviewBackend<L : LearningTables>(
         dictionary = dictionary,
         kanji = kanji,
         reads = reads,
+        // AND-DECKEND: a deck session checks (and can switch to) the all-decks queue when its deck is done
+        allDue = if (deckId == null) null else queue,
     )
 }

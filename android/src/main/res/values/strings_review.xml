@@ -40,4 +40,9 @@
     <string name="review_time_seconds">%1$d s</string>
     <string name="review_time_minutes">%1$d min %2$d s</string>
     <string name="review_close">Close review</string>
+    <string name="review_deck_done_title">Deck done</string>
+    <string name="review_deck_done_body">Nothing in this deck is due right now.</string>
+    <string name="review_deck_done_next">Next learning card in this deck is due at %1$s.</string>
+    <string name="review_deck_done_continue">Continue with all due cards</string>
+    <string name="review_deck_done_back">Back to decks</string>
 </resources>

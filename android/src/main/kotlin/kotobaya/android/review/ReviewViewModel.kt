@@ -61,6 +61,9 @@ interface ReviewIntents {
     fun retry() {}
     fun answer(token: Long, button: Button) {}
     fun undo() {}
+
+    /** AND-DECKEND: the deck-done page's "Continue with all due cards". */
+    fun continueWithAll() {}
     fun toggleFurigana() {}
     fun syncNow() {}
     fun playAudio(sha256: String) {}
@@ -163,7 +166,7 @@ class ReviewViewModel(
                     val newCard = showing != null && showing.card.token != shown?.first
                     val changed = key != shown
                     shown = key
-                    scheduleDayRoll(st is ReviewState.Empty)
+                    scheduleDayRoll(st is ReviewState.Empty || st is ReviewState.DeckDone, (st as? ReviewState.DeckDone)?.nextLearningDueAt)
                     update { u ->
                         u.copy(
                             review = st,
@@ -186,12 +189,13 @@ class ReviewViewModel(
     private var rollJob: Job? = null
 
     /**
-     * Re-runs the queue load while the session shows [ReviewState.Empty] (resume, sync completed, day rollover);
-     * never touches a session that shows a card. Overlapping calls collapse into one (the loads share the LoadGate).
+     * Re-runs the queue load while the session shows [ReviewState.Empty] or [ReviewState.DeckDone] (resume, sync
+     * completed, day rollover; a deck's learning card fell due); never touches a session that shows a card.
+     * Overlapping calls collapse into one (the loads share the LoadGate).
      */
     fun refreshIfEmpty() {
         val s = session ?: return
-        if (current.review != ReviewState.Empty) return
+        if (current.review != ReviewState.Empty && current.review !is ReviewState.DeckDone) return
         if (!refreshing.compareAndSet(false, true)) return
         launchIo {
             try {
@@ -202,15 +206,19 @@ class ReviewViewModel(
         }
     }
 
-    /** While Empty, wakes at the next study-day start to reload; cancelled once something is showing. */
-    private fun scheduleDayRoll(empty: Boolean) {
+    /**
+     * While Empty (or DeckDone), wakes at the next study-day start, or at [dueAt] (a deck's next learning card) if
+     * earlier, to reload; cancelled once something is showing.
+     */
+    private fun scheduleDayRoll(empty: Boolean, dueAt: Long? = null) {
         rollJob?.cancel()
         rollJob = null
         val b = backend ?: return
         if (!empty) return
         rollJob = sessionJob?.let {
             launchIo {
-                val wait = b.nextStudyDayStart(b.clock()) - b.clock()
+                val wakeAt = minOf(b.nextStudyDayStart(b.clock()), dueAt ?: Long.MAX_VALUE)
+                val wait = wakeAt - b.clock()
                 if (wait > 0) kotlinx.coroutines.delay(wait)
                 refreshIfEmpty()
             }
@@ -253,6 +261,8 @@ class ReviewViewModel(
     }
 
     override fun undo() = withSession { it.undo() }
+
+    override fun continueWithAll() = withSession { it.continueWithAll() }
 
     override fun toggleFurigana() = withSession { it.toggleFurigana() }
 

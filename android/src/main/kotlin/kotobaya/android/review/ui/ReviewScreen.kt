@@ -187,6 +187,7 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
                             )
                         }
                         is ReviewState.Summary -> Finished(review.stats, Modifier.weight(1f), state.prefs)
+                        is ReviewState.DeckDone -> Finished(review.stats, Modifier.weight(1f), state.prefs, review, intents)
                         is ReviewState.Blocked, is ReviewState.Showing -> {
                             val card = shown
                             if (card == null) {
@@ -251,7 +252,7 @@ private fun ReviewHeader(state: ReviewUiState, card: ShownCard?, intents: Review
         }
         KbGlyphButton("ふ", T(R.string.review_furigana), intents::toggleFurigana, selected = meta.furigana, glyphStyle = KbTheme.type.titleSm.copy(localeList = kotobaya.android.ui.theme.JapaneseLocale))
         // On the finished page with nothing to undo the button would be a dead control: hide it.
-        val finished = state.review == ReviewState.Empty || state.review is ReviewState.Summary
+        val finished = state.review == ReviewState.Empty || state.review is ReviewState.Summary || state.review is ReviewState.DeckDone
         if (!finished || meta.canUndo) KbIconButton(KbIcons.Undo, T(R.string.review_undo), intents::undo, enabled = meta.canUndo)
         if (card != null) {
             Box {
@@ -466,10 +467,17 @@ private fun ActionToast(actions: ReviewActionsUiState, cardId: String, intents: 
 
 /**
  * The finished state (DESIGN §5.1): the vermilion ensō, "All done for today", and for a session the count, time and
- * how the answers split. No streaks, no confetti.
+ * how the answers split. No streaks, no confetti. AND-DECKEND: with [deck], "Deck done", when the deck's next learning
+ * card is due, "Continue with all due cards" (when other decks have some) and "Back to decks".
  */
 @Composable
-private fun Finished(stats: SessionStats?, modifier: Modifier, prefs: ReviewPrefs = ReviewPrefs()) {
+private fun Finished(
+    stats: SessionStats?,
+    modifier: Modifier,
+    prefs: ReviewPrefs = ReviewPrefs(),
+    deck: ReviewState.DeckDone? = null,
+    intents: ReviewIntents? = null,
+) {
     val c = KbTheme.colors
     Column(
         modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 24.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -478,19 +486,41 @@ private fun Finished(stats: SessionStats?, modifier: Modifier, prefs: ReviewPref
     ) {
         KbEnso(size = 112.dp)
         Text(
-            T(if (stats == null) R.string.review_finished_title else R.string.review_summary_title),
+            T(
+                when {
+                    deck != null -> R.string.review_deck_done_title
+                    stats == null -> R.string.review_finished_title
+                    else -> R.string.review_summary_title
+                },
+            ),
             style = KbTheme.type.headline,
             color = c.text,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 12.dp),
         )
         Text(
-            T(if (stats == null) R.string.review_finished_body else R.string.review_summary_body),
+            T(
+                when {
+                    deck != null -> R.string.review_deck_done_body
+                    stats == null -> R.string.review_finished_body
+                    else -> R.string.review_summary_body
+                },
+            ),
             style = KbTheme.type.body,
             color = c.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 420.dp),
         )
+        deck?.nextLearningDueAt?.let { at ->
+            val time = remember(at) { java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(at)) }
+            Text(
+                T(R.string.review_deck_done_next, time),
+                style = KbTheme.type.bodySm,
+                color = c.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 420.dp),
+            )
+        }
         if (stats != null) {
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                 Stat(stats.answered.toString(), T(R.string.review_stat_answered))
@@ -510,9 +540,14 @@ private fun Finished(stats: SessionStats?, modifier: Modifier, prefs: ReviewPref
                 }
             }
         }
-        // Not a dead end: a quiet way back to Today (the same exit as the header's close button).
-        val exit = LocalReviewExit.current
-        if (exit != null) KbButton(T(R.string.review_finished_back), exit, Modifier.padding(top = 8.dp), variant = KbButtonVariant.Quiet)
+        if (deck != null && deck.othersDue && intents != null) {
+            KbButton(T(R.string.review_deck_done_continue), intents::continueWithAll, Modifier.padding(top = 8.dp))
+        }
+        // Not a dead end: a quiet way back to Today (the same exit as the header's close button), or to the decks.
+        val deckExit = LocalDeckExit.current.takeIf { deck != null }
+        val exit = deckExit ?: LocalReviewExit.current
+        val label = if (deckExit != null) R.string.review_deck_done_back else R.string.review_finished_back
+        if (exit != null) KbButton(T(label), exit, Modifier.padding(top = 8.dp), variant = KbButtonVariant.Quiet)
     }
 }
 

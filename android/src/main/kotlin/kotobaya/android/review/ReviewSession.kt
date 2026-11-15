@@ -112,6 +112,13 @@ sealed interface ReviewState {
 
     data class Summary(val stats: SessionStats) : ReviewState
 
+    /**
+     * AND-DECKEND: a deck session has nothing due in its deck right now. [stats] is null when nothing was answered.
+     * [nextLearningDueAt]: the earliest instant a learning card of the deck falls due (null if none today).
+     * [othersDue]: the all-decks queue has cards due now ([ReviewSession.continueWithAll] switches to it).
+     */
+    data class DeckDone(val stats: SessionStats?, val nextLearningDueAt: Long?, val othersDue: Boolean) : ReviewState
+
     /** The answer was refused (nothing written); the card stays so the user can retry after fixing the cause. */
     data class Blocked(val reason: MintRefusal, val card: ShownCard?) : ReviewState
 }
@@ -152,7 +159,7 @@ class ReviewCommitFailed(cause: Throwable) : RuntimeException("review answer not
 class ReviewSession<L : LearningTables>(
     private val store: DeviceStore<L>,
     private val minter: OpMinter<L>,
-    private val queue: QueueSource,
+    queue: QueueSource,
     private val clock: () -> Long,
     private val utcOffsetMin: (Long) -> Int,
     private val newReviewId: (Long) -> String,
@@ -170,6 +177,12 @@ class ReviewSession<L : LearningTables>(
      * demo): every read and write of the session then goes through one lock.
      */
     private val reads: ReviewReads<L>? = null,
+    /**
+     * AND-DECKEND: non-null makes this a deck session ([queue] is the deck's) and is the all-decks queue. A deck
+     * session serves learn-ahead cards only while this queue has nothing due now, and never the card answered last;
+     * otherwise it ends in [ReviewState.DeckDone], from which [continueWithAll] switches to this queue.
+     */
+    allDue: QueueSource? = null,
 ) {
     private enum class Status { PENDING, COMMITTED, REFUSED, FAILED, WITHDRAWN }
 
@@ -233,6 +246,18 @@ class ReviewSession<L : LearningTables>(
     private var burySiblings = false
     private var learnAheadMs = SessionQueue.DEFAULT_LEARN_AHEAD_MS
     private var lastBuildAt = Long.MIN_VALUE
+
+    /** The queue the session builds from; becomes the all-decks queue on [continueWithAll]. */
+    private var source: QueueSource = queue
+
+    /** Deck session: the all-decks queue; null for an all-decks session. */
+    private var allDecks: QueueSource? = allDue
+
+    /** Deck session: the last build found cards due now outside what the session holds (no learn-ahead then). */
+    private var othersDue = false
+
+    /** The last build's `nextLearningDueAt` (deck session: shown in [ReviewState.DeckDone]). */
+    private var buildNextLearningDueAt: Long? = null
 
     /** Bumped whenever the queue or rendering inputs change: an older pre-render is dropped. */
     private var generation = 0L
@@ -430,7 +455,8 @@ class ReviewSession<L : LearningTables>(
             val waiting = awaitingFor ?: return@synchronized
             if (showFromMemoryLocked(waiting)) return@synchronized
             // nothing in memory: a build that already saw every answer but this one (requeued above) is final
-            if (commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
+            // (a deck session always builds: whether other decks have cards due decides what comes next)
+            if (allDecks == null && commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
         }
         if (synchronized(lock) { awaitingFor != null }) {
             rebuildMs = rebuild("end of queue")
@@ -599,7 +625,38 @@ class ReviewSession<L : LearningTables>(
         current = null
         awaitingFor = null
         updateMetaLocked()
-        _state.value = if (undoStack.isNotEmpty()) ReviewState.Summary(stats()) else ReviewState.Empty
+        val stats = if (undoStack.isNotEmpty()) stats() else null
+        _state.value = when {
+            allDecks != null -> {
+                val now = clock()
+                val next = (learning.map { it.dueAt }.filter { it > now } + listOfNotNull(buildNextLearningDueAt)).minOrNull()
+                ReviewState.DeckDone(stats, next, othersDue)
+            }
+            stats != null -> ReviewState.Summary(stats)
+            else -> ReviewState.Empty
+        }
+    }
+
+    /**
+     * AND-DECKEND: "Continue with all due cards" — the deck session becomes an all-decks session (answers, undo and
+     * counters carry over). No-op for an all-decks session.
+     */
+    fun continueWithAll() {
+        synchronized(commitLock) {
+            drainLocked()
+            synchronized(lock) {
+                val all = allDecks ?: return
+                source = all
+                allDecks = null
+                othersDue = false
+                current = null
+                awaitingFor = null
+            }
+            rebuild("all decks")
+            synchronized(lock) { if (!showFromMemoryLocked(null)) finishLocked() }
+        }
+        refreshPendingOps()
+        prefetch()
     }
 
     private fun updateMetaLocked() {
@@ -610,14 +667,25 @@ class ReviewSession<L : LearningTables>(
     private fun pickLocked(now: Long): QueueItem? {
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
         main.removeFirstOrNull()?.let { return it }
-        learning.filter { it.admitted || it.dueAt <= now + learnAheadMs }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
+        learning.filter { aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
         return null
     }
 
     private fun peekLocked(now: Long): QueueItem? =
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.item
             ?: main.firstOrNull()
-            ?: learning.filter { it.admitted || it.dueAt <= now + learnAheadMs }.minWithOrNull(TIMED_ORDER)?.item
+            ?: learning.filter { aheadLocked(it, now) }.minWithOrNull(TIMED_ORDER)?.item
+
+    /**
+     * A learning card not yet due may be shown ahead of time (builder rules 2 and 5). AND-DECKEND: in a deck session
+     * only while no other deck has cards due now, only within learn-ahead (a build's admission is not enough) and
+     * never the card answered last, so the deck's last card is not served again and again inside its step.
+     */
+    private fun aheadLocked(t: Timed, now: Long): Boolean {
+        if (allDecks == null) return t.admitted || t.dueAt <= now + learnAheadMs
+        if (othersDue || t.dueAt > now + learnAheadMs) return false
+        return t.item.cardId != undoStack.lastOrNull()?.card?.cardId
+    }
 
     /** Builder rule 1 between builds: a NEW/REVIEW card whose note had another card answered this session. */
     private fun siblingAnsweredLocked(card: ShownCard): Boolean {
@@ -631,13 +699,14 @@ class ReviewSession<L : LearningTables>(
      */
     private fun rebuild(why: String): Double {
         val t0 = System.nanoTime()
-        val shownNew = synchronized(lock) { newShown }
-        val built = queue.loadSession(shownNew)
-        val learningIds = built.queue.items.filter { it.kind == QueueItemKind.LEARNING }.map { it.cardId }
-        val dues: Map<String, Long> = if (learningIds.isEmpty()) emptyMap() else read { tx ->
-            learningIds.associateWith { id ->
-                (CardRows.get(tx.learning, LearningTable.CARD, id)?.get("due_at") as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE
-            }
+        val (shownNew, from, all) = synchronized(lock) { Triple(newShown, source, allDecks) }
+        val built = from.loadSession(shownNew)
+        val dues = duesOf(built.queue)
+        // deck session: the cards due now in every deck (learn-ahead ones left out)
+        val dueEverywhere: List<String>? = all?.loadSession(shownNew)?.queue?.let { q ->
+            val now = clock()
+            val d = duesOf(q)
+            q.items.filter { it.kind != QueueItemKind.LEARNING || (d[it.cardId] ?: Long.MIN_VALUE) <= now }.map { it.cardId }
         }
         synchronized(lock) {
             val exclude = HashSet<String>()
@@ -655,6 +724,8 @@ class ReviewSession<L : LearningTables>(
             }
             burySiblings = built.burySiblings
             learnAheadMs = built.learnAheadMs
+            buildNextLearningDueAt = built.queue.nextLearningDueAt
+            othersDue = dueEverywhere != null && dueEverywhere.any { it !in exclude }
             lastBuildAt = clock()
             commitsAtBuild = commitCount
             generation++
@@ -663,6 +734,17 @@ class ReviewSession<L : LearningTables>(
         val ms = ReviewTiming.ms(t0)
         timings(ReviewTiming.Rebuild(why, ms, built.queue.items.size))
         return ms
+    }
+
+    /** `due_at` of the queue's learning items. */
+    private fun duesOf(q: ReviewQueue): Map<String, Long> {
+        val ids = q.items.filter { it.kind == QueueItemKind.LEARNING }.map { it.cardId }
+        if (ids.isEmpty()) return emptyMap()
+        return read { tx ->
+            ids.associateWith { id ->
+                (CardRows.get(tx.learning, LearningTable.CARD, id)?.get("due_at") as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE
+            }
+        }
     }
 
     /**

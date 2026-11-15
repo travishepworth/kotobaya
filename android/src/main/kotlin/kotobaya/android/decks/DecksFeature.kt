@@ -48,6 +48,9 @@ private fun DecksRoute() {
     }
     val state by vm.state.collectAsState()
     DecksScreen(state, vm) {
-        ReviewRoute(deckId = state.selectedId, key = "deck-study-${state.selectedId}-${state.studyRun}", onSessionEnd = vm::sessionEnded)
+        // AND-DECKEND: the deck-done page's "Back to decks"
+        androidx.compose.runtime.CompositionLocalProvider(kotobaya.android.review.ui.LocalDeckExit provides vm::endStudy) {
+            ReviewRoute(deckId = state.selectedId, key = "deck-study-${state.selectedId}-${state.studyRun}", onSessionEnd = vm::sessionEnded)
+        }
     }
 }
