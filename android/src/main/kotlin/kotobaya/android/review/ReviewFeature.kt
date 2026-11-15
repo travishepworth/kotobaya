@@ -23,10 +23,15 @@ import org.koin.dsl.module
 import java.io.File
 
 /** Adapts T304a's loader to the session's queue seam. */
-fun LocalQueueLoader.asQueueSource(): QueueSource = object : QueueSource {
-    override fun load(newShownThisSession: Int) = load(newShownThisSession, null).queue
+fun LocalQueueLoader.asQueueSource(deckId: String? = null): QueueSource = object : QueueSource {
+    override fun load(newShownThisSession: Int) = load(newShownThisSession, deckId).queue
 
-    override fun forDeck(deckId: String): QueueSource = QueueSource { newShown -> load(newShown, deckId).queue }
+    override fun loadSession(newShownThisSession: Int): SessionQueue {
+        val loaded = load(newShownThisSession, deckId)
+        return SessionQueue(loaded.queue, loaded.input.limits.burySiblings, loaded.input.limits.learnAheadMs)
+    }
+
+    override fun forDeck(deckId: String): QueueSource = asQueueSource(deckId)
 }
 
 /** [BlobResolver] over T310's [BlobStore]: a published blob file, and `touch` on play. */
@@ -54,7 +59,12 @@ val reviewFeature = FeatureEntry(
             val koin = getKoin()
             val db = get<kotobaya.db.app.AppDatabase>()
             val renderData = InstalledRenderData(get<kotobaya.android.dict.InstalledDictionary>())
+            val syncStore = client.store
             ReviewBackend(
+                reads = object : ReviewReads<kotobaya.android.sync.SqlLearningTables> {
+                    override fun <R> read(block: (kotobaya.sync.client.store.StoreTransaction<kotobaya.android.sync.SqlLearningTables>) -> R): R =
+                        syncStore.read(block)
+                },
                 dictionary = renderData,
                 kanji = renderData,
                 store = client.store,

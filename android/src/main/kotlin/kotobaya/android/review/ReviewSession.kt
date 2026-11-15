@@ -2,6 +2,7 @@ package kotobaya.android.review
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotobaya.android.vm.ScreenLog
 import kotobaya.android.grammar.GrammarSentenceSource
 import kotobaya.contracts.fsrs.Button
@@ -17,6 +18,7 @@ import kotobaya.contracts.render.KanjiData
 import kotobaya.contracts.render.RenderInput
 import kotobaya.contracts.render.RenderOptions
 import kotobaya.contracts.render.RenderedCard
+import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -26,18 +28,45 @@ import kotobaya.fsrs.FsrsScheduler
 import kotobaya.render.DefaultCardRenderer
 import kotobaya.sync.client.apply.LearningTable
 import kotobaya.sync.client.apply.LearningTables
+import kotobaya.sync.client.apply.Row
 import kotobaya.sync.client.mint.MintRefusal
 import kotobaya.sync.client.mint.MintResult
 import kotobaya.sync.client.mint.OpMinter
 import kotobaya.sync.client.store.DeviceStore
 import kotobaya.sync.client.store.PendingState
+import kotobaya.sync.client.store.StoreTransaction
+
+/** A built queue plus the two rules the session needs to keep it current between builds (AND-REVIEW-SNAPPY). */
+data class SessionQueue(
+    val queue: ReviewQueue,
+    /** `scheduler.bury_siblings`: a NEW/REVIEW card whose note was answered this session is skipped. */
+    val burySiblings: Boolean = false,
+    /** `QueueLimits.learnAheadMs`: a requeued learning card is shown once nothing else is left and it is due within this. */
+    val learnAheadMs: Long = DEFAULT_LEARN_AHEAD_MS,
+) {
+    companion object {
+        /** The contract default (LocalQueueLoader.LEARN_AHEAD_MS): 20 minutes. */
+        const val DEFAULT_LEARN_AHEAD_MS: Long = 1_200_000
+    }
+}
 
 /** The queue the session pulls from (T304a's `LocalQueueLoader` in production). */
 fun interface QueueSource {
     fun load(newShownThisSession: Int): ReviewQueue
 
+    /** [load] with the rules of the build; sources without them get the defaults. */
+    fun loadSession(newShownThisSession: Int): SessionQueue = SessionQueue(load(newShownThisSession))
+
     /** The same source limited to one deck (Decks tab "Study this deck"); the default ignores the deck. */
     fun forDeck(deckId: String): QueueSource = this
+}
+
+/**
+ * How the session reads the store outside its own writes: rendering, prefetching and requeueing must not wait for an
+ * answer's write transaction (production: SQLite reader connections, [kotobaya.android.sync.SqlDelightDeviceStore.read]).
+ */
+interface ReviewReads<L> {
+    fun <R> read(block: (StoreTransaction<L>) -> R): R
 }
 
 /** Dictionary data for a vocab entry (T302 on-device dictionary), or null when unavailable. */
@@ -64,6 +93,8 @@ data class ShownCard(
     val sentenceId: String? = null,
     /** Grammar card with no usable example sentence on this device: the point's pattern for the i18n notice; else null. */
     val noExamplePattern: String? = null,
+    /** The card's note (sibling burying between queue builds). */
+    val noteId: String = "",
 )
 
 /** What the screen shows. */
@@ -98,12 +129,25 @@ data class ReviewMeta(
 )
 
 /**
+ * The answer could not be written (a storage error). The session has already rolled the screen back to that card,
+ * answerable again; nothing of it (or of any answer tapped after it) was written.
+ */
+class ReviewCommitFailed(cause: Throwable) : RuntimeException("review answer not committed", cause)
+
+/**
  * One review session (SPEC Clients: Android review). Everything it changes goes through
  * [OpMinter.mint] (`review.logged`, `review.undone`), whose single transaction also applies the
- * local effect (the card cache fold or replay of T303b) and queues the op; the session then rebuilds
- * the queue, so a crash after an answer leaves the op and the cache committed together.
+ * local effect (the card cache fold or replay of T303b) and queues the op.
  *
- * Thread-safe: every entry point takes one lock. The UI calls them off the main thread.
+ * AND-REVIEW-SNAPPY: the next card comes from the session's in-memory queue (built once, then kept current
+ * incrementally), pre-rendered while the current one is showing; [answer] publishes it *before* the op is written,
+ * then writes the op on the calling (IO) thread and returns only once it is committed. Answers are written strictly
+ * in tap order by one writer at a time ([commitLock]); an answer stays in the session (undo stack, pending queue)
+ * until its transaction has committed. If a write fails, the screen goes back to that card and every answer tapped
+ * after it is withdrawn (never written), so nothing is lost silently and nothing is written twice.
+ *
+ * Locks: [commitLock] (one writer, queue builds) is always taken before [lock] (the in-memory state, held only
+ * briefly). The UI calls every entry point off the main thread.
  */
 class ReviewSession<L : LearningTables>(
     private val store: DeviceStore<L>,
@@ -118,10 +162,53 @@ class ReviewSession<L : LearningTables>(
     private val dictionary: DictionaryLookup = DictionaryLookup { null },
     private val kanji: KanjiLookup = KanjiLookup { null },
     private val mediaUrlTemplate: String = CardPage.MEDIA_URL_TEMPLATE,
+    private val timings: (ReviewTiming) -> Unit = ReviewTiming.LOG,
+    /** A full queue build runs after an answer once the last one is this old (cards that became due meanwhile, sync). */
+    private val rebuildEveryMs: Long = REBUILD_EVERY_MS,
+    /**
+     * Concurrent reads; null means the store is not safe for concurrent use (the in-memory store of tests and the
+     * demo): every read and write of the session then goes through one lock.
+     */
+    private val reads: ReviewReads<L>? = null,
 ) {
-    private class Answered(val reviewId: String, val cardId: String, val kind: QueueItemKind, val button: Button, val durationMs: Long)
+    private enum class Status { PENDING, COMMITTED, REFUSED, FAILED, WITHDRAWN }
+
+    /** One answer, from the tap until its op is committed (or it is withdrawn). */
+    private class Commit(
+        val reviewId: String,
+        val card: ShownCard,
+        val side: CardSide,
+        val button: Button,
+        val durationMs: Long,
+        val payload: JsonObject,
+        val tapNs: Long,
+    ) {
+        @Volatile var status: Status = Status.PENDING
+        var error: Throwable? = null
+        /** Tap to the next card (or the summary) being published. */
+        var advanceMs = 0.0
+        var selectMs = 0.0
+        var renderMs = 0.0
+        var prefetchHit = false
+        var skipped = 0
+        var commitMs = 0.0
+        var requeueMs = 0.0
+    }
+
+    /** A learning card in the session queue: shown when due, or (if [admitted] by a build, or within learn-ahead) once nothing else is left. */
+    private class Timed(val item: QueueItem, val dueAt: Long, val admitted: Boolean)
 
     private val lock = Any()
+    private val commitLock = Any()
+
+    /** Innermost lock; only used without [reads]. Never held while taking [lock] or [commitLock]. */
+    private val storeLock = Any()
+
+    private fun <R> read(block: (StoreTransaction<L>) -> R): R =
+        if (reads != null) reads.read(block) else synchronized(storeLock) { store.transaction(block) }
+
+    private fun mint(type: OpType, payload: JsonObject): MintResult =
+        if (reads != null) minter.mint(type, payload) else synchronized(storeLock) { minter.mint(type, payload) }
     private val _state = MutableStateFlow<ReviewState>(ReviewState.Loading)
     private val _meta = MutableStateFlow(ReviewMeta(furigana = prefs().furigana))
 
@@ -131,40 +218,96 @@ class ReviewSession<L : LearningTables>(
     /** Undo availability, furigana flag, outbox size. */
     val meta: StateFlow<ReviewMeta> get() = _meta
 
-    private val undoStack = ArrayList<Answered>()
+    // --- guarded by lock ---
+    /** Answers of this session in tap order, committed or still pending. */
+    private val undoStack = ArrayList<Commit>()
+
+    /** Answers not yet committed, in tap order (a prefix-ordered tail of [undoStack]). */
+    private val pending = ArrayDeque<Commit>()
+
+    /** NEW/REVIEW (and build-time learning-now) items in the builder's order. */
+    private val main = ArrayDeque<QueueItem>()
+
+    /** Learning cards with their due instant. */
+    private val learning = ArrayList<Timed>()
+    private var burySiblings = false
+    private var learnAheadMs = SessionQueue.DEFAULT_LEARN_AHEAD_MS
+    private var lastBuildAt = Long.MIN_VALUE
+
+    /** Bumped whenever the queue or rendering inputs change: an older pre-render is dropped. */
+    private var generation = 0L
+
+    /** Pre-rendered candidates for the next card, by card id (at most [PREFETCH_MAX]). */
+    private val prefetched = HashMap<String, ShownCard>()
+
+    /** This answer emptied the in-memory queue: the next card is chosen once the pending answers are committed. */
+    private var awaitingFor: Commit? = null
+
+    /** Answers committed so far, and how many of them the last build saw. */
+    private var commitCount = 0L
+    private var commitsAtBuild = 0L
     private var newShown = 0
     private var nextToken = 0L
     private var shownAtMs = 0L
     private var current: ShownCard? = null
     private var currentSide = CardSide.FRONT
-    private var furigana = prefs().furigana
     private val answeredTokens = HashSet<Long>()
 
-    /** Starts (or restarts) the session from the current queue. */
-    fun start() = synchronized(lock) { advance(null) }
+    @Volatile
+    private var furigana = prefs().furigana
+
+    /** Starts (or restarts) the session from a fresh queue build; waits for pending answers first. */
+    fun start() {
+        synchronized(commitLock) {
+            drainLocked()
+            synchronized(lock) {
+                current = null
+                awaitingFor = null
+            }
+            rebuild("start")
+            synchronized(lock) { if (!showFromMemoryLocked(null)) finishLocked() }
+        }
+        refreshPendingOps()
+        prefetch()
+    }
 
     /** Front/back toggle. */
-    fun flip() = synchronized(lock) {
-        val card = current ?: return@synchronized
-        currentSide = if (currentSide == CardSide.FRONT) CardSide.BACK else CardSide.FRONT
-        _state.value = ReviewState.Showing(card, currentSide)
+    fun flip() {
+        val t0 = System.nanoTime()
+        val revealed = synchronized(lock) {
+            val card = current ?: return
+            currentSide = if (currentSide == CardSide.FRONT) CardSide.BACK else CardSide.FRONT
+            _state.value = ReviewState.Showing(card, currentSide)
+            currentSide == CardSide.BACK
+        }
+        if (revealed) timings(ReviewTiming.Reveal(ReviewTiming.ms(t0)))
     }
 
     /** Per-session furigana toggle (the app setting is the initial value); re-renders the shown card. */
-    fun toggleFurigana() = synchronized(lock) {
-        furigana = !furigana
-        _meta.value = _meta.value.copy(furigana = furigana)
-        refreshLocked()
+    fun toggleFurigana() {
+        synchronized(lock) {
+            furigana = !furigana
+            _meta.update { it.copy(furigana = furigana) }
+            refreshLocked()
+        }
+        prefetch()
     }
 
     /** Re-reads and re-renders the card on screen (after its note was edited); the queue is not rebuilt. */
-    fun refreshCurrent() = synchronized(lock) { refreshLocked() }
+    fun refreshCurrent() {
+        synchronized(lock) { refreshLocked() }
+        prefetch()
+    }
+
+    /** The due state may have changed outside the session (a sync pulled ops): the next answer rebuilds the queue. */
+    fun markStale() = synchronized(lock) { lastBuildAt = Long.MIN_VALUE }
 
     private fun refreshLocked() {
+        generation++
+        prefetched.clear()
         val card = current ?: return
-        val kind = card.kind
         val side = currentSide
-        val reloaded = load(card.cardId, kind, card.token) ?: return
+        val reloaded = load(card.cardId, card.kind, card.token) ?: return
         current = reloaded
         currentSide = side
         _state.value = ReviewState.Showing(reloaded, side)
@@ -172,91 +315,392 @@ class ReviewSession<L : LearningTables>(
 
     /**
      * Answers the card shown with [token] by [button]: mints exactly one `review.logged` however often it is
-     * called with the same token (a double tap, a swipe plus a tap). Returns whether an op was minted.
+     * called with the same token (a double tap, a swipe plus a tap). The next card is on screen before the op is
+     * written; the call returns once it is committed: true then, false if it was not accepted, refused
+     * ([ReviewState.Blocked]) or withdrawn. Throws [ReviewCommitFailed] if writing it failed (the screen is back on
+     * this card).
      */
-    fun answer(token: Long, button: Button): Boolean = synchronized(lock) {
-        val card = current ?: return@synchronized false
-        if (card.token != token || token in answeredTokens) return@synchronized false
-        answeredTokens += token
-        val now = clock()
-        val reviewId = newReviewId(now)
-        val duration = (now - shownAtMs).coerceIn(0L, MAX_DURATION_MS)
-        val type = if (card.kind == QueueItemKind.REVIEW) "scheduled" else "learning"
-        val payload = JsonObject(
-            linkedMapOf<String, JsonValue>(
-                "id" to JsonString(reviewId),
-                "card_id" to JsonString(card.cardId),
-                "reviewed_at" to JsonNumber(now.toDouble()),
-                "utc_offset_min" to JsonNumber(utcOffsetMin(now).toDouble()),
-                "review_type" to JsonString(type),
-                "rating" to JsonNumber(button.rating.value.toDouble()),
-                "button" to JsonString(button.wire),
-                "duration_ms" to JsonNumber(duration.toDouble()),
-            ).also { m -> card.sentenceId?.let { m["sentence_id"] = JsonString(it) } },
-        )
-        val minted = try {
-            minter.mint(OpType.REVIEW_LOGGED, payload)
-        } catch (e: Exception) {
-            // Nothing was written: the card stays answerable, the caller surfaces the error.
-            answeredTokens -= token
-            throw e
-        }
-        when (minted) {
-            is MintResult.Refused -> {
-                answeredTokens -= token
-                _state.value = ReviewState.Blocked(minted.reason, card)
-                return@synchronized false
+    fun answer(token: Long, button: Button): Boolean {
+        val tap = System.nanoTime()
+        val commit = synchronized(lock) {
+            val card = current ?: return false
+            if (card.token != token || token in answeredTokens) return false
+            answeredTokens += token
+            val now = clock()
+            val reviewId = newReviewId(now)
+            val duration = (now - shownAtMs).coerceIn(0L, MAX_DURATION_MS)
+            val type = if (card.kind == QueueItemKind.REVIEW) "scheduled" else "learning"
+            val payload = JsonObject(
+                linkedMapOf<String, JsonValue>(
+                    "id" to JsonString(reviewId),
+                    "card_id" to JsonString(card.cardId),
+                    "reviewed_at" to JsonNumber(now.toDouble()),
+                    "utc_offset_min" to JsonNumber(utcOffsetMin(now).toDouble()),
+                    "review_type" to JsonString(type),
+                    "rating" to JsonNumber(button.rating.value.toDouble()),
+                    "button" to JsonString(button.wire),
+                    "duration_ms" to JsonNumber(duration.toDouble()),
+                ).also { m -> card.sentenceId?.let { m["sentence_id"] = JsonString(it) } },
+            )
+            val c = Commit(reviewId, card, currentSide, button, duration, payload, tap)
+            pending.addLast(c)
+            undoStack += c
+            if (card.kind == QueueItemKind.NEW) newShown++
+            // The answer is held in `pending` until committed; showing the next card cannot lose it.
+            try {
+                if (!showFromMemoryLocked(c)) {
+                    // Nothing in memory (the end of the queue, or only this card's own learning step is left): the
+                    // answered card stays drawn, no longer answerable, until its write decides what comes next. No
+                    // Loading state: the screen keeps its one WebView instead of tearing it down for a few ms.
+                    awaitingFor = c
+                    current = null
+                }
+            } catch (e: Exception) {
+                ScreenLog.loadFailed("ReviewSession.answer", e)
+                current = null
+                _state.value = ReviewState.Failed
+                c.advanceMs = ReviewTiming.ms(tap)
             }
-            is MintResult.Minted -> Unit
+            c
         }
-        undoStack += Answered(reviewId, card.cardId, card.kind, button, duration)
-        if (card.kind == QueueItemKind.NEW) newShown++
-        // The op is committed; if the next card cannot be built, keep the token spent (no duplicate op) and offer Retry.
-        try {
-            advance(null)
-        } catch (e: Exception) {
-            ScreenLog.loadFailed("ReviewSession.advance", e)
-            _state.value = ReviewState.Failed
+        var rebuildMs: Double? = null
+        synchronized(commitLock) {
+            drainLocked()
+            rebuildMs = settleLocked()
         }
-        true
+        refreshPendingOps()
+        val prefetchMs = prefetch()
+        timings(
+            ReviewTiming.Answer(
+                kind = commit.card.kind.name.lowercase(), advanceMs = commit.advanceMs, selectMs = commit.selectMs,
+                renderMs = commit.renderMs, prefetchHit = commit.prefetchHit, skipped = commit.skipped, commitMs = commit.commitMs,
+                requeueMs = commit.requeueMs, prefetchMs = prefetchMs, rebuildMs = rebuildMs,
+                outcome = commit.status.name.lowercase(),
+            ),
+        )
+        commit.error?.let { throw ReviewCommitFailed(it) }
+        return commit.status == Status.COMMITTED
+    }
+
+    /** Writes every pending answer, oldest first. Caller holds [commitLock]. */
+    private fun drainLocked() {
+        while (true) {
+            val c = synchronized(lock) { pending.firstOrNull() } ?: return
+            val t0 = System.nanoTime()
+            val result: Any = try {
+                mint(OpType.REVIEW_LOGGED, c.payload)
+            } catch (e: Exception) {
+                e
+            }
+            c.commitMs = ReviewTiming.ms(t0)
+            if (result is MintResult.Minted) {
+                // committed: the card's new schedule decides whether it comes back this session
+                val t1 = System.nanoTime()
+                val row = try {
+                    read { CardRows.get(it.learning, LearningTable.CARD, c.card.cardId) }
+                } catch (e: Exception) {
+                    ScreenLog.loadFailed("ReviewSession.requeue", e)
+                    null
+                }
+                synchronized(lock) {
+                    pending.removeFirst()
+                    c.status = Status.COMMITTED
+                    commitCount++
+                    requeueLocked(c.card, row)
+                }
+                c.requeueMs = ReviewTiming.ms(t1)
+            } else {
+                synchronized(lock) {
+                    pending.removeFirst()
+                    rollbackLocked(c, result)
+                }
+            }
+        }
+    }
+
+    /**
+     * After a drain (caller holds [commitLock]): the next card if the last answer emptied the in-memory queue, and
+     * a full build while a card is showing when the last one is old ("refresh") or nothing comes after the card on
+     * screen ("ahead"), so the end of the queue never waits for a build. Returns the build's ms, or null.
+     */
+    private fun settleLocked(): Double? {
+        var rebuildMs: Double? = null
+        synchronized(lock) {
+            if (pending.isNotEmpty()) return null
+            val waiting = awaitingFor ?: return@synchronized
+            if (showFromMemoryLocked(waiting)) return@synchronized
+            // nothing in memory: a build that already saw every answer but this one (requeued above) is final
+            if (commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
+        }
+        if (synchronized(lock) { awaitingFor != null }) {
+            rebuildMs = rebuild("end of queue")
+            synchronized(lock) {
+                val waiting = awaitingFor
+                if (waiting != null && pending.isEmpty() && !showFromMemoryLocked(waiting)) finishLocked()
+            }
+            return rebuildMs
+        }
+        val why = synchronized(lock) {
+            when {
+                current == null -> null
+                staleLocked() -> "refresh"
+                peekLocked(clock()) == null && commitCount > commitsAtBuild -> "ahead"
+                else -> null
+            }
+        }
+        if (why != null) rebuildMs = rebuild(why)
+        return rebuildMs
+    }
+
+    private fun staleLocked(): Boolean = clock() - lastBuildAt >= rebuildEveryMs
+
+    /** A committed answer: the card leaves the queue, and comes back as a learning item if its new schedule says so. */
+    private fun requeueLocked(card: ShownCard, row: Row?) {
+        val id = card.cardId
+        main.removeAll { it.cardId == id }
+        learning.removeAll { it.item.cardId == id }
+        prefetched.remove(id)
+        generation++
+        if (row == null || !CardRows.live(row) || CardRows.refused(row)) return
+        if ((row["suspended"] as? JsonBool)?.value == true) return
+        val state = CardRows.str(row["state"])
+        if (state != "learning" && state != "relearning") return
+        val due = (row["due_at"] as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE
+        learning += Timed(QueueItem(id, QueueItemKind.LEARNING, null), due, admitted = false)
+    }
+
+    /**
+     * The write of [failed] was refused ([result] a [MintResult.Refused]) or threw: nothing of it was written. Every
+     * answer tapped after it is withdrawn (never written), and the screen goes back to [failed]'s card.
+     */
+    private fun rollbackLocked(failed: Commit, result: Any) {
+        val later = pending.toList()
+        pending.clear()
+        for (c in later) c.status = Status.WITHDRAWN
+        val dropped = listOf(failed) + later
+        undoStack.removeAll { u -> dropped.any { it === u } }
+        for (c in dropped) {
+            answeredTokens -= c.card.token
+            if (c.card.kind == QueueItemKind.NEW) newShown--
+        }
+        current?.let { main.addFirst(itemOf(it)) }
+        for (c in later.asReversed()) main.addFirst(itemOf(c.card))
+        generation++
+        prefetched.clear()
+        awaitingFor = null
+        current = failed.card
+        currentSide = failed.side
+        shownAtMs = clock()
+        updateMetaLocked()
+        if (result is MintResult.Refused) {
+            failed.status = Status.REFUSED
+            _state.value = ReviewState.Blocked(result.reason, failed.card)
+        } else {
+            failed.status = Status.FAILED
+            failed.error = result as? Throwable ?: IllegalStateException("mint failed: $result")
+            ScreenLog.loadFailed("ReviewSession.commit", failed.error ?: IllegalStateException())
+            _state.value = ReviewState.Showing(failed.card, failed.side)
+        }
     }
 
     /** Undoes the last answer of this session (`review.undone`) and shows that card again, first. No-op when nothing is left to undo. */
-    fun undo(): Boolean = synchronized(lock) {
-        val last = undoStack.lastOrNull() ?: return@synchronized false
+    fun undo(): Boolean {
+        val done = synchronized(commitLock) { undoLocked() }
+        if (done) {
+            refreshPendingOps()
+            prefetch()
+        }
+        return done
+    }
+
+    private fun undoLocked(): Boolean {
+        drainLocked()
+        val last = synchronized(lock) {
+            val l = undoStack.lastOrNull() ?: return false
+            if (l.status == Status.PENDING) {
+                // tapped after the drain and not written yet (no write runs while commitLock is held): withdraw it
+                pending.removeAll { it === l }
+                l.status = Status.WITHDRAWN
+                undoStack.removeAt(undoStack.lastIndex)
+                answeredTokens -= l.card.token
+                if (l.card.kind == QueueItemKind.NEW) newShown--
+                backToFrontLocked(l)
+                return true
+            }
+            l
+        }
         val payload = JsonObject(linkedMapOf<String, JsonValue>("review_id" to JsonString(last.reviewId)))
-        when (val r = minter.mint(OpType.REVIEW_UNDONE, payload)) {
+        when (val r = mint(OpType.REVIEW_UNDONE, payload)) {
             is MintResult.Refused -> {
-                _state.value = ReviewState.Blocked(r.reason, current)
-                return@synchronized false
+                synchronized(lock) { _state.value = ReviewState.Blocked(r.reason, current) }
+                return false
             }
             is MintResult.Minted -> Unit
         }
-        undoStack.removeAt(undoStack.lastIndex)
-        if (last.kind == QueueItemKind.NEW) newShown--
-        advance(QueueItem(last.cardId, last.kind, null))
-        true
+        synchronized(lock) {
+            undoStack.removeAll { it === last }
+            if (last.card.kind == QueueItemKind.NEW) newShown--
+            backToFrontLocked(last)
+        }
+        return true
     }
 
-    private fun advance(front: QueueItem?) {
-        val candidates = ArrayList<QueueItem>()
-        front?.let { candidates += it }
-        candidates += queue.load(newShown).items
-        var shown: ShownCard? = null
-        for (item in candidates) {
-            shown = load(item.cardId, item.kind, ++nextToken)
-            if (shown != null) break
+    /** Undo: [c]'s card is shown again (re-rendered: its schedule changed back), the card on screen goes back to the queue's head. */
+    private fun backToFrontLocked(c: Commit) {
+        val id = c.card.cardId
+        main.removeAll { it.cardId == id }
+        learning.removeAll { it.item.cardId == id }
+        current?.let { main.addFirst(itemOf(it)) }
+        current = null
+        awaitingFor = null
+        generation++
+        prefetched.clear()
+        if (!showFromMemoryLocked(null, front = itemOf(c.card))) finishLocked()
+    }
+
+    private fun itemOf(card: ShownCard) = QueueItem(card.cardId, card.kind, null)
+
+    /**
+     * Shows the next card held in memory ([front] first if given); false when there is none. [answered] (when the
+     * call comes from an answer) records how long selection and rendering took.
+     */
+    private fun showFromMemoryLocked(answered: Commit?, front: QueueItem? = null): Boolean {
+        var head = front
+        val now = clock()
+        while (true) {
+            val t0 = System.nanoTime()
+            val item = head?.also { head = null } ?: pickLocked(now) ?: return false
+            val t1 = System.nanoTime()
+            val pre = prefetched.remove(item.cardId)?.takeIf { it.kind == item.kind }
+            val shown = pre?.copy(token = ++nextToken) ?: load(item.cardId, item.kind, ++nextToken)
+            answered?.let {
+                it.selectMs += ReviewTiming.ms(t0, t1)
+                it.renderMs += ReviewTiming.ms(t1)
+                it.prefetchHit = pre != null
+            }
+            if (shown == null || siblingAnsweredLocked(shown)) {
+                answered?.let { it.skipped++ }
+                continue
+            }
+            answered?.let { it.advanceMs = ReviewTiming.ms(it.tapNs) }
+            current = shown
+            currentSide = CardSide.FRONT
+            shownAtMs = clock()
+            awaitingFor = null
+            updateMetaLocked()
+            _state.value = ReviewState.Showing(shown, CardSide.FRONT)
+            return true
         }
-        current = shown
-        currentSide = CardSide.FRONT
-        shownAtMs = clock()
-        val pending = pendingOps()
-        _meta.value = _meta.value.copy(canUndo = undoStack.isNotEmpty(), pendingOps = pending, answered = undoStack.size)
-        _state.value = when {
-            shown != null -> ReviewState.Showing(shown, CardSide.FRONT)
-            undoStack.isNotEmpty() -> ReviewState.Summary(stats())
-            else -> ReviewState.Empty
+    }
+
+    /** Nothing left after a fresh build: the summary, or Empty when nothing was answered. */
+    private fun finishLocked() {
+        awaitingFor?.let { it.advanceMs = ReviewTiming.ms(it.tapNs) }
+        current = null
+        awaitingFor = null
+        updateMetaLocked()
+        _state.value = if (undoStack.isNotEmpty()) ReviewState.Summary(stats()) else ReviewState.Empty
+    }
+
+    private fun updateMetaLocked() {
+        _meta.update { it.copy(canUndo = undoStack.isNotEmpty(), answered = undoStack.size) }
+    }
+
+    /** Builder rule 2 over time: learning due now, then the built order, then learning within learn-ahead. */
+    private fun pickLocked(now: Long): QueueItem? {
+        learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
+        main.removeFirstOrNull()?.let { return it }
+        learning.filter { it.admitted || it.dueAt <= now + learnAheadMs }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
+        return null
+    }
+
+    private fun peekLocked(now: Long): QueueItem? =
+        learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.item
+            ?: main.firstOrNull()
+            ?: learning.filter { it.admitted || it.dueAt <= now + learnAheadMs }.minWithOrNull(TIMED_ORDER)?.item
+
+    /** Builder rule 1 between builds: a NEW/REVIEW card whose note had another card answered this session. */
+    private fun siblingAnsweredLocked(card: ShownCard): Boolean {
+        if (!burySiblings || card.kind == QueueItemKind.LEARNING || card.noteId.isEmpty()) return false
+        return undoStack.any { it.card.noteId == card.noteId && it.card.cardId != card.cardId }
+    }
+
+    /**
+     * A full build of the queue (caller holds [commitLock], not [lock]): every committed answer is in it; the card on
+     * screen and answers still pending are left out (the session knows their state better).
+     */
+    private fun rebuild(why: String): Double {
+        val t0 = System.nanoTime()
+        val shownNew = synchronized(lock) { newShown }
+        val built = queue.loadSession(shownNew)
+        val learningIds = built.queue.items.filter { it.kind == QueueItemKind.LEARNING }.map { it.cardId }
+        val dues: Map<String, Long> = if (learningIds.isEmpty()) emptyMap() else read { tx ->
+            learningIds.associateWith { id ->
+                (CardRows.get(tx.learning, LearningTable.CARD, id)?.get("due_at") as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE
+            }
         }
+        synchronized(lock) {
+            val exclude = HashSet<String>()
+            current?.let { exclude += it.cardId }
+            for (c in pending) exclude += c.card.cardId
+            main.clear()
+            learning.clear()
+            for (item in built.queue.items) {
+                if (item.cardId in exclude) continue
+                if (item.kind == QueueItemKind.LEARNING) {
+                    learning += Timed(item, dues[item.cardId] ?: Long.MIN_VALUE, admitted = true)
+                } else {
+                    main += item
+                }
+            }
+            burySiblings = built.burySiblings
+            learnAheadMs = built.learnAheadMs
+            lastBuildAt = clock()
+            commitsAtBuild = commitCount
+            generation++
+            prefetched.clear()
+        }
+        val ms = ReviewTiming.ms(t0)
+        timings(ReviewTiming.Rebuild(why, ms, built.queue.items.size))
+        return ms
+    }
+
+    /**
+     * Pre-renders (outside [lock]) the card that would be shown next, and the earliest learning card, which takes
+     * its place if it falls due first. An item that turns out not to be showable is dropped from the queue here, so
+     * the answer does not have to pass over it. Returns the ms spent (0 when both were ready).
+     */
+    private fun prefetch(): Double {
+        val t0 = System.nanoTime()
+        var worked = false
+        repeat(PREFETCH_ROUNDS) {
+            val (todo, gen) = synchronized(lock) {
+                if (current == null) return if (worked) ReviewTiming.ms(t0) else 0.0
+                val wanted = listOfNotNull(peekLocked(clock()), learning.minWithOrNull(TIMED_ORDER)?.item).distinctBy { it.cardId }
+                prefetched.keys.retainAll(wanted.mapTo(HashSet()) { it.cardId })
+                val missing = wanted.filter { w -> prefetched[w.cardId]?.kind != w.kind }
+                if (missing.isEmpty()) return if (worked) ReviewTiming.ms(t0) else 0.0
+                missing to generation
+            }
+            worked = true
+            for (item in todo) {
+                val shown = try {
+                    load(item.cardId, item.kind, PREFETCH_TOKEN)
+                } catch (e: Exception) {
+                    return ReviewTiming.ms(t0) // a storage error surfaces when the card is due to be shown
+                }
+                synchronized(lock) {
+                    if (gen != generation) return ReviewTiming.ms(t0)
+                    if (shown == null || siblingAnsweredLocked(shown)) {
+                        main.removeAll { it.cardId == item.cardId }
+                        learning.removeAll { it.item.cardId == item.cardId }
+                    } else if (prefetched.size < PREFETCH_MAX) {
+                        prefetched[item.cardId] = shown
+                    }
+                }
+            }
+        }
+        return ReviewTiming.ms(t0)
     }
 
     private fun stats() = SessionStats(
@@ -265,19 +709,28 @@ class ReviewSession<L : LearningTables>(
         totalMs = undoStack.sumOf { it.durationMs },
     )
 
-    private fun pendingOps(): Int = store.transaction { it.outbox.count(PendingState.PENDING) }
+    /** The outbox size for the sync prompt (off the answer's critical path). */
+    private fun refreshPendingOps() {
+        val n = try {
+            read { it.outbox.count(PendingState.PENDING) }
+        } catch (e: Exception) {
+            return
+        }
+        _meta.update { it.copy(pendingOps = n) }
+    }
 
     /** Reads and renders [cardId]; null if it cannot be shown (missing, deleted, merged, or holding the refused cache). */
-    private fun load(cardId: String, kind: QueueItemKind, token: Long): ShownCard? = store.transaction { tx ->
+    private fun load(cardId: String, kind: QueueItemKind, token: Long): ShownCard? = read { tx ->
         val t = tx.learning
-        val card = CardRows.get(t, LearningTable.CARD, cardId) ?: return@transaction null
-        if (!CardRows.live(card) || CardRows.refused(card)) return@transaction null
-        val note = CardRows.get(t, LearningTable.NOTE, CardRows.str(card["note_id"]) ?: return@transaction null)
-            ?: return@transaction null
-        if (!CardRows.live(note)) return@transaction null
-        val type = CardRows.get(t, LearningTable.NOTE_TYPE, CardRows.str(note["note_type_id"]) ?: return@transaction null)
-            ?: return@transaction null
+        val card = CardRows.get(t, LearningTable.CARD, cardId) ?: return@read null
+        if (!CardRows.live(card) || CardRows.refused(card)) return@read null
+        val noteId = CardRows.str(card["note_id"]) ?: return@read null
+        val note = CardRows.get(t, LearningTable.NOTE, noteId) ?: return@read null
+        if (!CardRows.live(note)) return@read null
+        val type = CardRows.get(t, LearningTable.NOTE_TYPE, CardRows.str(note["note_type_id"]) ?: return@read null)
+            ?: return@read null
         val p = prefs()
+        val furiganaOn = furigana
         val entry = (note["entry_seq"] as? JsonNumber)?.value?.toLong()
         val dictData = entry?.let(dictionary::lookup)
         val kanjiData = CardRows.str(note["kanji_literal"])?.let(kanji::lookup)
@@ -295,14 +748,17 @@ class ReviewSession<L : LearningTables>(
             dictionary = dictData,
             cloze = cloze,
             side = side,
-            options = RenderOptions(furigana = furigana, pitch = p.pitch, showMnemonic = true, mediaUrlTemplate = mediaUrlTemplate),
+            options = RenderOptions(furigana = furiganaOn, pitch = p.pitch, showMnemonic = true, mediaUrlTemplate = mediaUrlTemplate),
             kanji = kanjiData,
         )
         val now = clock()
         val previews = scheduler.preview(
             CardRows.scheduleOf(card), now, scheduler.paramsOf(CardRows.presetOf(t, card)), null, utcOffsetMin(now),
         )
-        ShownCard(token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews, cloze?.sentenceId, pattern)
+        ShownCard(
+            token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews,
+            cloze?.sentenceId, pattern, noteId,
+        )
     }
 
     companion object {
@@ -311,5 +767,13 @@ class ReviewSession<L : LearningTables>(
 
         /** The screen prompts a sync when at least this many ops wait. */
         const val SYNC_PROMPT_AT = 50
+
+        /** The in-memory queue is rebuilt from the database after an answer once the last build is this old. */
+        const val REBUILD_EVERY_MS = 5 * 60_000L
+
+        private const val PREFETCH_TOKEN = -1L
+        private const val PREFETCH_MAX = 2
+        private const val PREFETCH_ROUNDS = 4
+        private val TIMED_ORDER = compareBy<Timed>({ it.dueAt }, { it.item.cardId })
     }
 }

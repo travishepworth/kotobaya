@@ -37,6 +37,7 @@ import kotobaya.android.review.CardPage
 import kotobaya.android.review.CardPayload
 import kotobaya.android.review.CardPayloads
 import kotobaya.android.review.PageRequest
+import kotobaya.android.review.ReviewTiming
 import kotobaya.android.ui.components.KbDivider
 import kotobaya.android.ui.components.jaPhrase
 import kotobaya.android.ui.theme.KbTheme
@@ -66,6 +67,14 @@ internal class CardWebView(
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
 
+            override fun onPageCommitVisible(view: WebView, url: String?) {
+                val started = loadStartedNs
+                if (started != 0L) {
+                    loadStartedNs = 0L
+                    ReviewTiming.LOG(ReviewTiming.Page(loadDescribe, ReviewTiming.ms(started)))
+                }
+            }
+
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) onPageFailed(shownHtml, "error ${error.errorCode}")
             }
@@ -78,10 +87,19 @@ internal class CardWebView(
 
     private var shownHtml: String? = null
 
-    /** Loads [page] (never blank: [CardPayload.Page]) unless it is already shown. */
-    fun show(page: CardPayload.Page) {
+    // AND-REVIEW-SNAPPY timing of the swap (main thread only): load start to the page being visible
+    private var loadStartedNs = 0L
+    private var loadDescribe = ""
+
+    /**
+     * Loads [page] (never blank: [CardPayload.Page]) unless it is already shown. The one WebView is reused: only its
+     * document is swapped. [describe] names the card for the timing log (root classes only, no content).
+     */
+    fun show(page: CardPayload.Page, describe: String) {
         if (page.html == shownHtml) return
         shownHtml = page.html
+        loadStartedNs = System.nanoTime()
+        loadDescribe = describe
         view.loadDataWithBaseURL(CardPage.BASE_URL, page.html, "text/html", "utf-8", null)
     }
 
@@ -93,15 +111,22 @@ internal class CardWebView(
     private fun respond(context: Context, url: String, mainFrame: Boolean): WebResourceResponse? = when (val r = CardPage.decide(url, mainFrame)) {
         // the card document of loadDataWithBaseURL: WebView serves it itself
         PageRequest.Document -> null
-        is PageRequest.Asset -> try {
-            WebResourceResponse(mimeOf(r.path), null, context.assets.open(r.path))
-        } catch (e: java.io.IOException) {
-            blocked(404)
-        }
+        is PageRequest.Asset -> assetBytes(context, r.path)?.let { WebResourceResponse(mimeOf(r.path), null, ByteArrayInputStream(it)) } ?: blocked(404)
         is PageRequest.Media -> mediaFile(r.sha256)?.takeIf { it.isFile }?.let {
             WebResourceResponse("application/octet-stream", null, it.inputStream())
         } ?: blocked(404)
         PageRequest.Blocked -> blocked(403)
+    }
+
+    private companion object {
+        /** card.css and friends, read once per process: every card swap requests them again (LOAD_NO_CACHE). */
+        private val assetCache = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
+
+        fun assetBytes(context: Context, path: String): ByteArray? = assetCache[path] ?: try {
+            context.assets.open(path).use { it.readBytes() }.also { assetCache[path] = it }
+        } catch (e: java.io.IOException) {
+            null
+        }
     }
 
     private fun blocked(status: Int) =
@@ -156,7 +181,7 @@ private fun CardWebViewContent(card: RenderedCard, mediaFile: (String) -> File?,
     }
     DisposableEffect(web) { onDispose { web.view.destroy() } }
     if (payload is CardPayload.Page && payload.html != failedHtml) {
-        AndroidView(factory = { web.view }, update = { web.show(payload) }, modifier = modifier)
+        AndroidView(factory = { web.view }, update = { web.show(payload, CardPayloads.describe(card)) }, modifier = modifier)
     } else {
         SideEffect { web.reset() }
         CardUnavailable(modifier)

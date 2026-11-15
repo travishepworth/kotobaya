@@ -150,7 +150,12 @@ class ReviewViewModel(
             session = s
             update { it.copy(prefs = prefs) }
             var shown: Pair<Long, CardSide>? = null
-            launch { b.dueChanged.collect { refreshIfEmpty() } }
+            launch {
+                b.dueChanged.collect {
+                    s.markStale()
+                    refreshIfEmpty()
+                }
+            }
             launch {
                 combine(s.state, s.meta) { st, m -> st to m }.collect { (st, m) ->
                     val showing = st as? ReviewState.Showing
@@ -235,7 +240,17 @@ class ReviewViewModel(
 
     override fun flip() = withSession { it.flip() }
 
-    override fun answer(token: Long, button: Button) = withSession { it.answer(token, button) }
+    /**
+     * The session shows the next card at once and writes the answer on this IO coroutine. A failed write has already
+     * put the card back on screen: only the inline error is added (the session stays).
+     */
+    override fun answer(token: Long, button: Button) = withSession {
+        try {
+            it.answer(token, button)
+        } catch (e: ReviewCommitFailed) {
+            setResult(R.string.review_error_action, false, 0)
+        }
+    }
 
     override fun undo() = withSession { it.undo() }
 

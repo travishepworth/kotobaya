@@ -54,6 +54,8 @@ class ReviewBackend<L : LearningTables>(
         java.time.LocalDate.ofEpochDay(Math.floorDiv(at + tz.getOffset(at), 86_400_000L)).plusDays(1)
             .atStartOfDay(tz.toZoneId()).toInstant().toEpochMilli()
     },
+    /** Concurrent reads of [store] (AND-REVIEW-SNAPPY: rendering never waits for an answer's write); null = serialized. */
+    val reads: ReviewReads<L>? = null,
 ) {
     private val ids = UuidV7Source(Random.Default)
 
@@ -67,5 +69,6 @@ class ReviewBackend<L : LearningTables>(
         prefs = prefs,
         dictionary = dictionary,
         kanji = kanji,
+        reads = reads,
     )
 }
