@@ -4,7 +4,7 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN28 resume
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 29): web 0.1.17 LIVE (helm rev 25, pin c09a22ef). APK 0.1.18 INSTALLED (pin 9a4fa136): AND-DECK-INSPECT + AND-DECK-LABELS. Nothing running. Next: user feedback on deck inspector; FOLLOWUPS.
+## RESUME HERE (run 29): MERGED this run: WEB/AND-DECK-INSPECT, AND-DECK-LABELS, WRK-FREQ-MATCH, AND-KANJI-DECKS, C-26, WEB-KEEPGOING, AND-KEEPGOING. Images api/web/worker 0.1.18 pushed (api/web pin c960233b, worker pin 624d4305), values.yaml bumped; DEPLOY BLOCKED on kube OIDC login (user). After deploy: kubectl -n kotobaya exec deploy/kotobaya-worker -- python -m kotobaya_worker.jobs.freq_rebuild, verify conversation deck. APK 0.1.19 built (pin cc8fe927, ~/kotobaya-apk/kotobaya-0.1.19-release.apk, cert ok) awaiting adb. Nothing running.
 
 ## Previous (run 28): server+web 0.1.16 LIVE (helm rev 24, pin 99cf5a19, worktree scratchpad/rel0116; worker 0.1.11); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. C-25 MERGED ee1fecdd. WEB-REVIEW-INFO MERGED 48a817be. AND-REVIEW-INFO MERGED d04531d2. APK 0.1.17 INSTALLED on phone (pin f058bbfc). kby + daemon updated live. CLI-KBY MERGED af5ad121 (user must reinstall daemon uv tool + kby). Next: -> RELEASE APK 0.1.17 (user waiting: AND-BACK + AND-REVIEW-INFO + 0.1.15 content; tell user when ready). Then FOLLOWUPS.
 
