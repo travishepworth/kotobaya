@@ -449,3 +449,4 @@
 - Chart (run 27): worker/api pods don't restart when their ConfigMap changes (no checksum/config annotation); dictSourcesJson change needed a manual rollout restart.
 - WEB-REVIEW-FAST review (run 27, minor): if an answer landed but its response was lost, fail() drops it from undo history and the refresh removes the restored card (undo impossible).
 - Contract gap (run 27, WEB-ADD2DECK + WEB-TAKO-SEARCH): no 'decks holding entry/note' read; web scans listDeckItems of every user deck, /search can't show deck names, no per-row quick Add. Additive C-ticket: deck_ids on DictEntry/DictEntrySummary/Note.
+- WEB-REVIEW-FAST r2 minors: no test for a send failing after re-entering /review (path traced correct); refreshWhenIdle awaits the tail as of page open (late refresh only).
