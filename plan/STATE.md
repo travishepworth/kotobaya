@@ -4,7 +4,7 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN27 dispatch
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 27): 0.1.13 INSTALLED (pin 09c74c17); Fatal Twelve OK on phone. Running AND-TAKO-PERF2 (Takoboto 7.6 s on phone). Next: merge, 0.1.14 APK.
+## RESUME HERE (run 27): LIVE web 0.1.12 (helm rev 19, pin ef0e511f, api/worker 0.1.11). Phone 0.1.14 RELEASE build (pin cb54637e). Verifying Takoboto dup-check + review timings on device. Then FOLLOWUPS.
 
 ## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).

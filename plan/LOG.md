@@ -1052,3 +1052,6 @@
 2026-11-15T00:27:10Z RELEASE 0.1.14 PIN cb54637e RELEASE build ~/kotobaya-apk/kotobaya-0.1.14-release.apk code 114 cert ec6b7f45 ok, not debuggable (AND-TAKO-PERF2, AND-REVIEW-SNAPPY)
 2026-11-15T00:34:35Z WEB-TAKO-SEARCH DISPATCH writer; web Takoboto notes wrong text + preview fail; ADR-026 extended to web. kubectl OIDC expired (logs pending user login)
 2026-11-15T00:40:45Z WEB-TAKO-SEARCH CHECK_GREEN + MERGE 3f2e0dbb (rowLabel jsonb key order bug; note types incl. deleted; /search merged). Needs web deploy (kubectl auth expired)
+2026-11-15T00:41:30Z RELEASE web 0.1.12 PIN ef0e511f (web-only: WEB-TAKO-SEARCH; server/worker/core unchanged since 0.1.11) building/pushing; deploy needs kubectl OIDC login
+2026-11-15T00:43:40Z RELEASE web 0.1.12 PUSHED; values web tag 0.1.12 (api/worker stay 0.1.11); helm upgrade pending kubectl login
+2026-11-15T00:53:13Z RELEASE web 0.1.12 DEPLOYED helm rev 19 (pin ef0e511f; api/worker 0.1.11); phone 0.1.14 RELEASE build INSTALLED, startup OK (rebuild 43 ms, first paint 584 ms); API logs: only /meta probe reports
