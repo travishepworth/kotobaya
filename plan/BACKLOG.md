@@ -776,7 +776,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - model: fable (→ opus, ADR-004) · risk: medium (contract change: reviewer + architect pass) · deps: — · paths: contracts/api, core, server, clients/ (regenerated) · status: TODO (ticket: plan/tickets/ARCH-CARD-TEXT.md)
 
 ### CLI-DAEMON — Long-running daemon: FIFO + unix socket, SSE cache, config.toml, systemd user unit, state object + cli/schema/state.v1.json
-- model: sonnet · risk: medium · deps: T604 · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-DAEMON.md)
+- model: sonnet · risk: medium · deps: T604 · paths: cli/ · status: MERGED b03d46b6 (ticket: plan/tickets/CLI-DAEMON.md)
 
 ### CLI-REVIEW — Journal-first answer/undo, idempotent retry + crash replay, reviewed-elsewhere replacement, five-button mapping, duration_ms
 - model: opus · risk: medium · deps: CLI-DAEMON (card text needs ARCH-CARD-TEXT) · paths: cli/ · status: TODO (ticket: plan/tickets/CLI-REVIEW.md)
