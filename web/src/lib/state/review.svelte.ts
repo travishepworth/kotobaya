@@ -601,6 +601,8 @@ export class ReviewPage {
 		try {
 			await wordsApi.setWordStatus({ seq, wordStatusSet: { status: 'never_forget' } });
 			pushToast(tr('review.neverForgetSet'));
+			// A never-forget word leaves the queue (builder rule 1), as on the phone: show the next card.
+			await this.advance();
 		} catch {
 			/* toast shown */
 		} finally {
