@@ -1038,3 +1038,12 @@
 2026-11-14T23:44:49Z RELEASE 0.1.13 INSTALLED on phone; Fatal Twelve installed 10669 items; Takoboto send dup 4.0 s + insert 3.6 s (was 37.7 s) -> AND-TAKO-PERF2
 2026-11-14T23:44:49Z AND-TAKO-PERF2 DISPATCH writer-senior
 2026-11-14T23:45:32Z AND-REVIEW-SNAPPY DISPATCH writer-senior (user: reviews not instant)
+2026-11-14T23:46:51Z RELEASE-BUILD test: assembleAnkidroidRelease with debug keystore via env OK (cert ec6b7f45, not debuggable). User: phone gets release builds from now on
+2026-11-15T00:12:26Z AND-TAKO-PERF2 HANDOFF note change-log triggers + NoteWordIndex/ChecksumIndex; real-copy csum 0 ms, insert 13-15 ms; reviewer dispatched (triggers on note)
+2026-11-15T00:12:36Z AND-TAKO-PERF2 CHECK_GREEN (awaiting review)
+2026-11-15T00:16:01Z AND-TAKO-PERF2 REVIEW_CHANGES major: prune ignores cursorless consumer -> csum index misses pulled note during first warm; attempt 2 (+minors 3,5,6)
+2026-11-15T00:19:34Z AND-REVIEW-SNAPPY HANDOFF async in-tap-order commit, in-memory queue, prerender; JVM answer 11 ms -> 0.3 ms; reviewer dispatched
+2026-11-15T00:19:51Z AND-REVIEW-SNAPPY CHECK_GREEN (awaiting review)
+2026-11-15T00:22:16Z AND-TAKO-PERF2 HANDOFF attempt 2 (major fixed per writer, lock scope, sfld index, rebuild test); re-review
+2026-11-15T00:22:27Z AND-TAKO-PERF2 CHECK_GREEN attempt 2 (awaiting re-review)
+2026-11-15T00:22:44Z AND-TAKO-PERF2 REVIEW_APPROVE r2 + MERGE a3f8d203

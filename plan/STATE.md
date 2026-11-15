@@ -34,6 +34,7 @@ FOLLOWUPS
 (none). B2 gate closed 2026-11-14 (approved).
 
 ## Notes
+- Phone gets RELEASE builds from run 27 (user request): env ANDROID_KEYSTORE_PATH=~/.config/.android/debug.keystore, password/alias android/androiddebugkey; assembleAnkidroidRelease. run-as unavailable on release.
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
 - Disk: / 19G free, /home 37G free (run 14). Check `df -h /` before Testcontainers-heavy batches.
 - PUSH main BEFORE dispatching worktree writers (worktrees are cut from origin/main).
@@ -55,6 +56,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- AND-TAKO-PERF2 (run 27, a3f8d203): note change-log triggers + NoteWordIndex/ChecksumIndex; Takoboto csum ~0 ms, insert ~15 ms on real copy; review APPROVE r2
 - AND-DECKCONTENT (run 27, 09c74c17): device installs deck-item + media-content snapshots (SNAPSHOT §7, WorkManager after sync), deck content state UI + retry; ADR-027; review APPROVE
 - AND-TAKO-PERF (run 27, abc4499a): Takoboto csum dup-check batched (per-note dict entry() removed); JVM 1379->91 ms
 - AND-LABELS (run 27, 710d5d5c): deck rows + card hits labelled from note/dictionary (no e:<seq>, no literal reading/meaning); merged Android search (ADR-026)
