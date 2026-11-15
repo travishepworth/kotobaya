@@ -773,7 +773,7 @@ T201→T201a/T201b; T202→T202a/T202b/T202c; T207→T207a/T207b; T210→T210a(s
 Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### ARCH-CARD-TEXT — Plain-text card render on QueueItem (`text {front, back, reading?, sentence?}`), core render on the server for every card kind
-- model: fable (→ opus, ADR-004) · risk: medium (contract change: reviewer + architect pass) · deps: — · paths: contracts/api, core, server, clients/ (regenerated) · status: TODO (ticket: plan/tickets/ARCH-CARD-TEXT.md)
+- model: fable (→ opus, ADR-004) · risk: medium (contract change: reviewer + architect pass) · deps: — · paths: contracts/api, core, server, clients/ (regenerated) · status: MERGED (ticket: plan/tickets/ARCH-CARD-TEXT.md)
 
 ### CLI-DAEMON — Long-running daemon: FIFO + unix socket, SSE cache, config.toml, systemd user unit, state object + cli/schema/state.v1.json
 - model: sonnet · risk: medium · deps: T604 · paths: cli/ · status: MERGED b03d46b6 (ticket: plan/tickets/CLI-DAEMON.md)

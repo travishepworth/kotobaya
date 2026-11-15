@@ -1097,3 +1097,8 @@
 2026-11-15T02:07:07Z ARCH-CARD-TEXT HANDOFF (CardTextRenderer + QueueItem.text, server QueueText); reviewer + architect pass dispatched
 2026-11-15T02:07:12Z AND-BACK HANDOFF (review back=undo once, search back stack, predictive back)
 2026-11-15T02:08:13Z AND-BACK CHECK_GREEN + MERGE b621443a
+2026-11-15T02:08:54Z ARCH-CARD-TEXT ARCHITECT_PASS CHANGES 1 major (pitch front omits reading vs HTML) + 5 minors; waiting for reviewer before attempt 2
+2026-11-15T02:09:05Z ARCH-CARD-TEXT REVIEW_APPROVE (5 minors) + ARCHITECT CHANGES (pitch front) -> attempt 2
+2026-11-15T02:33:06Z ARCH-CARD-TEXT HANDOFF attempt 2 (writer died uncommitted; orchestrator committed db36e0b5-rebased); checks + architect re-pass dispatched
+2026-11-15T02:34:17Z ARCH-CARD-TEXT ARCHITECT_PASS CHANGES r2: pitch major fixed; clients not regenerated (contracts check red) -> attempt 3 (architect)
+2026-11-15T02:43:58Z ARCH-CARD-TEXT CHECK_GREEN (contracts/core/server) + MERGE 40bd6b94 (3 attempts; clients regenerated)

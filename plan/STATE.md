@@ -1,10 +1,10 @@
 # STATE
 Mode: single-session
 Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN27 dispatch
+Updated: RUN28 resume
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 27): web 0.1.13 LIVE (rev 23), phone 0.1.14 release. Running: AND-DECKEND (writer-senior), ARCH-CARD-TEXT (architect/opus), CLI-DAEMON (writer). Queued: API-GUIDE, CLI-REVIEW + CLI-WATCH (after CLI-DAEMON). Next phone APK 0.1.15 = AND-ADD2DECK + AND-DECKEND (release build).
+## RESUME HERE (run 28): web 0.1.13 LIVE (rev 23); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. In flight: C-25 (architect). Next: -> WEB-REVIEW-INFO + AND-REVIEW-INFO -> RELEASE 0.1.16 (user waiting for this: APK incl. AND-BACK + AND-REVIEW-INFO, web incl. WEB-REVIEW-INFO). Then FOLLOWUPS.
 
 ## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).
@@ -56,6 +56,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- ARCH-CARD-TEXT (run 28, 40bd6b94): core CardTextRenderer + QueueItem.text (plain-text front/back/reading/sentence), server QueueText; text absent for unknown note type; 3 attempts
 - WEB-TAKO-SEARCH (run 27, 3f2e0dbb): web rowLabel expression-first (jsonb key order showed 'notes'/'meaning'), skeleton not id, note types incl. deleted + fallback, /search merged (ADR-026 web)
 - AND-REVIEW-SNAPPY (run 27, 4899ca89): next card at tap, async in-order commit, in-memory queue, prerender, KotobayaReview timing; review APPROVE
 - AND-TAKO-PERF2 (run 27, a3f8d203): note change-log triggers + NoteWordIndex/ChecksumIndex; Takoboto csum ~0 ms, insert ~15 ms on real copy; review APPROVE r2
