@@ -16,3 +16,9 @@
 ## Acceptance
 - [ ] Test: Empty state offers Keep going iff the keepGoing queue is non-empty; keep-going mode serves new cards past the daily limit.
 - [ ] make check MODULE=android green.
+
+## Notes from C-26 review (binding)
+- Keep going is UI state for ONE visit to the review screen: clear it when leaving review, when the study day changes from the day it started, and on app restart. The normal Review entry point and the Today counts always use keep_going=false.
+- In keep-going mode counts.new is the batch, not the remaining total: don't show it as "remaining".
+- more_available can be true when only the session cap is hit: word the empty state "done for now", not "done for today".
+- Web Today: use more_available from the stats/Today summary (added in C-26); don't make an extra /review/queue call.
