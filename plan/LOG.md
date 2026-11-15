@@ -1119,3 +1119,4 @@
 2026-11-15T03:54:40Z AND-REVIEW-INFO REVIEW_APPROVE r3 + CHECK_GREEN + MERGE d04531d2 (3 attempts, 1 escalation; minors -> FOLLOWUPS)
 2026-11-15T03:54:50Z RELEASE APK 0.1.17 PIN f058bbfc release build started (0.1.15 content + AND-BACK + AND-REVIEW-INFO)
 2026-11-15T03:55:49Z RELEASE APK 0.1.17 built ~/kotobaya-apk/kotobaya-0.1.17-release.apk code 117 cert ec6b7f45 ok, not debuggable, pin f058bbfc; waiting for adb
+2026-11-15T04:08:46Z RELEASE APK 0.1.17 INSTALLED (adb install -r; user 10 present). kby installed to ~/.local/bin (backup kby.bak-pre-serve), daemon restarted; serve + do refusal verified live
