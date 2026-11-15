@@ -1078,3 +1078,7 @@
 2026-11-15T01:34:55Z PLAN CLI daemon tickets ARCH-CARD-TEXT, CLI-DAEMON, CLI-REVIEW, CLI-WATCH (docs/CLI-DAEMON.md) + API-GUIDE (user request) added
 2026-11-15T01:35:21Z ARCH-CARD-TEXT DISPATCH architect(opus); CLI-DAEMON DISPATCH writer. Queued: API-GUIDE (next free slot), CLI-REVIEW + CLI-WATCH (after CLI-DAEMON)
 2026-11-15T01:41:04Z CLI-DAEMON CHECK_GREEN + MERGE b03d46b6 (45 tests; jsonschema dev-only dep)
+2026-11-15T01:41:09Z CLI-REVIEW DISPATCH writer-senior (on CLI-DAEMON b03d46b6)
+2026-11-15T01:41:51Z AND-DECKEND HANDOFF (deck learn-ahead only if no deck due, never re-serve last answered; DeckDone + continueWithAll); reviewer dispatched
+2026-11-15T01:44:05Z AND-DECKEND CHECK_GREEN (awaiting review)
+2026-11-15T01:45:14Z AND-DECKEND REVIEW_APPROVE + MERGE f6bf579f (6 minors -> FOLLOWUPS)
