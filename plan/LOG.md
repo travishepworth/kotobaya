@@ -1087,3 +1087,5 @@
 2026-11-15T01:47:25Z CLI-REVIEW HANDOFF (journal JSONL fsync, FIFO sender, replay; 65 tests); reviewer dispatched
 2026-11-15T01:47:38Z CLI-REVIEW CHECK_GREEN (65 tests; awaiting review); CLI-WATCH DISPATCH writer-light
 2026-11-15T01:47:51Z ADR-028 DECIDE (human): keep rule 5 learn-ahead re-serve in all-decks session
+2026-11-15T01:49:16Z CLI-REVIEW REVIEW_CHANGES 2 majors (any 4xx terminal drops answers; journal append before durable write -> double review) -> attempt 2 (+minors 3-6)
+2026-11-15T01:49:56Z API-GUIDE MERGE 7f92fcc7 (docs/API-GUIDE.md, 31 recipes checked vs openapi; cli/README link -> CLI-WATCH)
