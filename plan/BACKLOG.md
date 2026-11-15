@@ -792,3 +792,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - WEB-REVIEW-INFO — web review back extras · model: sonnet · risk: low · deps: C-25 · status: MERGED 48a817be
 - AND-REVIEW-INFO — android review back extras + Open in dictionary button · model: sonnet · risk: med · deps: C-25, AND-BACK · status: TODO
 - AND-BACK — android smart back across the app (review back = undo) · model: sonnet · risk: med · deps: — · status: MERGED b621443a
+
+### CLI-KBY — kby machine interface for GUI widgets: daemon grade gating + hidden-answer state (A1–A3), `kby serve` / `kby do --rev` (user request 2026-11-15)
+- model: sonnet · risk: med · deps: CLI-REVIEW, CLI-WATCH · paths: cli/ · status: RUNNING (ticket: plan/tickets/CLI-KBY.md)
