@@ -68,6 +68,7 @@ val reviewFeature = FeatureEntry(
                 dictionary = renderData,
                 kanji = renderData,
                 kanjiWords = InstalledKanjiWords(get<kotobaya.android.dict.InstalledDictionary>()),
+                extrasIndex = SqlBackExtrasIndex(get<app.cash.sqldelight.db.SqlDriver>(org.koin.core.qualifier.named("syncAppDriver"))),
                 store = client.store,
                 minter = client.minter,
                 queue = get<LocalQueueLoader>().asQueueSource(),

@@ -16,6 +16,18 @@ import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
 import kotobaya.sync.client.apply.InMemoryLearningTables
 import kotobaya.sync.client.apply.LearningTable
+import kotobaya.sync.client.apply.LearningTables
+import kotobaya.sync.client.apply.Row
+import kotobaya.contracts.WordStatus
+import kotobaya.contracts.dict.KanjiExampleCandidate
+import kotobaya.contracts.sync.JsonValue as JV
+import kotobaya.dict.DefaultKanjiExamplePicker
+import kotobaya.contracts.dict.KanjiReadings
+import kotobaya.android.sync.LearningSchema
+import kotobaya.android.sync.SqlLearningTables
+import kotobaya.android.sync.memoryDriver
+import kotlin.random.Random
+import kotlin.test.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -51,15 +63,15 @@ class ReviewInfoTest {
         val note = row("id" to s("k"), "type" to s("kanji"), "kanji_literal" to s("食"))
         val kanji = KanjiData("食", listOf("eat"), listOf("ショク", "ジキ"), listOf("く.う", "た.べる"))
         val dict = DictionaryLookup { seq -> DictionaryData("", "", emptyList(), listOf("gloss $seq", "second"), emptyList()) }
-        val x = BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict)
+        val x = BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict, BackExtrasIndex.from(t))
         assertEquals(listOf("食堂", "食べる", "食事"), x.examples.map { it.headword })
         assertEquals(listOf(KanjiReadingType.ON, KanjiReadingType.KUN, KanjiReadingType.ON), x.examples.map { it.type })
         assertEquals("gloss 3; second", x.examples.first().gloss)
         // a blacklisted word is never shown
         t.put(LearningTable.WORD_STATUS, row("entry_seq" to n(3), "status" to s("blacklisted")))
-        assertEquals(listOf("食べる", "食事", "食品"), BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict).examples.map { it.headword })
+        assertEquals(listOf("食べる", "食事", "食品"), BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict, BackExtrasIndex.from(t)).examples.map { it.headword })
         // no dictionary words: no block
-        assertEquals(emptyList(), BackExtrasBuilder.build(noScan(t), note, kanji, { emptyList() }, dict).examples)
+        assertEquals(emptyList(), BackExtrasBuilder.build(noScan(t), note, kanji, { emptyList() }, dict, BackExtrasIndex.from(t)).examples)
     }
 
     @Test
@@ -78,12 +90,147 @@ class ReviewInfoTest {
         item("d-c", "e:7", 7); item("d-a", "n:note1"); item("d-b", "e:7", 7); item("d-b", "n:note1") // two items, one deck
         item("d-e", "e:7", 7); item("d-s", "e:7", 7); item("d-x", "e:7", 7); item("d-r", "e:7", 7, gone = true)
         item("d-orphan", "e:7", 7) // deck row missing
+        deck("d-m", "Merged", 0); item("d-m", "n:old") // an item of a note merged into this one
+        t.put(LearningTable.NOTE, row("id" to s("old"), "type" to s("vocab"), "merged_into_id" to s("note1"), "deleted_at" to n(1)))
         val note = row("id" to s("note1"), "type" to s("vocab"), "entry_seq" to n(7))
         t.put(LearningTable.NOTE, note)
-        val x = BackExtrasBuilder.build(noScan(t), note, null, { emptyList() }, { null })
-        assertEquals(listOf("First", "Second", "Third"), x.decks)
-        assertEquals(1, x.moreDecks)
+        val x = BackExtrasBuilder.build(noScan(t), note, null, { emptyList() }, { null }, BackExtrasIndex.from(t))
+        assertEquals(listOf("Merged", "First", "Second"), x.decks)
+        assertEquals(2, x.moreDecks)
         assertEquals(7L, x.entrySeq)
+    }
+
+    /** Counts the learning queries of the per-card path (each is a statement + cursor on the device). */
+    private class Counting(val t: LearningTables) : LearningTables by t {
+        var queries = 0
+        override fun get(table: LearningTable, key: List<JV>): Row? = t.get(table, key).also { queries++ }
+        override fun where(table: LearningTable, column: String, value: JV): List<Row> = t.where(table, column, value).also { queries++ }
+        override fun all(table: LearningTable): List<Row> = error("whole-table read of $table")
+    }
+
+    /** A replica with notes, statuses and deck items scattered over the first [n] seqs. */
+    private fun replica(n: Int, rnd: Random): InMemoryLearningTables {
+        val t = InMemoryLearningTables()
+        t.put(LearningTable.DECK, row("id" to s("live"), "name" to s("Live"), "priority" to n(0), "type" to s("user")))
+        t.put(LearningTable.DECK, row("id" to s("gone"), "name" to s("Gone"), "priority" to n(0), "type" to s("user"), "deleted_at" to n(1)))
+        for (seq in 1L..n) {
+            when (rnd.nextInt(8)) {
+                0 -> t.put(LearningTable.NOTE, row("id" to s("n$seq"), "type" to s("vocab"), "entry_seq" to n(seq)))
+                1 -> t.put(LearningTable.NOTE, row("id" to s("n$seq"), "type" to s("vocab"), "entry_seq" to n(seq), "deleted_at" to n(1)))
+                2 -> t.put(LearningTable.DECK_ITEM, row("deck_id" to s("live"), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull))
+                3 -> t.put(LearningTable.DECK_ITEM, row("deck_id" to s("gone"), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull))
+                4 -> t.put(LearningTable.DECK_ITEM, row("deck_id" to s("live"), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull, "deleted_at" to n(1)))
+                else -> {}
+            }
+            if (rnd.nextInt(3) == 0) t.put(LearningTable.WORD_STATUS, row("entry_seq" to n(seq), "status" to s(WordStatus.entries.random(rnd).wire)))
+        }
+        return t
+    }
+
+    private val shoku = KanjiData("食", listOf("eat"), listOf("ショク", "ジキ"), listOf("く.う", "た.べる"))
+
+    private fun candidates(n: Int, rnd: Random) = (1L..n).map {
+        DictWord(it, "食$it", if (rnd.nextBoolean()) "しょく$it" else "た$it", if (rnd.nextInt(4) == 0) null else rnd.nextInt(1, 20_000))
+    }
+
+    @Test
+    fun theTapPathIssuesTheSameFewQueriesWhateverTheCandidateCount() {
+        val rnd = Random(7)
+        val t = replica(2_000, rnd)
+        val index = BackExtrasIndex.from(t)
+        var lookups = 0
+        val dict = DictionaryLookup { lookups++; null }
+        val kanjiNote = row("id" to s("k"), "type" to s("kanji"), "kanji_literal" to s("食"))
+        fun queriesFor(words: List<DictWord>): Int {
+            val c = Counting(t)
+            lookups = 0
+            val x = BackExtrasBuilder.build(c, kanjiNote, shoku, { words }, dict, index)
+            assertEquals(3, x.examples.size)
+            assertTrue(lookups <= 3, "glosses only for the picks: $lookups")
+            return c.queries
+        }
+        val few = queriesFor(candidates(3, rnd))
+        val many = queriesFor(candidates(2_000, rnd))
+        assertEquals(few, many)
+        assertEquals(0, many) // a kanji note has no deck chips: no learning query at all
+        // a vocab card: deck items by note / entry, decks by id; no merged-note scan
+        val c = Counting(t)
+        BackExtrasBuilder.build(c, row("id" to s("v"), "type" to s("vocab"), "entry_seq" to n(9)), null, { candidates(2_000, rnd) }, dict, index)
+        assertTrue(c.queries <= 4, "vocab card queries: ${c.queries}")
+    }
+
+    /** The attempt-2 per-candidate lookups, kept as the reference the per-build index must agree with. */
+    private fun referenceCandidates(t: LearningTables, words: List<DictWord>): List<KanjiExampleCandidate> {
+        fun live(r: Row) = (r["deleted_at"] ?: JsonNull) == JsonNull
+        return words.map { w ->
+            val seq = n(w.seq)
+            val status = t.get(LearningTable.WORD_STATUS, listOf(seq))?.let { r -> WordStatus.entries.firstOrNull { it.wire == CardRows.str(r["status"]) } } ?: WordStatus.NEW
+            val hasNote = t.where(LearningTable.NOTE, "entry_seq", seq).any(::live)
+            val inDeck = t.where(LearningTable.DECK_ITEM, "entry_seq", seq).any { live(it) && CardRows.str(it["deck_id"])?.let { d -> t.get(LearningTable.DECK, listOf(s(d)))?.let(::live) } == true }
+            KanjiExampleCandidate(w.seq, w.headword, w.reading, w.freqRank, status, hasNote, inDeck)
+        }
+    }
+
+    @Test
+    fun theIndexGivesTheSamePicksAsPerCandidateLookups() {
+        repeat(25) { round ->
+            val rnd = Random(round)
+            val t = replica(400, rnd)
+            val index = BackExtrasIndex.from(t)
+            val words = candidates(400, rnd).shuffled(rnd).take(rnd.nextInt(1, 400))
+            val readings = KanjiReadings("食", shoku.onyomi, shoku.kunyomi)
+            val want = DefaultKanjiExamplePicker.pick(readings, referenceCandidates(t, words)).map { it.candidate.seq to it.readingType }
+            val got = BackExtrasBuilder.build(noScan(t), row("id" to s("k"), "type" to s("kanji"), "kanji_literal" to s("食")), shoku, { words }, { null }, index)
+                .examples.map { it.seq to it.type }
+            assertEquals(want, got, "round $round")
+        }
+    }
+
+    @Test
+    fun theDeviceIndexReadsTheSameAsTheReplicaRules() {
+        val driver = memoryDriver()
+        val t = SqlLearningTables(driver, LearningSchema.read(driver))
+        fun note(id: String, seq: Long?, deleted: Boolean = false, into: String? = null) = t.put(
+            LearningTable.NOTE,
+            mapOf(
+                "id" to s(id), "note_type_id" to s("nt"), "type" to s("vocab"), "entry_seq" to (seq?.let(::n) ?: JsonNull),
+                "created_by_device_id" to s("dev"), "created_at" to n(1), "updated_at" to n(1),
+                "deleted_at" to if (deleted) n(2) else JsonNull, "merged_into_id" to (into?.let(::s) ?: JsonNull),
+            ),
+        )
+        fun status(seq: Long, st: String) = t.put(
+            LearningTable.WORD_STATUS,
+            mapOf(
+                "entry_seq" to n(seq), "status" to s(st), "updated_at" to n(1),
+                "auto_status" to if (st in setOf("new", "learning", "known")) s(st) else JsonNull,
+                "override_status" to if (st in setOf("never_forget", "blacklisted", "ignored")) s(st) else JsonNull,
+                "override_hlc" to if (st in setOf("never_forget", "blacklisted", "ignored")) s("h") else JsonNull,
+            ),
+        )
+        fun deck(id: String, deleted: Boolean = false) = t.put(
+            LearningTable.DECK,
+            mapOf("id" to s(id), "name" to s(id), "type" to s("user"), "created_at" to n(1), "updated_at" to n(1), "deleted_at" to if (deleted) n(2) else JsonNull),
+        )
+        fun item(deck: String, seq: Long, gone: Boolean = false) = t.put(
+            LearningTable.DECK_ITEM,
+            mapOf("deck_id" to s(deck), "item_key" to s("e:$seq"), "entry_seq" to n(seq), "note_id" to JsonNull, "added_at" to n(1), "deleted_at" to if (gone) n(2) else JsonNull),
+        )
+        note("a", 1); note("b", 2, deleted = true); note("c", null, deleted = true, into = "a"); note("d", 1)
+        status(1, "known"); status(2, "new"); status(3, "blacklisted"); status(4, "learning")
+        deck("live"); deck("gone", deleted = true)
+        item("live", 5); item("gone", 6); item("live", 7, gone = true); item("missing", 8)
+        val want = BackExtrasIndex.from(t)
+        val got = SqlBackExtrasIndex(driver).load()
+        for (seq in 0L..9L) {
+            assertEquals(want.status(seq), got.status(seq), "status $seq")
+            assertEquals(want.hasNote(seq), got.hasNote(seq), "note $seq")
+            assertEquals(want.inDeck(seq), got.inDeck(seq), "deck $seq")
+        }
+        assertEquals(listOf("c"), got.mergedInto("a"))
+        assertEquals(want.mergedInto("a"), got.mergedInto("a"))
+        assertEquals(listOf(WordStatus.KNOWN, WordStatus.NEW, WordStatus.BLACKLISTED), listOf(1L, 2L, 3L).map(got::status))
+        assertEquals(listOf(true, false), listOf(1L, 2L).map(got::hasNote))
+        assertEquals(listOf(true, false, false, false), listOf(5L, 6L, 7L, 8L).map(got::inDeck))
     }
 
     @Test

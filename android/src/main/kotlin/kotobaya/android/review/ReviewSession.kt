@@ -171,6 +171,8 @@ class ReviewSession<L : LearningTables>(
     private val dictionary: DictionaryLookup = DictionaryLookup { null },
     private val kanji: KanjiLookup = KanjiLookup { null },
     private val kanjiWords: KanjiWordSource = KanjiWordSource { emptyList() },
+    /** C-25: the per-build learning inputs of the back extras; null reads them through [LearningTables] ([BackExtrasIndex.from]). */
+    private val extrasSource: BackExtrasIndexSource? = null,
     private val mediaUrlTemplate: String = CardPage.MEDIA_URL_TEMPLATE,
     private val timings: (ReviewTiming) -> Unit = ReviewTiming.LOG,
     /** A full queue build runs after an answer once the last one is this old (cards that became due meanwhile, sync). */
@@ -267,6 +269,9 @@ class ReviewSession<L : LearningTables>(
 
     /** Pre-rendered candidates for the next card, by card id (at most [PREFETCH_MAX]). */
     private val prefetched = HashMap<String, ShownCard>()
+
+    /** C-25: read once per queue build (see [rebuild]) and shared by every card's back extras until the next one. */
+    @Volatile private var extrasIndex: BackExtrasIndex? = null
 
     /** This answer emptied the in-memory queue: the next card is chosen once the pending answers are committed. */
     private var awaitingFor: Commit? = null
@@ -705,6 +710,7 @@ class ReviewSession<L : LearningTables>(
         val (shownNew, from, all) = synchronized(lock) { Triple(newShown, source, allDecks) }
         val built = from.loadSession(shownNew)
         val dues = duesOf(built.queue)
+        val index = loadExtrasIndex()
         // deck session: the cards due now in every deck (learn-ahead ones left out)
         val dueEverywhere: List<String>? = all?.loadSession(shownNew)?.queue?.let { q ->
             val now = clock()
@@ -733,6 +739,7 @@ class ReviewSession<L : LearningTables>(
             commitsAtBuild = commitCount
             generation++
             prefetched.clear()
+            extrasIndex = index
         }
         val ms = ReviewTiming.ms(t0)
         timings(ReviewTiming.Rebuild(why, ms, built.queue.items.size))
@@ -805,7 +812,19 @@ class ReviewSession<L : LearningTables>(
     }
 
     /** Reads and renders [cardId]; null if it cannot be shown (missing, deleted, merged, or holding the refused cache). */
-    private fun load(cardId: String, kind: QueueItemKind, token: Long): ShownCard? = read { tx ->
+    private fun load(cardId: String, kind: QueueItemKind, token: Long): ShownCard? {
+        val index = extrasIndex ?: loadExtrasIndex()?.also { extrasIndex = it } ?: BackExtrasIndex.EMPTY
+        return loadWith(index, cardId, kind, token)
+    }
+
+    /** The back extras' per-build inputs; null when they cannot be read (the extras then degrade, the card does not). */
+    private fun loadExtrasIndex(): BackExtrasIndex? = try {
+        extrasSource?.load() ?: read { BackExtrasIndex.from(it.learning) }
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun loadWith(index: BackExtrasIndex, cardId: String, kind: QueueItemKind, token: Long): ShownCard? = read { tx ->
         val t = tx.learning
         val card = CardRows.get(t, LearningTable.CARD, cardId) ?: return@read null
         if (!CardRows.live(card) || CardRows.refused(card)) return@read null
@@ -844,7 +863,7 @@ class ReviewSession<L : LearningTables>(
             token, cardId, kind, renderer.render(input(CardSide.FRONT)), renderer.render(input(CardSide.BACK)), previews,
             cloze?.sentenceId, pattern, noteId,
             // C-25: a failure here costs the extras, never the card
-            runCatching { BackExtrasBuilder.build(t, note, kanjiData, kanjiWords, dictionary) }
+            runCatching { BackExtrasBuilder.build(t, note, kanjiData, kanjiWords, dictionary, index) }
                 .getOrElse { BackExtras(entrySeq = entry, kanjiLiteral = CardRows.str(note["kanji_literal"])) },
         )
     }

@@ -43,6 +43,8 @@ class ReviewBackend<L : LearningTables>(
     val kanji: KanjiLookup,
     /** Dictionary words containing a kanji, for the example words of a kanji card's back (C-25); default none. */
     val kanjiWords: KanjiWordSource = KanjiWordSource { emptyList() },
+    /** The back extras' learning inputs, read once per queue build (C-25); null reads them through the replica tables. */
+    val extrasIndex: BackExtrasIndexSource? = null,
     /** Suspends until the startup replay of SYNC.md 10.5 has committed (the readiness gate); returns at once if none. */
     val awaitReady: suspend () -> Unit = {},
     /** Starts a sync cycle (the 'Sync' prompt); null hides the button. */
@@ -72,6 +74,7 @@ class ReviewBackend<L : LearningTables>(
         dictionary = dictionary,
         kanji = kanji,
         kanjiWords = kanjiWords,
+        extrasSource = extrasIndex,
         reads = reads,
         // AND-DECKEND: a deck session checks (and can switch to) the all-decks queue when its deck is done
         allDue = if (deckId == null) null else queue,
