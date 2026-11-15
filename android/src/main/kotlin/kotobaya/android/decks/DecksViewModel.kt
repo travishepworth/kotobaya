@@ -135,6 +135,17 @@ class DecksViewModel(
                                 it
                             }
                         }
+                        // AND-DECK-LABELS: local labels show first; words without one are fetched online, then re-read.
+                        if (words.any { it.label.isEmpty() && it.entrySeq != null }) {
+                            launchIo {
+                                if (source.fetchMissingLabels(words)) {
+                                    val filled = source.words(id, s.limit, 0, s.filter, s.sort)
+                                    update {
+                                        if (it.selectedId == id && it.limit == s.limit && it.filter == s.filter && it.sort == s.sort) it.copy(words = filled) else it
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

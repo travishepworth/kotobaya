@@ -7,6 +7,7 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import kotobaya.android.queue.LoadedQueue
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.QueueCounts
+import kotobaya.android.search.EntryLabelCache
 import kotobaya.android.search.EntryLabeler
 import kotobaya.android.sync.content.ContentInstaller
 import kotobaya.android.sync.content.ContentKind
@@ -98,6 +99,9 @@ interface DeckSource {
 
     /** Entry seqs of every live word item matching [filter] (not paged), for "select all". */
     fun entrySeqs(deckId: String, filter: DeckFilter): List<Long> = emptyList()
+
+    /** Fetches labels online for [words] still without one; true when new labels were cached (re-read the words). */
+    suspend fun fetchMissingLabels(words: List<DeckWord>): Boolean = false
 }
 
 /** [decks] with [queue], the counts of the unfiltered queue built in the same load. */
@@ -108,7 +112,12 @@ class DeckRepository(
     private val loader: LocalQueueLoader,
     /** The offline dictionary, for words whose note has no `expression` (or no note on this device). */
     private val labeler: EntryLabeler? = null,
+    /** Online label cache (AND-DECK-LABELS); [labeler] should already read from it. */
+    private val labelCache: EntryLabelCache? = null,
 ) : DeckSource {
+    override suspend fun fetchMissingLabels(words: List<DeckWord>): Boolean =
+        labelCache?.fetchMissing(words.filter { it.label.isEmpty() }.mapNotNull { it.entrySeq }) ?: false
+
     private class Row(
         val id: String,
         val name: String,

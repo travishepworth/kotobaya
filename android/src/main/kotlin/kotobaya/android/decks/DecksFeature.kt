@@ -9,7 +9,9 @@ import kotobaya.android.R
 import kotobaya.android.decks.ui.DecksScreen
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.search.EntryLabelCache
 import kotobaya.android.search.asLabeler
+import kotobaya.android.search.then
 import kotobaya.android.nav.NavRoute
 import kotobaya.android.nav.Routes
 import kotobaya.android.queue.LocalQueueLoader
@@ -49,7 +51,10 @@ val decksFeature = FeatureEntry(
                 get<NoteCreator<SqlLearningTables>>(),
             ) { changed() }
         }
-        factory<DeckSource> { DeckRepository(get<SqlDriver>(named("syncAppDriver")), get<LocalQueueLoader>(), get<InstalledDictionary>().asLabeler()) }
+        factory<DeckSource> {
+            val cache = get<EntryLabelCache>()
+            DeckRepository(get<SqlDriver>(named("syncAppDriver")), get<LocalQueueLoader>(), get<InstalledDictionary>().asLabeler().then(cache), cache)
+        }
     },
     routes = listOf(NavRoute(Routes.DECKS, R.string.nav_decks, topLevel = true) { DecksRoute() }),
 )

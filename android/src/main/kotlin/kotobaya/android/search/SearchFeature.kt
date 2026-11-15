@@ -61,6 +61,9 @@ private val searchModule = module {
         ApiClient({ settings.serverBaseUrl }, { tokens.token })
     }
     single {
+        EntryLabelCache(java.io.File(get<android.content.Context>().filesDir, "entry_labels.tsv"), get<ApiClient>(named("searchApi")).asHeadwordFetcher())
+    }
+    single {
         WordSearch(get<InstalledDictionary>(), get<SqlDriver>(named("syncAppDriver")), get<ApiClient>(named("searchApi")))
     }
     single {
@@ -71,7 +74,7 @@ private val searchModule = module {
             LocalCardSearch(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), dictionary = get<InstalledDictionary>()),
             ApiCardSearch(get<ApiClient>(named("searchApi"))),
             usable,
-            get<InstalledDictionary>().asLabeler(),
+            get<InstalledDictionary>().asLabeler().then(get<EntryLabelCache>()),
         )
     }
     single<SearchPort> {
