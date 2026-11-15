@@ -448,3 +448,4 @@
 - WEB-TAKO-SEARCH (run 27): preview failure cause inferred (missing note-type row), not proven on live; verify on deploy and, if still failing, check note.note_type_id exists server-side. /search rows have no deck name (dict summary/note carry no deck; contract gap).
 - Chart (run 27): worker/api pods don't restart when their ConfigMap changes (no checksum/config annotation); dictSourcesJson change needed a manual rollout restart.
 - WEB-REVIEW-FAST review (run 27, minor): if an answer landed but its response was lost, fail() drops it from undo history and the refresh removes the restored card (undo impossible).
+- Contract gap (run 27, WEB-ADD2DECK + WEB-TAKO-SEARCH): no 'decks holding entry/note' read; web scans listDeckItems of every user deck, /search can't show deck names, no per-row quick Add. Additive C-ticket: deck_ids on DictEntry/DictEntrySummary/Note.

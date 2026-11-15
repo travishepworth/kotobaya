@@ -1067,3 +1067,4 @@
 2026-11-15T01:21:40Z WEB-REVIEW-FAST CHECK_GREEN (awaiting review)
 2026-11-15T01:23:35Z WEB-REVIEW-FAST REVIEW_CHANGES 2 majors (pending lost on nav -> double review; refresh resets flipped card) -> attempt 2
 2026-11-15T01:24:39Z DICT refresh OK release 2026.11.15.4 (219080 entries); freq decks offered jpdb/bccwj/cejc 1k-20k; JLPT deck-builds re-run succeeded after objectstore fix
+2026-11-15T01:25:31Z WEB-ADD2DECK CHECK_GREEN + MERGE 6d178b19 (shared deck picker; note editor + dictionary add-to-deck/add-to-notes)
