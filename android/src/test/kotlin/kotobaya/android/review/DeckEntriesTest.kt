@@ -158,7 +158,8 @@ class DeckEntriesTest {
             assertTrue(s.answer(card.token, Button.GOOD))
             normal += card.cardId
         }
-        assertIs<ReviewState.Summary>(s.state.value)
+        // ADR-033: the cards answered Good wait on their step
+        assertIs<ReviewState.Waiting>(s.state.value)
         assertTrue(s.meta.value.moreAvailable, "Keep going offered")
 
         s.startKeepGoing()
@@ -183,8 +184,9 @@ class DeckEntriesTest {
     }
 
     /**
-     * The phone report "the same 2 cards over and over": while keeping going, a card graded Again comes back within
-     * learn-ahead. It must not be served again before the next batch of new cards is loaded.
+     * The phone report "the same 2 cards over and over": while keeping going, a card graded Again came back within
+     * learn-ahead. ADR-033: it comes back only once due (its 1-minute step over), new cards and batch boundaries
+     * meanwhile; when only it is left, the session waits for it.
      */
     @Test
     fun aFailedCardDoesNotCrowdOutTheNextBatch() {
@@ -198,23 +200,31 @@ class DeckEntriesTest {
             s.answer(card.token, Button.GOOD)
         }
         s.startKeepGoing()
-        val shown = ArrayList<ShownCard>()
+        val shown = ArrayList<Pair<ShownCard, Long>>()
         var failed: String? = null
-        while (s.state.value is ReviewState.Showing && shown.size < 300) {
-            val card = assertIs<ReviewState.Showing>(s.state.value).card
-            shown += card
+        var failures = 0
+        var guard = 0
+        while (guard++ < 300) {
+            val st = s.state.value
+            if (st is ReviewState.Waiting) {
+                d.clock.now = st.nextDueAt
+                s.start()
+                continue
+            }
+            val card = (st as? ReviewState.Showing)?.card ?: break
+            shown += card to d.clock.now
             d.clock.now += 2_000
-            // the first card is failed every time it is shown; everything else is Good
+            // the first card is failed the first 3 times it is shown; everything else is Good
             if (failed == null) failed = card.cardId
-            s.answer(card.token, if (card.cardId == failed) Button.AGAIN else Button.GOOD)
+            val fail = card.cardId == failed && failures < 3
+            if (fail) failures++
+            s.answer(card.token, if (fail) Button.AGAIN else Button.GOOD)
         }
-        val newShown = shown.count { it.kind == QueueItemKind.NEW }
+        val newShown = shown.count { it.first.kind == QueueItemKind.NEW }
         assertTrue(newShown >= 29, "all new cards came: $newShown")
-        // rule 5: learn-ahead comes after new cards. The failed card (due again within learn-ahead, never due yet at 2 s
-        // per answer) waits until no new card is left, batch boundaries included; only then it is served ahead of time.
-        val firstRepeat = shown.indexOfFirst { it.cardId == failed && it !== shown.first() }
-        assertTrue(firstRepeat > 0, "served again once nothing else was left")
-        assertTrue(shown.subList(firstRepeat, shown.size).none { it.kind == QueueItemKind.NEW }, "no new card after the first repeat")
+        val repeats = shown.filter { it.first.cardId == failed }.map { it.second }
+        assertTrue(repeats.size >= 4, "the failed card came back after each failure: $repeats")
+        assertTrue(repeats.zipWithNext().all { (a, b) -> b - a >= 60_000 }, "never inside its step: $repeats")
     }
 
     /** Review finding 1: entries the dictionary lacks never use the new budget, so the deck's later entries come. */

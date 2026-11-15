@@ -47,6 +47,10 @@
     <string name="review_time_seconds">%1$d s</string>
     <string name="review_time_minutes">%1$d min %2$d s</string>
     <string name="review_close">Close review</string>
+    <string name="review_waiting_title">Next card in %1$s</string>
+    <string name="review_waiting_body">Cards you are learning come back when their step is over. The session continues by itself.</string>
+    <string name="review_waiting_clock_ms">%1$d:%2$02d</string>
+    <string name="review_waiting_clock_hms">%1$d:%2$02d:%3$02d</string>
     <string name="review_deck_done_title">Deck done</string>
     <string name="review_deck_done_body">Nothing in this deck is due right now.</string>
     <string name="review_deck_done_next">Next learning card in this deck is due at %1$s.</string>

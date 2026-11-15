@@ -31,9 +31,9 @@ fun LocalQueueLoader.asQueueSource(deckId: String? = null): QueueSource = object
         return SessionQueue(
             loaded.queue,
             loaded.input.limits.burySiblings,
-            loaded.input.limits.learnAheadMs,
             moreAvailable = loaded.queue.moreAvailable,
             dayStartMs = loaded.input.day.startMs,
+            dayEndMs = loaded.input.day.endMs,
         )
     }
 

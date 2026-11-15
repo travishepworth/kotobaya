@@ -187,7 +187,14 @@ class ReviewViewModel(
                     val newCard = showing != null && showing.card.token != shown?.first
                     val changed = key != shown
                     shown = key
-                    scheduleDayRoll(st is ReviewState.Empty || st is ReviewState.DeckDone, (st as? ReviewState.DeckDone)?.nextLearningDueAt)
+                    scheduleDayRoll(
+                        idle(st),
+                        when (st) {
+                            is ReviewState.DeckDone -> st.nextLearningDueAt
+                            is ReviewState.Waiting -> st.nextDueAt
+                            else -> null
+                        },
+                    )
                     update { u ->
                         u.copy(
                             review = st,
@@ -207,42 +214,56 @@ class ReviewViewModel(
     }
 
     private val refreshing = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** A [refreshIfEmpty] arrived while one was running: run once more after it (its build may predate the call). */
+    private val refreshAgain = java.util.concurrent.atomic.AtomicBoolean(false)
     private var rollJob: Job? = null
 
+    /** States with nothing on screen that a later build may change: they reload on resume, sync and their wake-up. */
+    private fun idle(st: ReviewState): Boolean =
+        st is ReviewState.Empty || st is ReviewState.DeckDone || st is ReviewState.Waiting
+
     /**
-     * Re-runs the queue load while the session shows [ReviewState.Empty] or [ReviewState.DeckDone] (resume, sync
-     * completed, day rollover; a deck's learning card fell due); never touches a session that shows a card.
-     * Overlapping calls collapse into one (the loads share the LoadGate).
+     * Re-runs the queue load while the session shows [ReviewState.Empty], [ReviewState.DeckDone] or
+     * [ReviewState.Waiting] (resume, sync completed, day rollover; a learning card fell due); never touches a session
+     * that shows a card. A call during a load is not lost: the load runs once more after it (a Waiting session must
+     * not miss its due instant because a resume's load started a moment before it).
      */
     fun refreshIfEmpty() {
         val s = session ?: return
-        if (current.review != ReviewState.Empty && current.review !is ReviewState.DeckDone) return
+        if (!idle(current.review)) return
+        refreshAgain.set(true)
         if (!refreshing.compareAndSet(false, true)) return
         launchIo {
             try {
-                s.start()
+                while (refreshAgain.getAndSet(false) && session === s && idle(current.review)) s.start()
             } finally {
                 refreshing.set(false)
             }
+            // a call between the last check and the release
+            if (refreshAgain.get()) refreshIfEmpty()
         }
     }
 
     /**
-     * While Empty (or DeckDone), wakes at the next study-day start, or at [dueAt] (a deck's next learning card) if
-     * earlier, to reload; cancelled once something is showing.
+     * While idle (Empty, DeckDone, Waiting), wakes at the next study-day start, or at [dueAt] (the next learning
+     * card: ADR-033's Waiting, a deck's DeckDone) if earlier, to reload; cancelled once something is showing. The
+     * wait is repeated until the clock has reached the instant, so an early wake-up never reloads too soon.
      */
-    private fun scheduleDayRoll(empty: Boolean, dueAt: Long? = null) {
+    private fun scheduleDayRoll(idle: Boolean, dueAt: Long? = null) {
         rollJob?.cancel()
         rollJob = null
         val b = backend ?: return
-        if (!empty) return
-        rollJob = sessionJob?.let {
-            launchIo {
-                val wakeAt = minOf(b.nextStudyDayStart(b.clock()), dueAt ?: Long.MAX_VALUE)
+        // not `sessionJob`: the first state can arrive before `enter` has stored it
+        if (!idle || session == null) return
+        rollJob = launchIo {
+            val wakeAt = minOf(b.nextStudyDayStart(b.clock()), dueAt ?: Long.MAX_VALUE)
+            while (true) {
                 val wait = wakeAt - b.clock()
-                if (wait > 0) kotlinx.coroutines.delay(wait)
-                refreshIfEmpty()
+                if (wait <= 0) break
+                kotlinx.coroutines.delay(minOf(wait, MAX_WAIT_STEP_MS))
             }
+            refreshIfEmpty()
         }
     }
 
@@ -428,6 +449,11 @@ class ReviewViewModel(
             val note = a.editable(cardId)
             update { it.copy(actions = it.actions.copy(editing = note)) }
         }
+    }
+
+    private companion object {
+        /** The wake-up re-checks the clock at least this often (device sleep, clock changes). */
+        const val MAX_WAIT_STEP_MS = 60_000L
     }
 
     override fun dismissEdit() = update { it.copy(actions = it.actions.copy(editing = null)) }

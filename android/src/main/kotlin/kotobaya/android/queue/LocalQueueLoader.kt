@@ -52,12 +52,33 @@ class LoadedQueue internal constructor(
             due = queue.items.count { it.kind == QueueItemKind.REVIEW },
             // entries still to materialize (no materializer, or it refused) are new cards of this queue too
             new = queue.items.count { it.kind == QueueItemKind.NEW } + queue.toMaterialize.size,
-            learning = queue.items.count { it.kind == QueueItemKind.LEARNING },
+            // ADR-033: learning cards due later today are still to do today (as the server's `counts.learning`)
+            learning = queue.items.count { it.kind == QueueItemKind.LEARNING } + laterLearning(),
             moreAvailable = queue.moreAvailable,
         )
 
+    /**
+     * Learning and relearning candidates not in the queue but due before the study day ends, eligible as core's rule 1
+     * has it for learning cards (not suspended, not buried now, no excluding word override): they make
+     * `nextLearningDueAt` and show once due.
+     */
+    private fun laterLearning(): Int {
+        val inQueue = queue.items.mapTo(HashSet()) { it.cardId }
+        return input.candidates.count { c ->
+            val due = c.dueAt
+            c.cardId !in inQueue && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) && !c.suspended &&
+                (c.buriedUntil?.let { it <= input.now } ?: true) && c.wordOverride !in LATER_EXCLUDED &&
+                due != null && due < input.day.endMs
+        }
+    }
+
     /** The first [size] items: what a review session starts with. */
     fun sessionPrefix(size: Int): List<QueueItem> = queue.items.take(size)
+
+    private companion object {
+        /** Core rule 1's excluded overrides (QueueBuilder `excludedOverrides`). */
+        val LATER_EXCLUDED = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
+    }
 }
 
 /** Card ids a smart deck selects (needs the search evaluator on SQLite; none until that ships). */
@@ -324,8 +345,11 @@ class LocalQueueLoader(
         (DefaultCanonicalJson.decode(text).value as? JsonObject)?.members.orEmpty()
 
     companion object {
-        /** `QueueLimits.learnAheadMs` default of the contract: 20 minutes. */
-        const val LEARN_AHEAD_MS: Long = 1_200_000
+        /**
+         * `QueueLimits.learnAheadMs`: 0 (ADR-033, as the server). A learning card is in the queue only once due; one due
+         * later today sets `nextLearningDueAt`, for which the review screen waits.
+         */
+        const val LEARN_AHEAD_MS: Long = 0
         private const val HOUR_MS = 3_600_000L
         private const val MAX_MATERIALIZE_ROUNDS = 3
         private const val MIN_PENDING_PAGE = 64
