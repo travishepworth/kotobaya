@@ -462,3 +462,4 @@
 - CLI-KBY notes: kby serve deletes state.json on exit (shared with -f); without serve running, do --rev compares card id only; -1..-4 not enabled-checked (daemon refuses). Not tested against live daemon/systemd.
 - AND-REVIEW-INFO r3 minors: failed BackExtrasIndex read leaves null so every load retries 4 scans (cache EMPTY until rebuild); words blacklisted/ignored mid-session still pickable until rebuild; SqlBackExtrasIndex reads via syncAppDriver not the session read connection; InstalledKanjiWords packs reading|freq into formRows norm (dedicated InstalledDictionary query cleaner).
 - WEB-DECK-INSPECT: reader TokenSheet/UnknownWords not moved onto WordStatusActions; deck chip counts need a per-status count endpoint (contract)
+- AND-DECK-INSPECT: deck list refreshes by ViewModel reload, not SQL Flow; consider deck-item seqs in dict package scope (worker, DICT_PACKAGE SHOULD)

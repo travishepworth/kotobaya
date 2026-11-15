@@ -1123,3 +1123,5 @@
 2026-11-15T04:23:13Z WEB-DECK-INSPECT DISPATCH writer (deck detail status filters + per-word/bulk actions; user request)
 2026-11-15T04:23:13Z AND-DECK-INSPECT DISPATCH writer (offline deck detail filters + word.status_* actions)
 2026-11-15T04:26:57Z WEB-DECK-INSPECT CHECK_GREEN + MERGE f30dfcdf (no chip counts: coverage is token-based; reader not refactored onto shared component)
+2026-11-15T04:38:38Z AND-DECK-INSPECT CHECK_GREEN (flaky BackNavigationTest passed) + MERGE 0f380c62; raw e:<seq> -> placeholder; root cause = top60k device dict
+2026-11-15T04:38:58Z AND-DECK-LABELS DISPATCH writer (fill missing deck labels via /dict/headwords + local cache)
