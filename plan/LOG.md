@@ -1094,3 +1094,6 @@
 2026-11-15T01:51:32Z AND-BACK DISPATCH writer
 2026-11-15T01:52:47Z CLI-REVIEW HANDOFF attempt 2 (83 tests); re-review
 2026-11-15T01:53:23Z CLI-REVIEW REVIEW_APPROVE r2 + CHECK_GREEN + MERGE 35d317fc (83 tests)
+2026-11-15T02:07:07Z ARCH-CARD-TEXT HANDOFF (CardTextRenderer + QueueItem.text, server QueueText); reviewer + architect pass dispatched
+2026-11-15T02:07:12Z AND-BACK HANDOFF (review back=undo once, search back stack, predictive back)
+2026-11-15T02:08:13Z AND-BACK CHECK_GREEN + MERGE b621443a
