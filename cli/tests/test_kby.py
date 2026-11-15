@@ -13,6 +13,7 @@ import threading
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -340,3 +341,23 @@ def test_follow_output_is_byte_identical_to_the_imported_original(
     new = kenv.run(KBY, *args, FAKE_ONESHOT="1")
     assert old.returncode == new.returncode
     assert old.stdout == new.stdout and old.stdout.count("\n") >= 7
+
+
+def test_waiting_state_shows_the_countdown_and_old_configs_still_render(kenv: Env) -> None:
+    due = (datetime.now(UTC) + timedelta(seconds=125)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    waiting = DONE.replace('"notice":null', f'"notice":null,"next_due_at":"{due}"')
+    s = kenv.serve()
+    s.next()
+    kenv.append(waiting, DONE)
+    line = s.next()
+    assert line["state"] == "waiting" and line["next_due_at"] == due
+    assert line["text"] in ("語 2:05", "語 2:04") and line["next_due_in"] in ("2:05", "2:04")
+    assert s.next()["state"] == "done"
+    widgets = kenv.config / "kotobaya" / "widgets"
+    widgets.mkdir(parents=True)
+    (widgets / "w.conf").write_text(
+        "text.waiting = next {next_due_in}\ntext.done = done {next_due_in}|\n"
+    )
+    kenv.append(waiting, DONE)
+    out = kenv.run(KBY, "-f", "w", "--text", FAKE_ONESHOT="1").stdout.splitlines()
+    assert any(x in ("next 2:05", "next 2:04") for x in out) and "done |" in out

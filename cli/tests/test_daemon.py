@@ -301,3 +301,78 @@ def test_offline_and_auth_states_are_valid_and_serve_no_new_card(paths: Paths) -
         assert check_state(out)["card"]["id"] == "a"
 
     asyncio.run(scenario())
+
+
+# ---- ADR-033: waiting for a learning card, no learn-ahead --------------------
+
+
+def _waiting(due: str | None, counts: Counts | None = None) -> QueueSnapshot:
+    return QueueSnapshot([], counts or Counts(0, 1, 0), DAY_END, next_learning_due_at=due)
+
+
+def test_empty_queue_with_next_due_is_waiting_and_counts_pass_through() -> None:
+    s = Session()
+    s.conn = "ok"
+    s.apply_queue(_waiting("2026-11-15T10:05:00.000Z", Counts(5, 2, 9)), check_current=False)
+    state = check_state(s.state())
+    assert state["card"] is None and state["next_due_at"] == "2026-11-15T10:05:00.000Z"
+    assert state["counts"] == {"new": 5, "learning": 2, "review": 9}  # the server's, unchanged
+    s.apply_queue(_waiting(None), check_current=False)
+    assert check_state(s.state())["next_due_at"] is None  # absent: done as before
+    s.apply_queue(snapshot("a"), check_current=False)
+    assert check_state(s.state())["next_due_at"] is None
+
+
+def test_timer_wait_is_min_of_timer_day_end_and_next_due(paths: Paths) -> None:
+    now = datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)
+    daemon = Daemon(FakeBackend(), paths, clock=lambda: now, timer_seconds=3600)
+    due = (now + timedelta(seconds=90)).isoformat()
+    daemon.session.apply_queue(_waiting(due), check_current=False)
+    assert daemon._timer_wait() == pytest.approx(91.0)  # due + 1 s slack
+    daemon.session.apply_queue(_waiting(None), check_current=False)
+    assert daemon._timer_wait() == 3600  # day end is 9 h away
+    past = (now - timedelta(seconds=5)).isoformat()
+    daemon.session.apply_queue(_waiting(past), check_current=False)
+    assert daemon._timer_wait() == pytest.approx(1.0)
+    daemon.session.apply_queue(snapshot("a"), check_current=False)
+    assert daemon._timer_wait() == 3600  # a card is shown: next due is irrelevant
+
+
+def test_refetch_at_next_due_returns_the_card(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("kotobaya_cli.daemon.server.NEXT_DUE_SLACK_S", 0.05)
+    backend = FakeBackend()
+    due = (datetime.now(UTC) + timedelta(seconds=0.4)).isoformat()
+    backend.snap = _waiting(due)
+    fetches: list[int] = []
+    original = backend.fetch_queue
+
+    def fetch(keep_going: bool = False) -> QueueSnapshot:
+        fetches.append(1)
+        return original(keep_going)
+
+    backend.fetch_queue = fetch  # type: ignore[method-assign]
+
+    async def scenario() -> None:
+        daemon = Daemon(backend, paths, timer_seconds=3600)
+        task = asyncio.create_task(daemon.run(install_signals=False))
+        for _ in range(100):
+            if paths.sock.exists():
+                break
+            await asyncio.sleep(0.02)
+        reader, writer = await asyncio.open_unix_connection(str(paths.sock))
+        writer.write(b'{"cmd":"subscribe"}\n')
+        await writer.drain()
+        waiting = await _until(reader, lambda s: s["next_due_at"] is not None)
+        assert waiting["card"] is None and waiting["next_due_at"] == due
+        count = len(fetches)
+        backend.snap = snapshot("late")  # the server now has the card
+        got = await _until(reader, lambda s: s["card"] is not None)
+        assert got["card"]["id"] == "late" and got["next_due_at"] is None
+        assert len(fetches) > count  # fetched by the due-time timer (timer_seconds is 1 h)
+        writer.close()
+        daemon.stop()
+        await asyncio.wait_for(task, 3)
+
+    asyncio.run(scenario())

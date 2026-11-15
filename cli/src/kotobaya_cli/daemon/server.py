@@ -34,7 +34,10 @@ from kotobaya_cli.daemon.session import Clock, QueueSnapshot, Session, utc_now
 
 TIMER_SECONDS = 60.0
 MAX_BACKOFF_S = 30.0
-KEEP_GOING_RETRIES = 3  # C-27: refetches of a keep-going response with only entries left to materialize
+NEXT_DUE_SLACK_S = 1.0  # ADR-033: refetch this long after a learning card's due instant
+KEEP_GOING_RETRIES = (
+    3  # C-27: refetches of a keep-going response with only entries left to materialize
+)
 
 
 @dataclass(frozen=True)
@@ -153,6 +156,7 @@ class Daemon:
         self._want_check = False
         self._settings_stale = True
         self._stop = asyncio.Event()
+        self._timer_wake = asyncio.Event()
         self._stop_thread = threading.Event()
         self._stream: EventStream | None = None
         self._fifo_buf = b""
@@ -263,6 +267,7 @@ class Daemon:
         pending.update(self.handler.pending_cards())
         self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
         self.handler.end_fetch(token)
+        self._timer_wake.set()
         if not was_ok:
             await self.handler.on_online(self)
 
@@ -289,20 +294,35 @@ class Daemon:
             snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
         return snapshot
 
-    def _day_end_wait(self) -> float:
-        end = self.session.day_ends_at
-        if end is None:
-            return self._timer_seconds
+    def _seconds_until(self, instant: str | None) -> float | None:
+        if instant is None:
+            return None
         try:
-            seconds = (datetime.fromisoformat(end) - self._clock()).total_seconds()
+            return (datetime.fromisoformat(instant) - self._clock()).total_seconds()
         except ValueError:
-            return self._timer_seconds
-        return min(self._timer_seconds, max(1.0, seconds))
+            return None
+
+    def _timer_wait(self) -> float:
+        """Seconds to the next periodic refetch: min of the timer, the day end and, while the
+        queue is empty, the next learning card's due instant (+ slack; ADR-033)."""
+        wait = self._timer_seconds
+        day_end = self._seconds_until(self.session.day_ends_at)
+        if day_end is not None:
+            wait = min(wait, max(1.0, day_end))
+        if self.session.current is None:
+            due = self._seconds_until(self.session.next_due_at)
+            if due is not None:
+                wait = min(wait, max(0.0, due) + NEXT_DUE_SLACK_S)
+        return wait
 
     async def _timer(self) -> None:
         while True:
-            await asyncio.sleep(self._day_end_wait())
-            await self.refetch()
+            self._timer_wake.clear()
+            try:
+                # A fetch that changes the schedule wakes this to recompute the wait.
+                await asyncio.wait_for(self._timer_wake.wait(), self._timer_wait())
+            except TimeoutError:
+                await self.refetch()
 
     # ---- SSE (thread) -------------------------------------------------------
 

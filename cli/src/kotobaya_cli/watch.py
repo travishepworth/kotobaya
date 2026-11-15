@@ -11,6 +11,7 @@ import json
 import socket
 import string
 from collections.abc import Callable, Generator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TextIO
 
@@ -56,6 +57,18 @@ def _flag(value: object) -> str:
     return "true" if value else "false"
 
 
+def _next_due_in(instant: object) -> str:
+    """ADR-033: m:ss from now to the next learning card's due instant; "" when none or unparsable."""
+    if not isinstance(instant, str) or not instant:
+        return ""
+    try:
+        seconds = (datetime.fromisoformat(instant) - datetime.now(UTC)).total_seconds()
+    except ValueError:
+        return ""
+    total = max(0, int(seconds))
+    return f"{total // 60}:{total % 60:02d}"
+
+
 def _fields(state: State) -> dict[str, object]:
     """Flat values for a template. Unknown counts read as 0; absent card text reads as ""."""
     counts = _obj(state.get("counts"))
@@ -83,6 +96,8 @@ def _fields(state: State) -> dict[str, object]:
         "preview_hard": previews.get("hard", ""),
         "preview_good": previews.get("good", ""),
         "preview_easy": previews.get("easy", ""),
+        "next_due_at": state.get("next_due_at") or "",
+        "next_due_in": _next_due_in(state.get("next_due_at")),
     }
 
 

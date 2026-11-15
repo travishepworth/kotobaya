@@ -805,8 +805,11 @@ class KeepGoingServer(FakeServer):
             if not keep_going:
                 items = left[:1] if not done else []
                 return QueueSnapshot(
-                    [CardEntry(i, "meaning") for i in items], counts, DAY_END,
-                    more_available=not items and bool(left), study_day="2026-11-15",
+                    [CardEntry(i, "meaning") for i in items],
+                    counts,
+                    DAY_END,
+                    more_available=not items and bool(left),
+                    study_day="2026-11-15",
                 )
             if len(done) == 4 and self.hiccup:
                 self.hiccup = False
@@ -841,7 +844,9 @@ def test_keep_going_streams_every_card_once_and_ends_on_an_empty_keep_going_fetc
         assert shown == server.all  # every card once, in order, through the materialize hiccup
         out = st(daemon.session.state())
         assert out["card"] is None and out["keep_going"] is True and out["more_available"] is False
-        assert all(server.flags[server.flags.index(True) :])  # every fetch after the action keeps going
+        assert all(
+            server.flags[server.flags.index(True) :]
+        )  # every fetch after the action keeps going
 
     asyncio.run(scenario())
 

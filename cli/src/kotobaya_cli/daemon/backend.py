@@ -195,6 +195,12 @@ class HttpBackend:
             more_available=bool(queue.more_available),
             study_day=queue.study_day.isoformat(),
             to_materialize=queue.to_materialize or 0,
+            next_learning_due_at=(
+                None
+                if queue.next_learning_due_at is None
+                else queue.next_learning_due_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
+                + f"{queue.next_learning_due_at.microsecond // 1000:03d}Z"
+            ),
         )
 
     def fetch_grading_buttons(self) -> int:

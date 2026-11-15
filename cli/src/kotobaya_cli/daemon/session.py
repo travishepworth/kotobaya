@@ -43,6 +43,8 @@ class QueueSnapshot:
     more_available: bool = False
     study_day: str | None = None
     to_materialize: int = 0
+    # ADR-033: earliest instant a not-yet-due learning card falls due today (ISO UTC), or None.
+    next_learning_due_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,7 @@ class Session:
         self.keep_going = False
         self.keep_going_day: str | None = None
         self.more_available = False
+        self.next_due_at: str | None = None
 
     @property
     def current(self) -> CardEntry | None:
@@ -116,6 +119,7 @@ class Session:
         items = [i for i in snapshot.items if pending.get(i.card_id) != "answer"]
         self.counts = snapshot.counts
         self.day_ends_at = snapshot.day_ends_at
+        self.next_due_at = snapshot.next_learning_due_at
         current = self.current
         if current is None:
             self.queue = items
@@ -200,6 +204,8 @@ class Session:
             "notice": self.notice,
             "keep_going": self.keep_going,
             "more_available": self.more_available,
+            # ADR-033: only while nothing is shown; the widget's "waiting" state.
+            "next_due_at": self.next_due_at if current is None and counts is not None else None,
         }
 
     def take_state(self) -> dict[str, object]:

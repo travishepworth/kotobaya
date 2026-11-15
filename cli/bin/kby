@@ -18,7 +18,7 @@ WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
 card_id kind front back reading sentence revealed preview_again preview_hard preview_good
-preview_easy"
+preview_easy next_due_at next_due_in"
 
 die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
 
@@ -49,12 +49,14 @@ STREAM (long-lived, one waybar-style JSON line per state change)
 SERVE (machine interface for GUI widgets; data only, no widget confs)
   kby serve                       one compact JSON line per state change, flushed at once, forever.
                                   Offline / auth / error never end it: they are lines too.
-  line (v 1): {"v":1, "state":"loading|front|back|done|offline|auth|error",
+  line (v 1): {"v":1, "state":"loading|front|back|waiting|done|offline|auth|error",
                "rev":"<card_id>:<n>" (changes every line; send it back as `kby do ... --rev`),
                "text":"語 12", "counts":{"new","learning","review"},
                "card":null|{"id","kind","front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
-               "keep_going":bool, "more_available":bool, "error":null|"...",
+               "keep_going":bool, "more_available":bool,
+               "next_due_at":null|"<UTC ISO>" and "next_due_in":null|"m:ss" (state waiting: nothing due now,
+               a learning card falls due then; fixed when the line was written), "error":null|"...",
                "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next","keep_going":
                           {"enabled":bool, "hint":"1m" (grades; only when known)}}}
   Each line is also written to $XDG_RUNTIME_DIR/kotobaya/state.json (temp file + rename).
@@ -67,7 +69,7 @@ WIDGETS (${XDG_CONFIG_HOME:-~/.config}/kotobaya/widgets/NAME.conf)
 
 OTHER
   kby status                      current state JSON (cache, else asks the daemon)
-  kby state                       current state name: front back done loading offline auth
+  kby state                       current state name: front back waiting done loading offline auth
 EOF
 }
 
@@ -101,7 +103,13 @@ state_name() {
   if [[ -z $s || $s != *'"conn":"ok"'* ]]; then
     if [[ $s == *'"conn":"auth"'* ]]; then echo auth; else echo offline; fi
   elif [[ $s == *'"card":null'* ]]; then
-    if [[ $s == *'"counts":null'* ]]; then echo loading; else echo 'done'; fi
+    if [[ $s == *'"counts":null'* ]]; then
+      echo loading
+    elif [[ $s == *'"next_due_at":"'* ]]; then
+      echo waiting
+    else
+      echo 'done'
+    fi
   elif [[ $s == *'"revealed":true'* ]]; then
     echo back
   else
@@ -216,7 +224,11 @@ def statename($s):
   if $s == null then "loading"
   elif $s.conn != "ok" then (if $s.conn == "auth" then "auth" else "offline" end)
   elif $s.card != null then (if $s.card.revealed then "back" else "front" end)
-  elif $s.counts == null then "loading" else "done" end;
+  elif $s.counts == null then "loading"
+  elif ($s.next_due_at // null) != null then "waiting" else "done" end;
+def mss($s): ($s | floor) as $t | "\($t / 60 | floor):\(($t % 60) | tostring | if length < 2 then "0" + . else . end)";
+def nextin($at): if $at == null or $at == "" then null
+  else (try (($at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) - now | if . < 0 then 0 else . end | mss(.)) catch null) end;
 def nonull: with_entries(select(.value != null));
 def one($t; $n): ($t | gsub("\\s*\n\\s*"; " ")) as $v
   | if ($v | length) > $n then $v[0:($n - 1)] + "…" else $v end;
@@ -228,12 +240,13 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
 | (($s.counts // null) // {new: 0, learning: 0, review: 0}) as $c
 | ($c.new + $c.learning + $c.review) as $due
 | ($k.revealed // false) as $rev
-| (($s.last.undoable // false) and ($st == "front" or $st == "back" or $st == "done")) as $undo
+| (($s.last.undoable // false) and ($st == "front" or $st == "back" or $st == "done" or $st == "waiting")) as $undo
 | ($k.previews // {}) as $p
 | ($st == "front" or $st == "back") as $card
 | {v: 1, state: $st,
    rev: "\($k.id // "-"):\($n)",
    text: (if $card then "\(one($k.front // "語"; 24)) \($due)"
+          elif $st == "waiting" then "語 \(nextin($s.next_due_at) // "…")"
           elif $st == "done" then "語 ✓"
           elif $st == "loading" then "語 …"
           else "語 \($st)" end),
@@ -245,6 +258,8 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
    last: {rating: ($s.last.rating // null), undoable: $undo},
    keep_going: ($s.keep_going // false),
    more_available: ($s.more_available // false),
+   next_due_at: (if $st == "waiting" then $s.next_due_at else null end),
+   next_due_in: (if $st == "waiting" then nextin($s.next_due_at) else null end),
    notice: ([$notice, $s.notice] | map(select(. != null and . != "")) | join("; ") | nz),
    error: ($err // (if $st == "offline" then "daemon not reachable (systemctl --user status kotobaya)"
                     elif $st == "auth" then "token rejected: the PAT needs scopes read and review"
@@ -334,7 +349,9 @@ default_widget() {
   cat <<'EOF'
 # kotobaya widget. key = value; '#' starts a comment line.
 #
-# States: front (card hidden), back (revealed), done (nothing due), loading, offline, auth.
+# States: front (card hidden), back (revealed), waiting (nothing due now, a learning card falls due
+# at {next_due_at}; {next_due_in} is m:ss), done (nothing left), loading, offline, auth.
+# Fields unknown to an older config read as empty; {next_due_in} is fixed when the line is written.
 #
 # text[.STATE]     the line shown. text.STATE wins over text.
 # tooltip[.STATE]  hover text (--json only).
@@ -343,6 +360,7 @@ default_widget() {
 text         = 語 {new}/{learning}/{review}
 text.front   = 語 {new}/{learning}/{review}  {front:30}
 text.back    = 語 {front:20} 【{reading:15}】 {back:40}
+text.waiting = 語 next in {next_due_in}
 text.done    = 語 ✓
 text.loading = 語 …
 text.offline = 語 offline
@@ -435,6 +453,9 @@ widget_cmd() {
 # jq program: flatten a daemon state, pick per-state templates, fill them.
 # shellcheck disable=SC2016 # jq source, not shell
 JQ_RENDER='
+def mss($s): ($s | floor) as $t | "\($t / 60 | floor):\(($t % 60) | tostring | if length < 2 then "0" + . else . end)";
+def nextin($at): if $at == null or $at == "" then null
+  else (try (($at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) - now | if . < 0 then 0 else . end | mss(.)) catch null) end;
 def conf: [ $conf | split("\n")[]
             | select(test("^\\s*(#|$)") | not)
             | capture("^\\s*(?<k>[^=\\s]+)\\s*=\\s*(?<v>.*?)\\s*$")? ]
@@ -442,7 +463,8 @@ def conf: [ $conf | split("\n")[]
 def statename:
   if .conn != "ok" then (if .conn == "auth" then "auth" else "offline" end)
   elif .card != null then (if .card.revealed then "back" else "front" end)
-  elif .counts == null then "loading" else "done" end;
+  elif .counts == null then "loading"
+  elif (.next_due_at // null) != null then "waiting" else "done" end;
 def flat($s):
   (.counts // {}) as $c | (.card // {}) as $k | ($k.previews // {}) as $p | (.last // {}) as $l
   | { state: $s, conn: .conn,
@@ -455,7 +477,10 @@ def flat($s):
       back: ($k.back // ""), reading: ($k.reading // ""), sentence: ($k.sentence // ""),
       revealed: (($k.revealed // false) | tostring),
       preview_again: ($p.again // ""), preview_hard: ($p.hard // ""),
-      preview_good: ($p.good // ""), preview_easy: ($p.easy // "") };
+      preview_good: ($p.good // ""), preview_easy: ($p.easy // "") }
+    # Only while waiting, so the flat JSON of every other state stays as before; a template
+    # field that is absent reads as empty.
+    + (if $s == "waiting" then {next_due_at: .next_due_at, next_due_in: (nextin(.next_due_at) // "")} else {} end);
 def fill($f):
   gsub("\\{(?<k>[a-z_]+)(:(?<n>[0-9]+))?\\}";
        (($f[.k] // "") | tostring | gsub("\\s*\n\\s*"; " ")) as $v
