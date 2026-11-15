@@ -53,7 +53,8 @@ internal class QueueLoader(private val dsl: DSLContext) {
         val decks = loadDecks(settings)
         val batch = maxOf(1, keepGoingNewBatch)
         val pending = pendingEntries(
-            if (keepGoing) batch else maxOf(batch, minOf(settings.newPerDay, settings.newPerSession)),
+            // ADR-033: the normal-budget count is needed under keep going too (counts come from the normal build).
+            maxOf(batch, minOf(settings.newPerDay, settings.newPerSession)),
             deckFilter,
             settings.burySiblings,
         )
@@ -110,7 +111,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 newPerSession = settings.newPerSession,
                 newShownThisSession = 0,
                 burySiblings = settings.burySiblings,
-                learnAheadMs = LEARN_AHEAD_MS,
+                learnAheadMs = LEARN_AHEAD_MS, // 0: ADR-033, no learn-ahead
                 keepGoing = keepGoing,
                 keepGoingNewBatch = keepGoingNewBatch,
             ),
@@ -289,7 +290,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 "where r.undone_at is null and r.review_type in ('scheduled', 'learning', 'drill', 'cram') " +
                 "and r.reviewed_at >= ?::timestamptz and r.reviewed_at <= ?::timestamptz"
 
-        /** `QueueLimits.learnAheadMs` default of the contract: 20 minutes. */
-        const val LEARN_AHEAD_MS: Long = 1_200_000
+        /** ADR-033: no learn-ahead. A learning card is shown only once due; the rest is `next_learning_due_at`. */
+        const val LEARN_AHEAD_MS: Long = 0
     }
 }

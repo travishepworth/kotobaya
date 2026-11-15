@@ -68,6 +68,7 @@ class GrammarQueueSentenceTest : SyncFixture() {
             body = mapOf("id" to answerId, "card_id" to card, "rating" to 3, "sentence_id" to sid(1)),
         )
         assertEquals(200, ans.status.value)
+        syncNow.set(syncNow.get().plusSeconds(1200)) // ADR-033: no learn-ahead, the learning step must elapse
         val second = shown(t)
         assertEquals(sid(2), second["grammar_sentence"]["sentence_id"].asText())
         assertEquals(sid(1), second["grammar_sentence"]["last_shown_sentence_id"].asText())
