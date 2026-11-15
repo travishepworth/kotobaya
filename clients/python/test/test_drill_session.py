@@ -48,6 +48,7 @@ class TestDrillSession(unittest.TestCase):
                             ], 
                         entry = null, 
                         grammar_sentence = null, 
+                        is_new = True, 
                         kanji = null, 
                         kanji_examples = [
                             kotobaya_client.models.kanji_example.KanjiExample(
@@ -79,6 +80,7 @@ class TestDrillSession(unittest.TestCase):
                             ], 
                         entry = null, 
                         grammar_sentence = null, 
+                        is_new = True, 
                         kanji = null, 
                         kanji_examples = [
                             kotobaya_client.models.kanji_example.KanjiExample(

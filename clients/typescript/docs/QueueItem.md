@@ -12,6 +12,7 @@ Name | Type
 `decks` | [Array&lt;QueueItemDeck&gt;](QueueItemDeck.md)
 `entry` | [DictEntry](DictEntry.md)
 `grammarSentence` | [GrammarCardSentence](GrammarCardSentence.md)
+`isNew` | boolean
 `kanji` | [Kanji](Kanji.md)
 `kanjiExamples` | [Array&lt;KanjiExample&gt;](KanjiExample.md)
 `preview` | [SchedulePreview](SchedulePreview.md)
@@ -31,6 +32,7 @@ const example = {
   "decks": null,
   "entry": null,
   "grammarSentence": null,
+  "isNew": null,
   "kanji": null,
   "kanjiExamples": null,
   "preview": null,

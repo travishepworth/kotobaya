@@ -26,7 +26,7 @@ from pydantic_core import to_jsonable_python
 
 class ReviewQueueCounts(BaseModel):
     """
-    Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`).
+    Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). With `keep_going=true` (C-26) they count the keep-going queue instead - `new` is the new cards of this batch (about `limit`), `review` every review due today, `learning` unchanged.
     """ # noqa: E501
     learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Cards in learning or relearning due before the day ends.")
     new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce today.")

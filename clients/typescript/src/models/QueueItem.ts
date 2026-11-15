@@ -126,6 +126,16 @@ export interface QueueItem {
      */
     grammarSentence?: GrammarCardSentence | null;
     /**
+     * C-26 (additive). True iff `card.state` is `new` when the item is built: the card is
+     * shown for the first time (never reviewed, or made new again by a reset) and a
+     * `schedule` answer introduces it. Clients show a small i18n "New" badge. Equal to the
+     * core's `QueueItem.isNew` (`kind == NEW`) for `getReviewQueue`; on `createDrillSession`
+     * items it is the same test on the card. Servers implementing C-26 send it on every
+     * item of both operations; absent (older server) is treated as `card.state == 'new'`.
+     * 
+     */
+    isNew?: boolean;
+    /**
      * For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null.
      */
     kanji?: Kanji | null;
@@ -227,6 +237,7 @@ export function QueueItemFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'decks': json['decks'] == null ? undefined : ((json['decks'] as Array<any>).map(QueueItemDeckFromJSON)),
         'entry': DictEntryFromJSON(json['entry']),
         'grammarSentence': json['grammar_sentence'] === undefined ? undefined : json['grammar_sentence'] === null ? null : GrammarCardSentenceFromJSON(json['grammar_sentence']),
+        'isNew': json['is_new'] == null ? undefined : json['is_new'],
         'kanji': json['kanji'] === undefined ? undefined : json['kanji'] === null ? null : KanjiFromJSON(json['kanji']),
         'kanjiExamples': json['kanji_examples'] == null ? undefined : ((json['kanji_examples'] as Array<any>).map(KanjiExampleFromJSON)),
         'preview': SchedulePreviewFromJSON(json['preview']),
@@ -252,6 +263,7 @@ export function QueueItemToJSONTyped(value?: QueueItem | null, ignoreDiscriminat
         'decks': value['decks'] == null ? undefined : ((value['decks'] as Array<any>).map(QueueItemDeckToJSON)),
         'entry': DictEntryToJSON(value['entry']),
         'grammar_sentence': GrammarCardSentenceToJSON(value['grammarSentence']),
+        'is_new': value['isNew'],
         'kanji': KanjiToJSON(value['kanji']),
         'kanji_examples': value['kanjiExamples'] == null ? undefined : ((value['kanjiExamples'] as Array<any>).map(KanjiExampleToJSON)),
         'preview': SchedulePreviewToJSON(value['preview']),

@@ -51,6 +51,18 @@ export interface ReviewQueue {
      */
     items: Array<QueueItem>;
     /**
+     * C-26 (additive). "Done for today, but Keep going has more." True iff **all** of:
+     * the request had `keep_going=false` (or omitted it); `items` is empty; and the same
+     * request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a
+     * non-empty `items`. False otherwise - always with `keep_going=true`, and whenever
+     * `items` is non-empty. Independent of `counts.learning`. Computed only in the empty
+     * case, so it costs a second queue build only then. For a request without `kinds` it
+     * equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries).
+     * Servers implementing C-26 always send it; absent (older server) is treated as false.
+     * 
+     */
+    moreAvailable?: boolean;
+    /**
      * The current study day.
      */
     studyDay: Date;
@@ -82,6 +94,7 @@ export function ReviewQueueFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'dayEndsAt': (json['day_ends_at'] == null ? json['day_ends_at'] : parseDateTime(json['day_ends_at'])),
         'generatedAt': (json['generated_at'] == null ? json['generated_at'] : parseDateTime(json['generated_at'])),
         'items': ((json['items'] as Array<any>).map(QueueItemFromJSON)),
+        'moreAvailable': json['more_available'] == null ? undefined : json['more_available'],
         'studyDay': (json['study_day'] == null ? json['study_day'] : parseDate(json['study_day'])),
     };
 }
@@ -101,6 +114,7 @@ export function ReviewQueueToJSONTyped(value?: ReviewQueue | null, ignoreDiscrim
         'day_ends_at': value['dayEndsAt'] == null ? value['dayEndsAt'] : serializeDateTime(value['dayEndsAt']),
         'generated_at': value['generatedAt'] == null ? value['generatedAt'] : serializeDateTime(value['generatedAt']),
         'items': ((value['items'] as Array<any>).map(QueueItemToJSON)),
+        'more_available': value['moreAvailable'],
         'study_day': value['studyDay'] == null ? value['studyDay'] : serializeDate(value['studyDay']),
     };
 }

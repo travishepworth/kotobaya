@@ -2155,6 +2155,23 @@ paths:
         Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all
         counts zero means done for the study day.
 
+        **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with
+        `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule
+        6): the daily and session limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`,
+        `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at
+        most about `limit` new cards are drawn per request (an add_kanji group may overshoot),
+        reviews due today come before new cards, and everything else (eligibility, sibling
+        burying, deck priority and order, disabled decks, learning and learn-ahead) is unchanged.
+        Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
+        per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
+        on every fetch while the user keeps going. Cards answered this way are ordinary reviews
+        and count against today's limits as usual. The three end states for a client:
+        - `items` non-empty: show them.
+        - `items` empty, `more_available` true (only possible with `keep_going=false`): done
+          for today under the limits; offer Keep going (re-fetch with `keep_going=true`).
+        - `items` empty, `more_available` false: nothing left to show now, with or without keep
+          going (`counts.learning` > 0 means a learning card is due later today).
+
         Each item carries everything needed to render and grade the card: the card with its note
         summary, the dictionary entry (when the note references one that exists), the example
         sentence chosen for rotating-example cards, the `review_type` an answer will be logged
@@ -2186,6 +2203,17 @@ paths:
             items: {type: string, enum: [new, learning, review]}
             default: [new, learning, review]
           example: [learning, review]
+        - name: keep_going
+          in: query
+          description: |
+            C-26 (additive). `true` = keep going past today's limits (see the description; core
+            `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the
+            normal queue, exactly as before C-26. Only the literal values `true` and `false` are
+            accepted; anything else is `422 validation_failed` with `errors[0].pointer =
+            /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they
+            return the normal queue and no `more_available`).
+          schema: {type: boolean, default: false}
+          example: true
       responses:
         '200':
           description: The queue prefix and today's remaining counts.
@@ -8930,6 +8958,17 @@ components:
           - drill
           - cram
           description: Review type an answer will be logged with.
+        is_new:
+          type: boolean
+          description: |
+            C-26 (additive). True iff `card.state` is `new` when the item is built: the card is
+            shown for the first time (never reviewed, or made new again by a reset) and a
+            `schedule` answer introduces it. Clients show a small i18n "New" badge. Equal to the
+            core's `QueueItem.isNew` (`kind == NEW`) for `getReviewQueue`; on `createDrillSession`
+            items it is the same test on the card. Servers implementing C-26 send it on every
+            item of both operations; absent (older server) is treated as `card.state == 'new'`.
+          examples:
+          - true
         preview:
           oneOf:
           - $ref: '#/components/schemas/SchedulePreview'
@@ -9313,7 +9352,8 @@ components:
         counts:
           type: object
           description: Cards remaining today under the current limits (whole queue, not only `items`; unaffected by
-            `kinds`).
+            `kinds`). With `keep_going=true` (C-26) they count the keep-going queue instead - `new` is the new
+            cards of this batch (about `limit`), `review` every review due today, `learning` unchanged.
           required:
           - new
           - learning
@@ -9346,6 +9386,19 @@ components:
         generated_at:
           $ref: '#/components/schemas/Timestamp'
           description: When the queue was built.
+        more_available:
+          type: boolean
+          description: |
+            C-26 (additive). "Done for today, but Keep going has more." True iff **all** of:
+            the request had `keep_going=false` (or omitted it); `items` is empty; and the same
+            request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a
+            non-empty `items`. False otherwise - always with `keep_going=true`, and whenever
+            `items` is non-empty. Independent of `counts.learning`. Computed only in the empty
+            case, so it costs a second queue build only then. For a request without `kinds` it
+            equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries).
+            Servers implementing C-26 always send it; absent (older server) is treated as false.
+          examples:
+          - true
     ReviewAnswerRequest:
       type: object
       description: An answer to a card.
@@ -14055,6 +14108,7 @@ components:
             note_id: 01931f40-1a2b-7c3d-8e4f-000000000a01
           sentence: null
           review_type: scheduled
+          is_new: false
           preview:
             again:
               due_at: '2026-11-12T09:40:00.000Z'
@@ -14208,6 +14262,7 @@ components:
               start_ms: 81200
               location: null
           review_type: scheduled
+          is_new: false
           preview:
             again:
               due_at: '2026-11-12T09:40:00.000Z'
@@ -14233,6 +14288,7 @@ components:
         study_day: '2026-11-12'
         day_ends_at: '2026-11-12T19:00:00.000Z'
         generated_at: '2026-11-12T09:30:00.000Z'
+        more_available: false
     ReviewResult:
       value:
         review:
@@ -14456,6 +14512,7 @@ components:
             note_id: 01931f40-1a2b-7c3d-8e4f-000000000a01
           sentence: null
           review_type: drill
+          is_new: false
           preview: null
     DeckListCatalogue:
       value:

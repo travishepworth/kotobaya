@@ -27,7 +27,7 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`).
+ * Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). With `keep_going=true` (C-26) they count the keep-going queue instead - `new` is the new cards of this batch (about `limit`), `review` every review due today, `learning` unchanged.
  *
  * @param learning Cards in learning or relearning due before the day ends.
  * @param new New cards still to introduce today.

@@ -7,6 +7,7 @@ import kotobaya.contracts.WordStatus
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.queue.QueueBuilder
+import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.notes.Errors
 import kotobaya.notes.Reply
@@ -53,6 +54,12 @@ internal class ReviewApi(
             parts.filter { it !in setOf("new", "learning", "review") }.forEach { e.add("/kinds", "invalid_value", "Unknown kind $it.") }
             parts.toSet()
         } ?: setOf("new", "learning", "review")
+        // C-26: only the literal values `true` / `false`.
+        val keepGoing = when (val v = q["keep_going"]) {
+            null, "false" -> false
+            "true" -> true
+            else -> { e.add("/keep_going", "invalid_value", "Must be true or false, not $v."); false }
+        }
         e.throwIfAny()
 
         val nowMs = clock().toEpochMilli()
@@ -61,7 +68,8 @@ internal class ReviewApi(
                 throw Problems.notFound("No live deck $deckId.")
             }
             val settings = ReviewSettings.load(dsl)
-            val loaded = QueueLoader(dsl).load(nowMs, settings, deckId)
+            // C-26: keep going is a per-request override (core rule 6); the batch is the page size.
+            val loaded = QueueLoader(dsl).load(nowMs, settings, deckId, keepGoing = keepGoing, keepGoingNewBatch = limit)
             val queue = builder.build(loaded.input)
             val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour)
 
@@ -77,7 +85,11 @@ internal class ReviewApi(
                 .put("new", items.count { it.kind == QueueItemKind.NEW })
                 .put("learning", items.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
                 .put("review", items.count { it.kind == QueueItemKind.REVIEW })
-            val wanted = items.filter { it.kind.name.lowercase() in kinds }.take(limit)
+            fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
+            val wanted = items.filter(::inKinds).take(limit)
+            // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
+            val moreAvailable = !keepGoing && wanted.isEmpty() &&
+                builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).items.any(::inKinds)
             val views = ReviewViews(dsl, settings.leechThreshold)
             val rendered = views.items(
                 wanted.map { it.cardId },
@@ -90,6 +102,7 @@ internal class ReviewApi(
                 "study_day" to day.date.toString(),
                 "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
                 "generated_at" to formatInstant(Instant.ofEpochMilli(nowMs)),
+                "more_available" to moreAvailable,
             )
         }
         call.respondJson(body)

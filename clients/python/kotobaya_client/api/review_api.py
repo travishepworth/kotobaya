@@ -15,7 +15,7 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import Field, StrictStr, field_validator
+from pydantic import Field, StrictBool, StrictStr, field_validator
 from typing import List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.drill_session import DrillSession
@@ -622,6 +622,7 @@ class ReviewApi:
         limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Maximum number of cards to return.")] = None,
         deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise).")] = None,
         kinds: Annotated[Optional[List[StrictStr]], Field(description="Which queue sections to include, comma-separated. Default all three.")] = None,
+        keep_going: Annotated[Optional[StrictBool], Field(description="C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). ")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -637,7 +638,7 @@ class ReviewApi:
     ) -> ReviewQueue:
         """The next cards to review, built by the shared core's queue builder.
 
-        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
+        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule 6): the daily and session limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are drawn per request (an add_kanji group may overshoot), reviews due today come before new cards, and everything else (eligibility, sibling burying, deck priority and order, disabled decks, learning and learn-ahead) is unchanged. Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless per-request flag: nothing is stored, no op is emitted, and the client keeps sending it on every fetch while the user keeps going. Cards answered this way are ordinary reviews and count against today's limits as usual. The three end states for a client: - `items` non-empty: show them. - `items` empty, `more_available` true (only possible with `keep_going=false`): done   for today under the limits; offer Keep going (re-fetch with `keep_going=true`). - `items` empty, `more_available` false: nothing left to show now, with or without keep   going (`counts.learning` > 0 means a learning card is due later today).  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
 
         :param limit: Maximum number of cards to return.
         :type limit: int
@@ -645,6 +646,8 @@ class ReviewApi:
         :type deck_id: str
         :param kinds: Which queue sections to include, comma-separated. Default all three.
         :type kinds: List[str]
+        :param keep_going: C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). 
+        :type keep_going: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -671,6 +674,7 @@ class ReviewApi:
             limit=limit,
             deck_id=deck_id,
             kinds=kinds,
+            keep_going=keep_going,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -699,6 +703,7 @@ class ReviewApi:
         limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Maximum number of cards to return.")] = None,
         deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise).")] = None,
         kinds: Annotated[Optional[List[StrictStr]], Field(description="Which queue sections to include, comma-separated. Default all three.")] = None,
+        keep_going: Annotated[Optional[StrictBool], Field(description="C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). ")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -714,7 +719,7 @@ class ReviewApi:
     ) -> ApiResponse[ReviewQueue]:
         """The next cards to review, built by the shared core's queue builder.
 
-        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
+        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule 6): the daily and session limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are drawn per request (an add_kanji group may overshoot), reviews due today come before new cards, and everything else (eligibility, sibling burying, deck priority and order, disabled decks, learning and learn-ahead) is unchanged. Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless per-request flag: nothing is stored, no op is emitted, and the client keeps sending it on every fetch while the user keeps going. Cards answered this way are ordinary reviews and count against today's limits as usual. The three end states for a client: - `items` non-empty: show them. - `items` empty, `more_available` true (only possible with `keep_going=false`): done   for today under the limits; offer Keep going (re-fetch with `keep_going=true`). - `items` empty, `more_available` false: nothing left to show now, with or without keep   going (`counts.learning` > 0 means a learning card is due later today).  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
 
         :param limit: Maximum number of cards to return.
         :type limit: int
@@ -722,6 +727,8 @@ class ReviewApi:
         :type deck_id: str
         :param kinds: Which queue sections to include, comma-separated. Default all three.
         :type kinds: List[str]
+        :param keep_going: C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). 
+        :type keep_going: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -748,6 +755,7 @@ class ReviewApi:
             limit=limit,
             deck_id=deck_id,
             kinds=kinds,
+            keep_going=keep_going,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -776,6 +784,7 @@ class ReviewApi:
         limit: Annotated[Optional[Annotated[int, Field(le=200, strict=True, ge=1)]], Field(description="Maximum number of cards to return.")] = None,
         deck_id: Annotated[Optional[Annotated[str, Field(strict=True)]], Field(description="Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise).")] = None,
         kinds: Annotated[Optional[List[StrictStr]], Field(description="Which queue sections to include, comma-separated. Default all three.")] = None,
+        keep_going: Annotated[Optional[StrictBool], Field(description="C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). ")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -791,7 +800,7 @@ class ReviewApi:
     ) -> RESTResponseType:
         """The next cards to review, built by the shared core's queue builder.
 
-        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
+        For online clients (web, scripts). The server runs the same queue builder the phone runs locally, at request time, over the server's replica: daily limits (global and per deck), deck priority order, sibling burying, interleaving and the per-session new-card cap all come from the core. The response is a prefix of today's queue: the first `limit` cards in the order they should be shown. It is **not** a reservation: fetch again after answering (each answer can change what comes next - learning steps, sibling burying). Suspended, buried, deleted and merged-away cards never appear. Empty `items` with all counts zero means done for the study day.  **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule 6): the daily and session limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are drawn per request (an add_kanji group may overshoot), reviews due today come before new cards, and everything else (eligibility, sibling burying, deck priority and order, disabled decks, learning and learn-ahead) is unchanged. Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless per-request flag: nothing is stored, no op is emitted, and the client keeps sending it on every fetch while the user keeps going. Cards answered this way are ordinary reviews and count against today's limits as usual. The three end states for a client: - `items` non-empty: show them. - `items` empty, `more_available` true (only possible with `keep_going=false`): done   for today under the limits; offer Keep going (re-fetch with `keep_going=true`). - `items` empty, `more_available` false: nothing left to show now, with or without keep   going (`counts.learning` > 0 means a learning card is due later today).  Each item carries everything needed to render and grade the card: the card with its note summary, the dictionary entry (when the note references one that exists), the example sentence chosen for rotating-example cards, the `review_type` an answer will be logged with, and a preview of the next due time per rating. Grammar cards also carry `grammar_sentence` (C-15): the rotated example sentence and span, chosen by the core picker with the rules on `GrammarCardSentence` (drill sessions use the same rules). 
 
         :param limit: Maximum number of cards to return.
         :type limit: int
@@ -799,6 +808,8 @@ class ReviewApi:
         :type deck_id: str
         :param kinds: Which queue sections to include, comma-separated. Default all three.
         :type kinds: List[str]
+        :param keep_going: C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). 
+        :type keep_going: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -825,6 +836,7 @@ class ReviewApi:
             limit=limit,
             deck_id=deck_id,
             kinds=kinds,
+            keep_going=keep_going,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -848,6 +860,7 @@ class ReviewApi:
         limit,
         deck_id,
         kinds,
+        keep_going,
         _request_auth,
         _content_type,
         _headers,
@@ -882,6 +895,10 @@ class ReviewApi:
         if kinds is not None:
             
             _query_params.append(('kinds', kinds))
+            
+        if keep_going is not None:
+            
+            _query_params.append(('keep_going', keep_going))
             
         # process the header parameters
         # process the form parameters

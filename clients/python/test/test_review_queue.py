@@ -53,6 +53,7 @@ class TestReviewQueue(unittest.TestCase):
                             ], 
                         entry = null, 
                         grammar_sentence = null, 
+                        is_new = True, 
                         kanji = null, 
                         kanji_examples = [
                             kotobaya_client.models.kanji_example.KanjiExample(
@@ -67,6 +68,7 @@ class TestReviewQueue(unittest.TestCase):
                         sentence = null, 
                         text = null, )
                     ],
+                more_available = True,
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date()
             )
         else:
@@ -89,6 +91,7 @@ class TestReviewQueue(unittest.TestCase):
                             ], 
                         entry = null, 
                         grammar_sentence = null, 
+                        is_new = True, 
                         kanji = null, 
                         kanji_examples = [
                             kotobaya_client.models.kanji_example.KanjiExample(

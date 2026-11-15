@@ -557,3 +557,30 @@ attempt 1 is gone). Needs node and python3; network on first run.
   `Note` and the `QueueItem` but not on the entry; (3) **blacklisted/ignored words are dropped
   from the examples** even when they are the kanji's most frequent word, and a kanji whose only
   on/kun word ranks below the first 50 candidates shows none of that type.
+
+## C-26 changes (additive): Keep going and the "New" badge (ADR-031)
+
+- **`getReviewQueue?keep_going=true`** (boolean, default false; only `true`/`false`, else `422`
+  `/keep_going` `invalid_value`): the core builder runs with `QueueLimits.keepGoing = true`,
+  `keepGoingNewBatch = limit` (core `QueueBuilder` rule 6). Daily/session/per-deck limits are
+  lifted, reviews due today come first, then up to about `limit` new cards in normal deck order;
+  nothing not due before `day_ends_at` is returned. Stateless: not a setting, no op, nothing
+  stored; the client repeats the flag on every fetch while the user keeps going. `counts` then
+  describe the keep-going queue.
+- **`ReviewQueue.more_available`** (boolean): true only when the request was a normal one, `items`
+  is empty and the same request with `keep_going=true` would return items. Distinguishes "done for
+  today, Keep going available" from "nothing left". Costs a second build only in the empty case.
+- **`QueueItem.is_new`** (boolean): `card.state == 'new'` at build time (also on drill items);
+  absent on older servers is read as `card.state == 'new'`.
+- Cross-check: no new table, op or mutation; answers still go through `answerReview` →
+  `review.logged`, so keep-going cards count against today's limits like any other.
+- Rejected: a `scheduler.keep_going` setting or a per-day "extra new" op (state that must sync,
+  expire at rollover and be undone; the user just wants "more until I stop"); a separate
+  `/review/queue/more` endpoint (duplicates every filter); an integer `more_count` (needs the
+  full uncapped build every time; a boolean needs it only when empty); study-ahead of tomorrow's
+  reviews (changes FSRS intervals; out of scope).
+- Worth a second look: (1) **reviews before new under keep going** instead of the rule-5
+  interleave (the ticket's "due reviews first"; the normal mode is unchanged); (2) **per-deck
+  review caps are lifted too**, not only `reviews_per_day` (otherwise "out" could still hide due
+  reviews); (3) **the batch is `limit`** on the server and 10 on devices, and an add_kanji group
+  may overshoot it so a large group never stalls keep going.

@@ -161,7 +161,30 @@ public data class QueueLimits(
     public val burySiblings: Boolean,
     /** Learning cards due within this many ms may be shown early, after everything else (rules 2, 5; default 1 200 000 = 20 min). */
     public val learnAheadMs: Long,
-)
+    /**
+     * C-26 (additive, ADR-031) **Keep going**: a stateless per-build override, never stored (not a
+     * setting, not an op). When true the builder lifts every daily and session cap ([reviewsPerDay],
+     * [newPerDay], [newPerSession] / [newShownThisSession], `QueueDeck.reviewsPerDay`,
+     * `QueueDeck.newPerDay`), bounds new cards per build by [keepGoingNewBatch] instead and puts
+     * reviews before new cards; every other rule is unchanged ([QueueBuilder] rule 6). Default
+     * false = the behaviour before C-26, bit for bit.
+     */
+    public val keepGoing: Boolean = false,
+    /**
+     * C-26: the new-card budget of one build when [keepGoing] is true (rule 6); ignored otherwise.
+     * Values `< 1` count as 1. It bounds `items` and `toMaterialize` of one build only: the UI
+     * rebuilds after every answer, so keep going yields new cards until the user stops or the pool
+     * is empty. The server passes the request's `limit`; a device leaves the default, which keeps
+     * note creation for pending entries to a handful per build.
+     */
+    public val keepGoingNewBatch: Int = DEFAULT_KEEP_GOING_NEW_BATCH,
+) {
+    /** Constants. */
+    public companion object {
+        /** Default [keepGoingNewBatch]: 10 (the default of `scheduler.new_per_session`). */
+        public const val DEFAULT_KEEP_GOING_NEW_BATCH: Int = 10
+    }
+}
 
 /** Everything [QueueBuilder.build] needs. */
 public data class QueueInput(
@@ -220,7 +243,16 @@ public data class QueueItem(
     public val kind: QueueItemKind,
     /** Deck the item is attributed to for limits (null = none). */
     public val deckId: Uuid?,
-)
+) {
+    /**
+     * C-26 (additive): true iff the card is in state NEW at build time, i.e. it is shown for the
+     * first time (never reviewed, or made new again by a `manual` row with `manual_action =
+     * 'reset'`) and answering it counts as introducing a card ([TodayReview.introducedNew]).
+     * Exactly `kind == NEW`. The UI shows a small i18n "New" badge for it. Same meaning as the
+     * API's `QueueItem.is_new`. Not a constructor property, so `equals`/`copy` are unchanged.
+     */
+    public val isNew: Boolean get() = kind == QueueItemKind.NEW
+}
 
 /** The result of [QueueBuilder.build]. */
 public data class ReviewQueue(
@@ -230,6 +262,19 @@ public data class ReviewQueue(
     public val toMaterialize: List<PendingEntry>,
     /** Earliest `dueAt` of a learning card due later today but outside learn-ahead; null if none. */
     public val nextLearningDueAt: InstantMs?,
+    /**
+     * C-26 (additive): "done for today, but keep going has more". True iff **all** of: the input's
+     * `limits.keepGoing` is false; [items] and [toMaterialize] are both empty; and building the
+     * same input with `keepGoing = true` (same [QueueLimits.keepGoingNewBatch]) returns a non-empty
+     * `items` or `toMaterialize`. False in every other case: always for a keep-going build, and
+     * whenever the normal queue is non-empty (a learn-ahead item counts). Independent of
+     * [nextLearningDueAt]; both may be set (the UI may offer keep going while a learning card waits).
+     *
+     * For an empty normal queue: `moreAvailable` → "done for today" plus a Keep going action;
+     * `!moreAvailable` → nothing is left today (apart from [nextLearningDueAt]). For a keep-going
+     * build, empty `items` and `toMaterialize` mean truly out of cards.
+     */
+    public val moreAvailable: Boolean = false,
 )
 
 /**
@@ -311,6 +356,33 @@ public data class ReviewQueue(
  *    reappeared at once ahead of every due review).
  *    Example (`now` = N, learn-ahead 20 min): L1 due N+15 min, L2 due N−1 min, R3 due today, new
  *    N4 → `L2 R3 N4 L1`. With only L1 → `L1` (served ahead of time).
+ * 6. **Keep going** (C-26, ADR-031), only when `limits.keepGoing` is true; otherwise rules 1–5
+ *    apply exactly as written. These changes and nothing else:
+ *    - Rule 3: the global and per-deck review remaining are unlimited, so every eligible REVIEW
+ *      card with `dueAt < day.endMs` is taken (still one NEW/REVIEW item per note if burying).
+ *      Cards with `dueAt >= day.endMs` are **never** taken: no study-ahead.
+ *    - Rule 4: budget = `max(1, keepGoingNewBatch)`; `newPerDay`, today's `introducedNew` count,
+ *      `newPerSession` and `newShownThisSession` are ignored, and no source has a per-deck limit
+ *      (`QueueDeck.newPerDay` ignored). Sources, home new-source (a disabled deck still supplies
+ *      nothing), tiers, round-robin, in-deck order, pending entries (each still counts 1 against
+ *      the budget), KNOWN handling and add_kanji grouping and group order are unchanged.
+ *      **Atomic** becomes: a group is drawn iff the budget is `>= 1`; it may overshoot the batch
+ *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
+ *    - Rule 5: the interleaved part is all of `R` (rule 3 order) followed by all of `N` (rule 4
+ *      order): due learning, reviews, new, learn-ahead. Reviews left over past the caps are
+ *      backlog and are cleared before more new cards.
+ *    - Rules 1 and 2: unchanged (eligibility, sibling burying, learning, learn-ahead).
+ *    - [ReviewQueue.moreAvailable] is false.
+ *    Accounting does not change: cards studied through keep going are answered with ordinary
+ *    reviews, so they appear in [QueueInput.today] as `introducedNew`/`countsAsReview` and use up
+ *    today's normal limits; they never raise tomorrow's allowance (limits are per study day).
+ *    **moreAvailable** (`keepGoing` false): after rules 1–5, only when `items` and
+ *    `toMaterialize` are both empty, the builder runs the same input under rule 6 and sets it to
+ *    whether that result is non-empty.
+ *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
+ *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
+ *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`
+ *    (never R5). With batch 2: `R4 N1 N2`.
  */
 public interface QueueBuilder {
     /** Builds the queue for [input]. */

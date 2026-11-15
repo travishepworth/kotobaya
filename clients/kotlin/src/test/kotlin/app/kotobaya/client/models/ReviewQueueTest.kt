@@ -65,5 +65,11 @@ class ReviewQueueTest : ShouldSpec() {
             //modelInstance.studyDay shouldBe ("TODO")
         }
 
+        // to test the property `moreAvailable` - C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries). Servers implementing C-26 always send it; absent (older server) is treated as false. 
+        should("test moreAvailable") {
+            // uncomment below to test the property
+            //modelInstance.moreAvailable shouldBe ("TODO")
+        }
+
     }
 }

@@ -113,3 +113,19 @@ Worth a second look:
    kanji's most common word. With many deck words the three examples are all "theirs".
 3. **Window of 50.** A kanji whose only kun'yomi word is beyond its first 50 candidates shows no kun
    word. The window is what lets the server pre-limit in SQL (one statement per queue page).
+
+## C-26 changes (additive): Keep going (ADR-031)
+- **What.** `QueueLimits.keepGoing` (default false) and `keepGoingNewBatch` (default 10),
+  `ReviewQueue.moreAvailable` (default false) and the computed `QueueItem.isNew` (`kind == NEW`).
+  New `QueueBuilder` rule 6: with `keepGoing` the global and per-deck review caps and the new caps
+  (daily, session, per deck) are lifted, new cards are bounded by the batch per build (an add_kanji
+  group is drawn whenever the budget is >= 1), and the interleaved part becomes reviews then new.
+  Eligibility, sibling burying, deck tiers and order, disabled decks, learn-ahead: unchanged.
+  `moreAvailable` = the normal build is empty and the rule-6 build is not (computed only then).
+- **Why stateless.** It is a per-build flag; nothing is stored or synced. Cards studied through it
+  are ordinary reviews, so `today` accounting is untouched and tomorrow's allowance never grows.
+- Rejected: a keep-going setting or op (sync state that expires at rollover); raising the limits by
+  N per tap (the user asked for an endless stream); an unbounded new budget (a device would
+  materialize every pending entry of every deck on one tap).
+- Worth a second look: (1) reviews strictly before new under keep going; (2) per-deck review caps
+  lifted as well; (3) batch overshoot by add_kanji groups.

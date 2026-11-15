@@ -210,3 +210,18 @@ The local values may differ from what the server would send while ops are pendin
 - `make check MODULE=core` should run `:core:jsTest` (T107, with `nodejs()` on the js target).
 - Card media serving: the web API route and the Android `WebViewAssetLoader` path behind
   `RenderOptions.mediaUrlTemplate` (T213 / the media ticket).
+
+**C-26 — keep going** (`core/src/commonTest/kotlin/kotobaya/queue/QueueKeepGoingTest.kt`): the rule-6
+KDoc example (normal empty with `moreAvailable`, keep-going `R4 N1 N2 N3`, batch 2); default false is
+identical to before; daily/session/per-deck new caps ignored with deck tiers kept; global and per-deck
+review caps lifted; siblings and exclusions kept; nothing not yet due; disabled decks; learn-ahead keeps
+the normal queue non-empty; reviews before new; add_kanji overshoot; pending entries bounded by the
+batch and counted for `moreAvailable`; batch < 1 = 1; `isNew` exactly for NEW items.
+
+## C-26: keep going on a device (Android)
+
+The device builds with `QueueLimits(keepGoing = true)` (leave `keepGoingNewBatch` at its default)
+while the user keeps going, on every rebuild, and with `keepGoing = false` otherwise. "Out" =
+`items` and `toMaterialize` empty: show Keep going iff `moreAvailable`, else "done" (plus
+`nextLearningDueAt` if set). Materialize `toMaterialize` exactly as in a normal build. Show the
+"New" badge from `QueueItem.isNew`. Keep going is not persisted: a new session starts normal.

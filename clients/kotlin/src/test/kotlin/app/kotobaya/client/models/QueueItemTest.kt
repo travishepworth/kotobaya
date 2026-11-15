@@ -90,6 +90,12 @@ class QueueItemTest : ShouldSpec() {
             //modelInstance.grammarSentence shouldBe ("TODO")
         }
 
+        // to test the property `isNew` - C-26 (additive). True iff `card.state` is `new` when the item is built: the card is shown for the first time (never reviewed, or made new again by a reset) and a `schedule` answer introduces it. Clients show a small i18n \"New\" badge. Equal to the core's `QueueItem.isNew` (`kind == NEW`) for `getReviewQueue`; on `createDrillSession` items it is the same test on the card. Servers implementing C-26 send it on every item of both operations; absent (older server) is treated as `card.state == 'new'`. 
+        should("test isNew") {
+            // uncomment below to test the property
+            //modelInstance.isNew shouldBe ("TODO")
+        }
+
         // to test the property `kanji` - For a note of base type `kanji`, the `ref.kanji` row of its `kanji_literal` (C-2); null for other notes or when the kanji is not in `ref.kanji`. The client passes `literal`, `meanings`, `on_readings` (onyomi), `kun_readings` (kunyomi) and `stroke_count` to the core renderer as `RenderInput.kanji` / `JsRenderInput.kanji`, so a kanji note with empty fields (`auto_kanji`, `jpdb_import`) renders from it identically on every host. Absent is treated as null.
         should("test kanji") {
             // uncomment below to test the property

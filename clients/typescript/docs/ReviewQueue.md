@@ -11,6 +11,7 @@ Name | Type
 `dayEndsAt` | Date
 `generatedAt` | Date
 `items` | [Array&lt;QueueItem&gt;](QueueItem.md)
+`moreAvailable` | boolean
 `studyDay` | Date
 
 ## Example
@@ -24,6 +25,7 @@ const example = {
   "dayEndsAt": null,
   "generatedAt": null,
   "items": null,
+  "moreAvailable": null,
   "studyDay": null,
 } satisfies ReviewQueue
 

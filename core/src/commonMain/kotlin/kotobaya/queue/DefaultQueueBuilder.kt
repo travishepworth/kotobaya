@@ -137,14 +137,21 @@ public object DefaultQueueBuilder : QueueBuilder {
 
             val reviews = buildReviews(eligible)
             val news = buildNew(eligible)
-            return ReviewQueue(learningNow + interleave(reviews, news.first) + learningAhead, news.second, nextLearningDueAt)
+            // Rule 6 (C-26): under keep going, the backlog of reviews comes before more new cards.
+            val middle = if (limits.keepGoing) reviews + news.first else interleave(reviews, news.first)
+            val items = learningNow + middle + learningAhead
+            val moreAvailable = !limits.keepGoing && items.isEmpty() && news.second.isEmpty() &&
+                Build(input.copy(limits = limits.copy(keepGoing = true))).run()
+                    .let { it.items.isNotEmpty() || it.toMaterialize.isNotEmpty() }
+            return ReviewQueue(items, news.second, nextLearningDueAt, moreAvailable)
         }
 
         // Rule 3.
         private fun buildReviews(eligible: List<QueueCandidate>): List<QueueItem> {
-            var global = limits.reviewsPerDay - input.today.count { it.countsAsReview }
+            // Rule 6: keep going lifts the global and per-deck review caps (no deck entry = no limit).
+            var global = if (limits.keepGoing) Int.MAX_VALUE else limits.reviewsPerDay - input.today.count { it.countsAsReview }
             val deckRemaining = HashMap<Uuid, Int>()
-            for (d in decksById.values) d.reviewsPerDay?.let { deckRemaining[d.id] = it }
+            if (!limits.keepGoing) for (d in decksById.values) d.reviewsPerDay?.let { deckRemaining[d.id] = it }
             for (t in input.today) {
                 if (!t.countsAsReview) continue
                 val h = homeDeck(t.deckIds) ?: continue
@@ -168,13 +175,18 @@ public object DefaultQueueBuilder : QueueBuilder {
 
         // Rule 4.
         private fun buildNew(eligible: List<QueueCandidate>): Pair<List<QueueItem>, List<PendingEntry>> {
-            var budget = maxOf(
-                0,
-                minOf(
-                    limits.newPerDay - input.today.count { it.introducedNew },
-                    limits.newPerSession - limits.newShownThisSession,
-                ),
-            )
+            // Rule 6: keep going replaces the daily and session caps with the batch.
+            var budget = if (limits.keepGoing) {
+                maxOf(1, limits.keepGoingNewBatch)
+            } else {
+                maxOf(
+                    0,
+                    minOf(
+                        limits.newPerDay - input.today.count { it.introducedNew },
+                        limits.newPerSession - limits.newShownThisSession,
+                    ),
+                )
+            }
             val out = mutableListOf<QueueItem>()
             val materialize = mutableListOf<PendingEntry>()
             if (budget == 0) return out to materialize
@@ -203,7 +215,7 @@ public object DefaultQueueBuilder : QueueBuilder {
             // C-8). May go below zero through add_kanji; read clamped. Decks without a limit are absent.
             val deckRemaining = HashMap<Uuid, Int>()
             for (d in decksById.values) {
-                if (!d.enabled) continue
+                if (!d.enabled || limits.keepGoing) continue
                 d.newPerDay?.let { deckRemaining[d.id] = it - (introducedPerDeck[d.id] ?: 0) }
             }
 
@@ -295,8 +307,9 @@ public object DefaultQueueBuilder : QueueBuilder {
                                 c.expressionKanji.isNotEmpty() && s.addKanji != AddKanjiMode.OFF
                             val group = if (withKanji) kanjiGroup(c) else emptyList()
                             // Atomic: V fits the source (checked above) and the whole group fits the
-                            // budget, or none of it is drawn and V is skipped for this build.
-                            if (1 + group.size > budget) return true
+                            // budget, or none of it is drawn and V is skipped for this build. Under keep
+                            // going (rule 6) any budget >= 1 draws the whole group, so it never starves.
+                            if (!limits.keepGoing && 1 + group.size > budget) return true
                             if (s.addKanji == AddKanjiMode.BEFORE) {
                                 group.forEach { takeNew(it) }
                                 takeNew(c)

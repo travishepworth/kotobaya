@@ -18,8 +18,8 @@ import re  # noqa: F401
 import json
 
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
+from typing import Any, ClassVar, Dict, List, Optional
 from kotobaya_client.models.queue_item import QueueItem
 from kotobaya_client.models.review_queue_counts import ReviewQueueCounts
 from typing import Optional, Set
@@ -34,8 +34,9 @@ class ReviewQueue(BaseModel):
     day_ends_at: datetime = Field(description="Instant the study day rolls over.")
     generated_at: datetime = Field(description="When the queue was built.")
     items: List[QueueItem] = Field(description="Cards in the order to show them.")
+    more_available: Optional[StrictBool] = Field(default=None, description="C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable` (the server has no pending entries). Servers implementing C-26 always send it; absent (older server) is treated as false. ")
     study_day: date = Field(description="The current study day.")
-    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "study_day"]
+    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "more_available", "study_day"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -101,6 +102,7 @@ class ReviewQueue(BaseModel):
             "day_ends_at": obj.get("day_ends_at"),
             "generated_at": obj.get("generated_at"),
             "items": [QueueItem.from_dict(_item) for _item in obj["items"]] if obj.get("items") is not None else None,
+            "more_available": obj.get("more_available"),
             "study_day": obj.get("study_day")
         })
         return _obj

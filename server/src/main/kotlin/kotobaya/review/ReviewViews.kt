@@ -110,6 +110,8 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.set<JsonNode>("sentence", picked?.first ?: json.nullNode())
             if (grammarCloze) item.set<JsonNode>("grammar_sentence", picked?.second ?: json.nullNode())
             item.put("review_type", type)
+            // C-26: first showing (state new; equals the core QueueItem.isNew on queue items).
+            item.put("is_new", v.json["state"].asText() == "new")
             extras.putDecks(item, note["id"].asText())
             note["kanji_literal"].takeUnless { it.isNull }?.let { item.set<JsonNode>("kanji_examples", extras.kanjiExamples(it.asText(), item["kanji"])) }
             // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client.

@@ -62,7 +62,8 @@ class ReviewApiTest : ShouldSpec() {
             //val limit : kotlin.Int = 20 // kotlin.Int | Maximum number of cards to return.
             //val deckId : kotlin.String = 01931f40-2000-7000-8000-000000000d01 // kotlin.String | Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise).
             //val kinds : kotlin.collections.Set<kotlin.String> = ["learning","review"] // kotlin.collections.Set<kotlin.String> | Which queue sections to include, comma-separated. Default all three.
-            //val result : ReviewQueue = apiInstance.getReviewQueue(limit, deckId, kinds)
+            //val keepGoing : kotlin.Boolean = true // kotlin.Boolean | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue, exactly as before C-26. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they return the normal queue and no `more_available`). 
+            //val result : ReviewQueue = apiInstance.getReviewQueue(limit, deckId, kinds, keepGoing)
             //result shouldBe ("TODO")
         }
 

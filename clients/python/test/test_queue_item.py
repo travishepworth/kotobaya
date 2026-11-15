@@ -166,6 +166,7 @@ class TestQueueItem(unittest.TestCase):
                     text = '0', 
                     translation = '', 
                     unknown_count = 0, ),
+                is_new = True,
                 kanji = kotobaya_client.models.kanji.Kanji(
                     components = [
                         ''

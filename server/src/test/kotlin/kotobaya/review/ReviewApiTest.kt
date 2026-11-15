@@ -216,6 +216,58 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(1, limited.size)
     }
 
+    /** C-26: `keep_going`, `more_available` in both empty cases, and `is_new`. */
+    @Test
+    fun keepGoingPassesTheNewLimitAndMoreAvailableTellsDoneFromOut() = reviewApp {
+        val t = token()
+        setting("scheduler.new_per_day", "1")
+        val notesMade = listOf(note(t, "a"), note(t, "b"), note(t, "c"))
+        suspend fun fetch(query: String): JsonNode {
+            val r = client.call(HttpMethod.Get, "/review/queue$query", bearer = t)
+            assertEquals(200, r.status.value)
+            return r.json()
+        }
+        val first = fetch("")
+        assertEquals(1, first["items"].size())
+        assertTrue(first["items"][0]["is_new"].asBoolean())
+        assertEquals(false, first["more_available"].asBoolean())
+        // Easy graduates it straight to review (due in days): the normal queue is now empty under the limit.
+        val introduced = first["items"][0]["card"]["id"].asText()
+        assertEquals(200, answer(t, introduced, 4).status.value)
+        val done = fetch("")
+        assertEquals(0, done["items"].size())
+        assertEquals(true, done["more_available"].asBoolean(), "done for today, keep going has more")
+        assertEquals(false, fetch("?kinds=learning,review")["more_available"].asBoolean(), "keep going adds no learning/review cards")
+
+        val more = fetch("?keep_going=true")
+        val moreIds = more["items"].map { it["card"]["id"].asText() }
+        assertEquals(2, moreIds.size, "one card per remaining note (siblings buried), past new_per_day")
+        assertTrue(more["items"].all { it["is_new"].asBoolean() })
+        assertEquals(false, more["more_available"].asBoolean())
+        assertEquals(2, more["counts"]["new"].asInt())
+        assertEquals(1, fetch("?keep_going=true&limit=1")["items"].size(), "the batch is limit")
+        val noteOf = { id: String -> notesMade.first { n -> n["cards"].any { it["id"].asText() == id } }["id"].asText() }
+        assertEquals(2, moreIds.map(noteOf).toSet().size)
+        assertTrue(noteOf(introduced) !in moreIds.map(noteOf))
+
+        for (id in moreIds) assertEquals(200, answer(t, id, 4).status.value)
+        val out = fetch("")
+        assertEquals(0, out["items"].size())
+        assertEquals(false, out["more_available"].asBoolean(), "nothing left at all")
+        assertEquals(0, fetch("?keep_going=true")["items"].size())
+        // still counted as introduced today: the normal limit stays used up
+        assertEquals(0, fetch("")["counts"]["new"].asInt())
+
+        // is_new on a drill item of an already-reviewed card
+        val drill = client.call(HttpMethod.Post, "/drill/session", bearer = t, body = mapOf("source" to "cards", "card_ids" to listOf(introduced), "mode" to "drill"))
+        assertEquals(200, drill.status.value)
+        assertEquals(false, drill.json()["items"][0]["is_new"].asBoolean())
+
+        val bad = client.call(HttpMethod.Get, "/review/queue?keep_going=yes", bearer = t)
+        assertProblem(bad, 422, "validation_failed")
+        assertEquals("/keep_going", bad.json()["errors"][0]["pointer"].asText())
+    }
+
     @Test
     fun aNewCardInADeletedDeckFallsBackToTheDecklessSource() = reviewApp {
         val t = token()

@@ -34,7 +34,13 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  *   /review/queue` emits no ops (`x-emits-ops` is empty), so it cannot create their notes.
  */
 internal class QueueLoader(private val dsl: DSLContext) {
-    fun load(nowMs: Long, settings: ReviewSettings, deckFilter: String? = null): LoadedQueue {
+    fun load(
+        nowMs: Long,
+        settings: ReviewSettings,
+        deckFilter: String? = null,
+        keepGoing: Boolean = false,
+        keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
+    ): LoadedQueue {
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day
         val decks = loadDecks(settings)
 
@@ -91,6 +97,8 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 newShownThisSession = 0,
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS,
+                keepGoing = keepGoing,
+                keepGoingNewBatch = keepGoingNewBatch,
             ),
             decks = decks,
             candidates = candidates,
