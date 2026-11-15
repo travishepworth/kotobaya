@@ -6,7 +6,8 @@ context before every command that changes something: no script here switches it.
 
 Related documents: `deploy/backup/README.md` (backup and restore internals, the full restore rules),
 `docs/SECURITY.md` (threat model, open findings S-01 to S-14), `contracts/sync/SYNC.md` 6.2-6.3
-(log epochs and the backup/restore handshake), `contracts/api/openapi.yaml` (every endpoint).
+(log epochs and the backup/restore handshake), `contracts/api/openapi.yaml` (every endpoint),
+`docs/API-GUIDE.md` (task recipes for the API with curl and the `kotobaya` CLI).
 
 ## 1. Install and upgrade
 
