@@ -23,6 +23,11 @@ export const DECK_TYPE_KEYS: Record<string, DeckMessageKey> = {
 	media: 'decks.type.media'
 };
 
+/** Draw order of decks: lower priority first, then by name (equal priorities take turns). */
+export function compareDeckDrawOrder(a: Pick<Deck, 'priority' | 'name'>, b: Pick<Deck, 'priority' | 'name'>): number {
+	return a.priority - b.priority || a.name.localeCompare(b.name);
+}
+
 /** /decks */
 export class DecksListPage {
 	items = $state<Deck[]>([]);
@@ -36,7 +41,7 @@ export class DecksListPage {
 		void (async () => {
 			try {
 				const all = (await decksApi.listDecks({})).items;
-				this.items = [...all].sort((a, b) => b.priority - a.priority || a.name.localeCompare(b.name));
+				this.items = [...all].sort(compareDeckDrawOrder);
 			} catch {
 				this.loadFailed = true; // the client already toasted
 			} finally {

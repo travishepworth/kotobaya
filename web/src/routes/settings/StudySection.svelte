@@ -56,6 +56,7 @@
 								<TextField
 									label={ts(def.label)}
 									inputmode={def.type === 'int' ? 'numeric' : undefined}
+									hint={def.key === 'scheduler.mined_priority' ? sx('sx.minedPriorityHint') : undefined}
 									value={String(vm.draft[def.key] ?? '')}
 									oninput={(e) => (vm.draft[def.key] = (e.currentTarget as HTMLInputElement).value)}
 								/>

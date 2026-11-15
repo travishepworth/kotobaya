@@ -26,7 +26,7 @@ const en = {
 	'decks.listChoose': 'Choose a list…',
 	'decks.listItems': '{title} ({n} words)',
 	'decks.enabled': 'Include in study queues',
-	'decks.priorityLabel': 'Priority (higher is introduced first)',
+	'decks.priorityLabel': 'Priority (lower numbers are introduced first)',
 	'decks.newPerDay': 'New cards per day (blank = use the global limit)',
 	'decks.reviewsPerDay': 'Reviews per day (blank = use the global limit)',
 	'decks.invalidNumber': 'Enter a whole number for “{field}”.',

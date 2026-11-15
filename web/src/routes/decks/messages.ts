@@ -20,7 +20,7 @@ const en = {
 	'dk.newPerDay': 'New cards per day',
 	'dk.reviewsPerDay': 'Reviews per day',
 	'dk.priorityLabel': 'Priority',
-	'dk.priorityHint': 'Higher priority decks introduce their new cards first.',
+	'dk.priorityHint': 'Decks with a lower number introduce their new cards first; equal numbers take turns.',
 	'dk.enabled': 'Include in study',
 	'dk.enabledHint': 'Paused decks keep their cards but leave the daily queue.',
 	'dk.items': 'Items',

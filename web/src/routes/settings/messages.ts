@@ -36,6 +36,7 @@ const en = {
 	'sx.noTokensBody': 'Create one for AnkiConnect-style tools or your own scripts.',
 	'sx.newToken': 'New token',
 	'sx.saveStudy': 'Save study settings',
+	'sx.minedPriorityHint': 'Lower numbers are introduced first. Equal to a deck’s priority, they take turns with that deck. Default 0.',
 	'sx.kind': '{kind} · {prefix}…',
 	'sx.loadFailed': 'Settings could not be loaded.',
 	'sx.yes': 'On',
