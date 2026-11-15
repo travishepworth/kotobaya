@@ -1112,3 +1112,5 @@
 2026-11-15T03:29:41Z RELEASE 0.1.16 DEPLOYED helm rev 24 (pin 99cf5a19; api+web 0.1.16, worker stays 0.1.11). Live queue: 50/50 items carry text, kanji_examples + decks present; CLI daemon restarted, card text OK
 2026-11-15T03:35:42Z AND-REVIEW-INFO HANDOFF (BackExtras offline picker + deck chips, Open in dictionary keepOnLeave); android check + perf-focused review dispatched
 2026-11-15T03:37:42Z AND-REVIEW-INFO CHECK_GREEN + REVIEW_CHANGES 1 major (t.all() over 4 learning tables per kanji card on load/tap path) + deck lookup scans -> attempt 2 (same writer)
+2026-11-15T03:38:42Z CLI-KBY DISPATCH writer (user spec; base = installed ~/.local/bin/kby; uncommitted repo draft scrapped per user)
+2026-11-15T03:44:05Z CLI-KBY CHECK_GREEN (97 tests) + MERGE af5ad121 (daemon refuses hidden grades, hidden card publishes no answer; kby serve/do --rev)

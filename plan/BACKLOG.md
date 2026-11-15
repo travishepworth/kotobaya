@@ -794,4 +794,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-BACK — android smart back across the app (review back = undo) · model: sonnet · risk: med · deps: — · status: MERGED b621443a
 
 ### CLI-KBY — kby machine interface for GUI widgets: daemon grade gating + hidden-answer state (A1–A3), `kby serve` / `kby do --rev` (user request 2026-11-15)
-- model: sonnet · risk: med · deps: CLI-REVIEW, CLI-WATCH · paths: cli/ · status: RUNNING (ticket: plan/tickets/CLI-KBY.md)
+- model: sonnet · risk: med · deps: CLI-REVIEW, CLI-WATCH · paths: cli/ · status: MERGED af5ad121 (ticket: plan/tickets/CLI-KBY.md)

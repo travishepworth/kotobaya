@@ -4,7 +4,7 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN28 resume
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 28): server+web 0.1.16 LIVE (helm rev 24, pin 99cf5a19, worktree scratchpad/rel0116; worker 0.1.11); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. C-25 MERGED ee1fecdd. WEB-REVIEW-INFO MERGED 48a817be. In flight: AND-REVIEW-INFO (writer). Next: -> RELEASE APK 0.1.17 (user waiting: AND-BACK + AND-REVIEW-INFO + 0.1.15 content; tell user when ready). Then FOLLOWUPS.
+## RESUME HERE (run 28): server+web 0.1.16 LIVE (helm rev 24, pin 99cf5a19, worktree scratchpad/rel0116; worker 0.1.11); APK 0.1.15 release built (~/kotobaya-apk/kotobaya-0.1.15-release.apk), not installed (no adb). ARCH-CARD-TEXT MERGED 40bd6b94. C-25 MERGED ee1fecdd. WEB-REVIEW-INFO MERGED 48a817be. In flight: AND-REVIEW-INFO attempt 2 (writer; perf major). CLI-KBY MERGED af5ad121 (user must reinstall daemon uv tool + kby). Next: -> RELEASE APK 0.1.17 (user waiting: AND-BACK + AND-REVIEW-INFO + 0.1.15 content; tell user when ready). Then FOLLOWUPS.
 
 ## Previous (run 26 end: 0.1.12 APK built, NOT installed — phone unplugged)
 Merged: AND-QUEUE (Home hero per-deck sum -> whole-queue counts), AND-REVIEW-STALE (Review Empty refreshes on sync/resume/rollover), AND-CARDHTML (WebView intercept 403'd own data: doc; ReviewBackend lacked dict/kanji lookups -> blank vocab fronts).
@@ -56,6 +56,7 @@ P7: merged 6 (BUG-1..BUG-6; BUG-2+3 batched) · BUG-1 2 attempts, BUG-6 2 attemp
 P6 DONE (T607 deferred) · P5/P4/P3/P2/P0 DONE (see LOG.md for detail)
 
 ## Recently merged (last 10)
+- CLI-KBY (run 28, af5ad121): daemon grade gating (reveal first) + hidden-answer state; cli/bin/kby (imported from ~/.local/bin) + serve/do --rev; 97 tests
 - WEB-REVIEW-INFO (run 28, 48a817be): review back BackExtras (kanji_examples w/ ON/KUN chip + dict link, deck chips +N)
 - C-25 (run 28, ee1fecdd): core KanjiExamplePicker, QueueItem.decks/deck_count/kanji_examples, deck_ids on DictEntry/Summary/Note, server batched QueueExtras; reviewer + architect APPROVE r1
 - ARCH-CARD-TEXT (run 28, 40bd6b94): core CardTextRenderer + QueueItem.text (plain-text front/back/reading/sentence), server QueueText; text absent for unknown note type; 3 attempts
