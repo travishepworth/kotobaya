@@ -70,6 +70,12 @@ class AnswerHandler(Protocol):
         """Card id -> op ("answer" / "undo") of its latest unsent journal entry."""
         ...
 
+    def begin_fetch(self) -> int:
+        """Token taken before a queue fetch; passed to end_fetch once its snapshot is applied."""
+        ...
+
+    def end_fetch(self, token: int) -> None: ...
+
     def close(self) -> None:
         """Cancel background sends; the journal keeps whatever is unsent."""
         ...
@@ -92,6 +98,12 @@ class NoAnswers:
 
     def pending_cards(self) -> dict[str, str]:
         return {}
+
+    def begin_fetch(self) -> int:
+        return 0
+
+    def end_fetch(self, token: int) -> None:
+        return None
 
     def close(self) -> None:
         return None
@@ -224,6 +236,7 @@ class Daemon:
         was_ok = self.session.conn == "ok"
         # A snapshot may predate a POST that lands while it is in flight: also filter what was
         # pending when the fetch started.
+        token = self.handler.begin_fetch()
         pending = self.handler.pending_cards()
         try:
             if self._settings_stale:
@@ -239,6 +252,7 @@ class Daemon:
         self.session.conn = "ok"
         pending.update(self.handler.pending_cards())
         self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
+        self.handler.end_fetch(token)
         if not was_ok:
             await self.handler.on_online(self)
 

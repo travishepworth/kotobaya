@@ -1,26 +1,24 @@
 # HANDOFF CLI-REVIEW
 
-STATUS: DONE
+STATUS: DONE (attempt 2)
 BRANCH: t/CLI-REVIEW
-CHECK: `make check MODULE=cli` → green (65 pytest, mypy --strict, ruff)
+CHECK: `make check MODULE=cli` → green (83 pytest, mypy --strict, ruff)
 
 ## Changed (≤ 6 lines)
-- `cli/src/kotobaya_cli/daemon/journal.py`: JSONL journal (answer/undo), atomic rewrite with file and directory fsync. Corrupt lines are copied to `journal.corrupt.<ms>` and reported in a notice.
-- `daemon/review.py`: `ReviewHandler`. Journals first, then advances the card. One FIFO sender resends the same entry, with backoff for offline errors, waits for reconnect after auth errors, and drops 409/410/422 entries with a notice. Replays on start.
-- `backend.py`: `post_answer` and `post_undo`. `session.apply_queue(pending=…)`: cards with an unsent answer are filtered out, and a card with any unsent entry is never replaced as "gone".
-- `server.py`: the seam gains `pending_cards()` and `close()`. `run_daemon` wires up `ReviewHandler`.
+- `daemon/journal.py`: an entry exists in memory only once its rename to disk succeeded. A failed append or remove changes nothing, so a full disk can't create a second id for the same answer.
+- `backend.classify_review`: only 409/410/422, or a 404 with the server's `not_found` code, drop an entry. Any other 4xx ("rejected") is retried with one notice. 403 is "forbidden".
+- `daemon/review.py`: 403 refuses further answers and undos until restart and keeps the journal. Dropping an answer makes it not undoable and quietly removes its queued undo. Acked cards stay filtered until a fetch that started after the ack has been applied.
+- `server.py`: new `begin_fetch`/`end_fetch` on the seam (CLI-WATCH files untouched).
 
 ## Acceptance → tests (cli/tests/test_review.py)
-- Journal fsynced before the POST → `test_journal_written_and_fsynced_before_post_answer`
-- Retries reuse the same id → `test_retry_reuses_same_id_no_double_review_logged`
-- Crash replay → `test_daemon_crash_between_journal_and_post_replays_exactly_once` and `test_crash_after_post_before_journal_removal_…`
-- Terminal 4xx → `test_terminal_4xx_drops_the_entry_with_a_notice[409/410/422]`
-- Card replacement → `test_current_card_replaced_only_when_gone_from_the_queue` and `test_stale_snapshot_…`
-- Undo → `test_undo_targets_the_last_answered_id` and `test_undo_is_journaled_and_sent_after_its_pending_answer`
+- Unchanged from attempt 1, all still passing.
+- Major 1 → `test_review_post_classification_…` (real HttpBackend, 12 statuses), `test_unexpected_4xx_keeps_the_entry_…`
+- Major 2 → `test_failed_journal_write_leaves_no_entry_and_no_second_id`, `test_failed_journal_remove_…`
+- Minors 3/4/5 → `test_snapshot_fetched_before_the_answer_…` (fails if acked filtering is removed), `test_forbidden_is_sticky_…`, `test_terminal_drop_of_last_answer_…`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Decisions: every other 4xx (e.g. 404) also counts as terminal. Undo is refused while the connection isn't ok. Last-undo state is lost on restart. `last.rating` is the button actually sent.
-- A token without the `review` scope gets 403 → `conn:"auth"`, then flips back to ok on the 60 s refetch (flap). Documentation should require the `review` scope.
+- The forbidden state clears only on restart, since the daemon loads its config at start.
+- A failed directory fsync after the rename still counts as committed.

@@ -6,6 +6,7 @@ One JSON object per line, in send order. Every change rewrites the file atomical
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
@@ -122,32 +123,43 @@ class Journal:
             keep = self.path.with_name(f"{self.path.name}.corrupt.{time.time_ns() // 1_000_000}")
             keep.write_bytes(self.path.read_bytes())
             self.notice = f"journal: {bad} corrupt line(s) kept in {keep.name}"
-            self._write()
+            self._write(self._entries)
 
     def append(self, entry: Entry) -> None:
         """Add an entry and make it durable before returning."""
-        self._entries.append(entry)
-        self._write()
+        entries = [*self._entries, entry]
+        self._write(entries)  # raises before memory changes: a failed append leaves no trace
+        self._entries = entries
 
     def remove(self, entry: Entry) -> None:
-        self._entries = [e for e in self._entries if e is not entry]
-        self._write()
+        entries = [e for e in self._entries if e is not entry]
+        self._write(entries)
+        self._entries = entries
 
-    def _write(self) -> None:
+    def _write(self, entries: list[Entry]) -> None:
+        """Replace the journal with `entries`. Raises (leaving the old file) if anything fails
+        before the rename; once the rename is done the new journal counts as committed."""
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         tmp = self.path.with_name(self.path.name + ".tmp")
-        data = "".join(json.dumps(e.to_json(), separators=(",", ":")) + "\n" for e in self._entries)
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        data = "".join(json.dumps(e.to_json(), separators=(",", ":")) + "\n" for e in entries)
         try:
-            view = memoryview(data.encode())
-            while view:
-                view = view[os.write(fd, view) :]
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-        os.replace(tmp, self.path)
-        dfd = os.open(self.path.parent, os.O_RDONLY)
-        try:
-            os.fsync(dfd)
-        finally:
-            os.close(dfd)
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            try:
+                view = memoryview(data.encode())
+                while view:
+                    view = view[os.write(fd, view) :]
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            os.replace(tmp, self.path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+            raise
+        # The rename happened: memory must follow the file, or a retry would mint a second id.
+        with contextlib.suppress(OSError):
+            dfd = os.open(self.path.parent, os.O_RDONLY)
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)

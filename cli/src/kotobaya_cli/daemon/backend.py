@@ -28,7 +28,10 @@ GRADING_KEY = "scheduler.grading_buttons"
 
 
 class BackendError(Exception):
-    """kind is 'offline' (unreachable / 5xx / timeout), 'auth' (401/403) or 'terminal'."""
+    """kind is 'offline' (unreachable / 5xx / timeout), 'auth' (401/403) or 'terminal'.
+
+    Review POSTs (classify_review) also use 'forbidden' (403: the token lacks the review scope)
+    and 'rejected' (an unexpected 4xx, e.g. a proxy's plain-text 404: retried, never dropped)."""
 
     def __init__(self, kind: str, message: str = "") -> None:
         super().__init__(message or kind)
@@ -46,6 +49,40 @@ def classify(exc: Exception) -> BackendError:
         if status >= 500 or status in (0, 408, 429):
             return BackendError("offline", f"HTTP {status}")
         return BackendError("terminal", f"HTTP {status}")
+    return BackendError("offline", type(exc).__name__)
+
+
+TERMINAL_REVIEW_STATUSES = (409, 410, 422)
+
+
+def _problem_code(exc: ApiException) -> str | None:
+    try:
+        body = json.loads(exc.body or "")
+    except ValueError:
+        return None
+    code = body.get("code") if isinstance(body, dict) else None
+    return code if isinstance(code, str) else None
+
+
+def classify_review(exc: Exception) -> BackendError:
+    """Map a failed POST /review/answer or /review/undo. Only 409/410/422, and a 404 that is the
+    server's own problem+json `not_found`, are terminal (the journal entry is dropped). Every
+    other 4xx may come from a proxy or ingress during a deploy and is retried."""
+    if isinstance(exc, BackendError):
+        return exc
+    if isinstance(exc, ApiException):
+        status = exc.status or 0
+        if status == 401:
+            return BackendError("auth", "HTTP 401")
+        if status == 403:
+            return BackendError("forbidden", "HTTP 403")
+        if status in TERMINAL_REVIEW_STATUSES:
+            return BackendError("terminal", f"HTTP {status}")
+        if status == 404 and _problem_code(exc) == "not_found":
+            return BackendError("terminal", "HTTP 404")
+        if 400 <= status < 500 and status not in (408, 429):
+            return BackendError("rejected", f"HTTP {status}")
+        return BackendError("offline", f"HTTP {status}")
     return BackendError("offline", type(exc).__name__)
 
 
@@ -181,7 +218,7 @@ class HttpBackend:
         try:
             self._review.answer_review(request, _request_timeout=HTTP_TIMEOUT)
         except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
-            raise classify(exc) from exc
+            raise classify_review(exc) from exc
 
     def post_undo(self, review_id: str) -> None:
         """POST /review/undo; an already undone review is a 200, so retries are safe."""
@@ -192,7 +229,7 @@ class HttpBackend:
         try:
             self._review.undo_review(request, _request_timeout=HTTP_TIMEOUT)
         except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
-            raise classify(exc) from exc
+            raise classify_review(exc) from exc
 
     def open_events(self) -> EventStream:
         pool = self._client.rest_client.pool_manager

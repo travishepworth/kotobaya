@@ -15,11 +15,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from conftest import FakeHttp
 
-from kotobaya_cli.daemon.backend import BackendError, EventStream
+from kotobaya_cli.api import Settings
+from kotobaya_cli.daemon.backend import BackendError, EventStream, HttpBackend
 from kotobaya_cli.daemon.journal import AnswerEntry, Journal, UndoEntry
 from kotobaya_cli.daemon.protocol import Action, AnswerCmd
-from kotobaya_cli.daemon.review import ReviewHandler
+from kotobaya_cli.daemon.review import FORBIDDEN_NOTICE, ReviewHandler
 from kotobaya_cli.daemon.server import Daemon, Paths
 from kotobaya_cli.daemon.session import CardEntry, Counts, QueueSnapshot
 
@@ -521,5 +523,233 @@ def test_reviewed_at_is_utc_ms_and_offset_is_clamped(paths: Paths) -> None:
         await daemon.handle(AnswerCmd("good"))
         await handler.idle()
         assert server.answers[0].utc_offset_min == 1080
+
+    asyncio.run(scenario())
+
+
+# ---- attempt 2: classification, failed journal writes, acked-card filtering ---------------
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "kind"),
+    [
+        (409, {"code": "card_not_reviewable", "title": "Conflict"}, "terminal"),
+        (410, {"code": "gone", "title": "Gone"}, "terminal"),
+        (422, {"code": "validation_failed", "title": "Invalid"}, "terminal"),
+        (404, {"code": "not_found", "title": "Not Found"}, "terminal"),
+        (404, "404 page not found", "rejected"),  # ingress/proxy during a deploy
+        (404, None, "rejected"),
+        (421, None, "rejected"),
+        (400, {"code": "invalid_request"}, "rejected"),
+        (401, {"code": "unauthenticated"}, "auth"),
+        (403, {"code": "insufficient_scope"}, "forbidden"),
+        (429, None, "offline"),
+        (503, {"code": "unavailable"}, "offline"),
+    ],
+)
+def test_review_post_classification_drops_only_409_410_422_and_server_404(
+    fake_http: FakeHttp, status: int, body: Any, kind: str
+) -> None:
+    backend = HttpBackend(Settings(base_url="https://kotobaya.test/api/v1", token="kbp_x"))
+    fake_http.add("POST", "/api/v1/review/answer", status, body)
+    fake_http.add("POST", "/api/v1/review/undo", status, body)
+    entry = AnswerEntry(
+        "01931f41-0000-7000-8000-000000000f01",
+        "01931f40-1a2b-7c3d-8e4f-000000000c01",
+        3,
+        "good",
+        "2026-11-15T09:00:00.000Z",
+        100,
+        540,
+    )
+    with pytest.raises(BackendError) as answered:
+        backend.post_answer(entry)
+    assert answered.value.kind == kind
+    with pytest.raises(BackendError) as undone:
+        backend.post_undo(entry.id)
+    assert undone.value.kind == kind
+    raw = fake_http.calls[0].body
+    sent = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+    assert sent["id"] == entry.id and sent["button"] == "good"
+
+
+def test_unexpected_4xx_keeps_the_entry_and_retries_with_one_notice(paths: Paths) -> None:
+    server = FakeServer()
+    server.answer_errors = [BackendError("rejected", "HTTP 404")] * 3
+    notices: list[object] = []
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        original = daemon.emit
+
+        def spy() -> dict[str, object]:
+            state = original()
+            notices.append(state["notice"])
+            return state
+
+        daemon.emit = spy  # type: ignore[method-assign]
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert handler.pending_count() == 0
+        assert len(server.answers) == 4 and len({a.id for a in server.answers}) == 1
+        assert len(server.logged) == 1
+
+    asyncio.run(scenario())
+    assert [n for n in notices if n] == ["server rejected the review (HTTP 404), retrying"]
+
+
+def test_forbidden_is_sticky_and_keeps_the_journal(paths: Paths) -> None:
+    server = FakeServer()
+    server.answer_errors = [BackendError("forbidden", "HTTP 403")]
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert handler.pending_count() == 1 and daemon.session.conn == "ok"
+        out = st(await daemon.handle(AnswerCmd("good")))
+        assert out["notice"] == FORBIDDEN_NOTICE and out["card"]["id"] == "b"
+        daemon.session.conn = "offline"
+        await daemon.refetch()  # coming back online does not resend while forbidden
+        await handler.idle()
+        assert len(server.answers) == 1 and handler.pending_count() == 1
+
+    asyncio.run(scenario())
+
+    async def restarted() -> None:  # token fixed, daemon restarted: replayed with the same id
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        await handler.idle()
+        assert handler.pending_count() == 0
+
+    asyncio.run(restarted())
+    assert len({a.id for a in server.answers}) == 1 and len(server.logged) == 1
+
+
+def test_terminal_drop_of_last_answer_makes_it_not_undoable_and_drops_its_undo(
+    paths: Paths,
+) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths, retry_base_s=3600)
+        await daemon.refetch()
+        server.answer_errors = [BackendError("offline")]
+        await daemon.handle(AnswerCmd("good"))
+        await asyncio.sleep(0.02)
+        handler.close()  # stop the sender sleeping in backoff
+        await daemon.handle(Action("undo"))  # queued behind the unsent answer
+        server.answer_errors = [BackendError("terminal", "HTTP 410")]
+        await handler.idle()
+        assert server.undos == []
+        assert Journal(paths.journal).entries == []
+        last = daemon.session.last
+        assert last is not None and last.undoable is False
+
+    asyncio.run(scenario())
+
+    async def drop_last() -> None:
+        daemon, handler = make(server, paths)
+        server.snap = snapshot("x", "y")
+        await daemon.refetch()
+        server.answer_errors = [BackendError("terminal", "HTTP 409")]
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        last = daemon.session.last
+        assert last is not None and last.undoable is False
+        out = st(await daemon.handle(Action("undo")))
+        assert out["notice"] == "nothing to undo" and out["card"]["id"] == "y"
+
+    asyncio.run(drop_last())
+
+
+def test_failed_journal_write_leaves_no_entry_and_no_second_id(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    server = FakeServer()
+    real_replace = os.replace
+    full = [True]
+
+    def replace(src: Any, dst: Any) -> None:
+        if full[0]:
+            raise OSError(28, "No space left on device")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", replace)
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        for _ in range(2):  # pressing again while the disk is full (the worker turns the
+            with pytest.raises(OSError):  # exception into an "internal error" notice)
+                await daemon.handle(AnswerCmd("good"))
+            assert ids(daemon) == ["a", "b", "c"] and daemon.session.last is None
+            assert handler.pending_count() == 0
+        assert not paths.journal.exists()
+        assert not paths.journal.with_name("journal.tmp").exists()
+        full[0] = False  # space frees up
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert len(server.logged) == 1 and len(server.answers) == 1
+
+    asyncio.run(scenario())
+
+
+def test_failed_journal_remove_keeps_the_entry_in_memory(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    j = Journal(paths.journal)
+    a = AnswerEntry("01", "a", 3, "good", "2026-11-15T09:00:00.000Z", 0, 0)
+    j.append(a)
+
+    def fail(src: Any, dst: Any) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "replace", fail)
+    with pytest.raises(OSError):
+        j.remove(a)
+    assert j.entries == [a]
+
+
+def test_snapshot_fetched_before_the_answer_does_not_reshow_an_acked_card(paths: Paths) -> None:
+    server = FakeServer()
+    applied: list[list[str]] = []
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        original_apply = daemon.session.apply_queue
+
+        def spy_apply(snap: QueueSnapshot, **kw: Any) -> None:
+            original_apply(snap, **kw)
+            applied.append(ids(daemon))
+
+        daemon.session.apply_queue = spy_apply  # type: ignore[method-assign,assignment]
+        gate = threading.Event()
+        stale = snapshot("a", "b", "c")
+        fresh_fetch = server.fetch_queue
+
+        def slow_stale_fetch() -> QueueSnapshot:
+            server.fetch_queue = fresh_fetch  # type: ignore[method-assign]
+            gate.wait(2)
+            return stale
+
+        server.fetch_queue = slow_stale_fetch  # type: ignore[method-assign]
+        fetch = asyncio.create_task(daemon.refetch())  # starts before the answer
+        await asyncio.sleep(0.02)
+        await daemon.handle(AnswerCmd("good"))
+        for _ in range(100):  # the POST is acked while the stale fetch is in flight
+            if handler.pending_count() == 0:
+                break
+            await asyncio.sleep(0.01)
+        assert handler.pending_count() == 0
+        gate.set()
+        await fetch
+        await handler.idle()
+        assert applied and all("a" not in q for q in applied)
+        assert ids(daemon) == ["b", "c"]
+        assert handler.pending_cards() == {}  # forgotten once a later fetch was applied
 
     asyncio.run(scenario())

@@ -2,9 +2,10 @@
 
 Every answer/undo is written to the journal and fsynced before anything else happens. A single
 background task sends entries strictly in order, each with the id minted when it was journaled,
-and removes an entry only after a 2xx or a terminal 4xx (with a notice). Offline errors are retried
-with backoff; auth errors wait for the daemon to come back online. Unsent entries are replayed on
-the next start.
+and removes an entry only after a 2xx or a terminal 409/410/422 (or the server's own 404
+`not_found`), with a notice. Offline errors and any other 4xx are retried with backoff; 401 waits
+for the daemon to come back online; 403 stops reviewing until restart. Unsent entries are replayed
+on the next start.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from kotobaya_cli.api import uuid7
-from kotobaya_cli.daemon.backend import BackendError, classify
+from kotobaya_cli.daemon.backend import BackendError, classify_review
 from kotobaya_cli.daemon.journal import AnswerEntry, Entry, Journal, UndoEntry
 from kotobaya_cli.daemon.protocol import resolve_button
 from kotobaya_cli.daemon.session import CardEntry, Last
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 UTC_OFFSET_LIMIT = 1080  # contract bound for utc_offset_min
 RETRY_BASE_S = 1.0
 RETRY_MAX_S = 30.0
+FORBIDDEN_NOTICE = "review forbidden: the token needs the review scope (restart after fixing)"
 
 
 def local_utc_offset_min() -> int:
@@ -71,11 +73,20 @@ class ReviewHandler:
         self._last_card: CardEntry | None = None
         self._task: asyncio.Task[None] | None = None
         self._wake: asyncio.Event | None = None
+        self._forbidden = False  # 403 on a review POST: sticky until the daemon restarts
+        self._rejected_notice_for: str | None = None
+        # Card ids whose answer was acked, with an ack sequence number: kept out of refetched
+        # queues until a fetch that started after the ack has been applied (end_fetch).
+        self._acked: dict[str, int] = {}
+        self._ack_seq = 0
 
     # ---- AnswerHandler ------------------------------------------------------
 
     async def answer(self, daemon: Daemon, button: str) -> None:
         session = daemon.session
+        if self._forbidden:
+            session.set_notice(FORBIDDEN_NOTICE)
+            return
         if session.conn != "ok":
             session.set_notice(_not_ok_notice(session.conn))  # no offline reviewing in v1
             return
@@ -106,6 +117,9 @@ class ReviewHandler:
         if last is None or not last.undoable or card is None:
             session.set_notice("nothing to undo")
             return
+        if self._forbidden:
+            session.set_notice(FORBIDDEN_NOTICE)
+            return
         if session.conn != "ok":
             session.set_notice(_not_ok_notice(session.conn))
             return
@@ -125,10 +139,17 @@ class ReviewHandler:
         return len(self._journal.entries)
 
     def pending_cards(self) -> dict[str, str]:
-        pending: dict[str, str] = {}
+        pending = dict.fromkeys(self._acked, "answer")
         for entry in self._journal.entries:
             pending[entry.card_id] = "answer" if isinstance(entry, AnswerEntry) else "undo"
         return pending
+
+    def begin_fetch(self) -> int:
+        return self._ack_seq
+
+    def end_fetch(self, token: int) -> None:
+        """A fetch that started at `token` was applied: answers acked before it are reflected."""
+        self._acked = {card: seq for card, seq in self._acked.items() if seq > token}
 
     def close(self) -> None:
         if self._task is not None:
@@ -146,6 +167,8 @@ class ReviewHandler:
         if self._wake is None:
             self._wake = asyncio.Event()
         self._wake.set()
+        if self._forbidden:
+            return
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._drain(daemon))
 
@@ -155,13 +178,34 @@ class ReviewHandler:
                 sent = await self._send_pending(daemon)
                 if sent:
                     await daemon.refetch()  # counts and the cards after the current one only
-                if not sent or not self._journal.entries or daemon.session.conn == "auth":
+                blocked = daemon.session.conn == "auth" or self._forbidden
+                if not sent or not self._journal.entries or blocked:
                     return
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001  # e.g. the journal cannot be rewritten
             daemon.session.set_notice(f"journal error: {type(exc).__name__}")
             daemon.emit()
+
+    def _acked_ok(self, entry: Entry) -> None:
+        self._ack_seq += 1
+        if isinstance(entry, AnswerEntry):
+            self._acked[entry.card_id] = self._ack_seq
+        else:
+            self._acked.pop(entry.card_id, None)
+
+    def _drop_terminal(self, daemon: Daemon, entry: Entry, err: BackendError) -> None:
+        self._journal.remove(entry)
+        what = "answer" if isinstance(entry, AnswerEntry) else "undo"
+        daemon.session.set_notice(f"{what} not saved ({err})")
+        if isinstance(entry, AnswerEntry):
+            last = daemon.session.last
+            if last is not None and last.review_id == entry.id:
+                daemon.session.last = Last(last.rating, undoable=False, review_id=last.review_id)
+                self._last_card = None
+            for queued in self._journal.entries:  # its undo would only 404: drop it quietly
+                if isinstance(queued, UndoEntry) and queued.review_id == entry.id:
+                    self._journal.remove(queued)
 
     async def _send_pending(self, daemon: Daemon) -> bool:
         """Send entries in order until the journal is empty or the head cannot be sent now.
@@ -175,11 +219,9 @@ class ReviewHandler:
             try:
                 await asyncio.to_thread(_send, daemon.backend, entry)
             except Exception as exc:  # noqa: BLE001
-                err = exc if isinstance(exc, BackendError) else classify(exc)
+                err = classify_review(exc)
                 if err.kind == "terminal":
-                    self._journal.remove(entry)
-                    what = "answer" if isinstance(entry, AnswerEntry) else "undo"
-                    daemon.session.set_notice(f"{what} not saved ({err})")
+                    self._drop_terminal(daemon, entry, err)
                     daemon.emit()
                     progressed = True
                     continue
@@ -187,12 +229,22 @@ class ReviewHandler:
                     daemon.session.conn = "auth"
                     daemon.emit()
                     return progressed
-                # offline / 5xx / timeout: resend the same entry later, or as soon as kicked
+                if err.kind == "forbidden":
+                    self._forbidden = True
+                    daemon.session.set_notice(FORBIDDEN_NOTICE)
+                    daemon.emit()
+                    return progressed
+                if err.kind == "rejected" and self._rejected_notice_for != entry.id:
+                    self._rejected_notice_for = entry.id  # once per entry, not per retry
+                    daemon.session.set_notice(f"server rejected the review ({err}), retrying")
+                    daemon.emit()
+                # offline / 5xx / timeout / unexpected 4xx: resend the same entry later
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(self._wake.wait(), delay)
                 delay = min(delay * 2, self._retry_max_s)
                 continue
             self._journal.remove(entry)
+            self._acked_ok(entry)
             daemon.emit()
             progressed = True
             delay = self._retry_base_s
