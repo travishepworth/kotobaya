@@ -96,6 +96,7 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - AnkiConnect (T311): default allowed origins include moz-extension://* and chrome-extension://* (loopback + API key). Confirm acceptable; server must be re-toggled after app restart.
 
 ## Provisional decisions
+- AND-DECKEND (run 27): on 2026-11-15 ~10:23 JST one learning card in a deck session got ~6 extra reviews in 9 s (learn-ahead loop). They are real review_log rows; consider undoing or leaving them (only short learning-step intervals were affected).
 - Frequency lists (run 27): jpdb v2.2 kana, BCCWJ SUW+LUW, CEJC (conversation) loaded in that priority. User asked for Netflix; no pinnable Yomitan build exists, CEJC is the spoken-language substitute. Swap in values worker.dictSourcesJson.freq_lists.
 - ADR-026 (run 27): Android search merged into one result list (dictionary + "In my cards" flag + other notes). Check it reads well on the phone.
 - ADR-027 (run 27): phone now downloads media decks (deck items + sentences) after sync. Check Fatal Twelve shows words on the phone.

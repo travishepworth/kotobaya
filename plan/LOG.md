@@ -1071,3 +1071,6 @@
 2026-11-15T01:25:49Z WEB-REVIEW-FAST HANDOFF attempt 2 (Outbox singleton, keep-current refresh, minors); re-review
 2026-11-15T01:28:08Z WEB-REVIEW-FAST REVIEW_APPROVE r2 + CHECK_GREEN + MERGE 00c1d676
 2026-11-15T01:28:39Z AND-DECKEND DISPATCH writer-senior (deck session loops on last card; possible repeat grading)
+2026-11-15T01:32:41Z RELEASE web 0.1.13 DEPLOYED helm rev 23 (pin 4908783b: WEB-PRIO, WEB-ADD2DECK, WEB-REVIEW-FAST); rev 22 no-op (values sed missed web tag)
+2026-11-15T01:33:26Z AND-DECKEND evidence: phone log 10:22:55-10:23:04 'rebuild ahead items=1' loop, 6 extra committed reviews of one learning card in a deck session; sent to writer
+2026-11-15T01:33:34Z AND-ADD2DECK CHECK_GREEN + MERGE c1e00bc8 (search detail: add to notes/deck, KbDeckPicker, offline ops)
