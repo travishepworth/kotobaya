@@ -1082,3 +1082,8 @@
 2026-11-15T01:41:51Z AND-DECKEND HANDOFF (deck learn-ahead only if no deck due, never re-serve last answered; DeckDone + continueWithAll); reviewer dispatched
 2026-11-15T01:44:05Z AND-DECKEND CHECK_GREEN (awaiting review)
 2026-11-15T01:45:14Z AND-DECKEND REVIEW_APPROVE + MERGE f6bf579f (6 minors -> FOLLOWUPS)
+2026-11-15T01:45:30Z API-GUIDE DISPATCH writer-light; RELEASE 0.1.15 PIN e76d2711 release build started (AND-ADD2DECK, AND-DECKEND)
+2026-11-15T01:46:18Z RELEASE 0.1.15 APK built ~/kotobaya-apk/kotobaya-0.1.15-release.apk code 115 cert ec6b7f45 ok, not debuggable; waiting for adb
+2026-11-15T01:47:25Z CLI-REVIEW HANDOFF (journal JSONL fsync, FIFO sender, replay; 65 tests); reviewer dispatched
+2026-11-15T01:47:38Z CLI-REVIEW CHECK_GREEN (65 tests; awaiting review); CLI-WATCH DISPATCH writer-light
+2026-11-15T01:47:51Z ADR-028 DECIDE (human): keep rule 5 learn-ahead re-serve in all-decks session
