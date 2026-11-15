@@ -36,9 +36,10 @@ class ReviewQueue(BaseModel):
     generated_at: datetime = Field(description="When the queue was built.")
     items: List[QueueItem] = Field(description="Cards in the order to show them.")
     more_available: Optional[StrictBool] = Field(default=None, description="C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. ")
+    next_learning_due_at: Optional[datetime] = Field(default=None, description="ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. ")
     study_day: date = Field(description="The current study day.")
     to_materialize: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. ")
-    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "more_available", "study_day", "to_materialize"]
+    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "more_available", "next_learning_due_at", "study_day", "to_materialize"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -105,6 +106,7 @@ class ReviewQueue(BaseModel):
             "generated_at": obj.get("generated_at"),
             "items": [QueueItem.from_dict(_item) for _item in obj["items"]] if obj.get("items") is not None else None,
             "more_available": obj.get("more_available"),
+            "next_learning_due_at": obj.get("next_learning_due_at"),
             "study_day": obj.get("study_day"),
             "to_materialize": obj.get("to_materialize")
         })

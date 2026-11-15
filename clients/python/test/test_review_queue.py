@@ -69,6 +69,7 @@ class TestReviewQueue(unittest.TestCase):
                         text = null, )
                     ],
                 more_available = True,
+                next_learning_due_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),
                 to_materialize = 0
             )

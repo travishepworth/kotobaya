@@ -14,7 +14,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). With `keep_going=true` (C-26) they count the keep-going queue instead - `new` is the new cards of this batch (about `limit`), `review` every review due today, `learning` unchanged.
+ * Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). The same with `keep_going=true` (ADR-033, replacing the C-26 batch counts) - they always describe the normal queue, so all clients agree; keep going only lifts the limits on what is served.
  * @export
  * @interface ReviewQueueCounts
  */

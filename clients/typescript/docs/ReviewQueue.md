@@ -12,6 +12,7 @@ Name | Type
 `generatedAt` | Date
 `items` | [Array&lt;QueueItem&gt;](QueueItem.md)
 `moreAvailable` | boolean
+`nextLearningDueAt` | Date
 `studyDay` | Date
 `toMaterialize` | number
 
@@ -27,6 +28,7 @@ const example = {
   "generatedAt": null,
   "items": null,
   "moreAvailable": null,
+  "nextLearningDueAt": null,
   "studyDay": null,
   "toMaterialize": null,
 } satisfies ReviewQueue

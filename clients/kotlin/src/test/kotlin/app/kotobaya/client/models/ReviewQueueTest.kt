@@ -71,6 +71,12 @@ class ReviewQueueTest : ShouldSpec() {
             //modelInstance.moreAvailable shouldBe ("TODO")
         }
 
+        // to test the property `nextLearningDueAt` - ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. 
+        should("test nextLearningDueAt") {
+            // uncomment below to test the property
+            //modelInstance.nextLearningDueAt shouldBe ("TODO")
+        }
+
         // to test the property `toMaterialize` - C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. 
         should("test toMaterialize") {
             // uncomment below to test the property

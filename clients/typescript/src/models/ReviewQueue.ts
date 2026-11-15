@@ -67,6 +67,15 @@ export interface ReviewQueue {
      */
     moreAvailable?: boolean;
     /**
+     * ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that
+     * is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with
+     * learn-ahead 0); absent when there is none. With empty `items` the client waits until this
+     * instant and fetches again (the card is not shown early). Unaffected by `kinds` and
+     * `keep_going`.
+     * 
+     */
+    nextLearningDueAt?: Date;
+    /**
      * The current study day.
      */
     studyDay: Date;
@@ -110,6 +119,7 @@ export function ReviewQueueFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'generatedAt': (json['generated_at'] == null ? json['generated_at'] : parseDateTime(json['generated_at'])),
         'items': ((json['items'] as Array<any>).map(QueueItemFromJSON)),
         'moreAvailable': json['more_available'] == null ? undefined : json['more_available'],
+        'nextLearningDueAt': json['next_learning_due_at'] == null ? undefined : (parseDateTime(json['next_learning_due_at'])),
         'studyDay': (json['study_day'] == null ? json['study_day'] : parseDate(json['study_day'])),
         'toMaterialize': json['to_materialize'] == null ? undefined : json['to_materialize'],
     };
@@ -131,6 +141,7 @@ export function ReviewQueueToJSONTyped(value?: ReviewQueue | null, ignoreDiscrim
         'generated_at': value['generatedAt'] == null ? value['generatedAt'] : serializeDateTime(value['generatedAt']),
         'items': ((value['items'] as Array<any>).map(QueueItemToJSON)),
         'more_available': value['moreAvailable'],
+        'next_learning_due_at': value['nextLearningDueAt'] == null ? value['nextLearningDueAt'] : serializeDateTime(value['nextLearningDueAt']),
         'study_day': value['studyDay'] == null ? value['studyDay'] : serializeDate(value['studyDay']),
         'to_materialize': value['toMaterialize'],
     };

@@ -2162,12 +2162,20 @@ paths:
         `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at
         most about `limit` new cards are drawn per request (an add_kanji group may overshoot),
         reviews due today come before new cards, and everything else (eligibility, sibling
-        burying, deck priority and order, disabled decks, learning and learn-ahead) is unchanged.
+        burying, deck priority and order, disabled decks, learning) is unchanged.
         Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
         per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
         on every fetch while the user keeps going. Cards answered this way are ordinary reviews
-        and count against today's limits as usual. In keep-going mode `counts.new` is the new
-        cards of this batch (about `limit`), not the total of new cards that remain.
+        and count against today's limits as usual. `counts` are the same with or without keep
+        going (ADR-033): what remains today under the limits, so every client shows the same
+        numbers at the same moment whatever mode it is in.
+
+        **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
+        `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).
+        When nothing else is left but learning cards due later today, `items` is empty and
+        `next_learning_due_at` says when the next one falls due: show a waiting state ("next
+        card in m:ss") and fetch again at that instant. A card is never shown again before its
+        learning step has passed.
 
         **Keep-going scope (normative).** Keep going is UI state scoped to one visit to the
         review screen. It is cleared when the user leaves the review screen, when the study day
@@ -2185,8 +2193,8 @@ paths:
           the case where only the per-session new-card cap (`scheduler.new_per_session`) is
           reached, so the UI says "done for now", not "done for today".
         - `items` empty, `more_available` false: nothing left to show now for this `kinds`,
-          with or without keep going (`counts.learning` > 0 means a learning card is due later
-          today).
+          with or without keep going. If `next_learning_due_at` is set, a learning card falls
+          due then (wait and fetch again at that instant); otherwise the day is done.
         - `items` empty and `to_materialize` > 0 (C-27; only for a caller without the `review`
           and `write` scopes): new cards exist but are deck entries without notes yet; a
           caller that may review gets them materialized by its own fetch.
@@ -9407,8 +9415,8 @@ components:
         counts:
           type: object
           description: Cards remaining today under the current limits (whole queue, not only `items`; unaffected by
-            `kinds`). With `keep_going=true` (C-26) they count the keep-going queue instead - `new` is the new
-            cards of this batch (about `limit`), `review` every review due today, `learning` unchanged.
+            `kinds`). The same with `keep_going=true` (ADR-033, replacing the C-26 batch counts) - they always
+            describe the normal queue, so all clients agree; keep going only lifts the limits on what is served.
           required:
           - new
           - learning
@@ -9442,6 +9450,14 @@ components:
         generated_at:
           $ref: '#/components/schemas/Timestamp'
           description: When the queue was built.
+        next_learning_due_at:
+          $ref: '#/components/schemas/Timestamp'
+          description: |
+            ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that
+            is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with
+            learn-ahead 0); absent when there is none. With empty `items` the client waits until this
+            instant and fetches again (the card is not shown early). Unaffected by `kinds` and
+            `keep_going`.
         more_available:
           type: boolean
           description: |

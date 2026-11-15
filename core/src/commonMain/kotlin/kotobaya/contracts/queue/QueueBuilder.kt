@@ -174,7 +174,11 @@ public data class QueueLimits(
     public val newShownThisSession: Int,
     /** `scheduler.bury_siblings` (default true). */
     public val burySiblings: Boolean,
-    /** Learning cards due within this many ms may be shown early, after everything else (rules 2, 5; default 1 200 000 = 20 min). */
+    /**
+     * Learning cards due within this many ms may be shown early, after everything else (rules 2, 5). Kotobaya's
+     * server and devices pass 0 (ADR-033): a learning card is never served before its step has passed; the UI waits
+     * for [ReviewQueue.nextLearningDueAt] instead.
+     */
     public val learnAheadMs: Long,
     /**
      * C-26 (additive, ADR-031) **Keep going**: a stateless per-build override, never stored (not a
