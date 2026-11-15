@@ -34,14 +34,15 @@ class PitchResult:
 
 @dataclass(frozen=True)
 class FreqResult:
-    """``rows == mapped + unmatched + deferred``; each mapped row has exactly one entry."""
+    """``rows == mapped + unmatched + deferred + ambiguous``; a mapped row has one entry."""
 
     list_id: str
     rows: int
     unmatched: int  # no entry has the term (with the reading, if given)
     loaded: int  # entry_freq rows written (one per entry; rows sharing an entry keep the best)
     mapped: int = 0
-    deferred: int = 0  # kana rows whose only candidates are owned by kanji rows (freqmatch.py)
+    deferred: int = 0  # kana rows whose entry is owned by a kanji row (freqmatch.py)
+    ambiguous: int = 0  # kana rows whose best candidates tie (freqmatch.py)
 
 
 @dataclass(frozen=True)
@@ -87,9 +88,14 @@ def _copy(cur: psycopg.Cursor[Any], table: str, rows: Iterable[tuple[Any, ...]])
     return n
 
 
+def lock(conn: psycopg.Connection[Any]) -> None:
+    """Serialise with other extra loads until the transaction ends (re-entrant)."""
+    conn.execute("SELECT pg_advisory_xact_lock(%s)", (_LOCK_KEY,))
+
+
 def begin(conn: psycopg.Connection[Any], release_id: int) -> None:
     """Take the lock and require that T101 has loaded ``release_id``."""
-    conn.execute("SELECT pg_advisory_xact_lock(%s)", (_LOCK_KEY,))
+    lock(conn)
     row = conn.execute("SELECT 1 FROM ref.dict_release WHERE id = %s", (release_id,)).fetchone()
     if row is None:
         raise ValueError(f"release {release_id} is not loaded; run the JMdict load first")
@@ -159,13 +165,17 @@ def load_freq_list(
             ((s, cfg.id, r) for s, r in sorted(best.items())),
         )
         cur.execute("UPDATE ref.freq_list SET entry_count = %s WHERE id = %s", (loaded, cfg.id))
-    res = FreqResult(cfg.id, m.rows, m.unmatched, loaded, m.mapped, m.deferred)
+    res = FreqResult(cfg.id, m.rows, m.unmatched, loaded, m.mapped, m.deferred, m.ambiguous)
     job_summary(
         log,
         f"freq-list {cfg.id}",
         inputs={"rows": res.rows},
         outputs={"mapped": res.mapped, "entries": res.loaded},
-        dropped={"unmatched": res.unmatched, "deferred": res.deferred},
+        dropped={
+            "unmatched": res.unmatched,
+            "deferred": res.deferred,
+            "ambiguous": res.ambiguous,
+        },
         warn_as_info=True,  # every list has rows JMdict lacks; the counts are the record
     )
     return res

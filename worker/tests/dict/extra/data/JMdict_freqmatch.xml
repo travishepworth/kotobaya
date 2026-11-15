@@ -569,6 +569,40 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1127800</ent_seq>
+<r_ele>
+<reb>マス</reb>
+<re_pri>gai1</re_pri>
+</r_ele>
+<r_ele>
+<reb>マッス</reb>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<s_inf>esp. in art contexts</s_inf>
+<gloss>mass</gloss>
+</sense>
+<sense>
+<stagr>マス</stagr>
+<pos>&adj-f;</pos>
+<gloss>mass (media, production, etc.)</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1135480</ent_seq>
+<r_ele>
+<reb>モノ</reb>
+<re_pri>gai1</re_pri>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<sense>
+<pos>&adj-f;</pos>
+<xref>モノレール</xref>
+<xref>モノクローム</xref>
+<gloss>mono</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1157170</ent_seq>
 <k_ele>
 <keb>為る</keb>
@@ -777,6 +811,27 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1196230</ent_seq>
+<k_ele>
+<keb>過多</keb>
+<ke_pri>news1</ke_pri>
+<ke_pri>nf24</ke_pri>
+</k_ele>
+<r_ele>
+<reb>かた</reb>
+<re_pri>news1</re_pri>
+<re_pri>nf24</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<pos>&adj-na;</pos>
+<ant>過少</ant>
+<gloss>excess</gloss>
+<gloss>surplus</gloss>
+<gloss>superabundance</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1196540</ent_seq>
 <k_ele>
 <keb>蚊</keb>
@@ -797,6 +852,118 @@ various information fields.
 <sense>
 <pos>&n;</pos>
 <gloss>mosquito</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1207710</ent_seq>
+<k_ele>
+<keb>潟</keb>
+<ke_pri>news2</ke_pri>
+<ke_pri>nf34</ke_pri>
+<ke_pri>spec2</ke_pri>
+</k_ele>
+<r_ele>
+<reb>かた</reb>
+<re_pri>news2</re_pri>
+<re_pri>nf34</re_pri>
+<re_pri>spec2</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>lagoon</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>inlet</gloss>
+<gloss>creek</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<xref>干潟</xref>
+<gloss>tidal beach</gloss>
+<gloss>tidal flat</gloss>
+<gloss>tideland</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1250090</ent_seq>
+<k_ele>
+<keb>型</keb>
+<ke_pri>ichi1</ke_pri>
+<ke_pri>news1</ke_pri>
+<ke_pri>nf05</ke_pri>
+</k_ele>
+<r_ele>
+<reb>かた</reb>
+<re_pri>ichi1</re_pri>
+<re_pri>news1</re_pri>
+<re_pri>nf05</re_pri>
+</r_ele>
+<r_ele>
+<reb>がた</reb>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<pos>&n-suf;</pos>
+<s_inf>がた when a suffix</s_inf>
+<gloss>type</gloss>
+<gloss>style</gloss>
+<gloss>model</gloss>
+<gloss>pattern</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>mold</gloss>
+<gloss>mould</gloss>
+<gloss>model</gloss>
+<gloss>pattern</gloss>
+<gloss>template</gloss>
+<gloss>impression</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>kata (set sequence of positions and movements in martial arts)</gloss>
+<gloss>style (in kabuki, noh, etc.)</gloss>
+<gloss>form</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>convention</gloss>
+<gloss>tradition</gloss>
+<gloss>(standard) form</gloss>
+<gloss>formula</gloss>
+<gloss>usage</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<s_inf>がた when a suffix</s_inf>
+<gloss>(set) size</gloss>
+<gloss>inches (in sizes of displays, disks, image sensors, etc.)</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<xref>品種・2</xref>
+<misc>&rare;</misc>
+<gloss>(taxonomical) form</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1258950</ent_seq>
+<k_ele>
+<keb>肩</keb>
+<ke_pri>ichi1</ke_pri>
+<ke_pri>news1</ke_pri>
+<ke_pri>nf03</ke_pri>
+</k_ele>
+<r_ele>
+<reb>かた</reb>
+<re_pri>ichi1</re_pri>
+<re_pri>news1</re_pri>
+<re_pri>nf03</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>shoulder</gloss>
 </sense>
 </entry>
 <entry>
@@ -919,6 +1086,74 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1322990</ent_seq>
+<k_ele>
+<keb>者</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>もの</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<r_ele>
+<reb>もん</reb>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<s_inf>rarely used without a qualifier</s_inf>
+<gloss>person</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1346290</ent_seq>
+<k_ele>
+<keb>升</keb>
+<ke_pri>news2</ke_pri>
+<ke_pri>nf37</ke_pri>
+<ke_pri>spec2</ke_pri>
+</k_ele>
+<k_ele>
+<keb>枡</keb>
+</k_ele>
+<k_ele>
+<keb>桝</keb>
+</k_ele>
+<k_ele>
+<keb>斗</keb>
+</k_ele>
+<r_ele>
+<reb>ます</reb>
+<re_pri>news2</re_pri>
+<re_pri>nf37</re_pri>
+<re_pri>spec2</re_pri>
+</r_ele>
+<r_ele>
+<reb>マス</reb>
+<re_nokanji/>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>measuring container</gloss>
+<gloss>measuring box</gloss>
+<gloss>measure</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>box (seating at a theatre, etc.)</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<s_inf>esp. マス</s_inf>
+<gloss>square on a grid</gloss>
+<gloss>cell of a grid</gloss>
+</sense>
+<sense>
+<stagk>斗</stagk>
+<pos>&n;</pos>
+<gloss>square bearing block (at the top of a pillar)</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1398030</ent_seq>
 <k_ele>
 <keb>僧</keb>
@@ -1028,6 +1263,32 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>1403120</ent_seq>
+<k_ele>
+<keb>増す</keb>
+<ke_pri>ichi1</ke_pri>
+<ke_pri>news2</ke_pri>
+<ke_pri>nf47</ke_pri>
+</k_ele>
+<k_ele>
+<keb>益す</keb>
+<ke_inf>&rK;</ke_inf>
+</k_ele>
+<r_ele>
+<reb>ます</reb>
+<re_pri>ichi1</re_pri>
+<re_pri>news2</re_pri>
+<re_pri>nf47</re_pri>
+</r_ele>
+<sense>
+<pos>&v5s;</pos>
+<pos>&vi;</pos>
+<pos>&vt;</pos>
+<gloss>to increase</gloss>
+<gloss>to grow</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>1467640</ent_seq>
 <k_ele>
 <keb>猫</keb>
@@ -1076,6 +1337,161 @@ various information fields.
 <misc>&uk;</misc>
 <misc>&sl;</misc>
 <gloss>bottom (submissive partner of a homosexual relationship)</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1502390</ent_seq>
+<k_ele>
+<keb>物</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>もの</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<r_ele>
+<reb>もん</reb>
+</r_ele>
+<r_ele>
+<reb>モノ</reb>
+<re_nokanji/>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<gloss>thing</gloss>
+<gloss>object</gloss>
+<gloss>article</gloss>
+<gloss>stuff</gloss>
+<gloss>substance</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<s_inf>as 〜のもの, 〜のもん</s_inf>
+<gloss>one's things</gloss>
+<gloss>possessions</gloss>
+<gloss>property</gloss>
+<gloss>belongings</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>things</gloss>
+<gloss>something</gloss>
+<gloss>anything</gloss>
+<gloss>everything</gloss>
+<gloss>nothing</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>quality</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<gloss>reason</gloss>
+<gloss>the way of things</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<misc>&uk;</misc>
+<s_inf>formal noun often used as 〜ものだ</s_inf>
+<gloss>used to emphasize emotion, judgment, etc.</gloss>
+<gloss>used to indicate a common occurrence in the past (after a verb in past tense)</gloss>
+<gloss>used to indicate a general tendency</gloss>
+<gloss>used to indicate something that should happen</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<misc>&uk;</misc>
+<gloss>item classified as ...</gloss>
+<gloss>item related to ...</gloss>
+<gloss>work in the genre of ...</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<gloss>cause of ...</gloss>
+<gloss>cause for ...</gloss>
+</sense>
+<sense>
+<stagr>もの</stagr>
+<pos>&pref;</pos>
+<xref>物寂しい・ものさびしい</xref>
+<gloss>somehow</gloss>
+<gloss>somewhat</gloss>
+<gloss>for some reason</gloss>
+</sense>
+<sense>
+<stagr>もの</stagr>
+<pos>&pref;</pos>
+<xref>物珍しい・ものめずらしい</xref>
+<gloss>really</gloss>
+<gloss>truly</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1516925</ent_seq>
+<k_ele>
+<keb>方</keb>
+<ke_pri>ichi1</ke_pri>
+</k_ele>
+<r_ele>
+<reb>かた</reb>
+<re_pri>ichi1</re_pri>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<s_inf>also ほう</s_inf>
+<gloss>direction</gloss>
+<gloss>way</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<misc>&hon;</misc>
+<gloss>person</gloss>
+<gloss>lady</gloss>
+<gloss>gentleman</gloss>
+</sense>
+<sense>
+<pos>&n;</pos>
+<pos>&n-suf;</pos>
+<gloss>method of</gloss>
+<gloss>manner of</gloss>
+<gloss>way of</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<gloss>care of ...</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<s_inf>also がた</s_inf>
+<gloss>person in charge of ...</gloss>
+</sense>
+<sense>
+<pos>&n-suf;</pos>
+<s_inf>also がた</s_inf>
+<gloss>side (e.g. "on my mother's side")</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>1524900</ent_seq>
+<k_ele>
+<keb>鱒</keb>
+<ke_pri>news2</ke_pri>
+<ke_pri>nf32</ke_pri>
+</k_ele>
+<r_ele>
+<reb>ます</reb>
+<re_pri>news2</re_pri>
+<re_pri>nf32</re_pri>
+</r_ele>
+<r_ele>
+<reb>マス</reb>
+<re_nokanji/>
+</r_ele>
+<sense>
+<pos>&n;</pos>
+<misc>&uk;</misc>
+<gloss>trout</gloss>
+<gloss>sea trout</gloss>
 </sense>
 </entry>
 <entry>
@@ -1415,6 +1831,28 @@ various information fields.
 </sense>
 </entry>
 <entry>
+<ent_seq>2210290</ent_seq>
+<k_ele>
+<keb>〼</keb>
+<ke_inf>&sK;</ke_inf>
+</k_ele>
+<r_ele>
+<reb>ます</reb>
+</r_ele>
+<sense>
+<pos>&aux-v;</pos>
+<misc>&pol;</misc>
+<s_inf>attaches to the -masu stem of a verb</s_inf>
+<gloss>expresses politeness towards the listener (or reader)</gloss>
+</sense>
+<sense>
+<pos>&aux-v;</pos>
+<misc>&arch;</misc>
+<misc>&hum;</misc>
+<gloss>expresses respect towards those affected by the action</gloss>
+</sense>
+</entry>
+<entry>
 <ent_seq>2220320</ent_seq>
 <k_ele>
 <keb>箇</keb>
@@ -1576,6 +2014,28 @@ various information fields.
 <pos>&aux-v;</pos>
 <s_inf>indicates mild imperative</s_inf>
 <gloss>(please) do</gloss>
+</sense>
+</entry>
+<entry>
+<ent_seq>2780660</ent_seq>
+<r_ele>
+<reb>もの</reb>
+<re_pri>spec1</re_pri>
+</r_ele>
+<r_ele>
+<reb>もん</reb>
+</r_ele>
+<sense>
+<pos>&prt;</pos>
+<s_inf>used as a conjunction or at sentence-end, often as 〜ものな, 〜ものね</s_inf>
+<gloss>indicates reason or excuse</gloss>
+</sense>
+<sense>
+<pos>&prt;</pos>
+<misc>&fem;</misc>
+<s_inf>at sentence-end</s_inf>
+<gloss>indicates dissatisfaction</gloss>
+<gloss>indicates desire to be pampered or indulged</gloss>
 </sense>
 </entry>
 <entry>

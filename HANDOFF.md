@@ -1,26 +1,24 @@
-# HANDOFF WRK-FREQ-MATCH
+# HANDOFF WRK-FREQ-MATCH (attempt 2)
 
 STATUS: DONE
 BRANCH: t/WRK-FREQ-MATCH
-CHECK: `make check MODULE=worker` → green (885 passed)
+CHECK: `make check MODULE=worker` → green (890 passed)
 
 ## Changed (≤ 6 lines)
-- `dict/extra/freqmatch.py` (new): each row maps to at most one seq. Rows counted as mapped, unmatched or deferred; `load.py` uses it and logs a job_summary for each list.
-- `dict/extra/index.py`: adds priority forms, first kanji form, usually-kana level and bound-POS to the index.
-- `jobs/freq_rebuild.py` (new CLI): reloads entry_freq/freq_rank for the current release from cached or pinned sources, then queues list-deck builds.
-- Run: `kubectl -n kotobaya exec deploy/kotobaya-worker -- python -m kotobaya_worker.jobs.freq_rebuild`
-- word_status is keyed by entry_seq, so removed deck items lose no learning data.
+- `freqmatch.py` kana key, in order: exact script, common kana word, common, kana level, the source's kanji-row rank, reading ord 0, not bound. If a kanji row owns the winner and it is level >= 2, the row is deferred; there is no fallback. A full tie counts as `ambiguous`.
+- `index.py`: kanji forms tagged rK/sK/oK count as no kanji (居る, 然う). Also stores reading ord and exact reading text.
+- `freq_rebuild.py`: takes the extras lock before reading is_current. Queues a fresh deck-build (no dedupe key) when a running one holds the key.
+- Run: `kubectl -n kotobaya exec deploy/kotobaya-worker -- python -m kotobaya_worker.jobs.freq_rebuild`. word_status is keyed by entry_seq, so no data is lost.
 
 ## Acceptance → tests
-- そう/だ/か → `test_kana_term_maps_to_the_usually_kana_word`
-- 草+そう, priority-tagged entry wins → `test_kanji_term_with_reading_maps_to_that_entry_only`, `test_kanji_term_with_two_entries_picks_the_priority_tagged`
-- counts add up, one seq per row → `test_mapping_counts_sum_to_input_and_one_seq_per_row`, `test_rebuild_maps_one_entry_per_row_and_queues_list_decks`
-- Parser fixture tests → still green (parse/match not touched)
+- `test_freqmatch.py` (fixture: 42 real JMdict entries): とき, もの/ます, いる, かた, and the counts test
+- `test_freqmatch_jmdict.py`: the 19 terms, run with and without kanji rows (skipped if the cache is absent)
+- `test_freq_rebuild.py`: lock, running-build requeue
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- The kana key orders priority tag before the usually-kana level, the reverse of the ticket. Ticket order maps とき→鴇 and ところ→野老 on real JMdict. Ties (いる) are broken by the source's own kanji-row rank, then by lowest seq. Bound-POS demotion makes そう pick 然う rather than -そう.
-- No ranking code shared with parse/match: it depends on Sudachi POS and freq_rank, which this job computes.
-- Device dict packages keep the old entry_freq/top60k until the next release.
+- Not mapped, counted as ambiguous: かた, ます (升/増す tie, 〼 untagged), ある without kanji rows. もの→particle 2780660; とこ→床. Tag counts don't help: they pick 要る and 肩.
+- ㋕ not used: it only says which spelling was counted, and term + reading already fix the entry.
+- Device packages update at the next release.

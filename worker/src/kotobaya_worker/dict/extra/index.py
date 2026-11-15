@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,14 +16,26 @@ from ..normalize import normalize_form
 # auxiliary (-そう "appearing that", 化 "-ization"), never the stand-alone word of a list row.
 BOUND_POS = frozenset({"aux", "aux-v", "aux-adj", "suf", "n-suf", "pref", "n-pref"})
 COPULA_POS = frozenset({"cop", "cop-da"})
+# Kanji forms that are not really used: rarely-used, search-only, outdated (JMdict ke_inf).
+RARE_KANJI_TAGS = frozenset({"rK", "sK", "oK"})
 
 
-def kana_level(has_kanji: bool, first_sense_misc: Iterable[str], any_uk: bool) -> int:
-    """0: no kanji form, or usually kana (``uk``) on the first sense; 1: ``uk`` on a later
-    sense only; 2: written in kanji."""
-    if not has_kanji or "uk" in first_sense_misc:
+def is_real_kanji(tags: Iterable[str]) -> bool:
+    return RARE_KANJI_TAGS.isdisjoint(tags)
+
+
+def kana_level(has_real_kanji: bool, first_sense_misc: Iterable[str], any_uk: bool) -> int:
+    """How strongly the entry is a kana word.
+
+    0: no kanji form in real use (none, or only rK/sK/oK forms: 然う, 居る, 〼);
+    1: usually kana (``uk``) on the first sense; 2: ``uk`` on a later sense only (見る, 人);
+    3: written in kanji.
+    """
+    if not has_real_kanji:
         return 0
-    return 1 if any_uk else 2
+    if "uk" in first_sense_misc:
+        return 1
+    return 2 if any_uk else 3
 
 
 def is_bound(first_sense_pos: Iterable[str]) -> bool:
@@ -43,6 +56,8 @@ class EntryIndex:
     common: set[tuple[int, str, str]] = field(default_factory=set)  # (seq, kind, norm) priority
     first_kanji: dict[int, str] = field(default_factory=dict)  # seq -> norm of kanji form 0
     kana_level: dict[int, int] = field(default_factory=dict)  # seq -> see kana_level()
+    reading_ord: dict[tuple[int, str], int] = field(default_factory=dict)  # (seq, norm) -> ord
+    exact_readings: set[tuple[int, str]] = field(default_factory=set)  # (seq, NFKC reading)
     bound: set[int] = field(default_factory=set)  # seqs whose first sense is a bound form
 
     def match(self, term: str, reading: str | None = None) -> list[int]:
@@ -63,6 +78,8 @@ class EntryIndex:
         target.setdefault(norm, set()).add(seq)
         if kind == "reading":
             self.readings.setdefault(seq, {}).setdefault(norm, form)
+            self.reading_ord.setdefault((seq, norm), ord_)
+            self.exact_readings.add((seq, unicodedata.normalize("NFKC", form)))
         elif ord_ == 0:
             self.first_kanji[seq] = norm
         if common:
@@ -87,7 +104,9 @@ def index_from_entries(entries: Iterable[Entry]) -> EntryIndex:
             e.seq,
             {p for s in e.senses for p in s.pos},
             kana_level(
-                bool(e.kanji), first.misc if first else (), any("uk" in s.misc for s in e.senses)
+                any(is_real_kanji(k.tags) for k in e.kanji),
+                first.misc if first else (),
+                any("uk" in s.misc for s in e.senses),
             ),
             is_bound(first.pos if first else ()),
         )
@@ -105,12 +124,15 @@ def load_index(conn: psycopg.Connection[Any]) -> EntryIndex:
             idx.add_form(seq, kind, ord_, form, norm, bool(common))
         cur.execute(
             """
-            SELECT seq, pos, jsonb_array_length(kanji_forms) > 0,
+            SELECT seq, pos,
+                   EXISTS (SELECT 1 FROM jsonb_array_elements(kanji_forms) k
+                           WHERE NOT (k->'tags' ?| %s)),
                    coalesce(array(SELECT jsonb_array_elements_text(senses->0->'misc')), '{}'),
                    'uk' = ANY(misc),
                    coalesce(array(SELECT jsonb_array_elements_text(senses->0->'pos')), '{}')
             FROM ref.dict_entry WHERE retired_release_id IS NULL
-            """
+            """,
+            (sorted(RARE_KANJI_TAGS),),
         )
         for seq, pos, has_kanji, misc0, any_uk, pos0 in cur:
             idx.add_entry(

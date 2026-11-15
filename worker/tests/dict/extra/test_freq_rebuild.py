@@ -116,6 +116,16 @@ def test_rebuild_maps_one_entry_per_row_and_queues_list_decks(db_url: str, tmp_p
     assert again.lists == res.lists and again.freq_rank_changed == 0
     assert again.deck_builds_queued == 0
 
+    # A running build may have planned before the rebuild: a fresh one is queued behind it.
+    with psycopg.connect(to_conninfo(db_url)) as conn:
+        conn.execute("UPDATE app.job SET status = 'running', started_at = now()")
+    third = rebuild_freq(db_url, _sources(z), cache_dir=tmp_path / "cache", fetch=net)
+    assert third.deck_builds_queued == 1
+    assert sorted(_q(db_url, "SELECT status, dedupe_key IS NULL FROM app.job")) == [
+        ("queued", True),
+        ("running", False),
+    ]
+
 
 def test_rebuild_rejects_unknown_list_and_missing_release(db_url: str, tmp_path: Path) -> None:
     z = _zip(tmp_path / "cejc.zip")
