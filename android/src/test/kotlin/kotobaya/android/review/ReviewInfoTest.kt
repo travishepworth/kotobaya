@@ -38,6 +38,11 @@ class ReviewInfoTest {
         DictWord(4, "食品", "しょくひん", 900),
     )
 
+    /** The per-card lookups must be indexed queries: a whole-table read stalls the tap path on a big replica. */
+    private fun noScan(t: InMemoryLearningTables): kotobaya.sync.client.apply.LearningTables = object : kotobaya.sync.client.apply.LearningTables by t {
+        override fun all(table: LearningTable) = error("whole-table read of $table")
+    }
+
     @Test
     fun examplesFollowThePickerOverTheLocalReplica() {
         val t = InMemoryLearningTables()
@@ -46,15 +51,15 @@ class ReviewInfoTest {
         val note = row("id" to s("k"), "type" to s("kanji"), "kanji_literal" to s("食"))
         val kanji = KanjiData("食", listOf("eat"), listOf("ショク", "ジキ"), listOf("く.う", "た.べる"))
         val dict = DictionaryLookup { seq -> DictionaryData("", "", emptyList(), listOf("gloss $seq", "second"), emptyList()) }
-        val x = BackExtrasBuilder.build(t, note, kanji, { words }, dict)
+        val x = BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict)
         assertEquals(listOf("食堂", "食べる", "食事"), x.examples.map { it.headword })
         assertEquals(listOf(KanjiReadingType.ON, KanjiReadingType.KUN, KanjiReadingType.ON), x.examples.map { it.type })
         assertEquals("gloss 3; second", x.examples.first().gloss)
         // a blacklisted word is never shown
         t.put(LearningTable.WORD_STATUS, row("entry_seq" to n(3), "status" to s("blacklisted")))
-        assertEquals(listOf("食べる", "食事", "食品"), BackExtrasBuilder.build(t, note, kanji, { words }, dict).examples.map { it.headword })
+        assertEquals(listOf("食べる", "食事", "食品"), BackExtrasBuilder.build(noScan(t), note, kanji, { words }, dict).examples.map { it.headword })
         // no dictionary words: no block
-        assertEquals(emptyList(), BackExtrasBuilder.build(t, note, kanji, { emptyList() }, dict).examples)
+        assertEquals(emptyList(), BackExtrasBuilder.build(noScan(t), note, kanji, { emptyList() }, dict).examples)
     }
 
     @Test
@@ -66,7 +71,7 @@ class ReviewInfoTest {
         )
         fun item(deckId: String, key: String, entry: Long? = null, gone: Boolean = false) = t.put(
             LearningTable.DECK_ITEM,
-            mapOf("deck_id" to s(deckId), "item_key" to s(key), "entry_seq" to (entry?.let(::n) ?: JsonNull), "deleted_at" to if (gone) n(1) else JsonNull),
+            mapOf("deck_id" to s(deckId), "item_key" to s(key), "entry_seq" to (entry?.let(::n) ?: JsonNull), "note_id" to (if (key.startsWith("n:")) s(key.removePrefix("n:")) else JsonNull), "deleted_at" to if (gone) n(1) else JsonNull),
         )
         deck("d-c", "Third", 3); deck("d-a", "First", 1); deck("d-b", "Second", 2); deck("d-e", "Fifth", 9)
         deck("d-s", "Smart", 0, type = "smart"); deck("d-x", "Deleted", 0, deleted = true); deck("d-r", "Removed", 0)
@@ -75,7 +80,7 @@ class ReviewInfoTest {
         item("d-orphan", "e:7", 7) // deck row missing
         val note = row("id" to s("note1"), "type" to s("vocab"), "entry_seq" to n(7))
         t.put(LearningTable.NOTE, note)
-        val x = BackExtrasBuilder.build(t, note, null, { emptyList() }, { null })
+        val x = BackExtrasBuilder.build(noScan(t), note, null, { emptyList() }, { null })
         assertEquals(listOf("First", "Second", "Third"), x.decks)
         assertEquals(1, x.moreDecks)
         assertEquals(7L, x.entrySeq)

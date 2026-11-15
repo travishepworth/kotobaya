@@ -1,4 +1,4 @@
-# HANDOFF AND-REVIEW-INFO
+# HANDOFF AND-REVIEW-INFO (attempt 2)
 
 STATUS: DONE
 BRANCH: t/AND-REVIEW-INFO
@@ -17,6 +17,13 @@ CHECK: `make check MODULE=android` → green (on the final run; earlier full run
 ## New dependencies
 - none
 
+## Attempt 2 (review fixes)
+- No whole-table reads per card any more. Candidate status, note and deck membership are point lookups on indexed columns (word_status PK, `note.entry_seq`, `deck_item.entry_seq`). Deck chips query `deck_item` by `note_id` / `entry_seq`.
+- `InstalledKanjiWords` splits the packed value with `substringBeforeLast` / `substringAfterLast`.
+- `ReviewInfoTest` runs both builders over a `LearningTables` wrapper that throws on `all()`.
+- Not done: a fixture-DB test of `InstalledKanjiWords` SQL.
+- The BackNavigationTest flake showed up again in one run; the final run is green.
+
 ## For the reviewer (≤ 3 lines)
 - `InstalledKanjiWords` reuses `formRows` (the owned paths exclude dict/) by packing `reading|freq_rank` into the `norm` column; a dedicated query in InstalledDictionary would be cleaner.
-- The builder scans WORD_STATUS, NOTE, DECK and DECK_ITEM once per kanji card. That is off the main thread but O(table), so watch a large replica.
+- Per kanji card the cost is about 3 indexed lookups per dictionary word containing the kanji (thousands for very common kanji), each off the main thread; decks still use a `merged_into_id` WHERE scan.

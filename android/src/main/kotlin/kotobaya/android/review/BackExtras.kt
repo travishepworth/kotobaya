@@ -70,13 +70,14 @@ internal object BackExtrasBuilder {
     fun decksOf(t: LearningTables, note: Row, entry: Long?): Pair<List<String>, Int> {
         val noteId = CardRows.str(note["id"]) ?: return emptyList<String>() to 0
         if (!isNull(note["deleted_at"])) return emptyList<String>() to 0
-        val keys = buildList {
-            add("n:$noteId")
-            t.where(LearningTable.NOTE, "merged_into_id", JsonString(noteId)).forEach { m -> CardRows.str(m["id"])?.let { add("n:$it") } }
-            if (entry != null) add("e:$entry")
+        // indexed lookups only (deck_item by note_id / entry_seq); merged-in notes are rare and found by a WHERE scan
+        val noteIds = buildList {
+            add(noteId)
+            t.where(LearningTable.NOTE, "merged_into_id", JsonString(noteId)).forEach { m -> CardRows.str(m["id"])?.let { add(it) } }
         }
-        val deckIds = keys.flatMap { k -> t.where(LearningTable.DECK_ITEM, "item_key", JsonString(k)) }
-            .filter { isNull(it["deleted_at"]) }.mapNotNull { CardRows.str(it["deck_id"]) }.toSet()
+        val items = noteIds.flatMap { t.where(LearningTable.DECK_ITEM, "note_id", JsonString(it)) } +
+            (if (entry != null) t.where(LearningTable.DECK_ITEM, "entry_seq", JsonNumber(entry.toDouble())) else emptyList())
+        val deckIds = items.filter { isNull(it["deleted_at"]) }.mapNotNull { CardRows.str(it["deck_id"]) }.toSet()
         val decks = deckIds.mapNotNull { id -> t.get(LearningTable.DECK, listOf(JsonString(id))) }
             .filter { isNull(it["deleted_at"]) && CardRows.str(it["type"]) != "smart" }
             .sortedWith(compareBy<Row>({ (it["priority"] as? JsonNumber)?.value ?: 0.0 }, { CardRows.str(it["id"]).orEmpty().lowercase() }))
@@ -94,18 +95,18 @@ internal object BackExtrasBuilder {
     ): List<ExampleWord> {
         val dict = words.words(literal)
         if (dict.isEmpty()) return emptyList()
-        val status = t.all(LearningTable.WORD_STATUS).associate { r ->
-            ((r["entry_seq"] as? JsonNumber)?.value?.toLong() ?: -1L) to
-                (WordStatus.entries.firstOrNull { it.wire == CardRows.str(r["status"]) } ?: WordStatus.NEW)
+        // per-candidate point lookups on indexed columns (word_status PK, note.entry_seq, deck_item.entry_seq); never a table read
+        val liveDeck = HashMap<String, Boolean>()
+        fun deckLive(id: String) = liveDeck.getOrPut(id) {
+            t.get(LearningTable.DECK, listOf(JsonString(id)))?.let { isNull(it["deleted_at"]) } ?: false
         }
-        val withNote = t.all(LearningTable.NOTE).filter { isNull(it["deleted_at"]) }
-            .mapNotNullTo(HashSet()) { (it["entry_seq"] as? JsonNumber)?.value?.toLong() }
-        val liveDecks = t.all(LearningTable.DECK).filter { isNull(it["deleted_at"]) }.mapNotNullTo(HashSet()) { CardRows.str(it["id"]) }
-        val inDeck = t.all(LearningTable.DECK_ITEM)
-            .filter { isNull(it["deleted_at"]) && CardRows.str(it["deck_id"]) in liveDecks }
-            .mapNotNullTo(HashSet()) { (it["entry_seq"] as? JsonNumber)?.value?.toLong() }
+        fun statusOf(seq: Long): WordStatus =
+            t.get(LearningTable.WORD_STATUS, listOf(JsonNumber(seq.toDouble())))?.let { r -> WordStatus.entries.firstOrNull { it.wire == CardRows.str(r["status"]) } } ?: WordStatus.NEW
+        fun hasNote(seq: Long) = t.where(LearningTable.NOTE, "entry_seq", JsonNumber(seq.toDouble())).any { isNull(it["deleted_at"]) }
+        fun inDeck(seq: Long) = t.where(LearningTable.DECK_ITEM, "entry_seq", JsonNumber(seq.toDouble()))
+            .any { isNull(it["deleted_at"]) && CardRows.str(it["deck_id"])?.let(::deckLive) == true }
         val candidates = dict.map {
-            KanjiExampleCandidate(it.seq, it.headword, it.reading, it.freqRank, status[it.seq] ?: WordStatus.NEW, it.seq in withNote, it.seq in inDeck)
+            KanjiExampleCandidate(it.seq, it.headword, it.reading, it.freqRank, statusOf(it.seq), hasNote(it.seq), inDeck(it.seq))
         }
         val readings = KanjiReadings(literal, kanji?.onyomi.orEmpty(), kanji?.kunyomi.orEmpty())
         return picker.pick(readings, candidates).map { ex ->

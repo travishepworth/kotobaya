@@ -48,8 +48,8 @@ class InstalledRenderData(private val dict: InstalledDictionary) : DictionaryLoo
 class InstalledKanjiWords(private val dict: InstalledDictionary) : KanjiWordSource {
     override fun words(literal: String): List<DictWord> = try {
         dict.formRows(SQL, listOf(literal)) { true }.orEmpty().mapNotNull { r ->
-            val reading = r.norm.substringBefore('|')
-            val rank = r.norm.substringAfter('|', "").toIntOrNull()
+            val reading = r.norm.substringBeforeLast('|')
+            val rank = r.norm.substringAfterLast('|', "").toIntOrNull()
             DictWord(r.seq, r.form, reading, rank)
         }
     } catch (e: RuntimeException) {
