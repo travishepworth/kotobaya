@@ -67,6 +67,9 @@ object Routes {
     /** A deck's study session started from Today: `review/deck/<id>`. */
     const val REVIEW_DECK = "review/deck"
 
+    /** C-26: a review visit in keep-going mode, started from Today. */
+    const val REVIEW_KEEP_GOING = "review/keepgoing"
+
     /** Settings opened on one section: `settings/<id>`. */
     const val SETTINGS_SECTION = "settings/section"
 }
@@ -107,6 +110,7 @@ private fun TodayRoute(registry: FeatureRegistry, navigate: (String) -> Unit) {
         studyDate = studyDate,
         intents = object : TodayIntents {
             override fun startReview() = navigate(Routes.REVIEW)
+            override fun keepGoing() = navigate(Routes.REVIEW_KEEP_GOING)
             override fun studyDeck(deckId: String) = navigate("${Routes.REVIEW_DECK}/$deckId")
             override fun openDecks() = navigate(Routes.DECKS)
             override fun openStruggle() = navigate(STRUGGLE_ROUTE)
@@ -185,6 +189,9 @@ fun AppNav(registry: FeatureRegistry) {
                         r.content()
                     }
                 }
+            }
+            composable(Routes.REVIEW_KEEP_GOING) {
+                CompositionLocalProvider(LocalReviewExit provides exit) { ReviewRoute(key = "today-keep-going", keepGoing = true) }
             }
             composable("${Routes.REVIEW_DECK}/{deckId}") { entry ->
                 val id = entry.arguments?.getString("deckId").orEmpty()

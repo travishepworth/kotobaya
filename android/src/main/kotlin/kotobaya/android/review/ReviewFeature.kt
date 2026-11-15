@@ -26,9 +26,15 @@ import java.io.File
 fun LocalQueueLoader.asQueueSource(deckId: String? = null): QueueSource = object : QueueSource {
     override fun load(newShownThisSession: Int) = load(newShownThisSession, deckId).queue
 
-    override fun loadSession(newShownThisSession: Int): SessionQueue {
-        val loaded = load(newShownThisSession, deckId)
-        return SessionQueue(loaded.queue, loaded.input.limits.burySiblings, loaded.input.limits.learnAheadMs)
+    override fun loadSession(newShownThisSession: Int, keepGoing: Boolean): SessionQueue {
+        val loaded = load(newShownThisSession, deckId, keepGoing)
+        return SessionQueue(
+            loaded.queue,
+            loaded.input.limits.burySiblings,
+            loaded.input.limits.learnAheadMs,
+            moreAvailable = loaded.queue.moreAvailable,
+            dayStartMs = loaded.input.day.startMs,
+        )
     }
 
     override fun forDeck(deckId: String): QueueSource = asQueueSource(deckId)
@@ -106,12 +112,13 @@ class ReviewDueSignal : kotobaya.android.notify.DueListener {
  * [onSessionEnd] null tells the sync triggers a session ended (the Review tab).
  */
 @Composable
-fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -> Unit)? = null) {
+fun ReviewRoute(deckId: String? = null, key: String? = null, onSessionEnd: (() -> Unit)? = null, keepGoing: Boolean = false) {
     val koin = getKoin()
     val vm: ReviewViewModel = viewModel(key = key) {
         ReviewViewModel(
             koin.getOrNull<ReviewBackend<*>>(),
             deckId,
+            keepGoing,
             onSessionEnd ?: { koin.getOrNull<SyncTriggers>()?.reviewSessionEnded(); Unit },
         )
     }

@@ -34,6 +34,12 @@
     <string name="review_dismiss">Dismiss</string>
     <string name="review_finished_title">All done for today</string>
     <string name="review_finished_body">New cards and reviews will appear here when they are due.</string>
+    <string name="review_done_for_now_title">Done for now</string>
+    <string name="review_done_for_now_body">You have finished what is due. You can keep going with more cards.</string>
+    <string name="review_keep_going">Keep going</string>
+    <string name="review_caught_up_title">All caught up</string>
+    <string name="review_caught_up_body">There are no more cards to study today.</string>
+    <string name="review_new_badge">New</string>
     <string name="review_finished_back">Back to Today</string>
     <string name="review_summary_body">Everything due is reviewed. Your answers sync in the background.</string>
     <string name="review_stat_answered">Cards</string>

@@ -4,6 +4,8 @@
     <string name="today_hero_title">Ready when you are</string>
     <string name="today_hero_clear">You are all caught up</string>
     <string name="today_hero_nothing">Nothing is due right now.</string>
+    <string name="today_keep_going">Keep going</string>
+    <string name="today_hero_more">Done for now. More cards are available.</string>
     <string name="today_start_review">Start review</string>
     <string name="today_decks">Your decks</string>
     <string name="today_all_decks">All decks</string>

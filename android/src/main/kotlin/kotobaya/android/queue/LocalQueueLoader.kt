@@ -26,7 +26,13 @@ import kotobaya.queue.DefaultQueueBuilder
 import kotobaya.sync.DefaultCanonicalJson
 
 /** Counts shown on Home: what the queue holds right now (limits applied by core's builder). */
-data class QueueCounts(val due: Int, val new: Int, val learning: Int) {
+data class QueueCounts(
+    val due: Int,
+    val new: Int,
+    val learning: Int,
+    /** C-26: the queue is empty but keep going has more ("done for now"); Today offers Keep going. */
+    val moreAvailable: Boolean = false,
+) {
     /** Every item of the queue: what a review session started now can show. */
     val total: Int get() = due + new + learning
 
@@ -45,6 +51,7 @@ class LoadedQueue internal constructor(
             due = queue.items.count { it.kind == QueueItemKind.REVIEW },
             new = queue.items.count { it.kind == QueueItemKind.NEW },
             learning = queue.items.count { it.kind == QueueItemKind.LEARNING },
+            moreAvailable = queue.moreAvailable,
         )
 
     /** The first [size] items: what a review session starts with. */
@@ -85,17 +92,17 @@ class LocalQueueLoader(
         QueueSettings.from(q.schedulerSettings().executeAsList().associate { it.key to it.value_ })
 
     /**
-     * Builds the queue now. [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter.
+     * Builds the queue now ([keepGoing]: C-26, one visit to the review screen only). [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter.
      * Concurrent calls with the same arguments share one build that started after they were made ([LoadGate]).
      */
-    fun load(newShownThisSession: Int = 0, deckFilter: String? = null): LoadedQueue {
+    fun load(newShownThisSession: Int = 0, deckFilter: String? = null, keepGoing: Boolean = false): LoadedQueue {
         awaitReady()
-        return gate.run(LoadKey(newShownThisSession, deckFilter)) { build(newShownThisSession, deckFilter) }
+        return gate.run(LoadKey(newShownThisSession, deckFilter, keepGoing)) { build(newShownThisSession, deckFilter, keepGoing) }
     }
 
-    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?)
+    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?, val keepGoing: Boolean)
 
-    private fun build(newShownThisSession: Int, deckFilter: String?): LoadedQueue {
+    private fun build(newShownThisSession: Int, deckFilter: String?, keepGoing: Boolean): LoadedQueue {
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -150,6 +157,7 @@ class LocalQueueLoader(
                 newShownThisSession = newShownThisSession,
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS,
+                keepGoing = keepGoing,
             ),
             decks = decks,
             candidates = candidates,

@@ -64,6 +64,7 @@ import kotobaya.android.i18n.T
 import kotobaya.android.review.ReviewAction
 import kotobaya.android.review.ReviewActionsUiState
 import kotobaya.android.review.ReviewIntents
+import kotobaya.android.review.ReviewMeta
 import kotobaya.android.review.ReviewPrefs
 import kotobaya.android.review.ReviewState
 import kotobaya.android.review.ReviewUiState
@@ -178,7 +179,7 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
                             LoadingCard(Modifier.weight(1f))
                             ActionArea(side = CardSide.FRONT, card = null, prefs = state.prefs, keyHints = false, intents = intents, enabled = false)
                         }
-                        ReviewState.Empty -> Finished(null, Modifier.weight(1f))
+                        ReviewState.Empty -> Finished(null, Modifier.weight(1f), state.prefs, null, intents, state.meta)
                         ReviewState.Failed -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                             KbEmptyState(
                                 T(R.string.review_error_title),
@@ -189,7 +190,7 @@ fun ReviewScreen(state: ReviewUiState, intents: ReviewIntents) {
                                 action = { KbButton(T(R.string.review_error_retry), intents::retry) },
                             )
                         }
-                        is ReviewState.Summary -> Finished(review.stats, Modifier.weight(1f), state.prefs)
+                        is ReviewState.Summary -> Finished(review.stats, Modifier.weight(1f), state.prefs, null, intents, state.meta)
                         is ReviewState.DeckDone -> Finished(review.stats, Modifier.weight(1f), state.prefs, review, intents)
                         is ReviewState.Blocked, is ReviewState.Showing -> {
                             val card = shown
@@ -350,6 +351,14 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
             // AND-REVIEW-INFO: example words, deck chips and the dictionary button, from the prefetched card
             if (side == CardSide.BACK) BackPanel(card.extras, intents, Modifier.graphicsLayer { alpha = reveal.value })
         }
+        // C-26: first-time cards carry a small "New" badge
+        if (card.kind == kotobaya.contracts.queue.QueueItemKind.NEW) {
+            kotobaya.android.ui.components.KbStateChip(
+                kotobaya.android.ui.theme.KbCardState.New,
+                T(R.string.review_new_badge),
+                Modifier.align(Alignment.TopStart).padding(8.dp),
+            )
+        }
         if (rendered.audio.isNotEmpty()) {
             Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End) {
                 KbIconButton(KbIcons.Audio, T(R.string.review_play_audio), { intents.playAudio(rendered.audio.first()) }, variant = KbIconVariant.Tonal)
@@ -479,6 +488,7 @@ private fun Finished(
     prefs: ReviewPrefs = ReviewPrefs(),
     deck: ReviewState.DeckDone? = null,
     intents: ReviewIntents? = null,
+    meta: ReviewMeta = ReviewMeta(),
 ) {
     val c = KbTheme.colors
     Column(
@@ -491,6 +501,8 @@ private fun Finished(
             T(
                 when {
                     deck != null -> R.string.review_deck_done_title
+                    stats == null && meta.moreAvailable -> R.string.review_done_for_now_title
+                    stats == null && meta.keepingGoing -> R.string.review_caught_up_title
                     stats == null -> R.string.review_finished_title
                     else -> R.string.review_summary_title
                 },
@@ -504,6 +516,8 @@ private fun Finished(
             T(
                 when {
                     deck != null -> R.string.review_deck_done_body
+                    stats == null && meta.moreAvailable -> R.string.review_done_for_now_body
+                    stats == null && meta.keepingGoing -> R.string.review_caught_up_body
                     stats == null -> R.string.review_finished_body
                     else -> R.string.review_summary_body
                 },
@@ -544,6 +558,9 @@ private fun Finished(
         }
         if (deck != null && deck.othersDue && intents != null) {
             KbButton(T(R.string.review_deck_done_continue), intents::continueWithAll, Modifier.padding(top = 8.dp))
+        }
+        if (deck == null && meta.moreAvailable && intents != null) {
+            KbButton(T(R.string.review_keep_going), intents::keepGoing, Modifier.padding(top = 8.dp))
         }
         // Not a dead end: a quiet way back to Today (the same exit as the header's close button), or to the decks.
         val deckExit = LocalDeckExit.current.takeIf { deck != null }

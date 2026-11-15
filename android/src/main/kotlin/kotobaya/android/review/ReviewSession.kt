@@ -43,6 +43,10 @@ data class SessionQueue(
     val burySiblings: Boolean = false,
     /** `QueueLimits.learnAheadMs`: a requeued learning card is shown once nothing else is left and it is due within this. */
     val learnAheadMs: Long = DEFAULT_LEARN_AHEAD_MS,
+    /** C-26: the queue is empty but a keep-going build has cards. */
+    val moreAvailable: Boolean = false,
+    /** C-26: the study day's start of the build (keep going ends when it changes); 0 when the source does not know. */
+    val dayStartMs: Long = 0,
 ) {
     companion object {
         /** The contract default (LocalQueueLoader.LEARN_AHEAD_MS): 20 minutes. */
@@ -55,7 +59,7 @@ fun interface QueueSource {
     fun load(newShownThisSession: Int): ReviewQueue
 
     /** [load] with the rules of the build; sources without them get the defaults. */
-    fun loadSession(newShownThisSession: Int): SessionQueue = SessionQueue(load(newShownThisSession))
+    fun loadSession(newShownThisSession: Int, keepGoing: Boolean = false): SessionQueue = SessionQueue(load(newShownThisSession))
 
     /** The same source limited to one deck (Decks tab "Study this deck"); the default ignores the deck. */
     fun forDeck(deckId: String): QueueSource = this
@@ -135,6 +139,10 @@ data class ReviewMeta(
     /** Ops waiting in the outbox; the screen prompts a sync when it is at least [ReviewSession.SYNC_PROMPT_AT]. */
     val pendingOps: Int = 0,
     val answered: Int = 0,
+    /** C-26: this session is in keep-going mode (past the daily limits). */
+    val keepingGoing: Boolean = false,
+    /** C-26: when the session is out of cards, a keep-going build would have more ("done for now" + Keep going). */
+    val moreAvailable: Boolean = false,
 )
 
 /**
@@ -280,6 +288,11 @@ class ReviewSession<L : LearningTables>(
     private var commitCount = 0L
     private var commitsAtBuild = 0L
     private var newShown = 0
+
+    /** C-26: keep-going mode of this session (never persisted), and the study day it started in. */
+    private var keepGoing = false
+    private var keepGoingDay: Long? = null
+    private var buildMoreAvailable = false
     private var nextToken = 0L
     private var shownAtMs = 0L
     private var current: ShownCard? = null
@@ -302,6 +315,16 @@ class ReviewSession<L : LearningTables>(
         }
         refreshPendingOps()
         prefetch()
+    }
+
+    /** C-26: switches this (all-decks) session to keep-going mode and rebuilds the queue. No-op for a deck session. */
+    fun startKeepGoing() {
+        if (allDecks != null) return
+        synchronized(lock) {
+            keepGoing = true
+            keepGoingDay = null
+        }
+        start()
     }
 
     /** Front/back toggle. */
@@ -464,7 +487,9 @@ class ReviewSession<L : LearningTables>(
             if (showFromMemoryLocked(waiting)) return@synchronized
             // nothing in memory: a build that already saw every answer but this one (requeued above) is final
             // (a deck session always builds: whether other decks have cards due decides what comes next)
-            if (allDecks == null && commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
+            // (C-26: only in keep-going mode; a normal build that still held the answered card cannot say whether
+            // keep going has more, so a normal session rebuilds once at its end)
+            if (allDecks == null && keepGoing && commitCount - commitsAtBuild <= 1 && !staleLocked()) finishLocked()
         }
         if (synchronized(lock) { awaitingFor != null }) {
             rebuildMs = rebuild("end of queue")
@@ -668,7 +693,9 @@ class ReviewSession<L : LearningTables>(
     }
 
     private fun updateMetaLocked() {
-        _meta.update { it.copy(canUndo = undoStack.isNotEmpty(), answered = undoStack.size) }
+        _meta.update {
+            it.copy(canUndo = undoStack.isNotEmpty(), answered = undoStack.size, keepingGoing = keepGoing, moreAvailable = buildMoreAvailable)
+        }
     }
 
     /** Builder rule 2 over time: learning due now, then the built order, then learning within learn-ahead. */
@@ -708,7 +735,20 @@ class ReviewSession<L : LearningTables>(
     private fun rebuild(why: String): Double {
         val t0 = System.nanoTime()
         val (shownNew, from, all) = synchronized(lock) { Triple(newShown, source, allDecks) }
-        val built = from.loadSession(shownNew)
+        var built = from.loadSession(shownNew, synchronized(lock) { keepGoing && allDecks == null })
+        synchronized(lock) {
+            if (keepGoing) {
+                val started = keepGoingDay
+                if (started == null) {
+                    keepGoingDay = built.dayStartMs
+                } else if (started != built.dayStartMs) {
+                    // C-26: the study day changed: keep going ends, the normal queue is built
+                    keepGoing = false
+                    keepGoingDay = null
+                    built = from.loadSession(shownNew, false)
+                }
+            }
+        }
         val dues = duesOf(built.queue)
         val index = loadExtrasIndex()
         // deck session: the cards due now in every deck (learn-ahead ones left out)
@@ -734,6 +774,7 @@ class ReviewSession<L : LearningTables>(
             burySiblings = built.burySiblings
             learnAheadMs = built.learnAheadMs
             buildNextLearningDueAt = built.queue.nextLearningDueAt
+            buildMoreAvailable = built.moreAvailable
             othersDue = dueEverywhere != null && dueEverywhere.any { it !in exclude }
             lastBuildAt = clock()
             commitsAtBuild = commitCount

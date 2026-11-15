@@ -49,6 +49,9 @@ import kotobaya.android.ui.theme.KbTheme
 /** What Today can ask for. */
 interface TodayIntents {
     fun startReview() {}
+
+    /** C-26: opens the review screen in keep-going mode (that visit only). */
+    fun keepGoing() {}
     fun studyDeck(deckId: String) {}
     fun openDecks() {}
     fun openStruggle() {}
@@ -65,6 +68,9 @@ sealed interface TodayHero {
 
     data object Clear : TodayHero
 
+    /** C-26: nothing is due but more cards are available. */
+    data object KeepGoing : TodayHero
+
     /** [cards]: items of the whole review queue, the number the Review tab starts with. */
     data class Waiting(val cards: Int) : TodayHero
 }
@@ -75,6 +81,7 @@ sealed interface TodayHero {
  */
 fun todayHero(queue: QueueCounts?): TodayHero = when {
     queue == null -> TodayHero.Loading
+    queue.total == 0 && queue.moreAvailable -> TodayHero.KeepGoing
     queue.total == 0 -> TodayHero.Clear
     else -> TodayHero.Waiting(queue.total)
 }
@@ -171,21 +178,22 @@ private fun Hero(hero: TodayHero, intents: TodayIntents) {
             KbSkeleton(Modifier.padding(top = 12.dp).fillMaxWidth(0.7f), 16.dp)
         } else {
             val waiting = (hero as? TodayHero.Waiting)?.cards ?: 0
+            val more = hero == TodayHero.KeepGoing
             Text(
-                T(if (waiting == 0) R.string.today_hero_clear else R.string.today_hero_title),
+                T(if (waiting == 0 && !more) R.string.today_hero_clear else R.string.today_hero_title),
                 style = KbTheme.type.title,
                 color = c.text,
             )
             Text(
-                if (waiting == 0) T(R.string.today_hero_nothing) else pluralStringResource(R.plurals.today_hero_waiting, waiting, waiting),
+                if (more) T(R.string.today_hero_more) else if (waiting == 0) T(R.string.today_hero_nothing) else pluralStringResource(R.plurals.today_hero_waiting, waiting, waiting),
                 style = KbTheme.type.body,
                 color = c.textMuted,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
         KbButton(
-            T(R.string.today_start_review),
-            intents::startReview,
+            T(if (hero == TodayHero.KeepGoing) R.string.today_keep_going else R.string.today_start_review),
+            if (hero == TodayHero.KeepGoing) intents::keepGoing else intents::startReview,
             Modifier.padding(top = 20.dp).fillMaxWidth(),
             size = KbButtonSize.Lg,
             leading = KbIcons.Cards,

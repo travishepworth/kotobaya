@@ -60,6 +60,9 @@ interface ReviewIntents {
     fun flip() {}
     fun retry() {}
     fun answer(token: Long, button: Button) {}
+
+    /** C-26: the finished page's Keep going: rebuilds the queue past the daily limits for this visit. */
+    fun keepGoing() {}
     fun undo() {}
 
     /** AND-BACK: system back on the review screen; true when it undid the last answer (the screen stays), false = leave. */
@@ -123,6 +126,8 @@ private fun <L : LearningTables> ReviewBackend<L>.actionsOf(): ReviewActions<L> 
 class ReviewViewModel(
     private val backend: ReviewBackend<*>?,
     private val deckId: String? = null,
+    /** C-26: the session starts in keep-going mode (Today's Keep going button); never persisted. */
+    private val startKeepGoing: Boolean = false,
     private val onSessionEnd: () -> Unit = {},
     io: CoroutineDispatcher = Dispatchers.IO,
     /** Where "Open in dictionary" goes (the app-wide [kotobaya.android.nav.DictJump]); injectable for tests. */
@@ -195,7 +200,7 @@ class ReviewViewModel(
                     }
                 }
             }
-            s.start()
+            if (startKeepGoing) s.startKeepGoing() else s.start()
         }
     }
 
@@ -305,6 +310,8 @@ class ReviewViewModel(
     }
 
     override fun continueWithAll() = withSession { it.continueWithAll() }
+
+    override fun keepGoing() = withSession { it.startKeepGoing() }
 
     override fun toggleFurigana() = withSession { it.toggleFurigana() }
 
