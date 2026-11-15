@@ -150,6 +150,7 @@
 
 	function onKeydown(e: KeyboardEvent): void {
 		if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+		if (e.repeat) return; // held keys never act twice (grade, reveal, undo, bury ...)
 		const el = e.target as HTMLElement | null;
 		const tag = el?.tagName;
 		if (s.editing || helpOpen || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
@@ -169,14 +170,11 @@
 			// A focused button handles its own activation.
 			if (tag === 'BUTTON' || tag === 'A') return;
 			e.preventDefault();
-			if (!s.flipped) s.flip();
+			s.key(k, e.repeat);
 			return;
 		}
 		if (/^[1-5]$/.test(k)) {
-			if (s.flipped && Number(k) <= s.buttons.length) {
-				e.preventDefault();
-				gradeAt(Number(k) - 1);
-			}
+			if (s.key(k, e.repeat)) e.preventDefault();
 			return;
 		}
 		switch (k.toLowerCase()) {
@@ -258,7 +256,7 @@
 	{/if}
 
 	<section class="stage" aria-label={rv('rv.title')}>
-		{#if !s.loaded}
+		{#if !s.loaded || s.settling}
 			<div class="card" aria-busy="true">
 				<div class="card-body skeleton">
 					<span class="kb-sr">{rv('rv.loading')}</span>
