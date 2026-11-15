@@ -276,9 +276,13 @@ export class TokenPopupState {
 		const seq = this.token?.seq;
 		if (seq == null) return;
 		try {
-			await wordsApi.setWordStatus({ seq, wordStatusSet: { status } });
-			setCachedStatus(seq, status);
-			if (this.entry) this.entry = { ...this.entry, status };
+			// Pressing the status the word already has clears the override (a toggle).
+			const next =
+				this.entry?.status === status
+					? (await wordsApi.clearWordStatus({ seq })).status
+					: (await wordsApi.setWordStatus({ seq, wordStatusSet: { status } })).status;
+			setCachedStatus(seq, next);
+			if (this.entry) this.entry = { ...this.entry, status: next };
 			this.#cb().onstatus(seq);
 			pushToast(tr('rd.marked'), 'info');
 		} catch {

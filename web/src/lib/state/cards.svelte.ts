@@ -1,6 +1,8 @@
 // Card browser state (/cards): search, paging, selection, bulk actions and the preview pane.
 import type { Card, CardBulkResult, Deck, NoteType } from '../api/generated';
 import { ResponseError, problemMessage, readProblem } from '../api/client';
+import { WordsApi } from '../api/generated';
+import { apiConfig } from '../api/client';
 import { cardsApi, decksApi, fetchHeadwords, fetchNoteKinds, noteTypesApi } from '../cards/api';
 import { tc } from '../cards/messages';
 import { buildRequest, PAGE_SIZE, type BulkKind, type BulkParams, type Selector } from '../cards/model';
@@ -279,6 +281,19 @@ export class CardPreviewState {
 	}
 }
 
+/** Word-level bulk actions on the selected cards' dictionary entries (word_status), not card ops. */
+export type WordBulkKind = 'never_forget' | 'clear_never_forget';
+export const WORD_BULK_KINDS: WordBulkKind[] = ['never_forget', 'clear_never_forget'];
+const isWordKind = (k: string): k is WordBulkKind => k === 'never_forget' || k === 'clear_never_forget';
+const wordsApi = new WordsApi(apiConfig);
+
+/** Words (distinct entry seqs) of the selection, and how many cards had no entry. */
+export interface WordSelection {
+	seqs: number[];
+	cards: number;
+	skipped: number;
+}
+
 type BulkPhase = 'idle' | 'checking' | 'confirm' | 'applying' | 'done';
 
 /**
@@ -286,18 +301,23 @@ type BulkPhase = 'idle' | 'checking' | 'confirm' | 'applying' | 'done';
  * explicit click applies it. The bulk call is synchronous, so "progress" is the applying state.
  */
 export class BulkBarState {
-	kind = $state<BulkKind>('add_tags');
+	kind = $state<BulkKind | WordBulkKind>('add_tags');
 	params = $state<BulkParams>({ tags: '', deckId: '', flag: 0, dueLocal: '' });
 	phase = $state<BulkPhase>('idle');
 	dry = $state<CardBulkResult | null>(null);
 	result = $state<CardBulkResult | null>(null);
 	error = $state<string | null>(null);
+	/** Set for the word-level kinds: the resolved words of the selection (dry run) and the final tally. */
+	words = $state<WordSelection | null>(null);
+	wordsDone = $state<{ updated: number; failed: number } | null>(null);
 
 	readonly #selector: () => Selector;
+	readonly #loaded: () => Card[];
 	readonly #onapplied: () => void;
 
-	constructor(selector: () => Selector, onapplied: () => void) {
+	constructor(selector: () => Selector, onapplied: () => void, loaded: () => Card[] = () => []) {
 		this.#selector = selector;
+		this.#loaded = loaded;
 		this.#onapplied = onapplied;
 		// Any change of action, parameters or selection invalidates a dry run that was already shown.
 		$effect(() => {
@@ -316,9 +336,65 @@ export class BulkBarState {
 		this.dry = null;
 		this.result = null;
 		this.error = null;
+		this.words = null;
+		this.wordsDone = null;
+	}
+
+	/** Cards of the selection: the loaded rows for ids, every page of the query for a whole-query selection. */
+	private async selectedCards(): Promise<Card[]> {
+		const sel = this.#selector();
+		if ('ids' in sel) {
+			const ids = new Set(sel.ids);
+			return this.#loaded().filter((c) => ids.has(c.id));
+		}
+		const out = new Map<string, Card>();
+		let cursor: string | undefined;
+		do {
+			const page = await cardsApi.listCards({ query: sel.query === '' ? undefined : sel.query, limit: 500, cursor });
+			for (const c of page.items) out.set(c.id, c);
+			cursor = page.nextCursor ?? undefined;
+		} while (cursor);
+		return [...out.values()];
+	}
+
+	private async resolveWords(): Promise<boolean> {
+		try {
+			const cards = await this.selectedCards();
+			const seqs = new Set<number>();
+			let skipped = 0;
+			for (const c of cards) {
+				const seq = c.note?.entrySeq ?? null;
+				if (seq === null) skipped++;
+				else seqs.add(seq);
+			}
+			this.words = { seqs: [...seqs], cards: cards.length, skipped };
+			return true;
+		} catch (e) {
+			const detail =
+				e instanceof ResponseError ? problemMessage(await readProblem(e.response), e.response.status) : String(e);
+			this.error = tc('bulk.failed', { detail });
+			return false;
+		}
+	}
+
+	/** Per-word calls; failures are counted, never dropped silently. */
+	private async applyWords(kind: WordBulkKind, seqs: number[]): Promise<{ updated: number; failed: number }> {
+		let updated = 0;
+		let failed = 0;
+		for (const seq of seqs) {
+			try {
+				if (kind === 'never_forget') await wordsApi.setWordStatus({ seq, wordStatusSet: { status: 'never_forget' } });
+				else await wordsApi.clearWordStatus({ seq });
+				updated++;
+			} catch {
+				failed++;
+			}
+		}
+		return { updated, failed };
 	}
 
 	private async run(dryRun: boolean): Promise<CardBulkResult | null> {
+		if (isWordKind(this.kind)) return null;
 		const req = buildRequest(this.kind, this.params, this.#selector(), dryRun);
 		if (!req) {
 			this.error = tc('bulk.invalidInput');
@@ -339,12 +415,22 @@ export class BulkBarState {
 	async check(): Promise<void> {
 		this.error = null;
 		this.phase = 'checking';
+		if (isWordKind(this.kind)) {
+			this.phase = (await this.resolveWords()) ? 'confirm' : 'idle';
+			return;
+		}
 		this.dry = await this.run(true);
 		this.phase = this.dry ? 'confirm' : 'idle';
 	}
 
 	async apply(): Promise<void> {
 		this.phase = 'applying';
+		if (isWordKind(this.kind) && this.words) {
+			this.wordsDone = await this.applyWords(this.kind, this.words.seqs);
+			this.phase = 'done';
+			this.#onapplied();
+			return;
+		}
 		this.result = await this.run(false);
 		this.phase = this.result ? 'done' : 'confirm';
 		if (this.result) this.#onapplied();

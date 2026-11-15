@@ -16,6 +16,7 @@ const en = {
 	'review.suspended': 'Card suspended.',
 	'review.neverForget': 'Never forget',
 	'review.neverForgetSet': 'Word marked never-forget.',
+	'review.blacklistSet': 'Word blacklisted.',
 	'review.noEntry': 'This card has no dictionary entry.',
 	'review.edit': 'Edit note',
 	'review.furigana': 'Furigana',

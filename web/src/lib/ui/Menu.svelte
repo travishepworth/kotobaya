@@ -12,8 +12,10 @@
 		items: MenuItem[];
 		icon?: IconName;
 		align?: 'start' | 'end';
+		/** Called each time the menu opens (lazy loading of item state). */
+		onopen?: () => void;
 	}
-	let { label, items, icon = 'more', align = 'end' }: Props = $props();
+	let { label, items, icon = 'more', align = 'end', onopen }: Props = $props();
 
 	let open = $state(false);
 	let root: HTMLDivElement | undefined = $state();
@@ -26,7 +28,10 @@
 
 	function toggle(): void {
 		open = !open;
-		if (open) requestAnimationFrame(() => buttons()[0]?.focus());
+		if (open) {
+			onopen?.();
+			requestAnimationFrame(() => buttons()[0]?.focus());
+		}
 	}
 
 	function close(focusTrigger = true): void {

@@ -102,6 +102,7 @@
 						<span class="badge">{td(`decks.status.${it.status}`)}</span>
 						<WordStatusActions
 							status={it.status}
+							seq={it.entrySeq}
 							canMine={it.entry != null && it.entry.noteId == null}
 							disabled={s.pending.has(it.itemKey)}
 							onaction={(a) => void s.act(it, a)}
