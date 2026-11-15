@@ -1117,3 +1117,5 @@
 2026-11-15T03:44:23Z AND-REVIEW-INFO REVIEW_CHANGES r2 (3 point queries per candidate word; 日 ~6-12k queries/card) -> ESCALATE writer-senior attempt 3 (per-build primitive sets)
 2026-11-15T03:54:08Z AND-REVIEW-INFO HANDOFF attempt 3 (BackExtrasIndex per rebuild); check + review r3
 2026-11-15T03:54:40Z AND-REVIEW-INFO REVIEW_APPROVE r3 + CHECK_GREEN + MERGE d04531d2 (3 attempts, 1 escalation; minors -> FOLLOWUPS)
+2026-11-15T03:54:50Z RELEASE APK 0.1.17 PIN f058bbfc release build started (0.1.15 content + AND-BACK + AND-REVIEW-INFO)
+2026-11-15T03:55:49Z RELEASE APK 0.1.17 built ~/kotobaya-apk/kotobaya-0.1.17-release.apk code 117 cert ec6b7f45 ok, not debuggable, pin f058bbfc; waiting for adb
