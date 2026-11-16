@@ -48,7 +48,7 @@ internal class EntryExamplesApi(private val db: Database) {
         val ids = rows.map { it.get("id", java.util.UUID::class.java) }.toTypedArray()
         val spans = dsl.fetch(
             "select sentence_id, grammar_point_id, start_offset, end_offset, origin from app.sentence_grammar_span g " +
-                "where g.sentence_id = any(array(select unnest(?))) and g.deleted_at is null " +
+                "where g.sentence_id = any(array(select unnest(?::uuid[]))) and g.deleted_at is null " +
                 "and exists (select 1 from app.grammar_point p where p.id = g.grammar_point_id and p.deleted_at is null) " +
                 "order by g.sentence_id, g.start_offset, g.end_offset, g.grammar_point_id, g.origin",
             ids,

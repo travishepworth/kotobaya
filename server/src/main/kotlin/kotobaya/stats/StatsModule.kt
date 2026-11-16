@@ -121,7 +121,8 @@ class StatsModule(
 
     private suspend fun summary(call: ApplicationCall) {
         val nowMs = clock().toEpochMilli()
-        val body = statsTx { dsl ->
+        // Exempt from the stats permits: home needs the summary fast, so heavy panels must not delay it.
+        val body = db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val day = todayOf(settings, nowMs)
             val loaded = QueueLoader(dsl).load(nowMs, settings)

@@ -469,7 +469,7 @@ class MediaApiModule(private val db: Database, private val opApply: OpApply) {
         val vids = rows.map { it.get("jpdb_vid", Long::class.javaObjectType) }.toTypedArray()
         val media = dsl.fetch(
             "select l.jpdb_vid, m.id::text, m.title, l.occurrence_count from app.jpdb_vocab_media l join app.media m on m.id = l.media_id " +
-                "and m.deleted_at is null where l.jpdb_vid = any(array(select unnest(?))) order by l.jpdb_vid, l.occurrence_count desc, m.id",
+                "and m.deleted_at is null where l.jpdb_vid = any(array(select unnest(?::bigint[]))) order by l.jpdb_vid, l.occurrence_count desc, m.id",
             vids,
         ).groupBy { it.get(0, Long::class.javaObjectType) }
         return rows.map { r ->
