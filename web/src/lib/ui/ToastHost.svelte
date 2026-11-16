@@ -37,6 +37,11 @@
 	.host.above {
 		bottom: calc(var(--kb-size-bottom-nav) + var(--kb-space-3) + env(safe-area-inset-bottom));
 	}
+	/* Review publishes its answer/grade bar height: toasts stack just above it (never over it or the top bar). */
+	:global(:root[style*='--kb-toast-lift']) .host,
+	:global(:root[style*='--kb-toast-lift']) .host.above {
+		bottom: calc(var(--kb-toast-lift) + var(--kb-space-2));
+	}
 	.slot {
 		display: flex;
 		justify-content: center;

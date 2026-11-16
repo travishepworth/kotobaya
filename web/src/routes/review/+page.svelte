@@ -33,6 +33,22 @@
 	// True while part of the card is below the fold: a fade at the bottom says the card scrolls.
 	let moreBelow = $state(false);
 
+	// Toasts sit in the free band just above the answer/grade bar: publish its measured height (it already
+	// includes the safe-area padding) for ToastHost, so a toast never covers Show answer / grades / the top bar.
+	let actionsEl = $state<HTMLElement>();
+	$effect(() => {
+		const el = actionsEl;
+		if (!el) return;
+		const root = document.documentElement;
+		const publish = (): void => root.style.setProperty('--kb-toast-lift', `${el.offsetHeight}px`);
+		publish();
+		const ro = new ResizeObserver(publish);
+		ro.observe(el);
+		return () => {
+			ro.disconnect();
+			root.style.removeProperty('--kb-toast-lift');
+		};
+	});
 	onDestroy(() => s.dispose());
 	// SHELL.md 6.2 step 2: the shell's Back undoes the last answer once (ADR-030).
 	$effect(() => registerReviewBack({ canUndo: () => s.canBackUndo(), undo: () => s.backUndo() }));
@@ -479,7 +495,7 @@
 		{/if}
 	</section>
 
-	<footer class="actions">
+	<footer class="actions" bind:this={actionsEl}>
 		{#if !s.loaded || s.display}
 			<div class="slot">
 				{#if s.gradeLocked}
