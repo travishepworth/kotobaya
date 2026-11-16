@@ -1163,3 +1163,4 @@
 2026-11-16T02:22:03Z RC-WEB SCOPE_ADD web slowdown + flicker (sent to running writer)
 2026-11-16T02:22:43Z RC-CLI CHECK_GREEN + MERGE (107 tests; degraded vs offline, backoff refetch, non-blocking refresh/keep_going)
 2026-11-16T02:22:50Z RC-AND DISPATCH writer-senior(opus)
+2026-11-16T02:27:29Z RC-WEB HANDOFF + CHECK_GREEN (122 tests); review dispatched (incl. flicker coverage)
