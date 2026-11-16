@@ -1161,3 +1161,4 @@
 2026-11-16T02:20:54Z RC-AUDIT DONE CHANGES: android 2 majors (dead card on rebuild throw; Summary never reloads), cli 2 majors (fetch fail=offline blocks answers; refresh blocks worker) -> RC-AND, RC-CLI
 2026-11-16T02:20:54Z RC-CLI DISPATCH writer(sonnet); RC-AND queued (writer cap 3)
 2026-11-16T02:22:03Z RC-WEB SCOPE_ADD web slowdown + flicker (sent to running writer)
+2026-11-16T02:22:43Z RC-CLI CHECK_GREEN + MERGE (107 tests; degraded vs offline, backoff refetch, non-blocking refresh/keep_going)
