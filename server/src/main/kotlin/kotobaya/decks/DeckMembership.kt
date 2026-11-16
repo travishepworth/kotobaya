@@ -37,7 +37,7 @@ internal object DeckMembership {
         dsl.fetch(
             "select distinct x.entry_seq, d.id::text, d.priority, d.id from app.deck_item x " +
                 "join app.deck d on d.id = x.deck_id and d.deleted_at is null " +
-                "where x.deleted_at is null and x.entry_seq = any(?::bigint[]) order by d.priority, d.id",
+                "where x.deleted_at is null and x.entry_seq = any(array(select unnest(?::bigint[]))) order by d.priority, d.id",
             seqs.toSet().toTypedArray(),
         ).forEach { r -> out.getOrPut(r.get(0, Long::class.java)) { ArrayList() } += r.get(1, String::class.java) }
         return out
@@ -52,12 +52,12 @@ internal object DeckMembership {
             "select m.note_id, d.id::text, d.name, d.priority from (" +
                 "select n.id::text as note_id, x.deck_id from app.deck_item x " +
                 "join app.note n on n.entry_seq = x.entry_seq and n.deleted_at is null and n.merged_into_id is null " +
-                "where x.deleted_at is null and x.entry_seq is not null and n.id = any(?::uuid[]) " +
+                "where x.deleted_at is null and x.entry_seq is not null and n.id = any(array(select unnest(?::uuid[]))) " +
                 "union " +
                 "select n.id::text, x.deck_id from app.deck_item x join app.note src on src.id = x.note_id " +
                 "join app.note n on n.id = coalesce(src.merged_into_id, src.id) " +
                 "where x.deleted_at is null and x.note_id is not null and n.deleted_at is null and n.merged_into_id is null " +
-                "and n.id = any(?::uuid[])" +
+                "and n.id = any(array(select unnest(?::uuid[])))" +
                 ") m join app.deck d on d.id = m.deck_id and d.deleted_at is null and d.type <> 'smart' " +
                 "order by d.priority, d.id",
             ids, ids,

@@ -27,7 +27,7 @@ internal class DrillSources(private val dsl: DSLContext, private val now: Long) 
 
     /** Live cards of the notes in [noteIds]. */
     fun candidatesOf(noteIds: Collection<String>): List<DrillCandidate> =
-        if (noteIds.isEmpty()) emptyList() else candidates("c.note_id = any(?::uuid[])", noteIds.toTypedArray())
+        if (noteIds.isEmpty()) emptyList() else candidates("c.note_id = any(array(select unnest(?::uuid[])))", noteIds.toTypedArray())
 
     private fun candidates(where: String, param: Any): List<DrillCandidate> = dsl.fetch(
         "select c.id::text, c.note_id::text, c.lapses from app.card c join app.note n on n.id = c.note_id " +
@@ -90,7 +90,7 @@ internal class DrillSources(private val dsl: DSLContext, private val now: Long) 
                 "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
                 "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.undone_hlc::text, r.import_source " +
                 "from app.review_log r join app.card c on c.id = r.card_id " +
-                "where r.undone_at is null and coalesce(c.merged_into_id, c.id) = any(?::uuid[])",
+                "where r.undone_at is null and coalesce(c.merged_into_id, c.id) = any(array(select unnest(?::uuid[])))",
             survivors.toTypedArray(),
         )
         for (r in rows) out.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += replayReview(r)

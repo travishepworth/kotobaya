@@ -105,7 +105,7 @@ internal class HotWords(private val dsl: DSLContext, private val now: Long) {
         if (hot.isEmpty()) return emptyList()
         val rows = dsl.fetch(
             "select n.id::text, k.literal from app.note n join ref.entry_kanji k on k.seq = n.entry_seq " +
-                "where n.id = any(?::uuid[])",
+                "where n.id = any(array(select unnest(?::uuid[])))",
             hot.map { it.noteId }.toTypedArray(),
         )
         val scoreOf = hot.associate { it.noteId to it.score }
@@ -120,11 +120,11 @@ internal class HotWords(private val dsl: DSLContext, private val now: Long) {
             .sortedWith(compareByDescending<Map.Entry<String, Double>> { it.value }.thenBy { it.key }).take(limit)
         if (top.isEmpty()) return emptyList()
         val lits = top.map { it.key }.toTypedArray()
-        val meanings = dsl.fetch("select literal, meanings from ref.kanji where literal = any(?::text[])", lits)
+        val meanings = dsl.fetch("select literal, meanings from ref.kanji where literal = any(array(select unnest(?::text[])))", lits)
             .associate { it.get(0, String::class.java) to it.get(1, Array<String>::class.java).toList() }
         val notes = dsl.fetch(
             "select distinct on (kanji_literal) kanji_literal, id::text from app.note " +
-                "where type = 'kanji' and deleted_at is null and merged_into_id is null and kanji_literal = any(?::text[]) " +
+                "where type = 'kanji' and deleted_at is null and merged_into_id is null and kanji_literal = any(array(select unnest(?::text[]))) " +
                 "order by kanji_literal, created_at, id",
             lits,
         ).associate { it.get(0, String::class.java) to it.get(1, String::class.java) }
@@ -190,14 +190,14 @@ internal class HotWords(private val dsl: DSLContext, private val now: Long) {
         val survivorOf = HashMap<String, String>()
         val ids = survivors.toTypedArray()
         for (r in dsl.fetch(
-            "select id::text, coalesce(merged_into_id, id)::text from app.card where id = any(?::uuid[]) or merged_into_id = any(?::uuid[])",
+            "select id::text, coalesce(merged_into_id, id)::text from app.card where id = any(array(select unnest(?::uuid[]))) or merged_into_id = any(array(select unnest(?::uuid[])))",
             ids, ids,
         )) survivorOf[r.get(0, String::class.java)] = r.get(1, String::class.java)
         val rows = dsl.fetch(
             "select r.card_id::text, r.id::text, r.card_id::text, r.hlc::text, " +
                 "(extract(epoch from r.reviewed_at) * 1000)::bigint, r.utc_offset_min, r.review_type, r.rating, r.manual_action, " +
                 "(extract(epoch from r.manual_due_at) * 1000)::bigint, r.undone_hlc::text, r.import_source " +
-                "from app.review_log r where r.undone_at is null and r.card_id = any(?::uuid[])",
+                "from app.review_log r where r.undone_at is null and r.card_id = any(array(select unnest(?::uuid[])))",
             survivorOf.keys.toTypedArray(),
         )
         for (r in rows) {

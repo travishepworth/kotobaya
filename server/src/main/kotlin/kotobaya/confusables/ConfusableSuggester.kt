@@ -66,7 +66,7 @@ open class ConfusableSuggester(
                 emptyMap()
             } else {
                 dsl.fetch(
-                    "select literal, components from ref.kanji where literal = any(?::text[]) and cardinality(components) > 0",
+                    "select literal, components from ref.kanji where literal = any(array(select unnest(?::text[]))) and cardinality(components) > 0",
                     literals.toTypedArray(),
                 ).associate { it.get(0, String::class.java) to (it.get(1) as Array<*>).map { c -> c.toString() }.toSet() }
             }

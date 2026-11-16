@@ -61,7 +61,7 @@ internal class NoteViews(private val dsl: DSLContext) {
         if (notes.isEmpty()) return notes
         val threshold = leechThreshold()
         val byNote = dsl.fetch(
-            "$CARD_JSON where c.note_id = any(?::uuid[]) and c.deleted_at is null order by c.kind, c.id",
+            "$CARD_JSON where c.note_id = any(array(select unnest(?::uuid[]))) and c.deleted_at is null order by c.kind, c.id",
             notes.map { it["id"].asText() }.toTypedArray(),
         ).map { parse(it.get(0, String::class.java)) }.groupBy { it["note_id"].asText() }
         for (n in notes) {

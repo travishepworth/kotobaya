@@ -150,7 +150,7 @@ internal fun scheduledReviews(dsl: DSLContext, from: LocalDate, to: LocalDate, z
     val info = HashMap<String, CardInfo>()
     for (chunk in survivors.chunked(2000)) {
         for (r in dsl.fetch(
-            "select c.id::text, c.preset_id::text, n.type, c.kind from app.card c join app.note n on n.id = c.note_id where c.id = any(?::uuid[])",
+            "select c.id::text, c.preset_id::text, n.type, c.kind from app.card c join app.note n on n.id = c.note_id where c.id = any(array(select unnest(?::uuid[])))",
             chunk.toTypedArray(),
         )) info[r.get(0, String::class.java)] = CardInfo(r.get(1, String::class.java), "${r.get(2, String::class.java)}/${r.get(3, String::class.java)}")
     }
@@ -200,7 +200,7 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
     val cardsOfNote = HashMap<String, MutableList<Pair<String, String>>>()
     for (r in dsl.fetch(
         "select c.note_id::text, c.id::text, c.preset_id::text from app.card c where c.deleted_at is null and c.merged_into_id is null " +
-            "and c.note_id = any(?::uuid[])",
+            "and c.note_id = any(array(select unnest(?::uuid[])))",
         noteOfEntry.values.toTypedArray(),
     )) cardsOfNote.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += r.get(1, String::class.java) to r.get(2, String::class.java)
     val presets = ReviewViews.loadPresets(dsl)

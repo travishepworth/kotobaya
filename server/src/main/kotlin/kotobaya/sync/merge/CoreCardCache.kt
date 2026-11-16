@@ -120,13 +120,13 @@ class CoreCardCache(
         val ids = cardIds?.map(UUID::toString)?.toTypedArray()
         val cards = tx.fetch(
             "select id, preset_id::text from app.card where deleted_at is null and merged_into_id is null" +
-                (if (ids != null) " and id = any(?::uuid[])" else ""),
+                (if (ids != null) " and id = any(array(select unnest(?::uuid[])))" else ""),
             *listOfNotNull(ids).toTypedArray(),
         ).map { it.get(0, UUID::class.java) to it.get(1, String::class.java) }
         if (cards.isEmpty()) return 0
         val byTarget = HashMap<UUID, MutableList<ReplayReview>>()
         val filter = "r.undone_at is null and r.review_type in ('scheduled', 'learning', 'manual')" +
-            (if (ids != null) " and coalesce(c.merged_into_id, c.id) = any(?::uuid[])" else "")
+            (if (ids != null) " and coalesce(c.merged_into_id, c.id) = any(array(select unnest(?::uuid[])))" else "")
         for ((target, review) in loadReviews(tx, filter, *listOfNotNull(ids).toTypedArray())) {
             byTarget.getOrPut(target) { mutableListOf() } += review
         }

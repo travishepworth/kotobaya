@@ -93,7 +93,7 @@ internal class DeckViews(private val dsl: DSLContext) {
         val args = mutableListOf<Any>(deckId, deckId)
         var where = ""
         if (statuses != null) {
-            where = "where v.eseq is not null and coalesce(ws.status, 'new') = any(?::text[])"
+            where = "where v.eseq is not null and coalesce(ws.status, 'new') = any(array(select unnest(?::text[])))"
             args.add(statuses.toTypedArray())
         }
         return dsl.fetch(itemSelect("$where order by ${sort.order} offset $offset limit ${limit + 1}"), *args.toTypedArray())

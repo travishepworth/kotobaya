@@ -208,7 +208,7 @@ class DeckPublishRunner(
         if (current != p.baseContentVersion) fail(PublishFailure.STALE_BASE, "deck ${p.deckId} is at version $current, payload built on ${p.baseContentVersion}")
         val seqs = a.items.map { it.entrySeq }
         val known = seqs.chunked(10_000).sumOf { chunk ->
-            (dsl.fetchValue("select count(*) from ref.dict_entry where seq = any(?::bigint[])", chunk.toTypedArray()) as Number).toLong()
+            (dsl.fetchValue("select count(*) from ref.dict_entry where seq = any(array(select unnest(?::bigint[])))", chunk.toTypedArray()) as Number).toLong()
         }
         if (known != seqs.size.toLong()) fail(PublishFailure.INVALID_SNAPSHOT, "${seqs.size - known} item(s) name an entry_seq not in ref.dict_entry")
 

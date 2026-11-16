@@ -295,12 +295,12 @@ class MediaPublishRunner(
         }
         c.sentenceIds.chunked(1000).forEach { chunk ->
             val foreign = dsl.fetchValue(
-                "select id::text from app.sentence where id = any(?::uuid[]) and media_id <> ?::uuid limit 1", chunk.toTypedArray(), p.mediaId,
+                "select id::text from app.sentence where id = any(array(select unnest(?::uuid[]))) and media_id <> ?::uuid limit 1", chunk.toTypedArray(), p.mediaId,
             ) as String?
             if (foreign != null) fail(PublishFailure.INVALID_SNAPSHOT, "sentence $foreign belongs to another media")
         }
         if (c.grammarPointIds.isNotEmpty()) {
-            val known = (dsl.fetchValue("select count(*) from app.grammar_point where id = any(?::uuid[])", c.grammarPointIds.toTypedArray()) as Number).toInt()
+            val known = (dsl.fetchValue("select count(*) from app.grammar_point where id = any(array(select unnest(?::uuid[])))", c.grammarPointIds.toTypedArray()) as Number).toInt()
             if (known != c.grammarPointIds.size) fail(PublishFailure.INVALID_SNAPSHOT, "a detected span names an unknown grammar_point_id")
         }
 

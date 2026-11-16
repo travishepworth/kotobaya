@@ -37,6 +37,8 @@ private val BLOCKED = setOf("never_forget", "blacklisted", "ignored")
 private const val HOUR_MS = 3_600_000L
 private const val MAX_RANGE_DAYS = 3660L
 private const val BINS = 20
+/** Connections stats may hold at once (pool: 10). */
+private const val STATS_CONNECTIONS = 3
 
 /**
  * Handlers for the six `stats` operations (T605), keyed by operationId for `AppDeps.handlers`. Read-only: no ops.
@@ -57,6 +59,15 @@ class StatsModule(
         "getStatsCalibration" to { calibration(this) },
     )
 
+    /**
+     * RC-SERVER: every stats transaction holds one of [STATS_CONNECTIONS] permits, so however many panels the dashboard
+     * fires (and however slow one turns out), stats never hold more than that many of the pool's 10 connections; the
+     * rest stay free for `GET /review/queue`, answers and sync.
+     */
+    private val connections = Semaphore(STATS_CONNECTIONS)
+
+    private suspend fun <T> statsTx(block: (DSLContext) -> T): T = connections.withPermit { db.tx(block) }
+
     /** Soft memory guard: at most one history-replaying computation runs at a time, however many panels ask at once. */
     private val heavy = Semaphore(1)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -73,7 +84,7 @@ class StatsModule(
             inflight.getOrPut(key) {
                 scope.async {
                     try {
-                        heavy.withPermit { db.tx { dsl -> scheduledReviews(dsl, from, to, zone, hour, null) } }
+                        heavy.withPermit { statsTx { dsl -> scheduledReviews(dsl, from, to, zone, hour, null) } }
                     } finally {
                         synchronized(inflight) { inflight.remove(key) }
                     }
@@ -110,7 +121,7 @@ class StatsModule(
 
     private suspend fun summary(call: ApplicationCall) {
         val nowMs = clock().toEpochMilli()
-        val body = db.tx { dsl ->
+        val body = statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val day = todayOf(settings, nowMs)
             val loaded = QueueLoader(dsl).load(nowMs, settings)
@@ -198,7 +209,7 @@ class StatsModule(
     private suspend fun heatmap(call: ApplicationCall) {
         val e = Errors()
         val nowMs = clock().toEpochMilli()
-        val body = heavy.withPermit { db.tx { dsl ->
+        val body = heavy.withPermit { statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()
@@ -239,7 +250,7 @@ class StatsModule(
         val nowMs = clock().toEpochMilli()
         val groupBy = call.request.queryParameters["group_by"] ?: "card_kind"
         if (groupBy !in setOf("card_kind", "day", "week", "month")) e.add("/group_by", "invalid_value", "Must be card_kind, day, week or month.")
-        val (settings, r) = db.tx { dsl ->
+        val (settings, r) = statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()
@@ -271,7 +282,7 @@ class StatsModule(
         } ?: 30
         e.throwIfAny()
         val nowMs = clock().toEpochMilli()
-        val body = db.tx { dsl ->
+        val body = statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val today = todayOf(settings, nowMs)
             val due = dsl.fetch(
@@ -303,7 +314,7 @@ class StatsModule(
         val interval = call.request.queryParameters["interval"] ?: "week"
         if (interval !in setOf("day", "week", "month")) e.add("/interval", "invalid_value", "Must be day, week or month.")
         val nowMs = clock().toEpochMilli()
-        val body = heavy.withPermit { db.tx { dsl ->
+        val body = heavy.withPermit { statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val today = todayOf(settings, nowMs).date
             val r = range(call, today, e)
@@ -350,7 +361,7 @@ class StatsModule(
         val preset = call.request.queryParameters["preset_id"]?.also {
             if (!kotobaya.notes.UUID_RE.matches(it)) e.add("/preset_id", "invalid_value", "Must be a lowercase UUID.")
         }
-        val (settings, r) = db.tx { dsl ->
+        val (settings, r) = statsTx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val r = range(call, todayOf(settings, nowMs).date, e)
             e.throwIfAny()

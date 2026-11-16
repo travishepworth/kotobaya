@@ -93,7 +93,7 @@ internal class DeckEntryPlan(private val dsl: DSLContext, private val cards: Car
         if (missing.isEmpty()) return
         missing.forEach { blockedKanji[it] = false }
         dsl.fetch(
-            "select distinct kanji_literal from app.note where kanji_literal = any(?::text[]) " +
+            "select distinct kanji_literal from app.note where kanji_literal = any(array(select unnest(?::text[]))) " +
                 "and (deleted_at is null or merged_into_id is null)",
             missing.toTypedArray(),
         ).forEach { blockedKanji[it.get(0, String::class.java)] = true }

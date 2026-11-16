@@ -291,6 +291,38 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(listOf(card), queueIds(t))
     }
 
+    /**
+     * RC-SERVER, the live prod response: the new limit is used up, the only started card is waiting in learning and more
+     * new cards exist. Waiting (items 0, counts > 0) always carries `next_learning_due_at`; `more_available` is true because
+     * keep going would serve the remaining new cards (C-26), not the waiting card (ADR-033); summary agrees.
+     */
+    @Test
+    fun onlyNotYetDueLearningCardsGiveAWaitingQueueWithNextDueAndMoreAvailable() = reviewApp {
+        val t = token()
+        setting("scheduler.new_per_day", "1")
+        note(t, "a")
+        note(t, "b")
+        val first = fetchQueue(t)
+        assertEquals(1, first["items"].size())
+        val card = first["items"][0]["card"]["id"].asText()
+        assertEquals(200, answer(t, card, 1).status.value)
+        val due = db.txBlocking { it.fetchOne("select (extract(epoch from due_at) * 1000)::bigint from app.card where id = ?::uuid", card)!!.get(0) as Number }.toLong()
+        assertTrue(due > syncNow.get().toEpochMilli())
+
+        val r = fetchQueue(t)
+        assertEquals(0, r["items"].size())
+        assertEquals(0, r["counts"]["new"].asInt())
+        assertEquals(1, r["counts"]["learning"].asInt())
+        assertEquals(0, r["counts"]["review"].asInt())
+        assertEquals(Instant.ofEpochMilli(due), Instant.parse(r["next_learning_due_at"].asText()))
+        assertEquals(0, r["to_materialize"].asInt())
+        assertEquals(true, r["more_available"].asBoolean(), "keep going has the second note's new card")
+        val kg = fetchQueue(t, "?keep_going=true")
+        assertTrue(kg["items"].none { it["card"]["id"].asText() == card }, "keep going never serves the waiting card early")
+        assertEquals(Instant.ofEpochMilli(due), Instant.parse(kg["next_learning_due_at"].asText()))
+        assertEquals(1, fetchSummaryLearning(t))
+    }
+
     /** C-26: `keep_going`, `more_available` in both empty cases, and `is_new`. */
     @Test
     fun keepGoingPassesTheNewLimitAndMoreAvailableTellsDoneFromOut() = reviewApp {

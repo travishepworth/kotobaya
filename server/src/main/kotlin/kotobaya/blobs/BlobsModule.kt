@@ -281,7 +281,7 @@ class BlobsModule(
             distinct += n.asText()
         }
         val present = db.tx { dsl ->
-            dsl.fetch("select hash from app.blob where hash = any(?::text[])", distinct.toTypedArray()).map { it.get(0, String::class.java) }.toSet()
+            dsl.fetch("select hash from app.blob where hash = any(array(select unnest(?::text[])))", distinct.toTypedArray()).map { it.get(0, String::class.java) }.toSet()
         }
         respondJson(mapOf("present" to distinct.filter { it in present }, "missing" to distinct.filter { it !in present }))
     }

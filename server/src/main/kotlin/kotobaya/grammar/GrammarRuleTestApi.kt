@@ -233,7 +233,7 @@ internal class GrammarRuleTestApi(private val db: Database, private val tester: 
     }
 
     private fun sentencesById(dsl: DSLContext, ids: List<String>): Map<String, Map<String, Any?>> {
-        val rows = dsl.fetch("select $COLUMNS from app.sentence s where s.id = any(?::uuid[])", ids.toTypedArray())
+        val rows = dsl.fetch("select $COLUMNS from app.sentence s where s.id = any(array(select unnest(?::uuid[])))", ids.toTypedArray())
         val spans = examples.spans(dsl, ids)
         return examples.render(rows, spans).associateBy { it["id"] as String }
     }

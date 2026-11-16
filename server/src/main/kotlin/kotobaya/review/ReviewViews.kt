@@ -41,7 +41,7 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
                 "'kanji_literal', n.kanji_literal, 'grammar_point_id', n.grammar_point_id, 'fields', n.fields, " +
                 "'tags', to_jsonb(n.tags), 'mnemonic', n.mnemonic, 'source_sentence', n.source_sentence))::text, " +
                 "c.preset_id::text, ${msOf("c.due_at")}, ${msOf("c.last_review_at")}, n.note_type_id::text " +
-                "from app.card c join app.note n on n.id = c.note_id where c.id = any(?::uuid[])",
+                "from app.card c join app.note n on n.id = c.note_id where c.id = any(array(select unnest(?::uuid[])))",
             ids.toTypedArray(),
         )
         return rows.associate { r ->

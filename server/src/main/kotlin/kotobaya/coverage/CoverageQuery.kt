@@ -81,9 +81,9 @@ internal class CoverageQuery(private val dsl: DSLContext, hide: Set<HideClass>) 
         return dsl.fetch(
             "select s.id::text, s.ordinal, s.title, s.unmapped_token_count, " +
                 "count(o.entry_seq) filter (where o.st <> all(?::text[])), " +
-                "count(o.entry_seq) filter (where o.st <> all(?::text[]) and o.st = any(?::text[])), " +
+                "count(o.entry_seq) filter (where o.st <> all(?::text[]) and o.st = any(array(select unnest(?::text[])))), " +
                 "coalesce(sum(o.count) filter (where o.st <> all(?::text[])), 0)::bigint, " +
-                "coalesce(sum(o.count) filter (where o.st = any(?::text[])), 0)::bigint " +
+                "coalesce(sum(o.count) filter (where o.st = any(array(select unnest(?::text[])))), 0)::bigint " +
                 "from app.media_segment s left join (select oc.segment_id, oc.entry_seq, oc.count, coalesce(ws.status, 'new') as st " +
                 "from app.occurrence oc left join app.word_status ws on ws.entry_seq = oc.entry_seq " +
                 "where oc.pos_class <> all(?::text[])) o on o.segment_id = s.id " +
@@ -111,7 +111,7 @@ internal class CoverageQuery(private val dsl: DSLContext, hide: Set<HideClass>) 
                 "occ as (select o.media_id, o.count, coalesce(ws.status, 'new') as st from app.occurrence o " +
                 "join live on live.id = o.media_id left join app.word_status ws on ws.entry_seq = o.entry_seq " +
                 "where o.pos_class <> all(?::text[])), " +
-                "a as (select media_id, coalesce(sum(count) filter (where st = any(?::text[])), 0) as u, " +
+                "a as (select media_id, coalesce(sum(count) filter (where st = any(array(select unnest(?::text[])))), 0) as u, " +
                 "coalesce(sum(count) filter (where st <> all(?::text[])), 0) as t from occ group by media_id), " +
                 "n as (select s.media_id, sum(s.unmapped_token_count) as n from app.media_segment s join live on live.id = s.media_id group by s.media_id) " +
                 "select coalesce(a.media_id, n.media_id)::text, coalesce(a.u, 0)::bigint, " +

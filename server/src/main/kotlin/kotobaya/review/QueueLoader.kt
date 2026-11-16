@@ -238,10 +238,10 @@ internal class QueueLoader(private val dsl: DSLContext) {
             "join app.deck d on d.id = di.deck_id and d.deleted_at is null and d.type <> 'smart' "
         val rows = dsl.fetch(
             itemSql + "join app.note n on n.entry_seq = di.entry_seq and n.deleted_at is null " +
-                "where di.deleted_at is null and di.entry_seq is not null and n.id = any(?::uuid[]) " +
+                "where di.deleted_at is null and di.entry_seq is not null and n.id = any(array(select unnest(?::uuid[]))) " +
                 "union all " +
                 itemSql + "join app.note src on src.id = di.note_id join app.note n on n.id = coalesce(src.merged_into_id, src.id) " +
-                "where di.deleted_at is null and di.note_id is not null and n.deleted_at is null and n.id = any(?::uuid[])",
+                "where di.deleted_at is null and di.note_id is not null and n.deleted_at is null and n.id = any(array(select unnest(?::uuid[])))",
             ids, ids,
         )
         for (r in rows) add(r.get(3, String::class.java), DeckMembership(r.get(0, String::class.java), (r.get(1) as Number).toLong(), r.get(2, String::class.java)))
@@ -250,7 +250,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
         if (smart.isNotEmpty()) {
             val cardNote = dsl.fetch(
                 "select c.id::text, n.id::text, ${msOf("n.created_at")} from app.card c join app.note n on n.id = c.note_id " +
-                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and n.id = any(?::uuid[])",
+                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and n.id = any(array(select unnest(?::uuid[])))",
                 ids,
             ).associate { it.get(0, String::class.java) to (it.get(1, String::class.java) to (it.get(2) as Number).toLong()) }
             val studyDay = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day

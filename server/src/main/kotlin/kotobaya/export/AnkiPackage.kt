@@ -111,7 +111,7 @@ internal class AnkiPackage(
                         )
                     }
                     val notes = cards.map { it.noteId }.distinct().chunked(1000).flatMap { ids ->
-                        dsl.fetch("select to_jsonb(n)::text from app.note n where n.id = any(?::uuid[])", ids.toTypedArray())
+                        dsl.fetch("select to_jsonb(n)::text from app.note n where n.id = any(array(select unnest(?::uuid[])))", ids.toTypedArray())
                             .map { json.readTree(it.get(0, String::class.java)) as ObjectNode }
                     }.map { n ->
                         NoteRow(
@@ -125,7 +125,7 @@ internal class AnkiPackage(
                         .map { json.readTree(it.get(0, String::class.java)) as ObjectNode }.associateBy { it["id"].asText() }
                     val hashes = collectBlobs(notes.values)
                     val blobTypes = if (hashes.isEmpty()) emptyMap() else dsl.fetch(
-                        "select hash, content_type from app.blob where hash = any(?::text[])", hashes.toTypedArray(),
+                        "select hash, content_type from app.blob where hash = any(array(select unnest(?::text[])))", hashes.toTypedArray(),
                     ).associate { it.get(0, String::class.java) to it.get(1, String::class.java) }
                     val files = LinkedHashMap<String, String>() // hash -> media file name
                     if (store != null) {
@@ -175,9 +175,9 @@ internal class AnkiPackage(
             for (chunk in notes.mapNotNull { it.entrySeq }.distinct().chunked(1000)) {
                 val arr = chunk.toTypedArray()
                 val glosses = dsl.fetch(
-                    "select seq, gloss from ref.dict_entry_gloss where seq = any(?::bigint[]) and lang = 'eng' order by seq, sense_ord, gloss_ord", arr,
+                    "select seq, gloss from ref.dict_entry_gloss where seq = any(array(select unnest(?::bigint[]))) and lang = 'eng' order by seq, sense_ord, gloss_ord", arr,
                 ).groupBy({ it.get(0, Long::class.javaObjectType) }, { it.get(1, String::class.java) })
-                dsl.fetch("select seq, headword, headword_reading from ref.dict_entry where seq = any(?::bigint[])", arr).forEach {
+                dsl.fetch("select seq, headword, headword_reading from ref.dict_entry where seq = any(array(select unnest(?::bigint[])))", arr).forEach {
                     val seq = it.get(0, Long::class.javaObjectType)
                     out[seq] = DictionaryData(it.get(1, String::class.java), it.get(2, String::class.java), emptyList(), glosses[seq].orEmpty(), emptyList())
                 }
@@ -189,7 +189,7 @@ internal class AnkiPackage(
             val literals = notes.mapNotNull { it.kanji }.distinct()
             if (literals.isEmpty()) return emptyMap()
             return dsl.fetch(
-                "select literal, meanings, on_readings, kun_readings, stroke_count from ref.kanji where literal = any(?::text[])",
+                "select literal, meanings, on_readings, kun_readings, stroke_count from ref.kanji where literal = any(array(select unnest(?::text[])))",
                 literals.toTypedArray(),
             ).associate {
                 val lit = it.get(0, String::class.java)
@@ -204,7 +204,7 @@ internal class AnkiPackage(
         private fun loadRevlog(dsl: DSLContext, cardIds: List<String>): List<ReviewRow> = cardIds.chunked(1000).flatMap { ids ->
             dsl.fetch(
                 "select card_id::text, (extract(epoch from reviewed_at) * 1000)::bigint, rating, coalesce(duration_ms, 0), review_type " +
-                    "from app.review_log where card_id = any(?::uuid[]) and review_type in ('scheduled', 'learning') and undone_at is null and rating is not null " +
+                    "from app.review_log where card_id = any(array(select unnest(?::uuid[]))) and review_type in ('scheduled', 'learning') and undone_at is null and rating is not null " +
                     "order by reviewed_at, hlc, id",
                 ids.toTypedArray(),
             ).map {

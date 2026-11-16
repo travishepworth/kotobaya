@@ -87,7 +87,7 @@ internal class DrillApi(private val db: Database, private val scheduler: Schedul
     private fun live(dsl: DSLContext, ids: List<String>): List<String> {
         val ok = dsl.fetch(
             "select c.id::text from app.card c join app.note n on n.id = c.note_id " +
-                "where c.id = any(?::uuid[]) and c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null",
+                "where c.id = any(array(select unnest(?::uuid[]))) and c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null",
             ids.toTypedArray(),
         ).map { it.get(0, String::class.java) }.toSet()
         return ids.filter { it in ok }

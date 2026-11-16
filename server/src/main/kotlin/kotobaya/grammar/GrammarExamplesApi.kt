@@ -77,7 +77,7 @@ internal class GrammarExamplesApi(private val db: Database) {
         return dsl.fetch(
             "select gs.sentence_id::text, gs.grammar_point_id::text, gs.start_offset, gs.end_offset, gs.origin " +
                 "from app.sentence_grammar_span gs join app.grammar_point p on p.id = gs.grammar_point_id and p.deleted_at is null " +
-                "where gs.sentence_id = any(?::uuid[]) and gs.deleted_at is null " +
+                "where gs.sentence_id = any(array(select unnest(?::uuid[]))) and gs.deleted_at is null " +
                 "order by gs.start_offset, gs.end_offset, gs.grammar_point_id, gs.origin",
             ids.toTypedArray(),
         ).groupBy({ it.get(0, String::class.java) }) {

@@ -88,7 +88,7 @@ class ParseModule(private val db: Database, opApply: OpApply, private val parser
                 "coalesce((select ws.status from app.word_status ws where ws.entry_seq = e.seq), 'new') as status, " +
                 "(select n.id::text from app.note n where n.entry_seq = e.seq and n.deleted_at is null order by n.created_at, n.id limit 1) as note_id, " +
                 "${kotobaya.decks.DeckMembership.entryDeckIdsSql("e.seq")} as deck_ids " +
-                "from ref.dict_entry e where e.seq = any(?::bigint[]) order by e.seq",
+                "from ref.dict_entry e where e.seq = any(array(select unnest(?::bigint[]))) order by e.seq",
             seqs,
         ).map { r ->
             val glosses = r.get("glosses", String::class.java)

@@ -82,7 +82,7 @@ internal class QueueExtras private constructor(
                     "exists (select 1 from app.deck_item x join app.deck d on d.id = x.deck_id " +
                     "where x.entry_seq = e.seq and x.deleted_at is null and d.deleted_at is null) as in_decks " +
                     "from ref.entry_kanji k join ref.dict_entry e on e.seq = k.seq " +
-                    "where k.literal = any(?::text[]) and e.retired_release_id is null and position(k.literal in e.headword) > 0" +
+                    "where k.literal = any(array(select unnest(?::text[]))) and e.retired_release_id is null and position(k.literal in e.headword) > 0" +
                     "), ranked as (" +
                     "select c.*, row_number() over (partition by c.literal order by " +
                     "(case when c.has_note or c.in_decks or c.status in ('learning', 'known', 'never_forget') then 0 else 1 end), " +

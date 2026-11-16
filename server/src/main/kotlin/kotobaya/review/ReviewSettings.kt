@@ -38,7 +38,7 @@ internal data class ReviewSettings(
         private val bigDecimals = json.readerFor(JsonNode::class.java).with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
 
         fun load(dsl: DSLContext): ReviewSettings {
-            val values = dsl.fetch("select key, value::text from app.settings where key = any(?::text[])", KEYS.toTypedArray())
+            val values = dsl.fetch("select key, value::text from app.settings where key = any(array(select unnest(?::text[])))", KEYS.toTypedArray())
                 .associate { it.get(0, String::class.java) to bigDecimals.readTree(it.get(1, String::class.java)) }
             val d = ReviewSettings()
             fun int(key: String, default: Int, min: Int = Int.MIN_VALUE, max: Int = Int.MAX_VALUE) =

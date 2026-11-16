@@ -116,7 +116,7 @@ internal class BulkApi(private val db: Database, private val opApply: OpApply, p
             val settings = ReviewSettings.load(tx.dsl)
             val sel = select(tx, req, nowMs, settings)
             val c = Counts(matched = sel.ids.size, skipped = sel.unusable)
-            val states = if (sel.ids.isEmpty()) emptyMap() else tx.dsl.fetch("select id::text, state from app.card where id = any(?::uuid[])", sel.ids.toTypedArray())
+            val states = if (sel.ids.isEmpty()) emptyMap() else tx.dsl.fetch("select id::text, state from app.card where id = any(array(select unnest(?::uuid[])))", sel.ids.toTypedArray())
                 .associate { it.get(0, String::class.java) to it.get(1, String::class.java) }
             val offset = settings.timezone.rules.getOffset(Instant.ofEpochMilli(nowMs)).totalSeconds / 60
             val dueMs = if (type == "reschedule") parseInstant(req.action["due_at"], "/action/due_at", Errors()) else null
@@ -187,7 +187,7 @@ internal class BulkApi(private val db: Database, private val opApply: OpApply, p
         val views = DeckViews(tx.dsl)
         var next = views.maxPosition(to)
         val rows = tx.dsl.fetch(
-            "select c.id::text, n.id::text, n.entry_seq from app.card c join app.note n on n.id = c.note_id where c.id = any(?::uuid[])",
+            "select c.id::text, n.id::text, n.entry_seq from app.card c join app.note n on n.id = c.note_id where c.id = any(array(select unnest(?::uuid[])))",
             sel.ids.toTypedArray(),
         ).associateBy { it.get(0, String::class.java) }
         val notes = LinkedHashMap<String, Long?>()
@@ -208,7 +208,7 @@ internal class BulkApi(private val db: Database, private val opApply: OpApply, p
     /** `note id -> tags` for the notes of [cardIds], in the order of the first card of each. */
     private fun noteTags(tx: OpTx, cardIds: List<String>): LinkedHashMap<String, List<String>> {
         val rows = tx.dsl.fetch(
-            "select c.id::text, n.id::text, to_jsonb(n.tags)::text from app.card c join app.note n on n.id = c.note_id where c.id = any(?::uuid[])",
+            "select c.id::text, n.id::text, to_jsonb(n.tags)::text from app.card c join app.note n on n.id = c.note_id where c.id = any(array(select unnest(?::uuid[])))",
             cardIds.toTypedArray(),
         ).associateBy { it.get(0, String::class.java) }
         val out = LinkedHashMap<String, List<String>>()
@@ -226,7 +226,7 @@ internal class BulkApi(private val db: Database, private val opApply: OpApply, p
         if (req.ids != null) {
             val live = dsl.fetch(
                 "select c.id::text from app.card c join app.note n on n.id = c.note_id " +
-                    "where c.id = any(?::uuid[]) and c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null order by c.id",
+                    "where c.id = any(array(select unnest(?::uuid[]))) and c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null order by c.id",
                 req.ids.toTypedArray(),
             ).map { it.get(0, String::class.java) }
             return Selection(live, req.ids.size - live.size)

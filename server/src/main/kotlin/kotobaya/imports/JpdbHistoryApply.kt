@@ -201,7 +201,7 @@ open class JpdbHistoryApply(private val opApply: OpApply, private val batchUnits
                     "select r.id::text, case when s.deleted_at is null and n.deleted_at is null then s.id::text else '' end " +
                         "from app.review_log r join app.card c on c.id = r.card_id " +
                         "join app.card s on s.id = coalesce(c.merged_into_id, c.id) join app.note n on n.id = s.note_id " +
-                        "where r.id = any(?::uuid[])",
+                        "where r.id = any(array(select unnest(?::uuid[])))",
                     chunk.toTypedArray(),
                 ).forEach { out[it.get(0, String::class.java)] = it.get(1, String::class.java) }
             }
