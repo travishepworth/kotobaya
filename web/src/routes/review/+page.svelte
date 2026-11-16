@@ -399,9 +399,13 @@
 					aria-busy={s.phase === 'settling'}
 				>
 					<div class="card-body" bind:this={body} onscroll={measure}>
-						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
-						{#if d.card.note?.type}<span class="kind-badge">{rv(`rv.kind.${d.card.note.type}`)}</span>{/if}
-						{#if d.isNew}<span class="new-badge">{rv('rv.newBadge')}</span>{/if}
+						{#if s.reviewTypeKey || d.card.note?.type || d.isNew}
+							<div class="chip-row">
+								<p class="tag">{s.reviewTypeKey ? tr(s.reviewTypeKey) : ''}</p>
+								<span class="kind-badge">{d.card.note?.type ? rv(`rv.kind.${d.card.note.type}`) : ''}</span>
+								<span class="new-badge">{d.isNew ? rv('rv.newBadge') : ''}</span>
+							</div>
+						{/if}
 						{#if s.rendered === null}
 							<!-- unreachable: display is set -->
 						{:else if s.rendered.ok}
@@ -663,8 +667,9 @@
 		overscroll-behavior: contain;
 		/* Top-anchored at the optical centre: the front sits where it was when the answer appears below it. */
 		/* Viewport-relative (not rem) so large text does not push the answer below the fold. */
-		padding: clamp(24px, 12dvh, 112px) clamp(var(--kb-space-4), 5vw, var(--kb-space-12))
-			var(--kb-space-10);
+		--body-pt: clamp(24px, 12dvh, 112px);
+		--body-px: clamp(var(--kb-space-4), 5vw, var(--kb-space-12));
+		padding: var(--body-pt) var(--body-px) var(--kb-space-10);
 	}
 	.skeleton {
 		display: flex;
@@ -684,17 +689,25 @@
 			transform: translateX(var(--kb-distance-lg));
 		}
 	}
+	/* Normal flow above the card content (never an overlay), so text can not sit under a chip. */
+	.chip-row {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: var(--kb-space-2);
+		margin: calc(var(--kb-space-3) - var(--body-pt)) calc(-1 * var(--body-px)) var(--kb-space-3);
+		padding: 0 var(--kb-space-4);
+	}
+	.chip-row > :empty {
+		visibility: hidden;
+	}
 	.tag {
-		position: absolute;
-		top: var(--kb-space-3);
-		left: var(--kb-space-4);
+		margin: 0;
 		font: var(--kb-type-caption);
 		color: var(--kb-color-text-muted);
 	}
 	.new-badge {
-		position: absolute;
-		top: var(--kb-space-3);
-		right: var(--kb-space-4);
+		justify-self: end;
 		font: var(--kb-type-caption);
 		color: var(--kb-color-state-new);
 		border: 1px solid currentColor;
@@ -702,11 +715,7 @@
 		padding: 0 var(--kb-space-2);
 	}
 	.kind-badge {
-		position: absolute;
-		top: var(--kb-space-3);
-		left: 50%;
-		transform: translateX(-50%);
-		max-width: 30%;
+		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -741,7 +750,8 @@
 	/* Revealed and too tall (large text, short window): the question steps back so the answer fits. The
 	   top padding and the headword are capped by the card's own height. */
 	.compact .card-body {
-		padding-top: min(clamp(24px, 12dvh, 112px), 8cqh);
+		--body-pt: min(clamp(24px, 12dvh, 112px), 8cqh);
+		padding-top: var(--body-pt);
 	}
 	.compact .card-body :global(.kb-expression) {
 		font-size: min(clamp(3rem, 2.25rem + 3.2vw, 5rem), max(2rem, 13cqh));
