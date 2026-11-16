@@ -488,3 +488,4 @@
 - C-28 (minor): createNote card_kinds:[reading] silently creates a card-less note while createCard returns 422 — align (422 when all requested kinds retired).
 - C-28 (minor): scenario reading-retired-offline-review.json:199 second review_log row lacks hlc.
 - C-28 (note for user): on the day the setting takes effect, reading cards introduced/reviewed today give back their new/review budget (rule 0 "never counts").
+- ONE-CARD-SRV (minor): knownSeries applies current reading_enabled to past points.
