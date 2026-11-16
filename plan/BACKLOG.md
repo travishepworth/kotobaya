@@ -811,7 +811,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-KEEPGOING — android keep going (Empty + Today button) + New badge, offline · model: sonnet · risk: med · deps: C-26 · status: MERGED (ticket: plan/tickets/AND-KEEPGOING.md)
 
 ### Android -> web UI shell (2026-11-16, human decision, ADR-036; design docs/ANDROID-SHELL.md)
-- SHELL-A1 — Bundle the SPA into the APK (Gradle task) · model: sonnet · risk: low · deps: none · status: TODO (ticket: plan/tickets/SHELL-A1.md)
+- SHELL-A1 — Bundle the SPA into the APK (Gradle task) · model: sonnet · risk: low · deps: none · status: MERGED (ticket: plan/tickets/SHELL-A1.md)
 - SHELL-A2 — Local API kernel: dispatcher, route table, problems, group stubs · model: opus · risk: med · deps: SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-A2.md)
 - SHELL-A3 — Shell activity: WebView host, asset loader, bridge transport, blob intercept · model: opus · risk: high · deps: SHELL-A1, SHELL-A2, SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-A3.md)
 - SHELL-A4 — Native navigation: deep links, intake trampoline, widget/tile/notifications, back, haptics, theme · model: sonnet · risk: med · deps: SHELL-A3 · status: TODO (ticket: plan/tickets/SHELL-A4.md)

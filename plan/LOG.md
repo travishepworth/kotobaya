@@ -1213,3 +1213,7 @@
 2026-11-16T10:37:28Z KIND-CHIP-OVERLAP-AND CHECK_GREEN + real-layout bounds test + orchestrator viewed PNGs + MERGE
 2026-11-16T10:38:24Z RELEASE APK 0.1.28 built (pin 6607e50d, code 128, cert ok) — waiting for user to plug in phone
 2026-11-16T11:36:35Z SHELL DECIDE (human): Android moves entirely to web UI in WebView; Compose deleted; design dispatch architect
+2026-11-16T11:46:22Z SHELL design DONE: 24 tickets (docs/ANDROID-SHELL.md, ADR-036) committed fcabf88a
+2026-11-16T11:46:22Z SHELL-C1 DISPATCH architect
+2026-11-16T11:46:22Z SHELL-A1 DISPATCH writer(sonnet) [gradle lane]
+2026-11-16T11:56:19Z SHELL-A1 CHECK_GREEN (web+android) + MERGE
