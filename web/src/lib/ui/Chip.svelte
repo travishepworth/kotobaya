@@ -93,6 +93,16 @@
 		position: absolute;
 		inset: -6px 0;
 	}
+	@media (pointer: coarse) {
+		button.chip {
+			min-height: var(--kb-size-touch-min);
+			min-width: var(--kb-size-touch-min);
+			justify-content: center;
+		}
+		button.chip::after {
+			display: none;
+		}
+	}
 	button.chip:hover {
 		background: var(--kb-color-surface-hover);
 	}

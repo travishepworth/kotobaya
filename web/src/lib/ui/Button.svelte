@@ -99,6 +99,15 @@
 		position: absolute;
 		inset: calc((var(--kb-size-control-sm) - var(--kb-size-touch-min)) / 2) 0;
 	}
+	/* Touch screens: a real 44 px box (the ::after trick above is sized from a token, not the rendered height). */
+	@media (pointer: coarse) {
+		.sm {
+			min-height: var(--kb-size-touch-min);
+		}
+		.sm::after {
+			display: none;
+		}
+	}
 	.lg {
 		min-height: calc(var(--kb-size-control) + var(--kb-space-3));
 		padding: var(--kb-space-3) var(--kb-space-6);

@@ -17,6 +17,8 @@ html {
 	-webkit-font-smoothing: antialiased;
 	/* The page never scrolls sideways; wide things (tables, code) scroll in their own box. */
 	overflow-x: clip;
+	/* The shell is an app, not a page: no pull-to-refresh / scroll chaining bounce at the root. */
+	overscroll-behavior: none;
 }
 
 body {

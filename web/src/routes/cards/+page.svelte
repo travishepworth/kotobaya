@@ -261,11 +261,27 @@
 		font: inherit;
 		cursor: pointer;
 	}
+	@media (pointer: coarse) {
+		.open {
+			min-height: var(--kb-size-touch-min);
+			min-width: var(--kb-size-touch-min);
+		}
+	}
 	.kind {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	/* Narrow tables (phones at large text): the state chip keeps its glyph and colour; the word is read out. */
 	@container (max-width: 24rem) {
+		/* Per-card pickers go; the row checkbox stays. The labels truncate instead of running under the chips. */
+		.pick {
+			display: none;
+		}
+		.open {
+			overflow: hidden;
+		}
 		.state-chip :global(.label) {
 			position: absolute;
 			width: 1px;

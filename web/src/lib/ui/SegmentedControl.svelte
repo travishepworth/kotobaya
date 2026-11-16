@@ -132,6 +132,11 @@
 			color var(--kb-duration-fast) var(--kb-ease-standard),
 			box-shadow var(--kb-duration-fast) var(--kb-ease-standard);
 	}
+	@media (pointer: coarse) {
+		button {
+			min-height: var(--kb-size-touch-min);
+		}
+	}
 	button:hover {
 		color: var(--kb-color-text);
 	}

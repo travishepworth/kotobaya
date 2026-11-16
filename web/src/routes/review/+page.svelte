@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Review: the product. A full-height card, the answer reveal, and the grade bar in the thumb zone.
 	// Keyboard-first on desktop (Space, 1-4/5, U, E, ?), one-handed on phones.
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { registerReviewBack } from '../../lib/ui/backStack.svelte';
@@ -68,7 +68,11 @@
 	// (Re)load whenever the drill source changes; start() reads no state, so this runs once per source.
 	const more = $derived(page.url.searchParams.get('more') === '1');
 	$effect(() => {
-		s.start(drillSource, more);
+		const source = drillSource;
+		const keep = more;
+		// untrack: start() reads `keepGoing` while it fetches; a tap on "Keep going" must not restart the session
+		// (that reset keep going and aborted its own fetch).
+		untrack(() => s.start(source, keep));
 	});
 
 	/* ---------- answer in view ---------- */
