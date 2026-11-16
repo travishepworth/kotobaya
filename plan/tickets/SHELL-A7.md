@@ -32,3 +32,6 @@ The SPA screens (W2).
 
 ## Orchestrator note (2026-11-16)
 Dictionary row: show the installed scope with a choice of top60k / all (size from getDictRelease artifacts) and the SHELL-L9 gap-fill counts (cached, still missing).
+
+## Orchestrator note (from SHELL-A2)
+Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.

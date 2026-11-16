@@ -25,3 +25,6 @@ the `QueueItem` view of L2 (import it, do not copy). Drill answers already work 
 Confusables (proxy).
 
 ## Notes from previous attempts
+
+## Orchestrator note (from SHELL-A2)
+Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.

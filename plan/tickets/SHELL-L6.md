@@ -27,3 +27,6 @@ Retired cards are listed unlabelled (ADR-035). A query needing data the phone la
 Bulk actions (L4).
 
 ## Notes from previous attempts
+
+## Orchestrator note (from SHELL-A2)
+Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.

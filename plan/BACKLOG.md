@@ -812,7 +812,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### Android -> web UI shell (2026-11-16, human decision, ADR-036; design docs/ANDROID-SHELL.md)
 - SHELL-A1 — Bundle the SPA into the APK (Gradle task) · model: sonnet · risk: low · deps: none · status: MERGED (ticket: plan/tickets/SHELL-A1.md)
-- SHELL-A2 — Local API kernel: dispatcher, route table, problems, group stubs · model: opus · risk: med · deps: SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-A2.md)
+- SHELL-A2 — Local API kernel: dispatcher, route table, problems, group stubs · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-A2.md)
 - SHELL-A3 — Shell activity: WebView host, asset loader, bridge transport, blob intercept · model: opus · risk: high · deps: SHELL-A1, SHELL-A2, SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-A3.md)
 - SHELL-A4 — Native navigation: deep links, intake trampoline, widget/tile/notifications, back, haptics, theme · model: sonnet · risk: med · deps: SHELL-A3 · status: TODO (ticket: plan/tickets/SHELL-A4.md)
 - SHELL-A5 — Server proxy for non-local operations · model: opus · risk: med · deps: SHELL-A2 · status: TODO (ticket: plan/tickets/SHELL-A5.md)
@@ -830,7 +830,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-P1 — Server parity runner and golden recording · model: opus · risk: med · deps: SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-P1.md)
 - SHELL-P2 — Android parity harness against the goldens · model: opus · risk: med · deps: SHELL-A2, SHELL-P1 · status: TODO (ticket: plan/tickets/SHELL-P2.md)
 - SHELL-W1 — SPA transport, shell state and capabilities, session in shell mode · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-W1.md)
-- SHELL-W2 — SPA device UI: pair screen, sync chip, device settings, hide by scope, needs-connection states · model: sonnet · risk: med · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W2.md)
+- SHELL-W2 — SPA device UI: pair screen, sync chip, device settings, hide by scope, needs-connection states · model: sonnet · risk: med · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W2.md)
 - SHELL-W3 — SPA navigation: navigate, back stack with ADR-030, intake params, haptics, theme · model: sonnet · risk: med · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W3.md)
 - SHELL-W4 — SPA mobile gaps audit and fixes · model: sonnet · risk: low · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W4.md)
 - SHELL-Z1 — Delete the Compose UI · model: sonnet · risk: med · deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4, human phone check recorded in plan/HUMAN_CHECKS.md · status: TODO (ticket: plan/tickets/SHELL-Z1.md)

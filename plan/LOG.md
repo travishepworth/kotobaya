@@ -1225,3 +1225,6 @@
 2026-11-16T12:31:05Z SHELL-A2 DISPATCH writer-senior [gradle lane]
 2026-11-16T12:31:05Z SHELL-W1 DISPATCH writer-senior [web, no gradle]
 2026-11-16T12:47:01Z SHELL-W1 CHECK_GREEN (web) + MERGE; note: web/Dockerfile must COPY clients/typescript-shell + contracts/api/shell/ops.json -> SHELL-W1b
+2026-11-16T12:47:27Z SHELL-W2 DISPATCH writer(sonnet) [web lane; +Dockerfile, canLogout]
+2026-11-16T12:56:22Z SHELL-A2 CHECK_GREEN (run 2; run 1 hit known flaky SyncCoordinatorTest.concurrentTriggersRunOneSync -> FOLLOWUPS) + MERGE
+2026-11-16T12:56:22Z SHELL-W2 CHECK_GREEN (web) + MERGE (playwright 360/412 + screenshots viewed by writer)

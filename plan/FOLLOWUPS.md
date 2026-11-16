@@ -495,3 +495,4 @@
 - CLI flaky: tests/test_kby.py::test_waiting_state_shows_the_countdown_and_old_configs_still_render — countdown 2:05/2:04 window fails under load (1/4 runs). Use a frozen clock or wider tolerance.
 - KIND-CHIP-OVERLAP-AND (cosmetic): 'Audio is not downloaded yet.' caption in the header row wraps to 3 lines and pushes card content down; shorten/move it.
 - SHELL-C1 minor: clients/README.md lacks typescript-shell (not in C1 owned paths)
+- FLAKY: android SyncCoordinatorTest.concurrentTriggersRunOneSync fails ~1/3 (late trigger on Dispatchers.Default runs a 2nd cycle) — fix soon, it burns Gradle-lane time
