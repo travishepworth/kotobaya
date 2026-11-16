@@ -29,6 +29,8 @@ import kotobaya.android.sync.FailureCounter
 import kotobaya.android.sync.SyncCoordinator
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.notes.EntryMatcher
+import kotobaya.android.notify.DueListener
+import kotobaya.android.notify.DueTrigger
 import kotobaya.android.notes.InstalledCandidateSource
 import kotobaya.android.notes.NoteCreator
 import kotobaya.android.queue.EntryMaterializer
@@ -118,7 +120,7 @@ class SeedLog(private val clock: Clock) : SyncTransport {
  *
  * Handlers get their dependencies from [services] by type, like `KoinShellServices` in production. Registered:
  * [SqlDelightDeviceStore], [SyncClient], `LocalWrites<SqlLearningTables>`, [Clock], [DictStore],
- * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
+ * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [DueTrigger] (SHELL-L3, counted in `dueChanges`); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
  * fixture and the cache), [EntryMaterializer] (`NoteCreator`), [SyncCoordinator] (idle, never runs) (SHELL-L2). An L
  * ticket whose handler needs something else registers it here.
  *
@@ -199,6 +201,11 @@ class ParityDevice(
     val reported = ArrayList<ClientErrorItem>()
     private val clientErrors = ClientErrorIntake(ClientErrorSink { reported += it }, clock::nowMs)
 
+    /** SHELL-L3: how often `answerReview` / `undoReview` asked for the due alarm and widgets to be recomputed. */
+    var dueChanges: Int = 0
+        private set
+    private val dueTrigger = DueTrigger(background = { it.run() }) { listOf(DueListener { dueChanges++ }) }
+
     private val services = MapServices(
         mapOf(
             SqlDelightDeviceStore::class to store,
@@ -215,6 +222,7 @@ class ParityDevice(
             InstalledDictionary::class to installedDictionary,
             EntryMaterializer::class to noteCreator,
             SyncCoordinator::class to coordinator,
+            DueTrigger::class to dueTrigger,
         ),
     )
 

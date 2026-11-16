@@ -6,4 +6,7 @@ import kotobaya.android.shell.api.LocalRoute
 val routes: List<LocalRoute> = listOf(
     // SHELL-L2: the queue (QueueRoute.kt)
     LocalRoute("getReviewQueue", "GET", "/api/v1/review/queue") { call -> getReviewQueue(call) },
+    // SHELL-L3: answer and undo (AnswerRoute.kt)
+    LocalRoute("answerReview", "POST", "/api/v1/review/answer") { call -> answerReview(call) },
+    LocalRoute("undoReview", "POST", "/api/v1/review/undo") { call -> undoReview(call) },
 )
