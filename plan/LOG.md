@@ -1238,3 +1238,4 @@
 2026-11-16T13:23:43Z SHELL-L9 DISPATCH writer-senior [gradle lane]
 2026-11-16T13:41:31Z SHELL-L9 CHECK_GREEN + MERGE. Cause confirmed: top60k package built before list-deck rebuilds -> list words outside top 60k absent. New WRK-DICT-LISTSEQ (worker, non-gradle) for the root fix
 2026-11-16T13:41:31Z SHELL-L1 DISPATCH writer [gradle lane]; WRK-DICT-LISTSEQ DISPATCH writer [worker lane]
+2026-11-16T13:47:39Z WRK-DICT-LISTSEQ CHECK_GREEN (worker 900) + MERGE; needs worker release + dict-refresh run
