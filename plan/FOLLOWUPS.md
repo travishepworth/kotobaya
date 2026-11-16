@@ -496,3 +496,4 @@
 - KIND-CHIP-OVERLAP-AND (cosmetic): 'Audio is not downloaded yet.' caption in the header row wraps to 3 lines and pushes card content down; shorten/move it.
 - SHELL-C1 minor: clients/README.md lacks typescript-shell (not in C1 owned paths)
 - FIXED (SHELL-P2): android SyncCoordinatorTest.concurrentTriggersRunOneSync fails ~1/3 (late trigger on Dispatchers.Default runs a 2nd cycle) — fix soon, it burns Gradle-lane time
+- SHELL-L2 review minor 2: materializeAllowed=false (server unreachable) counts pending entries in New but never serves them; SHELL.md 4.3 says to_materialize is then 0 — decide in contract/ADR (native app hides pending entries).

@@ -1242,3 +1242,6 @@
 2026-11-16T13:58:24Z SHELL-L1 CHECK_GREEN + MERGE (identity/settings/presets/note types/client errors local)
 2026-11-16T13:58:24Z SHELL-L2 DISPATCH writer-senior [gradle lane]
 2026-11-16T14:08:30Z RELEASE worker 0.1.19 DEPLOYED helm rev 37 (pin f4492cf4, WRK-DICT-LISTSEQ). dict-refresh NOT queued: CLI token lacks import scope -> asked user to trigger
+2026-11-16T14:18:59Z SHELL-L2 HANDOFF + CHECK_GREEN (517); reviewer dispatched
+2026-11-16T14:18:59Z SHELL-L3 DISPATCH architect from t/SHELL-L2 (chain) [gradle lane]
+2026-11-16T14:22:48Z SHELL-L2 REVIEW_APPROVE (5 minors: #1,#3,#4 -> SHELL-L2b; #2 -> FOLLOWUPS) + MERGE
