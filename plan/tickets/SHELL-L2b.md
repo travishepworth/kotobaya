@@ -11,3 +11,5 @@
 - [ ] make check MODULE=android green.
 - Also: the android parity tests leak /tmp/parity<random> dirs (2.7 MB each, 60 found) — delete them in test teardown. /tmp is a usrquota tmpfs; leaks caused a red L3 check (Disk quota exceeded).
 - From SHELL-L3 review: out_of_range message says "at least $min" when n > max (AnswerRoute.kt:95); undo fires DueTrigger for drill/cram too; share one card view between AnswerViews and QueueViews.
+- Leak also includes /tmp/parity-dictstore* (~3000 dirs per run). Fix both at the source (teardown / deleteOnExit / one shared temp root per test class).
+- Theme should reset to system default at page start (SHELL-A4 note).

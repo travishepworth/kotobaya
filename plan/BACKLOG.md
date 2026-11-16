@@ -814,7 +814,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-A1 — Bundle the SPA into the APK (Gradle task) · model: sonnet · risk: low · deps: none · status: MERGED (ticket: plan/tickets/SHELL-A1.md)
 - SHELL-A2 — Local API kernel: dispatcher, route table, problems, group stubs · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-A2.md)
 - SHELL-A3 — Shell activity: WebView host, asset loader, bridge transport, blob intercept · model: opus · risk: high · deps: SHELL-A1, SHELL-A2, SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-A3.md)
-- SHELL-A4 — Native navigation: deep links, intake trampoline, widget/tile/notifications, back, haptics, theme · model: sonnet · risk: med · deps: SHELL-A3 · status: TODO (ticket: plan/tickets/SHELL-A4.md)
+- SHELL-A4 — Native navigation: deep links, intake trampoline, widget/tile/notifications, back, haptics, theme · model: sonnet · risk: med · deps: SHELL-A3 · status: MERGED (ticket: plan/tickets/SHELL-A4.md)
 - SHELL-A5 — Server proxy for non-local operations · model: opus · risk: med · deps: SHELL-A2 · status: MERGED (ticket: plan/tickets/SHELL-A5.md)
 - SHELL-A6 — Shell device ops I: info, sync status, sync now, events, pairing · model: sonnet · risk: med · deps: SHELL-A2 · status: TODO (ticket: plan/tickets/SHELL-A6.md)
 - SHELL-A7 — Shell device ops II: dictionary install, storage, notifications, push, AnkiConnect · model: sonnet · risk: med · deps: SHELL-A6 · status: TODO (ticket: plan/tickets/SHELL-A7.md)

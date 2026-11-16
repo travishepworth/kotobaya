@@ -1254,3 +1254,4 @@
 2026-11-16T15:21:42Z SHELL-A5 CHECK_GREEN + MERGE (local ops w/o handler forwarded online until L4-L8; L-1 temporarily relaxed)
 2026-11-16T15:22:48Z RELEASE APK 0.1.29 built (pin 6c79233c, code 129, cert ok, 441 web assets) — SHELL first phone test; waiting for user to plug in
 2026-11-16T15:23:03Z SHELL-A4 DISPATCH writer [gradle lane] (+A3 review minors)
+2026-11-16T15:35:28Z SHELL-A4 CHECK_GREEN + MERGE (back protocol, deep links, intake trampoline, A3 minors)
