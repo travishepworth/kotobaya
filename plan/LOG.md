@@ -1289,3 +1289,4 @@
 2026-11-16T17:09:53Z LOOP-SRV HANDOFF green (11 goldens re-recorded); 1 scenario expect wrong (fuzzed due order; server correct) -> allowlisted, LOOP-C2 later. LOOP-AND DISPATCH writer from t/LOOP-SRV [gradle lane]
 2026-11-16T17:11:50Z LOOP-WEB2 CHECK_GREEN + MERGE (explicit quota line, per-session row removed, fake-shell v2)
 2026-11-16T17:12:12Z LOOP-AND(+PORTRAIT-AND) DISPATCH writer from t/LOOP-SRV [gradle lane]
+2026-11-16T17:33:23Z LOOP-CORE+SRV+AND(+PORTRAIT-AND) chain: contracts/core/server/android/web GREEN on rebased tip -> MERGE

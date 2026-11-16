@@ -501,3 +501,4 @@
 - SHELL-A7 follow-ups: gap-fill counts announced only after sync outcome (not after gap-fill run); on-device AnkiConnect adds emit no note.created (uses TakobotoAnkiStore directly).
 - LOOP-CORE minors: unbounded new draw per fetch with huge new_per_day (cap draw at max(batch,|R|+1) if profiling shows cost); QueueBuilderTest.kt:77 comment 's 0' should be 's 1'; laterToday dedups ids (contract says no dedup; harmless).
 - LOOP-WEB2: goal_reached shows 'New-card goal reached' as heading and quota suffix (repetitive; drop suffix?)
+- LOOP-AND: widget 'later today' text not added (count only); QueueCounts kept for legacy Compose (Z1 deletes).
