@@ -4,8 +4,8 @@ import app.cash.sqldelight.db.SqlDriver
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.queue.QueueSettings
 import kotobaya.android.queue.studyDayOf
-import kotobaya.android.search.CardSearchOutcome
-import kotobaya.android.search.LocalCardSearch
+import kotobaya.android.queue.rolloverMs
+import kotobaya.android.search.rows
 import kotobaya.android.shell.api.Fallthrough
 import kotobaya.android.shell.api.FieldError
 import kotobaya.android.shell.api.FieldErrors
@@ -28,6 +28,13 @@ import kotobaya.contracts.sync.JsonValue
 import kotobaya.contracts.sync.OpType
 import kotobaya.db.app.AppDatabase
 import kotobaya.search.DefaultSearchQueryParser
+import kotobaya.search.sql.Dialect
+import kotobaya.search.sql.DictFormRow
+import kotobaya.search.sql.ResidualRow
+import kotobaya.search.sql.SearchContext
+import kotobaya.search.sql.SearchSqlCompiler
+import kotobaya.search.sql.SmartDeckRef
+import kotobaya.search.sql.SqlFragment
 import kotobaya.sync.client.apply.LearningTable
 import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.mint.MintRefusal
@@ -52,12 +59,15 @@ private val ACTION_PARAMS: Map<String, Set<String>> = mapOf(
 /** The actions answered on the device (SHELL.md 4.3); the others are forwarded (P-1 … P-3). */
 internal val LOCAL_BULK_ACTIONS: Set<String> = setOf("suspend", "unsuspend", "bury", "unbury", "flag")
 
-/** What a card-search `query` selected: live card ids ascending, or the parser's errors. */
+/** What a card-search `query` selected: live card ids ascending, the parser's errors, or "ask the server". */
 sealed interface CardQueryResult {
     data class Ids(val ids: List<String>) : CardQueryResult
 
     /** `code` = the core `SearchErrorCode` in lower case, `position` = its UTF-16 offset. */
     data class Invalid(val errors: List<Pair<String, Int>>) : CardQueryResult
+
+    /** The device cannot select exactly what the server would ([reason], for logs): the request is forwarded. */
+    data class Forward(val reason: String) : CardQueryResult
 }
 
 /**
@@ -69,25 +79,80 @@ fun interface CardQuery {
 }
 
 /**
- * [CardQuery] over the replica through the existing "My cards" search ([LocalCardSearch]: core
- * `DefaultSearchQueryParser` + `SearchSqlCompiler`, SQLite dialect with its residual check, C-24 dictionary forms).
- * A query the parser reports any error for is refused, as the server does (`SmartDecks.parse`).
+ * [CardQuery] over the replica, compiled exactly as the server's `CardSearch.compile` but in the SQLite dialect: core
+ * `DefaultSearchQueryParser` (any parser error is refused, as `SmartDecks.parse`), a tz-aware [SearchContext] from
+ * the replica's settings, the **live smart decks** of the replica as [SmartDeckRef]s (a `deck:` term naming one
+ * selects by its query, also negated), `is:hot` matching nothing (the server passes no hot set either), the
+ * residual check of the SQLite dialect, and the C-24 dictionary forms of the installed package.
+ *
+ * The one place the device could select differently is the dictionary-form lookup: a text pattern matching more than
+ * [dictFormsMaxSeqs] collection entries (the guard `LocalCardSearch` uses for "My cards") is not looked up in full
+ * here; instead the selection answers [CardQueryResult.Forward], so a bulk call never acts on a silently different set.
  */
 class LocalCardQuery(
     private val driver: SqlDriver,
     private val db: AppDatabase,
     private val dictionary: InstalledDictionary?,
+    private val dictFormsMaxSeqs: Int = DICT_FORMS_MAX_SEQS,
 ) : CardQuery {
     override fun select(query: String, nowMs: Long): CardQueryResult {
         val parsed = DefaultSearchQueryParser.parse(query)
-        if (parsed.query == null || parsed.errors.isNotEmpty()) {
+        val node = parsed.query
+        if (node == null || parsed.errors.isNotEmpty()) {
             return CardQueryResult.Invalid(parsed.errors.map { it.code.name.lowercase() to it.span.start })
         }
-        return when (val r = LocalCardSearch(driver, db, { nowMs }, dictionary).search(query)) {
-            is CardSearchOutcome.Results -> CardQueryResult.Ids(r.hits.map { it.cardId }.distinct().sorted())
-            is CardSearchOutcome.ParseError -> CardQueryResult.Invalid(r.errors.map { it.code.name.lowercase() to it.span.start })
-            is CardSearchOutcome.Failed -> error("the local card search failed")
+        val st = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
+        val today = studyDayOf(nowMs, st.timezone, st.dayRolloverHour)
+        val smart = driver.rows("SELECT name, query FROM deck WHERE type = 'smart' AND deleted_at IS NULL AND query IS NOT NULL") {
+            it.getString(0).orEmpty() to it.getString(1).orEmpty()
+        }.mapNotNull { (name, q) ->
+            val p = DefaultSearchQueryParser.parse(q)
+            p.query?.takeIf { p.errors.isEmpty() }?.let { SmartDeckRef(name, it) }
         }
+        var capped = false
+        val ctx = SearchContext(
+            studyDay = today.day,
+            nowMs = nowMs,
+            leechThreshold = st.leechThreshold,
+            smartDecks = smart,
+            dayStart = { off -> rolloverMs(st.timezone, st.dayRolloverHour, today.date.plusDays(off.toLong())) },
+            dictForms = dictForms { capped = true },
+        )
+        val compiled = SearchSqlCompiler.compile(node, Dialect.SQLITE, ctx)
+        if (capped) return CardQueryResult.Forward("a text term matches more than $dictFormsMaxSeqs dictionary entries")
+        val f = compiled.select()
+        val ids = driver.rows(f.sql, f.params) { c ->
+            val id = checkNotNull(c.getString(0))
+            if (!compiled.residual) {
+                id
+            } else {
+                val probes = compiled.probes.indices.map { (c.getLong(7 + it) ?: 0L) != 0L }
+                val row = ResidualRow(
+                    c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getString(3).orEmpty(),
+                    c.getString(4).orEmpty(), c.getString(5).orEmpty(), c.getString(6).orEmpty(), probes,
+                )
+                id.takeIf { compiled.accepts(row) }
+            }
+        }
+        return CardQueryResult.Ids(ids.filterNotNull().distinct().sorted())
+    }
+
+    /** C-24 over the installed package, intersected with the collection's entries; [onCap] when a pattern is too broad. */
+    private fun dictForms(onCap: () -> Unit): ((SqlFragment) -> List<DictFormRow>)? {
+        val dict = dictionary?.takeIf { it.isAvailable() } ?: return null
+        val collection: Set<Long> by lazy {
+            driver.rows("SELECT DISTINCT entry_seq FROM note WHERE entry_seq IS NOT NULL AND deleted_at IS NULL") { it.getLong(0) ?: 0L }.toHashSet()
+        }
+        return { f ->
+            val rows = dict.formRows(f.sql, f.params.map { it.toString() }) { it in collection }.orEmpty()
+            if (rows.mapTo(HashSet()) { it.seq }.size > dictFormsMaxSeqs) onCap()
+            rows
+        }
+    }
+
+    companion object {
+        /** The "My cards" guard (`LocalCardSearch`): beyond it the device does not trust its dictionary-form lookup. */
+        const val DICT_FORMS_MAX_SEQS: Int = 3000
     }
 }
 
@@ -185,7 +250,8 @@ private fun result(matched: Int, changed: Int, skipped: Int, ops: Int, dry: Bool
  *
  * As the server (`BulkApi.bulk`): `card_ids` that are unknown, deleted, of a deleted note or merged away are not
  * redirected but counted in `skipped`; a `query` is the card search (`422 invalid_query`, more than 5000 cards
- * `422 bulk_too_large`); every matched card gets its op, also one already in the target state (it bumps the clock);
+ * `422 bulk_too_large`; live smart decks resolve `deck:` terms; a selection the device cannot
+ * reproduce exactly is forwarded); every matched card gets its op, also one already in the target state (it bumps the clock);
  * bury `until` defaults to the end of the current study day and must be in the future. All ops of one call are
  * minted in ONE transaction through [LocalWrites], in card-id order, all or none: a refusal of any op mints none.
  */
@@ -198,16 +264,9 @@ internal fun bulkCards(call: LocalCall): ShellResponse {
         val selector = runCatching { call.services.get<CardQuery>() }.getOrNull() ?: return Fallthrough
         when (val r = selector.select(q, now)) {
             is CardQueryResult.Invalid -> throw ProblemException(invalidQuery(r.errors))
-            is CardQueryResult.Ids -> r.ids.also {
-                if (it.size > MAX_CARDS) {
-                    throw ProblemException(
-                        Problem(
-                            422, "bulk_too_large", "Too many cards", "The query matches more than $MAX_CARDS cards; nothing was applied.",
-                            listOf(FieldError("/query", "bulk_too_large", "More than $MAX_CARDS cards.")),
-                        ),
-                    )
-                }
-            }
+            is CardQueryResult.Ids -> r.ids
+            // the device cannot select what the server would: let the server act (offline: 503 shell_offline)
+            is CardQueryResult.Forward -> return Fallthrough
         }
     }
     val until: Long? = if (req.type == "bury") {
@@ -226,7 +285,17 @@ internal fun bulkCards(call: LocalCall): ShellResponse {
             live to (req.ids.size - live.size)
         } else {
             // the search ran on a reader just before; a card deleted since then is no longer matched
-            liveCards(t, checkNotNull(queried)) to 0
+            val live = liveCards(t, checkNotNull(queried))
+            // counted on the live cards, the set that would be acted on (the server's compiler matches live cards only)
+            if (live.size > MAX_CARDS) {
+                throw ProblemException(
+                    Problem(
+                        422, "bulk_too_large", "Too many cards", "The query matches more than $MAX_CARDS cards; nothing was applied.",
+                        listOf(FieldError("/query", "bulk_too_large", "More than $MAX_CARDS cards.")),
+                    ),
+                )
+            }
+            live to 0
         }
         if (until != null && until <= now) {
             throw ProblemException(Problems.validationFailed("/action/until", "out_of_range", "Must be in the future."))

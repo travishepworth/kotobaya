@@ -2,7 +2,13 @@ package kotobaya.android.shell.api.actions
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotobaya.android.shell.api.actions.ActionsTestSupport.N1
+import kotobaya.android.shell.api.actions.ActionsTestSupport.N2
+import kotobaya.contracts.sync.JsonNumber
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import kotobaya.android.shell.api.actions.ActionsTestSupport.T0
 import kotobaya.android.shell.api.actions.ActionsTestSupport.X
 import kotobaya.android.shell.api.actions.ActionsTestSupport.Y
@@ -29,8 +35,31 @@ import kotobaya.sync.client.apply.LearningTable
  * SHELL-L4 acceptance `NoteEditLwwTest` (SYNC.md 7.1, 7.3; SHELL.md L-6): an `updateNote` made offline on this device
  * and edits / a delete of the same note pulled from another device, in both arrival orders. Each case also checks
  * convergence: replicas that receive all the ops in replay order and in reverse order hold the same note.
+ * Robolectric: the re-match case reads dictionary entry details (Android SQLite / org.json).
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(application = android.app.Application::class, sdk = [34])
 class NoteEditLwwTest {
+    /**
+     * SHELL.md 4.3 `updateNote`, re-match collision: a device never merges. Re-matching note 1 onto the entry of the
+     * live note 2 mints the one `note.updated` and answers with note 1 itself (`200`, no `content-location`); both
+     * notes stay live on the device until the server's `note.merged` arrives by pull.
+     */
+    @Test
+    fun aRematchCollisionAnswersTheNoteItselfAndMergesNothing() {
+        val d = device(X)
+        val res = d.patchNote(N1, """{"entry_seq":1000440}""", at = T0 + 10_000)
+        assertEquals(200, res.status, res.body)
+        assertNull(res.headers["content-location"])
+        val body = ParityJson.obj(ParityJson.parse(checkNotNull(res.body)))
+        assertEquals(N1, ParityJson.str(body.members["id"]))
+        assertEquals(JsonNumber(1000440.0), body.members["entry_seq"])
+        assertEquals(listOf("note.updated"), d.minted().map { ParityJson.str(it.members["op_type"]) })
+        val holders = d.rows(LearningTable.NOTE).filter { it["entry_seq"] == JsonNumber(1000440.0) && (it["deleted_at"] ?: JsonNull) == JsonNull && (it["merged_into_id"] ?: JsonNull) == JsonNull }
+        assertEquals(listOf(N1, N2), holders.map { ParityJson.str(it["id"]) })
+        assertEquals(200, d.call("GET", "/api/v1/notes/$N2").status, "the other note is untouched")
+    }
+
     private fun remoteEdit(n: Int, wall: Long, vararg fields: Pair<String, String>): JsonObject = remote(
         n, "note.updated", "note", N1, wall,
         obj("id" to JsonString(N1), "set" to obj("fields" to obj(*fields.map { (k, v) -> k to (JsonString(v) as kotobaya.contracts.sync.JsonValue) }.toTypedArray()))),
