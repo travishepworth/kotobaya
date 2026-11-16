@@ -1252,3 +1252,4 @@
 2026-11-16T15:08:27Z SHELL-A5 DISPATCH writer-senior from t/SHELL-A3 (chain) [gradle lane]; plan: first-test APK after A3 approve (A5 if close)
 2026-11-16T15:11:02Z SHELL-A3 REVIEW_APPROVE (6 minors -> SHELL-A4 notes) + MERGE
 2026-11-16T15:21:42Z SHELL-A5 CHECK_GREEN + MERGE (local ops w/o handler forwarded online until L4-L8; L-1 temporarily relaxed)
+2026-11-16T15:22:48Z RELEASE APK 0.1.29 built (pin 6c79233c, code 129, cert ok, 441 web assets) — SHELL first phone test; waiting for user to plug in

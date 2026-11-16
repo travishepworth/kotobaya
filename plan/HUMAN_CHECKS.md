@@ -253,3 +253,11 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - [ ] Do 20 reviews from the keyboard; confirm counts match web and phone afterwards.
 - [ ] run 28: server+web 0.1.16 live (helm rev 24, pin 99cf5a19). Fixes CLI daemon empty card text (api 0.1.11 predated QueueItem.text). Check web review back: kanji example words (ON/KUN) + deck chips. Commit your cli/bin/kby + cli/README.md changes.
 - [ ] run 28: install APK 0.1.17 (adb install -r ~/kotobaya-apk/kotobaya-0.1.17-release.apk; cert ec6b7f45 verified). Check review back: kanji example words, deck chips, Open in dictionary; back = undo; add to deck; deck end no repeats.
+
+## SHELL first phone test (APK 0.1.29, pin 6c79233c, 2026-11-17)
+- [ ] Launcher "Kotobaya" opens the web UI, already signed in (no login). "Kotobaya (old)" launcher = old Compose app.
+- [ ] Review: queue, flip, grade, undo (button), counts match web; waiting screen for learning cards.
+- [ ] Airplane mode: open app, review several cards; back online -> reviews sync (check on web).
+- [ ] Online: search, dictionary, decks, settings work (proxied to server).
+- [ ] Takoboto add word still works (native, unchanged).
+Known gaps: Android back closes the app (A4); widget/notification taps open Home (A4); offline search/dictionary/decks/browse not yet local (L4-L8); pairing only via old launcher.
