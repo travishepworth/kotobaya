@@ -1199,3 +1199,4 @@
 2026-11-16T05:48:23Z ONE-CARD design done -> ADR-035 recorded; C-28+ONE-CARD-CORE DISPATCH architect(opus)
 2026-11-16T06:11:11Z C-28+ONE-CARD-CORE HANDOFF (contracts+core green; server/android tests need updates); review dispatched; ONE-CARD-SRV + ONE-CARD-AND DISPATCH writer-senior from t/C-28-ONE-CARD-CORE (merge all together when green)
 2026-11-16T06:13:10Z C-28+ONE-CARD-CORE REVIEW_APPROVE (5 minors); merge together with SRV+AND
+2026-11-16T06:29:36Z ONE-CARD-SRV HANDOFF (server 490 + acceptance green); review dispatched
