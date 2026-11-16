@@ -833,7 +833,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-W2 — SPA device UI: pair screen, sync chip, device settings, hide by scope, needs-connection states · model: sonnet · risk: med · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W2.md)
 - SHELL-W3 — SPA navigation: navigate, back stack with ADR-030, intake params, haptics, theme · model: sonnet · risk: med · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W3.md)
 - SHELL-W4 — SPA mobile gaps audit and fixes · model: sonnet · risk: low · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W4.md)
-- SHELL-Z1 — Delete the Compose UI · model: sonnet · risk: med · deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4, human phone check recorded in plan/HUMAN_CHECKS.md · status: TODO (ticket: plan/tickets/SHELL-Z1.md)
+- SHELL-Z1 — Delete the Compose UI · model: sonnet · risk: med · deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4 recorded in plan/HUMAN_CHECKS.md · status: TODO (ticket: plan/tickets/SHELL-Z1.md)
 - SHELL-Z2 — Web bundle OTA (IN SCOPE per user 2026-11-17; runs at the end, after LOOP-* and SHELL-L4..L8) · model: opus · risk: med · deps: SHELL-A3, SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-Z2.md)
 - SHELL-L9 — Dictionary gap fill (user: conversation-list cards lack dict info) · model: opus · risk: med · deps: SHELL-A2, SHELL-P2 · status: MERGED (ticket: plan/tickets/SHELL-L9.md)
 - WRK-DICT-LISTSEQ — worker: top60k package misses list-deck seqs (root cause of the phone's missing card info) · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/WRK-DICT-LISTSEQ.md)

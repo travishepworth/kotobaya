@@ -1,7 +1,7 @@
 # SHELL-Z1 — Delete the Compose UI
 
 - Phase: SHELL · Model: sonnet · Risk: med
-- Deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4, human phone check recorded in plan/HUMAN_CHECKS.md
+- Deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4 recorded in plan/HUMAN_CHECKS.md
 - Branch: t/SHELL-Z1-delete-compose
 - Owned paths (only edit these): android/** (deletions; build.gradle.kts; AndroidManifest.xml), gradle/libs.versions.toml, Makefile (tokens target: drop the Compose theme output), docs/SPEC.md (Clients section wording)
 - Module(s) for CI: android
@@ -34,3 +34,6 @@ ViewModels, nav, demo, legacy activity) and Z1b (ui/components, ui/theme, depend
 Any new feature. OTA.
 
 ## Notes from previous attempts
+
+## Orchestrator note (user, 2026-11-17)
+User approved deleting the old Compose UI; no separate phone-check gate. Still runs after the other SHELL deps are merged.
