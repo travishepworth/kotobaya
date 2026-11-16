@@ -1,26 +1,22 @@
-# HANDOFF LOOP-WEB + PORTRAIT-WEB
+# HANDOFF LOOP-WEB2
 
-STATUS: DONE
-BRANCH: t/LOOP-WEB+PORTRAIT-WEB
-CHECK: `make check MODULE=web GRADLE=:` → green (Gradle skipped as instructed; core npm symlinked)
+STATUS: BLOCKED
+BRANCH: t/LOOP-WEB2
+CHECK: `make check MODULE=web` → green (run with `GRADLE=true` to skip the Gradle npmPackage step, per machine limit; core/build/npm/core symlinked)
 
 ## Changed (≤ 6 lines)
-- `lib/review/loop.ts`, `keepGoingDay.ts`: read `loop` only; C2 store `kotobaya.keepGoingDay`, one helper for Home and review
-- `state/review.svelte.ts`: phases from `loop.phase`; C1 refetch before the next card, C4 single wake, C5 ≤3 retries
-- `state/today.svelte.ts` + `LoopHero`/`LoopMeta`: ready number, later hint, new bar, backlog line, phase screens, Keep going
-- `routes/review/LoopEnd.svelte`: goal_reached, done_for_today, waiting, empty screens
-- Lock to portrait: `device.svelte.ts` (`setLockPortrait`, reverts on failure), DeviceSection row, strings
-- `MIN_LOCAL_API` 2 (manifest + protocol)
+- web/src/routes/settings/StudySection.svelte: removed `scheduler.new_per_session` from the limits group (key kept in lib/settings/keys.ts)
+- web/mock/fake-shell.js: `local_api_version: 2`
 
 ## Acceptance → tests
-- phases, no `counts` read → `tests/review/loopPhases.svelte.test.ts` (fixture throws on deprecated fields)
-- C2 → `keepGoingDay.svelte.test.ts`; C1 → `dueFirst.svelte.test.ts`; A1 → `tests/home/homeLoop.test.ts`
-- portrait → `tests/shell/displayPrefs.svelte.test.ts`
-- layout + screenshots → `playwright/review-loop.spec.ts`, `web/screenshots/shell/loop-*.png` (360, 412, desktop; reviewed)
+- Item 2 and 3 → existing web check (vitest, svelte-check, build) green
+- Item 1 (end-screen quotas line) → NOT DONE, see BLOCKED
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Missing `loop` falls back to legacy fields (as asked), isolated in `legacyLoop`; the contract says no fallback.
-- Not owned, follow-up: remove the Settings "new per session" row (StudySection, settings/keys); `mock/fake-shell.js` still reports local_api 1, so old shell-mode specs show "update". I edited 3 tests that assert min_local_api.
+- Item 1 is not started: its files are outside Owned. Items 2 and 3 are committed and green.
+
+## If BLOCKED
+QUESTION: Owned lists `web/src/lib/ui/Loop*.svelte`, but no such files exist. The loop UI is `web/src/lib/review/LoopHero.svelte` and `LoopMeta.svelte`, and the strings are in `web/src/lib/review/messages.ts` and `web/src/routes/review/messages.ts` (LoopEnd uses `rv`). Item 1 needs edits there: may I add those four paths to Owned (or move the strings), and should the quota line be "200/200 reviews · 40/40 new" as literal text?
