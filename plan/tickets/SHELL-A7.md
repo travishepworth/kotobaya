@@ -35,3 +35,7 @@ Dictionary row: show the installed scope with a choice of top60k / all (size fro
 
 ## Orchestrator note (from SHELL-A2)
 Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.
+
+## Orchestrator note (from SHELL-A6) — also wire ShellEvents (owned here: ShellModule, ShellWiring, LocalWrites after-commit hook, NetworkMonitor, AnkiStoreHolder/TakobotoFeature)
+- `ShellEvents(scope, bridge::send, ...)`; `watch(SyncStatusRepository.status)`; `onSyncOutcome` from the SyncCoordinator onOutcome; `onLocalWrite` in LocalWrites after commit; `onConnectivity` from NetworkMonitor; wrap the AnkiStore held by AnkiStoreHolder in `EventingAnkiStore(store, store::add, ...)` so Takoboto adds emit note.created.
+- Test: an event reaches a fake bridge for each source.
