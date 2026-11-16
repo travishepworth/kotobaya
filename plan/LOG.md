@@ -1263,3 +1263,4 @@
 2026-11-16T15:57:54Z SHELL-DARK CHECK_GREEN + MERGE
 2026-11-16T15:59:56Z SHELL-DARK verified on device (live toggle: brightness 38 dark / 238 light); APK 0.1.31 INSTALLED (pin e065f743)
 2026-11-16T15:59:56Z USER: toast covers Show answer -> WEB-TOAST-REVIEW DISPATCH writer [web]. USER: unlimited review loop rework (28 shown, waiting screen) -> confirming design with user
+2026-11-16T16:04:24Z WEB-TOAST-REVIEW CHECK_GREEN + MERGE (toast lifted above review action bar; playwright hit-test 4/4)
