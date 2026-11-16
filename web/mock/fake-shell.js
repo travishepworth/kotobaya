@@ -22,7 +22,7 @@
 			return {
 				shell_version: '0.0.0-mock',
 				shell_version_code: 1,
-				local_api_version: 1,
+				local_api_version: 2,
 				paired: state.paired,
 				auth_required: false,
 				server_url: 'http://localhost:3000/api/v1',
