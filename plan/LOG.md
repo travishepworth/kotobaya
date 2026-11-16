@@ -1186,3 +1186,4 @@
 2026-11-16T04:01:41Z CARD-KIND-BADGE-WEB CHECK_GREEN + MERGE (field card.note.type; labels Vocab/Kanji/Phrase/Grammar/Sentence/Custom)
 2026-11-16T04:02:37Z CARD-KIND-BADGE-CLI CHECK_GREEN + MERGE
 2026-11-16T04:05:04Z AND-DICT-FALLBACK SHELVED (user)
+2026-11-16T04:07:58Z AND-FLAKY-BACKNAV CHECK_GREEN(writer, 3 full runs) + MERGE (test-only: lost global snapshot apply across Robolectric tests)
