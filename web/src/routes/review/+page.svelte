@@ -400,6 +400,7 @@
 				>
 					<div class="card-body" bind:this={body} onscroll={measure}>
 						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
+						{#if d.card.note?.type}<span class="kind-badge">{rv(`rv.kind.${d.card.note.type}`)}</span>{/if}
 						{#if d.isNew}<span class="new-badge">{rv('rv.newBadge')}</span>{/if}
 						{#if s.rendered === null}
 							<!-- unreachable: display is set -->
@@ -696,6 +697,21 @@
 		right: var(--kb-space-4);
 		font: var(--kb-type-caption);
 		color: var(--kb-color-state-new);
+		border: 1px solid currentColor;
+		border-radius: var(--kb-radius-sm, 4px);
+		padding: 0 var(--kb-space-2);
+	}
+	.kind-badge {
+		position: absolute;
+		top: var(--kb-space-3);
+		left: 50%;
+		transform: translateX(-50%);
+		max-width: 30%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font: var(--kb-type-caption);
+		color: var(--kb-color-text-muted);
 		border: 1px solid currentColor;
 		border-radius: var(--kb-radius-sm, 4px);
 		padding: 0 var(--kb-space-2);
