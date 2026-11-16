@@ -721,6 +721,13 @@ Nothing is stored about retirement: no column, no op, no migration; the cards st
 | `word_status.auto_status` | Derived without retired cards (`WordStatusRules.autoStatus(…, readingEnabled)`, `WordCardState.kind`). Applying a `settings.set` of this key (won or lost) re-derives **every** vocab entry in the same transaction. |
 | `review_log`, replay, optimizer, browse/search | Unchanged: reviews of a retired card (incl. offline ones pushed later) are accepted and replay on that card; `kind:reading` still finds it. A reading review never feeds the meaning card. |
 
+**One-time re-derive on upgrade.** Rows derived before this rule existed may count a reading
+card (e.g. a word stuck at `learning` by its reading card) and no `settings.set` may ever arrive
+(the key is absent). So each replica re-derives every entry once when it first runs this rule,
+without replaying caches and without an op: devices via the core's `StartupReplay`
+(`sync_state` key `client.word_status_rules` = `adr035-1`, device-local); the server via its own
+startup marker (`server_state`, ONE-CARD-SRV).
+
 Turning it on brings the same cards back with their schedule; notes created while it was off get
 no reading card (ADR-011, no backfill). Worked example: `contracts/sync/examples/scenarios/
 reading-retired-offline-review.json`. Example: vocab note with meaning M (REVIEW, 30 d) and reading

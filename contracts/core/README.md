@@ -257,11 +257,13 @@ candidates (they are live): the builder alone removes them, so every platform ag
 **Server (ONE-CARD-SRV)** must: pass `readingEnabled` to `QueueInput` (QueueLoader) and to every
 `kindsForNewNote` / `missingKinds` call (NoteApi, DeckEntryPlan, AnkiConnect, createCard → 422);
 pass `kind` in `WordCardState` and `readingEnabled` to `autoStatus` (CoreAutoStatusHook,
-StatsQueries); re-derive every vocab entry when applying `settings.set` of the key (OPS.md);
+StatsQueries); re-derive every vocab entry when applying `settings.set` of the key (OPS.md) and
+once at startup under a new `server_state` marker (SCHEMA.md 6.4, "One-time re-derive");
 validate the key as `bool` in `updateSettings`.
 **Android (ONE-CARD-AND)** must: pass `readingEnabled` in LocalQueueLoader and to
 NoteCreator/DeckEntryPlan's generator calls; the toggle writes `settings.set`; word-status
-re-derivation is already done by the core `DeviceOpApplier`.
+re-derivation (on the setting and once after upgrade, `StartupReplay` key
+`client.word_status_rules`) is already done by the core.
 
 **Tests** (`core/src/commonTest`, jvm and js): `queue/QueueRetiredCardsTest.kt` (never served in any
 state, no `nextLearningDueAt`, no sibling burying incl. through today's reviews, no limit use, only

@@ -13,6 +13,10 @@ import kotobaya.sync.client.store.StoreTransaction
  * again (idempotent). Mints no op. A refused replay set gives that card the refused cache and the
  * version is still stored (9.4 item 3).
  *
+ * Independently, if `sync_state.client.word_status_rules` differs from [WORD_STATUS_RULES_VERSION]
+ * (ADR-035: retired reading cards no longer count), every `word_status` is re-derived once in the
+ * same way, without a cache replay; a full replay stores both keys.
+ *
  * [DeviceOpApplier] calls [ensure] at the start of every apply as well, so nothing is ever folded
  * into a cache computed by another core version even if the app forgot [run].
  */
@@ -25,10 +29,18 @@ public class StartupReplay(
     /** The same inside the caller's transaction [tx]. Returns whether a replay ran. */
     public fun ensure(tx: StoreTransaction<out LearningTables>): Boolean {
         val running = cache.engine.schedulerVersion
-        if (tx.syncState.get(CORE_SCHEDULER_VERSION) == running) return false
+        if (tx.syncState.get(CORE_SCHEDULER_VERSION) == running) {
+            // ADR-035: the word-status rule changed without a scheduler change; re-derive once, no cache replay.
+            if (tx.syncState.get(WORD_STATUS_RULES) != WORD_STATUS_RULES_VERSION) {
+                AutoStatus.rederive(tx.learning, AutoStatus.allEntries(tx.learning), null)
+                tx.syncState.put(WORD_STATUS_RULES, WORD_STATUS_RULES_VERSION)
+            }
+            return false
+        }
         cache.replayAll(tx.learning)
         AutoStatus.rederive(tx.learning, AutoStatus.allEntries(tx.learning), null)
         tx.syncState.put(CORE_SCHEDULER_VERSION, running)
+        tx.syncState.put(WORD_STATUS_RULES, WORD_STATUS_RULES_VERSION)
         return true
     }
 
@@ -36,5 +48,15 @@ public class StartupReplay(
     public companion object {
         /** `sync_state` key of SYNC.md 10.5: the core scheduler version every cache was last fully replayed with. */
         public const val CORE_SCHEDULER_VERSION: String = "core_scheduler_version"
+
+        /**
+         * Device-local `sync_state` key (not a contract key, like the other `client.*` keys): the
+         * [WORD_STATUS_RULES_VERSION] every `word_status.auto_status` was last re-derived with.
+         * Absent or different: re-derive every entry once (no cache replay, no op), then store it.
+         */
+        public const val WORD_STATUS_RULES: String = "client.word_status_rules"
+
+        /** The running core's word-status rule version; bumped when [kotobaya.contracts.queue.WordStatusRules] changes (ADR-035). */
+        public const val WORD_STATUS_RULES_VERSION: String = "adr035-1"
     }
 }

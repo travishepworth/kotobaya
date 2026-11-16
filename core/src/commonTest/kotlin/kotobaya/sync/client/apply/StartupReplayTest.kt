@@ -53,11 +53,39 @@ class StartupReplayTest {
         assertFalse(startup.run(store), "same version: nothing to do")
         assertEquals(after, dump(store.learning()))
         assertEquals(emptyList(), store.rows(), "no op minted")
-        assertEquals(setOf(StartupReplay.CORE_SCHEDULER_VERSION), store.syncState().keys)
+        assertEquals(setOf(StartupReplay.CORE_SCHEDULER_VERSION, StartupReplay.WORD_STATUS_RULES), store.syncState().keys)
         // a different stored version (upgrade or downgrade) replays again
         store.transaction { it.syncState.put(StartupReplay.CORE_SCHEDULER_VERSION, "some-other-core") }
         assertTrue(startup.run(store))
         assertEquals(after, dump(store.learning()))
+    }
+
+    /** ADR-035: a new word-status rule re-derives every entry once, without replaying any cache. */
+    @Test
+    fun wordStatusRuleChangeRederivesOnceWithoutReplay() {
+        val log = scenarioLog("reading-retired-offline-review.json")
+        val t = InMemoryLearningTables.seeded()
+        val applier = DeviceOpApplier<InMemoryLearningTables>()
+        for (op in log.filter { it.seq in setOf(1L, 2L, 3L, 7L) }) applier.applyTo(t, op)
+        // A replica derived under the old rule: R (reading, learning) counted, so the word showed as learning.
+        val entry = listOf<JsonValue>(JsonNumber(1358280.0))
+        t.put(
+            LearningTable.WORD_STATUS,
+            linkedMapOf(
+                "entry_seq" to entry[0], "status" to JsonString("learning"), "auto_status" to JsonString("learning"),
+                "override_status" to kotobaya.contracts.sync.JsonNull, "override_hlc" to kotobaya.contracts.sync.JsonNull,
+                "override_origin" to kotobaya.contracts.sync.JsonNull, "updated_at" to JsonNumber(0.0),
+            ),
+        )
+        val store = InMemoryDeviceStore(t) { it.copy() }
+        store.transaction { it.syncState.put(StartupReplay.CORE_SCHEDULER_VERSION, DefaultReplayEngine.schedulerVersion) }
+        val cardsBefore = store.learning().all(LearningTable.CARD)
+        val startup = StartupReplay()
+        assertFalse(startup.run(store), "no cache replay")
+        assertEquals(null, store.learning().get(LearningTable.WORD_STATUS, entry), "re-derived: R is retired, M is new")
+        assertEquals(cardsBefore, store.learning().all(LearningTable.CARD))
+        assertEquals(StartupReplay.WORD_STATUS_RULES_VERSION, store.syncState()[StartupReplay.WORD_STATUS_RULES])
+        assertEquals(emptyList(), store.rows(), "no op minted")
     }
 
     @Test
