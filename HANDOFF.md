@@ -1,10 +1,23 @@
 # HANDOFF KIND-CHIP-OVERLAP (web)
-Status: DONE. `make check MODULE=web` green.
+Status: DONE. `make check MODULE=web` green. Branch t/KIND-CHIP-OVERLAP-WEB.
 
-Did web actually overlap? Yes, in some cases. The three chips (.tag, .kind-badge, .new-badge) were position:absolute at top 12px inside the scrolling `.card-body`. Top padding is clamp(24px, 12dvh, 112px), and 8cqh in `.compact`, so on short windows or compact (revealed, tall) cards the padding was smaller than the chip row (about 32px). Scrolled long content also slid under the chips. At normal heights, 12dvh cleared them.
+Did web actually overlap? Yes. The chips were position:absolute at top 12px inside the scrolling `.card-body`. The body's top padding is clamp(24px, 12dvh, 112px), or 8cqh in `.compact`. On short or compact cards that was smaller than the chip row (about 32px). Scrolled text also slid under the pinned chips.
 
-Fix: `web/src/routes/review/+page.svelte`. The chips now sit in a normal-flow grid row (`.chip-row`, columns 1fr auto 1fr) as the first child of `.card-body`, rendered only when at least one chip exists. Its negative top margin cancels the body's top padding via a `--body-pt` var (also set for `.compact`), so the chips stay at the top edge and the card text starts below the row. Empty slots are visibility:hidden to keep the kind chip centred.
+Fix, in `web/src/routes/review/+page.svelte`: the chips are now a normal-flow grid row (`.chip-row`, columns 1fr auto 1fr) above `.card-body`, outside the scroll area. Text can never sit under it, and it stays visible when the revealed card scrolls. The card text moves down by the row height. Empty slots are hidden to keep the kind chip centred.
 
-Guard: no DOM or CSS test. A jsdom test cannot measure layout, and the ticket allows a manual check. The guard is structural, since the chips no longer overlay and are in flow.
-Manual check: not run in a browser, only the build.
+Guard: `web/playwright/chip-overlap.spec.ts` (Playwright, same config as `make screenshots-web`). It asserts every non-empty chip's bottom is at or above the top of the scroll container, which is the visible content area. Run:
+`CHROMIUM_PATH=/usr/bin/chromium pnpm exec playwright test --config playwright.config.ts chip-overlap`
+Result: 6 passed.
+
+PNGs, all in `web/screenshots/chip-overlap/` (gitignored):
+- phone-390x844.png
+- short-desktop-1280x600.png
+- compact-revealed-390x500.png
+- compact-revealed-1280x600.png
+- new-card-340x600.png (3 chips)
+- new-card-revealed-340x600.png (3 chips)
+
+Caveat: the demo queue has no New card, because they unlock later. The "new-card" cases fill the real row's tag and New slots with text ("Relearning", "New") to get all three chips at once.
+
+Existing behaviour, unchanged: on a revealed card that does not fit, the body auto-scrolls to the divider. The headword is then clipped at the body's top edge, directly under the chip row. It is no longer under a chip.
 No new dependencies.

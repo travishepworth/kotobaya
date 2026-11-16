@@ -398,14 +398,14 @@
 					aria-live="polite"
 					aria-busy={s.phase === 'settling'}
 				>
+					{#if s.reviewTypeKey || d.card.note?.type || d.isNew}
+						<div class="chip-row">
+							<p class="tag">{s.reviewTypeKey ? tr(s.reviewTypeKey) : ''}</p>
+							<span class="kind-badge">{d.card.note?.type ? rv(`rv.kind.${d.card.note.type}`) : ''}</span>
+							<span class="new-badge">{d.isNew ? rv('rv.newBadge') : ''}</span>
+						</div>
+					{/if}
 					<div class="card-body" bind:this={body} onscroll={measure}>
-						{#if s.reviewTypeKey || d.card.note?.type || d.isNew}
-							<div class="chip-row">
-								<p class="tag">{s.reviewTypeKey ? tr(s.reviewTypeKey) : ''}</p>
-								<span class="kind-badge">{d.card.note?.type ? rv(`rv.kind.${d.card.note.type}`) : ''}</span>
-								<span class="new-badge">{d.isNew ? rv('rv.newBadge') : ''}</span>
-							</div>
-						{/if}
 						{#if s.rendered === null}
 							<!-- unreachable: display is set -->
 						{:else if s.rendered.ok}
@@ -695,8 +695,8 @@
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
 		gap: var(--kb-space-2);
-		margin: calc(var(--kb-space-3) - var(--body-pt)) calc(-1 * var(--body-px)) var(--kb-space-3);
-		padding: 0 var(--kb-space-4);
+		flex: none;
+		padding: var(--kb-space-3) var(--kb-space-4) 0;
 	}
 	.chip-row > :empty {
 		visibility: hidden;
