@@ -485,3 +485,6 @@
 - REVIEW-UNLIMITED (minor): SettingsViewModels.kt:51 invalid number field blocks saving the toggle.
 - SHELVED (user 2026-11-16) AND-DICT-FALLBACK: review card with no local dict entry → fetch /dict/entries/{seq} or /kanji/{literal} when online, cache, trigger dict update; offline keeps CardUnavailable with 'loads when online' wording. Currently no review fallback (InstalledRenderData.kt:17-21 → CardUnavailable). User thinks the phone dictionary is just out of date.
 - AND stale-queue shortcut (deferred): after sync every next answer rebuilds (flicker). Safe shortcut needs loader candidate predicate extracted and shared with ReviewSession; check every pick-loop candidate.
+- C-28 (minor): createNote card_kinds:[reading] silently creates a card-less note while createCard returns 422 — align (422 when all requested kinds retired).
+- C-28 (minor): scenario reading-retired-offline-review.json:199 second review_log row lacks hlc.
+- C-28 (note for user): on the day the setting takes effect, reading cards introduced/reviewed today give back their new/review budget (rule 0 "never counts").
