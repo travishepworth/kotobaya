@@ -1,10 +1,12 @@
 # STATE
 Mode: single-session
-Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P5 deferred
-Updated: RUN28 resume
+Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
+Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 31): LIVE api 0.1.22 / web 0.1.24 (helm rev 34, pin c8fc3151), worker 0.1.18; CLI daemon+kby at CARD-KIND-BADGE-CLI. APK 0.1.26 (pin ccb2bd78) sent to user for self-install. Merged this run: RC-SERVER, RC-WEB, RC-CLI, RC-AND, REVIEW-UNLIMITED (ADR-034), CLI-KEEPGOING, CARD-KIND-BADGE web/cli/and, RC-FOLLOW-*, AND-FLAKY-BACKNAV. Nothing running. User parked: second tweak, app icon (言+noren), AND-DICT-FALLBACK shelved.
+## RESUME HERE (run 32): user decided Android moves ENTIRELY to the web UI in a WebView (Compose deleted). Design: architect -> scratchpad shell-design.md + shell-tickets/, then SHELL-* tickets. Goal: tell user when ready for first phone test. LIVE api 0.1.23 / web 0.1.26 (helm rev 36); APK 0.1.28 built (pin 6607e50d).
+
+## Previous (run 31): LIVE api 0.1.22 / web 0.1.24 (helm rev 34, pin c8fc3151), worker 0.1.18; CLI daemon+kby at CARD-KIND-BADGE-CLI. APK 0.1.26 (pin ccb2bd78) sent to user for self-install. Merged this run: RC-SERVER, RC-WEB, RC-CLI, RC-AND, REVIEW-UNLIMITED (ADR-034), CLI-KEEPGOING, CARD-KIND-BADGE web/cli/and, RC-FOLLOW-*, AND-FLAKY-BACKNAV. Nothing running. User parked: second tweak, app icon (言+noren), AND-DICT-FALLBACK shelved.
 
 ## Previous (run 30): LIVE api/web 0.1.19 (helm rev 27, pin 5dfeec90, C-27 deck materialization + web/CLI keep going; verified 10 deck notes, no growth from CLI polls), worker 0.1.18. AND-KEEPGOING-FIX MERGED 0ef9296e. APK 0.1.20 INSTALLED (~/kotobaya-apk/kotobaya-0.1.20-release.apk, code 120, cert ok, pin 0ef9296e, worktree scratchpad/rel0120). Next: adb install -r when phone connected; user may need to reinstall CLI daemon (uv tool) for keep_going action.
 
