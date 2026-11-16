@@ -70,6 +70,8 @@ class MetaLimitsStore(private val db: AppDatabase) {
     suspend fun refresh(client: ApiClient): JSONObject {
         val meta = client.get("/meta").body
         save(MetaLimits.fromMeta(meta))
+        // SHELL-A6: ShellIdentity's `server_version` (device-local key)
+        meta.optString("server_version").takeIf { it.isNotEmpty() }?.let { q.putSyncState("meta.server_version", it) }
         return meta
     }
 

@@ -36,9 +36,15 @@ class PairingRepository(
     val serverBaseUrl: String? get() = settings.serverBaseUrl
 
     /** Main-safe: runs on [Dispatchers.IO] (it reads and writes `sync_state`, BUG-8). */
-    suspend fun pair(target: PairingTarget): PairResult = withContext(Dispatchers.IO) { pairOnIo(target) }
+    suspend fun pair(
+        target: PairingTarget,
+        /** Display name for this device; default: the repository's. SHELL-A6: kept as `pairing.device_name`. */
+        name: String? = null,
+        /** The old launcher mints a fresh device id on `hlc_regressed`; the shell does not (shell.yaml pairShell). */
+        retryOnHlcRegressed: Boolean = true,
+    ): PairResult = withContext(Dispatchers.IO) { pairOnIo(target, name ?: deviceName, retryOnHlcRegressed) }
 
-    private suspend fun pairOnIo(target: PairingTarget): PairResult {
+    private suspend fun pairOnIo(target: PairingTarget, name: String, retryOnHlcRegressed: Boolean): PairResult {
         val client = clientFor(target.serverBaseUrl)
         var id = deviceId ?: newDeviceId().also { q.putSyncState(KEY_DEVICE_ID, it) }
         var regressedOnce = false
@@ -46,7 +52,7 @@ class PairingRepository(
             val body = JSONObject()
                 .put("code", target.code)
                 .put("device_id", id)
-                .put("name", deviceName)
+                .put("name", name)
                 .put("kind", "android")
             q.getSyncState(KEY_HLC_LAST).executeAsOneOrNull()?.let { body.put("hlc_last", it) }
             try {
@@ -57,12 +63,15 @@ class PairingRepository(
                 settings.deviceToken = null // never keep a token in the plain prefs
                 settings.serverBaseUrl = target.serverBaseUrl
                 q.putSyncState(KEY_DEVICE_ID, id)
+                // SHELL-A6: what ShellIdentity / getShellInfo read (device-local keys, never synced)
+                q.putSyncState(KEY_TOKEN_ID, resp.optString("token_id"))
+                q.putSyncState(KEY_DEVICE_NAME, name)
                 return PairResult.Paired(id, resp.optString("server_device_id"))
             } catch (e: ApiError.Validation) {
                 // Local DB went backwards: mint a fresh device id and pair again with the same
                 // code (the server rolled back, the code is not consumed). Resetting replica
                 // state for the new id is the sync layer's job (T303).
-                if (e.isHlcRegressed && !regressedOnce) {
+                if (e.isHlcRegressed && retryOnHlcRegressed && !regressedOnce) {
                     regressedOnce = true
                     id = newDeviceId()
                     q.putSyncState(KEY_DEVICE_ID, id)
@@ -84,6 +93,8 @@ class PairingRepository(
     companion object {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_HLC_LAST = "hlc_last"
+        const val KEY_TOKEN_ID = "pairing.token_id"
+        const val KEY_DEVICE_NAME = "pairing.device_name"
     }
 }
 
