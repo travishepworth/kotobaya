@@ -1224,3 +1224,4 @@
 2026-11-16T12:30:48Z SHELL-C1 attempt 3 CHECK_GREEN + MERGE (fix targeted the r2 major exactly; no 3rd review round)
 2026-11-16T12:31:05Z SHELL-A2 DISPATCH writer-senior [gradle lane]
 2026-11-16T12:31:05Z SHELL-W1 DISPATCH writer-senior [web, no gradle]
+2026-11-16T12:47:01Z SHELL-W1 CHECK_GREEN (web) + MERGE; note: web/Dockerfile must COPY clients/typescript-shell + contracts/api/shell/ops.json -> SHELL-W1b

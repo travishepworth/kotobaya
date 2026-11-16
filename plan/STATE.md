@@ -6,7 +6,6 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## Running (run 32)
 | SHELL-A2 | writer-senior | 1 | t/SHELL-A2-local-api (gradle lane) |
-| SHELL-W1 | writer-senior | 1 | t/SHELL-W1-spa-transport (web) |
 Next in gradle lane after A2: P1 (server).
 First-phone-test path: C1 -> A1 -> A2 -> P1 -> P2 -> L9 -> L1 -> L2 -> L3 -> A3 (+W1 parallel after C1). Then tell user.
 

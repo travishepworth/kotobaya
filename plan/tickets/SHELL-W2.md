@@ -33,3 +33,7 @@ Native handlers (A6/A7).
 
 ## Orchestrator note (2026-11-16)
 Dictionary row: show the installed scope with a choice of top60k / all (size from getDictRelease artifacts) and the SHELL-L9 gap-fill counts (cached, still missing).
+
+## Orchestrator note (2026-11-16, from SHELL-W1 handoff)
+- Also owned: web/Dockerfile. Add `COPY clients/typescript-shell clients/typescript-shell` and `COPY contracts/api/shell/ops.json contracts/api/shell/ops.json` (whatever paths the W1 imports need) so the release web image builds; verify with `docker build -f web/Dockerfile .` if docker is available, else describe.
+- The layout must hide Log out when `canLogout` is false (shell mode), using W1's session.canLogout.

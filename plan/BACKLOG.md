@@ -829,7 +829,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-L8 — Local struggle and drill: hot words, hot kanji, leeches, drill session · model: sonnet · risk: med · deps: SHELL-L3 · status: TODO (ticket: plan/tickets/SHELL-L8.md)
 - SHELL-P1 — Server parity runner and golden recording · model: opus · risk: med · deps: SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-P1.md)
 - SHELL-P2 — Android parity harness against the goldens · model: opus · risk: med · deps: SHELL-A2, SHELL-P1 · status: TODO (ticket: plan/tickets/SHELL-P2.md)
-- SHELL-W1 — SPA transport, shell state and capabilities, session in shell mode · model: opus · risk: med · deps: SHELL-C1 · status: TODO (ticket: plan/tickets/SHELL-W1.md)
+- SHELL-W1 — SPA transport, shell state and capabilities, session in shell mode · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-W1.md)
 - SHELL-W2 — SPA device UI: pair screen, sync chip, device settings, hide by scope, needs-connection states · model: sonnet · risk: med · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W2.md)
 - SHELL-W3 — SPA navigation: navigate, back stack with ADR-030, intake params, haptics, theme · model: sonnet · risk: med · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W3.md)
 - SHELL-W4 — SPA mobile gaps audit and fixes · model: sonnet · risk: low · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W4.md)
