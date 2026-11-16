@@ -7,7 +7,6 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## Running (run 32)
 | LOOP-CORE | APPROVED | 1 | t/LOOP-CORE (merge with SRV+AND as one chain) |
 | LOOP-SRV | writer | 1 | t/LOOP-SRV (from LOOP-CORE; gradle lane) |
-| LOOP-WEB+PORTRAIT-WEB | writer-senior | 1 | t/LOOP-WEB+PORTRAIT-WEB (web) |
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
 CONFIRMED by user 2026-11-17 (design in progress, architect): REVIEW-LOOP rework (+unlimited keeps new-goal stop w/ Keep going) (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.

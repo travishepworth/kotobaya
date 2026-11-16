@@ -1285,3 +1285,4 @@
 2026-11-16T17:00:10Z LOOP-CORE HANDOFF + CHECK_GREEN (core jvm+js); reviewer dispatched; chain CORE->SRV->AND merges together (core change breaks server/android tests alone)
 2026-11-16T17:00:10Z LOOP-SRV DISPATCH writer from t/LOOP-CORE [gradle lane]
 2026-11-16T17:01:55Z LOOP-CORE REVIEW_APPROVE (3 minors -> FOLLOWUPS); waits to merge with SRV+AND
+2026-11-16T17:07:41Z LOOP-WEB+PORTRAIT-WEB CHECK_GREEN + orchestrator viewed Home PNGs + MERGE; LOOP-WEB2 follow-up (explicit quotas on done screen, drop per-session row, fake-shell v2). NOTE: web now needs local_api 2 -> don't build an APK before LOOP-AND
