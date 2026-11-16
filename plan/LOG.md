@@ -1197,3 +1197,4 @@
 2026-11-16T05:31:23Z SYNC-NEWSTATE DONE no bug: 'New' cards are never-reviewed reading siblings of yesterday's meaning cards; phone sync verified via op log (seq 1-115668). Follow-up: show Meaning/Reading in badge
 2026-11-16T05:42:42Z ONE-CARD DECIDE (user): reading+meaning = one card, reviewed once. Design dispatch architect(opus)
 2026-11-16T05:48:23Z ONE-CARD design done -> ADR-035 recorded; C-28+ONE-CARD-CORE DISPATCH architect(opus)
+2026-11-16T06:11:11Z C-28+ONE-CARD-CORE HANDOFF (contracts+core green; server/android tests need updates); review dispatched; ONE-CARD-SRV + ONE-CARD-AND DISPATCH writer-senior from t/C-28-ONE-CARD-CORE (merge all together when green)
