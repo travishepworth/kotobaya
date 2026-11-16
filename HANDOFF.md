@@ -1,23 +1,22 @@
-# HANDOFF SHELL-W3
+# HANDOFF SHELL-P1
 
 STATUS: DONE
-BRANCH: t/SHELL-W3-spa-nav
-CHECK: `make check MODULE=web` → green (270 tests)
+BRANCH: t/SHELL-P1-parity-server
+CHECK: `make check MODULE=server` → green
 
 ## Changed (≤ 6 lines)
-- `api/shell/nav.ts`: navigate (path rule re-applied), back order 1-5, `back.state`, haptic, intake helpers; `reviewBackPolicy.ts` (port); `ui/backStack.svelte.ts` (LIFO overlays, review undo slot).
-- Dialog registers while open; layout installs nav and sends `back.state`; theme sends `theme` at start and on change.
-- review.svelte.ts: `backUndo/canBackUndo` (undo path + toast), haptics on flip/grade (Again = reject).
-- search/dictionary: `?q&sentence` intake; sentence goes into `createNote.fields.sentence` if the vocab type has that field.
+- `server/src/test/kotlin/kotobaya/parity/`: `ParityServerHarness` (fresh DB + unmodified dict dump, two device tokens, seed/apply via `POST /sync/push` as seed device, steps over HTTP as `device_id`, one injected clock), `Normalizer` (SHELL.md 8.3), `ParityScenario`, tests.
+- `fixtures/shell-parity/golden/*.json` (17, recorded with `RECORD=1`) + README.
 
 ## Acceptance → tests
-- reviewBackPolicy cases → `tests/shell/reviewBackPolicy.test.ts`
-- back order → `tests/shell/backOrder.test.ts`
-- intake encoding → `tests/shell/intake.test.ts`
+- Every scenario has a golden, server reproduces it → `ParityGoldenTest.everyScenarioHasAGoldenAndTheServerReproducesIt` (one dynamic test per file), `everyGoldenBelongsToAScenario`
+- Rejected seed op fails loudly; executed count = file count → `aRejectedSeedOpFailsTheScenarioLoudly`, dynamic test "executed scenarios = scenario files"
+- Normalisation rules → `NormalizerTest` (5 tests)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Edited unowned `lib/state/dictionary.svelte.ts` (`sentence` field, addNote) — the Add action lives there. Views reach nav through re-exports in `ui/backStack.svelte.ts` (view-import rule).
-- Ticket branch name said `-web-nav`; used `-spa-nav` per prompt. Step 3 uses `history.length > 1`.
+- No `expect`/invariant disagreements: every step's `expect` and every invariant held against the real server.
+- No main code changed. `composeApp` has no clock parameter, so the harness builds the handler set itself (auth, dict, sync, notes, decks, settings, review, cards, stats; no jobs, blobs, or parser) with `SyncWiring.config().copy(clock=…)`.
+- `expect` is checked on the normalised body. Ignored subtrees still advance the id/hlc counters, because rule 6 runs after rule 5.

@@ -1,0 +1,107 @@
+{
+  "id" : "answer-suspended-deleted",
+  "steps" : [ {
+    "status" : 409,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "card_not_reviewable",
+      "instance" : "/api/v1/review/answer",
+      "status" : 409,
+      "type" : "urn:kotobaya:problem:card_not_reviewable"
+    }
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/review/answer",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/review/answer",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 404,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "not_found",
+      "instance" : "/api/v1/review/answer",
+      "status" : 404,
+      "type" : "urn:kotobaya:problem:not_found"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T07:00:00.000Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000220,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : true,
+        "updated_at" : "2026-11-20T08:00:00.000Z"
+      },
+      "review" : {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000005",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "drill",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  } ]
+}

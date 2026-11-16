@@ -1,0 +1,568 @@
+{
+  "id" : "queue-materialize-count",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 2,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id1>",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000220,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id2>",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "<id2>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 1,
+        "decks" : [ {
+          "id" : "0193a1b2-0004-7000-8000-000000000001",
+          "name" : "Core words",
+          "priority" : 0
+        } ],
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "明白",
+          "headword_reading" : "めいはく",
+          "is_common" : true,
+          "kanji" : [ "明", "白" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "明白"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "<id2>",
+          "pitch" : [ ],
+          "pos" : [ "adj-na" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "めいはく"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "obvious"
+            }, {
+              "lang" : "eng",
+              "text" : "clear"
+            }, {
+              "lang" : "eng",
+              "text" : "plain"
+            }, {
+              "lang" : "eng",
+              "text" : "evident"
+            }, {
+              "lang" : "eng",
+              "text" : "apparent"
+            }, {
+              "lang" : "eng",
+              "text" : "explicit"
+            }, {
+              "lang" : "eng",
+              "text" : "overt"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "adj-na" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000220,
+          "status" : "new"
+        },
+        "is_new" : true,
+        "kanji" : null,
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
+          "front" : "明白",
+          "reading" : "めいはく",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id3>",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000440,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id4>",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "<id4>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 1,
+        "decks" : [ {
+          "id" : "0193a1b2-0004-7000-8000-000000000001",
+          "name" : "Core words",
+          "priority" : 0
+        } ],
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あの人",
+          "headword_reading" : "あのひと",
+          "is_common" : true,
+          "kanji" : [ "人", "彼" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あの人"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "彼の人"
+          } ],
+          "language" : "ja",
+          "misc" : [ "arch" ],
+          "note_id" : "<id4>",
+          "pitch" : [ ],
+          "pos" : [ "pn" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あのひと"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "he"
+            }, {
+              "lang" : "eng",
+              "text" : "she"
+            }, {
+              "lang" : "eng",
+              "text" : "that person"
+            } ],
+            "info" : [ "sometimes of one's spouse or partner" ],
+            "misc" : [ ],
+            "pos" : [ "pn" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "you"
+            } ],
+            "info" : [ ],
+            "misc" : [ "arch" ],
+            "pos" : [ "pn" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000440,
+          "status" : "new"
+        },
+        "is_new" : true,
+        "kanji" : null,
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あのひと\nhe; she; that person; you",
+          "front" : "あの人",
+          "reading" : "あのひと",
+          "sentence" : null
+        }
+      } ],
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 2,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id1>",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000220,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id2>",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "<id2>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 1,
+        "decks" : [ {
+          "id" : "0193a1b2-0004-7000-8000-000000000001",
+          "name" : "Core words",
+          "priority" : 0
+        } ],
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "明白",
+          "headword_reading" : "めいはく",
+          "is_common" : true,
+          "kanji" : [ "明", "白" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "明白"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "<id2>",
+          "pitch" : [ ],
+          "pos" : [ "adj-na" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "めいはく"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "obvious"
+            }, {
+              "lang" : "eng",
+              "text" : "clear"
+            }, {
+              "lang" : "eng",
+              "text" : "plain"
+            }, {
+              "lang" : "eng",
+              "text" : "evident"
+            }, {
+              "lang" : "eng",
+              "text" : "apparent"
+            }, {
+              "lang" : "eng",
+              "text" : "explicit"
+            }, {
+              "lang" : "eng",
+              "text" : "overt"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "adj-na" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000220,
+          "status" : "new"
+        },
+        "is_new" : true,
+        "kanji" : null,
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:02.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:02.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:02.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:32.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
+          "front" : "明白",
+          "reading" : "めいはく",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id3>",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000440,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id4>",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "<id4>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 1,
+        "decks" : [ {
+          "id" : "0193a1b2-0004-7000-8000-000000000001",
+          "name" : "Core words",
+          "priority" : 0
+        } ],
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あの人",
+          "headword_reading" : "あのひと",
+          "is_common" : true,
+          "kanji" : [ "人", "彼" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あの人"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "彼の人"
+          } ],
+          "language" : "ja",
+          "misc" : [ "arch" ],
+          "note_id" : "<id4>",
+          "pitch" : [ ],
+          "pos" : [ "pn" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あのひと"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "he"
+            }, {
+              "lang" : "eng",
+              "text" : "she"
+            }, {
+              "lang" : "eng",
+              "text" : "that person"
+            } ],
+            "info" : [ "sometimes of one's spouse or partner" ],
+            "misc" : [ ],
+            "pos" : [ "pn" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "you"
+            } ],
+            "info" : [ ],
+            "misc" : [ "arch" ],
+            "pos" : [ "pn" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000440,
+          "status" : "new"
+        },
+        "is_new" : true,
+        "kanji" : null,
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:02.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:02.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:02.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:32.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あのひと\nhe; she; that person; you",
+          "front" : "あの人",
+          "reading" : "あのひと",
+          "sentence" : null
+        }
+      } ],
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  } ]
+}
