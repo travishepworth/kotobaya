@@ -22,7 +22,7 @@ class ShellWebHost(
     private val context: Context,
     private val container: FrameLayout,
     private val bridge: BridgeTransport,
-    private val blobs: BlobIntercept,
+    private val blobs: Lazy<BlobIntercept>,
 ) {
     var webView: WebView? = null
         private set

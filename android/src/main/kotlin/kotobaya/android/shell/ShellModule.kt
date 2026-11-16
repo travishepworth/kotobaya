@@ -4,7 +4,11 @@ import android.util.Log
 import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotlin.reflect.KClass
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotobaya.android.dict.DictStore
+import kotobaya.android.shell.web.ShellWiring
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.net.MetaLimitsStore
 import kotobaya.android.pairing.TokenStore
@@ -56,6 +60,8 @@ private const val TAG = "KotobayaShell"
 val shellFeature = FeatureEntry(
     id = "shell",
     module = module {
+        // SHELL-A4: one process-wide scope for shell requests (a late `res` is dropped by page life, not by cancelling)
+        single<CoroutineScope>(ShellWiring.SCOPE) { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
         // SHELL-A5: proxied operations go to the server with the device token (rules P-1 … P-3)
         single<Upstream> {
             val koin = getKoin()

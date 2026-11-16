@@ -45,7 +45,7 @@ fun InterceptAnswer.toWebResponse(): WebResourceResponse =
 class ShellWebClient(
     private val context: Context,
     private val bridge: BridgeTransport,
-    private val blobs: BlobIntercept,
+    private val blobs: Lazy<BlobIntercept>,
     private val onPath: (String) -> Unit,
     private val onRendererGone: (WebView) -> Unit,
 ) : WebViewClientCompat() {
@@ -59,7 +59,7 @@ class ShellWebClient(
         val url = request.url
         if (url.scheme != "https" || url.host != ShellOrigin.HOST) return null
         val path = url.path ?: "/"
-        blobs.answer(request.method ?: "GET", path)?.let { return it.toWebResponse() }
+        blobs.value.answer(request.method ?: "GET", path)?.let { return it.toWebResponse() }
         return assetLoader.shouldInterceptRequest(url)
     }
 

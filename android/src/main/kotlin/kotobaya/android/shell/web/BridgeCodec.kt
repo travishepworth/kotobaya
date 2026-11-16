@@ -176,7 +176,7 @@ object BridgeCodec {
             val query = f.string("query").also { if (it.length > 8192 || !QUERY_RE.matches(it)) f.bad("query") }
             val headers = f.headers()
             if ("body" !in f.m) f.bad("body")
-            val body = f.stringOrNull("body")?.also { if (it.length > MAX_BODY_CHARS) f.bad("body") }
+            val body = f.stringOrNull("body")?.also { if (it.codePointCount(0, it.length) > MAX_BODY_CHARS) f.bad("body") }
             BridgeMessage.Req(id, method, path, query, headers, body)
         }
         "ready" -> {

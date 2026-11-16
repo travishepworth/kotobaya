@@ -28,6 +28,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- SHELL-A4: widget, tile, notifications and deep links, mapped to SPA paths by ShellLinks (SHELL.md 6.1) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kotobaya" android:host="review" />
+                <data android:scheme="kotobaya" android:host="word" />
+                <data android:scheme="kotobaya" android:host="struggle" />
+                <data android:scheme="kotobaya" android:host="pair" />
+                <data android:scheme="kotobaya" android:host="settings" />
+                <data android:scheme="kotobaya" android:host="media" />
+            </intent-filter>
         </activity>
         <!-- SHELL-A3: the Compose app under its own launcher entry and task until SHELL-Z1. -->
         <activity
@@ -44,7 +56,9 @@
             android:name=".intake.IntakeActivity"
             android:exported="true"
             android:label="@string/intake_label"
-            android:theme="@style/Theme.Kotobaya.Sheet">
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -60,8 +74,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kotobaya" android:host="add" />
-                <data android:scheme="kotobaya" android:host="word" />
-                <data android:scheme="kotobaya" android:host="struggle" />
             </intent-filter>
         </activity>
         <receiver

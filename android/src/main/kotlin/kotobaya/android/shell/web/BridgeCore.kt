@@ -12,7 +12,9 @@ import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.Problems
 import kotobaya.android.shell.api.ShellRequest
 import kotobaya.android.shell.api.ShellResponse
+import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
+import kotobaya.contracts.sync.JsonString
 
 /** Where native posts a message to: the reply proxy of the page that sent the last message. */
 fun interface BridgeReply {
@@ -39,6 +41,8 @@ class BridgeCore(
     /** A `ready` asked for a newer `LOCAL_API_VERSION` than this shell has (SHELL.md 7.2). */
     private val onIncompatible: (BridgeMessage.Ready) -> Unit = {},
     private val warn: (String) -> Unit = {},
+    /** A new page life began (reset of per-page native state such as back enablement and theme). */
+    private val onPageReset: () -> Unit = {},
 ) {
     /** Incremented by every page load; a `res` of an older page life is dropped (2.5 "Reload"). */
     private var pageLife = 0L
@@ -56,6 +60,7 @@ class BridgeCore(
         seenIds.clear()
         ready = false
         reply = null
+        onPageReset()
     }
 
     /**
@@ -115,11 +120,11 @@ class BridgeCore(
                 throw e
             } catch (e: Throwable) {
                 warn("bridge: hello data failed: ${e.javaClass.simpleName}")
-                null
+                fallbackHello()
             }
             withContext(main) {
                 if (life != pageLife) return@withContext
-                if (data != null) replyTo.post(BridgeCodec.encode(BridgeMessage.Event("hello", formatAt(nowMs()), data)))
+                replyTo.post(BridgeCodec.encode(BridgeMessage.Event("hello", formatAt(nowMs()), data)))
                 pendingNavigate?.let {
                     pendingNavigate = null
                     replyTo.post(BridgeCodec.encode(BridgeMessage.Navigate(it)))
@@ -141,6 +146,15 @@ class BridgeCore(
         r.post(BridgeCodec.encode(message))
         return true
     }
+
+    /** `hello` data when the store cannot be read: the SPA still gets its `hello` (cursor 0, nil epoch, device clock). */
+    private fun fallbackHello(): JsonObject = JsonObject(
+        linkedMapOf(
+            "high_water_seq" to JsonNumber(0.0),
+            "log_epoch" to JsonString("00000000-0000-0000-0000-000000000000"),
+            "server_time" to JsonString(formatAt(nowMs())),
+        ),
+    )
 
     private fun BridgeMessage.Req.header(name: String): String? = headers[name]
 

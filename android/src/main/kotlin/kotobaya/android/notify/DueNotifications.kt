@@ -3,8 +3,11 @@ package kotobaya.android.notify
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import kotobaya.android.MainActivity
 import kotobaya.android.R
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.queue.QueueSettings
@@ -77,7 +80,7 @@ class DueNotifications(
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setVisibility(NotificationCompat.VISIBILITY_SECRET)
-            .setContentIntent(launchIntent())
+            .setContentIntent(shellIntent(REVIEW_URI, 1))
             .build()
 
     private fun maybeNudge(now: Long, dayStart: Long, due: Int, settings: QueueSettings) {
@@ -105,7 +108,7 @@ class DueNotifications(
                 .setContentTitle(context.getString(R.string.notify_sync_stale_title))
                 .setContentText(context.getString(R.string.notify_sync_stale_text))
                 .setAutoCancel(true)
-                .setContentIntent(launchIntent())
+                .setContentIntent(shellIntent(SETTINGS_URI, 4))
                 .build(),
         )
     }
@@ -116,15 +119,23 @@ class DueNotifications(
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(text)
             .setAutoCancel(true)
-            .setContentIntent(launchIntent())
+            .setContentIntent(shellIntent(REVIEW_URI, 5))
             .build()
 
-    private fun launchIntent(): PendingIntent? =
-        context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-            PendingIntent.getActivity(context, 1, it, PendingIntent.FLAG_IMMUTABLE)
-        }
+    /** SHELL-A4: notifications open MainActivity on a `kotobaya://` link that ShellLinks maps to an SPA path. */
+    private fun shellIntent(uri: String, requestCode: Int): PendingIntent =
+        PendingIntent.getActivity(context, requestCode, shellViewIntent(context, uri), PendingIntent.FLAG_IMMUTABLE)
 
     companion object {
+        const val REVIEW_URI = "kotobaya://review"
+        const val SETTINGS_URI = "kotobaya://settings"
+        const val MEDIA_URI = "kotobaya://media"
+
+        /** A VIEW intent to MainActivity (same shape as the widget's, SHELL.md 6.1). */
+        fun shellViewIntent(context: Context, uri: String): Intent =
+            Intent(Intent.ACTION_VIEW, Uri.parse(uri), context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
         const val ID_DUE = 1001
         const val ID_NUDGE = 1002
         const val ID_EVENING = 1003

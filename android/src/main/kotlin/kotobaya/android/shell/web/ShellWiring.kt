@@ -6,7 +6,6 @@ import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotobaya.android.media.BlobDownloader
 import kotobaya.android.media.BlobStore
 import kotobaya.android.net.ApiClient
@@ -31,16 +30,22 @@ private const val NIL_UUID = "00000000-0000-0000-0000-000000000000"
  * activity (SHELL.md 2.5 "Reload"): they run on a scope of their own, and a late `res` is dropped by page life.
  */
 object ShellWiring {
-    fun bridge(koin: Koin, onWebMessage: (BridgeMessage) -> Unit = {}): BridgeTransport {
-        val api = koin.get<LocalApi>()
-        val store = koin.get<SqlDelightDeviceStore>()
+    /** The one process-wide scope of shell requests (declared in `shellFeature`). */
+    val SCOPE: org.koin.core.qualifier.Qualifier = named("shellScope")
+
+    /** Nothing but the scope is resolved here: the API, the store and the DB driver are resolved on IO, when used. */
+    fun bridge(
+        koin: Koin,
+        onWebMessage: (BridgeMessage) -> Unit = {},
+        onPageReset: () -> Unit = {},
+    ): BridgeTransport {
         val core = BridgeCore(
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            scope = koin.get<CoroutineScope>(SCOPE),
             io = Dispatchers.IO,
             main = Dispatchers.Main.immediate,
-            handle = api::handle,
+            handle = { koin.get<LocalApi>().handle(it) },
             helloData = {
-                val (seq, epoch) = store.read { it.bookkeeping.pullSeq to it.bookkeeping.logEpoch }
+                val (seq, epoch) = koin.get<SqlDelightDeviceStore>().read { it.bookkeeping.pullSeq to it.bookkeeping.logEpoch }
                 JsonObject(
                     linkedMapOf(
                         "high_water_seq" to JsonNumber(seq.toDouble()),
@@ -52,11 +57,15 @@ object ShellWiring {
             onWebMessage = onWebMessage,
             onIncompatible = { Log.w(TAG, "bundle wants local API ${it.minLocalApi} > ${LocalApi.LOCAL_API_VERSION}") },
             warn = { Log.w(TAG, it) },
+            onPageReset = onPageReset,
         )
         return BridgeTransport(core)
     }
 
-    fun blobs(koin: Koin): BlobIntercept {
+    /** Built on first use (a WebView background thread), not on the main thread. */
+    fun blobs(koin: Koin): Lazy<BlobIntercept> = lazy { buildBlobs(koin) }
+
+    private fun buildBlobs(koin: Koin): BlobIntercept {
         val store = koin.get<BlobStore>()
         val tokens = koin.get<TokenStore>()
         val settings = koin.get<SettingsStore>()

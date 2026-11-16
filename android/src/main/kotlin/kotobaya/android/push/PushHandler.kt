@@ -2,7 +2,9 @@ package kotobaya.android.push
 
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
+import kotobaya.android.MainActivity
 import kotobaya.android.R
 import kotobaya.android.notify.Channels
 import kotobaya.android.notify.DueNotifications
@@ -72,9 +74,17 @@ class PushHandler(
             .apply { e.error?.let { setContentText(it.take(200)) } }
             .setAutoCancel(true)
             .setContentIntent(
-                context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-                    PendingIntent.getActivity(context, 2, it, PendingIntent.FLAG_IMMUTABLE)
-                },
+                // SHELL-A4: an import that finished opens the media page; other jobs just open the app
+                PendingIntent.getActivity(
+                    context,
+                    if (e.kind.contains("import")) 2 else 3,
+                    if (e.kind.contains("import")) {
+                        DueNotifications.shellViewIntent(context, DueNotifications.MEDIA_URI)
+                    } else {
+                        Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    },
+                    PendingIntent.FLAG_IMMUTABLE,
+                ),
             )
             .build()
 
