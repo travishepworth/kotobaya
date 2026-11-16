@@ -87,7 +87,8 @@ class QueueParityTest {
         }
         assertTrue(problems.isEmpty(), problems.joinToString("\n"))
         assertTrue(
-            checked.containsAll(listOf("dict-entry-missing", "empty-replica", "queue-day-rollover-timezone", "reading-retired-reenabled")),
+            // SHELL-L3: `empty-replica` and `queue-day-rollover-timezone` are no longer pending (they run whole, AnswerParityTest)
+            checked.containsAll(listOf("dict-entry-missing", "reading-retired-reenabled")),
             "checked: $checked",
         )
     }
