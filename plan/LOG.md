@@ -1290,3 +1290,4 @@
 2026-11-16T17:11:50Z LOOP-WEB2 CHECK_GREEN + MERGE (explicit quota line, per-session row removed, fake-shell v2)
 2026-11-16T17:12:12Z LOOP-AND(+PORTRAIT-AND) DISPATCH writer from t/LOOP-SRV [gradle lane]
 2026-11-16T17:33:23Z LOOP-CORE+SRV+AND(+PORTRAIT-AND) chain: contracts/core/server/android/web GREEN on rebased tip -> MERGE
+2026-11-16T17:33:43Z RELEASE building api 0.1.24 + web 0.1.27 (pin 91140ed8: LOOP chain + LOOP-WEB/WEB2 + toast fix); then helm, CLI reinstall, APK 0.1.32
