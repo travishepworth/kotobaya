@@ -1,22 +1,22 @@
-# HANDOFF SHELL-P1
+# HANDOFF SHELL-P2
 
 STATUS: DONE
-BRANCH: t/SHELL-P1-parity-server
-CHECK: `make check MODULE=server` → green
+BRANCH: t/SHELL-P2-parity-android
+CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- `server/src/test/kotlin/kotobaya/parity/`: `ParityServerHarness` (fresh DB + unmodified dict dump, two device tokens, seed/apply via `POST /sync/push` as seed device, steps over HTTP as `device_id`, one injected clock), `Normalizer` (SHELL.md 8.3), `ParityScenario`, tests.
-- `fixtures/shell-parity/golden/*.json` (17, recorded with `RECORD=1`) + README.
+- `android/src/test/kotlin/kotobaya/android/shell/parity/`: Normalizer (port of P1's, on core JsonValue), ParityScenario, ParityRunner (pending/ran, JSON-pointer diff, invariants), ParityDevice (JDBC SqlDelightDeviceStore + production `SyncClient`; seed/apply pulled via `SyncEngine.pullAll` from a scripted log, seq 1..n), ParityDictionary.
+- ParityDictionary converts P1's `server/src/test/resources/dict/ref_fixture.sql.gz` into a Dict.sq package of scope `all`, then installs it into a `DictStore`. This is plain JDBC with no Robolectric.
+- SyncCoordinatorTest.concurrentTriggersRunOneSync: test-only fix. The triggers now launch UNDISPATCHED, so every one joins before the gate opens. 10/10 reruns passed. There was no production double-sync bug: the late trigger had arrived after the cycle ended.
 
 ## Acceptance → tests
-- Every scenario has a golden, server reproduces it → `ParityGoldenTest.everyScenarioHasAGoldenAndTheServerReproducesIt` (one dynamic test per file), `everyGoldenBelongsToAScenario`
-- Rejected seed op fails loudly; executed count = file count → `aRejectedSeedOpFailsTheScenarioLoudly`, dynamic test "executed scenarios = scenario files"
-- Normalisation rules → `NormalizerTest` (5 tests)
+- Zero routes all pending, and the gate fails on a differing scenario → LocalParityTest.everyScenarioWithAllOperationsRegisteredMatchesItsGolden, withZeroRegisteredRoutesEveryScenarioIsPendingAndTheGatePasses, ParityHarnessSelfTest.theGateFailsWhenARegisteredScenarioDiffersAndNamesThePointer
+- Wrong fake handler gives a JSON-pointer diff → ParityHarnessSelfTest.aDeliberatelyWrongHandlerIsAMismatchWithAJsonPointerDiff
+- Seed uses the production path → SeedApplyTest.everySeedIsAppliedThroughThePullPathNotTheOutbox and applyStepsContinueTheSeqsAfterTheSeed. These check that pending_op is 0 in every state, pull_seq equals the number of ops, and every created row exists.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- No `expect`/invariant disagreements: every step's `expect` and every invariant held against the real server.
-- No main code changed. `composeApp` has no clock parameter, so the harness builds the handler set itself (auth, dict, sync, notes, decks, settings, review, cards, stats; no jobs, blobs, or parser) with `SyncWiring.config().copy(clock=…)`.
-- `expect` is checked on the normalised body. Ignored subtrees still advance the id/hlc counters, because rule 6 runs after rule 5.
+- `InstalledDictionary` needs Android `SQLiteDatabase`, so it cannot run on the plain JVM. L5/L9 need a JDBC-capable lookup seam. The last known server release is `ParityDictionary.releaseId`, and no device state holds it yet.
+- Handler services are type-keyed in `ParityDevice` (store, SyncClient, LocalWrites, Clock, DictStore). L tickets register any others there.

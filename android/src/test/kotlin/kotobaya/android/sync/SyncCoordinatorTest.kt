@@ -7,6 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,8 +58,12 @@ class SyncCoordinatorTest {
     fun concurrentTriggersRunOneSync() = runBlocking<Unit> {
         val c = coordinator()
         gate = CompletableDeferred()
-        val calls = SyncTrigger.entries.map { t -> async(Dispatchers.Default) { c.sync(t) } }
-        withTimeout(5_000) { while (!c.running.value) kotlinx.coroutines.delay(5) }
+        // UNDISPATCHED: each trigger enters sync() and joins (or starts) the in-flight cycle before the next one is
+        // launched, all while the cycle is held at the gate; only then do they resume on Default. Launching them
+        // dispatched let a late trigger arrive after the cycle had finished and (correctly) start a second one.
+        val calls = SyncTrigger.entries.map { t -> async(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) { c.sync(t) } }
+        withTimeout(5_000) { while (cycles.get() == 0) kotlinx.coroutines.delay(5) }
+        assertTrue(c.running.value)
         gate!!.complete(Unit)
         val outcomes = calls.awaitAll()
         assertEquals(1, cycles.get())
