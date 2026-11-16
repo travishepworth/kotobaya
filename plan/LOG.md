@@ -1158,3 +1158,5 @@
 2026-11-16T02:17:29Z RC-SERVER DISPATCH architect(opus) (queue/stats latency root cause + server review-cycle audit)
 2026-11-16T02:17:29Z RC-WEB DISPATCH writer-senior(opus) (waiting vs done, loading/error states, per-widget stats errors)
 2026-11-16T02:17:29Z RC-AUDIT DISPATCH reviewer(opus) read-only audit of android + cli review cycle
+2026-11-16T02:20:54Z RC-AUDIT DONE CHANGES: android 2 majors (dead card on rebuild throw; Summary never reloads), cli 2 majors (fetch fail=offline blocks answers; refresh blocks worker) -> RC-AND, RC-CLI
+2026-11-16T02:20:54Z RC-CLI DISPATCH writer(sonnet); RC-AND queued (writer cap 3)
