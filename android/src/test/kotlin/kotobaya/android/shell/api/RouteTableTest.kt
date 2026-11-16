@@ -19,10 +19,7 @@ class RouteTableTest {
          * `local` / `local_or_proxy` operations with no handler yet. Each L ticket removes its own
          * line when it registers the routes; the set only shrinks.
          */
-        val PENDING: Set<String> = setOf(
-            // SHELL-L8 struggle
-            "listHotWords", "listHotKanji", "listLeeches", "createDrillSession",
-        )
+        val PENDING: Set<String> = emptySet()
 
         /** `local`, but never a bridge route: answered by the blob intercept (SHELL.md 2.7). */
         val NOT_A_ROUTE: Set<String> = setOf("getBlob")

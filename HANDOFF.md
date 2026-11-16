@@ -1,25 +1,20 @@
-# HANDOFF SHELL-L7
+# HANDOFF SHELL-L8
 
 STATUS: DONE
-BRANCH: t/SHELL-L7-local-decks
+BRANCH: t/SHELL-L8-local-struggle
 CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- `shell/api/decks/`: listDecks, getDeck, createDeck, updateDeck, deleteDeck, listDeckItems, addDeckItems, putDeckItem, removeDeckItem. The 422 checks and their order are ported from the server's DeckApi and DeckItemApi.
-- Item visibility, identity and removal use core `MergeReaders` (the readers native `DeckMembership` uses). Mint requests are copied into `DeckMints`. Every write goes through `LocalWrites.exclusive`.
-- createDeck `list` → Fallthrough (503 offline); a retry with an existing `id` gets 200 locally. `media` → 422 /type.
-- Entry checks in add/put use `DictLookup.resolveEntry`, the same as `updateNote`. An authoritative miss → 422; a miss the device cannot decide → 503 shell_dict_missing.
-- RouteTableTest: the PENDING list no longer has the deck ops. ParityDevice needed no new services.
+- shell/api/struggle/: Routes.kt (4 local routes), HotSources.kt (server's hot-note rule over the replica: core DefaultHotScorer + HotHistory), StruggleRoutes.kt (listHotWords, listHotKanji, listLeeches), DrillRoute.kt (createDrillSession: core DrillSelector, items via L2 QueueViews, read-only store).
+- RouteTableTest: PENDING emptied. No ParityDevice change needed.
 
 ## Acceptance → tests
-- Parity list/get/items and each write → `DeckParityTest` (server answers written out by hand)
-- Ops validate, duplicate add, missing remove, delete then older pulled put, out-of-order convergence → `DeckOpsTest`
-- Count relation → `DeckCountsTest`
+- Parity scenarios, three lists + hot_words drill → StruggleParityTest (shapes, order, 422 codes, cursors, window, undo)
+- No ops/no table change → DrillNoOpsTest (all five sources; drill answer leaves card unchanged)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- `Deck` has no counts field, so `DeckCountsTest` checks `getReviewQueue?deck_id=` and native `DeckRepository` against `getReviewQueue`: they are equal, and deck ≤ queue ≤ sum over decks.
-- There are no deck parity scenarios in `contracts/api/shell/parity`. Adding them and recording their goldens needs a contracts plus SHELL-P1 follow-up.
-- Keyset cursor for items (the server uses offset). With mixed bad elements, the add can name a different element than the server.
+- No contracts/api/shell/parity files exist for struggle, so scenarios are written in Kotlin (as L7). Hot kanji uses the installed dictionary's entry kanji (no dict entry: no contribution). `query` source forwards when CardQuery says Forward.
+- Leeches / leech candidates scan all card rows (`all(CARD)`); fine for now, no range query exists on LearningTables.
