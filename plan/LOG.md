@@ -1267,3 +1267,4 @@
 2026-11-16T16:05:22Z SHELL-A6 DISPATCH writer [gradle lane]
 2026-11-16T16:05:22Z HOLD: review-loop rework (unlimited on/off) + lock-portrait setting await user confirmation of outlined loop A/B
 2026-11-16T16:11:15Z USER CONFIRMED review loop A/B (+tweak: unlimited still has new-goal 40/40 -> goal_reached + Keep going) and Lock-to-portrait. Design dispatch architect (ADR-037)
+2026-11-16T16:13:39Z USER: FSRS algorithm stays unchanged (no tweaks); everything else approved
