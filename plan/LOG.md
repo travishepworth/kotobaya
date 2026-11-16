@@ -1233,3 +1233,6 @@
 2026-11-16T13:01:09Z SHELL-W3 CHECK_GREEN (web 270) + MERGE (small unowned edit lib/state/dictionary.svelte.ts accepted: same module, web lane serial); SHELL-W4 DISPATCH writer
 2026-11-16T13:06:11Z SHELL-P1 CHECK_GREEN (server) + MERGE; all 17 goldens matched contract expect
 2026-11-16T13:06:11Z SHELL-P2 DISPATCH writer-senior [gradle lane]
+2026-11-16T13:23:43Z SHELL-P2 CHECK_GREEN + MERGE (flaky SyncCoordinatorTest fixed test-side)
+2026-11-16T13:23:43Z SHELL-W4 CHECK_GREEN + orchestrator viewed review/settings PNGs + MERGE; fixes live web bug: Keep going reset itself ($effect re-ran start) -> ship in next web release
+2026-11-16T13:23:43Z SHELL-L9 DISPATCH writer-senior [gradle lane]

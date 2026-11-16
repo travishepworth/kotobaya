@@ -36,3 +36,7 @@ by reasoning from the scope build); say in HANDOFF if the cause is something els
 
 ## Out of scope
 Changing the default scope (user picks in device settings, SHELL-A7/W2). Server or worker changes.
+
+## Orchestrator note (from SHELL-P2)
+- InstalledDictionary needs Android SQLiteDatabase; the parity harness is plain JVM (JDBC). Build the lookup seam so it runs on a JDBC driver in tests (DictStore in ParityDevice), and persist the last known server dict release in device state (SHELL.md L-7 authority rule; the harness uses ParityDictionary.releaseId).
+- Register any new handler services in the test ParityDevice (android/src/test/.../shell/parity/) — also owned.

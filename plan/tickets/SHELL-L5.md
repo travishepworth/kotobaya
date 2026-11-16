@@ -37,3 +37,7 @@ Dictionary reads go through the SHELL-L9 lookup seam (installed → sidecar cach
 
 ## Orchestrator note (from SHELL-A2)
 Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.
+
+## Orchestrator note (from SHELL-P2)
+- InstalledDictionary needs Android SQLiteDatabase; the parity harness is plain JVM (JDBC). Build the lookup seam so it runs on a JDBC driver in tests (DictStore in ParityDevice), and persist the last known server dict release in device state (SHELL.md L-7 authority rule; the harness uses ParityDictionary.releaseId).
+- Register any new handler services in the test ParityDevice (android/src/test/.../shell/parity/) — also owned.

@@ -34,3 +34,6 @@ createNote (L5). listCards/listNotes (L6).
 
 ## Orchestrator note (from SHELL-A2)
 Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.
+
+## Orchestrator note (from SHELL-P2)
+Register any new handler services in the test ParityDevice (android/src/test/.../shell/parity/) — also owned. Scenarios covering your ops must stop being pending and match their goldens.
