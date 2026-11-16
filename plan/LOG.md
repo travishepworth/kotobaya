@@ -1307,3 +1307,4 @@
 2026-11-16T19:27:45Z RELEASE APK 0.1.33 BUILT (pin 41433ef4: loop + portrait + all offline ops L4-L8; cert ok) supersedes 0.1.32 (not installed)
 2026-11-16T19:27:45Z SHELL-L5b DISPATCH writer [gradle lane]
 2026-11-16T19:36:26Z SHELL-L5b CHECK_GREEN + MERGE (search index over gap cache; forwarded header). SHELL-Z1 DISPATCH writer [gradle lane]
+2026-11-16T19:57:06Z SHELL-Z1 CHECK_GREEN (android re-run + web + tokens) + MERGE: Compose UI deleted (-23k lines, APK 16.6->11.3 MB); SPEC.md Android paragraph updated by writer (reflects human ADR-036); 1 race flake -> AND-MATERIALIZE-RACE. DISPATCH AND-MATERIALIZE-RACE [gradle lane]
