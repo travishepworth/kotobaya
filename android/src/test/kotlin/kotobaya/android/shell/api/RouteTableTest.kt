@@ -20,9 +20,6 @@ class RouteTableTest {
          * line when it registers the routes; the set only shrinks.
          */
         val PENDING: Set<String> = setOf(
-            // SHELL-L1 identity
-            "getPrincipal", "getMeta", "reportClientErrors", "listSettings", "updateSettings", "listPresets", "getPreset",
-            "listNoteTypes", "getNoteType",
             // SHELL-L2 review queue
             "getReviewQueue",
             // SHELL-L3 answer / undo

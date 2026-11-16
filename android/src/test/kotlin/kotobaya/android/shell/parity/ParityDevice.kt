@@ -16,6 +16,12 @@ import kotobaya.android.shell.api.ShellRequest
 import kotobaya.android.shell.api.ShellResponse
 import kotobaya.android.shell.api.ShellServices
 import kotobaya.android.shell.api.Upstream
+import kotobaya.android.shell.api.identity.ClientErrorIntake
+import kotobaya.android.shell.api.identity.ClientErrorSink
+import kotobaya.android.shell.api.identity.DictReleaseRef
+import kotobaya.android.shell.api.identity.ShellIdentity
+import kotobaya.android.net.MetaLimits
+import kotobaya.android.report.ClientErrorItem
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlLearningTables
 import kotobaya.android.sync.SyncClient
@@ -127,6 +133,21 @@ class ParityDevice(
     /** Requests [LocalApi] forwarded upstream (a scenario never goes online: each one is a finding). */
     val forwarded = ArrayList<String>()
 
+    /** SHELL-L1: what `getPrincipal` / `getMeta` read besides the replica (a scenario never fetched `/meta`). */
+    val identity = object : ShellIdentity {
+        override fun deviceName(): String = "Parity phone"
+        override fun tokenId(): String? = "01931f3f-0000-7000-8000-0000000000b2"
+        override fun serverVersion(): String? = null
+        override fun coreVersion(): String = "kotobaya-core-parity"
+        override fun dictRelease(): DictReleaseRef? = DictReleaseRef(dictionary.releaseId, "parity")
+        override fun limits(): MetaLimits = MetaLimits.DEFAULTS
+        override fun nowMs(): Long = clock.nowMs()
+    }
+
+    /** SHELL-L1: the reports `reportClientErrors` accepted, in order. */
+    val reported = ArrayList<ClientErrorItem>()
+    private val clientErrors = ClientErrorIntake(ClientErrorSink { reported += it }, clock::nowMs)
+
     private val services = MapServices(
         mapOf(
             SqlDelightDeviceStore::class to store,
@@ -137,6 +158,8 @@ class ParityDevice(
             ParityDictionary::class to dictionary,
             DictGapCache::class to gapCache,
             DictLookup::class to dictLookup,
+            ShellIdentity::class to identity,
+            ClientErrorIntake::class to clientErrors,
         ),
     )
 

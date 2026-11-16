@@ -1,8 +1,21 @@
-# HANDOFF WRK-DICT-LISTSEQ
-Status: DONE
+# HANDOFF SHELL-L1
 
-- `referenced_seqs` (worker/src/kotobaya_worker/dict/package/source.py) now also unions the members of every live list deck, read directly from `ref.vocab_list_item` (or `ref.entry_freq` for `freq-<slug>-<N>` keys). This is the same resolution `decks.build` uses. So the top60k package carries list-deck seqs even though the `deck-build` jobs are only queued before the package build.
-- No change to `dict_refresh.py`: it already calls `build_release`, which calls `referenced_seqs`. No contract change, and top60k scope is unchanged.
-- Limit: a list enabled after a release is only included at the next dict-refresh build. Notes added later behave the same, and the phone gap-fills them (SHELL-L9).
-- Test: `test_list_deck_seqs_outside_top_n_are_in_top60k_package` in worker/tests/dict/package/test_package.py. The list deck has seqs outside top_n, and they appear in the top60k package. A non-list deck is ignored.
-- `make check MODULE=worker`: green (900 passed, mypy and ruff clean). No new dependencies.
+STATUS: DONE
+BRANCH: t/SHELL-L1-local-identity
+CHECK: `make check MODULE=android` → green
+
+## Changed (≤ 6 lines)
+- `shell/api/identity/`: Routes (9 ops), Views (replica rows → Preset/NoteType/Setting JSON), ShellIdentity (+ `AppShellIdentity`), ClientErrorIntake (server-identical validation, 12 req / 120 items per 60 s, 413/422/429)
+- `updateSettings` = one `settings.set` per key via `LocalWrites`; reading_enabled re-derivation is the applier's own path
+- Outside owned paths (additive): `ShellModule.kt` registers ShellIdentity + ClientErrorIntake; RouteTableTest PENDING lines; ParityDevice services
+
+## Acceptance → tests
+- Parity read scenarios → no scenario covers only my ops; the two touching `updateSettings` (queue-reviews-unlimited, reading-retired-reenabled) stay pending on getReviewQueue/createNote (L2/L5). Reads covered by `IdentityReadsTest`
+- UpdateSettingsOpTest, ReadingEnabledTest, PrincipalTest → as named
+
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- `token_id`, device name and `server_version` are read from `sync_state` keys `pairing.token_id`, `pairing.device_name`, `meta.server_version`, which nothing writes yet (PairingRepository / MetaLimitsStore are not mine). Fallbacks: token_id = device id, name = Build.MODEL, "unknown". FOLLOWUP: write them at pair / after `/meta`.
+- Presets/note types honor `include_deleted` per the contract (server ignores it for presets). Queued web reports flush as `client: android`; the request's `dropped` is ignored (queue has no API for it).
