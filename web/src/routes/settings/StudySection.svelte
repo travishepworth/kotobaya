@@ -16,7 +16,7 @@
 
 	const GROUPS: { title: SettingsViewKey; keys: string[] }[] = [
 		{ title: 'sx.day', keys: ['scheduler.timezone', 'scheduler.day_rollover_hour'] },
-		{ title: 'sx.limits', keys: ['scheduler.new_per_day', 'scheduler.reviews_unlimited', 'scheduler.reviews_per_day', 'scheduler.new_per_session'] },
+		{ title: 'sx.limits', keys: ['scheduler.new_per_day', 'scheduler.reviews_unlimited', 'scheduler.reviews_per_day'] },
 		{ title: 'sx.cards', keys: ['cards.reading_enabled'] },
 		{ title: 'sx.grading', keys: ['scheduler.grading_buttons', 'scheduler.leech_threshold'] },
 		{ title: 'sx.queue', keys: ['scheduler.bury_siblings', 'scheduler.kanji_before_vocab', 'scheduler.mined_priority'] },
