@@ -1170,3 +1170,4 @@
 2026-11-16T02:40:50Z RC-WEB REVIEW_APPROVE r3 + CHECK_GREEN (134) + MERGE (3 attempts); 1 minor -> FOLLOWUPS
 2026-11-16T02:43:55Z RELEASE web 0.1.23 DEPLOYED helm rev 32 (pin dd2f3ade, RC-WEB); api 0.1.20/worker 0.1.18 unchanged
 2026-11-16T02:46:44Z RC-AND REVIEW_APPROVE + CHECK_GREEN + MERGE (1 attempt); 3 minors + flaky BackNavigationTest -> FOLLOWUPS
+2026-11-16T02:54:27Z RC-SERVER REVIEW_APPROVE + CHECK_GREEN + MERGE (1 attempt). Root cause: jOOQ array bind any(?::uuid[]) re-parsed per row; queue 6s->~0.1-0.2s, known-words 44s->2s; stats capped 3 conns

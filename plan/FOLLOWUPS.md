@@ -477,3 +477,6 @@
 - RC-AND (minor): ReviewViewModel.kt:147-157 refreshIfEmpty start() throw shows extra inline error over Failed page.
 - RC-AND (minor): ReviewSession.kt:443-447 every due-changing sync → next answer full rebuild + Loading (WebView teardown) while another device reviews concurrently.
 - Android flaky test: BackNavigationTest.searchBackClosesTheDetail (Compose AppNotIdle under full suite; passes alone).
+- RC-SERVER (minor): StatsModule.kt:69 statsTx also gates /stats/summary (home needs it fast) — exempt or own permit.
+- RC-SERVER (minor): ArrayBindTest.kt:715 guard regex misses `ANY (?`, split literals, `all(?`; CoverageQuery.kt <> all(?::text[]) not rewritten; EntryExamples.kt:184/MediaApiModule.kt:310 unnest(?) w/o cast; timing test fixed 2 s may flake.
+- RC-SERVER: prod app.deck never ANALYZEd (reltuples -1) — run ANALYZE once (autovacuum should, check).
