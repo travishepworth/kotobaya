@@ -1,22 +1,27 @@
-# HANDOFF SHELL-L2
+# HANDOFF SHELL-L3
 
 STATUS: DONE
-BRANCH: t/SHELL-L2-local-queue
-CHECK: `make check MODULE=android` → green
+BRANCH: t/SHELL-L3-local-answer (from t/SHELL-L2-local-queue)
+CHECK: `make check MODULE=android` → green (542 tests)
 
 ## Changed (≤ 6 lines)
-- `shell/api/review/QueueRoute.kt`: `getReviewQueue` = validation + `LocalQueueLoader.load(0, deck, keepGoing)` + the server's shaping (ADR-033 counts from the normal build, `more_available`, `to_materialize`).
-- `shell/api/review/QueueViews.kt`: `QueueItem` view (card+note, entry/kanji via `InstalledDictionary` L-7 steps 1-2 with overlay, decks, kanji_examples, grammar_sentence, text, preview); `Routes.kt` registers it.
-- C-27: `ShellEntryMaterializer` wraps the app's `NoteCreator`; materializes only if `materializeAllowed` and `new` in kinds, else entries stay counted in `counts.new`/`to_materialize`.
-- Parity: `ParityDevice` registers AppDatabase, InstalledDictionary, NoteCreator, idle SyncCoordinator, sets `last_sync_at` per pull; `LocalParityTest` on Robolectric (6 queue scenarios now match); PENDING line removed.
+- `shell/api/review/AnswerRoute.kt`: `answerReview`, `undoReview` (validation, idempotency, bounds, one mint via `LocalWrites`, `DueTrigger` after commit)
+- `AnswerViews.kt`: `ReviewResult` view; `Routes.kt`: two routes
+- `RouteTableTest` PENDING, `ParityDevice` (`DueTrigger`) updated
+- **Outside owned paths, own commit 7c24c536:** one line in `QueueParityTest` (its "still pending" list named `empty-replica`, `queue-day-rollover-timezone`). Revert it if unwanted; check is then red.
 
 ## Acceptance → tests
-- Parity scenarios → `LocalParityTest`, `QueueParityTest` (whole runs; golden prefixes of pending ones; Tokyo rollover; reading re-enabled)
-- Idempotent → `QueueMaterializeIdempotentTest`; converge → `QueueMaterializeConvergeTest`; validation → `QueueValidationTest` (Queue* prefix = owned path)
+- Parity scenarios → `AnswerParityTest`
+- `AnswerIdempotencyTest` (retries, concurrent, undo, re-delivery)
+- `AnswerOutOfOrderTest` (SYNC.md 12.1 in four arrival orders, HLC vs answer-time, undo)
+- `AnswerConvergenceFuzz` (120 seeds, seed in failure message)
+- ClockSkew → `AnswerClockSkewTest`
+- Op schema → `AnswerOpsTest`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Keep-going batch stays core default 10 (loader has no param; contracts/core README C-26 says so); server uses `limit`. FOLLOWUP: loader param.
-- Full scenarios with answer/createNote run when L3/L5 register; kanji_examples does 3 replica lookups per candidate word.
+- Fuzz is an Android-level harness (two phones + observer on real stores); core's harness is in core's test sources, not reachable.
+- "Clock 10 min ahead" is only a 422 for an explicit `reviewed_at`; a device clock ahead <24 h is accepted (SHELL.md 10.4).
+- `utc_offset_min` absent → null, as the server; a process-wide lock wraps both writes; `AnswerViews.card` duplicates `QueueViews`' private card view.
