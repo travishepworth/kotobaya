@@ -1309,3 +1309,5 @@
 2026-11-16T19:36:26Z SHELL-L5b CHECK_GREEN + MERGE (search index over gap cache; forwarded header). SHELL-Z1 DISPATCH writer [gradle lane]
 2026-11-16T19:57:06Z SHELL-Z1 CHECK_GREEN (android re-run + web + tokens) + MERGE: Compose UI deleted (-23k lines, APK 16.6->11.3 MB); SPEC.md Android paragraph updated by writer (reflects human ADR-036); 1 race flake -> AND-MATERIALIZE-RACE. DISPATCH AND-MATERIALIZE-RACE [gradle lane]
 2026-11-16T20:17:29Z AND-MATERIALIZE-RACE CHECK_GREEN + MERGE: TEST ARTIFACT (JDBC IN_MEMORY shared connection); prod AndroidSqliteDriver BEGIN IMMEDIATE serializes writers; new production-driver race tests 50x
+2026-11-16T20:18:16Z RELEASE APK 0.1.34 BUILT (pin 6d357310: +Z1 Compose deleted, single launcher, 25.0 MB incl web; cert ok) supersedes 0.1.33 (not installed)
+2026-11-16T20:18:16Z CORE-WS-UPDATED DISPATCH writer-senior [gradle lane]
