@@ -1241,3 +1241,4 @@
 2026-11-16T13:47:39Z WRK-DICT-LISTSEQ CHECK_GREEN (worker 900) + MERGE; needs worker release + dict-refresh run
 2026-11-16T13:58:24Z SHELL-L1 CHECK_GREEN + MERGE (identity/settings/presets/note types/client errors local)
 2026-11-16T13:58:24Z SHELL-L2 DISPATCH writer-senior [gradle lane]
+2026-11-16T14:08:30Z RELEASE worker 0.1.19 DEPLOYED helm rev 37 (pin f4492cf4, WRK-DICT-LISTSEQ). dict-refresh NOT queued: CLI token lacks import scope -> asked user to trigger
