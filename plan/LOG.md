@@ -1272,3 +1272,4 @@
 2026-11-16T16:18:01Z LOOP design done (ADR-037, docs/REVIEW-LOOP.md, 8 tickets); LOOP-C DISPATCH architect
 2026-11-16T16:19:16Z USER: order unchanged; SHELL-Z2 (web bundle OTA) now in scope, scheduled last
 2026-11-16T16:21:26Z USER: keep new/review interleave as a smart proportional mix in BOTH modes (both pools hit zero together); new_per_session dropped OK; keep-going per device confirmed. Sent to LOOP-C (post-cap backlog-first rule kept)
+2026-11-16T16:24:24Z USER: confirmed Anki-style cap (learning/relearning steps don't consume reviews_per_day); all loop side effects accepted
