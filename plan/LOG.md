@@ -1296,3 +1296,4 @@
 2026-11-16T18:00:02Z SHELL-L4 HANDOFF; sent back 1b for ShellModule CardQuery wiring. New CORE-WS-UPDATED; parity scenarios folded into LOOP-C2
 2026-11-16T18:07:10Z SHELL-L4 attempt 1b CHECK_GREEN; reviewer dispatched
 2026-11-16T18:07:10Z SHELL-L5 DISPATCH writer-senior from t/SHELL-L4 (chain) [gradle lane]
+2026-11-16T18:08:49Z SHELL-L4 REVIEW_CHANGES 1 major (bulk query ignores live smart decks -> negated smart-deck query would suspend everything) + minors -> attempt 2. NOTE L5 branched from L4: rebase L5 after
