@@ -1,4 +1,4 @@
-# SHELL-Z2 — Web bundle OTA (optional, later)
+# SHELL-Z2 — Web bundle OTA (in scope; last)
 
 - Phase: SHELL · Model: opus · Risk: med
 - Deps: SHELL-A3, SHELL-W1

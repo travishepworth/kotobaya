@@ -1270,3 +1270,4 @@
 2026-11-16T16:13:39Z USER: FSRS algorithm stays unchanged (no tweaks); everything else approved
 2026-11-16T16:16:38Z SHELL-A6 CHECK_GREEN + MERGE (ShellEvents unwired -> folded into SHELL-A7); SHELL-A7 DISPATCH writer [gradle lane]
 2026-11-16T16:18:01Z LOOP design done (ADR-037, docs/REVIEW-LOOP.md, 8 tickets); LOOP-C DISPATCH architect
+2026-11-16T16:19:16Z USER: order unchanged; SHELL-Z2 (web bundle OTA) now in scope, scheduled last
