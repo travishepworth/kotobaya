@@ -1176,3 +1176,4 @@
 2026-11-16T02:59:46Z RELEASE APK 0.1.25 built (pin 4ed6beaa, code 125, cert ec6b7f45 ok) ~/kotobaya-apk/kotobaya-0.1.25-release.apk; no adb device -> install pending
 2026-11-16T02:59:46Z REVIEW-UNLIMITED DISPATCH architect(opus)
 2026-11-16T03:17:46Z REVIEW-UNLIMITED HANDOFF (android red only on known-flaky BackNavigationTest); review dispatched. AND-FLAKY-BACKNAV DISPATCH writer(sonnet) — flaky now fails every full run, blocks green
+2026-11-16T03:18:28Z REVIEW-UNLIMITED REVIEW_APPROVE (3 minors -> FOLLOWUPS); merge waits on AND-FLAKY-BACKNAV for green android

@@ -480,3 +480,6 @@
 - RC-SERVER (minor): StatsModule.kt:69 statsTx also gates /stats/summary (home needs it fast) — exempt or own permit.
 - RC-SERVER (minor): ArrayBindTest.kt:715 guard regex misses `ANY (?`, split literals, `all(?`; CoverageQuery.kt <> all(?::text[]) not rewritten; EntryExamples.kt:184/MediaApiModule.kt:310 unnest(?) w/o cast; timing test fixed 2 s may flake.
 - RC-SERVER: prod app.deck never ANALYZEd (reltuples -1) — run ANALYZE once (autovacuum should, check).
+- REVIEW-UNLIMITED (minor): QueueBuilder.kt:337 KDoc says SCHEMA 6.2 → 6.3.
+- REVIEW-UNLIMITED (minor, do soon): no Android test that LocalQueueLoader passes reviewsUnlimited into QueueLimits (silent server/device count divergence if dropped). Add loader test 3 due, cap 1, key true → 3.
+- REVIEW-UNLIMITED (minor): SettingsViewModels.kt:51 invalid number field blocks saving the toggle.
