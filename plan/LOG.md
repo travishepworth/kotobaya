@@ -1255,3 +1255,5 @@
 2026-11-16T15:22:48Z RELEASE APK 0.1.29 built (pin 6c79233c, code 129, cert ok, 441 web assets) — SHELL first phone test; waiting for user to plug in
 2026-11-16T15:23:03Z SHELL-A4 DISPATCH writer [gradle lane] (+A3 review minors)
 2026-11-16T15:35:28Z SHELL-A4 CHECK_GREEN + MERGE (back protocol, deep links, intake trampoline, A3 minors)
+2026-11-16T15:36:34Z RELEASE APK 0.1.30 built (pin e11d613e, code 130, cert ok; +A4) supersedes 0.1.29 (never installed)
+2026-11-16T15:36:34Z SHELL-L2b DISPATCH writer [gradle lane] (tmp leak fix first)
