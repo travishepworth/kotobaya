@@ -1217,3 +1217,4 @@
 2026-11-16T11:46:22Z SHELL-C1 DISPATCH architect
 2026-11-16T11:46:22Z SHELL-A1 DISPATCH writer(sonnet) [gradle lane]
 2026-11-16T11:56:19Z SHELL-A1 CHECK_GREEN (web+android) + MERGE
+2026-11-16T12:03:32Z SHELL-L9 NEW ticket (user: cards from conversation list lack dict info even when dict up to date; likely top60k scope gap) -> L2/L5 depend on it; supersedes AND-DICT-FALLBACK

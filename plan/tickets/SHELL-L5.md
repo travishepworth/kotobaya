@@ -1,7 +1,7 @@
 # SHELL-L5 — Local dictionary and mining: dictionary reads, createNote
 
 - Phase: SHELL · Model: opus · Risk: high
-- Deps: SHELL-L1, SHELL-P2
+- Deps: SHELL-L1, SHELL-P2, SHELL-L9
 - Branch: t/SHELL-L5-local-mining
 - Owned paths (only edit these): android/src/main/kotlin/kotobaya/android/shell/api/mining/**, android/src/test/kotlin/kotobaya/android/shell/api/mining/**
 - Module(s) for CI: android
@@ -31,3 +31,6 @@
 Takoboto/AnkiConnect paths (unchanged, already use NoteCreator).
 
 ## Notes from previous attempts
+
+## Orchestrator note (2026-11-16)
+Dictionary reads go through the SHELL-L9 lookup seam (installed → sidecar cache → proxy when online). Never return a null entry while a cached one exists.

@@ -29,3 +29,6 @@ Thin handlers over existing features, replacing their Compose settings sections:
 The SPA screens (W2).
 
 ## Notes from previous attempts
+
+## Orchestrator note (2026-11-16)
+Dictionary row: show the installed scope with a choice of top60k / all (size from getDictRelease artifacts) and the SHELL-L9 gap-fill counts (cached, still missing).

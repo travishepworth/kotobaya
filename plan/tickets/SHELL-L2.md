@@ -1,7 +1,7 @@
 # SHELL-L2 — Local getReviewQueue
 
 - Phase: SHELL · Model: opus · Risk: high
-- Deps: SHELL-L1, SHELL-P2
+- Deps: SHELL-L1, SHELL-P2, SHELL-L9
 - Branch: t/SHELL-L2-local-queue
 - Owned paths (only edit these): android/src/main/kotlin/kotobaya/android/shell/api/review/Queue*.kt, android/src/main/kotlin/kotobaya/android/shell/api/review/Routes.kt, android/src/test/kotlin/kotobaya/android/shell/api/review/Queue*
 - Module(s) for CI: android
@@ -34,3 +34,6 @@ Stateless handler over `LocalQueueLoader.load(deckFilter, keepGoing)`; no new qu
 answer/undo (L3). Drill (L8).
 
 ## Notes from previous attempts
+
+## Orchestrator note (2026-11-16)
+Dictionary reads go through the SHELL-L9 lookup seam (installed → sidecar cache → proxy when online). Never return a null entry while a cached one exists.
