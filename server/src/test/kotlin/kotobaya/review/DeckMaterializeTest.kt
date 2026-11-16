@@ -80,8 +80,8 @@ class DeckMaterializeTest : SyncFixture() {
         assertEquals(10L, liveNotes())
         assertEquals(10L, count("select count(*) from app.note where origin = 'deck'"))
         assertEquals(10L, changes("note.created"))
-        assertEquals(20L, changes("card.created"), "the vocab type's default kinds: meaning and reading")
-        assertEquals(30L, count("select count(*) from app.change where op_type in ('note.created', 'card.created') and device_id = '00000000-0000-7000-8000-000000000001'::uuid"))
+        assertEquals(10L, changes("card.created"), "the vocab type's default kinds: meaning (reading is retired, ADR-035)")
+        assertEquals(20L, count("select count(*) from app.change where op_type in ('note.created', 'card.created') and device_id = '00000000-0000-7000-8000-000000000001'::uuid"))
         assertEquals(0, q["to_materialize"].asInt())
         assertEquals(10, q["counts"]["new"].asInt())
         // The first entries in deck order.
@@ -143,11 +143,37 @@ class DeckMaterializeTest : SyncFixture() {
         emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"before","card_kinds":["reading"]}}}""")
         fetch(t)
         val vocabNote = db.txBlocking { it.fetchValue("select id::text from app.note where entry_seq = 8001 and deleted_at is null") as String }
-        assertEquals(listOf("reading"), db.txBlocking { d -> d.fetch("select kind from app.card where note_id = ?::uuid", vocabNote).map { it.get(0, String::class.java) } })
+        // ADR-035: card_kinds ["reading"] names only a retired kind, so the type's defaults apply: meaning.
+        assertEquals(listOf("meaning"), db.txBlocking { d -> d.fetch("select kind from app.card where note_id = ?::uuid", vocabNote).map { it.get(0, String::class.java) } })
         assertEquals(setOf("食", "堂"), db.txBlocking { d -> d.fetch("select kanji_literal from app.note where origin = 'auto_kanji' and deleted_at is null").map { it.get(0, String::class.java) }.toSet() })
         val head = count("select max(seq) from app.change")
         fetch(t)
         assertEquals(head, count("select max(seq) from app.change"), "no second kanji note either")
+    }
+
+    /** ADR-035: reading cards are materialized and served only while `cards.reading_enabled` is true; off hides them. */
+    @Test
+    fun readingCardsAreCreatedAndServedOnlyWhileTheSettingIsTrue() = reviewApp {
+        val t = token()
+        setting("cards.reading_enabled", "true")
+        setting("scheduler.bury_siblings", "false")
+        val deck = deckWithEntries(1, base = 8100)
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"card_kinds":["meaning","reading"]}}}""")
+        val on = fetch(t)
+        assertEquals(listOf("meaning", "reading"), on["items"].map { it["card"]["kind"].asText() }.sorted())
+        assertEquals(2, on["counts"]["new"].asInt())
+        val reading = on["items"].first { it["card"]["kind"].asText() == "reading" }["card"]["id"].asText()
+
+        setting("cards.reading_enabled", "false")
+        val off = fetch(t)
+        assertEquals(listOf("meaning"), off["items"].map { it["card"]["kind"].asText() })
+        assertEquals(1, off["counts"]["new"].asInt())
+        assertEquals(1, client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()["due"]["new"].asInt())
+        // Retired, not deleted or suspended: the card keeps its row.
+        assertEquals(1L, count("select count(*) from app.card where id = ?::uuid and deleted_at is null and not suspended", reading))
+
+        setting("cards.reading_enabled", "true")
+        assertEquals(2, fetch(t)["counts"]["new"].asInt(), "the same card comes back")
     }
 
     private fun headword(seq: Long, h: String) = db.txBlocking { it.execute("update ref.dict_entry set headword = ? where seq = ?", h, seq) }
@@ -196,7 +222,7 @@ class DeckMaterializeTest : SyncFixture() {
         val vocabKinds = db.txBlocking { d ->
             d.fetch("select c.kind from app.card c join app.note n on n.id = c.note_id where n.entry_seq = 9102 order by c.kind").map { it.get(0, String::class.java) }
         }
-        assertEquals(listOf("meaning", "reading"), vocabKinds, "card_kinds [] creates the default kinds, never a note without cards")
+        assertEquals(listOf("meaning"), vocabKinds, "card_kinds [] creates the default kinds, never a note without cards")
     }
 
     @Test

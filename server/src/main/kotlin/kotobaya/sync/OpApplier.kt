@@ -3,6 +3,7 @@ package kotobaya.sync
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotobaya.contracts.Reserved
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.sync.JsonArray
 import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNumber
@@ -100,11 +101,9 @@ internal class OpApplier(
                 .ifPresent { touchEntriesOfCards(listOf(it.get(0, String::class.java))) }
             CARD_PRESET_SET -> touchEntriesOfCards(listOf(p.reqStr("id")))
             NOTE_MERGED -> touchEntriesOfNotes(listOf(p.reqStr("loser_id"), p.reqStr("survivor_id")))
-            else -> if (op.opType.wire.startsWith("fsrs_params.")) {
-                val all = dsl.fetch("select entry_seq from app.note where entry_seq is not null union select entry_seq from app.word_status")
-                    .map { it.get(0, Number::class.java).toLong() }.toSet()
-                if (all.isNotEmpty()) autoStatus.entriesTouched(dsl, all)
-            }
+            // ADR-035 (OPS.md settings.set): won or lost, the key re-derives every entry with the value now stored.
+            SETTINGS_SET -> if (p.str("key") == CardKinds.SETTING_READING_ENABLED) touchAllEntries(dsl, autoStatus)
+            else -> if (op.opType.wire.startsWith("fsrs_params.")) touchAllEntries(dsl, autoStatus)
         }
     }
 

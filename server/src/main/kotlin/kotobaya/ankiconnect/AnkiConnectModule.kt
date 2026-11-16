@@ -195,7 +195,7 @@ class AnkiConnectModule(
             p.set<JsonNode>("tags", json.createArrayNode().also { a -> parsed.tags.forEach(a::add) })
             p.put("mnemonic", "").put("source_sentence", "").put("origin", "ankiconnect")
             tx.emit(OpType.NOTE_CREATED, payload(p))
-            for (kind in cards.kindsForNewNote(info, null)) {
+            for (kind in cards.kindsForNewNote(info, null, kotobaya.cards.ReadingSetting.load(tx.dsl))) {
                 tx.emit(
                     OpType.CARD_CREATED,
                     payload(json.createObjectNode().put("id", Uuid7.generate().toString()).put("note_id", noteId).put("kind", kind)),

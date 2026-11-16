@@ -129,6 +129,12 @@ internal class CardApi(
             if (templates == null || !json.readTree(templates).has(kind)) {
                 Errors().apply { add("/kind", "invalid_value", "The note type has no card kind $kind.") }.throwIfAny()
             }
+            // ADR-035 (SCHEMA.md 6.4): a retired kind is never created; an existing live card was returned above.
+            val baseType = dsl.fetchValue("select base_type from app.note_type where id = ?::uuid", note["note_type_id"].asText()) as String?
+            val base = kotobaya.contracts.NoteBaseType.entries.firstOrNull { it.wire == baseType }
+            if (base != null && kotobaya.contracts.cards.CardKinds.isRetired(base, checkNotNull(kind), ReadingSetting.load(dsl))) {
+                Errors().apply { add("/kind", "invalid_value", "Card kind $kind is retired while cards.reading_enabled is off.") }.throwIfAny()
+            }
             val newId = id ?: Uuid7.generate().toString()
             tx.emit(OpType.CARD_CREATED, payload(json.createObjectNode().put("id", newId).put("note_id", survivorNote).put("kind", kind)))
             val shown = views.survivorOf(newId) ?: newId

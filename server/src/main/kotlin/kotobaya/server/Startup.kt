@@ -3,7 +3,11 @@ package kotobaya.server
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotobaya.sync.AutoStatusHook
+import kotobaya.sync.CoreAutoStatusHook
+import kotobaya.sync.client.apply.StartupReplay
 import kotobaya.sync.restore.CoreSchedulerReplay
+import kotobaya.sync.touchAllEntries
 import net.logstash.logback.argument.StructuredArguments.kv
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
@@ -22,6 +26,12 @@ object ServerStateKeys {
      * T202 mints/observes against it; restore finalization already raises it (SYNC.md 6.2 step 3).
      */
     const val HLC_LAST = "hlc_last"
+
+    /**
+     * The word-status rule version every `word_status.auto_status` was last re-derived with (ADR-035, SCHEMA.md 6.4
+     * "One-time re-derive"); the server twin of the device's `client.word_status_rules`, same value.
+     */
+    const val WORD_STATUS_RULES = "word_status_rules"
 }
 
 /** Advisory lock every op-apply path holds (SYNC.md 5.2); startup takes it too. */
@@ -51,6 +61,9 @@ class StartupState {
  * Startup sequence of SYNC.md 6.3 then 10.5. The instance is not ready until both have committed.
  *  1. One transaction under [SYNC_LOCK]: finalize a pending restore, else create `log_epoch` if absent.
  *  2. Then the `core_scheduler_version` check (own transaction, same lock).
+ *  3. Then the `word_status_rules` check (own transaction, same lock): when the stored version differs from the core's
+ *     `StartupReplay.WORD_STATUS_RULES_VERSION`, every entry's `auto_status` is re-derived once (no op, no cache
+ *     replay) and the version is stored (ADR-035, SCHEMA.md 6.4).
  */
 class StartupSequence(
     private val db: Database,
@@ -60,12 +73,15 @@ class StartupSequence(
     /** `BACKUPS_DISABLED` (SYNC.md 6.2): startup step 3 raises `durable_seq` when true. */
     private val backupsDisabled: Boolean = false,
     val state: StartupState = StartupState(),
+    private val autoStatus: AutoStatusHook = CoreAutoStatusHook(),
+    private val wordStatusRulesVersion: String = StartupReplay.WORD_STATUS_RULES_VERSION,
 ) {
     private val log = LoggerFactory.getLogger(StartupSequence::class.java)
 
     fun runOnce() {
         finalizeRestoreOrCreateEpoch()
         checkSchedulerVersion()
+        checkWordStatusRules()
     }
 
     /** Retries with backoff until it succeeds (Postgres may come up after the server); then marks ready. */
@@ -124,6 +140,17 @@ class StartupSequence(
             log.info("core scheduler version changed: full replay", kv("from", stored), kv("to", schedulerVersion))
             replay.replayAll(dsl) // extension point for T203
             upsert(dsl, ServerStateKeys.CORE_SCHEDULER_VERSION, schedulerVersion)
+        }
+    }
+
+    internal fun checkWordStatusRules() = tx { dsl ->
+        val stored = dsl.fetchOptional(
+            "select value from app.server_state where key = ?", ServerStateKeys.WORD_STATUS_RULES,
+        ).map { it.get(0, String::class.java) }.orElse(null)
+        if (stored != wordStatusRulesVersion) {
+            log.info("word status rules changed: re-derive every entry", kv("from", stored), kv("to", wordStatusRulesVersion))
+            touchAllEntries(dsl, autoStatus)
+            upsert(dsl, ServerStateKeys.WORD_STATUS_RULES, wordStatusRulesVersion)
         }
     }
 

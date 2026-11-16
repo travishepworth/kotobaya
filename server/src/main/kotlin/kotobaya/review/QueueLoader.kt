@@ -50,6 +50,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
         keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
     ): LoadedQueue {
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day
+        val readingEnabled = kotobaya.cards.ReadingSetting.load(dsl)
         val decks = loadDecks(settings)
         val batch = maxOf(1, keepGoingNewBatch)
         val pending = pendingEntries(
@@ -57,6 +58,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
             maxOf(batch, minOf(settings.newPerDay, settings.newPerSession)),
             deckFilter,
             settings.burySiblings,
+            readingEnabled,
         )
 
         // Candidates: NEW cards, and started cards that can come due before the day ends.
@@ -122,12 +124,13 @@ internal class QueueLoader(private val dsl: DSLContext) {
             pendingEntries = pending,
             decklessPriority = settings.minedPriority,
             decklessAddKanji = settings.decklessAddKanji,
+            readingEnabled = readingEnabled, // ADR-035: rule 0 drops retired candidates
         )
         return LoadedQueue(input, candidates)
     }
 
     /** See the class KDoc. [budget] bounds how many new cards one build can draw (an upper bound). */
-    private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean): List<PendingEntry> {
+    private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean, readingEnabled: Boolean): List<PendingEntry> {
         if (budget <= 0) return emptyList()
         val rows = dsl.fetch(
             "select x.deck_id, x.entry_seq, x.position, x.item_key, de.headword, de.headword_reading, de.senses::text, " +
@@ -150,7 +153,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
             deckFilter, deckFilter, 2L * budget + 16,
         )
         if (rows.isEmpty()) return emptyList()
-        val plan = DeckEntryPlan(dsl)
+        val plan = DeckEntryPlan(dsl, readingEnabled = readingEnabled)
         return rows.mapNotNull { r ->
             val seq = (r.get(1) as Number).toLong()
             val dict = EntryDict(seq, r.get(4, String::class.java), r.get(5, String::class.java), EntryDict.glossesOf(r.get(6, String::class.java)))

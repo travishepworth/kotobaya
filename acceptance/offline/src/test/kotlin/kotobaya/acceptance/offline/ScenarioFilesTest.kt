@@ -42,7 +42,7 @@ class ScenarioFilesTest {
     @Test
     fun everyScenarioFileThroughRealDevices() {
         val files = dir.listFiles { f -> f.name.endsWith(".json") }!!.sortedBy { it.name }
-        assertEquals(16, files.size, "scenario files (SYNC.md 12.4)")
+        assertEquals(17, files.size, "scenario files (SYNC.md 12.4)")
         val failures = ArrayList<String>()
         for (f in files) {
             try {

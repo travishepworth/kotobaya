@@ -2,6 +2,7 @@ package kotobaya.review
 
 import kotobaya.cards.BuiltInNoteTypes
 import kotobaya.cards.DefaultCardGenerator
+import kotobaya.cards.ReadingSetting
 import kotobaya.contracts.cards.CardGenerator
 import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.queue.AddKanjiMode
@@ -36,7 +37,7 @@ internal class EntryDict(val seq: Long, val headword: String, val reading: Strin
  * loader (to tell the core builder the size of the entry's group, `PendingEntry.newKanjiCards`) and for
  * [DeckMaterializer] (to mint it), so the two always agree. One instance per transaction; caches lookups.
  *
- * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds)`; if that is empty (card_kinds `[]` or no valid
+ * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds, cards.reading_enabled)`; if that is empty (card_kinds `[]` or no valid
  *   kind) the type's default kinds; then every kind whose front would render empty for the entry is dropped
  *   (`DefaultCardRenderer.frontIsEmpty` with the entry's dictionary data; e.g. `listening` without audio). An entry
  *   left with no kind is never drawn nor created.
@@ -45,7 +46,12 @@ internal class EntryDict(val seq: Long, val headword: String, val reading: Strin
  *   no `merged_into_id`): a kanji note the user deleted is never re-created. Each with the kanji type's default kinds
  *   minus empty fronts (with `ref.kanji` data).
  */
-internal class DeckEntryPlan(private val dsl: DSLContext, private val cards: CardGenerator = DefaultCardGenerator) {
+internal class DeckEntryPlan(
+    private val dsl: DSLContext,
+    private val cards: CardGenerator = DefaultCardGenerator,
+    /** `cards.reading_enabled` (ADR-035), read once per plan; passed to every generator call. */
+    private val readingEnabled: Boolean = ReadingSetting.load(dsl),
+) {
     private val views = NoteViews(dsl)
     val vocabType: NoteTypeInfo = views.noteType(BuiltInNoteTypes.VOCAB.id)?.toNoteTypeInfo() ?: BuiltInNoteTypes.VOCAB.info
     val kanjiType: NoteTypeInfo? = views.noteType(BuiltInNoteTypes.KANJI.id)?.toNoteTypeInfo()
@@ -57,7 +63,8 @@ internal class DeckEntryPlan(private val dsl: DSLContext, private val cards: Car
 
     /** Card kinds of the new vocab note for [entry], drawn by a deck whose `card_kinds` is [deckCardKinds]. */
     fun vocabKinds(entry: EntryDict, deckCardKinds: List<String>?): List<String> {
-        val kinds = cards.kindsForNewNote(vocabType, deckCardKinds).ifEmpty { cards.kindsForNewNote(vocabType, null) }
+        val kinds = cards.kindsForNewNote(vocabType, deckCardKinds, readingEnabled)
+            .ifEmpty { cards.kindsForNewNote(vocabType, null, readingEnabled) }
         val dict = entry.dictionary()
         return kinds.filterNot { DefaultCardRenderer.frontIsEmpty(vocabType, it, emptyMap(), dictionary = dict) }
     }
@@ -75,7 +82,7 @@ internal class DeckEntryPlan(private val dsl: DSLContext, private val cards: Car
         val type = kanjiType ?: return emptyList()
         return kanjiKindsCache.getOrPut(literal) {
             val data = kanjiData(literal)
-            cards.kindsForNewNote(type, null).filterNot { DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), kanji = data) }
+            cards.kindsForNewNote(type, null, readingEnabled).filterNot { DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), kanji = data) }
         }
     }
 

@@ -212,7 +212,7 @@ internal class NoteApi(
             sourceMediaId?.let { p.put("source_media_id", it) }
             p.put("origin", origin)
             tx.emit(OpType.NOTE_CREATED, payload(p))
-            for (kind in cards.kindsForNewNote(info, cardKinds)) emitCard(tx, noteId, kind)
+            for (kind in cards.kindsForNewNote(info, cardKinds, kotobaya.cards.ReadingSetting.load(tx.dsl))) emitCard(tx, noteId, kind)
             deckId?.let { putDeckItem(tx, it, entrySeq, noteId) }
             Reply(HttpStatusCode.Created, views.note(noteId) ?: error("note $noteId missing after note.created"), tx.lastSeq)
         }

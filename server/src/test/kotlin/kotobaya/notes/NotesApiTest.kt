@@ -58,7 +58,7 @@ class NotesApiTest : SyncFixture() {
     fun createNoteForEachBuiltInNoteTypeCreatesTheDefaultCardsAndEmitsExactlyTheDeclaredOps() = notesApp {
         val token = writer()
         val expected = mapOf(
-            vocabType to listOf("meaning", "reading"),
+            vocabType to listOf("meaning"), // ADR-035: reading is retired while cards.reading_enabled is unset
             "00000000-0000-7000-8000-000000000102" to listOf("keyword"),
             "00000000-0000-7000-8000-000000000103" to listOf("meaning"),
             "00000000-0000-7000-8000-000000000104" to listOf("cloze"),
@@ -151,18 +151,18 @@ class NotesApiTest : SyncFixture() {
     fun togglingAnOptionalKindOnNeverBackfillsAndNewNotesGetOnlyTheMissingKindsOfTheRequest() = notesApp {
         val token = writer()
         val first = createNote(token, mapOf("note_type_id" to vocabType)).json()
-        assertEquals(listOf("meaning", "reading"), kinds(first))
+        assertEquals(listOf("meaning"), kinds(first))
         val before = head()
         // The contract: updateNoteType emits note_type.updated only; `default` governs new notes.
         val r = client.call(HttpMethod.Patch, "/note-types/$vocabType", bearer = token, body = mapOf("templates" to mapOf("listening" to mapOf("default" to true, "front" to null, "back" to null))))
         assertEquals(200, r.status.value, r.json().toString())
         assertEquals(listOf("note_type.updated"), opsSince(before))
-        assertEquals(2, count("select count(*) from app.card where note_id = ?::uuid", first["id"].asText()))
-        assertEquals(listOf("listening", "meaning", "reading"), kinds(createNote(token, mapOf("note_type_id" to vocabType)).json()))
+        assertEquals(1, count("select count(*) from app.card where note_id = ?::uuid", first["id"].asText()))
+        assertEquals(listOf("listening", "meaning"), kinds(createNote(token, mapOf("note_type_id" to vocabType)).json()))
         // turning it back off creates and deletes nothing
         val off = client.call(HttpMethod.Patch, "/note-types/$vocabType", bearer = token, body = mapOf("templates" to mapOf("listening" to mapOf("default" to false, "front" to null, "back" to null))))
         assertEquals(200, off.status.value)
-        assertEquals(listOf("meaning", "reading"), kinds(createNote(token, mapOf("note_type_id" to vocabType)).json()))
+        assertEquals(listOf("meaning"), kinds(createNote(token, mapOf("note_type_id" to vocabType)).json()))
     }
 
     @Test

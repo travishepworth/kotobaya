@@ -86,6 +86,7 @@ class SettingsApiTest : SyncFixture() {
             "scheduler.kanji_before_vocab" to listOf("\"yes\"", "1", "0", "\"true\""),
             "scheduler.bury_siblings" to listOf("\"false\"", "1"),
             "scheduler.reviews_unlimited" to listOf("\"true\"", "1", "0"),
+            "cards.reading_enabled" to listOf("\"true\"", "1", "0", "\"false\""), // ADR-035, SCHEMA.md 6.4
             "scheduler.timezone" to listOf("5", "true"),
             "scheduler.day_rollover_hour" to listOf("24", "-1", "3.5"),
             "scheduler.grading_buttons" to listOf("3", "6", "\"4\""),
@@ -101,6 +102,8 @@ class SettingsApiTest : SyncFixture() {
         }
         assertEquals(200, patch(t, """{"values":{"scheduler.kanji_before_vocab":true,"scheduler.day_rollover_hour":23,"scheduler.grading_buttons":5.0}}""").status.value)
         assertEquals("true", stored("scheduler.kanji_before_vocab"))
+        assertEquals(200, patch(t, """{"values":{"cards.reading_enabled":true}}""").status.value)
+        assertEquals("true", stored("cards.reading_enabled"))
     }
 
     @Test

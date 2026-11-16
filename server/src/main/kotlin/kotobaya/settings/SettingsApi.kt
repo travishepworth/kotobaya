@@ -44,6 +44,7 @@ private val WELL_KNOWN: Map<String, KeyType> = mapOf(
     "scheduler.kanji_before_vocab" to KeyType.Bool,
     "scheduler.mined_priority" to KeyType.Int(),
     "audio.prefetch_days" to KeyType.Int(),
+    "cards.reading_enabled" to KeyType.Bool, // ADR-035, SCHEMA.md 6.4
 )
 
 /** An int is valid iff the nearest binary64 is an integer in range; 1.0 and 1e2 are valid, 1e309 (Infinity) is not. */

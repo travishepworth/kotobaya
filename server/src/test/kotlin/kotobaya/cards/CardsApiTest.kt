@@ -38,6 +38,11 @@ class CardsApiTest : SyncFixture() {
         return r.json()
     }
 
+    /** ADR-035: vocab notes get a reading card only while `cards.reading_enabled` is true. */
+    private fun readingCards(on: Boolean = true) {
+        emit(OpType.SETTINGS_SET, """{"key":"cards.reading_enabled","value":$on}""")
+    }
+
     private fun cardOf(note: JsonNode, kind: String): String = note["cards"].first { it["kind"].asText() == kind }["id"].asText()
 
     private fun head(): Long = count("select coalesce(max(seq), 0) from app.change")
@@ -60,6 +65,7 @@ class CardsApiTest : SyncFixture() {
 
     @Test
     fun bulkActionsOverAQueueEmitExactlyOneOpPerMatchedCardAndDryRunChangesNothing() = cardsApp {
+        readingCards()
         val t = token()
         val a = note(t, "a", listOf("x"))
         val b = note(t, "b", listOf("x"))
@@ -158,6 +164,7 @@ class CardsApiTest : SyncFixture() {
 
     @Test
     fun scheduleActionsRewriteTheReplayedCacheAndNeedTheReviewScope() = cardsApp {
+        readingCards()
         val t = token()
         val n = note(t, "sched")
         val card = cardOf(n, "meaning")
@@ -198,6 +205,7 @@ class CardsApiTest : SyncFixture() {
 
     @Test
     fun cardEndpointsListGetPatchCreateDeleteAndShowHistory() = cardsApp {
+        readingCards()
         val t = token()
         val n = note(t, "crud", listOf("t"))
         val card = cardOf(n, "meaning")
@@ -238,5 +246,40 @@ class CardsApiTest : SyncFixture() {
         assertEquals(h2, head())
         assertEquals(410, client.call(HttpMethod.Get, "/cards/$card", bearer = t).status.value)
         assertEquals(200, client.call(HttpMethod.Get, "/cards/$card?include_deleted=true", bearer = t).status.value)
+    }
+
+    @Test
+    fun readingCardsAreRetiredUnlessTheSettingIsTrue() = cardsApp {
+        val t = token()
+        // Key absent (default false): createNote makes only meaning, even when asked for reading (ADR-035).
+        val n = note(t, "one-card")
+        assertEquals(listOf("meaning"), n["cards"].map { it["kind"].asText() })
+        val asked = client.call(
+            HttpMethod.Post, "/notes", bearer = t,
+            body = mapOf("note_type_id" to vocab, "fields" to mapOf("expression" to "asked"), "card_kinds" to listOf("meaning", "reading")),
+        )
+        assertEquals(201, asked.status.value)
+        assertEquals(listOf("meaning"), asked.json()["cards"].map { it["kind"].asText() })
+
+        // createCard {kind: reading}: 422 at /kind, nothing emitted.
+        val h = head()
+        val refused = client.call(HttpMethod.Post, "/cards", bearer = t, body = mapOf("note_id" to n["id"].asText(), "kind" to "reading"))
+        assertProblem(refused, 422, "validation_failed")
+        assertEquals("/kind", refused.json()["errors"][0]["pointer"].asText())
+        assertEquals(h, head())
+
+        // Turned on: createCard and createNote make reading cards again.
+        readingCards(true)
+        val created = client.call(HttpMethod.Post, "/cards", bearer = t, body = mapOf("note_id" to n["id"].asText(), "kind" to "reading"))
+        assertEquals(201, created.status.value)
+        assertEquals(listOf("meaning", "reading"), note(t, "both")["cards"].map { it["kind"].asText() }.sorted())
+
+        // Off again: the existing live reading card is returned with 200 (never a duplicate), nothing emitted.
+        readingCards(false)
+        val h2 = head()
+        val again = client.call(HttpMethod.Post, "/cards", bearer = t, body = mapOf("note_id" to n["id"].asText(), "kind" to "reading"))
+        assertEquals(200, again.status.value)
+        assertEquals(created.json()["id"].asText(), again.json()["id"].asText())
+        assertEquals(h2, head())
     }
 }

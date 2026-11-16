@@ -151,11 +151,13 @@ class MergeScenarioTest : RealSyncFixture() {
 
     @Test fun rejectedOps() = run("rejected-ops")
 
+    @Test fun readingRetiredOfflineReview() = run("reading-retired-offline-review")
+
     @Test
     fun everyScenarioFileIsCoveredHere() {
         val files = File(contracts, "examples/scenarios").listFiles()!!.map { it.name.removeSuffix(".json") }.toSet()
         val tests = MergeScenarioTest::class.java.declaredMethods.filter { it.isAnnotationPresent(Test::class.java) }.size - 1
-        assertEquals(16, files.size, "a new scenario file must get a test here")
+        assertEquals(17, files.size, "a new scenario file must get a test here")
         assertEquals(files.size, tests)
     }
 

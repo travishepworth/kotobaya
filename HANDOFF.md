@@ -1,21 +1,25 @@
-# HANDOFF C-28+ONE-CARD-CORE
+# HANDOFF ONE-CARD-SRV
 
 STATUS: DONE
-BRANCH: t/C-28-ONE-CARD-CORE
-CHECK: `make check MODULE=contracts` → green; `make check MODULE=core` → green
+BRANCH: t/ONE-CARD-SRV (from t/C-28-ONE-CARD-CORE)
+CHECK: `make check MODULE=server` → green (490); `make check MODULE=acceptance` → green
 
 ## Changed
-- `contracts/cards/CardKinds.kt`: the rule `isRetired`, key, `readingEnabled(JsonValue?)`. Missing key = **false**, reversed by storing `true` (SCHEMA.md 6.4).
-- `kindsForNewNote`/`missingKinds(…, readingEnabled = false)`; `QueueInput.readingEnabled = false` (builder rule 0); `WordCardState.kind`, `autoStatus(…, readingEnabled = false)`.
-- Device apply: `settings.set` of the key re-derives all entries; `StartupReplay` re-derives once (`client.word_status_rules`).
-- Docs: SCHEMA 6/6.4, OPS `settings.set`, openapi (createNote, createCard 422 `/kind`, queue), core README/SUMMARY, SPEC table. Scenario `reading-retired-offline-review`. Clients regenerated.
+- `cards/ReadingSetting.kt` reads the `cards.reading_enabled` setting with the 6.1 bool test. The value goes to NoteApi, AnkiConnect, DeckEntryPlan, QueueLoader (`QueueInput`) and knownSeries.
+- `createCard` with a retired kind → 422 `/kind`. `updateSettings` checks the key as bool.
+- CoreAutoStatusHook passes `kind` and the setting. Applying `settings.set` of the key (won or lost) re-derives every entry.
+- Startup re-derives every entry once, under the `server_state.word_status_rules` marker = core `WORD_STATUS_RULES_VERSION`.
+- Tests: 7 old tests updated (default cards are now meaning only, or the setting is turned on); MergeScenarioTest and acceptance ScenarioFilesTest 16→17.
 
 ## Acceptance → tests
-- Builder → `QueueRetiredCardsTest`. Generator `["reading"]` → `CardGeneratorTest`. Learning reading card → `WordStatusRulesTest`, `ReadingRetiredApplyTest`, `StartupReplayTest`.
+- Server/device convergence with a reviewed reading card, both orders and a losing op → AutoStatusHookTest `reviewedReadingCardConverges…` ×2, `aLosingSettingsSet…`. With `kind` removed, these fail.
+- Startup marker → `startupRederivesEveryEntryOnce…`
+- Queue, Today and materialization → DeckMaterializeTest `readingCardsAreCreatedAndServedOnly…`
+- createNote/createCard → CardsApiTest `readingCardsAreRetired…`. Bool check → SettingsApiTest.
 
 ## New dependencies
 - none
 
 ## For the reviewer
-- SRV must: pass the setting to QueueInput and every generator call; `kind` + setting in CoreAutoStatusHook/StatsQueries; re-derive on the key and once at startup; update 5 tests incl. MergeScenarioTest 16→17. `acceptance/ScenarioFilesTest:45` 16→17 (no owner).
-- AND: pass the setting to LocalQueueLoader, NoteCreator, DeckEntryPlan; fix 9 failing tests (NoteCreator, Takoboto, LocalQueueLoader, …).
+- knownSeries applies the setting's current value to past points in the series.
+- LegacyStatsQueries (the test oracle) got the same `kind`/setting change.

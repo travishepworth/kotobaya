@@ -149,11 +149,16 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
             "where n.entry_seq is not null and t.base_type = 'vocab' and n.deleted_at is null and n.merged_into_id is null order by n.id::text desc",
     )) noteOfEntry[(r.get(0) as Number).toLong()] = r.get(1, String::class.java)
     val cardsOfNote = HashMap<String, MutableList<Pair<String, String>>>()
+    val kindOfCard = HashMap<String, String>()
+    val readingEnabled = kotobaya.cards.ReadingSetting.load(dsl) // ADR-035, as the new query
     for (r in dsl.fetch(
-        "select c.note_id::text, c.id::text, c.preset_id::text from app.card c where c.deleted_at is null and c.merged_into_id is null " +
+        "select c.note_id::text, c.id::text, c.preset_id::text, c.kind from app.card c where c.deleted_at is null and c.merged_into_id is null " +
             "and c.note_id = any(?::uuid[])",
         noteOfEntry.values.toTypedArray(),
-    )) cardsOfNote.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += r.get(1, String::class.java) to r.get(2, String::class.java)
+    )) {
+        cardsOfNote.getOrPut(r.get(0, String::class.java)) { mutableListOf() } += r.get(1, String::class.java) to r.get(2, String::class.java)
+        kindOfCard[r.get(1, String::class.java)] = r.get(3, String::class.java)
+    }
     val presets = ReviewViews.loadPresets(dsl)
     val allCards = cardsOfNote.values.flatten()
     val history = loadHistory(dsl, allCards.map { it.first })
@@ -186,9 +191,9 @@ internal fun knownSeries(dsl: DSLContext, ends: List<Long>): List<Int> {
                     if (noteId == null) false else {
                         val states = cardsOfNote[noteId].orEmpty().map { (cid, _) ->
                             val s = snaps[cid].orEmpty().lastOrNull { it.at <= end }
-                            WordCardState(s?.state ?: CardState.NEW, s?.interval)
+                            WordCardState(s?.state ?: CardState.NEW, s?.interval, kindOfCard[cid])
                         }
-                        DefaultWordStatusRules.autoStatus(true, states) == WordStatus.KNOWN
+                        DefaultWordStatusRules.autoStatus(true, states, readingEnabled) == WordStatus.KNOWN
                     }
                 }
             }

@@ -81,7 +81,9 @@ class AnkiConnectTest : SyncFixture() {
         assertTrue(ok(act(key, "modelNames")).map { it.asText() }.contains("Vocab"))
         val before = head()
         val id = ok(act(key, "addNote", note("食べる"))).asLong()
-        assertEquals(listOf("note.created", "card.created", "card.created", "deck.item_put"), opsSince(before))
+        // ADR-035: the vocab reading card is retired while cards.reading_enabled is unset; only meaning is created.
+        assertEquals(listOf("note.created", "card.created", "deck.item_put"), opsSince(before))
+        assertEquals(listOf("meaning"), db.txBlocking { dsl -> dsl.fetch("select kind from app.card").map { it.get(0, String::class.java) } })
         assertEquals(1, count("select count(*) from app.deck_item where deck_id = ?::uuid and item_key = 'e:1358280'", deck))
         assertEquals(1358280L, count("select entry_seq from app.note where origin = 'ankiconnect'"))
         assertEquals(id, count("select $ANKI_ID_SQL from app.note n"))
