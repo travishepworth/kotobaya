@@ -33,3 +33,6 @@ Dictionary install, storage, notifications, push, AnkiConnect settings (A7).
 
 ## Orchestrator note (from SHELL-A2)
 Also owned: delete your ops' lines from PENDING in the android RouteTableTest (shell/api tests). Routes are top-level vals in shell/api/<group>/Routes.kt; get deps via call.services.
+
+## Orchestrator note (from SHELL-L1)
+Write sync_state keys `pairing.token_id`, `pairing.device_name` at pairing and `meta.server_version` after /meta (ShellIdentity reads them; nothing writes them yet). Owned: PairingRepository / MetaLimitsStore for those writes.
