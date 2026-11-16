@@ -329,3 +329,36 @@ def test_postgres_to_package_mapping_counts(tmp_path: Path, db_url: str) -> None
         (a, b, json.loads(c)) for a, b, c in sorted(rows["entry_pitch"])
     ]
     assert arts[0].kind == "full"
+
+
+def test_list_deck_seqs_outside_top_n_are_in_top60k_package(tmp_path: Path, db_url: str) -> None:
+    """A list deck is built after the package, so its members are read from the list itself."""
+    from kotobaya_worker.dict.package.source import referenced_seqs
+
+    with psycopg.connect(to_conninfo(db_url)) as conn:
+        conn.execute(
+            "INSERT INTO ref.dict_release (id, version, built_at, is_current, sources)"
+            " VALUES (1, '2026.11.2', now(), true, '{}')"
+        )
+        with conn.cursor() as cur:
+            _insert(cur, make_rows(1, 40, extra=(200, 201)), 1)
+        conn.execute(
+            "INSERT INTO ref.vocab_list (id, family, ordinal, title, release_id, entry_count,"
+            " source_rows, duplicate_rows, shadowed_rows, unmatched_rows)"
+            " VALUES ('conv-1', 'conv', 0, 'Conv', 1, 2, 2, 0, 0, 0)"
+        )
+        conn.execute(
+            "INSERT INTO ref.vocab_list_item (list_id, seq, position) VALUES"
+            " ('conv-1', 200, 1), ('conv-1', 201, 2)"
+        )
+        for name, typ, key in (("live", "list", "conv-1"), ("user", "user", None)):
+            conn.execute(
+                "INSERT INTO app.deck (id, name, type, list_key, created_at, updated_at)"
+                " VALUES (gen_random_uuid(), %s, %s, %s, now(), now())",
+                (name, typ, key),
+            )
+        conn.commit()
+        assert {200, 201} <= set(referenced_seqs(conn))
+        pkg, _ = build_release(conn, 1, "top60k", tmp_path / "o", top_n=30)
+    seqs = {r[0] for r in open_readonly(pkg).execute("SELECT seq FROM dict_entry")}
+    assert seqs == {*range(1, 31), 200, 201}

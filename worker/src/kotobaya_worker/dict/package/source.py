@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -9,6 +10,7 @@ import psycopg
 
 from .sqlite import Row
 
+_FREQ_KEY = re.compile(r"^freq-(.+)-(1000|2000|5000|10000|20000)$")  # same as decks.build
 TOP_N_DEFAULT = 60_000
 SCOPES = ("top60k", "all")
 
@@ -112,4 +114,29 @@ def referenced_seqs(conn: psycopg.Connection[Any]) -> list[int]:
                        AND d.deleted_at IS NULL
                ORDER BY 1"""
         )
-        return [int(r[0]) for r in cur.fetchall()]
+        seqs = {int(r[0]) for r in cur.fetchall()}
+        seqs.update(_list_deck_seqs(cur))
+        return sorted(seqs)
+
+
+def _list_deck_seqs(cur: psycopg.Cursor[Any]) -> set[int]:
+    """Seqs every live list deck will reference once built (its vocab or frequency list).
+
+    A deck's items only appear after its ``deck-build`` job runs, which is queued after the release
+    loads, so the package is built from the list membership directly (same keys as decks.build).
+    """
+    cur.execute("SELECT DISTINCT list_key FROM app.deck WHERE type = 'list' AND deleted_at IS NULL")
+    keys = [str(r[0]) for r in cur.fetchall() if r[0]]
+    out: set[int] = set()
+    for key in keys:
+        cur.execute("SELECT seq FROM ref.vocab_list_item WHERE list_id = %s", (key,))
+        found = [int(r[0]) for r in cur.fetchall()]
+        if not found and (m := _FREQ_KEY.match(key)):
+            cur.execute(
+                "SELECT f.seq FROM ref.entry_freq f JOIN ref.freq_list l ON l.id = f.list_id"
+                " WHERE replace(l.id, '_', '-') = %s AND f.rank <= %s",
+                (m.group(1), int(m.group(2))),
+            )
+            found = [int(r[0]) for r in cur.fetchall()]
+        out.update(found)
+    return out
