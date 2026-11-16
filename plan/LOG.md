@@ -1206,3 +1206,4 @@
 2026-11-16T06:48:26Z ONE-CARD-SRV REVIEW_APPROVE r3. Chain rebased C-28 -> SRV -> AND onto main; full module checks running on combined tip
 2026-11-16T06:53:18Z C-28+ONE-CARD-CORE, ONE-CARD-SRV, ONE-CARD-AND MERGE (all modules green; cli 1 flaky timing test, 3 reruns green -> FOLLOWUPS). ONE-CARD-WEB next
 2026-11-16T06:54:31Z ONE-CARD-WEB CHECK_GREEN + MERGE
+2026-11-16T06:57:57Z RELEASE built api 0.1.23 (pin b7a3a0cc), web 0.1.25 (pin a450bdf8), APK 0.1.27 (pin b7a3a0cc, sent). helm deploy BLOCKED: kube OIDC login expired (needs user browser login)
