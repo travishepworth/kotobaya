@@ -823,7 +823,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-L2 — Local getReviewQueue · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: MERGED (ticket: plan/tickets/SHELL-L2.md)
 - SHELL-L3 — Local answerReview and undoReview · model: fable · risk: high · deps: SHELL-L2 · status: MERGED (ticket: plan/tickets/SHELL-L3.md)
 - SHELL-L4 — Local review actions and notes: bulkCards, word status, note read/edit/delete, card history · model: opus · risk: high · deps: SHELL-L3 · status: MERGED (ticket: plan/tickets/SHELL-L4.md)
-- SHELL-L5 — Local dictionary and mining: dictionary reads, createNote · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: TODO (ticket: plan/tickets/SHELL-L5.md)
+- SHELL-L5 — Local dictionary and mining: dictionary reads, createNote · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: MERGED (ticket: plan/tickets/SHELL-L5.md)
 - SHELL-L6 — Local browse and search: listCards, listNotes · model: sonnet · risk: med · deps: SHELL-L1, SHELL-P2 · status: TODO (ticket: plan/tickets/SHELL-L6.md)
 - SHELL-L7 — Local decks: read, items, create/update/delete · model: opus · risk: med · deps: SHELL-L1, SHELL-P2 · status: TODO (ticket: plan/tickets/SHELL-L7.md)
 - SHELL-L8 — Local struggle and drill: hot words, hot kanji, leeches, drill session · model: sonnet · risk: med · deps: SHELL-L3 · status: TODO (ticket: plan/tickets/SHELL-L8.md)
@@ -853,3 +853,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LOOP-WEB2 — loop UI follow-ups (explicit 200/200·40/40, drop new-per-session row, fake-shell v2) · model: haiku · risk: low · deps: LOOP-WEB · status: MERGED (ticket: plan/tickets/LOOP-WEB2.md)
 - LOOP-C2 — parity scenario fix (fuzzed due order) · model: opus · risk: low · deps: LOOP-SRV, LOOP-AND · status: TODO (ticket: plan/tickets/LOOP-C2.md)
 - CORE-WS-UPDATED — word_status.updated_at order-dependent (from SHELL-L4) · model: opus · risk: med · deps: — · status: TODO (ticket: plan/tickets/CORE-WS-UPDATED.md)
+- SHELL-L5b — local mining follow-ups (forwarded header, uuid null, cursor, search perf, media prefilter) · model: sonnet · risk: med · deps: SHELL-L5 · status: TODO (ticket: plan/tickets/SHELL-L5b.md)

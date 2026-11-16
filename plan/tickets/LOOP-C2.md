@@ -7,3 +7,4 @@ LOOP-SRV found the hand-derived `expect` orders review cards by answer order, bu
 ## Acceptance
 - [ ] contracts, server, android checks green with no allowlist entry.
 - Also (from SHELL-L4 CONTRACT_CHANGE_REQUEST, additive): add parity scenarios bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews; record goldens (server) and run them on android.
+- Also: clarify SHELL.md §4.3 createNote row: createNote creates NO add_kanji kanji notes (server NoteApi emits note.created, card.created, deck.item_put only; kanji notes come from C-27 materialization).

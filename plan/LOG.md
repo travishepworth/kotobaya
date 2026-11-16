@@ -1300,3 +1300,4 @@
 2026-11-16T18:16:28Z SHELL-L4 attempt 2 CHECK_GREEN + MERGE (smart decks compiled like server; negated smart-deck test)
 2026-11-16T18:35:41Z SHELL-L5 HANDOFF + CHECK_GREEN (rebased over L4 attempt 2); reviewer dispatched (focus: add_kanji parity with server createNote)
 2026-11-16T18:35:41Z SHELL-L6 DISPATCH writer from t/SHELL-L5 (chain) [gradle lane]
+2026-11-16T18:37:27Z SHELL-L5 REVIEW_APPROVE (7 minors -> SHELL-L5b + LOOP-C2 doc clarification) + MERGE; server createNote makes no kanji notes, so phone parity correct
