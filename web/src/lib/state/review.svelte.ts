@@ -12,6 +12,8 @@ import type {
 } from '../api/generated';
 import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
+import { haptic } from '../api/shell/nav';
+import { ReviewBackPolicy } from '../api/shell/reviewBackPolicy';
 import { pushToast } from '../toasts.svelte';
 import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, wordsApi } from '../review/api';
 import { tr, type ReviewMessageKey } from '../review/messages';
@@ -715,7 +717,27 @@ export class ReviewPage {
 	/** Show the answer. Idempotent: a second call never moves on. */
 	flip(): void {
 		if (!this.current) return;
+		if (!this.flipped) haptic('tick');
 		this.flipped = true;
+	}
+
+	/** ADR-030 / SHELL.md 6.2 step 2: the 3 s rule of back-undo (port of Android's `ReviewBackPolicy`). */
+	private readonly backPolicy = new ReviewBackPolicy();
+
+	/** Would a back press undo now? No side effects. */
+	canBackUndo(): boolean {
+		return this.backPolicy.wouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy);
+	}
+
+	/** Back pressed: undo once through the `u` key's path, with the toast. False when back should fall through. */
+	backUndo(): boolean {
+		if (!this.backPolicy.shouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy)) {
+			return false;
+		}
+		void this.undo().then(() => {
+			if (this.notice !== 'undoFailed') pushToast(tr('review.undone'));
+		});
+		return true;
 	}
 
 	/**
@@ -765,6 +787,7 @@ export class ReviewPage {
 	grade(b: GradeButton): Promise<void> {
 		const item = this.current;
 		if (!item || !this.flipped || this.busy || this.editing || this.gradeLocked) return Promise.resolve();
+		haptic(b.rating === 1 ? 'reject' : 'confirm');
 		return this.send(item, b);
 	}
 
@@ -775,6 +798,7 @@ export class ReviewPage {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
+		this.backPolicy.answered();
 		const entry: PendingAnswer = {
 			answerId: this.answerId,
 			item,

@@ -1,24 +1,23 @@
-# HANDOFF SHELL-W2
+# HANDOFF SHELL-W3
 
 STATUS: DONE
-BRANCH: t/SHELL-W2-device-ui
-CHECK: `make check MODULE=web` → green (core/build/npm/core symlinked from the main checkout)
+BRANCH: t/SHELL-W3-spa-nav
+CHECK: `make check MODULE=web` → green (270 tests)
 
-## Changed
-- Pair screen (login/PairScreen.svelte, `?pair=` prefill, re-pair on auth_required); SyncChip in shell bar; NeedsConnection via layout; canLogout hides Log out.
-- Settings "This device" (DeviceSection, SyncSection): sync, dictionary scope+sizes+gap-fill, storage, notifications, push, AnkiConnect, Takoboto, Unpair.
-- lib/ui/access.ts (scope + route gating), syncView.ts, shellMessages.ts, lib/state/device.svelte.ts (new, instead of settings.svelte.ts).
-- Nav, Devices/Tokens sections, optimizer button hidden by scope (web too). web/Dockerfile copies clients/typescript-shell + ops.json.
+## Changed (≤ 6 lines)
+- `api/shell/nav.ts`: navigate (path rule re-applied), back order 1-5, `back.state`, haptic, intake helpers; `reviewBackPolicy.ts` (port); `ui/backStack.svelte.ts` (LIFO overlays, review undo slot).
+- Dialog registers while open; layout installs nav and sends `back.state`; theme sends `theme` at start and on change.
+- review.svelte.ts: `backUndo/canBackUndo` (undo path + toast), haptics on flip/grade (Again = reject).
+- search/dictionary: `?q&sentence` intake; sentence goes into `createNote.fields.sentence` if the vocab type has that field.
 
 ## Acceptance → tests
-- nav scopes → tests/shell/access.test.ts "scope rule"
-- gating from ops.json → access.test.ts "route gating table"
-- layout 360x800 / 412x915 → playwright/shell-device.spec.ts (12 pass); screenshots in web/screenshots/shell/ (gitignored, viewed)
+- reviewBackPolicy cases → `tests/shell/reviewBackPolicy.test.ts`
+- back order → `tests/shell/backOrder.test.ts`
+- intake encoding → `tests/shell/intake.test.ts`
 
 ## New dependencies
-none
+- none
 
-## For the reviewer
-- /note-types, /struggle, /decks are NOT gated: they contain local ops (listNoteTypes etc.), per the "any local op never gated" rule; ticket text listed note-types.
-- Home.svelte (not owned) untouched; stats panels there already show inline errors. Chip is in the shell bar, visible on Home.
-- docker build not run (needs Gradle core stage); COPY paths checked against web imports.
+## For the reviewer (≤ 3 lines)
+- Edited unowned `lib/state/dictionary.svelte.ts` (`sentence` field, addNote) — the Add action lives there. Views reach nav through re-exports in `ui/backStack.svelte.ts` (view-import rule).
+- Ticket branch name said `-web-nav`; used `-spa-nav` per prompt. Step 3 uses `history.length > 1`.

@@ -11,11 +11,13 @@
 	import { td } from '../../lib/dictionary/messages';
 	import { DictionaryPage } from '../../lib/state/dictionary.svelte';
 	import { queryFromSearch, seqFromSearch } from '../../lib/state/dictionaryLink';
+	import { intakeFromSearch } from '../../lib/ui/backStack.svelte';
 	import EntryView from './EntryView.svelte';
 	import { dx } from './messages';
 
 	const vm = new DictionaryPage();
 	onMount(() => {
+		vm.sentence = intakeFromSearch(window.location.search).sentence;
 		const seq = seqFromSearch(window.location.search);
 		const q = queryFromSearch(window.location.search);
 		if (seq !== null) open(seq);

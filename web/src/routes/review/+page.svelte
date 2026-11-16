@@ -4,6 +4,7 @@
 	import { onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { registerReviewBack } from '../../lib/ui/backStack.svelte';
 	import Banner from '../../lib/ui/Banner.svelte';
 	import Button from '../../lib/ui/Button.svelte';
 	import CardFrame from '../../lib/ui/CardFrame.svelte';
@@ -33,6 +34,8 @@
 	let moreBelow = $state(false);
 
 	onDestroy(() => s.dispose());
+	// SHELL.md 6.2 step 2: the shell's Back undoes the last answer once (ADR-030).
+	$effect(() => registerReviewBack({ canUndo: () => s.canBackUndo(), undo: () => s.backUndo() }));
 
 	// RC-WEB: a load that takes long says so and offers a retry, instead of a skeleton that never ends.
 	const SLOW_MS = 5000;

@@ -15,10 +15,19 @@
 	import { dictionaryHref } from '../../lib/state/dictionaryLink';
 	import { MergedSearchPage, type NoteRow } from '../../lib/state/mergedSearch.svelte';
 	import { noteHref } from '../../lib/state/noteLink';
+	import { intakeFromSearch } from '../../lib/ui/backStack.svelte';
 
 	const s = new MergedSearchPage();
+	// Intake (share sheet, selected text): `?q=…&sentence=…` prefills the box; the sentence rides along to the entry.
+	let sentence = $state<string | null>(null);
+	function wordHref(seq: number): string {
+		const base = dictionaryHref(seq);
+		return sentence ? `${base}&sentence=${encodeURIComponent(sentence)}` : base;
+	}
 	onMount(() => {
-		const q = new URLSearchParams(window.location.search).get('q');
+		const intake = intakeFromSearch(window.location.search);
+		sentence = intake.sentence;
+		const q = intake.q;
 		if (q) {
 			s.query = q;
 			s.searchNow();
@@ -88,7 +97,7 @@
 				<ul>
 					{#each s.words as w (w.seq)}
 						<li>
-							<ListRow title={w.headword} titleLang="ja" supporting={[w.headword !== w.reading ? w.reading : '', w.meaning].filter((x) => x !== '').join(' · ')} href={dictionaryHref(w.seq)}>
+							<ListRow title={w.headword} titleLang="ja" supporting={[w.headword !== w.reading ? w.reading : '', w.meaning].filter((x) => x !== '').join(' · ')} href={wordHref(w.seq)}>
 								{#snippet trailing()}
 									{#if w.inMyCards}<Chip kind="state" state="review" label={tms('ms.inCards')} />{/if}
 								{/snippet}

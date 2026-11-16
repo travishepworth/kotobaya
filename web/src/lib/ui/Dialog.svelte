@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import IconButton from './IconButton.svelte';
+	import { registerOverlay } from './backStack.svelte';
 	import { ut } from './messages';
 
 	interface Props {
@@ -25,6 +26,12 @@
 		if (inline || !dialog) return;
 		if (open && !dialog.open) dialog.showModal();
 		else if (!open && dialog.open) dialog.close();
+	});
+
+	// SHELL.md 6.2 step 1: while open, the shell's Back closes this dialog (LIFO).
+	$effect(() => {
+		if (inline || !open) return;
+		return registerOverlay(close);
 	});
 
 	function close(): void {

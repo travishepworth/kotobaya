@@ -14,7 +14,9 @@
 	import ToastHost from '../lib/ui/ToastHost.svelte';
 	import type { NavItem } from '../lib/ui/kinds';
 	import { ut } from '../lib/ui/messages';
-	import { initTheme } from '../lib/ui/theme.svelte';
+	import { closeTopOverlay, installNav, overlayCount, reportBackState, reviewBack, type BackEnv } from '../lib/ui/backStack.svelte';
+	import { initTheme, reportTheme } from '../lib/ui/theme.svelte';
+	
 	import { canLogout, logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
 	import { shell } from '../lib/state/shell.svelte';
 
@@ -53,8 +55,23 @@
 	// Cards and Notes are one destination (Browse).
 	const current = $derived(path.startsWith('/notes') ? '/cards' : path);
 
+	// SHELL.md 6.2: the back order, in the page's own terms. Inert outside the shell.
+	function backEnv(): BackEnv {
+		const p = page.url.pathname;
+		return {
+			overlays: { count: overlayCount, closeTop: closeTopOverlay },
+			review: p === '/review' || p.startsWith('/review/') ? reviewBack.handler : null,
+			path: p,
+			canGoBack: () => window.history.length > 1,
+			historyBack: () => window.history.back(),
+			goHome: () => void goto('/')
+		};
+	}
+
 	// Check the cookie once at startup (the status never returns to 'unknown').
 	onMount(() => {
+		installNav({ goto: (to) => goto(to), env: backEnv });
+		reportTheme();
 		if (session.status === 'unknown') void refreshSession();
 	});
 
@@ -68,6 +85,14 @@
 		} else if (session.status === 'in' && onLogin && !repairing) {
 			void goto('/', { replaceState: true });
 		}
+	});
+
+	// `back.state`: tell native whether Back has anything to do (re-run on route, overlay and undoable-answer changes).
+	$effect(() => {
+		if (!shell.present) return;
+		void path;
+		void overlayCount();
+		reportBackState(backEnv());
 	});
 
 	// Live-update stream while logged in; screens subscribe on their own for specific events.

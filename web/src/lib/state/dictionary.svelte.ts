@@ -27,6 +27,8 @@ export class DictionaryPage {
 	examples = $state<EntryExamples | null>(null);
 	loadingEntry = $state(false);
 	adding = $state(false);
+	/** Intake sentence (`?sentence=`): stored in the new note's `sentence` field when its type has one. */
+	sentence: string | null = null;
 	private searchGen = 0;
 	private entryGen = 0;
 	private timer: ReturnType<typeof setTimeout> | undefined;
@@ -137,9 +139,9 @@ export class DictionaryPage {
 				pushToast(td('dict.noVocabType'), 'error');
 				return;
 			}
-			const note = await notesApi.createNote({
-				noteCreate: wordNoteCreate(vocab.id, e.seq, this.addDeckId === '' ? null : this.addDeckId)
-			});
+			const create = wordNoteCreate(vocab.id, e.seq, this.addDeckId === '' ? null : this.addDeckId);
+			if (this.sentence && vocab.fields.some((f) => f.key === 'sentence')) create.fields = { sentence: this.sentence };
+			const note = await notesApi.createNote({ noteCreate: create });
 			pushToast(td('dict.added'), 'info');
 			this.entry = { ...e, noteId: note.id };
 			this.items = this.items.map((i) => (i.seq === e.seq ? { ...i, noteId: note.id } : i));
