@@ -1287,3 +1287,4 @@
 2026-11-16T17:01:55Z LOOP-CORE REVIEW_APPROVE (3 minors -> FOLLOWUPS); waits to merge with SRV+AND
 2026-11-16T17:07:41Z LOOP-WEB+PORTRAIT-WEB CHECK_GREEN + orchestrator viewed Home PNGs + MERGE; LOOP-WEB2 follow-up (explicit quotas on done screen, drop per-session row, fake-shell v2). NOTE: web now needs local_api 2 -> don't build an APK before LOOP-AND
 2026-11-16T17:09:53Z LOOP-SRV HANDOFF green (11 goldens re-recorded); 1 scenario expect wrong (fuzzed due order; server correct) -> allowlisted, LOOP-C2 later. LOOP-AND DISPATCH writer from t/LOOP-SRV [gradle lane]
+2026-11-16T17:11:50Z LOOP-WEB2 CHECK_GREEN + MERGE (explicit quota line, per-session row removed, fake-shell v2)
