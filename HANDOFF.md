@@ -1,24 +1,23 @@
-# HANDOFF SHELL-A3
+# HANDOFF SHELL-A5
 
 STATUS: DONE
-BRANCH: t/SHELL-A3-webview-host (from t/SHELL-L3-local-answer)
+BRANCH: t/SHELL-A5-proxy (from t/SHELL-A3-webview-host)
 CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- shell/web/: BridgeCodec (schema-exact decode/encode), BridgeCore (origin/main-frame filter, dedupe, page lives, ready→hello→pending navigate, `send`), BridgeTransport (WebMessageListener), AssetPaths/NavPath, BlobIntercept, ShellWebClient, ShellWebHost, ShellWiring
-- MainActivity = WebView host; old body verbatim in legacy/LegacyActivity ("Kotobaya (old)" launcher, own taskAffinity)
-- build.gradle.kts: `ignoreAssetsPattern` without `<dir>_*`. AAPT was silently dropping `web/_app/`, so the SPA had no JS. Both APKs now contain all 439 files
-- Outside owned paths (needed): 4 Compose tests switched from `MainActivity` to `LegacyActivity`
+- `shell/proxy/ServerUpstream.kt`: P-1..P-3 on OkHttp (own client, redirects followed by hand without Authorization, 12 s budget, 8 MiB/text-only → 415, header whitelist of SHELL.md 3.3, dot-segment paths → 404 with no network).
+- `shell/proxy/ProxySync.kt`: `CoordinatorProxySync` — push/pull via the single-flight `SyncCoordinator` (push skipped when nothing is pending), cursor = `pull_seq`.
+- `ShellModule.kt`: binds `Upstream` to `ServerUpstream` (SettingsStore URL, TokenStore, NetworkMonitor).
 
 ## Acceptance → tests
-- examples decode / invalid ignored / dup id once → BridgeCodecTest
-- non-main-frame, other origin, 415 → BridgeTransportTest
-- asset paths → AssetPathTest; blobs → BlobInterceptTest
-- airplane-mode Today → HUMAN_CHECKS (manual)
+- bearer/cookie/CSRF; 401/403/422 byte-identical → `ServerUpstreamTest.bearerIsAdded…`, `problemsPassThroughByteIdentical401And403And422WithRetryAfter`
+- Offline → `offlineAnswers503ShellOfflineWithZeroRequestsAndNoPush`, `connectFailure…`, `noCompleteAnswerWithinTheCallBudget…`
+- Push first / held for seq / stale → `pendingOpsArePushedBeforeAForwardedGet`, `aMutatingReplyWithKotobayaSeqReturnsOnlyAfterThePullCursorPassedIt`, `aPullThatNeverReachesTheSeqSetsTheStaleHeaderAfterTheBudget`
+- Revoked token → `RevokedTokenTest` (real TokenStore + real engine push over HTTP)
 
 ## New dependencies
-- androidx.webkit:webkit@1.12.1, for WebViewAssetLoader and addWebMessageListener (already in the Gradle cache)
+- none
 
 ## For the reviewer (≤ 3 lines)
-- `pairShell` has no route yet. On a fresh install, pair through "Kotobaya (old)". After that the SPA is signed in via `getPrincipal`.
-- A new page life starts on `onPageStarted`. Back still finishes the activity until A4 handles it.
+- Unregistered `local` ops are already forwarded by A2's `LocalApi` (not this ticket), so the APK gets them online. SHELL.md L-1 says `local` is always local; this is a temporary deviation until L4–L8 land, not contract-sanctioned.
+- Query is re-encoded from the decoded map (interleaved repeated names lose their relative order). A proxy push/pull runs a full coordinator cycle.

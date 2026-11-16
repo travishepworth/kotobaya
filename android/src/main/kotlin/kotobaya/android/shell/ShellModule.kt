@@ -13,7 +13,6 @@ import kotobaya.android.report.ClientErrors
 import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.LocalRoutes
 import kotobaya.android.shell.api.LocalWrites
-import kotobaya.android.shell.api.OfflineUpstream
 import kotobaya.android.shell.api.ShellGate
 import kotobaya.android.shell.api.ShellServices
 import kotobaya.android.shell.api.Upstream
@@ -21,7 +20,12 @@ import kotobaya.android.shell.api.identity.AppShellIdentity
 import kotobaya.android.shell.api.identity.ClientErrorIntake
 import kotobaya.android.shell.api.identity.ClientErrorSink
 import kotobaya.android.shell.api.identity.ShellIdentity
+import kotobaya.android.settings.SettingsStore
+import kotobaya.android.shell.proxy.CoordinatorProxySync
+import kotobaya.android.shell.proxy.ServerUpstream
+import kotobaya.android.sync.NetworkMonitor
 import kotobaya.android.sync.SqlDelightDeviceStore
+import kotobaya.android.sync.SyncCoordinator
 import kotobaya.android.sync.SqlLearningTables
 import kotobaya.android.sync.SyncBootstrap
 import kotobaya.android.sync.SyncClient
@@ -48,11 +52,22 @@ private class KoinShellServices(private val koin: Koin) : ShellServices {
 
 private const val TAG = "KotobayaShell"
 
-/** SHELL-A2 (ADR-036): the local API kernel. SHELL-A5 replaces the [Upstream]; A3 calls [LocalApi.handle]. */
+/** SHELL-A2 (ADR-036): the local API kernel. [ServerUpstream] is the [Upstream] (SHELL-A5); A3 calls [LocalApi.handle]. */
 val shellFeature = FeatureEntry(
     id = "shell",
     module = module {
-        single<Upstream> { OfflineUpstream }
+        // SHELL-A5: proxied operations go to the server with the device token (rules P-1 … P-3)
+        single<Upstream> {
+            val koin = getKoin()
+            val settings = get<SettingsStore>()
+            val tokens = get<TokenStore>()
+            ServerUpstream(
+                baseUrl = { settings.serverBaseUrl },
+                token = { tokens.token },
+                isOnline = { koin.get<NetworkMonitor>().isOnline() },
+                sync = CoordinatorProxySync({ koin.get<SyncCoordinator>() }, { koin.get<SqlDelightDeviceStore>() }),
+            )
+        }
         // SHELL-L1: the identity group's services
         single<ShellIdentity> { AppShellIdentity(get<SqlDelightDeviceStore>(), get<MetaLimitsStore>(), get<DictStore>()) }
         single {
