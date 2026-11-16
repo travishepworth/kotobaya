@@ -71,6 +71,7 @@ All URIs are relative to */shell/v1*
 - [ShellAnkiConnectPatch](docs/ShellAnkiConnectPatch.md)
 - [ShellAnkiConnectState](docs/ShellAnkiConnectState.md)
 - [ShellDictInstall](docs/ShellDictInstall.md)
+- [ShellDictInstallGapFill](docs/ShellDictInstallGapFill.md)
 - [ShellDictInstallInstalled](docs/ShellDictInstallInstalled.md)
 - [ShellDictInstallRequest](docs/ShellDictInstallRequest.md)
 - [ShellEvent](docs/ShellEvent.md)

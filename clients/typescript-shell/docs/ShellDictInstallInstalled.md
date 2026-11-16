@@ -1,7 +1,7 @@
 
 # ShellDictInstallInstalled
 
-The installed package, or null when none is (then `local_or_proxy` operations proxy, SHELL.md L-7).
+The installed package, or null when none is. Not the whole story of what the device can look up - a package of scope `top60k` lacks entries, and the sidecar cache (`gap_fill`) holds entries fetched one by one; SHELL.md rule L-7 defines the lookup.
 
 ## Properties
 

@@ -49,8 +49,15 @@
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "integer", "minimum": 1},
-      "description": "JMdict sequence numbers the scenario relies on (every entry_seq in the seed and in step bodies, every e:<seq> deck item). Each must exist in fixtures/dict/JMdict_subset.xml, the dictionary both harnesses load. Ascending.",
+      "description": "JMdict sequence numbers the scenario relies on (every entry_seq in the seed and in step bodies, every e:<seq> deck item, except those listed in dict_missing). Each must exist in fixtures/dict/JMdict_subset.xml, the dictionary both harnesses load. Ascending.",
       "examples": [[1000220, 1000440]]
+    },
+    "dict_missing": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1},
+      "description": "Optional. JMdict sequence numbers the scenario uses that MUST NOT exist in fixtures/dict/JMdict_subset.xml: a per-entry miss on both sides (SHELL.md rule L-7, 8.2). Ascending. Every entry_seq and e:<seq> of the scenario is in exactly one of dict_entries and dict_missing.",
+      "examples": [[9999997]]
     },
     "settings": {
       "type": "object",

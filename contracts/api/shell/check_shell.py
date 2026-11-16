@@ -28,7 +28,8 @@ Named checks (each prints one line; the run fails if any fails):
                                server verdict to reach the same state
   parity_steps                 at_ms order; each request resolves to an operation of openapi.yaml whose class is
                                local / local_or_proxy; `operations`, `settings` and `dict_entries` are what the
-                               scenario really uses; expectations and invariants are well formed
+                               scenario really uses (dict_missing seqs are absent from the fixture dictionary);
+                               expectations and invariants are well formed
   parity_mandatory_covered     every mandatory coverage tag of SHELL.md 8.4 is covered by a scenario
   selftest_*                   negative cases: the checks above really fail on a removed operationId, an
                                invented one, a bad class, a broken seed op, a seed the server would reject
@@ -67,6 +68,7 @@ MANDATORY = [
     "answer.deleted_410", "answer.reviewed_at_in_future", "answer.reviewed_at_before_floor",
     "answer.reviewed_at_before_card", "answer.button_rating_mismatch", "undo.twice", "undo.unknown_review",
     "notes.create_duplicate", "notes.create_retry_same_id", "replica.empty", "sync.parent_deleted_by_pull",
+    "dict.entry_missing",
 ]
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.
 TABLES = ["note_type", "note", "card", "review_log", "word_status", "deck", "deck_item", "confusable", "grammar_point",
@@ -435,10 +437,15 @@ def check_parity(scenarios: dict[str, dict], schema: dict, sync: Sync, api_spec:
             res["parity_seed_accepted"] += check_seed_accepted(sync, name, sc)
         if sorted(used_ops) != sc["operations"]:
             st.append(f"parity/{name}.json: operations must be {sorted(used_ops)}")
-        if sorted(used_seqs) != sc["dict_entries"]:
-            st.append(f"parity/{name}.json: dict_entries must be {sorted(used_seqs)}")
+        missing = sc.get("dict_missing", [])
+        if missing != sorted(missing) or set(missing) & set(sc["dict_entries"]):
+            st.append(f"parity/{name}.json: dict_missing must be ascending and disjoint from dict_entries")
+        if sorted(used_seqs - set(missing)) != sc["dict_entries"] or not set(missing) <= used_seqs:
+            st.append(f"parity/{name}.json: dict_entries must be {sorted(used_seqs - set(missing))} and every dict_missing seq must be used")
         for seq in sorted(set(sc["dict_entries"]) - dict_seqs):
             st.append(f"parity/{name}.json: entry {seq} is not in fixtures/dict/JMdict_subset.xml")
+        for seq in sorted(set(missing) & dict_seqs):
+            st.append(f"parity/{name}.json: dict_missing entry {seq} exists in fixtures/dict/JMdict_subset.xml")
         for inv in sc.get("invariants", []):
             for ref in inv["equal"]:
                 if ref["step"] not in request_steps:

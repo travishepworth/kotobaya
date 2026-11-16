@@ -1,0 +1,200 @@
+{
+  "id": "dict-entry-missing",
+  "title": "An entry that is not in the dictionary: served without entry data, not materialized, not creatable (rule L-7)",
+  "covers": [
+    "dict.entry_missing"
+  ],
+  "narrative": [
+    "Entries 9999997-9999999 are in no dictionary (server: no ref.dict_entry row; shell: not in the installed scope-all package, sidecar cache empty, offline).",
+    "Note 1 references the missing entry 9999999 and has a new meaning card; note 2 references an existing entry. A user deck holds the existing entry 1000220 and the missing entry 9999998, both without notes.",
+    "Step 0: the fetch materializes 1000220 only; 9999998 is skipped and not counted (to_materialize 0). Every live card is answered, the missing-entry one with entry null; nothing is an error.",
+    "Step 1: createNote for the missing entry 9999997 is 422 at /entry_seq (not_found); nothing is minted.",
+    "Step 2: the same fetch again: same counts, nothing more materialized."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83000-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 9999999
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83000-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83001-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83001-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000005",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000001",
+          "name": "Conversation words",
+          "type": "user"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000006",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000220",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1000220",
+          "position": 1024
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7011-8000-000000000007",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:9999998",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:9999998",
+          "position": 2048
+        }
+      }
+    ]
+  },
+  "operations": [
+    "createNote",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/to_materialize": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 9999997
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/entry_seq",
+          "code": "not_found"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/to_materialize": 0
+        }
+      }
+    }
+  ],
+  "dict_missing": [
+    9999997,
+    9999998,
+    9999999
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/counts"
+        },
+        {
+          "step": 2,
+          "pointer": "/counts"
+        }
+      ]
+    }
+  ]
+}

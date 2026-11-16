@@ -206,7 +206,7 @@ No authorization required
 
 Start a sync cycle now.
 
-Asks the sync engine for a push + pull cycle and answers at once with the status at that moment (&#x60;202&#x60;); progress and the result arrive as &#x60;shell.sync&#x60; events. A cycle already running is not restarted (&#x60;202&#x60;, same status). Offline (&#x60;online: false&#x60;): &#x60;503 shell_offline&#x60;, nothing started. No request body. 
+Asks the sync engine for a push + pull cycle and answers at once with the status at that moment (&#x60;202&#x60;); progress and the result arrive as &#x60;shell.sync&#x60; events. A cycle already running is not restarted (&#x60;202&#x60;, same status). Offline (&#x60;online: false&#x60;): &#x60;503 shell_offline&#x60;, nothing started. No request body. Like &#x60;unpairShell&#x60;, it does not wait for the readiness gate and is not refused during a rebuild (SHELL.md 2.5, L-8). 
 
 ### Example
 

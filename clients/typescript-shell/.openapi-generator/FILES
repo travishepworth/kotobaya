@@ -10,6 +10,7 @@ docs/ShellAnkiConnectPatch.md
 docs/ShellAnkiConnectState.md
 docs/ShellApi.md
 docs/ShellDictInstall.md
+docs/ShellDictInstallGapFill.md
 docs/ShellDictInstallInstalled.md
 docs/ShellDictInstallRequest.md
 docs/ShellEvent.md
@@ -39,6 +40,7 @@ src/models/Scope.ts
 src/models/ShellAnkiConnectPatch.ts
 src/models/ShellAnkiConnectState.ts
 src/models/ShellDictInstall.ts
+src/models/ShellDictInstallGapFill.ts
 src/models/ShellDictInstallInstalled.ts
 src/models/ShellDictInstallRequest.ts
 src/models/ShellEvent.ts

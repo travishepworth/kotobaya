@@ -6,6 +6,7 @@ export * from './Scope';
 export * from './ShellAnkiConnectPatch';
 export * from './ShellAnkiConnectState';
 export * from './ShellDictInstall';
+export * from './ShellDictInstallGapFill';
 export * from './ShellDictInstallInstalled';
 export * from './ShellDictInstallRequest';
 export * from './ShellEvent';

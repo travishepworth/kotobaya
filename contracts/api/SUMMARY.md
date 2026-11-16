@@ -655,10 +655,13 @@ New directory `contracts/api/shell/`; nothing in `openapi.yaml`, `contracts/sync
   `shell_unsupported`) plus `shell_pending_ops` (409, unpair refused while changes are unsynced).
 - **Events**: `hello`, `sync.changed`, `note.created` reuse the `Event` envelope with device values;
   `shell.connectivity`, `shell.sync` and `shell.dict` are new. No job or device events in shell mode.
-- **Parity** (`shell/parity.schema.json`, 16 scenarios): inputs only. A seed log pushed by a second
+- **Parity** (`shell/parity.schema.json`, 17 scenarios): inputs only. A seed log pushed by a second
   device, steps at fixed instants, optional `apply` steps (ops of the other device arriving mid-scenario),
   per-step `expect` and cross-step `invariants`, and a normalisation that renames minted ids, minted
-  clocks and the minting device. 23 mandatory coverage tags are enforced by `check.sh`.
+  clocks and the minting device. 24 mandatory coverage tags are enforced by `check.sh`.
+- **Partly local operations**: bulk card actions other than suspend, bury and flag, and creating a
+  `list` deck (a server-only op plus a build job), are forwarded by the local handler; offline they
+  answer `503 shell_offline`.
 - **Token revoked mid-session**: local operations keep working and pending ops are kept; `ShellInfo`
   has `auth_required`, and pairing again replaces the token for the same device.
 
@@ -686,10 +689,13 @@ New directory `contracts/api/shell/`; nothing in `openapi.yaml`, `contracts/sync
    `reviewed_at`. ADR-036 asks for the documented `422` codes; the cost is a pointer to a property the
    request did not send. The alternative is a sixth shell code such as `409 shell_clock_wrong`, which is
    clearer for the SPA but is not a server answer.
-2. **Creating a vocab note by `entry_seq` answers `503 shell_dict_missing` while no dictionary is
-   installed** (SHELL.md 10.7), even online, and deck entries without notes are then not counted in the
-   queue. The card kinds of a vocab note depend on the dictionary entry, so the alternatives are
-   forwarding to the server (breaks "local is always local") or creating a note whose cards may be wrong.
+2. **Dictionary data is one per-entry lookup: installed package, then the gap-fill sidecar cache,
+   then (dictionary reads and note creation only, online only) the server** (SHELL.md rule L-7, 10.7).
+   Reviews never use the network: a card whose entry the phone lacks is served with `entry: null`, and
+   a deck entry it lacks is not materialized or counted until gap fill has cached it, so phone and web
+   counts can differ for a while on a `top60k` install. Creating a note by `entry_seq` fetches the entry
+   and still mints locally; it is `503 shell_dict_missing` only when cache and server both fail. An
+   installed package of scope `all` is treated as authoritative (a miss is `404` / `422`, no retry).
 3. **The parity `expect` values were written from the contract text, not from a running server.** They
    are deliberately narrow (status, problem code, a few counts and lengths), but SHELL-P1 may find one
    that the server does not produce — most likely in `queue-materialize-count`, `queue-learning-wait`

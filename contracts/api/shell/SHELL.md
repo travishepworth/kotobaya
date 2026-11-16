@@ -154,7 +154,9 @@ There is no limit on the number of concurrent requests; native MUST accept at le
   ordering guarantee between the `res` of a write and the `sync.changed` event it causes.
 - **Readiness.** A `req` that arrives before the startup gate has opened (`SyncBootstrap.ready`:
   the startup replay of SYNC.md 10.5) **waits**; it is not rejected. Exempt (answered at once):
-  `getShellInfo`, `pairShell`, `getSyncStatus`. If the gate is still closed 20 s after the `req`
+  `getShellInfo`, `pairShell`, `unpairShell`, `getSyncStatus`, `syncNow` — the same five that
+  rule L-8 exempts from `shell_rebuilding`; none of them reads the replica's learning data (`unpairShell`
+  counts `pending_op` rows, which the startup replay does not touch). If the gate is still closed 20 s after the `req`
   arrived, native answers `503 shell_rebuilding` with `Retry-After: 2` (so the SPA's 30 s timeout
   is never what the user sees).
 - **Timeout.** The SPA rejects a request with `FetchError` (`TypeError`) when no `res` arrived
@@ -234,7 +236,7 @@ premise).
 | Class | Count | Answered |
 |---|---|---|
 | `local` | 38 | By the shell from the replica, online or not (rules L-1 … L-8). |
-| `local_or_proxy` | 7 | Locally when the dictionary package is installed, else forwarded, else `503 shell_dict_missing` (rule L-7). |
+| `local_or_proxy` | 7 | Dictionary reads: from the installed package or the sidecar cache, else forwarded, else `404 not_found` / `503 shell_dict_missing` (rule L-7). |
 | `proxy` | 53 | By the server, through the shell, with the device token (rules P-1 … P-3). |
 | `hidden` | 25 | Never: `403 insufficient_scope` without touching the network (rule P-4). |
 
@@ -296,7 +298,8 @@ Request headers native MUST ignore locally and MUST NOT forward: `authorization`
 **L-1 Always local.** A `local` operation is answered from the replica whether the device is
 online or not. There is one source of truth on the phone: a write is visible to the next read at
 once (read-your-writes), and the phone may differ from the server until the next sync, exactly as
-the native app did. The one partial exception is `bulkCards` (4.3).
+the native app did. Two operations are local only in part, because some of their requests need
+an op only the server may mint: `bulkCards` and `createDeck` (4.3).
 
 **L-2 Writes are device ops.** A writing handler builds the op(s) its operation's `x-emits-ops`
 names, with the payload the server would build for the same request, and mints them with
@@ -366,19 +369,48 @@ pull, an edit this device already minted loses by the existing rule (SYNC.md 7.3
 every edit, older or newer); a review this device already logged stays in `review_log` on a hidden
 card. Nothing new is defined here. See 10.5.
 
-**L-7 `local_or_proxy`.** Decided per request by "is a dictionary package installed"
-(`ShellDictInstall.installed != null`): installed → answered locally, always (online or not), by
-rules L-1/L-3; not installed and online → forwarded by rules P-1 … P-3; not installed and offline
-(or the forward fails as in P-1) → `503 shell_dict_missing`. An install that completes between two
-pages of a paged dictionary list invalidates the cursor: the local handler answers a cursor it did
-not issue with `422 validation_failed` (pointer `/cursor`), and the SPA restarts the list.
-Documented differences of the local answers: `listEntryExamples` returns sentences of media
-installed on the device only (may be empty); `getDictRelease` describes the installed package.
-The dictionary matters to `local` operations too, see 10.7.
+**L-7 Dictionary data: one lookup.** The dictionary on the phone is two stores: the **installed
+package** (`ShellDictInstall.installed`; scope `top60k` or `all`, so it may lack entries the user's
+notes and decks reference) and the **sidecar cache** (entries and kanji fetched from the server one
+by one for references the package lacks: "gap fill", SHELL-L9; it lives in the learning database
+and is not part of the read-only package file). Every consumer of one entry (by `seq`) or one kanji (by literal)
+uses the same lookup, first hit wins:
+
+1. the installed package;
+2. the sidecar cache;
+3. **only** for a dictionary read (a `local_or_proxy` operation) and for `createNote`, and only
+   when online: the server (`getDictEntry` / `getKanji`, by rules P-1 and P-2). A hit is stored in
+   the sidecar cache;
+4. a **miss**.
+
+Steps 1–2 never touch the network. Everything that renders or schedules — `QueueItem.entry`,
+`QueueItem.kanji` and the other embedded dictionary data of `getReviewQueue`, back-side extras,
+`getNote` / `listNotes` / `listCards` summaries, C-27 pending entries and their kanji — uses steps
+1–2 **only**: a review never waits for the network and never fails for a missing entry; a miss is
+`null` there, exactly as the server answers for an entry missing from `ref.dict_entry`.
+
+What a miss means when the answer needs to say whether the entry exists: an installed package of
+scope `all` is **authoritative** for its release (a miss is "no such entry"); with scope `top60k`
+or no package a miss is "not known on this device".
+
+Per `local_or_proxy` operation:
+
+| Operation | Answer |
+|---|---|
+| `getDictEntry`, `getKanji` | Step 1 or 2 hit → local `200` (L-1/L-3). Otherwise online → the request is forwarded (P-1 … P-3) and the server's answer passed through (`200`, or `404 not_found`); a `200` is also stored in the cache. Otherwise (offline, or the forward failed as in P-1): `404 not_found` when the installed package has scope `all`, else `503 shell_dict_missing`. |
+| `listDictHeadwords` | Each requested `seq` by steps 1–2. All found → local `200`. Some missing and online → the whole request is forwarded. Some missing and offline: scope `all` installed → local `200` with the missing ones omitted (as the server omits unknown seqs); else `503 shell_dict_missing`. |
+| `searchDictionary`, `listKanjiWords` | A package is installed → local, over the installed package only, online or not (with `top60k` a word outside the package is not found: documented difference; `getDictEntry` still finds it by the lookup). No package: online → forwarded; offline → `503 shell_dict_missing`. |
+| `listEntryExamples` | The entry by the lookup as for `getDictEntry` (same `404` / `503` outcomes); when it is found locally the answer holds sentences of media installed on the device only (may be empty). |
+| `getDictRelease` | A package is installed → describes it. None: online → forwarded; offline → `503 shell_dict_missing`. |
+
+Cursors of paged dictionary lists are valid only with the party that issued them: a local handler
+answers a cursor it did not issue with `422 validation_failed` (pointer `/cursor`) and the SPA
+restarts the list (this happens when an install completes between two pages).
+How `local` operations use the lookup: 4.3 (`getReviewQueue`, `createNote`) and 10.7.
 
 **L-8 Rebuild.** While `sync_state.rebuild_pending = "1"` (SYNC.md 10.3, 10.5), every `local`
 operation, every `local_or_proxy` operation answered locally and every shell operation except
-`getShellInfo`, `getSyncStatus`, `syncNow` and `unpairShell` answers `503 shell_rebuilding` with
+`getShellInfo`, `pairShell`, `unpairShell`, `getSyncStatus` and `syncNow` answers `503 shell_rebuilding` with
 `Retry-After: 2`. Nothing is read from the half-built replica and nothing is minted. `proxy`
 operations are forwarded as usual, without the push of rule P-2. The SPA retries once after
 `Retry-After` and otherwise shows the rebuilding state from `shell.sync`.
@@ -422,10 +454,12 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `getPrincipal` | From the stored pairing: `kind: "device"`, `scopes: ["read","write","review"]`, `device_id`, `name` = device name, `token_id` = the `token_id` of `PairResponse`, `expires_at: null`, `totp_enabled: false`. No cookie, no CSRF. |
 | `getMeta` | `api_version: "v1"`; `server_version` = value of the last `/meta` fetched from the server, `"unknown"` before the first; `core_version` = the app's core; `server_device_id` = the fixed server device id; `high_water_seq` = pull cursor; `log_epoch` = `sync_state.log_epoch` or the nil UUID; `server_time` = device clock; `dict_release` = the installed package or null; `limits` = last fetched, else the contract defaults. |
 | `reportClientErrors` | Validated and limited exactly as the server (so `429`, `413`, `422` are identical), then queued (`ClientErrorQueue`) and flushed when online; `202` means "queued". |
-| `getReviewQueue` | The core `QueueBuilder` over the replica with `newShownThisSession = 0` and learn-ahead 0, as the server. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. `QueueItem.entry` is null when the dictionary is not installed (10.7). |
+| `getReviewQueue` | The core `QueueBuilder` over the replica with `newShownThisSession = 0` and learn-ahead 0, as the server. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. Dictionary data by L-7 steps 1–2 only (installed package, then sidecar cache; never the network): `QueueItem.entry` / `kanji` are `null` on a miss and the card is still served; a deck entry `e:<seq>` is passed to the builder as a pending entry only when steps 1–2 find it, so an entry the device does not have is neither materialized nor counted until gap fill has cached it (10.7). |
 | `answerReview`, `undoReview` | Stateless (no session object). Card state is recomputed by the replay path, never by handler arithmetic. After commit the due alarm and widgets are refreshed. |
 | `bulkCards` | Action `suspend`, `unsuspend`, `bury`, `unbury`, `flag`: local, for both selectors (`card_ids`, `query`) and for `dry_run`; all-or-nothing as the server. Any other action (`set_preset`, `add_tags`, `remove_tags`, `move`, `delete`): the handler forwards the request by rules P-1 … P-3, so it is `503 shell_offline` offline. The request is validated locally first in both cases. |
-| `createNote` | Duplicate check against the replica (L-4); kinds by core `CardGenerator` / `CardKinds.isRetired` (ADR-035); `created_by_device_id` is this device. With `entry_seq` and no dictionary installed: `503 shell_dict_missing` (10.7). |
+| `createNote` | Duplicate check against the replica (L-4); kinds by core `CardGenerator` / `CardKinds.isRetired` (ADR-035); `created_by_device_id` is this device. `entry_seq` is resolved by the full L-7 lookup: installed package → sidecar cache → when online, the shell fetches the entry from the server (`getDictEntry`, 12 s limit of P-1) and stores it in the cache; the note is then created **locally** as always (minted by the device, never forwarded). The server answers that fetch `404`, or the entry is missing offline from an installed package of scope `all`: `422 validation_failed`, `errors[0] = {pointer: "/entry_seq", code: "not_found"}`, as the server. Only when the cache and the fetch both fail (offline or unreachable, and no authoritative package): `503 shell_dict_missing`, nothing minted. Kanji data for `add_kanji` notes uses steps 1–2 only (a miss means "the literal alone", as on the server when `ref.kanji` lacks it). |
+| `updateNote` | Setting `entry_seq` to an entry another live note already holds (**re-match collision**): the server merges and answers with the survivor; a device never merges (SYNC.md 8: the server decides). Locally the handler mints the one `note.updated`, and the answer is **the note itself** with its new `entry_seq`, `200`, no `content-location`; two live notes hold the entry on the phone until the server's `note.merged` (and `card.merged`) arrive by pull, after which the id answers with the survivor (L-6). A documented difference from the server's response, not parity-tested. The new `entry_seq` is checked like `createNote`'s. |
+| `createDeck` | `type: user` and `type: smart`: local (one `deck.created` minted by the device). `type: list`: `deck.created` for a list deck is server-only (OPS.md `deck.created`: a pushed one is rejected `server_only`) and needs the server's `deck-build` job, so the handler forwards the request by rules P-1 … P-3 — `503 shell_offline` offline; the deck arrives by pull (P-3). `type: media` is `422` locally, as on the server. The request is validated locally first in every case. |
 | `updateSettings` | One `settings.set` per present key. Applying `cards.reading_enabled` re-derives vocab word statuses through the same code as the pull path. |
 | `createDrillSession` | No op (as the server). |
 | `getBlob` | Section 2.7. |
@@ -439,8 +473,8 @@ keep their meaning. The shell adds:
 
 | Status | `code` | `title` | When | Client action |
 |---|---|---|---|---|
-| 503 | `shell_offline` | Offline | A `proxy` operation (or a forwarded `bulkCards` action, `pairShell`, `syncNow`, `startDictInstall`) while offline or unreachable (rule P-1). | One calm message; retry when `shell.connectivity` says online. Not reported to `reportClientErrors`. |
-| 503 | `shell_dict_missing` | Dictionary not installed | A `local_or_proxy` operation with no dictionary installed and no connection (L-7); `createNote` with `entry_seq` and no dictionary (10.7). | Offer `startDictInstall`. |
+| 503 | `shell_offline` | Offline | A `proxy` operation (or a forwarded `bulkCards` action, `createDeck` with `type: list`, `pairShell`, `syncNow`, `startDictInstall`) while offline or unreachable (rule P-1). | One calm message; retry when `shell.connectivity` says online. Not reported to `reportClientErrors`. |
+| 503 | `shell_dict_missing` | Dictionary data not on this device | The L-7 lookup ended in a miss that is not authoritative and the server could not be asked: a dictionary read, or `createNote` / `updateNote` with an `entry_seq`, for an entry that is in neither the installed package nor the sidecar cache, while offline or unreachable; a search or `getDictRelease` with no package installed and no connection. Never for `getReviewQueue` or any other rendering (a miss is `null` there). | Offer `startDictInstall` when no package is installed; otherwise "connect to look this word up". |
 | 503 | `shell_rebuilding` | Rebuilding local data | Rule L-8, and the 20 s readiness limit (2.5). Always with `Retry-After: 2`. | Retry once after `Retry-After`; then show the rebuilding state. |
 | 415 | `shell_unsupported` | Not supported in the app | Section 2.4: request body over 4 MiB or not JSON; proxied response over 8 MiB or not text; `getBlob` through the bridge. | None (a feature the SPA should have hidden). |
 | 409 | `shell_pending_ops` | Unsynced changes | `unpairShell` without `force` while ops are pending. | Ask, then repeat with `force: true`, or sync first. |
@@ -574,6 +608,7 @@ records the server's answers as goldens; SHELL-P2 requires the shell to reproduc
 | `seed.device_id`, `seed.log` | Another device (`…00a1`, "A") and the ops it minted, in pushed form, hlc ascending. |
 | `settings` | Index of the effective settings after the seed. **Not an input**: the seed log already contains the `settings.set` ops; harnesses MUST NOT apply `settings` again. |
 | `dict_entries` | JMdict seqs the scenario relies on; all exist in `fixtures/dict/JMdict_subset.xml`. |
+| `dict_missing` | Optional. JMdict seqs the scenario uses that MUST NOT exist in that file: a per-entry miss on both sides. |
 | `operations` | operationIds the steps call (derived). |
 | `steps[]` | Request step `{at_ms, request{method, path, query, body}, ignore?, expect?}` or apply step `{at_ms, apply:[ops]}`. |
 | `invariants[]` | Cross-step equalities. |
@@ -581,8 +616,14 @@ records the server's answers as goldens; SHELL-P2 requires the shell to reproduc
 ### 8.2 Running a scenario
 
 Both harnesses load the dictionary built from `fixtures/dict/JMdict_subset.xml` and
-`kanjidic2_subset.xml` (server: `ref.*`; shell: an installed package), start from an empty
-replica with only the built-in rows, and use an injected clock.
+`kanjidic2_subset.xml` (server: `ref.*`; shell: an installed package of scope **`all`** holding
+every entry of the fixture, an **empty** sidecar cache, and offline), start from an empty replica
+with only the built-in rows, and use an injected clock. With that setup the L-7 lookup is
+steps 1–2 followed by an authoritative miss, which is what the server does with `ref.dict_entry`:
+an entry absent from the fixture (`dict_missing`) is `null` in rendering, is not materialized, and
+is `422` `/entry_seq` `not_found` in `createNote` on both sides. The non-authoritative outcomes
+(`top60k`, sidecar cache hit, online fetch, `503 shell_dict_missing`) have no server equivalent
+and are tested by SHELL-L5 / SHELL-L9, not by parity.
 
 | | Server (SHELL-P1) | Shell (SHELL-P2) |
 |---|---|---|
@@ -655,6 +696,7 @@ difference is a finding.
 | `notes.create_duplicate`, `notes.create_retry_same_id` | `create-note-duplicate-retry` | Duplicate reference; same-`id` retry. |
 | `replica.empty` | `empty-replica` | A paired device that has pulled nothing. |
 | `sync.parent_deleted_by_pull` | `parent-deleted-by-pull` | A note deleted elsewhere after this device answered its card (L-6). |
+| `dict.entry_missing` | `dict-entry-missing` | Per-entry miss (L-7): a note whose entry is not in the dictionary is still served, a deck entry without dictionary data is not materialized, `createNote` for it is `422` at `/entry_seq`. |
 
 Further scenarios (one per remaining `local` operation) are added by the L tickets through a
 `CONTRACT_CHANGE_REQUEST`; they need no schema change.
@@ -727,7 +769,7 @@ Each is normative; the number is referenced from the rules above.
 | 10.4 | **Device clock ahead** | Not detectable offline. Reviews get future `reviewed_at`, edits get future HLCs and win last-writer-wins for up to a day (SYNC.md 3.4). More than 24 h ahead of the server once it is known: writes refused (`in_future`). An explicit `reviewed_at` more than 5 minutes after the device's now is `422 in_future` regardless. The study day and `due` comparisons follow the device clock, so the queue may differ from the web's until the clock is fixed. |
 | 10.5 | **Offline creation, then the parent is deleted on the server** | A note edited, a card answered or a deck item added offline whose note / card / deck was deleted elsewhere: the local ops are minted and pushed; the server accepts ops addressed to a tombstone (SYNC.md 7.3); when the delete arrives by pull the row is hidden locally and further requests answer `410 gone`. The edit is lost by rule (delete beats edit); the review stays in `review_log`. Parity: `parent-deleted-by-pull`. If the *create itself* was offline (`createNote`, then the note type or deck is deleted elsewhere): accepted the same way (SYNC.md 7.3 "tombstoned parent"). |
 | 10.6 | **Duplicate create ids / duplicate words** | Same `id` again on this device: `200`, nothing minted (L-4), one transaction. Same `id` created on another replica and not yet pulled: both `*.created` ops reach the log, the second is a no-op (SYNC.md 7.2). Same word (entry, kanji, grammar point) created offline on two replicas: `409 already_exists` cannot be detected locally; the server merges (SYNC.md 8.1) and both replicas converge. Two bridge `req`s with the same bridge `id`: the second is dropped (2.5). |
-| 10.7 | **Dictionary not installed** | `local_or_proxy`: rule L-7. `local` operations still work with these differences: `QueueItem.entry` and other embedded dictionary data are `null`; deck entries without notes are not passed to the queue builder (contracts/core README C-27: "a device without it skips it"), so they are neither materialized nor counted in `counts.new`; `createNote` with `entry_seq` answers `503 shell_dict_missing` (card kinds whose front would be empty cannot be decided without the entry); notes without `entry_seq` are created normally. The SPA offers the install whenever `ShellDictInstall.installed` is null. |
+| 10.7 | **Dictionary data missing on the device** | Three situations, all by the one lookup of rule L-7. (a) **No package installed**: searches and `getDictRelease` are forwarded when online, else `503 shell_dict_missing`; everything in (b) applies to every entry. (b) **Package installed but an entry is not in it** (scope `top60k` and a word outside it, e.g. from a list deck): the sidecar cache is asked next; gap fill (SHELL-L9) fills it after each sync for every entry and kanji that local notes, deck items and queue-relevant cards reference. Until an entry is cached: its card is **still served** by `getReviewQueue` with `entry: null` (never dropped, never an error, never a network wait); a deck entry `e:<seq>` without a note is not passed to the queue builder (contracts/core README C-27: "a device without it skips it until it has it"), so it is neither materialized nor counted in `counts.new` yet; `getDictEntry` / `getKanji` / `createNote` reach the server when online and cache the answer, and answer `503 shell_dict_missing` offline. (c) **Authoritative miss** (scope `all` installed, or the server said `404`): `null` in rendering, `404 not_found` for the keyed reads, `422` `/entry_seq` `not_found` for `createNote`; nothing is retried. Notes without `entry_seq` are never affected. `ShellDictInstall.gap_fill` reports how many references are cached and how many are still missing. Parity: `dict-entry-missing` (case c). |
 | 10.8 | **Snapshot / replica rebuild** | Rule L-8: `503 shell_rebuilding` + `Retry-After: 2` for local operations while `rebuild_pending`; nothing minted; proxy operations still forwarded. Installing a media or deck snapshot (SYNC.md 7.6) is one transaction and blocks nothing: readers see the old rows or the new rows. The startup replay is the readiness gate (2.5), not `shell_rebuilding`, unless it exceeds 20 s. |
 | 10.9 | **Empty replica** | Paired, nothing pulled yet: every local read answers `200` with empty lists / zero counts and the built-in rows (note types, Default preset, default settings); `getReviewQueue` → `items: []`, counts 0, `more_available: false`. Never `500`, never `404` for a list. Parity: `empty-replica`. The SPA shows "syncing" from `shell.sync`. |
 | 10.10 | **Reload / renderer crash** | 2.5 "Reload". In-flight writes complete; their `res` is dropped; the SPA refetches on `hello`. |
@@ -749,7 +791,7 @@ the device (L-2); "proxied" ones are minted by the server and reach the replica 
 | `card` | `card.created`, `card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`, `card.preset_set`, `card.deleted`, `card.merged` (server) | `createNote`, `getReviewQueue` (C-27), `bulkCards` (suspend, unsuspend, bury, unbury, flag); read: `listCards`, `getCard` | `createCard`, `updateCard`, `deleteCard`, `bulkCards` (`set_preset`, `delete`) |
 | `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`; read: `listCardReviews`, `listHotWords`, `listHotKanji`, `listLeeches`, `createDrillSession` | `bulkScheduleCards` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `setWordStatus`, `clearWordStatus`; read: `getWordStatus` | — |
-| `deck` | `deck.created`, `deck.updated`, `deck.deleted`, `deck.content_published` (server) | `createDeck`, `updateDeck`, `deleteDeck`; read: `listDecks`, `getDeck` | `deleteMedia` (its media deck), `listDeckLists`, `getDeckCoverage` |
+| `deck` | `deck.created`, `deck.updated`, `deck.deleted`, `deck.content_published` (server) | `createDeck` (`type` `user`, `smart`), `updateDeck`, `deleteDeck`; read: `listDecks`, `getDeck` | `createDeck` with `type: list` (forwarded: server-only op and `deck-build` job), `deleteMedia` (its media deck), `listDeckLists`, `getDeckCoverage` |
 | `deck_item` | `deck.item_put`, `deck.item_removed` | `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote` (with `deck_id`); read: `listDeckItems` | `bulkCards` action `move` |
 | `confusable` | `confusable.suggested` (server), `confusable.confirmed`, `confusable.rejected` | — | `setConfusable`; read: `listWordConfusables`, `listConfusables` |
 | `grammar_point` | `grammar.created`, `grammar.updated`, `grammar.deleted` | — | `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`; read: `listGrammarPoints`, `getGrammarPoint` |
@@ -773,7 +815,7 @@ Not learning data, listed for completeness — `proxy`: `getHealth`, `getOwnDevi
 | Operation | Method, path | Unpaired | During rebuild | Changes |
 |---|---|---|---|---|
 | `getShellInfo` | `GET /shell/v1/info` | works | works | — |
-| `pairShell` | `POST /shell/v1/pair` | works | n/a | stores the token |
+| `pairShell` | `POST /shell/v1/pair` | works | works | stores the token |
 | `unpairShell` | `POST /shell/v1/unpair` | `401` | works | deletes the token |
 | `getSyncStatus` | `GET /shell/v1/sync` | `401` | works | — |
 | `syncNow` | `POST /shell/v1/sync` | `401` | works | starts a cycle |

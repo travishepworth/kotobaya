@@ -84,7 +84,7 @@ No authorization required
 
 State of the on-device dictionary package.
 
-Whether the dictionary package is installed (which decides &#x60;local_or_proxy&#x60; operations, SHELL.md rule L-7) and how far a running install is. Pushed as the &#x60;shell.dict&#x60; event while an install runs (at most twice per second) and when it ends. 
+Whether a dictionary package is installed, how far a running install is, and (when the shell has gap fill) how many referenced entries the sidecar cache holds or still lacks (SHELL.md rule L-7). Pushed as the &#x60;shell.dict&#x60; event while an install runs (at most twice per second) and when it ends. 
 
 ### Example
 
