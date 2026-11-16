@@ -768,6 +768,9 @@ export class ReviewPage {
 		return this.send(item, b);
 	}
 
+	/** Set after the first clock-skew 422: no more `reviewed_at` for the rest of this page visit. */
+	private clockSkewed = false;
+
 	private send(item: QueueItem, b: GradeButton, serverTime = false): Promise<void> {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
@@ -785,7 +788,7 @@ export class ReviewPage {
 				...(b.button ? { button: b.button } : {}),
 				mode: item.reviewType === 'drill' || item.reviewType === 'cram' ? item.reviewType : 'schedule',
 				// After a clock error the server's now is used (reviewed_at omitted).
-				...(serverTime ? {} : { reviewedAt: new Date() }),
+				...(serverTime || this.clockSkewed ? {} : { reviewedAt: new Date() }),
 				durationMs: Math.max(0, Date.now() - this.shownAt),
 				utcOffsetMin: this.utcOffsetMin
 			},
@@ -821,6 +824,7 @@ export class ReviewPage {
 	 * front in order. The failed card comes back on its back so the retry is one tap.
 	 */
 	restore(withdrawn: PendingAnswer[], failed: PendingAnswer | null, clockSkew = false): void {
+		if (clockSkew) this.clockSkewed = true;
 		const ids = new Set(withdrawn.map((e) => e.answerId));
 		this.history = this.history.filter((h) => !ids.has(h.reviewId));
 		this.items = [...withdrawn.map((e) => e.item), ...this.items];

@@ -493,6 +493,48 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
+	it('after a clock 422 the next answers are sent without reviewed_at and with no notice', async () => {
+		const reqs: { id: string; cardId: string; reviewedAt?: Date }[] = [];
+		const problem = {
+			type: 'urn:kotobaya:problem:validation_failed',
+			code: 'validation_failed',
+			status: 422,
+			title: 'Validation failed',
+			errors: [{ pointer: '/reviewed_at', code: 'in_future', message: 'in the future' }]
+		};
+		type R = { reviewAnswerRequest: { id: string; cardId: string; reviewedAt?: Date } };
+		api.answerReview
+			.mockImplementationOnce(async (r: R) => {
+				reqs.push(r.reviewAnswerRequest);
+				throw new ResponseError(new Response(JSON.stringify(problem), { status: 422, headers: { 'Content-Type': 'application/problem+json' } }));
+			})
+			.mockImplementation(async (r: R) => {
+				reqs.push(r.reviewAnswerRequest);
+				return { review: { id: r.reviewAnswerRequest.id } };
+			});
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b'), card('c')], counts: counts(0, 3) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b'), card('c')], counts: counts(0, 2) }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		await page.grade(good);
+		await tick();
+		expect(page.notice).toBe('clockSkew');
+		await page.retryAnswer();
+		await tick();
+		expect(page.current?.card.id).toBe('b');
+		page.flip();
+		await page.grade(good);
+		await tick();
+		expect(reqs).toHaveLength(3);
+		expect(reqs[0].reviewedAt).toBeInstanceOf(Date);
+		expect(reqs[2].cardId).toBe('b');
+		expect(reqs[2].reviewedAt).toBeUndefined();
+		expect(page.notice).toBeNull();
+		dispose();
+	});
+
 	it('a failed wake fetch while waiting keeps the countdown (inline notice, no full-page error)', async () => {
 		const due = new Date(Date.now() + 10_000);
 		api.getReviewQueue.mockResolvedValueOnce(queue({ counts: counts(2), nextLearningDueAt: due }));
