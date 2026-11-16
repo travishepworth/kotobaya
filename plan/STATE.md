@@ -5,7 +5,6 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
-| SHELL-A7 | writer | 1 | t/SHELL-A7-device-ops2 (gradle lane) |
 | LOOP-C | architect | 1 | t/LOOP-C-review-loop-contract |
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
