@@ -1,14 +1,24 @@
-# HANDOFF SHELL-A1
+# HANDOFF SHELL-C1
 
-Status: DONE. Branch `t/SHELL-A1-bundle-spa` (ticket said `t/SHELL-A1-bundle-web`; I used the name the prompt gave).
+STATUS: DONE
+BRANCH: t/SHELL-C1-shell-contract
+CHECK: `make check MODULE=contracts` → green
 
-- `web/scripts/shell-manifest.ts`: `buildManifest`/`writeShellManifest` produce `{web_version, build_sha, min_local_api:1, files:{path:sha256}}`. `web/vite.config.ts` wraps adapter-static's `adapt` to write `build/shell-manifest.json` after the site is written. A plain `closeBundle` hook runs before adapter-static writes `build/`.
-- `android/build.gradle.kts`: `bundleWeb` task runs `pnpm install --frozen-lockfile` then `pnpm build`, depends on `:core:npmPackage`, and has declared inputs. Output is `build/generated/shellAssets/web/`, registered as a generated assets dir for every variant. `-PskipWebBundle` never calls pnpm and keeps the old output.
-- Verified: after `:android:mergeOwnDebugAssets`, `web/index.html` and `web/shell-manifest.json` are in the merged assets. A second run reports `bundleWeb UP-TO-DATE`.
-- Tests: `web/tests/shell-manifest.test.ts` (vitest, sha256 of every file). The Makefile `check-android` target checks both files are in the merged assets, then runs unit tests with `-PskipWebBundle`.
-- `make check MODULE=android` and `MODULE=web` are green.
+## Changed (≤ 6 lines)
+- `contracts/api/shell/`: SHELL.md (normative), bridge.schema.json + 28/43 examples, shell.yaml (16 ops), ops.json (123 ids), parity.schema.json + 16 scenarios, check_shell.py
+- `contracts/api/check.sh`, `SUMMARY.md` (SHELL-C1 section); `clients/generate.sh` → `clients/typescript-shell`
+- openapi.yaml, contracts/sync|db|core, existing clients: untouched
 
-Notes:
-- The web `svelte-check` has no `@types/node`. Adding it would mean a new dependency and an edit to `package.json`, which I don't own. I added `web/scripts/shell-manifest.node.d.ts` with minimal ambient declarations instead.
-- I did not add the APK-assets check as a Gradle test. It is a Makefile script check.
-- `clients/typescript-shell` is listed as an input; it is ignored if absent.
+## Acceptance → tests
+- check green; fails on removed operationId → `ops_map_complete`, `selftest_ops_missing_id` (also run for real once)
+- bridge examples → `bridge_examples_valid`, `bridge_examples_invalid`
+- parity seed ops, mandatory scenarios → `parity_seed_ops`, `parity_seed_accepted`, `parity_mandatory_covered`
+- cross-check table → `shell_md_cross_check` (SHELL.md 11)
+
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- Differs from tickets: parity needs TWO devices (seed + under test) and `settings` is an index, not applied (P1 text says otherwise); `unpairShell` takes body `{force}`; events are `shell.sync`/`shell.dict`; fifth code `409 shell_pending_ops`; ShellInfo `auth_required`.
+- My decisions: clock refusals → 422 at `/reviewed_at` for all writes; `createNote` by entry without dictionary → 503 `shell_dict_missing`; gate wait > 20 s → 503 `shell_rebuilding`.
+- Parity `expect` values come from contract text, not a running server; P1 may disprove one. clients/README.md (not owned) lacks typescript-shell.

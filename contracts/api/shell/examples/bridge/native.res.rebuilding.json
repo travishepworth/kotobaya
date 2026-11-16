@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "t": "res",
+  "id": "7b1e3c52-9d0a-4f6e-8a51-2f4c8d1e9a01",
+  "status": 503,
+  "headers": {
+    "content-type": "application/problem+json",
+    "retry-after": "2",
+    "kotobaya-local": "1",
+    "x-request-id": "0193a1b2-7000-7000-8000-00000000e003"
+  },
+  "body": "{\"type\":\"urn:kotobaya:problem:shell_rebuilding\",\"title\":\"Rebuilding local data\",\"status\":503,\"code\":\"shell_rebuilding\",\"request_id\":\"0193a1b2-7000-7000-8000-00000000e003\"}"
+}

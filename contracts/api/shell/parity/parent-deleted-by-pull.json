@@ -1,0 +1,134 @@
+{
+  "id": "parent-deleted-by-pull",
+  "title": "A note deleted elsewhere arrives after this device answered its card (rule L-6)",
+  "covers": [
+    "sync.parent_deleted_by_pull",
+    "answer.deleted_410"
+  ],
+  "narrative": [
+    "Step 0: the card is answered Good on this device (in the shell: minted offline as the device).",
+    "Step 1: device A's note.deleted arrives (server: pushed by A; shell: applied by the pull path). The review stays in review_log; the note is a tombstone.",
+    "Step 2: answering the card again: 410 gone, nothing minted. Step 3: the queue no longer holds the card."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7010-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7010-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "apply": [
+        {
+          "op_id": "0193a1b2-00ff-7010-8000-000000000065",
+          "op_type": "note.deleted",
+          "op_version": 1,
+          "entity_type": "note",
+          "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+          "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+          "hlc": "01a1f86614d0-0000-01931f3e-0000-7000-8000-0000000000a1",
+          "payload": {
+            "id": "0193a1b2-0001-7000-8000-000000000001"
+          }
+        }
+      ]
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good"
+        }
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 0,
+            "review": 0
+          }
+        }
+      }
+    }
+  ]
+}

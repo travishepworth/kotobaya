@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "shell.connectivity",
+    "at": "2026-11-20T10:01:00.000Z",
+    "data": {
+      "online": false
+    }
+  }
+}

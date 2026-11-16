@@ -627,3 +627,78 @@ attempt 1 is gone). Needs node and python3; network on first run.
   passed; a user-deleted kanji note is never re-created; the server repeats a materialize round
   only if the last round's notes reached `items`. The pending-entry query (35k deck items, five
   decks) loads in ~35 ms warm using `deck_item_order_idx` and `note_live_entry_uq`: no new index.
+
+## SHELL-C1 (additive): Android web shell contract (ADR-036)
+
+New directory `contracts/api/shell/`; nothing in `openapi.yaml`, `contracts/sync`, `contracts/db` or
+`contracts/core` changed, and none of the three existing generated clients changed. Normative text:
+`shell/SHELL.md`.
+
+**What was decided**
+
+- **Bridge** (`shell/bridge.schema.json`, 28 valid and 43 invalid examples): ten message types over an
+  origin-restricted `WebMessageListener`; one `res` per `req`, duplicate ids dropped, replies in
+  completion order, a reload starts a new page life, invalid messages are dropped without a reply.
+  Request bodies: JSON, at most 4 MiB; proxied responses: text, at most 8 MiB; otherwise
+  `415 shell_unsupported`.
+- **Classification** (`shell/ops.json`): every operationId of `openapi.yaml` exactly once — 38 `local`,
+  7 `local_or_proxy`, 53 `proxy`, 25 `hidden`. `check.sh` fails on a missing or invented id, on another
+  class, and when an operation a device token cannot call is not `hidden`.
+- **Local semantics**: rules L-1 … L-8 (local operations always answer from the replica; writes are ops
+  minted by the paired device in one transaction; same statuses, codes and pointers as the server;
+  idempotency by client id; device clock; deleted parents; dictionary fallback; rebuild) and P-1 … P-4
+  (offline, forwarding with the device token, holding a proxied write until it is pulled, hidden).
+- **Shell-only operations** (`shell/shell.yaml`, generated into `clients/typescript-shell`): 16 operations
+  under `/shell/v1` for pairing, sync status, dictionary install, storage, notifications, push and the
+  on-device AnkiConnect server. `Problem` is referenced from `openapi.yaml`, not copied.
+- **Problem codes**: the four of ADR-036 (`shell_offline`, `shell_dict_missing`, `shell_rebuilding`,
+  `shell_unsupported`) plus `shell_pending_ops` (409, unpair refused while changes are unsynced).
+- **Events**: `hello`, `sync.changed`, `note.created` reuse the `Event` envelope with device values;
+  `shell.connectivity`, `shell.sync` and `shell.dict` are new. No job or device events in shell mode.
+- **Parity** (`shell/parity.schema.json`, 16 scenarios): inputs only. A seed log pushed by a second
+  device, steps at fixed instants, optional `apply` steps (ops of the other device arriving mid-scenario),
+  per-step `expect` and cross-step `invariants`, and a normalisation that renames minted ids, minted
+  clocks and the minting device. 23 mandatory coverage tags are enforced by `check.sh`.
+- **Token revoked mid-session**: local operations keep working and pending ops are kept; `ShellInfo`
+  has `auth_required`, and pairing again replaces the token for the same device.
+
+**Alternatives rejected**
+
+- An `x-shell` extension on each operation of `openapi.yaml` instead of `ops.json`: a diff in the frozen
+  file and a regeneration of three clients for a fact only the phone and the SPA read.
+- Answering an invalid `req` with `400`: needs a trustworthy `id` from a message already known to be
+  malformed; a correct SPA never sends one, so it is dropped and its timeout reports the bug.
+- Base64 bodies on the bridge for binary uploads and exports: a device token cannot import, and exports
+  belong to the web app; `415 shell_unsupported` keeps the bridge text-only.
+- An unpair that wipes the replica: today's native unpair keeps data so the same install can pair again;
+  a wipe is a separate, destructive action and is not offered.
+- Harness-applied `settings` in parity scenarios: two ways to seed one table; the seed log carries the
+  `settings.set` ops and `settings` is a checked index.
+- One seed device that is also the device under test: seeded reviews and locally minted reviews would
+  carry the same `device_id`, so the minting device could not be normalised.
+- A parity scenario per `local` operation in this ticket: only the scenarios ADR-036 makes mandatory
+  (plus empty replica and deleted parent) are here; the L tickets add theirs by change request.
+
+**Three choices most worth a second look**
+
+1. **A wrong device clock is reported as `422 validation_failed` at `/reviewed_at` for every write**
+   (`before_floor`, `before_card` or `in_future`; SHELL.md 4.1 rule L-3), also for a request that has no
+   `reviewed_at`. ADR-036 asks for the documented `422` codes; the cost is a pointer to a property the
+   request did not send. The alternative is a sixth shell code such as `409 shell_clock_wrong`, which is
+   clearer for the SPA but is not a server answer.
+2. **Creating a vocab note by `entry_seq` answers `503 shell_dict_missing` while no dictionary is
+   installed** (SHELL.md 10.7), even online, and deck entries without notes are then not counted in the
+   queue. The card kinds of a vocab note depend on the dictionary entry, so the alternatives are
+   forwarding to the server (breaks "local is always local") or creating a note whose cards may be wrong.
+3. **The parity `expect` values were written from the contract text, not from a running server.** They
+   are deliberately narrow (status, problem code, a few counts and lengths), but SHELL-P1 may find one
+   that the server does not produce — most likely in `queue-materialize-count`, `queue-learning-wait`
+   or the `reviewed_at` check order. That is then a `CONTRACT_CHANGE_REQUEST` against the scenario or a
+   server bug, never something to edit in the golden.
+
+Also worth knowing: a request that waits more than 20 s for the startup gate is answered
+`503 shell_rebuilding` rather than left to the SPA's 30 s timeout (SHELL.md 2.5); pairing an install
+that still holds data with a *different* server is not prevented (SHELL.md 13, same gap as today).
+
+**Verifying**: `contracts/api/check.sh` lints `shell/shell.yaml` and runs `shell/check_shell.py` (named
+checks listed at the top of that file, including negative self-tests).

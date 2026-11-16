@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shell parity scenario",
+  "description": "Inputs of one server-versus-shell parity scenario: a seed log, then requests run at fixed instants. The server's answers are the oracle (goldens are recorded by SHELL-P1 into fixtures/shell-parity/golden/<id>.json and are not part of this contract); the shell's LocalApi must give the same answers after the normalisation of SHELL.md 8.3. SHELL.md section 8 is normative for how both harnesses run a scenario.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "covers", "clock_ms", "device_id", "dict_entries", "settings", "seed", "operations", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "maxLength": 64,
+      "description": "Equals the file name without .json.",
+      "examples": ["queue-counts-keep-going"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One line: what the scenario shows.",
+      "examples": ["Queue counts are the same with and without keep going (ADR-033)"]
+    },
+    "covers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*\\.[a-z0-9_]+$"
+      },
+      "description": "Coverage tags `<area>.<case>`. The mandatory tags are listed in SHELL.md 8.4; check.sh fails when one of them is covered by no scenario.",
+      "examples": [["queue.counts_keep_going"]]
+    },
+    "narrative": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Human explanation, one step per line. Not used by harnesses."
+    },
+    "clock_ms": {
+      "$ref": "#/$defs/instant_ms",
+      "description": "The instant the seed is applied at: both harnesses set their injected clock to it while seeding. Every seed op has wall(hlc) <= clock_ms and every seeded reviewed_at <= clock_ms; every step has at_ms > clock_ms.",
+      "examples": [1795082400000]
+    },
+    "device_id": {
+      "$ref": "#/$defs/uuid",
+      "description": "The device under test: the paired device the steps run as. Server harness: a device registered with this id whose token (read, write, review) sends the step requests. Shell harness: sync_state.device_id of the store LocalApi runs on. Never the minting device of a seed op.",
+      "examples": ["01931f3e-0000-7000-8000-0000000000d4"]
+    },
+    "dict_entries": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1},
+      "description": "JMdict sequence numbers the scenario relies on (every entry_seq in the seed and in step bodies, every e:<seq> deck item). Each must exist in fixtures/dict/JMdict_subset.xml, the dictionary both harnesses load. Ascending.",
+      "examples": [[1000220, 1000440]]
+    },
+    "settings": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$"},
+      "description": "The effective settings after the seed, for the reader: key -> value. It is an index, not an input: harnesses do not apply it. check.sh requires it to equal the last-writer-wins fold of the seed log's settings.set ops (highest hlc per key); keys never set are absent and have their defaults (SCHEMA.md section 6).",
+      "examples": [{"scheduler.new_per_day": 1}]
+    },
+    "seed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "log"],
+      "description": "The state before the first step.",
+      "properties": {
+        "device_id": {
+          "$ref": "#/$defs/uuid",
+          "description": "The device that minted every seed op and every `apply` op (another paired device, 'A'). Differs from the scenario's device_id.",
+          "examples": ["01931f3e-0000-7000-8000-0000000000a1"]
+        },
+        "log": {
+          "type": "array",
+          "description": "Ops in pushed form (contracts/sync/op.schema.json without seq and caused_by_op_id), client-emittable types only, all minted by seed.device_id, in strictly increasing hlc order. May be empty (the empty replica). Server harness: POST /sync/push as seed.device_id, in order, every op must be `accepted`. Shell harness: applied in order through the core pull-apply path with seq = 1, 2, ... and caused_by_op_id = null.",
+          "items": {"$ref": "#/$defs/seed_op"}
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]+$"},
+      "description": "operationIds of ../openapi.yaml the request steps call, ascending. Derived (check.sh recomputes it from the steps); lets a harness skip a scenario whose operations are not implemented yet. Every one is `local` or `local_or_proxy` in ops.json.",
+      "examples": [["answerReview", "getReviewQueue"]]
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Run in order. at_ms never decreases.",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/request_step"},
+          {"$ref": "#/$defs/apply_step"}
+        ]
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "description": "Cross-step facts the golden must satisfy; checked by SHELL-P1 when it records and by SHELL-P2 on the shell's answers.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["equal"],
+        "properties": {
+          "equal": {
+            "type": "array",
+            "minItems": 2,
+            "description": "The values at these places (normalised response bodies) are equal as JSON. A pointer that does not resolve fails the invariant.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["step", "pointer"],
+              "properties": {
+                "step": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Index into `steps` (0-based) of a request step."
+                },
+                "pointer": {
+                  "$ref": "#/$defs/pointer",
+                  "description": "JSON Pointer into that step's response body; no `*`."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "instant_ms": {
+      "type": "integer",
+      "minimum": 1577836800000,
+      "maximum": 253402300799999,
+      "description": "Milliseconds since the Unix epoch, UTC; not before FLOOR (2020-01-01)."
+    },
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "RFC 6901 JSON Pointer. `\"\"` is the whole document.",
+      "examples": ["/counts/new"]
+    },
+    "seed_op": {
+      "type": "object",
+      "description": "One op. Validated by check.sh against contracts/sync/op.schema.json (envelope and payload), plus: no seq, no caused_by_op_id, emitter `client`, device_id = seed.device_id, entity_id derived as ops/index.json says.",
+      "required": ["op_id", "op_type", "op_version", "entity_type", "entity_id", "device_id", "hlc", "payload"],
+      "properties": {
+        "seq": false,
+        "caused_by_op_id": false
+      }
+    },
+    "request_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_ms", "request"],
+      "properties": {
+        "at_ms": {
+          "$ref": "#/$defs/instant_ms",
+          "description": "Both harnesses set their injected clock to this instant before sending the request and keep it there until the answer (server: the clock behind now(), HLC physical time and the queue's day; shell: the device clock)."
+        },
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "path", "query", "body"],
+          "description": "The request, in the shape of a bridge `req` (bridge.schema.json).",
+          "properties": {
+            "method": {
+              "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+              "description": "HTTP method."
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^/api/v1/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$",
+              "description": "Path under /api/v1 (shell operations are not parity-tested: they have no server side).",
+              "examples": ["/api/v1/review/queue"]
+            },
+            "query": {
+              "type": "string",
+              "pattern": "^([A-Za-z0-9._~!$&'()*+,;=:@%/-][A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$",
+              "description": "Raw query string without `?`; `\"\"` for none.",
+              "examples": ["keep_going=true"]
+            },
+            "body": {
+              "type": ["object", "null"],
+              "description": "JSON request body as a value, or null for none. Sent as compact JSON with `content-type: application/json`."
+            }
+          }
+        },
+        "ignore": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/pointer"},
+          "description": "JSON Pointers removed from this step's response body on both sides before comparing (SHELL.md 8.3 step 6). A reference token `*` matches every member of an object and every element of an array. Each entry needs a reason in `narrative`.",
+          "examples": [["/items/*/card/updated_at"]]
+        },
+        "expect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "description": "What the contract already fixes about the answer. SHELL-P1 fails to record a golden that contradicts it (then the scenario or the server is wrong: CONTRACT_CHANGE_REQUEST); SHELL-P2 gets it for free through the golden.",
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 599,
+              "description": "HTTP status."
+            },
+            "problem_code": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "description": "`Problem.code` of a non-2xx answer."
+            },
+            "field_error": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["pointer"],
+              "description": "`errors[]` contains an element with this pointer (and this code, when given).",
+              "properties": {
+                "pointer": {"$ref": "#/$defs/pointer"},
+                "code": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+              }
+            },
+            "body": {
+              "type": "object",
+              "propertyNames": {"$ref": "#/$defs/pointer"},
+              "description": "JSON Pointer -> the exact JSON value the response body has there."
+            },
+            "lengths": {
+              "type": "object",
+              "propertyNames": {"$ref": "#/$defs/pointer"},
+              "additionalProperties": {"type": "integer", "minimum": 0},
+              "description": "JSON Pointer -> length of the array there."
+            },
+            "absent": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/pointer"},
+              "description": "JSON Pointers that must not resolve (member omitted)."
+            }
+          }
+        }
+      }
+    },
+    "apply_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_ms", "apply"],
+      "description": "Ops of another device arrive between two requests. Server harness: POST /sync/push as seed.device_id with the clock at at_ms; every op must be `accepted`. Shell harness: applied through the core pull-apply path, seq continuing after the highest seq used so far.",
+      "properties": {
+        "at_ms": {"$ref": "#/$defs/instant_ms"},
+        "apply": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Ops as in seed.log, with wall(hlc) <= at_ms and hlc above every earlier op of seed.device_id.",
+          "items": {"$ref": "#/$defs/seed_op"}
+        }
+      }
+    }
+  }
+}

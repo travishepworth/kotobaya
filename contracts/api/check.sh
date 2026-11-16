@@ -13,6 +13,13 @@
 #   4. check_parser.py: token format 1 (token.schema.json), the token example built from
 #      fixtures/parse, the PARSER.md golden vectors, the C-11 snapshot examples' tokens, and
 #      SentenceToken/OverrideToken alignment.          (needs python3 + jsonschema, or uv)
+#   5. shell/ (SHELL-C1, ADR-036): shell/shell.yaml lints like openapi.yaml; shell/check_shell.py:
+#      every bridge example validates and every invalid one is rejected (bridge.schema.json),
+#      shell/ops.json maps every operationId of openapi.yaml exactly once and invents none,
+#      every parity seed op validates against contracts/sync/op.schema.json, the mandatory
+#      parity scenarios exist, SHELL.md's cross-check covers every learning-data table; plus
+#      negative self-tests (a removed operationId, an invented one, a broken seed op and a
+#      missing mandatory scenario must each fail).      (needs python3 + jsonschema, or uv)
 #
 # The push/pull bodies are contracts/sync/batch.schema.json#/$defs/* (owned by T005) and several
 # examples are copies of contracts/sync/examples/batches/*.json; both must be present.
@@ -27,6 +34,8 @@ REDOCLY="@redocly/cli@2.77.0"
 
 mkdir -p "$work/contracts/api" "$work/contracts/sync"
 cp "$here/openapi.yaml" "$here/redocly.yaml" "$here/worker-parse.yaml" "$here/token.schema.json" "$work/contracts/api/"
+mkdir -p "$work/contracts/api/shell"
+cp "$here/shell/shell.yaml" "$work/contracts/api/shell/"
 if [ ! -f "$root/contracts/sync/batch.schema.json" ]; then
   echo "contracts/sync/batch.schema.json not found: the API contract references it." >&2
   exit 1
@@ -55,6 +64,17 @@ elif command -v uv >/dev/null 2>&1; then
 else
   echo "contracts/api/check.sh: need python3 with the jsonschema package (>= 4.18), or uv" >&2
   exit 1
+fi
+
+echo "== lint shell/shell.yaml"
+npx --yes "$REDOCLY" lint shell/shell.yaml --config redocly.yaml --format stylish
+npx --yes "$REDOCLY" bundle shell/shell.yaml --config redocly.yaml -o "$work/shell.json" >/dev/null
+
+echo "== shell contract (SHELL-C1)"
+if python3 -c 'import jsonschema, referencing' >/dev/null 2>&1; then
+  python3 "$here/shell/check_shell.py" "$work/openapi.json" "$work/shell.json"
+else
+  uv run --no-project --with 'jsonschema>=4.18' python "$here/shell/check_shell.py" "$work/openapi.json" "$work/shell.json"
 fi
 
 echo "contracts/api: OK"

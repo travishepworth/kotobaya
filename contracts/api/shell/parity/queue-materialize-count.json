@@ -1,0 +1,166 @@
+{
+  "id": "queue-materialize-count",
+  "title": "Deck entries become notes inside getReviewQueue, bounded by the new-card budget (C-27)",
+  "covers": [
+    "queue.materialize_count"
+  ],
+  "narrative": [
+    "A user deck holds three entries without notes; new_per_day is 2.",
+    "Step 0: the fetch draws two entries and materializes them (server: as the server device; shell: minted by the device through OpMinter). Two new cards are served, to_materialize is 0.",
+    "Step 1: the same fetch again creates nothing more: the same two cards.",
+    "The created note and card ids differ between the sides and are renamed by the normalisation (<id1>...)."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440,
+    1000450
+  ],
+  "settings": {
+    "scheduler.new_per_day": 2
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7007-8000-000000000001",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 2
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7007-8000-000000000002",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000001",
+          "name": "Core words",
+          "type": "user"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7007-8000-000000000003",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000220",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1000220",
+          "position": 1024
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7007-8000-000000000004",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000440",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1000440",
+          "position": 2048
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7007-8000-000000000005",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000450",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1000450",
+          "position": 3072
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/to_materialize": 0,
+          "/counts/new": 2
+        },
+        "lengths": {
+          "/items": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/to_materialize": 0,
+          "/counts/new": 2
+        },
+        "lengths": {
+          "/items": 2
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/0/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/0/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/1/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/1/card/id"
+        }
+      ]
+    }
+  ]
+}

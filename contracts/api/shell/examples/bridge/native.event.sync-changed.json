@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "sync.changed",
+    "at": "2026-11-20T10:00:05.120Z",
+    "data": {
+      "high_water_seq": 48213,
+      "pending_ops": 1
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kotobaya shell bridge message",
+  "description": "One message on the WebMessageListener bridge `KotobayaShell` between the SvelteKit SPA (web) and the Android shell (native). SHELL.md section 2. Every message is one JSON text (a string passed to postMessage). The root schema accepts any message of protocol version 1, including message types this version does not know (receivers ignore them); `#/$defs/WebToNative` and `#/$defs/NativeToWeb` are the closed sets each side may SEND in LOCAL_API_VERSION 1. Unknown properties are allowed everywhere and ignored by receivers.",
+  "type": "object",
+  "required": ["v", "t"],
+  "properties": {
+    "v": {
+      "const": 1,
+      "description": "Bridge protocol version. Always 1. A message with any other value is dropped by the receiver."
+    },
+    "t": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+      "maxLength": 40,
+      "description": "Message type. A receiver drops a message whose `t` it does not know.",
+      "examples": ["req"]
+    }
+  },
+  "allOf": [
+    {"if": {"required": ["t"], "properties": {"t": {"const": "req"}}}, "then": {"$ref": "#/$defs/req"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "res"}}}, "then": {"$ref": "#/$defs/res"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "ready"}}}, "then": {"$ref": "#/$defs/ready"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "event"}}}, "then": {"$ref": "#/$defs/event"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "navigate"}}}, "then": {"$ref": "#/$defs/navigate"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "back"}}}, "then": {"$ref": "#/$defs/back"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "back.result"}}}, "then": {"$ref": "#/$defs/back_result"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "back.state"}}}, "then": {"$ref": "#/$defs/back_state"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "haptic"}}}, "then": {"$ref": "#/$defs/haptic"}},
+    {"if": {"required": ["t"], "properties": {"t": {"const": "theme"}}}, "then": {"$ref": "#/$defs/theme"}}
+  ],
+  "$defs": {
+    "WebToNative": {
+      "description": "Messages the SPA may send (window.KotobayaShell.postMessage).",
+      "allOf": [
+        {"$ref": "#"},
+        {"properties": {"t": {"enum": ["req", "ready", "back.result", "back.state", "haptic", "theme"]}}}
+      ]
+    },
+    "NativeToWeb": {
+      "description": "Messages the shell may send (JavaScriptReplyProxy.postMessage; received by window.KotobayaShell.onmessage).",
+      "allOf": [
+        {"$ref": "#"},
+        {"properties": {"t": {"enum": ["res", "event", "navigate", "back"]}}}
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Correlation id: a UUID in canonical lowercase text (any version; `crypto.randomUUID()` output qualifies). Unique among the ids its sender has used since the current page was loaded.",
+      "examples": ["7b1e3c52-9d0a-4f6e-8a51-2f4c8d1e9a01"]
+    },
+    "headers": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$",
+        "maxLength": 64
+      },
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 8192,
+        "pattern": "^[^\\r\\n\\u0000]*$"
+      },
+      "description": "HTTP header fields. Names are lower-case RFC 9110 tokens, each at most once; values are single-line strings. May be empty.",
+      "examples": [{"content-type": "application/json"}]
+    },
+    "req": {
+      "description": "web -> native. One API request (an operation of contracts/api/openapi.yaml under /api/v1, or of shell.yaml under /shell/v1). Answered by exactly one `res` with the same `id`.",
+      "required": ["id", "method", "path", "query", "headers", "body"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "method": {
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+          "description": "HTTP method, upper case."
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^/(api|shell)/v1/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$",
+          "allOf": [
+            {"not": {"pattern": "//"}},
+            {"not": {"pattern": "(^|/)\\.{1,2}(/|$)"}},
+            {"not": {"pattern": "%(2[eEfF]|5[cC]|00)"}}
+          ],
+          "description": "Absolute path as the generated client built it: starts with `/api/v1/` or `/shell/v1/`, path parameters percent-encoded, no query, no fragment, no empty segment, no `.` or `..` segment, no encoded dot, slash, backslash or NUL.",
+          "examples": ["/api/v1/review/answer"]
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 8192,
+          "pattern": "^([A-Za-z0-9._~!$&'()*+,;=:@%/-][A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$",
+          "description": "Raw query string exactly as it would follow `?` in a URL (percent-encoded), without the `?`. `\"\"` when there is none.",
+          "examples": ["limit=20&keep_going=true"]
+        },
+        "headers": {"$ref": "#/$defs/headers"},
+        "body": {
+          "type": ["string", "null"],
+          "maxLength": 4194304,
+          "description": "Request body text, or null for none. MUST be null for GET. The normative limit is 4194304 bytes of UTF-8 (SHELL.md 2.4); this maxLength is only the matching upper bound in characters."
+        }
+      }
+    },
+    "res": {
+      "description": "native -> web. The response to the `req` with the same `id`.",
+      "required": ["id", "status", "headers", "body"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "status": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 599,
+          "description": "HTTP status code.",
+          "examples": [200]
+        },
+        "headers": {"$ref": "#/$defs/headers"},
+        "body": {
+          "type": ["string", "null"],
+          "description": "Response body text, or null for none (always null for 204 and 304)."
+        }
+      }
+    },
+    "ready": {
+      "description": "web -> native. Sent exactly once per page load, after hydration, before any other message of that page except `req`.",
+      "required": ["web_version", "min_local_api"],
+      "properties": {
+        "web_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+_-]*$",
+          "description": "`web_version` of the running bundle's shell-manifest.json.",
+          "examples": ["0.1.26"]
+        },
+        "min_local_api": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Lowest LOCAL_API_VERSION the bundle works with (shell-manifest.json `min_local_api`).",
+          "examples": [1]
+        }
+      }
+    },
+    "event": {
+      "description": "native -> web. One event: replaces the SSE stream of GET /api/v1/events in shell mode.",
+      "required": ["event"],
+      "properties": {
+        "event": {
+          "type": "object",
+          "required": ["type", "at", "data"],
+          "description": "The `Event` envelope of openapi.yaml. `type` is one of `hello`, `sync.changed`, `note.created`, `shell.connectivity`, `shell.state_changed` in LOCAL_API_VERSION 1 (payloads: SHELL.md 2.6, shell.yaml `ShellEvent*`); receivers ignore other types.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+              "maxLength": 40,
+              "description": "Event type.",
+              "examples": ["sync.changed"]
+            },
+            "at": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+              "description": "When the shell produced the event: RFC 3339 UTC, millisecond precision, device clock.",
+              "examples": ["2026-11-20T10:00:00.000Z"]
+            },
+            "data": {
+              "type": "object",
+              "description": "Payload; schema by `type`."
+            }
+          }
+        }
+      }
+    },
+    "navigate": {
+      "description": "native -> web. Go to an SPA route (widget, tile, notification, deep link, share intake). The SPA calls `goto(path)`.",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^/[A-Za-z0-9\\-._~/?&=%+]*$",
+          "not": {"pattern": "//"},
+          "description": "SPA path with optional query, from the table in SHELL.md 6.1. No scheme, no host, no fragment, no `//`.",
+          "examples": ["/review"]
+        }
+      }
+    },
+    "back": {
+      "description": "native -> web. The user pressed or swiped Back. Answered by `back.result` with the same `id` within 300 ms.",
+      "required": ["id"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "back_result": {
+      "description": "web -> native. Outcome of the `back` with the same `id`.",
+      "required": ["id", "handled"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "handled": {
+          "type": "boolean",
+          "description": "true = the SPA consumed the back press; false = the shell performs the system default (leave the app)."
+        }
+      }
+    },
+    "back_state": {
+      "description": "web -> native. Whether the SPA currently has something to do on Back. Sent after `ready` and on every route or overlay change that alters the value (re-sending an unchanged value is allowed).",
+      "required": ["can_handle"],
+      "properties": {
+        "can_handle": {
+          "type": "boolean",
+          "description": "false only when the SPA would answer `handled: false` (Home, nothing open)."
+        }
+      }
+    },
+    "haptic": {
+      "description": "web -> native. Play a haptic effect. Fire-and-forget.",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["tick", "confirm", "reject"],
+          "description": "tick = light selection feedback; confirm = positive; reject = negative."
+        }
+      }
+    },
+    "theme": {
+      "description": "web -> native. Colours for the system bars. Sent after `ready` and whenever the SPA theme changes.",
+      "required": ["dark", "surface"],
+      "properties": {
+        "dark": {
+          "type": "boolean",
+          "description": "true = dark theme (light system-bar icons)."
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Background colour for the status and navigation bars, `#rrggbb`.",
+          "examples": ["#101418"]
+        }
+      }
+    }
+  }
+}

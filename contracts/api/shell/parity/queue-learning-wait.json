@@ -1,0 +1,115 @@
+{
+  "id": "queue-learning-wait",
+  "title": "Only a not-yet-due learning card is left: empty items and next_learning_due_at (ADR-033)",
+  "covers": [
+    "queue.learning_wait"
+  ],
+  "narrative": [
+    "The only card was answered Again 5 s before the scenario clock, so it sits in the first learning step (60 s).",
+    "Step 0, 1 s later: nothing may be served (no learn-ahead). items is empty, more_available is false, next_learning_due_at is the card's due time.",
+    "Step 1, 1 s after that due time: the card is served."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f865f978-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1795168795000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 1,
+          "button": "again",
+          "duration_ms": 3000
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 1,
+            "review": 0
+          },
+          "/more_available": false,
+          "/next_learning_due_at": "2026-11-20T10:00:55.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168856000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        },
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010"
+        }
+      }
+    }
+  ]
+}

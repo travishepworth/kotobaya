@@ -1,0 +1,225 @@
+{
+  "id": "create-note-duplicate-retry",
+  "title": "createNote: duplicate reference, return_existing, same-id retry, unknown property",
+  "covers": [
+    "notes.create_duplicate",
+    "notes.create_retry_same_id",
+    "notes.create_unknown_property"
+  ],
+  "narrative": [
+    "A live vocab note already references entry 1000390.",
+    "Step 0: creating another note for that entry: 409 already_exists naming the existing note; nothing minted.",
+    "Step 1: the same with on_duplicate=return_existing: 200 with the existing note.",
+    "Step 2: a note for another entry with client id X: 201. Step 3: the same id again with a different body: 200, the note of step 2, nothing minted.",
+    "Step 4: an unknown property: 422 unknown_field at /colour. Step 5: a kanji note (the literal need not be in the dictionary): 201.",
+    "Step 6: the same kanji again under a new id: 409 already_exists."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000390,
+    1000440,
+    1000450
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-700e-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000390
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700e-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "createNote"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000390
+        }
+      },
+      "expect": {
+        "status": 409,
+        "problem_code": "already_exists",
+        "body": {
+          "/existing_id": "0193a1b2-0001-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "on_duplicate=return_existing",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000390
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193a1b2-0001-7000-8000-000000000001",
+          "/entry_seq": 1000390
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220,
+          "tags": [
+            "mined"
+          ],
+          "origin": "reader"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000002",
+          "/entry_seq": 1000220,
+          "/tags": [
+            "mined"
+          ]
+        },
+        "lengths": {
+          "/cards": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440,
+          "tags": [
+            "other"
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000002",
+          "/entry_seq": 1000220,
+          "/tags": [
+            "mined"
+          ]
+        },
+        "lengths": {
+          "/cards": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000450,
+          "colour": "red"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/colour",
+          "code": "unknown_field"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000004",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "績"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000004",
+          "/kanji_literal": "績"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000005",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "績"
+        }
+      },
+      "expect": {
+        "status": 409,
+        "problem_code": "already_exists",
+        "body": {
+          "/existing_id": "0193b000-0001-7000-8000-000000000004"
+        }
+      }
+    }
+  ]
+}

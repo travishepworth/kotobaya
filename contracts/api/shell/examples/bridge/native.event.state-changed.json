@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "shell.state_changed",
+    "at": "2026-11-20T10:01:02.000Z",
+    "data": {
+      "resource": "sync_status"
+    }
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "id": "reading-retired-reenabled",
+  "title": "Reading cards are retired by default and come back with the setting (ADR-035)",
+  "covers": [
+    "cards.reading_retired",
+    "cards.reading_reenabled",
+    "notes.create_no_reading_card"
+  ],
+  "narrative": [
+    "A vocab note has a meaning and a reading card, both new. cards.reading_enabled is absent, so the reading card is retired.",
+    "Step 0: only the meaning card is served and counted.",
+    "Step 1: createNote asking for meaning and reading creates only the meaning card.",
+    "Step 2: cards.reading_enabled is set true. Step 3: the queue now also holds reading cards that exist; the note of step 1 got no reading card (no backfill).",
+    "Step 4: createNote with the setting on creates both cards.",
+    "Step 5-6: the setting is turned off again; the queue is as for a replica that never had it on, plus the new notes' meaning cards."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440,
+    1000450
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7006-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7006-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7006-8000-000000000003",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000011",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0002-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000011",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "reading"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "createNote",
+    "getReviewQueue",
+    "updateSettings"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/counts/new": 1,
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010"
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440,
+          "card_kinds": [
+            "meaning",
+            "reading"
+          ]
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000001",
+          "/cards/0/kind": "meaning"
+        },
+        "lengths": {
+          "/cards": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/settings",
+        "query": "",
+        "body": {
+          "values": {
+            "cards.reading_enabled": true
+          }
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000450,
+          "card_kinds": [
+            "meaning",
+            "reading"
+          ]
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000002"
+        },
+        "lengths": {
+          "/cards": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/settings",
+        "query": "",
+        "body": {
+          "values": {
+            "cards.reading_enabled": false
+          }
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/counts/new": 3
+        },
+        "lengths": {
+          "/items": 3
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "id": "empty-replica",
+  "title": "A paired device that has pulled nothing: every local read answers, nothing is 500",
+  "covers": [
+    "replica.empty"
+  ],
+  "narrative": [
+    "No seed op at all: only the built-in rows (note types, Default preset) exist.",
+    "Step 0: the queue is empty, counts are zero, nothing more is available.",
+    "Step 1: answering an unknown card is 404; step 2: undoing an unknown review is 404.",
+    "Step 3: keep going on the empty replica is still empty."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": []
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue",
+    "undoReview"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 0,
+            "review": 0
+          },
+          "/more_available": false,
+          "/to_materialize": 0,
+          "/study_day": "2026-11-20",
+          "/day_ends_at": "2026-11-21T04:00:00.000Z"
+        },
+        "absent": [
+          "/next_learning_due_at"
+        ]
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193b000-00ee-7000-8000-00000000dead",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good"
+        }
+      },
+      "expect": {
+        "status": 404,
+        "problem_code": "not_found"
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {
+          "review_id": "0193b000-00ee-7000-8000-00000000dead"
+        }
+      },
+      "expect": {
+        "status": 404,
+        "problem_code": "not_found"
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "keep_going=true",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": [],
+          "/more_available": false
+        }
+      }
+    }
+  ]
+}

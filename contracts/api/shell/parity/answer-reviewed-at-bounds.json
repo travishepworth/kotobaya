@@ -1,0 +1,157 @@
+{
+  "id": "answer-reviewed-at-bounds",
+  "title": "reviewed_at is refused when in the future, before the 2020 floor, or more than 24 h before the card",
+  "covers": [
+    "answer.reviewed_at_in_future",
+    "answer.reviewed_at_before_floor",
+    "answer.reviewed_at_before_card"
+  ],
+  "narrative": [
+    "The card was created one hour before the scenario clock. Each refused request names /reviewed_at; the check order is in_future, before_floor, before_card.",
+    "Step 0: 5 min 1 s after now: in_future. Step 1: 2019-12-31T23:59:59.999Z: before_floor (also before the card; the floor is checked first).",
+    "Step 2: 24 h 1 s before the card's created_at: before_card. Step 3: 23 h before created_at: accepted (late submission).",
+    "'now' is the injected clock: the server's on the server, the device's in the shell (rule L-5)."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-700b-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700b-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good",
+          "reviewed_at": "2026-11-20T10:05:02.000Z"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/reviewed_at",
+          "code": "in_future"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good",
+          "reviewed_at": "2019-12-31T23:59:59.999Z"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/reviewed_at",
+          "code": "before_floor"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good",
+          "reviewed_at": "2026-11-19T08:59:59.000Z"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/reviewed_at",
+          "code": "before_card"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000004",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good",
+          "reviewed_at": "2026-11-19T10:00:00.000Z"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/reviewed_at": "2026-11-19T10:00:00.000Z"
+        }
+      }
+    }
+  ]
+}

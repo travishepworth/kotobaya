@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "t": "req",
+  "id": "7b1e3c52-9d0a-4f6e-8a51-2f4c8d1e9a02",
+  "method": "POST",
+  "path": "/api/v1/review/answer",
+  "query": "",
+  "headers": {
+    "content-type": "application/json",
+    "x-request-id": "0193a1b2-7000-7000-8000-00000000e002"
+  },
+  "body": "{\"id\":\"01931f41-0000-7000-8000-000000000f01\",\"card_id\":\"01931f40-1a2b-7c3d-8e4f-000000000c01\",\"rating\":3,\"button\":\"good\",\"duration_ms\":4200,\"utc_offset_min\":540}"
+}

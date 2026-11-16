@@ -1,0 +1,227 @@
+{
+  "id": "undo-twice-unknown",
+  "title": "undoReview twice mints once; an unknown review_id is 404; another device's review can be undone",
+  "covers": [
+    "undo.twice",
+    "undo.unknown_review",
+    "undo.other_device_review"
+  ],
+  "narrative": [
+    "Step 0: card 1 is answered Good with review id R1. Step 1: R1 is undone: the card is new again.",
+    "Step 2: the same undo again: 200 with the current state, no second review.undone.",
+    "Step 3: an unknown review_id: 404 not_found. Step 4: a body without review_id: 422 (required, /review_id).",
+    "Step 5: the review device A logged on card 2 is undone from this device."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-700d-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83000-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700d-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83000-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700d-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83001-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700d-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f7f83001-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-700d-8000-000000000005",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000009",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000009",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1795165200000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 3,
+          "button": "good",
+          "duration_ms": 3000
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "undoReview"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 3,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "good"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {
+          "review_id": "0193b000-0003-7000-8000-000000000001"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/id": "0193b000-0003-7000-8000-000000000001",
+          "/card/state": "new"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {
+          "review_id": "0193b000-0003-7000-8000-000000000001"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/id": "0193b000-0003-7000-8000-000000000001",
+          "/card/state": "new"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {
+          "review_id": "0193b000-00ee-7000-8000-00000000dead"
+        }
+      },
+      "expect": {
+        "status": 404,
+        "problem_code": "not_found"
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/review_id",
+          "code": "required"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/undo",
+        "query": "",
+        "body": {
+          "review_id": "0193a1b2-0003-7000-8000-000000000009"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/id": "0193a1b2-0003-7000-8000-000000000009",
+          "/card/state": "new"
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 1,
+          "pointer": "/review/undone_at"
+        },
+        {
+          "step": 2,
+          "pointer": "/review/undone_at"
+        }
+      ]
+    }
+  ]
+}

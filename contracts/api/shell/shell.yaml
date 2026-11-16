@@ -1,0 +1,1281 @@
+openapi: 3.1.0
+info:
+  title: Kotobaya shell API
+  version: 1.0.0
+  summary: Operations only the Android shell answers (`/shell/v1`). Contract of SHELL-C1 (ADR-036).
+  license:
+    name: Proprietary (personal project)
+    identifier: LicenseRef-Kotobaya-Personal
+  description: |
+    The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell
+    over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path
+    starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says.
+    Requests whose path starts with `/shell/v1/` are the 16 operations of this file: device state
+    that has no server equivalent (pairing, sync status, dictionary install, storage,
+    notifications, push, AnkiConnect).
+
+    These operations never travel over HTTP. There is no socket: `servers[0].url` is only the path
+    prefix the generated client puts in the bridge `req.path`. `SHELL.md` is normative for
+    everything this file does not say (transport, limits, readiness, events).
+
+    ## Conventions
+
+    The conventions of `../openapi.yaml` section 1 apply unchanged: JSON, `snake_case`, unknown
+    request properties and unknown query parameters are `422 validation_failed`
+    (`errors[].code = unknown_field`), clients ignore unknown response properties and treat unknown
+    enum values as "other", instants are RFC 3339 UTC with milliseconds, `PATCH` semantics for
+    absent properties ("leave unchanged").
+
+    ## Who may call
+
+    Only the SPA in the shell's WebView (the bridge is origin-restricted, `SHELL.md` 2.1), so no
+    credential is sent and every operation has `security: []`. What matters instead is whether the
+    device is **paired** (a device token is stored):
+
+    - `getShellInfo` and `pairShell` work unpaired.
+    - Every other operation answers `401 unauthenticated` while unpaired, before anything else.
+
+    The device token is never part of any request or response of this API.
+
+    ## Errors
+
+    Every non-2xx answer is `application/problem+json` with the `Problem` schema of
+    `../openapi.yaml` (referenced, not copied). Besides the codes of that file's error table, the
+    shell uses the codes of `SHELL.md` section 5:
+
+    | Status | `code` | When |
+    |---|---|---|
+    | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). |
+    | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. |
+    | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. |
+    | 503 | `shell_dict_missing` | A dictionary read with no dictionary installed and no connection. |
+    | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |
+
+    Shell operations never mint sync ops and never change learning data.
+
+    ## Events
+
+    Shell state changes are announced by bridge `event` messages (`SHELL.md` 2.6); their payloads
+    are the `ShellEvent*` schemas below, `ShellSyncStatus` (`shell.sync`) and `ShellDictInstall`
+    (`shell.dict`).
+  contact:
+    name: Kotobaya
+    url: https://kotobaya.invalid/api/docs
+servers:
+  - url: /shell/v1
+    description: Path prefix inside the bridge. Not an HTTP endpoint.
+tags:
+  - {name: shell, description: 'Shell identity, pairing and sync.'}
+  - {name: device, description: 'Device features: dictionary package, storage, notifications, push, AnkiConnect.'}
+paths:
+  /info:
+    get:
+      operationId: getShellInfo
+      tags: [shell]
+      summary: What this shell is and can do.
+      description: |
+        The first call the SPA makes after it sees `window.KotobayaShell`. Works unpaired, never
+        waits for the readiness gate (SHELL.md 2.5) and never answers `shell_rebuilding`. Reads
+        nothing from the replica. The UI gates features on `capabilities`, never on "is Android".
+      security: []
+      responses:
+        '200':
+          description: Shell information.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellInfo'}
+              examples:
+                paired: {$ref: '#/components/examples/ShellInfoPaired'}
+                unpaired: {$ref: '#/components/examples/ShellInfoUnpaired'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /pair:
+    post:
+      operationId: pairShell
+      tags: [shell]
+      summary: Pair this install with a server.
+      description: |
+        Works unpaired; never waits for the readiness gate. The shell calls `POST /devices/pair`
+        (`pairDevice` of `../openapi.yaml`) on the given server with this install's `device_id`
+        (the stored `sync_state.device_id`, or a fresh UUIDv7 on a new install) and, when it has
+        one, its `hlc_last`; stores the returned device token in the Keystore-backed `TokenStore`;
+        and starts a sync. The token never appears in the response.
+
+        Send **either** `uri` (a `kotobaya://pair?server=...&code=...` URI: scanned, pasted, or
+        delivered by the deep link as `/login?pair=`) **or** `server_url` and `code`. Sending both
+        forms, or neither, is `422 validation_failed` (`errors[0].code = conflicting_fields` or
+        `required`, pointer `/uri`).
+
+        Outcomes, in check order:
+        1. Already paired and `auth_required` is false: `409 already_exists` with `existing_id`
+           = the current `device_id`. Nothing changes; unpair first. (Paired with
+           `auth_required: true` - the server revoked the token - is allowed: the new token
+           replaces the old one for the same `device_id`, SHELL.md 9.2.)
+        2. Body invalid (unknown property, malformed `uri`, `server_url` not an absolute
+           `http`/`https` URL, code not 8 Crockford characters after removing hyphens and
+           spaces): `422 validation_failed`.
+        3. Offline, connect failure or timeout: `503 shell_offline`.
+        4. Any problem the server answers (`401 invalid_pairing_code`, `422` with
+           `hlc_regressed`, `429 rate_limited` with `Retry-After`): passed through unchanged.
+           On `hlc_regressed` the shell does not retry with a new identity by itself.
+        5. `200` with the new `ShellInfo` (`paired: true`). A `shell.sync` event follows.
+
+        Not idempotent: a pairing code is single-use. A retry after a lost response sees case 1,
+        which the SPA treats as success when `existing_id` is a paired device (it re-reads
+        `getShellInfo`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellPairRequest'}
+            examples:
+              uri:
+                summary: Scanned or pasted pairing URI
+                value: {uri: 'kotobaya://pair?server=https%3A%2F%2Fkotobaya.example.net%2Fapi%2Fv1&code=K7Q2M9XD'}
+              typed:
+                summary: Server URL and code typed by hand
+                value: {server_url: 'https://kotobaya.example.net/api/v1', code: K7Q2-M9XD, name: Pixel 9}
+      responses:
+        '200':
+          description: Paired.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellInfo'}
+              examples:
+                paired: {$ref: '#/components/examples/ShellInfoPaired'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /unpair:
+    post:
+      operationId: unpairShell
+      tags: [shell]
+      summary: Forget the device token.
+      description: |
+        Deletes the stored device token and nothing else: the local replica, the pending ops, the
+        cached blobs, the dictionary and `sync_state.device_id` are kept, so the same intact
+        install can pair again and push what it still holds (SYNC.md 3.3). It does not call the
+        server (revoking the device is an `admin` operation of the web app).
+
+        - Pending ops exist (`ShellSyncStatus.pending_ops > 0`) and `force` is not `true`:
+          `409 shell_pending_ops`; nothing is deleted. The SPA asks the user and repeats with
+          `force: true`, or syncs first.
+        - Already unpaired: `401 unauthenticated`, like every operation except `getShellInfo` and
+          `pairShell`. A retry after a lost response therefore sees `401`, which the SPA treats
+          as "unpaired" (it re-reads `getShellInfo`).
+        - Otherwise `200` with `paired: false`; a `shell.sync` event follows and every later
+          `/api/v1` request answers `401 unauthenticated`.
+
+        The body may be omitted (`body: null`), which means `{"force": false}`.
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellUnpairRequest'}
+            examples:
+              force:
+                summary: Unpair although changes are still unsynced
+                value: {force: true}
+      responses:
+        '200':
+          description: Unpaired.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellInfo'}
+              examples:
+                unpaired: {$ref: '#/components/examples/ShellInfoUnpaired'}
+        '409': {$ref: '#/components/responses/ShellProblem'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /sync:
+    get:
+      operationId: getSyncStatus
+      tags: [shell]
+      summary: Sync status of this device.
+      description: |
+        What the sync chip shows. Never waits for the readiness gate and never answers
+        `shell_rebuilding` (it is how the SPA learns about a rebuild). The same object is pushed as
+        the `shell.sync` event whenever any property changes (at most once per second, the last
+        state always delivered), so the SPA calls this once and then listens.
+      security: []
+      responses:
+        '200':
+          description: Current status.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellSyncStatus'}
+              examples:
+                idle: {$ref: '#/components/examples/ShellSyncStatusIdle'}
+                offline_pending: {$ref: '#/components/examples/ShellSyncStatusOfflinePending'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    post:
+      operationId: syncNow
+      tags: [shell]
+      summary: Start a sync cycle now.
+      description: |
+        Asks the sync engine for a push + pull cycle and answers at once with the status at that
+        moment (`202`); progress and the result arrive as `shell.sync` events. A cycle already
+        running is not restarted (`202`, same status). Offline (`online: false`):
+        `503 shell_offline`, nothing started. No request body.
+      security: []
+      responses:
+        '202':
+          description: A cycle is running.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellSyncStatus'}
+              examples:
+                syncing: {$ref: '#/components/examples/ShellSyncStatusSyncing'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /dict:
+    get:
+      operationId: getDictInstall
+      tags: [device]
+      summary: State of the on-device dictionary package.
+      description: |
+        Whether the dictionary package is installed (which decides `local_or_proxy` operations,
+        SHELL.md rule L-7) and how far a running install is. Pushed as the `shell.dict` event
+        while an install runs (at most twice per second) and when it ends.
+      security: []
+      responses:
+        '200':
+          description: Dictionary install state.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellDictInstall'}
+              examples:
+                installed: {$ref: '#/components/examples/ShellDictInstallInstalled'}
+                downloading: {$ref: '#/components/examples/ShellDictInstallDownloading'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /dict/install:
+    post:
+      operationId: startDictInstall
+      tags: [device]
+      summary: Download and install (or update) the dictionary package.
+      description: |
+        Starts the installer for the server's current dictionary release and answers at once
+        (`202`) with the state at that moment. While an install is running a second call starts
+        nothing and answers `202` with the running state (so retries are safe). `scope`, when
+        sent, is stored as the chosen package scope first. Offline: `503 shell_offline`, nothing
+        started. The outcome is reported in `last_result` (`up_to_date` when nothing was needed).
+        The body may be omitted.
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellDictInstallRequest'}
+            examples:
+              all:
+                summary: Install the full package
+                value: {scope: all}
+      responses:
+        '202':
+          description: An install is running.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellDictInstall'}
+              examples:
+                downloading: {$ref: '#/components/examples/ShellDictInstallDownloading'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /storage:
+    get:
+      operationId: getStorage
+      tags: [device]
+      summary: Offline storage use and audio prefetch settings.
+      security: []
+      responses:
+        '200':
+          description: Storage breakdown and settings.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellStorage'}
+              examples:
+                default: {$ref: '#/components/examples/ShellStorage'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    patch:
+      operationId: updateStorage
+      tags: [device]
+      summary: Change prefetch settings or clear the blob cache.
+      description: |
+        Device-local preferences (not synced, no op). Absent properties are left unchanged; a body
+        with no property is `422` (`errors[0].code = required`, `pointer` `""`). `clear_cache: true`
+        deletes every cached blob (card audio, media audio, covers; never the dictionary or the
+        replica) after the other properties are stored; cached blobs are re-downloaded on demand.
+        Answers with the state after the change.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellStoragePatch'}
+            examples:
+              budget:
+                summary: Smaller audio budget, Wi-Fi only
+                value: {budget_mb: 200, allow_metered: false}
+              clear:
+                summary: Clear the cache
+                value: {clear_cache: true}
+      responses:
+        '200':
+          description: Storage after the change.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellStorage'}
+              examples:
+                default: {$ref: '#/components/examples/ShellStorage'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /notifications:
+    get:
+      operationId: getNotificationState
+      tags: [device]
+      summary: Notification permission and reminder preferences.
+      security: []
+      responses:
+        '200':
+          description: Notification state.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellNotificationState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellNotificationState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    patch:
+      operationId: updateNotificationPrefs
+      tags: [device]
+      summary: Change reminder preferences.
+      description: |
+        Device-local preferences (not synced, no op). Absent properties are left unchanged;
+        `evening_hour: null` turns the evening reminder off. Does not request the permission:
+        turning `nudges_enabled` on while `permission` is not `granted` is stored and has no
+        visible effect until the permission is granted. Answers with the state after the change.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellNotificationPrefsPatch'}
+            examples:
+              on:
+                summary: Nudge at 50 due cards and at 21:00
+                value: {nudges_enabled: true, nudge_threshold: 50, evening_hour: 21}
+      responses:
+        '200':
+          description: Notification state after the change.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellNotificationState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellNotificationState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /notifications/permission:
+    post:
+      operationId: requestNotificationPermission
+      tags: [device]
+      summary: Show the system notification permission dialog.
+      description: |
+        On Android 13+ (API 33) with the permission not granted, launches the system dialog and
+        answers when the user has chosen, **or after 25 seconds** with the state at that moment
+        (the dialog may still be open; the SPA reads `getNotificationState` again when its page
+        becomes visible). On older Android, or when already granted, answers `200` at once
+        without launching anything. When the system no longer shows the dialog (denied twice),
+        the answer is `permission: denied` and `can_request: false`; the SPA then points the user
+        at the system settings. No request body. Safe to repeat.
+      security: []
+      responses:
+        '200':
+          description: Notification state after the dialog (or after the 25 s limit).
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellNotificationState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellNotificationState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /push:
+    get:
+      operationId: getPushState
+      tags: [device]
+      summary: UnifiedPush registration state.
+      security: []
+      responses:
+        '200':
+          description: Push state.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellPushState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellPushState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    patch:
+      operationId: updatePushState
+      tags: [device]
+      summary: Enable, retry or disable push.
+      description: |
+        `enabled: true` registers with the installed UnifiedPush distributor (also the "retry"
+        action: sending it again while `state` is `waiting` registers again); `enabled: false`
+        unregisters. The endpoint reaches the server through the shell's own `PATCH /devices/self`
+        when it is online; that call is not part of this operation and its failure does not fail
+        it. Answers with the state after the change (`no_distributor` when none is installed).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellPushPatch'}
+            examples:
+              enable:
+                summary: Enable push
+                value: {enabled: true}
+      responses:
+        '200':
+          description: Push state after the change.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellPushState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellPushState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+  /ankiconnect:
+    get:
+      operationId: getAnkiConnectState
+      tags: [device]
+      summary: On-device AnkiConnect server settings and status.
+      description: |
+        The loopback AnkiConnect-compatible server other apps on the phone mine into (unrelated to
+        `POST /api/v1/ankiconnect`, which is `hidden` in the shell).
+      security: []
+      responses:
+        '200':
+          description: AnkiConnect state.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellAnkiConnectState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellAnkiConnectState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    patch:
+      operationId: updateAnkiConnectState
+      tags: [device]
+      summary: Change the on-device AnkiConnect server settings.
+      description: |
+        Device-local preferences (not synced, no op). Absent properties are left unchanged. The
+        server is restarted with the new settings before the answer; when it cannot start (port
+        in use) the settings are still stored and the answer is `200` with `status: failed` and
+        `status_message`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellAnkiConnectPatch'}
+            examples:
+              enable:
+                summary: Turn it on at the default port
+                value: {enabled: true, port: 8765}
+      responses:
+        '200':
+          description: AnkiConnect state after the change.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellAnkiConnectState'}
+              examples:
+                default: {$ref: '#/components/examples/ShellAnkiConnectState'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+components:
+  responses:
+    ShellProblem:
+      description: |
+        Any error. `Problem` of `../openapi.yaml`; codes in that file's error table plus the shell
+        codes of SHELL.md section 5. `503 shell_rebuilding` carries `Retry-After: 2`.
+      headers:
+        Retry-After:
+          description: Seconds to wait before repeating; sent with `shell_rebuilding` (always `2`) and passed through from the server (`429`).
+          schema: {type: integer, minimum: 1}
+          example: 2
+      content:
+        application/problem+json:
+          schema: {$ref: '../openapi.yaml#/components/schemas/Problem'}
+          examples:
+            unauthenticated:
+              summary: Not paired
+              value:
+                type: urn:kotobaya:problem:unauthenticated
+                title: Not authenticated
+                status: 401
+                code: unauthenticated
+                detail: This device is not paired.
+                instance: /shell/v1/sync
+                request_id: 0193a1b2-7000-7000-8000-00000000e010
+            shell_offline:
+              summary: Needs the server
+              value:
+                type: urn:kotobaya:problem:shell_offline
+                title: Offline
+                status: 503
+                code: shell_offline
+                detail: This needs a connection to the server.
+                instance: /shell/v1/dict/install
+                request_id: 0193a1b2-7000-7000-8000-00000000e011
+            shell_dict_missing:
+              summary: No dictionary installed and no connection
+              value:
+                type: urn:kotobaya:problem:shell_dict_missing
+                title: Dictionary not installed
+                status: 503
+                code: shell_dict_missing
+                detail: Install the dictionary or connect to the server.
+                instance: /api/v1/dict/search
+                request_id: 0193a1b2-7000-7000-8000-00000000e012
+            shell_rebuilding:
+              summary: Replica rebuild in progress
+              value:
+                type: urn:kotobaya:problem:shell_rebuilding
+                title: Rebuilding local data
+                status: 503
+                code: shell_rebuilding
+                detail: Local data is being rebuilt. Try again shortly.
+                instance: /api/v1/review/queue
+                request_id: 0193a1b2-7000-7000-8000-00000000e013
+            shell_unsupported:
+              summary: The bridge cannot carry it
+              value:
+                type: urn:kotobaya:problem:shell_unsupported
+                title: Not supported in the app
+                status: 415
+                code: shell_unsupported
+                detail: Request bodies must be JSON of at most 4194304 bytes.
+                instance: /api/v1/blobs/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+                request_id: 0193a1b2-7000-7000-8000-00000000e014
+            shell_pending_ops:
+              summary: Unpair refused, changes still unsynced
+              value:
+                type: urn:kotobaya:problem:shell_pending_ops
+                title: Unsynced changes
+                status: 409
+                code: shell_pending_ops
+                detail: 3 changes have not been synced yet.
+                instance: /shell/v1/unpair
+                request_id: 0193a1b2-7000-7000-8000-00000000e015
+            hidden:
+              summary: An operation of class hidden
+              value:
+                type: urn:kotobaya:problem:insufficient_scope
+                title: Insufficient scope
+                status: 403
+                code: insufficient_scope
+                detail: Not available in the app.
+                instance: /api/v1/tokens
+                request_id: 0193a1b2-7000-7000-8000-00000000e016
+                required_scope: admin
+  schemas:
+    ShellInfo:
+      type: object
+      description: Identity, pairing state and capabilities of the shell.
+      required: [shell_version, shell_version_code, local_api_version, paired, auth_required, server_url, device_id, device_name, online, capabilities, web_version, web_source]
+      properties:
+        shell_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The APK's `versionName`.
+          examples: ['0.2.0']
+        shell_version_code:
+          type: integer
+          minimum: 1
+          description: The APK's `versionCode`.
+          examples: [29]
+        local_api_version:
+          type: integer
+          minimum: 1
+          description: '`LOCAL_API_VERSION` of this shell (SHELL.md section 7). The SPA refuses to run when its own `min_local_api` is higher.'
+          examples: [1]
+        paired:
+          type: boolean
+          description: A device token is stored. While false every operation except `getShellInfo` and `pairShell` answers `401 unauthenticated`.
+          examples: [true]
+        auth_required:
+          type: boolean
+          description: The server answered `401` to the stored token (revoked or expired, SHELL.md 9.2). Local operations keep working and pending ops are kept; `pairShell` replaces the token. Always false while unpaired.
+          examples: [false]
+        server_url:
+          type: [string, 'null']
+          maxLength: 2000
+          description: Base URL of the paired server **including** `/api/v1`, without a trailing slash, as stored at pairing; null when the install was never paired. Kept after `unpairShell` (the Pair screen pre-fills it).
+          examples: ['https://kotobaya.example.net/api/v1']
+        device_id:
+          oneOf:
+            - {$ref: '../openapi.yaml#/components/schemas/Uuid'}
+            - {type: 'null'}
+          description: '`sync_state.device_id`: the HLC node id of this install; null until the first pairing. Kept after `unpairShell`.'
+        device_name:
+          type: [string, 'null']
+          maxLength: 100
+          description: Display name sent at pairing; null when never paired.
+          examples: [Pixel 9]
+        online:
+          type: boolean
+          description: The system reports a usable network (`NetworkMonitor`). Not a promise that the server answers. Kept fresh by `shell.connectivity` events.
+          examples: [true]
+        capabilities:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[a-z][a-z0-9_]*$
+            maxLength: 40
+          description: |
+            Features this shell build offers; the SPA shows a feature only when its capability is
+            listed and ignores names it does not know. Known in LOCAL_API_VERSION 1: `sync`
+            (getSyncStatus, syncNow), `pairing` (pairShell, unpairShell), `dict_install`,
+            `offline_storage` (getStorage, updateStorage), `notifications`, `push`, `ankiconnect`,
+            `takoboto` (the native AnkiProvider is present; informational), `haptics` (the
+            `haptic` bridge message does something), `ota` (web bundle updates, SHELL-Z2).
+          examples: [[sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]]
+        web_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: '`web_version` of the web bundle the shell loaded (its `shell-manifest.json`).'
+          examples: ['0.1.26']
+        web_source:
+          type: string
+          enum: [bundled, ota]
+          description: Where that bundle came from - the APK's assets, or a downloaded update (SHELL-Z2).
+          examples: [bundled]
+    ShellPairRequest:
+      type: object
+      description: Pairing input. Either `uri`, or `server_url` together with `code`.
+      additionalProperties: false
+      properties:
+        uri:
+          type: string
+          minLength: 1
+          maxLength: 2100
+          pattern: ^kotobaya://pair\?
+          description: 'A pairing URI as `Pairing.pairing_uri` of `../openapi.yaml`: `kotobaya://pair?server=<percent-encoded base URL including /api/v1>&code=<code>`.'
+          examples: ['kotobaya://pair?server=https%3A%2F%2Fkotobaya.example.net%2Fapi%2Fv1&code=K7Q2M9XD']
+        server_url:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: ^https?://[^\s/?#]+(/[^\s?#]*)?$
+          description: Server base URL, `http` or `https`, no query, no fragment. A trailing slash is removed; when the path does not end in `/api/v1` that suffix is appended.
+          examples: ['https://kotobaya.example.net']
+        code:
+          type: string
+          minLength: 8
+          maxLength: 16
+          pattern: ^[0-9A-Za-z -]+$
+          description: The pairing code as typed. Hyphens and spaces are removed and letters upper-cased before it is sent; the result must be 8 Crockford base32 characters.
+          examples: [K7Q2-M9XD]
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Display name for the device. Default - the phone's model name (`Build.MODEL`).
+          examples: [Pixel 9]
+    ShellUnpairRequest:
+      type: object
+      description: Options of `unpairShell`.
+      additionalProperties: false
+      properties:
+        force:
+          type: boolean
+          default: false
+          description: Unpair although pending ops exist. They are kept and pushed after the next pairing.
+          examples: [true]
+    ShellSyncStatus:
+      type: object
+      description: Sync state of this device. Also the payload of the `shell.sync` event.
+      required: [phase, paired, online, pending_ops, rejected_ops, last_sync_at, stale, pull_seq, clock_warning, minting_blocked, progress, last_error, consecutive_failures]
+      properties:
+        phase:
+          type: string
+          enum: [idle, syncing, offline, unreachable, auth_required, clock_wrong, rebuilding, upgrade_required, error]
+          description: |
+            What to show first. `syncing` - a cycle is running; `offline` - no network;
+            `unreachable` - network up, server did not answer; `auth_required` - the server
+            answered `401` (token revoked or expired: show Pair again; local data and pending ops
+            are kept); `clock_wrong` - guard G1/G2 holds or the clock is more than 24 h off the
+            server's (SYNC.md 3.4): writes are refused; `rebuilding` - SYNC.md 10.3, local
+            operations answer `503 shell_rebuilding`; `upgrade_required` - a pulled op this app
+            version cannot apply (SYNC.md 6.1); `error` - the last cycle failed otherwise
+            (`last_error`); `idle` - none of these.
+          examples: [idle]
+        paired:
+          type: boolean
+          description: As `ShellInfo.paired`.
+          examples: [true]
+        online:
+          type: boolean
+          description: As `ShellInfo.online`.
+          examples: [true]
+        pending_ops:
+          type: integer
+          minimum: 0
+          description: Ops minted on this device and not yet acknowledged by the server.
+          examples: [0]
+        rejected_ops:
+          type: integer
+          minimum: 0
+          description: Ops the server rejected that await the user's Discard / Retry / Re-mint (SYNC.md 10.1). Resolving them is native UI until a later ticket.
+          examples: [0]
+        last_sync_at:
+          oneOf:
+            - {$ref: '../openapi.yaml#/components/schemas/Timestamp'}
+            - {type: 'null'}
+          description: End of the last successful cycle (`sync_state.last_sync_at`), or null when never synced.
+        stale:
+          type: boolean
+          description: '`last_sync_at` is more than 48 hours ago (or null while paired).'
+          examples: [false]
+        pull_seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The pull cursor (`sync_state.pull_seq`); 0 before the first pull.
+          examples: [48213]
+        clock_warning:
+          type: boolean
+          description: The device clock differs from the server's by more than 5 minutes (SYNC.md 3.4 client duties).
+          examples: [false]
+        minting_blocked:
+          type: boolean
+          description: Writes are refused right now (clock wrong or rebuilding). Reads still work unless `phase` is `rebuilding`.
+          examples: [false]
+        progress:
+          type: [object, 'null']
+          description: While a cycle pulls - how far; null otherwise.
+          required: [done, total]
+          properties:
+            done:
+              type: integer
+              format: int64
+              minimum: 0
+              description: '`pull_seq` now minus `pull_seq` when the pull started.'
+              examples: [1200]
+            total:
+              type: integer
+              format: int64
+              minimum: 0
+              description: Server head minus `pull_seq` when the pull started; never below `done`.
+              examples: [5000]
+        last_error:
+          type: [string, 'null']
+          maxLength: 500
+          description: English diagnostic of the last failure or stop, for a details view; null when the last cycle succeeded. Not for parsing.
+          examples: [null]
+        consecutive_failures:
+          type: integer
+          minimum: 0
+          description: Failed cycles in a row (the backoff count); 0 after a success.
+          examples: [0]
+    ShellDictInstallRequest:
+      type: object
+      description: Options of `startDictInstall`.
+      additionalProperties: false
+      properties:
+        scope:
+          type: string
+          enum: [top60k, all]
+          description: Package scope to install and remember. Default - the stored choice (`top60k` on a new install).
+          examples: [all]
+    ShellDictInstall:
+      type: object
+      description: State of the on-device dictionary package and its installer. Also the payload of the `shell.dict` event.
+      required: [installed, scope, state, done_bytes, total_bytes, last_result, last_error]
+      properties:
+        installed:
+          type: [object, 'null']
+          description: The installed package, or null when none is (then `local_or_proxy` operations proxy, SHELL.md L-7).
+          required: [release_id, scope, bytes]
+          properties:
+            release_id:
+              type: integer
+              format: int64
+              minimum: 1
+              description: Dictionary release number (`DictRelease.id` of `../openapi.yaml`).
+              examples: [3]
+            scope:
+              type: string
+              description: Scope of the installed package (`top60k` or `all`; unknown values are "other").
+              examples: [top60k]
+            bytes:
+              type: integer
+              format: int64
+              minimum: 0
+              description: Size of the installed dictionary file.
+              examples: [148897792]
+        scope:
+          type: string
+          enum: [top60k, all]
+          description: The chosen scope the next install uses.
+          examples: [top60k]
+        state:
+          type: string
+          enum: [idle, checking, downloading, verifying, applying]
+          description: Installer stage; `idle` when no install is running.
+          examples: [idle]
+        done_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Bytes handled in the current stage; 0 when `idle`.
+          examples: [0]
+        total_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Bytes of the current stage; 0 when unknown or `idle`.
+          examples: [0]
+        last_result:
+          type: [string, 'null']
+          enum: [installed, up_to_date, no_release, downgrade_ignored, needs_newer_app, insufficient_space, failed, null]
+          description: |
+            Outcome of the last finished install since the app started, or null when none ran.
+            `no_release` - the server has no dictionary release; `needs_newer_app` - the package
+            format is newer than this app; `insufficient_space` and `failed` - see `last_error`.
+          examples: [installed]
+        last_error:
+          type: [string, 'null']
+          maxLength: 500
+          description: English diagnostic for `insufficient_space` and `failed`; null otherwise. Not for parsing.
+          examples: [null]
+    ShellStorage:
+      type: object
+      description: Bytes used on the device and the audio prefetch preferences.
+      required: [card_audio_bytes, card_audio_count, media_bytes, cover_bytes, dictionary_bytes, total_bytes, prefetch_days, budget_mb, allow_metered]
+      properties:
+        card_audio_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Cached card audio.
+          examples: [52428800]
+        card_audio_count:
+          type: integer
+          minimum: 0
+          description: Number of cached card audio blobs.
+          examples: [1840]
+        media_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Cached media audio and images other than covers.
+          examples: [0]
+        cover_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Cached cover images.
+          examples: [1048576]
+        dictionary_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The installed dictionary file (not cleared by `clear_cache`).
+          examples: [148897792]
+        total_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Sum of the four byte counts above.
+          examples: [202375168]
+        prefetch_days:
+          type: integer
+          minimum: 0
+          maximum: 30
+          description: Prefetch audio for cards due within this many days; 0 = no prefetch.
+          examples: [2]
+        budget_mb:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          description: Upper bound for cached card audio, in MiB; the oldest-played blobs are evicted above it.
+          examples: [500]
+        allow_metered:
+          type: boolean
+          description: Prefetch on metered networks too.
+          examples: [false]
+    ShellStoragePatch:
+      type: object
+      description: Storage preferences to change. At least one property.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        prefetch_days:
+          type: integer
+          minimum: 0
+          maximum: 30
+          description: As `ShellStorage.prefetch_days`.
+          examples: [7]
+        budget_mb:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          description: As `ShellStorage.budget_mb`.
+          examples: [200]
+        allow_metered:
+          type: boolean
+          description: As `ShellStorage.allow_metered`.
+          examples: [false]
+        clear_cache:
+          type: boolean
+          description: '`true` deletes every cached blob now. `false` is accepted and does nothing.'
+          examples: [true]
+    ShellNotificationState:
+      type: object
+      description: Notification permission and reminder preferences (device-local).
+      required: [permission, can_request, nudges_enabled, nudge_threshold, evening_hour]
+      properties:
+        permission:
+          type: string
+          enum: [granted, denied, not_requested]
+          description: '`POST_NOTIFICATIONS` state. Always `granted` below Android 13 unless the user disabled notifications for the app (`denied`).'
+          examples: [granted]
+        can_request:
+          type: boolean
+          description: '`requestNotificationPermission` would show the system dialog. False when granted, and when the system no longer shows it.'
+          examples: [false]
+        nudges_enabled:
+          type: boolean
+          description: Due-card reminders are on. Default false.
+          examples: [true]
+        nudge_threshold:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          description: Remind when at least this many cards are due; 0 turns the threshold reminder off. Default 50.
+          examples: [50]
+        evening_hour:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 23
+          description: Local hour of the evening reminder (sent only when nothing was reviewed that study day); null = off.
+          examples: [21]
+    ShellNotificationPrefsPatch:
+      type: object
+      description: Reminder preferences to change. At least one property.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nudges_enabled:
+          type: boolean
+          description: As `ShellNotificationState.nudges_enabled`.
+          examples: [true]
+        nudge_threshold:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          description: As `ShellNotificationState.nudge_threshold`.
+          examples: [50]
+        evening_hour:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 23
+          description: As `ShellNotificationState.evening_hour`; null turns it off.
+          examples: [21]
+    ShellPushState:
+      type: object
+      description: UnifiedPush registration state (device-local).
+      required: [state, has_endpoint]
+      properties:
+        state:
+          type: string
+          enum: ['off', no_distributor, waiting, 'on']
+          description: '`off` - not enabled; `no_distributor` - enabled but no UnifiedPush distributor app is installed; `waiting` - registered, no endpoint yet; `on` - endpoint received.'
+          examples: ['on']
+        has_endpoint:
+          type: boolean
+          description: The distributor gave this device an endpoint.
+          examples: [true]
+    ShellPushPatch:
+      type: object
+      description: Push switch.
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: true = register (or register again); false = unregister.
+          examples: [true]
+    ShellAnkiConnectState:
+      type: object
+      description: Settings and status of the on-device AnkiConnect-compatible server.
+      required: [enabled, port, api_key, origins, status, status_message]
+      properties:
+        enabled:
+          type: boolean
+          description: The server should run. Default false.
+          examples: [true]
+        port:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+          description: Loopback port. Default 8765.
+          examples: [8765]
+        api_key:
+          type: string
+          maxLength: 200
+          description: Key callers must send; `""` = none required. This is the user's own AnkiConnect key (shown in settings), not the device token.
+          examples: ['']
+        origins:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: ^\S+$
+          description: Allowed CORS origins, exact strings; `[]` = the built-in default list.
+          examples: [['https://app.example']]
+        status:
+          type: string
+          enum: [stopped, running, failed]
+          description: Whether the server is listening.
+          examples: [running]
+        status_message:
+          type: [string, 'null']
+          maxLength: 500
+          description: English diagnostic when `status` is `failed`; null otherwise. Not for parsing.
+          examples: [null]
+    ShellAnkiConnectPatch:
+      type: object
+      description: AnkiConnect settings to change. At least one property.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        enabled:
+          type: boolean
+          description: As `ShellAnkiConnectState.enabled`.
+          examples: [true]
+        port:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+          description: As `ShellAnkiConnectState.port`.
+          examples: [8765]
+        api_key:
+          type: string
+          maxLength: 200
+          pattern: ^[^\u0000-\u001f]*$
+          description: As `ShellAnkiConnectState.api_key`.
+          examples: ['']
+        origins:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: ^\S+$
+          description: As `ShellAnkiConnectState.origins`.
+          examples: [['https://app.example']]
+    ShellEvent:
+      type: object
+      description: |
+        The `event` member of a bridge `event` message: the `Event` envelope of `../openapi.yaml`
+        with the shell's type set. `data` by `type`: `hello` - `ShellEventHello`; `sync.changed` -
+        `ShellEventSyncChanged`; `note.created` - `ShellEventNoteCreated`; `shell.connectivity` -
+        `ShellEventConnectivity`; `shell.sync` - `ShellSyncStatus`; `shell.dict` -
+        `ShellDictInstall`. `job.updated`, `device.paired` and `device.revoked` are never sent
+        in shell mode (SHELL.md 2.6).
+      required: [type, at, data]
+      properties:
+        type:
+          type: string
+          enum: [hello, sync.changed, note.created, shell.connectivity, shell.sync, shell.dict]
+          description: Event type. Receivers ignore types they do not know.
+          examples: [sync.changed]
+        at:
+          $ref: '../openapi.yaml#/components/schemas/Timestamp'
+          description: When the shell produced the event (device clock).
+        data:
+          type: object
+          additionalProperties: true
+          description: Payload; schema by `type`.
+    ShellEventHello:
+      type: object
+      description: Payload of `hello` in shell mode. Same members as `EventHello`; the values are the device's.
+      required: [high_water_seq, log_epoch, server_time]
+      properties:
+        high_water_seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The device's pull cursor (`sync_state.pull_seq`), 0 before the first pull. Not the server's head.
+          examples: [48213]
+        log_epoch:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+          description: '`sync_state.log_epoch`; the nil UUID `00000000-0000-0000-0000-000000000000` while it is not yet known.'
+        server_time:
+          $ref: '../openapi.yaml#/components/schemas/Timestamp'
+          description: The device clock (there is no server in the loop).
+    ShellEventSyncChanged:
+      type: object
+      description: Payload of `sync.changed` in shell mode - local learning data changed; refetch what is shown.
+      required: [high_water_seq, pending_ops]
+      properties:
+        high_water_seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The device's pull cursor after the change (unchanged by a local write; 0 before the first pull - `EventSyncChanged` has minimum 1, the shell relaxes it).
+          examples: [48213]
+        pending_ops:
+          type: integer
+          minimum: 0
+          description: As `ShellSyncStatus.pending_ops` after the change.
+          examples: [1]
+    ShellEventNoteCreated:
+      type: object
+      description: Payload of `note.created` in shell mode - a note was created on this device outside the SPA (AnkiProvider / Takoboto, on-device AnkiConnect) or arrived by pull.
+      required: [note_id, origin_device_id, origin, seq]
+      properties:
+        note_id:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+          description: The new note.
+        origin_device_id:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+          description: Device whose op created it (this device for a local creation).
+        origin:
+          type: string
+          description: The note's `origin`.
+          examples: [takoboto]
+        seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: '`change.seq` of the creating op when it arrived by pull; 0 for a note minted on this device (`EventNoteCreated` has minimum 1, the shell relaxes it).'
+          examples: [0]
+    ShellEventConnectivity:
+      type: object
+      description: Payload of `shell.connectivity`.
+      required: [online]
+      properties:
+        online:
+          type: boolean
+          description: As `ShellInfo.online`, new value.
+          examples: [false]
+  examples:
+    ShellInfoPaired:
+      value:
+        shell_version: 0.2.0
+        shell_version_code: 29
+        local_api_version: 1
+        paired: true
+        auth_required: false
+        server_url: https://kotobaya.example.net/api/v1
+        device_id: 01931f3e-0000-7000-8000-0000000000d4
+        device_name: Pixel 9
+        online: true
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]
+        web_version: 0.1.26
+        web_source: bundled
+    ShellInfoUnpaired:
+      value:
+        shell_version: 0.2.0
+        shell_version_code: 29
+        local_api_version: 1
+        paired: false
+        auth_required: false
+        server_url: null
+        device_id: null
+        device_name: null
+        online: false
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]
+        web_version: 0.1.26
+        web_source: bundled
+    ShellSyncStatusIdle:
+      value:
+        phase: idle
+        paired: true
+        online: true
+        pending_ops: 0
+        rejected_ops: 0
+        last_sync_at: '2026-11-20T09:58:12.000Z'
+        stale: false
+        pull_seq: 48213
+        clock_warning: false
+        minting_blocked: false
+        progress: null
+        last_error: null
+        consecutive_failures: 0
+    ShellSyncStatusOfflinePending:
+      value:
+        phase: offline
+        paired: true
+        online: false
+        pending_ops: 37
+        rejected_ops: 0
+        last_sync_at: '2026-11-19T22:10:00.000Z'
+        stale: false
+        pull_seq: 48213
+        clock_warning: false
+        minting_blocked: false
+        progress: null
+        last_error: null
+        consecutive_failures: 0
+    ShellSyncStatusSyncing:
+      value:
+        phase: syncing
+        paired: true
+        online: true
+        pending_ops: 37
+        rejected_ops: 0
+        last_sync_at: '2026-11-19T22:10:00.000Z'
+        stale: false
+        pull_seq: 48213
+        clock_warning: false
+        minting_blocked: false
+        progress: {done: 1200, total: 5000}
+        last_error: null
+        consecutive_failures: 0
+    ShellDictInstallInstalled:
+      value:
+        installed: {release_id: 3, scope: top60k, bytes: 148897792}
+        scope: top60k
+        state: idle
+        done_bytes: 0
+        total_bytes: 0
+        last_result: installed
+        last_error: null
+    ShellDictInstallDownloading:
+      value:
+        installed: null
+        scope: all
+        state: downloading
+        done_bytes: 20971520
+        total_bytes: 96468992
+        last_result: null
+        last_error: null
+    ShellStorage:
+      value:
+        card_audio_bytes: 52428800
+        card_audio_count: 1840
+        media_bytes: 0
+        cover_bytes: 1048576
+        dictionary_bytes: 148897792
+        total_bytes: 202375168
+        prefetch_days: 2
+        budget_mb: 500
+        allow_metered: false
+    ShellNotificationState:
+      value:
+        permission: granted
+        can_request: false
+        nudges_enabled: true
+        nudge_threshold: 50
+        evening_hour: 21
+    ShellPushState:
+      value:
+        state: 'on'
+        has_endpoint: true
+    ShellAnkiConnectState:
+      value:
+        enabled: true
+        port: 8765
+        api_key: ''
+        origins: []
+        status: running
+        status_message: null

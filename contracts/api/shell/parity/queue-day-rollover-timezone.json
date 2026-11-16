@@ -1,0 +1,187 @@
+{
+  "id": "queue-day-rollover-timezone",
+  "title": "The study day rolls over at day_rollover_hour in scheduler.timezone, not in UTC",
+  "covers": [
+    "queue.day_rollover_timezone"
+  ],
+  "narrative": [
+    "scheduler.timezone is Asia/Tokyo (UTC+9, no DST), day_rollover_hour is the default 4: the study day changes at 19:00:00.000Z. new_per_day is 1; two cards are new.",
+    "Step 0, 18:59:00Z (03:59 local, still the 20th): study_day 2026-11-20, one new card available.",
+    "Step 1, 18:59:30Z: the first card is answered Easy (introduces it).",
+    "Step 2, 18:59:59Z: the day's new-card limit is used up.",
+    "Step 3, 19:00:00Z: study_day 2026-11-21; the limit is fresh, the second card is available.",
+    "With UTC day boundaries steps 0-3 would all be study day 2026-11-20 ending 2026-11-21T04:00Z."
+  ],
+  "clock_ms": 1795197600000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440
+  ],
+  "settings": {
+    "scheduler.timezone": "Asia/Tokyo",
+    "scheduler.new_per_day": 1
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000001",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.timezone",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69280-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.timezone",
+          "value": "Asia/Tokyo"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000002",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69280-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 1
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69281-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69281-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69282-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7008-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f9e69282-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795201140000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/study_day": "2026-11-20",
+          "/day_ends_at": "2026-11-20T19:00:00.000Z",
+          "/counts/new": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795201170000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 540,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795201199000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/study_day": "2026-11-20",
+          "/counts/new": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795201200000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/study_day": "2026-11-21",
+          "/day_ends_at": "2026-11-21T19:00:00.000Z",
+          "/counts/new": 1
+        }
+      }
+    }
+  ]
+}

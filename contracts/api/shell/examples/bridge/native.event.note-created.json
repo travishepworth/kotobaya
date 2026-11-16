@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "note.created",
+    "at": "2026-11-20T10:00:06.000Z",
+    "data": {
+      "note_id": "01931f40-1a2b-7c3d-8e4f-000000000a01",
+      "origin_device_id": "01931f3e-0000-7000-8000-0000000000d4",
+      "origin": "takoboto",
+      "seq": 0
+    }
+  }
+}

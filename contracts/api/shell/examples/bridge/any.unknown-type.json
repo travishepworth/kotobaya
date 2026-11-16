@@ -1,0 +1,5 @@
+{
+  "v": 1,
+  "t": "clipboard.write",
+  "text": "a future message type: valid, ignored by a receiver that does not know it"
+}

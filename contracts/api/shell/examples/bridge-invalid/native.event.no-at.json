@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "sync.changed",
+    "data": {
+      "high_water_seq": 1
+    }
+  }
+}
