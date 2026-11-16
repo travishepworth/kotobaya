@@ -724,20 +724,21 @@ checks listed at the top of that file, including negative self-tests).
   `LoopState`. Not in `required` only because "absent" means "server older than ADR-037". Computed
   for the request's `deck_id`; unaffected by `kinds`, `limit` and (except `phase`, `keep_going`) by
   `keep_going`.
-- **Deprecated, still sent, meaning frozen**: `ReviewQueue.counts` (`new` = what the normal build
-  drew, now also bounded by `limit`; `learning` = ready + later, the old over-count; `review` =
+- **Deprecated, still sent, meaning frozen**: `ReviewQueue.counts` (`new` = the day's remaining new
+  cards under the goal and deck limits, not bounded by `limit`; `learning` = ready + later, the old over-count; `review` =
   `loop.ready.review`), `more_available`, `next_learning_due_at`, `StatsSummary.due`,
   `StatsSummary.more_available`. No new `StatsSummary` member: Home calls `getReviewQueue?limit=1`.
 - **Order**: ready learning, then ready reviews and new cards in the proportional mix (core rule 5),
   in both modes; keep going: ready learning, all due reviews, then new cards.
 - **Client rules C1-C5** in the `getReviewQueue` description: refetch when a learning card may have
   come due; keep going persisted per client for the study day (`localStorage["kotobaya.keepGoingDay"]`
-  on web and in the shell SPA); what to display; empty `items` rendered from `phase` only; C-27
+  on web and in the shell SPA); what to display (the headline is always `loop.ready.total`, the
+  backlog only in its own line, in both modes); empty `items` rendered from `phase` only; C-27
   retries.
 - **`scheduler.new_per_session`** is ignored (SCHEMA.md 6); `updateSettings` still accepts it.
 - **Shell**: `LOCAL_API_VERSION` 2 (SHELL.md 7.2: a field a new SPA requires was added);
   `getDisplayPrefs` / `updateDisplayPrefs` (`GET`/`PATCH /shell/v1/display`, `ShellDisplay`,
-  `ShellDisplayPatch`, capability `display`): device-local "lock to portrait". Parity: tag
+  `ShellDisplayPatch`, capability `display`): device-local "lock to portrait", usable unpaired. Parity: tag
   `queue.session_cap_more_available` and its scenario retired; four new scenarios with the five
   `queue.loop_*` tags, each pinning `loop.phase` and the numbers (`check_shell.py` enforces both);
   three existing scenarios gained `loop` expectations. Goldens are re-recorded by LOOP-SRV.
@@ -759,9 +760,9 @@ checks listed at the top of that file, including negative self-tests).
 
 **Three choices most worth a second look**
 
-1. **The proportional mix replaces the fixed-stride interleave** (core rule 5): new cards are
-   spread over the day's review pool by comparing progress against today's totals. With a lopsided
-   history (many reviews done, goal raised later) new cards come in a run first.
+1. **The proportional mix** (core rule 5): a stride on the remaining ready reviews and the new
+   cards still introducible today; never two new cards in a row while a review is left. With more
+   new cards than reviews it alternates and the surplus new cards come last.
 2. **Keep going is per client and persisted for the study day**: pressing it on the phone does not
    switch web or the widget; all numbers are the same everywhere regardless.
 3. **`done_for_today` vs `goal_reached` follows the `reviews_unlimited` setting**, not which limit

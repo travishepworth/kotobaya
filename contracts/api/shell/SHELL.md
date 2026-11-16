@@ -220,7 +220,7 @@ For every `req` that passed section 2.3–2.5, first match wins:
 1. Section 2.4 limits → `415 shell_unsupported`.
 2. No operation matches `method` + `path` (templates of `openapi.yaml` under `/api/v1`, of
    `shell.yaml` under `/shell/v1`; a literal segment beats a parameter) → `404 not_found`.
-3. Not paired, and the operation is not `getShellInfo` or `pairShell` → `401 unauthenticated`.
+3. Not paired, and the operation is not `getShellInfo`, `pairShell`, `getDisplayPrefs` or `updateDisplayPrefs` → `401 unauthenticated`.
 4. Class `hidden` → `403 insufficient_scope` (rule P-4).
 5. Class `proxy` → section 4.2.
 6. Class `local`, `local_or_proxy`, and shell operations: the readiness gate (2.5), then the
@@ -467,7 +467,7 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `getPrincipal` | From the stored pairing: `kind: "device"`, `scopes: ["read","write","review"]`, `device_id`, `name` = device name, `token_id` = the `token_id` of `PairResponse`, `expires_at: null`, `totp_enabled: false`. No cookie, no CSRF. |
 | `getMeta` | `api_version: "v1"`; `server_version` = value of the last `/meta` fetched from the server, `"unknown"` before the first; `core_version` = the app's core; `server_device_id` = the fixed server device id; `high_water_seq` = pull cursor; `log_epoch` = `sync_state.log_epoch` or the nil UUID; `server_time` = device clock; `dict_release` = the installed package or null; `limits` = last fetched, else the contract defaults. |
 | `reportClientErrors` | Validated and limited exactly as the server (so `429`, `413`, `422` are identical), then queued (`ClientErrorQueue`) and flushed when online; `202` means "queued". |
-| `getReviewQueue` | ADR-037: the handler is the core `ReviewLoop.evaluate` over the replica plus the views, exactly as the server: `keepGoing` = the request's `keep_going`, `keepGoingNewBatch` = the request's `limit`, learn-ahead 0, no session counter (`newPerSession` / `newShownThisSession` are passed as 0 and ignored). The response carries `loop` (from `LoopState`) and the deprecated `counts`, `more_available`, `next_learning_due_at` (from `LoopState.legacy`), like the server's. Only `LoopResult.queue.toMaterialize` (the served build) is materialized, never the other build's. The SPA follows client rules C1-C5 of `getReviewQueue` in `openapi.yaml` unchanged; its keep-going day (`localStorage["kotobaya.keepGoingDay"]`, C2) lives in the WebView's storage and is per device. Native surfaces (widget, due notification, nudge threshold) show `readyLearning + readyReviews` of `ReviewLoop.evaluate` with `keepGoing = false` and never count cards themselves; they do not read the SPA's keep-going state. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. Dictionary data by L-7 steps 1–2 only (installed package, then sidecar cache; never the network): `QueueItem.entry` / `kanji` are `null` on a miss and the card is still served; a deck entry `e:<seq>` is passed to the builder as a pending entry only when steps 1–2 find it, so an entry the device does not have is neither materialized nor counted until gap fill has cached it (10.7). |
+| `getReviewQueue` | ADR-037: the handler is the core `ReviewLoop.evaluate` over the replica plus the views, exactly as the server: `keepGoing` = the request's `keep_going`, `keepGoingNewBatch` = the request's `limit`, learn-ahead 0, no session counter (`newPerSession` / `newShownThisSession` are passed as 0 and ignored). The response carries `loop` (from `LoopState`) and the deprecated `counts`, `more_available`, `next_learning_due_at` (from `LoopState.legacy`), like the server's. Only `LoopResult.queue.toMaterialize` (the served build) is materialized, never the other build's. The SPA follows client rules C1-C5 of `getReviewQueue` in `openapi.yaml` unchanged; its keep-going day (`localStorage["kotobaya.keepGoingDay"]`, C2) lives in the WebView's storage and is per device. Native surfaces (widget, due notification, nudge threshold) show `readyLearning + readyReviews` of `ReviewLoop.evaluate` and never count cards themselves; that is the SPA's headline number too (`loop.ready.total`, rule C3, the same with and without keep going), so they need no keep-going state. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. Dictionary data by L-7 steps 1–2 only (installed package, then sidecar cache; never the network): `QueueItem.entry` / `kanji` are `null` on a miss and the card is still served; a deck entry `e:<seq>` is passed to the builder as a pending entry only when steps 1–2 find it, so an entry the device does not have is neither materialized nor counted until gap fill has cached it (10.7). |
 | `answerReview`, `undoReview` | Stateless (no session object). Card state is recomputed by the replay path, never by handler arithmetic. After commit the due alarm and widgets are refreshed. |
 | `bulkCards` | Action `suspend`, `unsuspend`, `bury`, `unbury`, `flag`: local, for both selectors (`card_ids`, `query`) and for `dry_run`; all-or-nothing as the server. Any other action (`set_preset`, `add_tags`, `remove_tags`, `move`, `delete`): the handler forwards the request by rules P-1 … P-3, so it is `503 shell_offline` offline. The request is validated locally first in both cases. |
 | `createNote` | Duplicate check against the replica (L-4); kinds by core `CardGenerator` / `CardKinds.isRetired` (ADR-035); `created_by_device_id` is this device. `entry_seq` is resolved by the full L-7 lookup: installed package → sidecar cache → when online, the shell fetches the entry from the server (`getDictEntry`, 12 s limit of P-1) and stores it in the cache; the note is then created **locally** as always (minted by the device, never forwarded). The server answers that fetch `404` (now or earlier: a standing negative result), or the installed package is authoritative (L-7: scope `all` **and** not older than the last known server release) and lacks the entry: `422 validation_failed`, `errors[0] = {pointer: "/entry_seq", code: "not_found"}`, as the server. In every other miss — offline or unreachable with `top60k`, no package, or a package older than the server's release — `503 shell_dict_missing`, nothing minted: the device cannot say the word does not exist, only that it must connect to look it up. Kanji data for `add_kanji` notes uses steps 1–2 only (a miss means "the literal alone", as on the server when `ref.kanji` lacks it). |
@@ -568,7 +568,9 @@ The SPA sends `back.state` after `ready` and whenever the answer to "would step 
   `lock_portrait` is true and `SCREEN_ORIENTATION_UNSPECIFIED` when false - at activity create
   (before the WebView is shown, from the stored value; default false) and immediately on a
   successful `updateDisplayPrefs`, before its answer. The value is stored in device preferences
-  (not in the replica), survives restart and `unpairShell`, is not synced and mints no op. A
+  (not in the replica), survives restart and `unpairShell`, is not synced and mints no op; both
+  operations work unpaired (so the Pair screen honours the lock) and answer `503
+  shell_rebuilding` during a rebuild. A
   rotation caused by the change does not reload the page (the activity handles the configuration
   change). Without the capability the SPA hides the settings row and never calls the operations.
 
@@ -748,7 +750,8 @@ writing handler also tests that (a) its minted ops validate against
 
 - The device token is stored in the Keystore-backed `TokenStore` and nowhere else. In shell mode
   the SPA is "logged in" by `getPrincipal` (4.3) alone: no cookie, no CSRF header, no login form.
-- **Unpaired**: every operation except `getShellInfo` and `pairShell` answers
+- **Unpaired**: every operation except `getShellInfo`, `pairShell` and the display
+  preferences (`getDisplayPrefs`, `updateDisplayPrefs`) answers
   `401 unauthenticated` (3.1 step 3). The SPA's `/login` route renders the Pair screen in shell
   mode: server URL + code, or a pasted / scanned / deep-linked `kotobaya://pair?…` URI
   (`pairShell`).
@@ -799,7 +802,7 @@ Each is normative; the number is referenced from the rules above.
 
 | # | Case | Behaviour |
 |---|---|---|
-| 10.1 | **Unpaired** | `401 unauthenticated` for everything but `getShellInfo`, `pairShell`; blob intercept `401`. No local read works unpaired, even with a kept replica (after `unpairShell`): the replica belongs to a pairing. Native → SPA navigation still happens; the SPA redirects to `/login`. |
+| 10.1 | **Unpaired** | `401 unauthenticated` for everything but `getShellInfo`, `pairShell`, `getDisplayPrefs`, `updateDisplayPrefs`; blob intercept `401`. No local read works unpaired, even with a kept replica (after `unpairShell`): the replica belongs to a pairing. Native → SPA navigation still happens; the SPA redirects to `/login`. |
 | 10.2 | **Token revoked mid-session** | Section 9.2. Proxied `401` passed through; local operations continue; pending ops kept; `pairShell` re-pairs the same device. A proxied `403` (should not occur) is passed through too. |
 | 10.3 | **Device clock behind** | Before 2020 (G1) or more than 24 h behind a time the device has seen (G2), or more than 24 h behind the server: every write is refused with the `422` of the L-3 table, nothing minted; reads work; `phase: clock_wrong`. Behind by less: writes are minted with the device's time; `clock_warning` above 5 minutes; a server `clock_behind` rejection is handled by the sync engine (SYNC.md 10.4), not by the SPA. |
 | 10.4 | **Device clock ahead** | Not detectable offline. Reviews get future `reviewed_at`, edits get future HLCs and win last-writer-wins for up to a day (SYNC.md 3.4). More than 24 h ahead of the server once it is known: writes refused (`in_future`). An explicit `reviewed_at` more than 5 minutes after the device's now is `422 in_future` regardless. The study day and `due` comparisons follow the device clock, so the queue may differ from the web's until the clock is fixed. |
@@ -866,8 +869,8 @@ Not learning data, listed for completeness — `proxy`: `getHealth`, `getOwnDevi
 | `updatePushState` | `PATCH /shell/v1/push` | `401` | `503` | UnifiedPush registration |
 | `getAnkiConnectState` | `GET /shell/v1/ankiconnect` | `401` | `503` | — |
 | `updateAnkiConnectState` | `PATCH /shell/v1/ankiconnect` | `401` | `503` | device preferences, restarts the server |
-| `getDisplayPrefs` | `GET /shell/v1/display` | `401` | `503` | — |
-| `updateDisplayPrefs` | `PATCH /shell/v1/display` | `401` | `503` | device preferences, activity orientation (6.3) |
+| `getDisplayPrefs` | `GET /shell/v1/display` | works | `503` | — |
+| `updateDisplayPrefs` | `PATCH /shell/v1/display` | works | `503` | device preferences, activity orientation (6.3) |
 
 None of them mints a sync op or writes a learning-data table. Their state is device-local and
 not synced.

@@ -146,7 +146,7 @@ No authorization required
 
 Display preferences of this device (lock to portrait).
 
-Device-local preferences (not synced, no op, no learning data). Offered only when &#x60;ShellInfo.capabilities&#x60; contains &#x60;display&#x60;; the SPA hides the settings row without it. Unpaired: &#x60;401 unauthenticated&#x60;; during a rebuild: &#x60;503 shell_rebuilding&#x60; (as the other preference operations, SHELL.md section 12). 
+Device-local preferences (not synced, no op, no learning data). Offered only when &#x60;ShellInfo.capabilities&#x60; contains &#x60;display&#x60;; the SPA hides the settings row without it. **Works unpaired** (the Pair screen is rotated like the rest of the app; nothing here touches the replica or the token); during a rebuild: &#x60;503 shell_rebuilding&#x60; (as the other preference operations, SHELL.md section 12). 
 
 ### Example
 
@@ -576,7 +576,7 @@ No authorization required
 
 Change the display preferences.
 
-Device-local preferences (not synced, no op). Absent properties are left unchanged; an empty object, an unknown property or a non-boolean value is &#x60;422 validation_failed&#x60; (pointer &#x60;/lock_portrait&#x60; for a wrong type, &#x60;\&quot;\&quot;&#x60; for an empty object) and changes nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores the value in device preferences, so it survives a restart. Repeating the same request is a no-op with the same answer. Answers with the state after the change. 
+Device-local preferences (not synced, no op). Absent properties are left unchanged; an empty object, an unknown property or a non-boolean value is &#x60;422 validation_failed&#x60; (pointer &#x60;/lock_portrait&#x60; for a wrong type, &#x60;\&quot;\&quot;&#x60; for an empty object) and changes nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores the value in device preferences, so it survives a restart. Repeating the same request is a no-op with the same answer. Answers with the state after the change. Works unpaired; &#x60;503 shell_rebuilding&#x60; during a rebuild (nothing is changed then). 
 
 ### Example
 

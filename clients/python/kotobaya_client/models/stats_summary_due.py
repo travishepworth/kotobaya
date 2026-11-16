@@ -26,7 +26,7 @@ from pydantic_core import to_jsonable_python
 
 class StatsSummaryDue(BaseModel):
     """
-    **Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`, computed through `ReviewLoop` for an unfiltered normal request with the default `limit` 20): the over-counting `learning` and the batch-bounded `new` documented there. No `loop` is added here. 
+    **Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`, computed through `ReviewLoop` for an unfiltered normal request): the over-counting `learning` documented there and `new` = the day's remaining new cards (not bounded by any batch). No `loop` is added here. 
     """ # noqa: E501
     learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Learning and relearning cards due before the day ends.")
     new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).")

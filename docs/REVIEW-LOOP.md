@@ -62,18 +62,15 @@ public interface ReviewLoop { public fun evaluate(input: QueueInput): LoopResult
 
 QueueBuilder rule changes (contract KDoc; `DefaultQueueBuilder`):
 - Rule 5 (order, normal build): due learning first, then the ready reviews R (`(dueAt, cardId)`, most overdue
-  first) and the drawn new cards N in the **proportional mix**: with `a` = today's `countsAsReview`, `b` = today's
-  `introducedNew`, `Rt = a + |R|`, `Gt = max(1, newPerDay)`, while both lists have cards the next item is a new
-  card iff `b * Rt < a * Gt` (new progress behind review progress), else a review; then `b += 1` / `a += 1`; when
-  one list runs out the other follows. Integers only; a tie is a review. The counters advance exactly as `today`
-  does, so one build's order equals rebuilding after every answer. Both modes: R is every ready review when
-  unlimited, the reviews left under the cap otherwise. The mix does not depend on the batch.
-  Example: nothing done, goal 2, R1-R4 due, N1 N2 -> `R1 N1 R2 R3 N2 R4`. Replaces the fixed-stride interleave.
-- Rule 4 normal budget: `dayRemaining = max(0, newPerDay - introducedToday)`; groups are drawn while
-  `drawn < max(1, keepGoingNewBatch)` and the group fits `dayRemaining` (atomic against the DAY, the batch may
-  overshoot like rule 6). `newPerSession` / `newShownThisSession` are deprecated and ignored (no "done for now").
-  Per-deck `newPerDay` still applies in N, lifted in K. The batch keeps materialization small (server: `limit`,
-  device: 10).
+  first) and the drawn new cards N in the **proportional mix**, a stride on what remains: `rRem = |R|`,
+  `gRem = availableToday` (new cards still introducible today under the goal and the deck caps; rule 4's draw with
+  an unbounded batch), `s` = today's `countsAsReview` reviews answered after the latest `introducedNew` one
+  (`TodayReview.reviewedAt`, additive). While both lists have cards the next item is a new card iff
+  `s * gRem >= rRem` (then `s = 0`, `gRem -= 1`), else a review (`s += 1`, `rRem -= 1`); when one list runs out the
+  other follows. Never two new cards in a row while a review is left; at most `ceil(rRem / gRem)` reviews between
+  two new cards; one build's order equals rebuilding after every answer; independent of the batch. Both modes: R is
+  every ready review when unlimited, the reviews left under the cap otherwise.
+  Example: nothing done, R1-R4, 2 available -> `R1 R2 N1 R3 N2 R4`. Replaces the old interleave.
 - Rule 6 (K): unchanged (review caps lifted, new batch, due learning, all reviews, then new; no mix).
 - `ReviewQueue.moreAvailable` unchanged in meaning (N empty and K non-empty); deprecated in favour of `phase`.
 - `learnAheadMs`: loaders keep passing 0; `ReviewLoop.evaluate` replaces a value > 0 by 0 for both builds
@@ -96,8 +93,9 @@ read-only caller counts as REVIEWING (as C-27).
   none, it shows mode-independent counts). Active iff it equals the latest response's `study_day`; on mismatch
   drop it and refetch with `keep_going=false`. Home, review and widget all send the persisted value. This
   replaces ADR-031's "one visit" scope. Not an op, not a setting.
-- C3 Display: ready-now number = `ready.total` when not keeping going; `ready.learning + backlog.reviews`
-  when keeping going. Backlog line only when `backlog.beyond_limit > 0`. Later hint when
+- C3 Display: the headline ready-now number is always `ready.total`, with or without keep going (same number
+  on every client and the widget). The backlog appears only in the backlog line (`backlog.reviews`), shown iff
+  `backlog.beyond_limit > 0`, in both modes. Later hint when
   `later_today.count > 0`. New bar `new.today/new.goal` (may exceed the goal after keep going: clamp the
   bar, show the number).
 - C4 Empty `items` -> render by `loop.phase` only; `waiting` schedules one refetch at `next_due_at`
@@ -121,7 +119,8 @@ loop:
 - Scope: computed for the request's `deck_id`; unaffected by `kinds`, `limit` and (except `phase`,
   `keep_going`) by `keep_going`.
 - Deprecated, still sent with frozen meaning for old clients (old CLI, older web bundle), all from
-  `LoopState.legacy`: `counts.new` (NEW items + toMaterialize of N), `counts.learning`
+  `LoopState.legacy`: `counts.new` (frozen: min(remaining day goal, new available under the deck caps) = NEW
+  items + toMaterialize of the unbounded normal build, not the batch), `counts.learning`
   (ready learning + later today: the old over-count, documented as such), `counts.review` (= ready.review),
   `more_available`, `next_learning_due_at` (= later_today.next_due_at). `StatsSummary.due` /
   `more_available`: same deprecation note, computed through `ReviewLoop` too; no new StatsSummary field
@@ -158,7 +157,7 @@ loop:
 ## 8. Migration / compatibility
 - Data: none. Settings: none added; `scheduler.new_per_session` ignored.
 - Old CLI / old web against new server: legacy fields keep shape and meaning; visible differences: order
-  (proportional mix instead of the fixed stride), `counts.new` bounded by `limit`, no session-cap "done for now".
+  (proportional mix instead of the old interleave), no session-cap "done for now".
   Nothing breaks.
 - Old APK (0.1.31): its SPA talks to its own bundled local API (version-locked); sync is untouched. Until the
   new APK the phone shows the old numbers (expected, not a break). An OTA web bundle is refused by
@@ -181,17 +180,14 @@ New scenarios + mandatory tags: `queue-loop-unlimited-later-new` (`queue.loop_ne
 ## 10. Tests (core golden scenarios in `ReviewLoopTest`, jvm + js; the same tables drive server and parity)
 Settings unless stated: reviews_per_day 200, new_per_day 40, batch 10, bury on.
 - A1 (user case) unlimited, 0 ready, 26 learning later, 100 new, new today 0 -> reviewing; items = 10 NEW;
-  ready 0/0; later 26 + next_due_at; never waiting. legacy counts.learning = 26.
+  ready 0/0; later 26 + next_due_at; never waiting. legacy counts.learning = 26, counts.new = 40.
 - A2 unlimited, 335 due reviews -> ready.review 335, backlog 335/0, limit null; order learning, then reviews and
   new in the proportional mix.
-- M1 mix: nothing done, goal 2, R1-R4, N1 N2 -> `R1 N1 R2 R3 N2 R4`. M2: 200 ready, goal 40, nothing done -> new
-  after the 1st review, then after every 5 more; the 40th new follows the 196th review. M3: 9 ready, 12/40
-  introduced, 0 reviewed -> `R R R N N R N N N N R ...`. M4: for random inputs, answering the head and rebuilding
-  yields the previous build's tail (same order); the order does not depend on the batch. M5: capped mode mixes
-  too (cap 2, goal 1, 5 due -> `R1 N1 R2`).
-- A3 unlimited, new today 40/40, no reviews, new remain -> goal_reached; keepGoing -> reviewing, NEW items;
-  after 60 more introduced still reviewing (indefinite); new.today 100, goal 40.
-- A4 A3 + keepGoing + a review and a learning card come due -> items = learning, review, then new.
+- M1 mix: nothing done, R1-R4, 2 available -> `R1 R2 N1 R3 N2 R4`. M2: 200 ready, 40 available -> `RRRRRN`
+  repeated; the last four gaps are 4 reviews; 4 reviews follow the 40th new. M3: 9 ready, 28 available ->
+  `RN` x 9, then 19 new. M4: for random inputs, answering the head and rebuilding yields the previous build's
+  tail; never `N N` while a review is left; the order does not depend on the batch. M5: capped mode mixes too
+  (cap 2, goal 1, 5 due -> `R1 N1 R2`). M6: legacy `counts.new` = 28 with goal 40, 12 introduced, batch 10.
 - B1 335 due, 0 done -> ready.review 200, backlog 335/135, reviewing; first item = most overdue; new cards mixed
   in over the 200.
 - B2 200 reviews done, new 12/40, new exist -> reviewing, items NEW only; backlog 135/135; a learning card due
@@ -220,7 +216,7 @@ waiting back); keeping `new_per_session` as a third stop state; reviews strictly
 into reviews-first); a mix for capped keep going (user: backlog first).
 
 ## 12. Most worth a second look
-1. The proportional mix (amended): new cards spread over the day's reviews by progress against today's totals;
-   with a lopsided history (many reviews done, goal raised later) new cards come in a run until caught up.
+1. The proportional mix (amended): a stride on the remaining ready reviews and remaining introducible new cards;
+   with more new cards than reviews it alternates and the surplus new cards come last.
 2. Keep going is per client (pressing it on the phone does not switch the widget); counts stay identical.
 3. `done_for_today` vs `goal_reached` chosen by the setting, not by which cap bound (B7).

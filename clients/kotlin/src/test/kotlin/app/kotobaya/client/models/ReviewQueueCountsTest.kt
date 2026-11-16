@@ -39,7 +39,7 @@ class ReviewQueueCountsTest : ShouldSpec() {
             //modelInstance.learning shouldBe ("TODO")
         }
 
-        // to test the property `new` - Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at most about `limit` new cards, so this is bounded by `limit` as well as by the day's remaining goal. 
+        // to test the property `new` - Deprecated. New cards still to introduce today: the smaller of the day goal's remainder and what the decks can supply under their limits, including deck entries not yet materialized (C-27). **Not** bounded by `limit` (frozen meaning; core `LoopState.legacy.new`). 
         should("test new") {
             // uncomment below to test the property
             //modelInstance.new shouldBe ("TODO")

@@ -175,11 +175,13 @@ Worth a second look:
   decides an end state. No signature of `QueueBuilder.kt` changed (KDoc only).
 - **QueueBuilder rule changes (KDoc; implemented by LOOP-CORE).** Rule 4: the normal new budget is
   the day's remaining goal, drawn at most a batch (`max(1, keepGoingNewBatch)`) per build, groups
-  atomic against the day; `newPerSession` / `newShownThisSession` are ignored. Rule 5: the
-  fixed-stride interleave becomes the **proportional mix**: next is a new card iff
-  `introducedToday * (reviewsToday + |R|) < reviewsToday * newPerDay`, else a review, counters
-  advancing as cards are placed - so reviews and the new goal run out together, in both modes, and
-  the order of one build equals the order of rebuilding after each answer. Rule 6 (keep going):
+  atomic against the day; `newPerSession` / `newShownThisSession` are ignored. Rule 5: the old
+  interleave becomes the **proportional mix**, a stride on what remains: next is a new card iff
+  `s * gRem >= rRem` (`s` = reviews answered since the last new card today, `rRem` = ready reviews
+  left, `gRem` = new cards still introducible today under the goal and the deck caps), else the
+  most overdue review - never two new cards in a row while a review is left, both modes, and the
+  order of one build equals the order of rebuilding after each answer. `TodayReview.reviewedAt`
+  (additive, default 0) carries the answer order. Rule 6 (keep going):
   unchanged order (due learning, all reviews, new; no mix), scope now per client per study day.
 - **User amendment 2026-11-17 (after the design).** The design removed the interleave ("reviews
   first, then new"); the user called that a regression and asked for a proportional mix in both
@@ -188,19 +190,17 @@ Worth a second look:
 - **Decisions the ticket did not make.** (a) `evaluate` forces `learnAheadMs = 0` for both builds,
   so the served queue as well as the counts never contain a not-yet-due learning card. (b) Only the
   served build's `toMaterialize` is ever materialized. (c) The deprecated members carry no
-  `@Deprecated` annotation (no warnings for existing callers). (d) The mix is anchored on the day's
-  totals (`today`), not on a session and not on the remaining counts alone: a memoryless
-  "remaining reviews : remaining new" rule recomputed after every answer degenerates into "all
-  reviews until fewer reviews than new cards are left".
+  `@Deprecated` annotation (no warnings for existing callers). (d) Review round 1: the mix is a
+  stride on the remaining quantities with `s` read from today's answers (attempt 1 compared
+  progress against the day's totals, which served new cards in a run after a lopsided history);
+  `LegacyCounts.new` is the day's remainder from an unbounded normal build, not the batch.
 - Rejected: fixing only `counts.learning`; keep going as a synced setting; a phase derived per
   client; instant-granular review readiness; keeping `new_per_session` as a third stop state;
   reviews strictly before new in the normal session (user: regression); a mix that also applies
   to capped keep going (user: backlog first); a mix ratio from the batch-bounded number of drawn
   new cards (the order would depend on `limit`: server and device would disagree).
-- Worth a second look: (1) **the mix formula** - with nothing done today the first card is a
-  review and the first new card comes right after it; when history is lopsided (many reviews done,
-  few new cards, e.g. after raising the goal mid-day) new cards are served in a run until they have
-  caught up, ahead of the remaining reviews; when the new pool is smaller than the goal the new
-  cards come a little early. (2) **Keep going is per client**: pressing it on the phone does not
+- Worth a second look: (1) **the mix formula** - when more new cards than reviews remain it
+  alternates review / new and the surplus new cards come last; with a deck that has more pending
+  entries than the loader's window `gRem` is a lower bound (new cards slightly sparser). (2) **Keep going is per client**: pressing it on the phone does not
   switch web or the widget; numbers stay identical everywhere. (3) **`done_for_today` vs
   `goal_reached` is chosen by `reviews_unlimited`**, not by which cap bound (B7).

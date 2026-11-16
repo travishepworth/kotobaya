@@ -51,13 +51,14 @@ public enum class LoopPhase(
  * older web bundle). New clients never read them. The API sends them as the deprecated
  * `ReviewQueue.counts` / `more_available` and `StatsSummary.due` / `more_available`.
  *
- * Example (A1 below, batch 10): `LegacyCounts(new = 10, learning = 26, review = 0, moreAvailable = false)`.
+ * Example (A1 below): `LegacyCounts(new = 40, learning = 26, review = 0, moreAvailable = false)`.
  */
 public data class LegacyCounts(
     /**
-     * NEW items of the normal build N plus `N.toMaterialize.size`. `>= 0`. Bounded by the build's
-     * batch (`max(1, limits.keepGoingNewBatch)`, plus an add_kanji overshoot) and by the day's
-     * remaining new goal. Example: goal 40, 12 introduced, batch 10, 100 new cards → 10.
+     * New cards still to introduce today under the day goal and the per-deck caps, **not** bounded
+     * by the batch (frozen: old clients show it as "new left today"): the NEW items plus
+     * `toMaterialize.size` of the unbounded normal build N∞ ([ReviewLoop] "Evaluation"). `>= 0`.
+     * Example: goal 40, 12 introduced, batch 10, 100 new cards → 28 (not 10); 3 new cards exist → 3.
      */
     public val new: Int,
     /**
@@ -79,7 +80,7 @@ public data class LegacyCounts(
 
 /**
  * The loop's numbers for one [QueueInput] (ADR-037). Every field except [phase] and [keepGoing] is
- * computed from the normal build N, the keep-going build K and `input.today` only, so it is
+ * computed from the normal build N, the keep-going build K, N∞ (legacy only) and `input.today`, so it is
  * **identical with and without keep going** (same input otherwise): every client shows the same
  * numbers at the same instant whatever mode it is in.
  *
@@ -184,6 +185,10 @@ public data class LoopResult(
  * - N = `QueueBuilder.build(input0 with limits.keepGoing = false)` (the normal build);
  * - K = `QueueBuilder.build(input0 with limits.keepGoing = true)` (the keep-going build, rule 6);
  * - both always, both from the same loaded input, same `keepGoingNewBatch`;
+ * - N∞ = `QueueBuilder.build(input0 with limits.keepGoing = false, keepGoingNewBatch = Int.MAX_VALUE)`,
+ *   used **only** for [LegacyCounts.new] (an implementation may take the number from N's own
+ *   unbounded draw, rule 4 `availableToday`, as long as the result is the same); it is never
+ *   served and its `toMaterialize` is never materialized;
  * - `queue` = K if `input.limits.keepGoing` else N;
  * - counts as documented on [LoopState] and [LegacyCounts].
  *
@@ -225,7 +230,7 @@ public data class LoopResult(
  * - **A1** (A; 0 ready, 26 learning cards due later today, 100 new cards, 0 introduced today):
  *   N = 10 NEW → `REVIEWING`; `readyLearning 0, readyReviews 0, laterToday 26, nextDueAt` = their
  *   earliest due, `backlog 0/0, reviewsToday 0, reviewsLimit null, newToday 0, newGoal 40,
- *   newAvailable true`; `legacy = (new 10, learning 26, review 0, moreAvailable false)`. Never `WAITING`.
+ *   newAvailable true`; `legacy = (new 40, learning 26, review 0, moreAvailable false)`. Never `WAITING`.
  * - **B3** (B; 200 reviews done today, 40 introduced, 135 due reviews left, new cards remain):
  *   N empty, K non-empty → `DONE_FOR_TODAY`; `readyReviews 0, backlog 135, backlogBeyondLimit 135,
  *   reviewsToday 200, reviewsLimit 200, newToday 40, newGoal 40, newAvailable true`;

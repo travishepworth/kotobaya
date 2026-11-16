@@ -2,14 +2,15 @@
 
 STATUS: DONE
 BRANCH: t/LOOP-C-review-loop-contract
-CHECK: `make check MODULE=contracts` → green; core `compileKotlinJvm`/`compileKotlinJs` → green
+CHECK: `make check MODULE=contracts` → green; core jvm/js main + jvm test compile → green
 
 ## Changed (≤ 6 lines)
-- core contract: new `contracts/queue/ReviewLoop.kt`; `QueueBuilder.kt` KDoc rules 4-6 (no signature change).
-- openapi: `ReviewLoop`, `ReviewQueue.loop`, phases + C1-C5, legacy fields deprecated; clients regenerated.
-- Shell: `LOCAL_API_VERSION` 2, display prefs ops, capability `display`, 4 new parity scenarios, `queue-session-cap-more-available` deleted.
-- SCHEMA.md 6, core README (C-26, C-27), three SUMMARY.md, SPEC note, ADR-037 line.
-- User amendment: rule 5 is a proportional mix (both modes); keep going stays learning, reviews, new. `docs/REVIEW-LOOP.md` edited on coordinator instruction (outside ticket paths).
+- Attempt 2, C3: headline is always `loop.ready.total`; backlog only in its line (`backlog.reviews`), both modes (openapi, REVIEW-LOOP §4, SHELL 4.3, core README).
+- Rule 5 mix is now a stride on remaining quantities: new iff `s * gRem >= rRem`; additive `TodayReview.reviewedAt` (default 0) gives `s`.
+- Rule 4 defines `availableToday` (unbounded-batch draw) = `gRem`.
+- Legacy `counts.new` / `StatsSummary.due.new` frozen: day remainder under deck caps, not the batch (`LegacyCounts.new` via N∞).
+- Display prefs ops work unpaired, `503` during rebuild (shell.yaml, SHELL.md 3.1, 9, 10.1, 12).
+- Parity: A1 `counts.new` 12; clients regenerated; SUMMARYs updated.
 
 ## Acceptance → tests
 - contracts green, tags enforced → `parity_mandatory_covered`, `selftest_parity_missing_loop_tag`, `selftest_parity_loop_phase_unpinned`
@@ -21,6 +22,6 @@ CHECK: `make check MODULE=contracts` → green; core `compileKotlinJvm`/`compile
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Mix formula is mine: new next iff `introducedToday * (reviewsToday + |R|) < reviewsToday * newPerDay`. Lopsided history gives a run of new cards.
-- My decisions: `evaluate` forces learn-ahead 0; only the served build's `toMaterialize` is materialized; `getStatsSummary` batch 20.
-- Parity `expect` values are hand-derived, not run; goldens are stale until LOOP-SRV.
+- LOOP-CORE: loaders must pass `reviewedAt`; `s` ignores ties with the latest introduction.
+- With pending entries beyond the C-27 window, `gRem` and legacy `counts.new` are lower bounds.
+- Parity `expect` values are hand-derived, not run; goldens stale until LOOP-SRV.

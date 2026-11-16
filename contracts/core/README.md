@@ -214,9 +214,14 @@ The local values may differ from what the server would send while ops are pendin
 **ADR-037 — review loop** (`core/src/commonTest/kotlin/kotobaya/queue/ReviewLoopTest.kt`, jvm and js;
 ticket LOOP-CORE; write the tests first, from the worked examples): A1, B3, B4, A3 of the `ReviewLoop`
 KDoc and A2, A4, B1, B2, B5-B8, E1-E6 of `docs/REVIEW-LOOP.md` 10; the rule-5 mix examples of the
-`QueueBuilder` KDoc (`R1 N1 R2 R3 N2 R4`; 200 ready / goal 40; 9 ready with 12 of 40 introduced) and
-"the order of one build equals the order of rebuilding after each answer"; rule-4 budget (day
-remaining + batch, atomic against the day, 39/40 with a 3-card group); `newPerSession` /
+`QueueBuilder` KDoc (`R1 R2 N1 R3 N2 R4`; 200 ready / 40 available; 9 ready / 28 available; cap 2,
+goal 1 → `R1 N1 R2`), "never two new cards in a row while a review is left", "at most
+`ceil(rRem / gRem)` reviews between two new cards", and "the order of one build equals the order of
+rebuilding after each answer" (answer the head, append the matching `TodayReview` with a later
+`reviewedAt`, rebuild, compare with the tail); `s` counts only reviews after the latest
+introduction (`reviewedAt` ties do not count; learning answers change nothing); rule-4 budget (day
+remaining + batch, atomic against the day, 39/40 with a 3-card group) and `availableToday` (goal
+remainder, small pool, deck cap); `LegacyCounts.new` is not bounded by the batch; `newPerSession` /
 `newShownThisSession` change nothing. Properties (extend `QueuePropertyTest`): counts invariant under
 `keepGoing`; `backlog >= readyReviews`; `REVIEWING` iff the served queue is non-empty;
 `GOAL_REACHED` / `DONE_FOR_TODAY` imply K non-empty; no LEARNING item with `dueAt > now`; the result
@@ -245,9 +250,11 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
   ignored); `keepGoingNewBatch`: the local API passes the request's `limit` (as the server, so
   parity holds); native count-only callers leave the default 10. `keepGoing`: the local API passes
   the request's `keep_going`; native count-only callers pass `false`.
+- **Loader.** `TodayReview.reviewedAt` = `review_log.reviewed_at` for every row (the rule 5 mix
+  needs the answer order).
 - **What to show.** Items: `LoopResult.queue.items`. Phase: `LoopState.phase`. Ready-now count
-  (widget, notification): `readyLearning + readyReviews`; these do not depend on keep going, so the
-  widget needs no keep-going state. New bar: `newToday / newGoal`. The "New" badge: `QueueItem.isNew`.
+  (widget, notification, and every client's headline): always `readyLearning + readyReviews`, with
+  or without keep going, so the widget needs no keep-going state and shows what the SPA shows. New bar: `newToday / newGoal`. The "New" badge: `QueueItem.isNew`.
 - **Materialization (C-27).** Materialize exactly `LoopResult.queue.toMaterialize` (the served
   build) and re-evaluate; never the other build's entries. A count-only caller (widget) does not
   materialize.

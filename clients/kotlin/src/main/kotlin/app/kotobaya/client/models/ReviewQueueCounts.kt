@@ -30,7 +30,7 @@ import com.google.gson.annotations.SerializedName
  * **Deprecated (ADR-037): use `loop`.** Still sent, with the frozen pre-ADR-037 meaning, for old clients (core `LoopState.legacy`): the normal queue's remaining cards (whole queue, not only `items`; unaffected by `kinds` and by `keep_going`). 
  *
  * @param learning Deprecated. Cards in learning or relearning due before the day ends, **ready or not**: `loop.ready.learning + loop.later_today.count`. This is the over-count ADR-037 replaces (26 here could mean 0 cards to show now); kept unchanged so old clients see what they always saw. 
- * @param new Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at most about `limit` new cards, so this is bounded by `limit` as well as by the day's remaining goal. 
+ * @param new Deprecated. New cards still to introduce today: the smaller of the day goal's remainder and what the decks can supply under their limits, including deck entries not yet materialized (C-27). **Not** bounded by `limit` (frozen meaning; core `LoopState.legacy.new`). 
  * @param review Deprecated. Review cards due today within the limits (including overdue). Equals `loop.ready.review`.
  */
 
@@ -42,7 +42,7 @@ data class ReviewQueueCounts (
     @SerializedName("learning")
     val learning: kotlin.Int,
 
-    /* Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at most about `limit` new cards, so this is bounded by `limit` as well as by the day's remaining goal.  */
+    /* Deprecated. New cards still to introduce today: the smaller of the day goal's remainder and what the decks can supply under their limits, including deck entries not yet materialized (C-27). **Not** bounded by `limit` (frozen meaning; core `LoopState.legacy.new`).  */
     @SerializedName("new")
     val new: kotlin.Int,
 

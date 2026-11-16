@@ -6,7 +6,7 @@
   ],
   "narrative": [
     "The user case of ADR-037, scaled down. scheduler.reviews_unlimited is true. Three cards were introduced in the previous study day (Again at 02:00Z, before today's start at 04:00Z) and failed again at 09:59:55, :56 and :57, so they sit in the first learning step (60 s) and fall due at 10:00:55, :56 and :57. Twelve cards are new; new_per_day is the default 20; nothing was introduced or reviewed today.",
-    "Step 0, 10:00:01, limit=10: nothing is ready (ready 0/0), three cards are later today. The phase is reviewing, not waiting: ten new cards are served (the batch is limit). The deprecated counts keep their old meaning: learning 3 counts the three cards that are not ready; new 10 is bounded by limit.",
+    "Step 0, 10:00:01, limit=10: nothing is ready (ready 0/0), three cards are later today. The phase is reviewing, not waiting: ten new cards are served (the batch is limit). The deprecated counts keep their old meaning: learning 3 counts the three cards that are not ready; new 12 is every new card still introducible today (not bounded by limit).",
     "Step 1, 10:00:55: the first learning card fell due. It is the first item (a card that came due is the next card), followed by new cards; ready.learning 1, later_today 2.",
     "Step 2, 10:00:56, keep_going=true: two learning cards are ready and lead; new cards follow. Numbers do not depend on keep_going."
   ],
@@ -626,7 +626,7 @@
             }
           },
           "/counts": {
-            "new": 10,
+            "new": 12,
             "learning": 3,
             "review": 0
           },
@@ -682,7 +682,7 @@
           "/items/0/is_new": false,
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000040",
           "/counts": {
-            "new": 10,
+            "new": 12,
             "learning": 3,
             "review": 0
           }

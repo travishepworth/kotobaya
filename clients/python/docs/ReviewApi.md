@@ -277,14 +277,20 @@ instant):
 
 Order of a normal request (`keep_going=false`), always: ready learning first (a card
 that came due is the next card); then ready reviews (most overdue first) and new cards
-in the **proportional mix** (core `QueueBuilder` rule 5): new cards are spread over the
-reviews so that the day's review pool and the day's new goal run out at about the same
-time, recomputed on every request from today's reviews; the first card of a fresh day is
-the most overdue review. Both modes mix: with `scheduler.reviews_unlimited` the review
-side is every ready review, otherwise the reviews left under the cap. New cards per
-response are bounded by the day's remaining goal and by `limit` (the batch; an
-add_kanji group may overshoot `limit`, never the goal).
-Example: 4 reviews ready, goal 2, nothing done today: `R1 N1 R2 R3 N2 R4`.
+in the **proportional mix** (core `QueueBuilder` rule 5): new cards are spread evenly
+over the ready reviews that remain, so both run out at about the same time. The next card
+is a new card iff `s * gRem >= rRem`, with `rRem` = ready reviews left, `gRem` = new
+cards that can still be introduced today (the smaller of the goal's remainder and what
+the decks can supply under their limits) and `s` = reviews answered since the last new
+card was introduced today; otherwise it is the most overdue review. So a fresh day
+starts with a review, there are never two new cards in a row while a review is left,
+and the order of one response equals what fetching after every answer gives. Both modes
+mix: with `scheduler.reviews_unlimited` `rRem` is every ready review, otherwise the
+reviews left under the cap. New cards per response are bounded by the day's remaining
+goal and by `limit` (the batch; an add_kanji group may overshoot `limit`, never the
+goal); `limit` does not change the order.
+Example: 4 reviews ready, 2 new cards left in the goal, nothing done today:
+`R1 R2 N1 R3 N2 R4`. Example: 200 ready, 40 left: a new card after every 5th review.
 
 Phases (`loop.phase`; first match wins):
 1. `reviewing`: the served queue has a card (or a deck entry to materialize, C-27).
@@ -317,11 +323,15 @@ Client rules (normative for web, the shell SPA and the CLI):
   mismatching response. Per client, never synced: another browser or the phone keeps
   its own state (off until started there). Not an op, not a setting. (Replaces
   ADR-031's "one visit" scope.)
-- **C3 Display.** Ready-now number = `loop.ready.total` when not keeping going;
-  `loop.ready.learning + loop.backlog.reviews` when keeping going. Show a backlog line
-  only when `loop.backlog.beyond_limit > 0`; a "later today" hint only when
-  `loop.later_today.count > 0`; the new bar as `loop.new.today` / `loop.new.goal` (it
-  may exceed the goal after keep going: clamp the bar, show the number).
+- **C3 Display.** The headline "ready now" number is **always** `loop.ready.total`,
+  with or without keep going, so every client and surface (web, phone, widget, CLI)
+  shows the same number at the same instant. The backlog is shown only in a separate
+  backlog line, `loop.backlog.reviews`, displayed iff `loop.backlog.beyond_limit > 0`,
+  in both modes (while keeping going past the cap the headline is therefore
+  `ready.learning` and the backlog line carries the reviews being cleared). A "later
+  today" hint only when `loop.later_today.count > 0`; the new bar as `loop.new.today` /
+  `loop.new.goal` (it may exceed the goal after keep going: clamp the bar, show the
+  number).
 - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
   fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
   timer-driven fetch (the client's clock may differ from the server's; if the card is
@@ -383,8 +393,8 @@ changes.
 **Old clients.** A client written before ADR-037 keeps working: `counts`,
 `more_available` and `next_learning_due_at` are still sent with their old meaning (see
 the schema). What it sees differently: the order (the proportional mix instead of the
-fixed-stride interleave), `counts.new` bounded by `limit`, and no per-session "done for
-now" (`scheduler.new_per_session` is ignored).
+old interleave) and no per-session "done for now" (`scheduler.new_per_session` is
+ignored; `counts.new` is the day's remainder, never a session's).
 
 **Deck entries become cards here (C-27, ADR-032).** Deck items `e:<seq>` with no note
 are new cards too (core `PendingEntry`; which entries qualify: contracts/core README

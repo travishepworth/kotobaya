@@ -1,7 +1,7 @@
 
 # StatsSummaryDue
 
-**Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`, computed through `ReviewLoop` for an unfiltered normal request with the default `limit` 20): the over-counting `learning` and the batch-bounded `new` documented there. No `loop` is added here. 
+**Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`, computed through `ReviewLoop` for an unfiltered normal request): the over-counting `learning` documented there and `new` = the day\'s remaining new cards (not bounded by any batch). No `loop` is added here. 
 
 ## Properties
 

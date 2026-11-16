@@ -32,7 +32,7 @@ info:
     credential is sent and every operation has `security: []`. What matters instead is whether the
     device is **paired** (a device token is stored):
 
-    - `getShellInfo` and `pairShell` work unpaired.
+    - `getShellInfo`, `pairShell`, `getDisplayPrefs` and `updateDisplayPrefs` work unpaired.
     - Every other operation answers `401 unauthenticated` while unpaired, before anything else.
 
     The device token is never part of any request or response of this API.
@@ -158,7 +158,7 @@ paths:
         - Pending ops exist (`ShellSyncStatus.pending_ops > 0`) and `force` is not `true`:
           `409 shell_pending_ops`; nothing is deleted. The SPA asks the user and repeats with
           `force: true`, or syncs first.
-        - Already unpaired: `401 unauthenticated`, like every operation except `getShellInfo` and
+        - Already unpaired: `401 unauthenticated`, like every operation except the display ones, `getShellInfo` and
           `pairShell`. A retry after a lost response therefore sees `401`, which the SPA treats
           as "unpaired" (it re-reads `getShellInfo`).
         - Otherwise `200` with `paired: false`; a `shell.sync` event follows and every later
@@ -489,8 +489,9 @@ paths:
       description: |
         Device-local preferences (not synced, no op, no learning data). Offered only when
         `ShellInfo.capabilities` contains `display`; the SPA hides the settings row without it.
-        Unpaired: `401 unauthenticated`; during a rebuild: `503 shell_rebuilding` (as the other
-        preference operations, SHELL.md section 12).
+        **Works unpaired** (the Pair screen is rotated like the rest of the app; nothing here
+        touches the replica or the token); during a rebuild: `503 shell_rebuilding` (as the
+        other preference operations, SHELL.md section 12).
       security: []
       responses:
         '200':
@@ -511,7 +512,8 @@ paths:
         (pointer `/lock_portrait` for a wrong type, `""` for an empty object) and changes
         nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores
         the value in device preferences, so it survives a restart. Repeating the same request is
-        a no-op with the same answer. Answers with the state after the change.
+        a no-op with the same answer. Answers with the state after the change. Works unpaired;
+        `503 shell_rebuilding` during a rebuild (nothing is changed then).
       security: []
       requestBody:
         required: true
@@ -644,7 +646,7 @@ components:
           examples: [2]
         paired:
           type: boolean
-          description: A device token is stored. While false every operation except `getShellInfo` and `pairShell` answers `401 unauthenticated`.
+          description: A device token is stored. While false every operation except `getShellInfo`, `pairShell`, `getDisplayPrefs` and `updateDisplayPrefs` answers `401 unauthenticated`.
           examples: [true]
         auth_required:
           type: boolean

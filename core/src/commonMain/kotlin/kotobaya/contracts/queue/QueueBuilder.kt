@@ -131,6 +131,14 @@ public data class TodayReview(
     public val countsAsReview: Boolean,
     /** The card's deck memberships (deck ids) now, for per-deck attribution. */
     public val deckIds: List<Uuid>,
+    /**
+     * ADR-037 (additive): `review_log.reviewed_at`. Used only by the rule 5 mix, to count the
+     * reviews answered since the latest new card was introduced today. Loaders MUST pass it; the
+     * default `0` exists only so that existing callers compile (with all values equal the mix
+     * still is deterministic: every review counts until a card is introduced today, none after).
+     * Example: `1795168802000`.
+     */
+    public val reviewedAt: InstantMs = 0,
 )
 
 /** A deck entry `e:<seq>` that has no live note yet; drawing it means creating its note and cards first. */
@@ -215,7 +223,7 @@ public data class QueueLimits(
      * `QueueDeck.reviewsPerDay` cap: every eligible REVIEW card with `dueAt < day.endMs` is taken
      * (still at most one NEW/REVIEW item per note if [burySiblings]; never a card due at or after
      * `day.endMs`). Nothing else changes: new-card limits (rule 4), learning and learn-ahead
-     * (rule 2), the proportional mix of rule 5 (its review side is then every ready review) and
+     * (rule 2), the proportional mix of rule 5 (its `rRem` is then every ready review) and
      * [ReviewQueue.moreAvailable] are as for false, and
      * [keepGoing] behaves as before (it already lifts the review caps). Unlike [keepGoing] this is
      * a persisted, synced setting and applies to every build, including the Today counts, so all
@@ -390,6 +398,12 @@ public data class ReviewQueue(
  *    `newPerSession` and `newShownThisSession` are ignored (no session cap, no "done for now").
  *    Wherever the text below says "the budget" it means this test. Example: goal 40, 12 introduced,
  *    batch 10, 100 single cards → 10 NEW; 39 introduced and only a 3-card group left → none.
+ *    **`availableToday`** = what `drawn` would reach if the batch were unbounded (same input, same
+ *    turn order, only the `drawn < batch` test removed): the new cards that can still be introduced
+ *    today under the day goal and the per-deck caps, `<= dayRemaining`. The batch-bounded draw is a
+ *    prefix of that unbounded draw. Rule 5 uses it; [ReviewLoop] derives the legacy new count from
+ *    the same unbounded draw. Example: 12 of 40 introduced, 100 new cards → 28; only 3 new cards
+ *    exist → 3; a deck capped at 5 with 2 introduced from it and no other source → 3.
  *    Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
  *    holding the NEW cards with **no deck membership at all** (`memberships` empty), ordered by
  *    `(noteCreatedAt, kindOrder, cardId)`, with priority [QueueInput.decklessPriority] and no deck
@@ -448,31 +462,45 @@ public data class ReviewQueue(
  *    `R` (rule 3 order, most overdue first) and the new cards `N` (rule 4 draw order) in the
  *    **proportional mix**; then the learn-ahead items last (only when `learnAheadMs > 0`, which
  *    Kotobaya never passes; [ReviewLoop] forces 0).
- *    **Proportional mix**: new cards are spread over the reviews so that today's review pool and
- *    today's new goal are used up at about the same time, in both modes (`reviewsUnlimited` or
- *    not). Integers only, so every platform gives the same order:
- *    - `a` = today's `countsAsReview` reviews, `b` = today's `introducedNew` reviews (both from
- *      [QueueInput.today] after rule 0); `Rt = a + |R|` (the day's review pool: done + ready, where
- *      ready is already bounded by the review caps, i.e. `min(due, remaining cap)` in capped mode
- *      and every due review in unlimited mode); `Gt = max(1, newPerDay)` (the day's new goal).
+ *    **Proportional mix** (a stride on what **remains**; both modes, `reviewsUnlimited` or not):
+ *    new cards are spread evenly over the ready reviews, so both run out at about the same time,
+ *    never two new cards in a row while a review is left. Integers only, so every platform gives
+ *    the same order:
+ *    - `rRem = |R|` (ready reviews left: already bounded by the review caps, i.e. `min(due,
+ *      remaining cap)` in capped mode and every due review in unlimited mode);
+ *      `gRem = availableToday` (rule 4: `min(remaining day goal, new cards available under the
+ *      deck caps)`; not the batch-bounded number drawn);
+ *      `s` = the number of today's `countsAsReview` reviews with `reviewedAt` **greater than** `T`,
+ *      `T` = the largest `reviewedAt` among today's `introducedNew` reviews (all of today's
+ *      `countsAsReview` reviews when nothing was introduced today). All from [QueueInput.today]
+ *      after rule 0. `s` = "reviews answered since the last new card".
  *    - Repeat while both `R` and `N` have cards left: the next item is the next **new** card iff
- *      `b * Rt < a * Gt` (new-card progress `b / Gt` is behind review progress `a / Rt`; compute
- *      in 64-bit), else the next **review**; then `b += 1` or `a += 1` respectively. A tie is a
- *      review, so with nothing done today the first card is the most overdue review.
- *    - When one of the two runs out, the rest of the other follows.
- *    The counters advance exactly as [QueueInput.today] does when the items are answered in
- *    order, so the order of one build equals the order produced by rebuilding after every answer
- *    (recomputed each time; no session state). The mix reads only `today`, `|R|` and `newPerDay`:
- *    it does not depend on the batch, on input order or on the caller. Cards of an add_kanji group
+ *      `s * gRem >= rRem` (64-bit), then `s = 0`, `gRem -= 1`; else the next **review**, then
+ *      `s += 1`, `rRem -= 1`.
+ *    - When one of the two runs out, the rest of the other follows. (`N` may run out before
+ *      `gRem` reaches 0: the batch; the rebuild after the next answer continues the same stride.)
+ *    Properties: a fresh day starts with a review (`s = 0`, `rRem > 0`); right after a new card
+ *    the next card is a review if one is left; between two new cards there are at most
+ *    `ceil(rRem / gRem)` reviews. The counters advance exactly as the input changes when the
+ *    items are answered in order (a review answer adds a later `countsAsReview` row and removes a
+ *    ready review; a new answer adds a later `introducedNew` row and uses one of
+ *    `availableToday`; a learning answer changes none of the three), so the order of one build
+ *    equals the order produced by rebuilding after every answer; there is no session state. The
+ *    mix does not depend on the batch, on input order or on the caller. Cards of an add_kanji group
  *    stay in rule 4 order but reviews may fall between them. `toMaterialize` entries are not items
- *    and take no slot; they join `N` after materialization and rebuild.
- *    Example (nothing done today, `newPerDay` 2, reviews R1 R2 R3 R4 due, new N1 N2): `Rt = 4`,
- *    `Gt = 2` → `R1 N1 R2 R3 N2 R4`. Example (200 ready, goal 40, nothing done): a new card after
- *    the 1st review, then one after every 5 more; the 40th new card follows the 196th review.
- *    Example (9 ready, 12 of 40 introduced, 0 reviewed): `R R R N N R N N N N R …`.
+ *    and take no slot (they are part of `availableToday`); they join `N` after materialization.
+ *    Example (nothing done today, R1 R2 R3 R4 ready, `availableToday` 2, new N1 N2):
+ *    `R1 R2 N1 R3 N2 R4`. Example (200 ready, 40 available, nothing done): five reviews, a new
+ *    card, repeated (`RRRRRN…`); the last four gaps are four reviews and four reviews follow the
+ *    40th new card. Example (9 ready, 28 available): `R N R N … R N` nine times, then the
+ *    remaining 19 new cards. Example (cap 2, goal 1, 5 due, 3 new): `R1 N1 R2`.
+ *    Loader note: with pending entries, `availableToday` is computed over the entries the loader
+ *    passed (the C-27 window), so it can be a lower bound when a deck has more entries than the
+ *    window; server and device pass the same window for the same `limit`.
  *    Example with learning (`now` = T, learn-ahead 20 min): L1 due T+15 min, L2 due T−1 min, R3 due
  *    today, new N4 → `L2 R3 N4 L1`; with learn-ahead 0 (always, in Kotobaya) → `L2 R3 N4`.
- *    Before ADR-037 this was a fixed-stride interleave (`k = max(1, (|R| + |N|) / |N|)`).
+ *    Before ADR-037 this was an interleave with a stride from the drawn items only
+ *    (`k = max(1, (|R| + |N|) / |N|)`).
  * 6. **Keep going** (C-26, ADR-031), only when `limits.keepGoing` is true; otherwise rules 1–5
  *    apply exactly as written. These changes and nothing else:
  *    - Rule 3: the global and per-deck review remaining are unlimited, so every eligible REVIEW
