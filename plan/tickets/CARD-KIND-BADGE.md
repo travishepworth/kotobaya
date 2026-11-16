@@ -21,3 +21,8 @@
 
 ## Acceptance
 - [ ] make check for the module green. UI needs no tests; CLI state field has a test.
+
+## Android notes (from web/CLI handoffs)
+- Field: queue item / local card `note.type` (NoteBaseType vocab|kanji|phrase|grammar|sentence|custom).
+- Labels (i18n): Vocab, Kanji, Phrase, Grammar, Sentence, Custom.
+- Web: top-centre absolute badge in .card-body, same outlined caption style as the "New" badge, max-width 30% + ellipsis (web/src/routes/review/+page.svelte, messages.ts rv.kind.*). Mirror it on the Android review screen next to its existing new/type tags.
