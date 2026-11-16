@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -353,37 +354,17 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
             },
     ) {
         Column(Modifier.fillMaxSize()) {
-            CardContent(rendered, intents::mediaFile, Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = reveal.value })
+            // KIND-CHIP-OVERLAP: the chip row is in normal flow above the content, so nothing can sit under a chip
+            CardHeaderRow(
+                isNew = card.kind == kotobaya.contracts.queue.QueueItemKind.NEW,
+                kindRes = kindLabelRes(card.noteType),
+                hasAudio = rendered.audio.isNotEmpty(),
+                audioMissing = state.audioMissing,
+                onPlayAudio = { intents.playAudio(rendered.audio.first()) },
+            )
+            CardContent(rendered, intents::mediaFile, Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = reveal.value }.testTag(TAG_CARD_CONTENT))
             // AND-REVIEW-INFO: example words, deck chips and the dictionary button, from the prefetched card
             if (side == CardSide.BACK) BackPanel(card.extras, intents, Modifier.graphicsLayer { alpha = reveal.value })
-        }
-        // C-26: first-time cards carry a small "New" badge
-        if (card.kind == kotobaya.contracts.queue.QueueItemKind.NEW) {
-            kotobaya.android.ui.components.KbStateChip(
-                kotobaya.android.ui.theme.KbCardState.New,
-                T(R.string.review_new_badge),
-                Modifier.align(Alignment.TopStart).padding(8.dp),
-            )
-        }
-        // CARD-KIND-BADGE: the note type, top centre (same wording as web), never wider than 30% so it cannot hit the New tag
-        kindLabelRes(card.noteType)?.let { res ->
-            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth(0.3f).padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                kotobaya.android.ui.components.KbTagChip(T(res))
-            }
-        }
-        if (rendered.audio.isNotEmpty()) {
-            Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End) {
-                KbIconButton(KbIcons.Audio, T(R.string.review_play_audio), { intents.playAudio(rendered.audio.first()) }, variant = KbIconVariant.Tonal)
-                if (state.audioMissing) {
-                    Text(
-                        T(R.string.review_no_audio),
-                        style = KbTheme.type.caption,
-                        color = c.textMuted,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.widthIn(max = 180.dp).padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                }
-            }
         }
         card.noExamplePattern?.let { pattern ->
             Column(
@@ -392,6 +373,44 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
             ) {
                 Text(T(R.string.review_no_example_sentence), style = KbTheme.type.bodySm, color = c.text)
                 if (pattern.isNotEmpty()) Text(T(R.string.review_no_example_pattern, pattern), style = KbTheme.type.bodySm.copy(localeList = kotobaya.android.ui.theme.JapaneseLocale), color = c.textMuted)
+            }
+        }
+    }
+}
+
+internal const val TAG_CARD_CONTENT = "card-content"
+internal const val TAG_CARD_HEADER = "card-header"
+internal const val TAG_KIND_CHIP = "card-kind-chip"
+
+/**
+ * The tag row above the card content: "New" (start), the note type (centre, same wording as web) and the audio button
+ * (end). A Row in the card's Column, so its height is reserved and the content starts below it.
+ */
+@Composable
+internal fun CardHeaderRow(isNew: Boolean, kindRes: Int?, hasAudio: Boolean, audioMissing: Boolean, onPlayAudio: () -> Unit) {
+    if (!isNew && kindRes == null && !hasAudio) return
+    val c = KbTheme.colors
+    Row(Modifier.fillMaxWidth().padding(8.dp).testTag(TAG_CARD_HEADER), verticalAlignment = Alignment.Top) {
+        Box(Modifier.weight(1f), contentAlignment = Alignment.TopStart) {
+            if (isNew) {
+                kotobaya.android.ui.components.KbStateChip(kotobaya.android.ui.theme.KbCardState.New, T(R.string.review_new_badge))
+            }
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+            if (kindRes != null) kotobaya.android.ui.components.KbTagChip(T(kindRes), Modifier.testTag(TAG_KIND_CHIP))
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            if (hasAudio) {
+                KbIconButton(KbIcons.Audio, T(R.string.review_play_audio), onPlayAudio, variant = KbIconVariant.Tonal)
+                if (audioMissing) {
+                    Text(
+                        T(R.string.review_no_audio),
+                        style = KbTheme.type.caption,
+                        color = c.textMuted,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.widthIn(max = 180.dp).padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
             }
         }
     }
