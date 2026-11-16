@@ -8,6 +8,7 @@ import type {
 	NoteType as CoreNoteType,
 	Preset as CorePreset
 } from '../core/index';
+import type { LoopPhase } from './loop';
 import { tr } from './messages';
 
 export const MEDIA_URL_TEMPLATE = '/api/v1/blobs/{sha256}';
@@ -130,13 +131,12 @@ export function uuidv7(now: number = Date.now()): string {
 }
 
 /**
- * What the review screen shows (RC-WEB). The end screen ("done") only when the server says nothing is left:
- * counts all 0 and no learning card falling due later. Learning cards due later are a countdown ("waiting");
- * counts above 0 with nothing served and nothing to wait for is fetched again ("pending"); `more_available`
- * with counts 0 is the contract's "done for now, keep going has more". "settling": answers are still being
- * saved and nothing is left locally; the view keeps the last card on screen (inert) instead of a skeleton.
- * A failed refresh is a full-page error only when nothing else is known; while waiting or pending the view
- * keeps that screen and shows an inline notice.
+ * What the review screen shows. With no card on screen it is the server's `loop.phase` (ADR-037 rule C4) and
+ * nothing else: `goalReached` / `doneForToday` (Keep going offered), `waiting` (countdown to
+ * `later_today.next_due_at`), `done` (`empty`). `pending`: `reviewing` but no item served (deck entries still to
+ * materialize, C5, or a response that raced an answer): fetched again a few times. "settling": answers are still
+ * being saved and nothing is left locally; the view keeps the last card on screen (inert) instead of a skeleton.
+ * A failed refresh is a full-page error only when nothing else is known.
  */
 export type ReviewPhase =
 	| 'loading'
@@ -147,7 +147,8 @@ export type ReviewPhase =
 	| 'drillDone'
 	| 'waiting'
 	| 'pending'
-	| 'doneForNow'
+	| 'goalReached'
+	| 'doneForToday'
 	| 'done';
 
 export interface PhaseInput {
@@ -159,14 +160,8 @@ export interface PhaseInput {
 	hasCurrent: boolean;
 	isDrill: boolean;
 	drillUnavailable: boolean;
-	counts: { _new: number; learning: number; review: number } | null;
-	nextLearningDueAt: Date | null;
-	moreAvailable: boolean;
-	keepGoing: boolean;
-}
-
-export function remainingCount(c: PhaseInput['counts']): number {
-	return c ? c._new + c.learning + c.review : 0;
+	/** `loop.phase` of the last applied response (null before the first). */
+	loopPhase: LoopPhase | null;
 }
 
 export function reviewPhase(s: PhaseInput): ReviewPhase {
@@ -175,18 +170,19 @@ export function reviewPhase(s: PhaseInput): ReviewPhase {
 	if (s.hasCurrent) return 'card';
 	if (s.settling) return 'settling';
 	if (s.isDrill) return s.drillUnavailable ? 'drillUnavailable' : 'drillDone';
-	if (s.nextLearningDueAt !== null) return 'waiting';
-	if (sessionCapReached(s)) return 'doneForNow';
-	if (remainingCount(s.counts) > 0) return 'pending';
-	if (s.refreshFailed) return 'error';
-	if (s.moreAvailable && !s.keepGoing) return 'doneForNow';
-	return 'done';
+	switch (s.loopPhase) {
+		case 'waiting':
+			return 'waiting';
+		case 'goal_reached':
+			return 'goalReached';
+		case 'done_for_today':
+			return 'doneForToday';
+		case 'reviewing':
+			return 'pending';
+		case 'empty':
+			return s.refreshFailed ? 'error' : 'done';
+		default:
+			return 'error';
+	}
 }
 
-/**
- * The per-session new-card cap (or the daily limits) are reached: only new cards are left in `counts`, nothing
- * learning or due, and keep going has more. The contract's "done for now": offer Keep going, never poll.
- */
-export function sessionCapReached(s: Pick<PhaseInput, 'counts' | 'moreAvailable' | 'keepGoing'>): boolean {
-	return s.moreAvailable && !s.keepGoing && (s.counts?.learning ?? 0) === 0 && (s.counts?.review ?? 0) === 0;
-}

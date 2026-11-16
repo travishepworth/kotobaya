@@ -49,7 +49,37 @@ const en = {
 	'review.interval.hours': '{n} h',
 	'review.interval.days': '{n} d',
 	'review.interval.months': '{n} mo',
-	'review.interval.years': '{n} y'
+	'review.interval.years': '{n} y',
+	// ADR-037 review loop: Home hero and the review end screens (numbers from `loop` only).
+	'loop.readyNow': 'Ready now',
+	'loop.card': 'card',
+	'loop.cards': 'cards',
+	'loop.ready.learning': '{n} learning',
+	'loop.ready.review': '{n} to review',
+	'loop.later': '{n} learning later today · next in {min} min',
+	'loop.laterAt': '{n} learning later today · next at {time}',
+	'loop.newBar': 'New cards',
+	'loop.newOf': '{today}/{goal}',
+	'loop.newToday': '{n} new today',
+	'loop.backlog': 'Backlog: {n} reviews due · {limit}/day limit',
+	'loop.backlogMore': '{n} more reviews in backlog',
+	'loop.reviewsOf': 'Reviews {today}/{limit}',
+	'loop.reviewsToday': 'Reviews {today}',
+	'loop.newOfLong': 'New {today}/{goal}',
+	'loop.start': 'Start review',
+	'loop.keepGoing': 'Keep going',
+	'loop.goalReached.title': 'New-card goal reached',
+	'loop.goalReached.body': 'Reviews are done for now. Keep going adds more new cards.',
+	'loop.doneForToday.title': 'Done for today',
+	'loop.doneForToday.body': 'Today’s limits are reached. Keep going clears the backlog, then adds new cards.',
+	'loop.waiting.title': 'Next card in {time}',
+	'loop.waiting.next': 'Next card in',
+	'loop.waiting.homeTitle': 'Waiting for learning cards',
+	'loop.waiting.body': 'Your learning cards come back when their step is over. The next one appears by itself.',
+	'loop.empty.title': 'All done for today',
+	'loop.empty.body': 'Nothing else is due today.',
+	'loop.empty.keepGoing': 'Nothing more is available right now.',
+	'loop.legacy': 'The server is older than this app; some numbers are not shown.'
 } as const;
 
 export type ReviewMessageKey = keyof typeof en;

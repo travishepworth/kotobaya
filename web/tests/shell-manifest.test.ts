@@ -16,7 +16,7 @@ describe('shell manifest', () => {
 		const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 		expect(m.web_version).toBe('1.2.3');
 		expect(m.build_sha).toBe('abc1234');
-		expect(m.min_local_api).toBe(1);
+		expect(m.min_local_api).toBe(2);
 		expect(m.files).toEqual({
 			'index.html': sha('<html></html>'),
 			'_app/immutable/a.js': sha('let a = 1;')

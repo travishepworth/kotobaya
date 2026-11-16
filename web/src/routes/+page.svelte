@@ -17,6 +17,7 @@
 	import { DecksListPage } from '../lib/state/decks.svelte';
 	import { StatsPage, iso } from '../lib/state/stats.svelte';
 	import { StrugglePage } from '../lib/state/struggle.svelte';
+	import LoopHero from '../lib/review/LoopHero.svelte';
 	import { TodayQueue } from '../lib/state/today.svelte';
 	import { noteTitle } from '../lib/ui/cardState';
 	import { th } from './messages';
@@ -40,24 +41,32 @@
 	});
 
 	const summary = $derived(stats.summary);
-	const counts = $derived(queue.counts);
-	const due = $derived(queue.due);
+	// ADR-037: the hero reads `loop` only (the ready-now number is always `ready.total`, C3).
+	const view = $derived(queue.view);
+	const ready = $derived(view?.loop.ready.total ?? 0);
 	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && !decks.loadFailed && decks.items.length === 0);
 	// RC-WEB: decide "empty account or not" before drawing either layout, so a late summary never swaps the page.
-	// Cards due or a deck settle it at once (no waiting on the slow summary); a failed summary or deck list means
-	// "not known to be empty".
+	// A loop with anything to do or a deck settle it at once (no waiting on the slow summary); a failed summary or
+	// deck list means "not known to be empty".
 	const accountKnown = $derived(
-		(queue.loaded && queue.due > 0) ||
+		(queue.loaded && !!view && view.phase !== 'empty') ||
 			(decks.loaded && (decks.loadFailed || decks.items.length > 0)) ||
 			!!summary ||
 			stats.summaryP.failed
 	);
-	// Average answer time today, else ~10 s a card.
-	const etaMin = $derived.by(() => {
+	// Time for the ready cards: average answer time today, else ~10 s a card.
+	const eta = $derived.by(() => {
 		const d = summary?.doneToday;
 		const perCard = d && d.reviews > 0 && d.timeMs > 0 ? d.timeMs / d.reviews : 10_000;
-		return Math.round((due * perCard) / 60_000);
+		const min = Math.round((ready * perCard) / 60_000);
+		return min < 1 ? th('home.etaShort') : th('home.eta', { n: min });
 	});
+
+	/** Keep going on Home (C2): persisted for today's study day, then the review continues past the limits. */
+	function keepGoing(): void {
+		queue.keepGoing();
+		void goto('/review');
+	}
 
 	const today = new Date();
 	const dateLine = today.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -122,7 +131,7 @@
 					<div class="hero skeleton" aria-busy="true"><Skeleton shape="block" height="11rem" /></div>
 				{:else}
 				<section class="hero" aria-labelledby="due-title">
-					{#if queue.failed && !counts}
+					{#if !view}
 						<div class="due">
 							<p class="overline" id="due-title">{th('home.dueNow')}</p>
 							<p class="muted">{th('home.countsFailed')}</p>
@@ -133,42 +142,9 @@
 						<div class="go">
 							<Button variant="primary" size="lg" href="/review" icon="review" full>{th('home.start')}</Button>
 						</div>
-					{:else if counts && due > 0}
-						<div class="due">
-							<p class="overline" id="due-title">{th('home.dueNow')}</p>
-							<p class="figure">
-								<span class="n kb-num">{due.toLocaleString()}</span>
-								<span class="unit">{due === 1 ? th('home.card') : th('home.cards')}</span>
-							</p>
-							<ul class="breakdown">
-								<li><i class="new"></i>{th('home.new', { n: counts._new })}</li>
-								<li><i class="learning"></i>{th('home.learning', { n: counts.learning })}</li>
-								<li><i class="review"></i>{th('home.review', { n: counts.review })}</li>
-							</ul>
-						</div>
-						<div class="go">
-							<Button variant="primary" size="lg" href="/review" icon="review" full>{th('home.start')}</Button>
-							<p class="eta"><Icon name="clock" size={16} />{etaMin < 1 ? th('home.etaShort') : th('home.eta', { n: etaMin })}</p>
-						</div>
 					{:else}
-						<div class="done">
-							<svg class="enso" viewBox="0 0 120 120" aria-hidden="true">
-								<path
-									d="M93 28c-9-9-21-13-34-12C33 18 15 38 16 62c1 24 21 43 46 42 24-1 42-20 42-43 0-9-3-17-7-24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="8"
-									stroke-linecap="round"
-								/>
-							</svg>
-							<div>
-								<h2 id="due-title">{queue.moreAvailable ? th('home.doneNow') : th('home.doneTitle')}</h2>
-								{#if summary}<p>{nextDue(summary.nextDueAt)}</p>{/if}
-								{#if queue.moreAvailable}
-									<Button variant="primary" href="/review?more=1" icon="review">{th('home.keepGoing')}</Button>
-								{/if}
-							</div>
-						</div>
+						<LoopHero {view} {eta} onkeepgoing={keepGoing} />
+						{#if view.phase === 'empty' && summary}<p class="muted next">{nextDue(summary.nextDueAt)}</p>{/if}
 					{/if}
 					{#if summary && summary.doneToday.reviews > 0}
 						<p class="today">
@@ -328,51 +304,6 @@
 		text-transform: uppercase;
 		color: var(--kb-color-text-muted);
 	}
-	.figure {
-		display: flex;
-		align-items: baseline;
-		gap: var(--kb-space-2);
-	}
-	.n {
-		font: var(--kb-type-display);
-		font-size: clamp(3rem, 2.4rem + 2.6vw, 4.5rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-	}
-	.unit {
-		font: var(--kb-type-title);
-		color: var(--kb-color-text-muted);
-	}
-	.breakdown {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--kb-space-1) var(--kb-space-4);
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		font: var(--kb-type-body-sm);
-		color: var(--kb-color-text-muted);
-		font-variant-numeric: tabular-nums;
-	}
-	.breakdown li {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--kb-space-1);
-	}
-	.breakdown i {
-		width: 0.5rem;
-		height: 0.5rem;
-		border-radius: 50%;
-	}
-	i.new {
-		background: var(--kb-color-state-new);
-	}
-	i.learning {
-		background: var(--kb-color-state-learning);
-	}
-	i.review {
-		background: var(--kb-color-state-review);
-	}
 	.go {
 		display: flex;
 		flex-direction: column;
@@ -381,30 +312,10 @@
 		flex: 1 1 14rem;
 		max-width: 22rem;
 	}
-	.eta {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--kb-space-1);
+	.next {
+		margin: 0;
+		width: 100%;
 		font: var(--kb-type-body-sm);
-		color: var(--kb-color-text-muted);
-	}
-	.done {
-		display: flex;
-		align-items: center;
-		gap: var(--kb-space-5);
-	}
-	.enso {
-		width: 4.5rem;
-		height: 4.5rem;
-		flex: none;
-		color: var(--kb-color-brand);
-	}
-	.done h2 {
-		font: var(--kb-type-title);
-	}
-	.done p {
-		color: var(--kb-color-text-muted);
 	}
 	.today {
 		display: flex;

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-// C-27: keep going is an endless stream. Every keep-going fetch that returns items keeps the session going, the
-// queue is refetched when it empties, a response with only entries still to materialize is fetched again, and the
-// end screen (no current card) shows only after a keep-going fetch that is truly empty. No card is shown twice.
+// C-27 / ADR-037: keep going is an endless stream. Every keep-going fetch that returns items keeps the session going,
+// the queue is refetched when it empties, a response with only entries still to materialize is fetched again (C5), and
+// the end screen (no current card) shows only after a keep-going fetch that is truly empty. No card is shown twice.
 import { flushSync } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { QueueItem } from '../../src/lib/api/generated';
+import { card, queue } from './loopFixture';
 
 const api = vi.hoisted(() => ({
 	answerReview: vi.fn(),
@@ -22,8 +22,8 @@ vi.mock('../../src/lib/review/api', () => ({
 }));
 
 import { ReviewPage, resetOutboxForTests } from '../../src/lib/state/review.svelte';
+import { startKeepGoing } from '../../src/lib/review/keepGoingDay';
 
-const card = (id: string): QueueItem => ({ card: { id, presetId: 'p' }, reviewType: 'schedule', isNew: true }) as unknown as QueueItem;
 const good = { rating: 3 } as never;
 const settle = async () => {
 	for (let i = 0; i < 10; i++) await new Promise((r) => setTimeout(r, 0));
@@ -33,6 +33,7 @@ describe('keep going', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		resetOutboxForTests();
+		localStorage.clear();
 	});
 
 	it('streams batches until a keep-going fetch is empty, never repeating a card', async () => {
@@ -50,15 +51,16 @@ describe('keep going', () => {
 			const left = Array.from({ length: total }, (_, i) => `c${i}`).filter((id) => !answered.includes(id));
 			if (answered.length === 20 && materializeHiccup) {
 				materializeHiccup = false;
-				return { items: [], toMaterialize: 5, counts: null, dayEndsAt: new Date(), studyDay: new Date(0) };
+				return queue({ loop: { phase: 'reviewing', keepGoing: true }, toMaterialize: 5 });
 			}
-			return { items: left.slice(0, req.limit).map(card), toMaterialize: 0, counts: null, dayEndsAt: new Date(), studyDay: new Date(0), moreAvailable: false };
+			const items = left.slice(0, req.limit).map((id) => card(id, { isNew: true }));
+			return queue({ items, loop: { phase: items.length > 0 ? 'reviewing' : 'empty', keepGoing: true } });
 		});
+		startKeepGoing(new Date('2026-11-17T00:00:00Z'));
 		let page!: ReviewPage;
 		const dispose = $effect.root(() => {
 			page = new ReviewPage();
 		});
-		page.keepGoing = true;
 		await page.reload();
 		flushSync();
 		const shown: string[] = [];
@@ -73,6 +75,7 @@ describe('keep going', () => {
 		expect(shown.length).toBe(total);
 		expect(page.current).toBeUndefined();
 		expect(page.keepGoing).toBe(true);
+		page.dispose();
 		dispose();
 	});
 });

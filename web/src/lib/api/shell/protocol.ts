@@ -2,7 +2,7 @@
 // Pure: types and validators only. Patterns are copied from the schema; the contract example files are the test.
 
 /** Lowest LOCAL_API_VERSION this bundle works with (SHELL.md 7.2); equals MIN_LOCAL_API of scripts/shell-manifest.ts. */
-export const MIN_LOCAL_API = 1;
+export const MIN_LOCAL_API = 2;
 
 export type HeaderMap = Record<string, string>;
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const INFO = {
 	shell_version: '0.1.0',
 	shell_version_code: 1,
-	local_api_version: 1,
+	local_api_version: 2,
 	paired: true,
 	auth_required: false,
 	server_url: 'https://k.example/api/v1',

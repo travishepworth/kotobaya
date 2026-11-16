@@ -6,7 +6,7 @@ import { join, relative, sep } from 'node:path';
 
 // ADR-036: the Android shell bundles the SPA and checks it against this manifest.
 export const MANIFEST_NAME = 'shell-manifest.json';
-export const MIN_LOCAL_API = 1;
+export const MIN_LOCAL_API = 2;
 
 export interface ShellManifest {
 	web_version: string;

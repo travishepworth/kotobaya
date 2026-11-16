@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-// RC-WEB: the review screen reaches the end screen only when the server says nothing is left. The user report
+// RC-WEB / ADR-037: the review screen reaches an end screen only when `loop.phase` says so. The user report
 // (web 0.1.22): Start on 3 learning cards due in ~2 min, a ~6 s queue fetch, then the session-over screen.
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { QueueItem, ReviewQueue } from '../../src/lib/api/generated';
+import { card, queue } from './loopFixture';
 
 const api = vi.hoisted(() => ({
 	answerReview: vi.fn(),
@@ -24,22 +24,10 @@ import { QUEUE_TIMEOUT_MS, ReviewPage, resetOutboxForTests } from '../../src/lib
 import { reviewPhase, type PhaseInput } from '../../src/lib/review/model';
 import { ResponseError } from '../../src/lib/api/generated';
 
-const card = (id: string): QueueItem => ({ card: { id, presetId: 'p' }, reviewType: 'schedule' }) as unknown as QueueItem;
 const good = { rating: 3, label: 'good' } as never;
-const counts = (learning: number, review = 0, n = 0) => ({ _new: n, learning, review });
-
-function queue(over: Partial<ReviewQueue>): ReviewQueue {
-	return {
-		items: [],
-		counts: counts(0),
-		studyDay: new Date(0),
-		dayEndsAt: new Date(Date.now() + 10 * 3600_000),
-		generatedAt: new Date(),
-		moreAvailable: false,
-		toMaterialize: 0,
-		...over
-	} as ReviewQueue;
-}
+const waiting = (due: Date, count = 3) => queue({ loop: { phase: 'waiting', later: { count, nextDueAt: due } } });
+/** `reviewing` with nothing served (a response that raced an answer). */
+const reviewingEmpty = () => queue({ loop: { phase: 'reviewing', ready: { review: 2 } } });
 
 /** Resolve after `ms` of (fake) time, like the slow live server. */
 const slow = <T>(ms: number, v: T) => new Promise<T>((r) => setTimeout(() => r(v), ms));
@@ -67,6 +55,7 @@ describe('review session end (RC-WEB)', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		resetOutboxForTests();
+		localStorage.clear();
 		vi.useFakeTimers();
 	});
 	afterEach(() => {
@@ -77,12 +66,12 @@ describe('review session end (RC-WEB)', () => {
 		const due = new Date(Date.now() + 120_000);
 		api.getReviewQueue
 			.mockImplementationOnce(() =>
-				slow(6000, queue({ counts: counts(3), moreAvailable: true, nextLearningDueAt: due }))
+				slow(6000, waiting(due))
 			)
 			.mockImplementation(async () =>
 				Date.now() >= due.getTime()
-					? queue({ items: [card('l1')], counts: counts(3) })
-					: queue({ counts: counts(3), moreAvailable: true, nextLearningDueAt: due })
+					? queue({ items: [card('l1')] })
+					: waiting(due)
 			);
 		const { page, dispose } = mount();
 		page.start(null);
@@ -98,14 +87,14 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('items [] with counts > 0 and nothing to wait for is pending and fetched again, never done', async () => {
+	it('reviewing with items [] and nothing to wait for is pending and fetched again, never done', async () => {
 		const due = new Date(Date.now() + 5000);
 		let calls = 0;
 		api.getReviewQueue.mockImplementation(async () => {
 			calls++;
-			if (calls === 1) return queue({ counts: counts(3), nextLearningDueAt: due });
-			if (calls < 4) return queue({ counts: counts(3) }); // server says 3 left but serves none, no due instant
-			return queue({ items: [card('l1')], counts: counts(3) });
+			if (calls === 1) return waiting(due);
+			if (calls < 4) return reviewingEmpty(); // the loop says cards are ready but none was served
+			return queue({ items: [card('l1')] });
 		});
 		const { page, dispose } = mount();
 		page.start(null);
@@ -122,11 +111,11 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('a failed refresh with counts left stays pending and refetches instead of ending', async () => {
+	it('a failed refresh while reviewing stays pending and refetches instead of ending', async () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		let answered = false;
 		api.getReviewQueue.mockImplementation(async () =>
-			answered ? queue({ items: [card('b')], counts: counts(0, 1) }) : queue({ items: [card('a')], counts: counts(0, 2) })
+			answered ? queue({ items: [card('b')] }) : queue({ items: [card('a')] })
 		);
 		const { page, dispose } = mount();
 		page.start(null);
@@ -139,7 +128,7 @@ describe('review session end (RC-WEB)', () => {
 		answered = true;
 		await page.grade(good);
 		await tick();
-		// Counts said cards remain: pending with an inline notice (no full-page error), fetched again by itself.
+		// The loop said reviewing: pending with an inline notice (no full-page error), fetched again by itself.
 		expect(page.phase).toBe('pending');
 		expect(page.refreshFailed).toBe(true);
 		await tick(5000);
@@ -150,7 +139,7 @@ describe('review session end (RC-WEB)', () => {
 
 	it('queue fetch rejects (504) → error with retry, not done; retry loads the cards', async () => {
 		api.getReviewQueue.mockRejectedValueOnce(new Error('504 Gateway Timeout'));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -174,8 +163,8 @@ describe('review session end (RC-WEB)', () => {
 
 	it('a retry while the first load is still running ignores the late first answer', async () => {
 		api.getReviewQueue
-			.mockImplementationOnce(() => slow(10_000, queue({ counts: counts(0) })))
-			.mockImplementationOnce(async () => queue({ items: [card('a')], counts: counts(0, 1) }));
+			.mockImplementationOnce(() => slow(10_000, queue()))
+			.mockImplementationOnce(async () => queue({ items: [card('a')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick(1000);
@@ -188,8 +177,8 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('counts all 0 and no next_learning_due_at → done', async () => {
-		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0) }));
+	it('phase empty → done, no polling', async () => {
+		api.getReviewQueue.mockResolvedValue(queue());
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -199,12 +188,15 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('more_available with nothing left under the limits → done for now (keep going offered)', async () => {
-		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0), moreAvailable: true }));
+	it('done_for_today → done for today (keep going offered), no polling', async () => {
+		api.getReviewQueue.mockResolvedValue(queue({ loop: { phase: 'done_for_today' } }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
-		expect(page.phase).toBe('doneForNow');
+		expect(page.phase).toBe('doneForToday');
+		await tick(30 * 60_000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
 		dispose();
 	});
 
@@ -219,8 +211,8 @@ describe('review session end (RC-WEB)', () => {
 				ids.push(r.reviewAnswerRequest.id);
 				return { review: { id: r.reviewAnswerRequest.id } };
 			});
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -245,7 +237,7 @@ describe('review session end (RC-WEB)', () => {
 
 	it('an answer that hangs times out and the card comes back (never silently dropped)', async () => {
 		api.answerReview.mockImplementationOnce(() => new Promise(() => {}));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -263,9 +255,9 @@ describe('review session end (RC-WEB)', () => {
 	it('a failed undo is surfaced and can be retried', async () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		let undone = false;
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
 		api.getReviewQueue.mockImplementation(async () =>
-			undone ? queue({ items: [card('a'), card('b')], counts: counts(0, 2) }) : queue({ items: [card('b')], counts: counts(0, 1) })
+			undone ? queue({ items: [card('a'), card('b')] }) : queue({ items: [card('b')] })
 		);
 		const { page, dispose } = mount();
 		page.start(null);
@@ -292,6 +284,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		resetOutboxForTests();
+		localStorage.clear();
 		vi.useFakeTimers();
 	});
 	afterEach(() => {
@@ -300,8 +293,8 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 
 	it('an answer the server refuses for good (410 gone) drops the card and shows the next one', async () => {
 		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 410 })));
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -316,8 +309,8 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 
 	it('a 5xx keeps the card pinned for Retry', async () => {
 		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 503 })));
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -335,7 +328,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		);
 		let answered = false;
 		api.getReviewQueue.mockImplementation(async () =>
-			answered ? queue({ counts: counts(0) }) : queue({ items: [card('a')], counts: counts(0, 1) })
+			answered ? queue() : queue({ items: [card('a')] })
 		);
 		const { page, dispose } = mount();
 		page.start(null);
@@ -366,7 +359,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 			const left = all.filter((x) => !answered.includes(x));
 			const items = first ? left.slice(0, 2) : left; // the first fetch is short (a server limit)
 			first = false;
-			return queue({ items: items.map(card), counts: counts(0, left.length) });
+			return queue({ items: items.map((id) => card(id)) });
 		});
 		const { page, dispose } = mount();
 		page.start(null);
@@ -387,8 +380,8 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		api.answerReview.mockImplementation(
 			(r: { reviewAnswerRequest: { id: string } }) => slow(2000, { review: { id: r.reviewAnswerRequest.id } })
 		);
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
-		api.getReviewQueue.mockImplementation(() => slow(1000, queue({ items: [card('b'), card('c')], counts: counts(0, 2) })));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
+		api.getReviewQueue.mockImplementation(() => slow(1000, queue({ items: [card('b'), card('c')] })));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -401,20 +394,40 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
-	it('per-session new cap (counts.new > 0, more_available, nothing else due) → done for now, no polling', async () => {
-		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0, 0, 10), moreAvailable: true }));
+	it('goal_reached with a learning card later: one fetch when it falls due serves it (reviewing again)', async () => {
+		const due = new Date(Date.now() + 60_000);
+		api.getReviewQueue.mockImplementation(async () =>
+			Date.now() >= due.getTime()
+				? queue({ items: [card('l1')] })
+				: queue({ loop: { phase: 'goal_reached', later: { count: 1, nextDueAt: due } } })
+		);
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
-		expect(page.phase).toBe('doneForNow');
-		await tick(30 * 60_000);
+		expect(page.phase).toBe('goalReached');
+		await tick(59_000);
 		expect(api.getReviewQueue).toHaveBeenCalledTimes(1);
+		await tick(3000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(2);
+		expect(page.current?.card.id).toBe('l1');
+		dispose();
+	});
+
+	it('C5: reviewing with only entries to materialize is fetched again at most 3 times, then Refresh', async () => {
+		api.getReviewQueue.mockResolvedValue(queue({ loop: { phase: 'reviewing' }, toMaterialize: 4 }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		await tick(60 * 60_000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(4);
+		expect(page.phase).toBe('pending');
+		expect(page.pendingStopped).toBe(true);
 		expect(vi.getTimerCount()).toBe(0);
 		dispose();
 	});
 
 	it('pending polling stops after a few tries and offers a refresh, which resumes it', async () => {
-		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0, 2) })); // server never serves them
+		api.getReviewQueue.mockResolvedValue(reviewingEmpty()); // server never serves them
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -425,7 +438,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		expect(page.pendingStopped).toBe(true);
 		expect(vi.getTimerCount()).toBe(0);
 		expect(page.phase).toBe('pending'); // never "done" while counts say cards remain
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')] }));
 		await page.reload();
 		await tick();
 		expect(page.pendingStopped).toBe(false);
@@ -438,10 +451,10 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		api.getReviewQueue.mockImplementation(() => {
 			n++;
-			if (n === 1) return Promise.resolve(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+			if (n === 1) return Promise.resolve(queue({ items: [card('a'), card('b')] }));
 			// The prefetch (fired at the tap) is slow and was built before the answer buried sibling s.
-			if (n === 2) return slow(5000, queue({ items: [card('b'), card('s')], counts: counts(0, 2) }));
-			return Promise.resolve(queue({ items: [card('b')], counts: counts(0, 1) }));
+			if (n === 2) return slow(5000, queue({ items: [card('b'), card('s')] }));
+			return Promise.resolve(queue({ items: [card('b')] }));
 		});
 		const { page, dispose } = mount();
 		page.start(null);
@@ -473,8 +486,8 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 				reqs.push(r.reviewAnswerRequest);
 				return { review: { id: r.reviewAnswerRequest.id } };
 			});
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -512,8 +525,8 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 				reqs.push(r.reviewAnswerRequest);
 				return { review: { id: r.reviewAnswerRequest.id } };
 			});
-		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b'), card('c')], counts: counts(0, 3) }));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b'), card('c')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b'), card('c')] }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b'), card('c')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -537,9 +550,9 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 
 	it('a failed wake fetch while waiting keeps the countdown (inline notice, no full-page error)', async () => {
 		const due = new Date(Date.now() + 10_000);
-		api.getReviewQueue.mockResolvedValueOnce(queue({ counts: counts(2), nextLearningDueAt: due }));
+		api.getReviewQueue.mockResolvedValueOnce(waiting(due, 2));
 		api.getReviewQueue.mockRejectedValueOnce(new Error('504'));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('l1')], counts: counts(2) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('l1')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -555,7 +568,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		const signals: AbortSignal[] = [];
 		api.getReviewQueue.mockImplementation((_r: unknown, init?: RequestInit) => {
 			if (init?.signal) signals.push(init.signal);
-			return slow(10_000, queue({ counts: counts(0) }));
+			return slow(10_000, queue());
 		});
 		const { page, dispose } = mount();
 		page.start(null);
@@ -578,35 +591,26 @@ describe('reviewPhase', () => {
 		hasCurrent: false,
 		isDrill: false,
 		drillUnavailable: false,
-		counts: counts(0),
-		nextLearningDueAt: null,
-		moreAvailable: false,
-		keepGoing: false
+		loopPhase: 'empty'
 	};
 
-	it('waiting beats done for now when a learning card falls due later (the live response)', () => {
-		expect(reviewPhase({ ...base, counts: counts(3), moreAvailable: true, nextLearningDueAt: new Date() })).toBe('waiting');
-	});
-	it('done only with counts 0, no due instant, nothing more available', () => {
+	it('with no card on screen the screen is loop.phase only (C4)', () => {
 		expect(reviewPhase(base)).toBe('done');
-		expect(reviewPhase({ ...base, counts: null })).toBe('done');
-		expect(reviewPhase({ ...base, counts: counts(0, 0, 1) })).toBe('pending');
-		expect(reviewPhase({ ...base, moreAvailable: true })).toBe('doneForNow');
-		expect(reviewPhase({ ...base, moreAvailable: true, keepGoing: true })).toBe('done');
-		// Per-session new-card cap (contract: "done for now"): only new cards left and keep going has more.
-		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 0, 2) })).toBe('doneForNow');
-		// Learning or review cards left are never "done for now".
-		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(1, 0, 2) })).toBe('pending');
-		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 1, 2) })).toBe('pending');
-		expect(reviewPhase({ ...base, moreAvailable: true, keepGoing: true, counts: counts(0, 0, 2) })).toBe('pending');
+		expect(reviewPhase({ ...base, loopPhase: 'waiting' })).toBe('waiting');
+		expect(reviewPhase({ ...base, loopPhase: 'goal_reached' })).toBe('goalReached');
+		expect(reviewPhase({ ...base, loopPhase: 'done_for_today' })).toBe('doneForToday');
+		expect(reviewPhase({ ...base, loopPhase: 'reviewing' })).toBe('pending');
+		expect(reviewPhase({ ...base, loopPhase: 'reviewing', hasCurrent: true })).toBe('card');
 	});
 	it('loading and errors are never done', () => {
 		expect(reviewPhase({ ...base, loaded: false })).toBe('loading');
 		expect(reviewPhase({ ...base, settling: true })).toBe('settling');
 		expect(reviewPhase({ ...base, loadFailed: true })).toBe('error');
 		expect(reviewPhase({ ...base, refreshFailed: true })).toBe('error');
-		expect(reviewPhase({ ...base, refreshFailed: true, nextLearningDueAt: new Date() })).toBe('waiting');
-		expect(reviewPhase({ ...base, refreshFailed: true, counts: counts(1) })).toBe('pending');
+		expect(reviewPhase({ ...base, loopPhase: null })).toBe('error');
+		expect(reviewPhase({ ...base, refreshFailed: true, loopPhase: 'waiting' })).toBe('waiting');
+		expect(reviewPhase({ ...base, refreshFailed: true, loopPhase: 'reviewing' })).toBe('pending');
 		expect(reviewPhase({ ...base, refreshFailed: true, hasCurrent: true })).toBe('card');
 	});
 });
+

@@ -50,7 +50,7 @@ describe('openEventStream in shell mode', () => {
 		events.openEventStream({ onEvent: () => {} });
 		const ready = port.sent.filter((m) => m.t === 'ready');
 		expect(ready).toHaveLength(1);
-		expect(ready[0]).toMatchObject({ v: 1, min_local_api: 1 });
+		expect(ready[0]).toMatchObject({ v: 1, min_local_api: 2 });
 	});
 
 	it('respects the types filter; hello always passes', () => {

@@ -1,6 +1,7 @@
 // Review screen state (/review): the queue (or a drill session), grading with core interval previews,
 // undo, bury/suspend/never-forget and the inline note edit.
 import type {
+	Card,
 	DrillSessionRequestSourceEnum,
 	ReviewAnswerRequest,
 	Note,
@@ -8,7 +9,7 @@ import type {
 	NoteType,
 	Preset,
 	QueueItem,
-	ReviewQueueCounts
+	ReviewQueue
 } from '../api/generated';
 import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
@@ -21,31 +22,34 @@ import {
 	BUTTONS_4,
 	BUTTONS_5,
 	formatInterval,
-	remainingCount,
 	reviewPhase,
-	sessionCapReached,
 	toCorePreset,
 	toSchedule,
 	uuidv7,
 	type GradeButton,
 	type ReviewPhase
 } from '../review/model';
+import { clearKeepGoing, fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
+import { loopView, type LoopView } from '../review/loop';
 import { renderPreview, type Rendered } from './preview.svelte';
 
 export type { Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
 export type { GradeButton, ReviewPhase } from '../review/model';
+export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
+export { countdown, minutesUntil } from '../review/loop';
 export type { Rendered } from './preview.svelte';
 
 const QUEUE_LIMIT = 20;
-/** ADR-033: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
+/** C4: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
 const WAKE_SLACK_MS = 1000;
 /** ... and never sooner than this after the previous one, so a clock skew cannot turn waiting into polling. */
 const WAKE_MIN_MS = 3000;
 /**
- * C-27: refetches when a keep-going response has no item yet but the server still has deck entries to turn into
- * cards (`to_materialize` > 0 after its materialization rounds) or after a refresh that was dropped as stale.
+ * C5 (C-27): `reviewing` with no item yet while the server still has deck entries to turn into cards
+ * (`to_materialize` > 0 after its rounds) is fetched again at most this many times in a row; also the retries of
+ * a refresh that was dropped as stale.
  */
-const KEEP_GOING_RETRIES = 3;
+const MATERIALIZE_RETRIES = 3;
 /**
  * RC-WEB: a queue fetch (or an answer/undo) that has not answered by then is abandoned: the screen offers a retry
  * instead of a spinner that never ends. The live server took ~6 s per queue fetch.
@@ -53,9 +57,8 @@ const KEEP_GOING_RETRIES = 3;
 export const QUEUE_TIMEOUT_MS = 30_000;
 const ANSWER_TIMEOUT_MS = 30_000;
 /**
- * RC-WEB: the server reports cards left (`counts`) but served none and gave no instant to wait for (a race with
- * an answer, or stale counts after a dropped refresh): fetch again after this, doubling up to the cap. Never the
- * end screen while counts say cards remain.
+ * The server says `reviewing` but served no card (a response that raced an answer): fetch again after this,
+ * doubling up to the cap. Never an end screen while the loop says cards are ready.
  */
 const PENDING_BASE_MS = 2000;
 /** RC-WEB: when this few cards are left locally, fetch more while answers are still being saved (no drain). */
@@ -80,6 +83,11 @@ async function classify(e: unknown): Promise<'clock' | 'permanent' | 'retry'> {
 		if (p?.errors?.some((f) => f.pointer === '/reviewed_at')) return 'clock';
 	}
 	return [404, 409, 410, 422].includes(status) ? 'permanent' : 'retry';
+}
+
+/** C5: `reviewing` with no item served yet but deck entries still to turn into cards. */
+function materializing(q: ReviewQueue): boolean {
+	return q.items.length === 0 && (q.toMaterialize ?? 0) > 0 && loopView(q).phase === 'reviewing';
 }
 
 /** The request did not answer in time (it was aborted). */
@@ -199,7 +207,7 @@ async function Outbox_send(entry: PendingAnswer): Promise<void> {
 		const r = await timed(ANSWER_TIMEOUT_MS, (init) => reviewApi.answerReview({ reviewAnswerRequest: entry.req }, init));
 		entry.state = 'sent';
 		outbox.remove([entry]);
-		entry.page.sent(entry, r.review.id);
+		entry.page.sent(entry, r.review.id, r.card);
 	} catch (e) {
 		const kind = await classify(e);
 		if (kind === 'permanent') {
@@ -236,17 +244,20 @@ export class ReviewPage {
 	/** The settings or the queue could not be loaded; the view offers `retry`. */
 	loadFailed = $state(false);
 	items = $state<QueueItem[]>([]);
-	counts = $state<ReviewQueueCounts | null>(null);
 	dayEndsAt = $state<Date | null>(null);
-	/**
-	 * Keep going: UI state of this one visit only (never persisted). Fetches with keep_going=true; dropped when
-	 * the study day changes from the day it started.
-	 */
+	/** ADR-037: `loop` of the last applied queue fetch (phase and every number shown); null before the first. */
+	view = $state<LoopView | null>(null);
+	/** The `keep_going` the last applied fetch was sent with (the persisted per-client flag, rule C2). */
 	keepGoing = $state(false);
-	/** `more_available` of the last scheduled fetch. */
-	moreAvailable = $state(false);
-	/** ADR-033: when the next learning card of the last scheduled fetch falls due (null: none). */
-	nextLearningDueAt = $state<Date | null>(null);
+	/**
+	 * C1 due first: the instant from which the local page may be stale because a learning card has come due:
+	 * min(`later_today.next_due_at` of the last fetch, `due_at` of each learning answer recorded since it began).
+	 */
+	private dueFirstAt: number | null = null;
+	/** Learning answers recorded (`recordedAt`) with the card's next `due_at`, for C1 across a fetch in flight. */
+	private learningDues: { recordedAt: number; dueAt: number }[] = [];
+	/** `to_materialize` of the last applied fetch (C5: retries ran out when it is still > 0 with nothing served). */
+	private toMaterialize = 0;
 	private wakeTimer: ReturnType<typeof setTimeout> | null = null;
 	private lastWake = 0;
 	/** Refetches in a row in the pending phase (backoff). */
@@ -276,7 +287,6 @@ export class ReviewPage {
 	notice = $state<'answerFailed' | 'clockSkew' | 'undoFailed' | null>(null);
 	private failedAnswer: { cardId: string; button: GradeButton; serverTime: boolean } | null = null;
 	private failedCardId = $state<string | null>(null);
-	private keepGoingDay: number | null = null;
 	noteTypes = $state<Map<string, NoteType>>(new Map());
 	presets = $state<Map<string, Preset>>(new Map());
 	fiveButtons = $state(false);
@@ -310,11 +320,9 @@ export class ReviewPage {
 	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
 	/** What the stage shows: the current card, or the held one while answers settle. */
 	readonly display = $derived<QueueItem | undefined>(this.current ?? (this.settling ? (this.held ?? undefined) : undefined));
-	/** Nothing to show, but a learning card falls due later today: the screen counts down to it. */
-	readonly waiting = $derived(
-		!this.isDrill && !this.current && !this.settling && this.nextLearningDueAt !== null
-	);
-	/** RC-WEB: what the screen shows; the end screen only when the server says nothing is left. */
+	/** The numbers on screen: `loop` of the last applied fetch (null in a drill and before the first fetch). */
+	readonly loop = $derived(this.isDrill ? null : (this.view?.loop ?? null));
+	/** What the screen shows; with no card it is `loop.phase` only (C4). */
 	readonly phase = $derived<ReviewPhase>(
 		reviewPhase({
 			loaded: this.loaded,
@@ -324,10 +332,7 @@ export class ReviewPage {
 			hasCurrent: !!this.current,
 			isDrill: this.isDrill,
 			drillUnavailable: this.drillUnavailable,
-			counts: this.counts,
-			nextLearningDueAt: this.nextLearningDueAt,
-			moreAvailable: this.moreAvailable,
-			keepGoing: this.keepGoing
+			loopPhase: this.view?.phase ?? null
 		})
 	);
 	readonly gradeKeys = $derived(this.fiveButtons ? '1-5' : '1-4');
@@ -443,9 +448,8 @@ export class ReviewPage {
 	 * (a tap or undo): applying it would bring back a card that was just answered. Returns whether it was applied.
 	 *
 	 * The server turns deck entries into new cards inside this fetch (C-27); the client never creates them.
-	 * Keep going is an endless stream: a keep-going response that has no item yet while the server reports
-	 * entries still to materialize is fetched again, so the end screen shows only for a truly empty keep-going
-	 * fetch.
+	 * `keep_going` is the persisted per-client flag (C2, dropped on a new study day). A `reviewing` response with
+	 * no item yet while the server reports entries still to materialize is fetched again (C5, at most 3 times).
 	 */
 	private async fetchQueue(guard = false, append = false): Promise<boolean> {
 		if (this.isDrill || this.disposed) return false;
@@ -453,26 +457,21 @@ export class ReviewPage {
 		const epoch = this.epoch;
 		const appliedAtStart = this.applied;
 		const outboxSeq = outbox.seq;
+		const startedAt = Date.now();
 		const pendingAtStart = new Set(outbox.pending.map((e) => e.item.card.id));
-		let q = await this.getQueue(this.keepGoing);
-		for (let i = 0; i < KEEP_GOING_RETRIES && this.keepGoing && q.items.length === 0 && (q.toMaterialize ?? 0) > 0; i++) {
+		let sent = false;
+		const get = (keepGoing: boolean): Promise<ReviewQueue> => {
+			sent = keepGoing;
+			return this.getQueue(keepGoing);
+		};
+		let q = await fetchWithKeepGoing(get);
+		for (let i = 0; i < MATERIALIZE_RETRIES && !append && materializing(q); i++) {
 			if (gen !== this.gen) return false;
-			q = await this.getQueue(true);
-		}
-		if (this.keepGoing) {
-			const day = q.studyDay.getTime();
-			if (this.keepGoingDay === null) this.keepGoingDay = day;
-			else if (this.keepGoingDay !== day) {
-				// A new study day: keep going ends, back to the normal queue.
-				this.keepGoing = false;
-				this.keepGoingDay = null;
-				q = await this.getQueue(false);
-			}
+			q = await get(sent);
 		}
 		// A newer start (retry) or leaving the screen supersedes this fetch.
 		if (gen !== this.gen || this.disposed) return false;
 		if (append && this.applied !== appliedAtStart) return false; // stale prefetch: see below
-		this.moreAvailable = q.moreAvailable ?? false;
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
 		// (with its flip state); only what comes after it is replaced.
@@ -485,12 +484,16 @@ export class ReviewPage {
 			// A full fetch applied while this prefetch was in flight is newer (it may already reflect an answer that
 			// buried a sibling, or a card suspended elsewhere): drop this one.
 			if (this.applied !== appliedAtStart) return false;
+			// C1: asked before a learning card came due, so it may not list that card first: the refresh after the
+			// answers fetches again.
+			if (this.dueFirstAt !== null && startedAt < this.dueFirstAt && this.dueFirstPassed()) return false;
 			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
-			// (an undo or restore may have put one back meanwhile): never removes a local card. Counts and the next
-			// due instant wait for the refresh after the answers.
+			// (an undo or restore may have put one back meanwhile): never removes a local card. The loop numbers
+			// wait for the refresh after the answers.
 			const merged = cur ? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)] : [...fresh];
 			const ids = new Set(merged.map((i) => i.card.id));
 			this.items = [...merged, ...this.items.filter((i) => !ids.has(i.card.id))];
+			this.noteDueFirst(q, startedAt);
 			this.syncCard();
 			return true;
 		}
@@ -501,13 +504,28 @@ export class ReviewPage {
 				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
 				: fresh;
 		this.applied++;
-		this.counts = q.counts;
+		this.view = loopView(q);
+		this.keepGoing = sent;
+		this.toMaterialize = q.toMaterialize ?? 0;
 		this.dayEndsAt = q.dayEndsAt;
-		this.nextLearningDueAt = q.nextLearningDueAt ?? null;
+		this.noteDueFirst(q, startedAt);
 		this.refreshFailed = false;
 		this.syncCard();
 		this.scheduleWake();
 		return true;
+	}
+
+	/** C1: T = the response's next due learning card, and any learning answer recorded since the fetch began. */
+	private noteDueFirst(q: ReviewQueue, startedAt: number): void {
+		this.learningDues = this.learningDues.filter((d) => d.recordedAt >= startedAt);
+		const next = q.loop ? q.loop.laterToday.nextDueAt : (q.nextLearningDueAt ?? null);
+		const all = [...(next ? [next.getTime()] : []), ...this.learningDues.map((d) => d.dueAt)];
+		this.dueFirstAt = all.length > 0 ? Math.min(...all) : null;
+	}
+
+	/** C1: a learning card has come due since the page was fetched, so the next card must come from a new fetch. */
+	private dueFirstPassed(): boolean {
+		return !this.isDrill && this.dueFirstAt !== null && Date.now() >= this.dueFirstAt;
 	}
 
 	private getQueue(keepGoing: boolean) {
@@ -520,23 +538,30 @@ export class ReviewPage {
 	}
 
 	/**
-	 * ADR-033 waiting state: fetch again when the next learning card falls due (one timer, no polling loop).
-	 * RC-WEB pending state (counts left, nothing served, nothing to wait for): fetch again with backoff.
+	 * When the screen shows no card, the instant a learning card falls due (C4: `waiting`; also on the
+	 * goal-reached / done-for-today screens, where a card coming due makes the loop `reviewing` again).
+	 */
+	private wakeTarget(): Date | null {
+		const v = this.view;
+		if (this.isDrill || this.current || !v) return null;
+		return v.phase === 'waiting' || v.phase === 'goal_reached' || v.phase === 'done_for_today' ? v.loop.laterToday.nextDueAt : null;
+	}
+
+	/**
+	 * C4: one timer at the next learning card's due instant while no card is on screen (no polling loop).
+	 * `reviewing` with nothing served: fetch again with backoff (C5 entries still to materialize: retries ran out
+	 * in fetchQueue, so the view offers Refresh instead).
 	 */
 	private scheduleWake(): void {
 		this.clearWake();
 		if (this.isDrill || this.disposed) return;
-		const due = this.nextLearningDueAt;
+		const due = this.wakeTarget();
 		let at: number;
 		if (due) {
 			this.pendingTries = 0;
 			at = due.getTime() + WAKE_SLACK_MS;
-		} else if (
-			!this.current &&
-			remainingCount(this.counts) > 0 &&
-			!sessionCapReached({ counts: this.counts, moreAvailable: this.moreAvailable, keepGoing: this.keepGoing })
-		) {
-			if (this.pendingTries >= PENDING_MAX_TRIES) {
+		} else if (!this.current && this.view?.phase === 'reviewing') {
+			if (this.toMaterialize > 0 || this.pendingTries >= PENDING_MAX_TRIES) {
 				this.pendingStopped = true; // the view offers Refresh
 				return;
 			}
@@ -567,7 +592,7 @@ export class ReviewPage {
 
 	/** The tab became visible again: timers are throttled while hidden, so catch up at once if the card is due. */
 	onVisible(): void {
-		const due = this.nextLearningDueAt;
+		const due = this.wakeTarget();
 		if (this.isDrill || !due || this.busy || this.disposed) return;
 		if (Date.now() >= due.getTime() && Date.now() - this.lastWake >= WAKE_MIN_MS) {
 			this.clearWake();
@@ -597,7 +622,7 @@ export class ReviewPage {
 		}
 		const gen = this.gen;
 		try {
-			for (let i = 0; i <= KEEP_GOING_RETRIES; i++) {
+			for (let i = 0; i <= MATERIALIZE_RETRIES; i++) {
 				const applied = await this.fetchQueue(true);
 				if (applied || this.current || outbox.pending.length > 0 || gen !== this.gen) break;
 			}
@@ -644,17 +669,16 @@ export class ReviewPage {
 	}
 
 	/** Load settings and the queue (or a drill session for `source`). Reads no state synchronously. */
-	start(source: string | null, keepGoing = false): void {
+	start(source: string | null): void {
 		if (this.disposed) return;
 		const gen = ++this.gen;
 		// A retry during a slow load: the old fetch is abandoned (it would hold a connection for nothing).
 		this.abort.abort();
 		this.abort = new AbortController();
 		this.drillSource = source;
-		this.keepGoing = keepGoing && source === null;
-		this.keepGoingDay = null;
-		this.moreAvailable = false;
-		this.nextLearningDueAt = null;
+		this.view = null;
+		this.dueFirstAt = null;
+		this.toMaterialize = 0;
 		this.pendingTries = 0;
 		this.pendingStopped = false;
 		this.clearWake();
@@ -678,19 +702,23 @@ export class ReviewPage {
 
 	/** Load again after a failed start (same drill source). */
 	retry(): void {
-		this.start(this.drillSource, this.keepGoing);
+		this.start(this.drillSource);
 	}
 
-	/** Switch this visit to keep-going mode and fetch the next batch. */
+	/**
+	 * Keep going (C2): persisted for the shown study day, so every later fetch of this client (Home, review, after
+	 * a restart) sends it until the study day changes; then fetch the next batch.
+	 */
 	async keepGoingOn(): Promise<void> {
-		this.keepGoing = true;
-		this.keepGoingDay = null;
+		const v = this.view;
+		if (!v || this.busy) return;
+		startKeepGoing(v.studyDay);
 		this.busy = true;
 		this.refreshFailed = false;
 		try {
 			await this.fetchQueue();
 		} catch {
-			this.keepGoing = false;
+			clearKeepGoing(); // nothing was shown with it: back to the screen it was pressed on
 			this.refreshFailed = true; // toast shown
 		} finally {
 			this.busy = false;
@@ -773,7 +801,7 @@ export class ReviewPage {
 	/** Remove the current card locally; a scheduled queue is refreshed behind it. */
 	private async advance(): Promise<void> {
 		this.clearNotice();
-		this.items = this.items.slice(1);
+		this.items = this.dueFirstPassed() ? [] : this.items.slice(1); // C1: the next card comes from a new fetch
 		this.epoch++;
 		this.newPress();
 		await this.refresh();
@@ -825,7 +853,7 @@ export class ReviewPage {
 		outbox.retryIds.delete(item.card.id);
 		outbox.add(entry);
 		this.history = [...this.history, { reviewId: entry.answerId, item }];
-		this.items = this.items.slice(1);
+		this.items = this.dueFirstPassed() ? [] : this.items.slice(1); // C1: the next card comes from a new fetch
 		this.held = this.items.length === 0 ? item : null;
 		this.epoch++;
 		this.newPress();
@@ -839,8 +867,14 @@ export class ReviewPage {
 	}
 
 	/** The answer was recorded: its history entry now carries the server's review id. */
-	sent(entry: PendingAnswer, reviewId: string): void {
+	sent(entry: PendingAnswer, reviewId: string, card?: Card): void {
 		this.history = this.history.map((h) => (h.reviewId === entry.answerId ? { ...h, reviewId } : h));
+		// C1: an answer that left the card in (re)learning brings T forward to its due instant.
+		if (card?.dueAt && (card.state === 'learning' || card.state === 'relearning')) {
+			const dueAt = card.dueAt.getTime();
+			this.learningDues.push({ recordedAt: Date.now(), dueAt });
+			this.dueFirstAt = this.dueFirstAt === null ? dueAt : Math.min(this.dueFirstAt, dueAt);
+		}
 	}
 
 	/**

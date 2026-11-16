@@ -24,6 +24,7 @@
 	import { ReviewPage, type GradeButton } from '../../lib/state/review.svelte';
 	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
+	import LoopEnd from './LoopEnd.svelte';
 	import { rv, type ReviewViewKey } from './messages';
 
 	const s = new ReviewPage();
@@ -65,30 +66,13 @@
 		return () => clearTimeout(t);
 	});
 
-	// ADR-033 waiting state: the display ticks once a second; the refetch itself is one timer in the state.
-	let nowMs = $state(Date.now());
-	$effect(() => {
-		if (s.phase !== 'waiting') return;
-		nowMs = Date.now();
-		const t = setInterval(() => (nowMs = Date.now()), 1000);
-		return () => clearInterval(t);
-	});
-	const countdown = $derived.by(() => {
-		const due = s.nextLearningDueAt;
-		const sec = due ? Math.max(0, Math.ceil((due.getTime() - nowMs) / 1000)) : 0;
-		return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-	});
-
 	const drillSource = $derived(page.url.searchParams.get('drill'));
 
 	// (Re)load whenever the drill source changes; start() reads no state, so this runs once per source.
-	const more = $derived(page.url.searchParams.get('more') === '1');
 	$effect(() => {
 		const source = drillSource;
-		const keep = more;
-		// untrack: start() reads `keepGoing` while it fetches; a tap on "Keep going" must not restart the session
-		// (that reset keep going and aborted its own fetch).
-		untrack(() => s.start(source, keep));
+		// untrack: start() reads page state while it fetches; a tap on "Keep going" must not restart the session.
+		untrack(() => s.start(source));
 	});
 
 	/* ---------- answer in view ---------- */
@@ -149,9 +133,9 @@
 
 	/* ---------- header figures ---------- */
 
-	const remaining = $derived(
-		s.isDrill || !s.counts ? s.items.length : s.counts._new + s.counts.learning + s.counts.review
-	);
+	// ADR-037: the scheduled session's figures come from `loop` (ready now = `ready.total`, C3); a drill counts its
+	// own list. The bar is this visit's answers against those plus what is ready now.
+	const remaining = $derived(s.loop ? s.loop.ready.total : s.items.length);
 	const done = $derived(s.history.length);
 	const total = $derived(done + remaining);
 	// A heavy day (e.g. after a break): a calm tip instead of a wall of numbers.
@@ -270,10 +254,6 @@
 		}
 	}
 
-	function timeOf(d: Date): string {
-		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-	}
-
 	const SHORTCUTS = $derived<[string, string][]>([
 		['Space', rv('rv.key.space')],
 		[s.gradeKeys.replace('-', '–'), rv('rv.key.grades', { keys: s.buttons.map((b) => tr(`review.grade.${b.label}`)).join(', ') })],
@@ -300,11 +280,11 @@
 		<div class="status">
 			<div class="line">
 				<h1 class="mode">{modeLabel}</h1>
-				{#if s.loaded && s.counts && !s.isDrill && remaining > 0}
+				{#if s.loaded && s.loop && !s.view?.legacy}
 					<p class="counts">
-						<span class="count new"><i aria-hidden="true"></i>{rv('rv.count.new', { n: s.counts._new })}</span>
-						<span class="count learning"><i aria-hidden="true"></i>{rv('rv.count.learning', { n: s.counts.learning })}</span>
-						<span class="count due"><i aria-hidden="true"></i>{rv('rv.count.review', { n: s.counts.review })}</span>
+						<span class="count learning"><i aria-hidden="true"></i>{rv('rv.count.learning', { n: s.loop.ready.learning })}</span>
+						<span class="count due"><i aria-hidden="true"></i>{rv('rv.count.review', { n: s.loop.ready.review })}</span>
+						<span class="count new"><i aria-hidden="true"></i>{rv('rv.count.newOf', { today: s.loop._new.today, goal: s.loop._new.goal })}</span>
 					</p>
 				{/if}
 				{#if s.loaded && total > 0}
@@ -383,26 +363,18 @@
 					{/snippet}
 				</EmptyState>
 			</div>
-		{:else if s.phase === 'waiting' || s.phase === 'pending'}
-			<!-- Not the end: cards remain today. Waiting counts down to the next learning card; pending fetches again. -->
+		{:else if s.phase === 'pending'}
+			<!-- Not the end: the loop says cards are ready but none was served yet; fetched again by itself. -->
 			<div class="finished" aria-live="polite">
 				<div class="wait">
 					<Icon name="clock" size={40} />
-					<h2>{s.phase === 'waiting' ? rv('rv.waiting.title') : rv('rv.pending.title')}</h2>
+					<h2>{rv('rv.pending.title')}</h2>
 					{#if s.refreshFailed}
 						<!-- One failed check does not replace this screen: the next check is already scheduled. -->
 						<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>
 					{/if}
-					{#if s.phase === 'waiting'}
-						<p class="countdown kb-num" aria-label={rv('rv.waiting.body', { time: countdown })}>{countdown}</p>
-						<p class="muted">{rv('rv.waiting.hint')}</p>
-					{:else}
-						<p class="muted">{s.pendingStopped ? rv('rv.pending.stopped') : rv('rv.pending.body')}</p>
-					{/if}
+					<p class="muted">{s.pendingStopped ? rv('rv.pending.stopped') : rv('rv.pending.body')}</p>
 					<div class="done-actions">
-						{#if s.moreAvailable && !s.keepGoing}
-							<Button variant="outline" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.waiting.keepGoing')}</Button>
-						{/if}
 						<Button
 							variant={s.pendingStopped ? 'primary' : 'outline'}
 							icon="sync"
@@ -463,35 +435,18 @@
 					</div>
 				</article>
 			{/key}
-		{:else}
-			<div class="finished" aria-live="polite">
-				<EmptyState
-					size="page"
-					art="enso"
-					title={s.phase === 'doneForNow' ? rv('rv.doneNow.title') : s.keepGoing ? rv('rv.caughtUp.title') : rv('rv.done.title')}
-					body={s.phase === 'doneForNow'
-						? rv('rv.done.body')
-						: s.keepGoing
-							? rv('rv.caughtUp.body')
-							: s.dayEndsAt
-								? rv('rv.done.next', { time: timeOf(s.dayEndsAt) })
-								: rv('rv.done.body')}
-				>
-					{#snippet action()}
-						<div class="done-actions">
-							{#if s.phase === 'doneForNow'}
-								<Button variant="primary" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.keepGoing')}</Button>
-							{/if}
-							<Button variant={s.phase === 'doneForNow' ? 'outline' : 'primary'} href="/">{rv('rv.done.today')}</Button>
-							<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
-							{#if s.history.length > 0}
-								<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
-							{/if}
-							<a class="quiet-link" href="/struggle/leeches">{rv('rv.done.leeches')}</a>
-						</div>
-					{/snippet}
-				</EmptyState>
-			</div>
+		{:else if s.phase === 'goalReached' || s.phase === 'doneForToday' || s.phase === 'waiting' || s.phase === 'done'}
+			<!-- ADR-037 C4: no card, so the screen is `loop.phase` only. -->
+			<LoopEnd
+				phase={s.phase}
+				view={s.view}
+				busy={s.busy}
+				canUndo={s.history.length > 0}
+				checkFailed={s.refreshFailed}
+				onkeepgoing={() => void s.keepGoingOn()}
+				onundo={() => void s.undo()}
+				onreload={() => void s.reload()}
+			/>
 		{/if}
 	</section>
 
@@ -831,12 +786,6 @@
 		font: var(--kb-type-title);
 		margin: 0;
 	}
-	.countdown {
-		font-size: 3rem;
-		line-height: 1;
-		margin: 0;
-		font-variant-numeric: tabular-nums;
-	}
 	.muted {
 		margin: 0;
 		max-width: 28rem;
@@ -860,13 +809,6 @@
 		justify-content: center;
 		align-items: center;
 		gap: var(--kb-space-2);
-	}
-	.quiet-link {
-		display: inline-flex;
-		align-items: center;
-		min-height: var(--kb-size-touch-min);
-		padding: 0 var(--kb-space-3);
-		font: var(--kb-type-label);
 	}
 
 	/* ---------- actions (thumb zone) ---------- */
