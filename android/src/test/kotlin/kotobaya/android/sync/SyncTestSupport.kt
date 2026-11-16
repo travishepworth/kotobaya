@@ -3,6 +3,7 @@ package kotobaya.android.sync
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
+import java.sql.DriverManager
 import java.util.Properties
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
@@ -235,6 +236,7 @@ class DbFile(dir: File? = null) {
             put("journal_mode", "WAL")
             put("synchronous", "FULL")
         }
+        ensureSqliteJdbc()
         val driver = JdbcSqliteDriver("jdbc:sqlite:${file.path}", props)
         if (!created) {
             AppDatabase.Schema.create(driver)
@@ -245,7 +247,24 @@ class DbFile(dir: File? = null) {
 }
 
 /** An in-memory app database (schema and seed rows of the contract). */
-fun memoryDriver(): SqlDriver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
+fun memoryDriver(): SqlDriver {
+    ensureSqliteJdbc()
+    return JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
+}
+
+/**
+ * AND-FLAKY-DUPCHECK: `DriverManager.getConnection` only offers a driver to a caller whose classloader can see that
+ * very driver class. Robolectric sandbox classloaders (and other test classes sharing the JVM) can leave the
+ * service-loaded `org.sqlite.JDBC` registration pointing at a different loader, giving "No suitable driver".
+ * Registering an `org.sqlite.JDBC` of THIS loader (once per loader) makes the lookup deterministic.
+ */
+fun ensureSqliteJdbc() {
+    synchronized(DriverManager::class.java) {
+        val mine = Class.forName("org.sqlite.JDBC")
+        val seen = DriverManager.getDrivers().asSequence().any { it.javaClass === mine }
+        if (!seen) DriverManager.registerDriver(mine.getDeclaredConstructor().newInstance() as java.sql.Driver)
+    }
+}
 
 // ------------------------------------------------------------------------------------------- devices
 

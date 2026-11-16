@@ -1,25 +1,6 @@
-# HANDOFF AND-MATERIALIZE-RACE
-
-STATUS: DONE
-BRANCH: t/AND-MATERIALIZE-RACE
-CHECK: `make check MODULE=android` → green
-
-**Verdict: the failure came from the test harness. Production has no race.** Evidence: AndroidSqliteDriver 2.0.2 (bytecode) begins with `beginTransactionNonExclusive` (BEGIN IMMEDIATE) on the pool's one primary connection, so writers run one at a time before their first read. The JDBC `IN_MEMORY` harness uses `StaticConnectionManager`, which keeps a plain shared `transaction` field. A second thread's transaction joins the first, so there is no isolation. Shell fetches get a fresh `LoadGate` each, so only the DB serializes them. That has now been measured: 50 of 50 iterations had the second writer parked in `SQLiteConnectionPool.waitForConnection`.
-
-## Changed
-- New `MaterializeRaceTest`: runs on the production driver (WAL file) and holds each writer between its duplicate check and its mint.
-- `ParityDevice`: takes optional `driver` and `noteIds` parameters.
-- Removed the shared-connection concurrent case from `QueueMaterializeIdempotentTest`.
-- `SqlDelightDeviceStore`: added a KDoc note on isolation. No code change.
-
-## Acceptance → tests
-- Two fetches, 50 iterations → `twoConcurrentFetchesOnTheProductionDriverCreateOneNotePerDrawnEntry`
-- Takoboto add vs materialize, both orders → `aTakobotoAddRacingAQueueMaterializeOnTheProductionDriverCreatesOneNote`
-- Fails when no transaction is used → `theSameRaceDuplicatesWhenCheckAndMintAreNotOneTransaction`
-- Whole class ran green 8 times.
-
-## New dependencies
-- none
-
-## For the reviewer
-- The gate checks thread stack frames for `SQLiteConnectionPool.waitForConnection`. This depends on Robolectric running native SQLite.
+# HANDOFF AND-FLAKY-DUPCHECK — DONE
+- Root cause: `DriverManager.getConnection` offers a driver only to a caller whose classloader can load that exact driver class. After Robolectric sandbox classes (own loader) run in the same JVM, the service-loaded `org.sqlite.JDBC` registration can belong to another loader, so a later plain-JVM `JdbcSqliteDriver` gets "No suitable driver" (order-dependent, hence rare).
+- Fix (test-side only): `ensureSqliteJdbc()` in `android/src/test/kotlin/kotobaya/android/sync/SyncTestSupport.kt` registers an `org.sqlite.JDBC` of the current loader if none of that exact class is registered (reflection; org.sqlite is not on the compile classpath). Called from `DbFile.open()` and `memoryDriver()`, which cover SqlDevice (DuplicateCheckExpressionTest).
+- Not changed: other tests that call `JdbcSqliteDriver(...)`/`DriverManager` directly (DeckRepositoryTest etc.); call `ensureSqliteJdbc()` there if any flakes.
+- Verified: DuplicateCheckExpressionTest 20x in a loop (`--rerun`): 20/20 ok. `make check MODULE=android` green (full suite).
+- No new deps. Root cause is inferred from DriverManager semantics; the flake was not reproduced pre-fix.
