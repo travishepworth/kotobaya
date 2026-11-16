@@ -38,7 +38,7 @@
 	const SLOW_MS = 5000;
 	let slow = $state(false);
 	$effect(() => {
-		if (s.phase !== 'loading') {
+		if (s.phase !== 'loading' && s.phase !== 'settling') {
 			slow = false;
 			return;
 		}
@@ -309,7 +309,7 @@
 	{/if}
 
 	<section class="stage" aria-label={rv('rv.title')}>
-		{#if s.phase === 'loading'}
+		{#if s.phase === 'loading' || (s.phase === 'settling' && !s.display)}
 			<div class="card" aria-busy="true">
 				<div class="card-body skeleton">
 					<span class="kb-sr">{rv('rv.loading')}</span>
@@ -317,10 +317,8 @@
 					<Skeleton shape="text" count={2} />
 					{#if slow}
 						<div class="slow" role="status">
-							<p>{s.loaded ? rv('rv.slow.saving') : rv('rv.slow.loading')}</p>
-							{#if !s.loaded}
-								<Button variant="outline" icon="sync" onclick={() => s.retry()}>{rv('rv.slow.retry')}</Button>
-							{/if}
+							<p>{rv('rv.slow.loading')}</p>
+							<Button variant="outline" icon="sync" onclick={() => s.retry()}>{rv('rv.slow.retry')}</Button>
 						</div>
 					{/if}
 				</div>
@@ -354,6 +352,10 @@
 				<div class="wait">
 					<Icon name="clock" size={40} />
 					<h2>{s.phase === 'waiting' ? rv('rv.waiting.title') : rv('rv.pending.title')}</h2>
+					{#if s.refreshFailed}
+						<!-- One failed check does not replace this screen: the next check is already scheduled. -->
+						<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>
+					{/if}
 					{#if s.phase === 'waiting'}
 						<p class="countdown kb-num" aria-label={rv('rv.waiting.body', { time: countdown })}>{countdown}</p>
 						<p class="muted">{rv('rv.waiting.hint')}</p>
@@ -372,7 +374,49 @@
 					</div>
 				</div>
 			</div>
-		{:else if !s.current}
+		{:else if s.display}
+			{@const d = s.display}
+			<!-- The card on screen; while its answer is saved and nothing else is left it stays (inert, dimmed)
+			     instead of a skeleton flash. Keyed on the card, so a refetch that keeps it never remounts it. -->
+			{#key d.card.id}
+				<article
+					class="card enter"
+					class:flipped={s.flipped || s.phase === 'settling'}
+					class:held={s.phase === 'settling'}
+					class:compact
+					class:more-below={moreBelow}
+					aria-live="polite"
+					aria-busy={s.phase === 'settling'}
+				>
+					<div class="card-body" bind:this={body} onscroll={measure}>
+						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
+						{#if d.isNew}<span class="new-badge">{rv('rv.newBadge')}</span>{/if}
+						{#if s.rendered === null}
+							<!-- unreachable: display is set -->
+						{:else if s.rendered.ok}
+							<CardFrame bind:this={frame} rendered={s.rendered.card} furigana={s.furigana} reveal={s.flipped || s.phase === 'settling'} />
+							{#if s.noExample && s.flipped}
+								<p class="note">{tr('review.noExampleSentence')}</p>
+							{/if}
+							{#if s.flipped && s.current}
+								<BackExtras item={s.current} />
+								<!-- New tab: leaving would drop the session; a link never takes Space/1-5 (see onKeydown). -->
+								<p class="dict-link">
+									<DictionaryLink
+										look="text"
+										newTab
+										seq={s.current.entry?.seq ?? s.current.card.note?.entrySeq}
+										kanji={s.current.card.note?.kanjiLiteral}
+									/>
+								</p>
+							{/if}
+						{:else}
+							<EmptyState tone="error" art="alert" title={rv('rv.renderFailed')} body={s.rendered.detail} />
+						{/if}
+					</div>
+				</article>
+			{/key}
+		{:else}
 			<div class="finished" aria-live="polite">
 				<EmptyState
 					size="page"
@@ -401,46 +445,22 @@
 					{/snippet}
 				</EmptyState>
 			</div>
-		{:else}
-			{#key s.current.card.id}
-				<article class="card enter" class:flipped={s.flipped} class:compact class:more-below={moreBelow} aria-live="polite">
-					<div class="card-body" bind:this={body} onscroll={measure}>
-						{#if s.reviewTypeKey}<p class="tag">{tr(s.reviewTypeKey)}</p>{/if}
-						{#if s.current.isNew}<span class="new-badge">{rv('rv.newBadge')}</span>{/if}
-						{#if s.rendered === null}
-							<!-- unreachable: current is set -->
-						{:else if s.rendered.ok}
-							<CardFrame bind:this={frame} rendered={s.rendered.card} furigana={s.furigana} reveal={s.flipped} />
-							{#if s.noExample && s.flipped}
-								<p class="note">{tr('review.noExampleSentence')}</p>
-							{/if}
-							{#if s.flipped}
-								<BackExtras item={s.current} />
-							{/if}
-							{#if s.flipped}
-								<!-- New tab: leaving would drop the session; a link never takes Space/1-5 (see onKeydown). -->
-								<p class="dict-link">
-									<DictionaryLink
-										look="text"
-										newTab
-										seq={s.current.entry?.seq ?? s.current.card.note?.entrySeq}
-										kanji={s.current.card.note?.kanjiLiteral}
-									/>
-								</p>
-							{/if}
-						{:else}
-							<EmptyState tone="error" art="alert" title={rv('rv.renderFailed')} body={s.rendered.detail} />
-						{/if}
-					</div>
-				</article>
-			{/key}
 		{/if}
 	</section>
 
 	<footer class="actions">
-		{#if !s.loaded || s.current}
+		{#if !s.loaded || s.display}
 			<div class="slot">
-				{#if !s.flipped || !s.current}
+				{#if s.gradeLocked}
+					<!-- An unconfirmed answer: a regrade would reuse its id (the server keeps the first), so only Retry. -->
+					<div class="swap">
+						<Button variant="primary" size="lg" full icon="sync" onclick={() => void s.retryAnswer()}>{rv('rv.answerFailed.retry')}</Button>
+					</div>
+				{:else if s.phase === 'settling'}
+					<div class="swap">
+						<Button variant="primary" size="lg" full disabled loading>{slow ? rv('rv.slow.saving') : rv('rv.saving')}</Button>
+					</div>
+				{:else if !s.flipped || !s.current}
 					<div class="swap">
 						<Button variant="primary" size="lg" full disabled={!s.current} onclick={() => s.flip()} aria-keyshortcuts="Space">
 							{rv('rv.showAnswer')}
@@ -705,6 +725,17 @@
 	}
 	.compact .card-body :global(.kb-divider) {
 		margin: min(1rem, 3cqh) 0;
+	}
+
+	/* ---------- held card (answer saving), inline notices ---------- */
+	.card.held .card-body {
+		opacity: 0.6;
+		transition: opacity var(--kb-duration-fast) var(--kb-ease-standard);
+	}
+	.inline-error {
+		margin: 0;
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-danger, var(--kb-color-text-muted));
 	}
 
 	/* ---------- slow load, waiting ---------- */

@@ -82,6 +82,28 @@ describe('review page leaves nothing running', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
+	it('left while the last answer is still sending: its refresh does not wake the dead page', async () => {
+		api.answerReview.mockImplementation(
+			(r: { reviewAnswerRequest: { id: string } }) =>
+				new Promise((res) => setTimeout(() => res({ review: { id: r.reviewAnswerRequest.id } }), 3000))
+		);
+		const card = { card: { id: 'a', presetId: 'p' }, reviewType: 'schedule' };
+		api.getReviewQueue.mockResolvedValueOnce({ ...waitingQueue(), items: [card], nextLearningDueAt: undefined });
+		api.getReviewQueue.mockImplementation(async () => waitingQueue());
+		const { page, destroy } = mount();
+		page.start(null);
+		await vi.advanceTimersByTimeAsync(10);
+		page.flip();
+		void page.grade({ rating: 3, label: 'good' } as never);
+		await vi.advanceTimersByTimeAsync(10);
+		const before = api.getReviewQueue.mock.calls.length;
+		destroy();
+		await vi.advanceTimersByTimeAsync(30 * 60_000);
+		expect(api.answerReview).toHaveBeenCalledTimes(1); // the answer still goes out
+		expect(api.getReviewQueue.mock.calls.length).toBe(before);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('ten visits to a waiting screen leave no timers behind', async () => {
 		api.getReviewQueue.mockImplementation(async () => waitingQueue());
 		for (let i = 0; i < 10; i++) {

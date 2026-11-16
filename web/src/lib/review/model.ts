@@ -132,11 +132,15 @@ export function uuidv7(now: number = Date.now()): string {
 /**
  * What the review screen shows (RC-WEB). The end screen ("done") only when the server says nothing is left:
  * counts all 0 and no learning card falling due later. Learning cards due later are a countdown ("waiting");
- * counts above 0 with nothing served and nothing to wait for is a server/client race, fetched again
- * ("pending"); `more_available` with 0 items is the contract's "done for now, keep going has more".
+ * counts above 0 with nothing served and nothing to wait for is fetched again ("pending"); `more_available`
+ * with counts 0 is the contract's "done for now, keep going has more". "settling": answers are still being
+ * saved and nothing is left locally; the view keeps the last card on screen (inert) instead of a skeleton.
+ * A failed refresh is a full-page error only when nothing else is known; while waiting or pending the view
+ * keeps that screen and shows an inline notice.
  */
 export type ReviewPhase =
 	| 'loading'
+	| 'settling'
 	| 'error'
 	| 'card'
 	| 'drillUnavailable'
@@ -166,13 +170,14 @@ export function remainingCount(c: PhaseInput['counts']): number {
 }
 
 export function reviewPhase(s: PhaseInput): ReviewPhase {
-	if (!s.loaded || s.settling) return 'loading';
+	if (!s.loaded) return 'loading';
 	if (s.loadFailed) return 'error';
 	if (s.hasCurrent) return 'card';
-	if (s.refreshFailed) return 'error';
+	if (s.settling) return 'settling';
 	if (s.isDrill) return s.drillUnavailable ? 'drillUnavailable' : 'drillDone';
 	if (s.nextLearningDueAt !== null) return 'waiting';
-	if (s.moreAvailable && !s.keepGoing) return 'doneForNow';
 	if (remainingCount(s.counts) > 0) return 'pending';
+	if (s.refreshFailed) return 'error';
+	if (s.moreAvailable && !s.keepGoing) return 'doneForNow';
 	return 'done';
 }

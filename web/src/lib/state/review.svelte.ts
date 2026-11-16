@@ -55,7 +55,19 @@ const ANSWER_TIMEOUT_MS = 30_000;
  * end screen while counts say cards remain.
  */
 const PENDING_BASE_MS = 2000;
+/** RC-WEB: when this few cards are left locally, fetch more while answers are still being saved (no drain). */
+const PREFETCH_LOW = 3;
 const PENDING_MAX_MS = 30_000;
+
+/**
+ * RC-WEB: an answer the server refused for good (card deleted 410, suspended 409, unknown 404, rejected 422).
+ * Resending the same answer cannot succeed, so the card is dropped instead of pinned. Timeouts, network errors,
+ * 401, 408, 429 and 5xx are worth a retry.
+ */
+function isPermanent(e: unknown): boolean {
+	if (!(e instanceof ResponseError)) return false;
+	return [404, 409, 410, 422].includes(e.response.status);
+}
 
 /** The request did not answer in time (it was aborted). */
 export class RequestTimeout extends Error {
@@ -175,8 +187,19 @@ async function Outbox_send(entry: PendingAnswer): Promise<void> {
 		entry.state = 'sent';
 		outbox.remove([entry]);
 		entry.page.sent(entry, r.review.id);
-	} catch {
-		// The client toasted the error (a timeout is shown by the page's notice). Withdraw this tap and those queued behind it, each page puts its own back.
+	} catch (e) {
+		if (isPermanent(e)) {
+			// Never recordable: drop this card (with a toast) and keep sending the taps behind it.
+			entry.state = 'failed';
+			outbox.remove([entry]);
+			outbox.retryIds.delete(entry.item.card.id);
+			entry.page.dropped(entry);
+			await entry.page.afterSend();
+			entry.settle();
+			return;
+		}
+		// Worth a retry (timeout, network, 5xx; the client toasted all but a timeout, which the page's notice
+		// shows). Withdraw this tap and those queued behind it, each page puts its own back.
 		entry.state = 'failed';
 		const later = outbox.pending.slice(outbox.pending.indexOf(entry) + 1).filter((e) => e.state === 'queued');
 		for (const e of later) {
@@ -216,6 +239,15 @@ export class ReviewPage {
 	private pendingTries = 0;
 	/** Bumped by start/dispose: a load or fetch begun under an older generation is dropped. */
 	private gen = 0;
+	/** The screen was left: nothing (refresh, wake, fetch) runs on this page any more. Never reset. */
+	private disposed = false;
+	/** A prefetch (refill while answers are pending) is in flight. */
+	private prefetching = false;
+	/**
+	 * RC-WEB: the card just graded when that emptied the local queue. Shown, inert, while its answer is saved
+	 * (`settling`), so the stage does not flash a skeleton between the last card and what comes next.
+	 */
+	held = $state<QueueItem | null>(null);
 	/** Aborts this page's queue fetches when it is left. */
 	private abort = new AbortController();
 	/**
@@ -224,6 +256,7 @@ export class ReviewPage {
 	 */
 	notice = $state<'answerFailed' | 'undoFailed' | null>(null);
 	private failedAnswer: { cardId: string; button: GradeButton } | null = null;
+	private failedCardId = $state<string | null>(null);
 	private keepGoingDay: number | null = null;
 	noteTypes = $state<Map<string, NoteType>>(new Map());
 	presets = $state<Map<string, Preset>>(new Map());
@@ -250,8 +283,12 @@ export class ReviewPage {
 	readonly isDrill = $derived(this.drillSource !== null);
 	readonly buttons = $derived<GradeButton[]>(this.fiveButtons ? BUTTONS_5 : BUTTONS_4);
 	readonly current = $derived<QueueItem | undefined>(this.items[0]);
+	/** The card on screen cannot be graded until the failed answer is retried (same answer id). */
+	readonly gradeLocked = $derived(this.notice === 'answerFailed' && !!this.current && this.failedCardId === this.current.card.id);
 	/** Nothing to show yet, but answers are still being recorded: the queue will be refreshed when they are. */
 	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
+	/** What the stage shows: the current card, or the held one while answers settle. */
+	readonly display = $derived<QueueItem | undefined>(this.current ?? (this.settling ? (this.held ?? undefined) : undefined));
 	/** Nothing to show, but a learning card falls due later today: the screen counts down to it. */
 	readonly waiting = $derived(
 		!this.isDrill && !this.current && !this.settling && this.nextLearningDueAt !== null
@@ -282,7 +319,7 @@ export class ReviewPage {
 	);
 
 	readonly rendered = $derived.by((): Rendered | null => {
-		const item = this.current;
+		const item = this.display;
 		if (!item) return null;
 		const note = item.card.note;
 		const nt = note ? this.noteTypes.get(note.noteTypeId) : undefined;
@@ -304,7 +341,8 @@ export class ReviewPage {
 						translation: item.grammarSentence.translation ?? null
 					}
 				: null,
-			side: this.flipped ? 'back' : 'front'
+			// A held card was graded on its back and stays so.
+			side: this.flipped || !this.current ? 'back' : 'front'
 		});
 	});
 
@@ -340,6 +378,7 @@ export class ReviewPage {
 	/** If the card on screen is not the one the per-card state belongs to, reset that state. */
 	private syncCard(): void {
 		const id = this.current?.card.id ?? '';
+		if (this.current && this.held) this.held = null; // a card is on screen: nothing to hold any more
 		if (id !== this.lastCardId) this.showCard(id, outbox.retryIds.get(id) ?? uuidv7(), false, Date.now());
 	}
 
@@ -387,8 +426,8 @@ export class ReviewPage {
 	 * entries still to materialize is fetched again, so the end screen shows only for a truly empty keep-going
 	 * fetch.
 	 */
-	private async fetchQueue(guard = false): Promise<boolean> {
-		if (this.isDrill) return false;
+	private async fetchQueue(guard = false, append = false): Promise<boolean> {
+		if (this.isDrill || this.disposed) return false;
 		const gen = this.gen;
 		const epoch = this.epoch;
 		const outboxSeq = outbox.seq;
@@ -409,7 +448,7 @@ export class ReviewPage {
 			}
 		}
 		// A newer start (retry) or leaving the screen supersedes this fetch.
-		if (gen !== this.gen) return false;
+		if (gen !== this.gen || this.disposed) return false;
 		this.moreAvailable = q.moreAvailable ?? false;
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
@@ -419,7 +458,17 @@ export class ReviewPage {
 		const answered = outbox.answeredSince(outboxSeq);
 		const fresh = q.items.filter((i) => !answered.has(i.card.id) && !pendingAtStart.has(i.card.id));
 		const cur = this.current;
-		// A card whose answer failed stays in front until the user grades it again (never advanced past).
+		if (append) {
+			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
+			// (an undo or restore may have put one back meanwhile): never removes a local card. Counts and the next
+			// due instant wait for the refresh after the answers.
+			const merged = cur ? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)] : [...fresh];
+			const ids = new Set(merged.map((i) => i.card.id));
+			this.items = [...merged, ...this.items.filter((i) => !ids.has(i.card.id))];
+			this.syncCard();
+			return true;
+		}
+		// A card whose answer failed stays in front until it is retried (never advanced past).
 		const keepCur = cur && (fresh.some((i) => i.card.id === cur.card.id) || this.failedAnswer?.cardId === cur.card.id);
 		this.items =
 			keepCur
@@ -435,6 +484,7 @@ export class ReviewPage {
 	}
 
 	private getQueue(keepGoing: boolean) {
+		if (this.disposed) return Promise.reject(new Error('review page disposed'));
 		return timed(
 			QUEUE_TIMEOUT_MS,
 			(init) => reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing }, init),
@@ -448,13 +498,13 @@ export class ReviewPage {
 	 */
 	private scheduleWake(): void {
 		this.clearWake();
-		if (this.isDrill) return;
+		if (this.isDrill || this.disposed) return;
 		const due = this.nextLearningDueAt;
 		let at: number;
 		if (due) {
 			this.pendingTries = 0;
 			at = due.getTime() + WAKE_SLACK_MS;
-		} else if (!this.current && remainingCount(this.counts) > 0 && !(this.moreAvailable && !this.keepGoing)) {
+		} else if (!this.current && remainingCount(this.counts) > 0) {
 			at = Date.now() + Math.min(PENDING_MAX_MS, PENDING_BASE_MS * 2 ** this.pendingTries);
 			this.pendingTries++;
 		} else {
@@ -476,13 +526,13 @@ export class ReviewPage {
 		const gen = this.gen;
 		await this.refreshWhenIdle();
 		// A fetch that failed or was dropped leaves no timer behind: keep the schedule alive (not after dispose).
-		if (gen === this.gen && this.wakeTimer === null) this.scheduleWake();
+		if (gen === this.gen && !this.disposed && this.wakeTimer === null) this.scheduleWake();
 	}
 
 	/** The tab became visible again: timers are throttled while hidden, so catch up at once if the card is due. */
 	onVisible(): void {
 		const due = this.nextLearningDueAt;
-		if (this.isDrill || !due || this.busy) return;
+		if (this.isDrill || !due || this.busy || this.disposed) return;
 		if (Date.now() >= due.getTime() && Date.now() - this.lastWake >= WAKE_MIN_MS) {
 			this.clearWake();
 			void this.wake();
@@ -491,10 +541,10 @@ export class ReviewPage {
 
 	/** Leaving the screen: no timer or queue fetch outlives it (answers in the outbox still go out). */
 	dispose(): void {
+		this.disposed = true;
 		this.gen++;
 		this.clearWake();
 		this.abort.abort();
-		this.abort = new AbortController();
 	}
 
 	/**
@@ -503,7 +553,12 @@ export class ReviewPage {
 	 * another one, and the screen would show an end state while the server has cards.
 	 */
 	private async refresh(): Promise<void> {
-		if (this.isDrill || outbox.pending.length > 0) return;
+		if (this.isDrill || this.disposed) return;
+		if (outbox.pending.length > 0) {
+			// Answers are still being saved: refill instead, so the local queue does not drain meanwhile.
+			void this.prefetch();
+			return;
+		}
 		const gen = this.gen;
 		try {
 			for (let i = 0; i <= KEEP_GOING_RETRIES; i++) {
@@ -511,10 +566,26 @@ export class ReviewPage {
 				if (applied || this.current || outbox.pending.length > 0 || gen !== this.gen) break;
 			}
 		} catch {
-			if (gen === this.gen) this.refreshFailed = true; // the view offers a retry when there is nothing to show
+			if (gen === this.gen && !this.disposed) this.refreshFailed = true; // inline notice, or the error screen
 		}
 		// Every refresh dropped as stale while the counts say cards remain: fetch again later, never end here.
-		if (gen === this.gen && this.wakeTimer === null) this.scheduleWake();
+		if (gen === this.gen && !this.disposed && this.wakeTimer === null) this.scheduleWake();
+	}
+
+	/**
+	 * Fetch more cards while answers are still on their way, once few are left locally. Not epoch-guarded: the
+	 * cards answered before or during it are filtered out by fetchQueue (outbox), the card on screen is kept.
+	 */
+	private async prefetch(): Promise<void> {
+		if (this.isDrill || this.disposed || this.prefetching || this.items.length > PREFETCH_LOW) return;
+		this.prefetching = true;
+		try {
+			await this.fetchQueue(false, true);
+		} catch {
+			/* the refresh after the answers are saved tries again */
+		} finally {
+			this.prefetching = false;
+		}
 	}
 
 	/** Refresh once every queued answer (also those of an earlier visit) has been sent. */
@@ -538,7 +609,11 @@ export class ReviewPage {
 
 	/** Load settings and the queue (or a drill session for `source`). Reads no state synchronously. */
 	start(source: string | null, keepGoing = false): void {
+		if (this.disposed) return;
 		const gen = ++this.gen;
+		// A retry during a slow load: the old fetch is abandoned (it would hold a connection for nothing).
+		this.abort.abort();
+		this.abort = new AbortController();
 		this.drillSource = source;
 		this.keepGoing = keepGoing && source === null;
 		this.keepGoingDay = null;
@@ -615,7 +690,7 @@ export class ReviewPage {
 			if (!repeat) this.flip();
 			return true;
 		}
-		if (/^[1-5]$/.test(k) && this.flipped && Number(k) <= this.buttons.length) {
+		if (/^[1-5]$/.test(k) && this.flipped && !this.gradeLocked && Number(k) <= this.buttons.length) {
 			const b = this.buttons[Number(k) - 1];
 			if (b && !repeat) void this.grade(b);
 			return true;
@@ -651,7 +726,11 @@ export class ReviewPage {
 	 */
 	grade(b: GradeButton): Promise<void> {
 		const item = this.current;
-		if (!item || !this.flipped || this.busy || this.editing) return Promise.resolve();
+		if (!item || !this.flipped || this.busy || this.editing || this.gradeLocked) return Promise.resolve();
+		return this.send(item, b);
+	}
+
+	private send(item: QueueItem, b: GradeButton): Promise<void> {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
@@ -681,9 +760,11 @@ export class ReviewPage {
 		outbox.add(entry);
 		this.history = [...this.history, { reviewId: entry.answerId, item }];
 		this.items = this.items.slice(1);
+		this.held = this.items.length === 0 ? item : null;
 		this.epoch++;
 		this.newPress();
 		outbox.tail = outbox.tail.then(() => Outbox_send(entry));
+		if (!this.isDrill) void this.prefetch();
 		return done;
 	}
 
@@ -708,6 +789,7 @@ export class ReviewPage {
 		if (failed) {
 			this.showCard(failed.item.card.id, failed.answerId, true, failed.shownAt);
 			this.failedAnswer = { cardId: failed.item.card.id, button: failed.button };
+			this.failedCardId = failed.item.card.id;
 			this.notice = 'answerFailed';
 		} else this.syncCard();
 	}
@@ -715,6 +797,17 @@ export class ReviewPage {
 	private clearNotice(): void {
 		this.notice = null;
 		this.failedAnswer = null;
+		this.failedCardId = null;
+	}
+
+	/** The server refused this answer for good (card deleted or suspended elsewhere): it is gone from the session. */
+	dropped(entry: PendingAnswer): void {
+		this.history = this.history.filter((h) => h.reviewId !== entry.answerId);
+		this.items = this.items.filter((i) => i.card.id !== entry.item.card.id);
+		if (this.held?.card.id === entry.item.card.id) this.held = null;
+		this.epoch++;
+		this.syncCard();
+		pushToast(tr('review.answerDropped'));
 	}
 
 	/** Send the failed answer again: same card, same button, same answer id (the server deduplicates). */
@@ -726,7 +819,8 @@ export class ReviewPage {
 			return Promise.resolve();
 		}
 		this.flipped = true;
-		return this.grade(f.button);
+		this.clearNotice();
+		return this.send(cur, f.button);
 	}
 
 	async undo(): Promise<void> {

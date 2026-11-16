@@ -105,7 +105,7 @@ describe('rapid review input', () => {
 		expect(page.history).toEqual([]);
 		expect(page.flipped).toBe(true);
 		const retryId = page.answerId;
-		await page.grade(good); // retry reuses the id
+		await page.retryAnswer(); // retry reuses the id (a regrade is locked)
 		expect(sent).toEqual([{ cardId: 'a', id: retryId }]);
 		dispose();
 	});

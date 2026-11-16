@@ -43,6 +43,15 @@
 	const counts = $derived(queue.counts);
 	const due = $derived(queue.due);
 	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && !decks.loadFailed && decks.items.length === 0);
+	// RC-WEB: decide "empty account or not" before drawing either layout, so a late summary never swaps the page.
+	// Cards due or a deck settle it at once (no waiting on the slow summary); a failed summary or deck list means
+	// "not known to be empty".
+	const accountKnown = $derived(
+		(queue.loaded && queue.due > 0) ||
+			(decks.loaded && (decks.loadFailed || decks.items.length > 0)) ||
+			!!summary ||
+			stats.summaryP.failed
+	);
 	// Average answer time today, else ~10 s a card.
 	const etaMin = $derived.by(() => {
 		const d = summary?.doneToday;
@@ -88,7 +97,15 @@
 <svelte:head><title>{th('home.title')} · Kotobaya</title></svelte:head>
 
 <Page title={th('home.title')} eyebrow={dateLine}>
-	{#if emptyAccount}
+	{#if !accountKnown}
+		<div class="layout" aria-busy="true">
+			<div class="main">
+				<div class="hero skeleton"><Skeleton shape="block" height="11rem" /></div>
+				<Panel><Skeleton shape="row" count={4} /></Panel>
+			</div>
+			<div class="side"><Skeleton shape="block" height="9rem" /><Skeleton shape="block" height="7rem" /></div>
+		</div>
+	{:else if emptyAccount}
 		<EmptyState size="page" art="sparkle" title={th('home.emptyTitle')} body={th('home.emptyBody')}>
 			{#snippet action()}
 				<div class="empty-actions">

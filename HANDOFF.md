@@ -1,23 +1,23 @@
-# HANDOFF RC-WEB
+# HANDOFF RC-WEB (attempt 2)
 
 STATUS: DONE
 BRANCH: t/RC-WEB
-CHECK: `make check MODULE=web` → green (122 tests)
+CHECK: `make check MODULE=web` → green (130 tests)
 
 ## Changed
-- `web/src/lib/review/model.ts` `reviewPhase`: done only when counts are 0 and there is no next_learning_due_at. Counts > 0 with nothing served → `pending`, which refetches with backoff (2 s doubling to 30 s).
-- `web/src/lib/state/review.svelte.ts`: 30 s timeouts on queue/answer/undo. Retry during a slow load drops the older load. Answer/undo failures show a notice with a retry that resends the same answer id, and the failed card stays in front. dispose() aborts fetches.
-- `web/src/routes/review/+page.svelte`: switches on `phase`. Separate waiting screen with countdown. After 5 s, a "taking longer" message with retry.
-- Home (`web/src/routes/+page.svelte`): hero counts come from `/review/queue` (`web/src/lib/state/today.svelte.ts`). Stats start after the queue answers, home loads 3 panels instead of 6, each fails inline with its own retry (no toasts, via `quietApiConfig` in `web/src/lib/api/client.ts`). Leaving the page aborts them.
-- Slowdown cause (measured): leaving /review during a fetch re-armed the wake timer on the dead page. Old code: 27 extra fetches in 30 min, one more loop per visit.
-- Second slowdown cause: every Home visit fired 6 stats calls (up to 76 s each) that were never cancelled, which also held HTTP/1.1 connections the review fetch needed.
+- Leak: `dispose()` sets a permanent `disposed` flag that refresh, fetchQueue, scheduleWake, wake and start check. An answer that finishes after leaving now starts nothing.
+- 404/409/410/422 on answer: card dropped with a toast; taps behind it still send. Only timeout, network, 401/429 and 5xx keep the card pinned.
+- While an answer is unconfirmed, grade buttons and keys are locked; Retry resends.
+- Flicker (a): the queue drained while answers were saving, so the stage flashed a skeleton between cards. Fix: a prefetch refills it below 3 cards. It merges and never drops a local card, so an undo is kept. The last graded card stays on screen (dimmed) while saving.
+- Flicker (b): a failed wake fetch swapped the countdown for a full-page error. Now waiting/pending stays with an inline notice and retries itself.
+- Flicker (c): home showed a skeleton only until the account is known (cards due, a deck, or the summary), so the empty-account view no longer flashes.
+- `reviewPhase`: counts are checked before doneForNow. A retry during a slow load aborts the old fetch.
 
 ## Acceptance → tests
-- waiting / 504→retry / done → `tests/review/sessionEnd.svelte.test.ts`; leaks → `leaks.svelte.test.ts`
+- `web/tests/review/sessionEnd.svelte.test.ts`, `web/tests/review/leaks.svelte.test.ts` (each item above has a test)
 
 ## New dependencies
 - none
 
 ## For the reviewer
-- `more_available` + counts 0 → "done for now" with Keep going, per the contract; no polling there.
-- Live trace was waiting state, not done: I couldn't reproduce a done path with next_learning_due_at set. Old waiting screen looked like the done screen.
+- Per-session-cap case (counts.new > 0, more_available) is now `pending`, refetching up to every 30 s.

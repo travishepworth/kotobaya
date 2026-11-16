@@ -12,6 +12,7 @@ const en = {
 	'review.undone': 'Last answer undone.',
 	'review.bury': 'Bury',
 	'review.buried': 'Card buried until tomorrow.',
+	'review.answerDropped': 'That card can no longer be reviewed (deleted or suspended elsewhere). Moved on.',
 	'review.suspend': 'Suspend',
 	'review.suspended': 'Card suspended.',
 	'review.neverForget': 'Never forget',

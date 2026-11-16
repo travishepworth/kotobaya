@@ -22,6 +22,7 @@ vi.mock('../../src/lib/review/api', () => ({
 
 import { QUEUE_TIMEOUT_MS, ReviewPage, resetOutboxForTests } from '../../src/lib/state/review.svelte';
 import { reviewPhase, type PhaseInput } from '../../src/lib/review/model';
+import { ResponseError } from '../../src/lib/api/generated';
 
 const card = (id: string): QueueItem => ({ card: { id, presetId: 'p' }, reviewType: 'schedule' }) as unknown as QueueItem;
 const good = { rating: 3, label: 'good' } as never;
@@ -121,7 +122,7 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('a dropped stale refresh with counts left schedules a refetch instead of ending', async () => {
+	it('a failed refresh with counts left stays pending and refetches instead of ending', async () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		let answered = false;
 		api.getReviewQueue.mockImplementation(async () =>
@@ -132,14 +133,16 @@ describe('review session end (RC-WEB)', () => {
 		await tick();
 		expect(page.current?.card.id).toBe('a');
 		// The refresh after the answer fails once: the screen offers a retry (not done) and does not end.
-		api.getReviewQueue.mockRejectedValueOnce(new Error('504'));
+		// Both the prefetch (fired at the tap) and the refresh after the answer fail.
+		api.getReviewQueue.mockRejectedValueOnce(new Error('504')).mockRejectedValueOnce(new Error('504'));
 		page.flip();
 		answered = true;
 		await page.grade(good);
 		await tick();
-		expect(page.phase).toBe('error');
-		await page.reload();
-		await tick();
+		// Counts said cards remain: pending with an inline notice (no full-page error), fetched again by itself.
+		expect(page.phase).toBe('pending');
+		expect(page.refreshFailed).toBe(true);
+		await tick(5000);
 		expect(page.phase).toBe('card');
 		expect(page.current?.card.id).toBe('b');
 		dispose();
@@ -227,6 +230,10 @@ describe('review session end (RC-WEB)', () => {
 		expect(page.current?.card.id).toBe('a');
 		expect(page.flipped).toBe(true);
 		expect(page.notice).toBe('answerFailed');
+		// Locked: a regrade would reuse the same answer id (the server ignores the new rating); only Retry sends.
+		await page.grade({ rating: 1, label: 'again' } as never);
+		expect(page.key('1', false)).toBe(false);
+		expect(ids).toHaveLength(1);
 		await page.retryAnswer();
 		await tick();
 		expect(ids).toHaveLength(2);
@@ -245,7 +252,7 @@ describe('review session end (RC-WEB)', () => {
 		page.flip();
 		void page.grade(good);
 		await tick();
-		expect(page.phase).toBe('loading'); // settling: the answer is on its way
+		expect(page.phase).toBe('settling'); // the answer is on its way; the card stays on screen
 		await tick(QUEUE_TIMEOUT_MS);
 		expect(page.phase).toBe('card');
 		expect(page.current?.card.id).toBe('a');
@@ -281,6 +288,153 @@ describe('review session end (RC-WEB)', () => {
 	});
 });
 
+describe('review flow hardening (RC-WEB attempt 2)', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		resetOutboxForTests();
+		vi.useFakeTimers();
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('an answer the server refuses for good (410 gone) drops the card and shows the next one', async () => {
+		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 410 })));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		await page.grade(good);
+		await tick();
+		expect(page.current?.card.id).toBe('b');
+		expect(page.notice).toBeNull();
+		expect(page.history).toHaveLength(0);
+		dispose();
+	});
+
+	it('a 5xx keeps the card pinned for Retry', async () => {
+		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 503 })));
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		await page.grade(good);
+		await tick(10_000);
+		expect(page.current?.card.id).toBe('a');
+		expect(page.notice).toBe('answerFailed');
+		dispose();
+	});
+
+	it('the last card stays on screen (held) while its answer is saving: no skeleton swap', async () => {
+		api.answerReview.mockImplementation(
+			(r: { reviewAnswerRequest: { id: string } }) => slow(3000, { review: { id: r.reviewAnswerRequest.id } })
+		);
+		let answered = false;
+		api.getReviewQueue.mockImplementation(async () =>
+			answered ? queue({ counts: counts(0) }) : queue({ items: [card('a')], counts: counts(0, 1) })
+		);
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		void page.grade(good);
+		answered = true;
+		await tick(100);
+		expect(page.phase).toBe('settling');
+		expect(page.display?.card.id).toBe('a');
+		expect(page.current).toBeUndefined(); // inert: nothing can be graded
+		await tick(3000);
+		expect(page.phase).toBe('done');
+		expect(page.display).toBeUndefined();
+		dispose();
+	});
+
+	it('the local queue is refilled while answers are pending, so it does not drain', async () => {
+		const answered: string[] = [];
+		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string; cardId: string } }) => {
+			await slow(2000, null);
+			answered.push(r.reviewAnswerRequest.cardId);
+			return { review: { id: r.reviewAnswerRequest.id } };
+		});
+		const all = ['a', 'b', 'c', 'd', 'e'];
+		let first = true;
+		api.getReviewQueue.mockImplementation(async () => {
+			const left = all.filter((x) => !answered.includes(x));
+			const items = first ? left.slice(0, 2) : left; // the first fetch is short (a server limit)
+			first = false;
+			return queue({ items: items.map(card), counts: counts(0, left.length) });
+		});
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		const shown: string[] = [];
+		for (let i = 0; i < 5; i++) {
+			expect(page.phase).toBe('card');
+			shown.push(page.current!.card.id);
+			page.flip();
+			void page.grade(good);
+			await tick(50); // faster than the answers are saved
+		}
+		expect(shown).toEqual(all);
+		dispose();
+	});
+
+	it('an undo while a prefetch is in flight keeps the undone card (prefetch never removes a local card)', async () => {
+		api.answerReview.mockImplementation(
+			(r: { reviewAnswerRequest: { id: string } }) => slow(2000, { review: { id: r.reviewAnswerRequest.id } })
+		);
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockImplementation(() => slow(1000, queue({ items: [card('b'), card('c')], counts: counts(0, 2) })));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		void page.grade(good); // prefetch starts (a is pending, so the server's answer leaves it out)
+		await page.undo(); // a was not sent yet: withdrawn, back in front
+		expect(page.current?.card.id).toBe('a');
+		await tick(1100);
+		expect(page.items.map((i) => i.card.id)).toEqual(['a', 'b', 'c']);
+		dispose();
+	});
+
+	it('a failed wake fetch while waiting keeps the countdown (inline notice, no full-page error)', async () => {
+		const due = new Date(Date.now() + 10_000);
+		api.getReviewQueue.mockResolvedValueOnce(queue({ counts: counts(2), nextLearningDueAt: due }));
+		api.getReviewQueue.mockRejectedValueOnce(new Error('504'));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('l1')], counts: counts(2) }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		await tick(11_100);
+		expect(page.phase).toBe('waiting');
+		expect(page.refreshFailed).toBe(true);
+		await tick(5000);
+		expect(page.phase).toBe('card');
+		dispose();
+	});
+
+	it('a retry during a slow load aborts the old fetch', async () => {
+		const signals: AbortSignal[] = [];
+		api.getReviewQueue.mockImplementation((_r: unknown, init?: RequestInit) => {
+			if (init?.signal) signals.push(init.signal);
+			return slow(10_000, queue({ counts: counts(0) }));
+		});
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick(100);
+		page.retry();
+		await tick(100);
+		expect(signals).toHaveLength(2);
+		expect(signals[0].aborted).toBe(true);
+		expect(signals[1].aborted).toBe(false);
+		dispose();
+	});
+});
+
 describe('reviewPhase', () => {
 	const base: PhaseInput = {
 		loaded: true,
@@ -305,12 +459,16 @@ describe('reviewPhase', () => {
 		expect(reviewPhase({ ...base, counts: counts(0, 0, 1) })).toBe('pending');
 		expect(reviewPhase({ ...base, moreAvailable: true })).toBe('doneForNow');
 		expect(reviewPhase({ ...base, moreAvailable: true, keepGoing: true })).toBe('done');
+		// Counts first: cards left today are never "done for now".
+		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 0, 2) })).toBe('pending');
 	});
 	it('loading and errors are never done', () => {
 		expect(reviewPhase({ ...base, loaded: false })).toBe('loading');
-		expect(reviewPhase({ ...base, settling: true })).toBe('loading');
+		expect(reviewPhase({ ...base, settling: true })).toBe('settling');
 		expect(reviewPhase({ ...base, loadFailed: true })).toBe('error');
 		expect(reviewPhase({ ...base, refreshFailed: true })).toBe('error');
+		expect(reviewPhase({ ...base, refreshFailed: true, nextLearningDueAt: new Date() })).toBe('waiting');
+		expect(reviewPhase({ ...base, refreshFailed: true, counts: counts(1) })).toBe('pending');
 		expect(reviewPhase({ ...base, refreshFailed: true, hasCurrent: true })).toBe('card');
 	});
 });

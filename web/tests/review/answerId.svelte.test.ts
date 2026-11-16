@@ -64,14 +64,14 @@ describe('review answer id', () => {
 		const first = page.answerId;
 		await page.grade(button);
 		expect(page.answerId).toBe(first);
-		await page.grade(button);
+		await page.retryAnswer(); // RC-WEB: a regrade is locked; Retry resends
 		expect(ids).toEqual([first]);
 		dispose();
 	});
 
 	it('does not present the graded card again when the queue refetch fails', async () => {
 		const { page, ids, dispose } = setup();
-		api.getReviewQueue.mockRejectedValueOnce(new Error('network'));
+		api.getReviewQueue.mockRejectedValue(new Error('network')); // every refetch (prefetch and refresh) fails
 		page.flip();
 		await page.grade(button);
 		flushSync();
