@@ -7,7 +7,12 @@ import kotlinx.coroutines.runBlocking
 import kotobaya.android.dict.DictGapCache
 import kotobaya.android.dict.DictLookup
 import kotobaya.android.dict.DictStore
+import kotobaya.android.dict.DictEntryDetail
+import kotobaya.android.dict.KanjiDetail
+import kotobaya.android.dict.PackageSource
 import kotobaya.android.shell.api.LocalApi
+import kotobaya.android.shell.api.actions.CardQuery
+import kotobaya.android.shell.api.actions.LocalCardQuery
 import kotobaya.android.shell.api.LocalRoute
 import kotobaya.android.shell.api.LocalWrites
 import kotobaya.android.shell.api.OfflineUpstream
@@ -120,7 +125,7 @@ class SeedLog(private val clock: Clock) : SyncTransport {
  *
  * Handlers get their dependencies from [services] by type, like `KoinShellServices` in production. Registered:
  * [SqlDelightDeviceStore], [SyncClient], `LocalWrites<SqlLearningTables>`, [Clock], [DictStore],
- * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [DueTrigger] (SHELL-L3, counted in `dueChanges`); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
+ * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [DueTrigger] (SHELL-L3, counted in `dueChanges`); [CardQuery] (SHELL-L4); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
  * fixture and the cache), [EntryMaterializer] (`NoteCreator`), [SyncCoordinator] (idle, never runs) (SHELL-L2). An L
  * ticket whose handler needs something else registers it here.
  *
@@ -148,14 +153,27 @@ class ParityDevice(
     /** SHELL-L9: the sidecar cache in the device's learning database, empty (no network in a scenario). */
     val gapCache = DictGapCache(store, driver)
 
-    /** SHELL-L9: the one L-7 lookup over the installed fixture (JDBC) and [gapCache]; never online here. */
-    val dictLookup = DictLookup(JdbcPackageSource(dictStore.installed), gapCache, remote = null)
 
     /** SHELL-L2: the app database the queue loader reads (the same in-memory driver as [store]). */
     val database = AppDatabase(driver)
 
     /** SHELL-L2: L-7 steps 1-2 as production wires it (installed package, then the sidecar cache). */
     val installedDictionary = InstalledDictionary(dictStore, null, gapCache)
+
+    /**
+     * SHELL-L9: the one L-7 lookup over the installed fixture (JDBC) and [gapCache]; never online here. SHELL-L4: entry
+     * and kanji details (a re-match in `updateNote`) come from [installedDictionary] as in production, so a test that
+     * reaches them runs under Robolectric; release, scope and presence stay on JDBC (plain JVM).
+     */
+    val dictLookup = DictLookup(
+        object : PackageSource by JdbcPackageSource(dictStore.installed) {
+            override fun packageEntry(seq: Long): DictEntryDetail? = installedDictionary.packageEntry(seq)
+
+            override fun packageKanji(literal: String): KanjiDetail? = installedDictionary.packageKanji(literal)
+        },
+        gapCache,
+        remote = null,
+    )
 
     /** SHELL-L2: C-27 materialization as production wires it (`NoteCreator` over the device's minter). */
     val noteCreator: NoteCreator<SqlLearningTables> = NoteCreator(
@@ -206,6 +224,9 @@ class ParityDevice(
         private set
     private val dueTrigger = DueTrigger(background = { it.run() }) { listOf(DueListener { dueChanges++ }) }
 
+    /** SHELL-L4: the `bulkCards` `query` selector over the device's own replica (as production binds it). */
+    val cardQuery: CardQuery = LocalCardQuery(driver, database, installedDictionary)
+
     private val services = MapServices(
         mapOf(
             SqlDelightDeviceStore::class to store,
@@ -223,6 +244,7 @@ class ParityDevice(
             EntryMaterializer::class to noteCreator,
             SyncCoordinator::class to coordinator,
             DueTrigger::class to dueTrigger,
+            CardQuery::class to cardQuery,
         ),
     )
 

@@ -20,9 +20,6 @@ class RouteTableTest {
          * line when it registers the routes; the set only shrinks.
          */
         val PENDING: Set<String> = setOf(
-            // SHELL-L4 actions
-            "bulkCards", "getWordStatus", "setWordStatus", "clearWordStatus", "getNote", "updateNote", "deleteNote",
-            "getCard", "listCardReviews",
             // SHELL-L5 mining
             "searchDictionary", "getDictEntry", "listEntryExamples", "listDictHeadwords", "getDictRelease", "getKanji",
             "listKanjiWords", "createNote",

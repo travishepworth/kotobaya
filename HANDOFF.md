@@ -1,24 +1,24 @@
-# HANDOFF LOOP-AND (+ PORTRAIT-AND)
+# HANDOFF SHELL-L4
 
 STATUS: DONE
-BRANCH: t/LOOP-AND (from t/LOOP-SRV)
+BRANCH: t/SHELL-L4-local-actions
 CHECK: `make check MODULE=android` → green
 
-## Changed
-- LocalQueueLoader: `LoadedQueue` carries `LoopResult` (core `DefaultReviewLoop`); `newShownThisSession` and `laterLearning()` gone; pending window B = max(1,batch); `new_per_session` ignored. QueueRoute renders `loop` + legacy fields from `LoopState` like the server.
-- Widget/notification count = `readyLearning + readyReviews`. `LOCAL_API_VERSION = 2`.
-- PORTRAIT-AND: `DisplayOps.kt` (routes, prefs, `ActivityOrientation`), `display` capability, ApiOperations + UNPAIRED_ALLOWED, MainActivity applies at create.
+## Changed (≤ 6 lines)
+- `shell/api/actions/`: bulkCards (local actions, else Fallthrough), word status get/set/clear, getNote/updateNote/deleteNote, getCard, listCardReviews; all writes through `LocalWrites`
+- `CardQuery` / `LocalCardQuery` (wraps `LocalCardSearch`) for the bulk `query` selector
+- ParityDevice: `CardQuery` registered; `DictLookup` entry details via `InstalledDictionary`; RouteTableTest PENDING trimmed
 
 ## Acceptance → tests
-- Parity goldens incl. 4 `queue-loop-*` → LocalParityTest (17 match, 3 pending need createNote); follows server order for cap-keep-going-backlog
-- `QueueRouteTest.loopUnlimitedLaterLearningServesNew`, `WidgetDataTest.countIsReadyNow`, `DueNotificationsTest.countIsReadyNow`
-- KeepGoingTest kept, updated (session cap gone: 20 new in normal, 20 more kept)
-- `DisplayRouteTest.defaultFalse/patchPersistsAndApplies/emptyPatch422/unpairedWorksAndRebuilding503`
+- Bulk atomic → `BulkAtomicTest` (malformed id 422 + zero ops; mint refusal rolls back batch)
+- LWW edit / delete → `NoteEditLwwTest`
+- Delete idempotent → `DeleteIdempotentTest`
+- Ops valid, out-of-order convergence → `ActionOpsTest`; also `WordStatusTest`, `NoteCardReadTest`
+- Parity scenarios → none added (contracts/); propose: `bulk-cards-local`, `word-status-set-clear`, `note-update-delete`, `card-get-reviews`
 
 ## New dependencies
-none
+- none
 
-## For the reviewer
-- `QueueCounts` type kept (now a view of `LoopState.legacy`) because unowned legacy Compose (DeckRepository, DemoPorts, TodayScreen) uses it; one-line compile fixes in DeckRepository, ReviewFeature. SHELL-Z1 can delete it.
-- Ticket said `unpaired401` for display; contract says both ops work unpaired, so test asserts 200. Touched unowned `ApiOperations.kt` (2 ops), `LocalApi.kt`, and shell/parity + RouteTableTest + HomeQueueAgreementTest expectations for the re-recorded contracts.
-- Widget "later today" text not added (no snapshot field/UI); only the count source changed.
+## For the reviewer (≤ 3 lines)
+- Contract: a well-formed unknown card id is `skipped` (200), not 4xx; test follows contract. ShellModule (not owned) needs `single<CardQuery>{ LocalCardQuery(get(named("syncAppDriver")), get(), get()) }`; until then a `query` selector is forwarded.
+- Core finding: `word_status.updated_at` depends on op arrival order (registers converge).
