@@ -30,6 +30,8 @@ const en = {
 	'error.forbidden': 'Not allowed ({code}).',
 	'error.validation': 'Invalid input: {detail}',
 	'error.unavailable': 'The server is temporarily unavailable.',
+	'error.offline': 'You are offline. This needs a connection to the server.',
+	'error.rebuilding': 'Local data is being rebuilt. Try again in a moment.',
 	'events.reconnecting': 'Live updates disconnected; reconnecting…',
 	'home.welcome': 'Welcome back.'
 } as const;

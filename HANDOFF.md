@@ -1,25 +1,26 @@
-# HANDOFF SHELL-C1
+# HANDOFF SHELL-W1
 
 STATUS: DONE
-BRANCH: t/SHELL-C1-shell-contract
-CHECK: `make check MODULE=contracts` → green
+BRANCH: t/SHELL-W1-spa-transport
+CHECK: `make check MODULE=web` → green (used the existing core npm build, no Gradle)
 
 ## Changed (≤ 6 lines)
-- Attempt 3 (SHELL.md L-7, §4.3 createNote, §8.2, §10.7): installed `all` package is authoritative only when its release ≥ the last known server release; otherwise treated like `top60k` (gap fill fetches; offline → 503 `shell_dict_missing`, never 404/422)
-- Server-404 negative results are per server release and dropped when it changes
-- `searchDictionary` / `listKanjiWords`: online and (no package, not authoritative, or empty local page) → forward, overlay recomputed locally; `l.` cursor prefix
-- shell.yaml: optional `ShellDictInstall.server_release_id`; client regenerated
+- `web/src/lib/api/shell/`: protocol validators, `ShellTransport`/`shellFetch`, `sendReady`, generated shell client config, `ops.json` lookup
+- `api/client.ts`, `errors/index.ts`: in shell mode use `fetchApi: shellFetch` with no credentials and no CSRF header. Browser config unchanged. Shell 503s: offline/dict_missing give one info toast and are not reported; rebuilding is retried once
+- `events.ts`: in shell mode, events come from bridge `event` messages. `hello` is replayed to streams opened later. `state/shell.svelte.ts`: present/info/online/incompatible, `has`, `modeOf`, `initShell`
+- `session.svelte.ts`: `refreshSession` calls `initShell`; `canLogout`; `logout()` does nothing in shell mode
+- `mock/fake-shell.js` and `demo-api.ts`: fake `KotobayaShell`, turned on with `/__mock/shell/on` or `KOTOBAYA_MOCK_SHELL=1`. Smoke-tested in Chromium
 
 ## Acceptance → tests
-- check green; removed operationId fails → `ops_map_complete`, `selftest_ops_missing_id`
-- bridge examples → `bridge_examples_valid`, `bridge_examples_invalid`
-- parity seed ops, mandatory scenarios → `parity_seed_ops`, `parity_seed_accepted`, `parity_mandatory_covered`
-- cross-check → `shell_md_cross_check`
+- shellFetch → `tests/shell/shellFetch.test.ts` (round trip, out of order, timeout, abort, duplicate/unknown res, every valid and invalid contract example)
+- client → `tests/shell/client.test.ts` "browser mode … configuration equals today"
+- events → `tests/shell/events.shell.test.ts`
+- extra → `tests/shell/shellState.test.ts`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- "Merge" for search = the server's page with per-user overlay recomputed from the replica, not a union of two paged lists (the server's result is a superset).
-- Parity harness pins last known server release = fixture package release, so `dict-entry-missing` stays an authoritative miss.
-- Unknown server release (never synced) = not authoritative.
+- **Breaks the release image:** `web/Dockerfile` (not owned) must add `COPY clients/typescript-shell …` and `COPY contracts/api/shell/ops.json …`
+- An abort rejects with `AbortError` like `fetch` does, not `TypeError`, so a cancelled request shows no "network error" toast. The layout still shows Log out; it should hide it using `canLogout` (W2)
+- `ready.web_version` is `VITE_APP_VERSION` (the manifest uses package.json). `MIN_LOCAL_API` is defined twice (protocol.ts and scripts/)

@@ -1,6 +1,7 @@
 // Wiring of the reporter to the browser and the API layer (see reporter.ts for the logic).
 import { MetaApi, Configuration, ResponseError } from '../api/generated';
 import type { ClientErrorItem } from '../api/generated';
+import { isShellMode, shellFetch } from '../api/shell';
 import { KEEPALIVE_LIMIT, bodyBytes, createReporter, failedSendResult } from './reporter';
 import type { ErrorInput, Send, WireItem } from './reporter';
 
@@ -10,12 +11,15 @@ const APP_VERSION: string = import.meta.env?.VITE_APP_VERSION || '0.0.0-dev';
 export const REPORT_PATH = '/client-errors';
 
 // A client with no middleware: no toasts, no 401 redirect, no reporting of its own failures.
+// In the Android shell it goes over the bridge (answered locally, SHELL.md 3.2) with no credentials or CSRF header.
 const reportApi = new MetaApi(
-	new Configuration({
-		basePath: '/api/v1',
-		credentials: 'same-origin',
-		headers: { 'X-Kotobaya-Csrf': '1' }
-	})
+	isShellMode()
+		? new Configuration({ basePath: '/api/v1', fetchApi: shellFetch })
+		: new Configuration({
+				basePath: '/api/v1',
+				credentials: 'same-origin',
+				headers: { 'X-Kotobaya-Csrf': '1' }
+			})
 );
 
 function toClientItem(i: WireItem): ClientErrorItem {

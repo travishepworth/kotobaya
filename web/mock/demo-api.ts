@@ -4,6 +4,11 @@
 //
 // Scenario: KOTOBAYA_MOCK=<default|empty|due900> picks the default; a `kb-mock-scenario` cookie overrides it
 // per browser (the screenshot harness uses that), and GET /__mock/scenario/<name> sets the cookie and redirects.
+//
+// Shell mode (SHELL-W1): every HTML page gets mock/fake-shell.js inlined at the top of <head>; it installs a fake
+// `window.KotobayaShell` when KOTOBAYA_MOCK_SHELL=1 or the `kb-mock-shell=1` cookie is set (GET /__mock/shell/on,
+// /__mock/shell/off), so the SPA runs in shell mode in a desktop browser.
+import { readFileSync } from 'node:fs';
 import type { Connect, Plugin } from 'vite';
 import accountJson from '../../fixtures/demo/account.json' with { type: 'json' };
 import dictionaryJson from '../../fixtures/demo/dictionary.json' with { type: 'json' };
@@ -902,6 +907,60 @@ interface Res {
 	end(body?: string): void;
 }
 
+/** The fake shell script, ready to inline (`forced` = KOTOBAYA_MOCK_SHELL=1). */
+function fakeShellScript(forced: boolean): string {
+	const path = decodeURIComponent(new URL('./fake-shell.js', import.meta.url).pathname);
+	const js = readFileSync(path, 'utf8').replace('__KB_FORCED__', forced ? 'true' : 'false');
+	return `<script>${js.replace(/<\/script/gi, '<\\/script')}</script>`;
+}
+
+/** The subset of node's ServerResponse the HTML injection patches. */
+interface PatchableRes {
+	getHeader(name: string): unknown;
+	setHeader(name: string, value: unknown): unknown;
+	removeHeader(name: string): void;
+	writeHead(...args: unknown[]): unknown;
+	write(chunk: unknown, ...rest: unknown[]): boolean;
+	end(chunk?: unknown, ...rest: unknown[]): unknown;
+}
+
+/**
+ * Inline `script` at the top of <head> of an HTML response (SvelteKit does not support transformIndexHtml). The
+ * body is buffered only when the response turns out to be HTML; everything else streams through untouched.
+ */
+function injectIntoHtml(res: PatchableRes, script: string): void {
+	const write = res.write.bind(res);
+	const end = res.end.bind(res);
+	const writeHead = res.writeHead.bind(res);
+	const chunks: string[] = [];
+	let htmlHead = false; // content-type passed to writeHead (sirv, in `vite preview`) rather than setHeader
+	const isHtml = (): boolean => htmlHead || String(res.getHeader('content-type') ?? '').includes('text/html');
+	const text = (c: unknown): string => (typeof c === 'string' ? c : new TextDecoder().decode(c as Uint8Array));
+	// The page grows by the script: drop the length before the headers go out (the body is then sent chunked).
+	res.writeHead = (...args: unknown[]): unknown => {
+		for (const a of args) {
+			if (typeof a !== 'object' || a === null || Array.isArray(a)) continue;
+			const h = a as Record<string, unknown>;
+			const type = Object.keys(h).find((k) => k.toLowerCase() === 'content-type');
+			if (type && String(h[type]).includes('text/html')) htmlHead = true;
+			if (htmlHead) for (const k of Object.keys(h)) if (k.toLowerCase() === 'content-length') delete h[k];
+		}
+		if (isHtml()) res.removeHeader('content-length');
+		return writeHead(...args);
+	};
+	res.write = (chunk: unknown, ...rest: unknown[]): boolean => {
+		if (!isHtml()) return write(chunk, ...rest);
+		chunks.push(text(chunk));
+		return true;
+	};
+	res.end = (chunk?: unknown, ...rest: unknown[]): unknown => {
+		if (!isHtml()) return end(chunk, ...rest);
+		if (chunk !== undefined && chunk !== null && typeof chunk !== 'function') chunks.push(text(chunk));
+		const html = chunks.join('').replace(/<head([^>]*)>/i, (m) => m + script);
+		return end(html);
+	};
+}
+
 function scenarioOf(req: Req, fallback: string): string {
 	const cookie = String(req.headers.cookie ?? '');
 	const m = new RegExp(`(?:^|;\\s*)${COOKIE}=([\\w-]+)`).exec(cookie);
@@ -930,6 +989,8 @@ async function readBody(req: Req): Promise<Obj> {
 
 /** Vite plugin: serves the demo API under /api/v1 on the dev and preview servers. */
 export function demoApi(defaultScenario: string): Plugin {
+	const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env;
+	const forceShell = env?.KOTOBAYA_MOCK_SHELL === '1';
 	const states = new Map<string, State>();
 	const stateFor = (name: string): State => {
 		let s = states.get(name);
@@ -958,9 +1019,31 @@ export function demoApi(defaultScenario: string): Plugin {
 			res.end();
 			return;
 		}
-		if (!url.pathname.startsWith('/api/v1/')) return next();
+		const shellSwitch = /^\/__mock\/shell\/(on|off)$/.exec(url.pathname);
+		if (shellSwitch) {
+			res.statusCode = 302;
+			res.setHeader('set-cookie', `kb-mock-shell=${shellSwitch[1] === 'on' ? '1' : '0'}; Path=/; SameSite=Lax`);
+			res.setHeader('location', url.searchParams.get('to') ?? '/');
+			res.end();
+			return;
+		}
+		if (!url.pathname.startsWith('/api/v1/')) {
+			const accept = String(req.headers.accept ?? '');
+			if (req.method === 'GET' && accept.includes('text/html')) {
+				// `vite preview` compresses below this middleware; the injection needs the plain text.
+				delete req.headers['accept-encoding'];
+				injectIntoHtml(res as unknown as PatchableRes, fakeShellScript(forceShell));
+			}
+			return next();
+		}
 		const path = url.pathname.slice('/api/v1'.length);
 		const s = stateFor(scenarioOf(req, defaultScenario));
+
+		// The fake shell is "paired": its requests are signed in without a login (as a device token would be).
+		if (path === '/auth/session' && req.method === 'GET' && req.headers['kotobaya-mock-shell'] === 'paired') {
+			send(200, s.data.principal);
+			return;
+		}
 
 		if (path === '/events') {
 			// One hello, then keep the stream open (no live updates in demo mode).

@@ -1,7 +1,9 @@
 import type { Principal } from '../api/generated';
 import { ResponseError, authApi, readProblem, setUnauthenticatedHandler } from '../api/client';
 import { resumeErrorReports } from '../errors';
+import { isShellMode } from '../api/shell';
 import { openEventStream } from '../events';
+import { initShell } from './shell.svelte';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
 
@@ -22,8 +24,12 @@ function setOut(): void {
 
 setUnauthenticatedHandler(setOut);
 
-/** Ask the server whether the cookie is still a valid session. */
+/**
+ * Ask the server whether the cookie is still a valid session. In the Android shell the same call is answered
+ * locally (`getPrincipal`); a 401 there means "not paired / re-pair" and leads to /login as on the web.
+ */
 export async function refreshSession(): Promise<void> {
+	void initShell(); // shell mode: send `ready` and load ShellInfo once per page life; no-op in a browser
 	try {
 		session.principal = await authApi.getPrincipal();
 		session.status = 'in';
@@ -57,7 +63,11 @@ export async function login(password: string, totpCode?: string): Promise<LoginR
 	}
 }
 
+/** Whether "Log out" is offered: not in the Android shell, where the device unpairs instead (SHELL.md 9.1). */
+export const canLogout = !isShellMode();
+
 export async function logout(): Promise<void> {
+	if (!canLogout) return; // `logout` is a hidden operation in the shell (403); nothing to do
 	try {
 		await authApi.logout();
 	} finally {

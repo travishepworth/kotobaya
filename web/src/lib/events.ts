@@ -1,4 +1,7 @@
 import { API_BASE } from './api/client';
+import { getShellTransport, lastHello, sendReady } from './api/shell';
+import type { BridgeEvent } from './api/shell/protocol';
+import type { ShellTransport } from './api/shell/transport';
 
 export type EventName =
 	| 'hello'
@@ -6,7 +9,25 @@ export type EventName =
 	| 'note.created'
 	| 'job.updated'
 	| 'device.paired'
-	| 'device.revoked';
+	| 'device.revoked'
+	// shell mode only (SHELL.md 2.6)
+	| 'shell.connectivity'
+	| 'shell.sync'
+	| 'shell.dict'
+	| 'shell.state_changed';
+
+const EVENT_NAMES: readonly EventName[] = [
+	'hello',
+	'sync.changed',
+	'note.created',
+	'job.updated',
+	'device.paired',
+	'device.revoked',
+	'shell.connectivity',
+	'shell.sync',
+	'shell.dict',
+	'shell.state_changed'
+];
 
 /** The `Event` envelope of GET /events (raw wire shape: `at` stays a string). */
 export interface ServerEvent {
@@ -28,8 +49,11 @@ export interface EventStreamOptions {
  * Subscribe to GET /events. Returns a close function. EventSource reconnects by itself;
  * the server sends `hello` first on every connection, which is where callers refetch.
  * Cookie auth is same-origin, so no credentials plumbing is needed.
+ * In the Android shell the events arrive as bridge `event` messages instead (SHELL.md 2.6), same contract.
  */
 export function openEventStream(opts: EventStreamOptions): () => void {
+	const shell = getShellTransport();
+	if (shell) return openShellEventStream(shell, opts);
 	const query = opts.types ? `?types=${encodeURIComponent(opts.types.join(','))}` : '';
 	const es = new EventSource(`${API_BASE}/events${query}`);
 	const names: EventName[] = [
@@ -54,4 +78,37 @@ export function openEventStream(opts: EventStreamOptions): () => void {
 	es.onopen = () => opts.onStatus?.(true);
 	es.onerror = () => opts.onStatus?.(false);
 	return () => es.close();
+}
+
+function toServerEvent(e: BridgeEvent): ServerEvent | null {
+	const type = e.type as EventName;
+	if (!EVENT_NAMES.includes(type)) return null; // receivers ignore unknown types
+	return { type, at: e.at, data: e.data };
+}
+
+function openShellEventStream(shell: ShellTransport, opts: EventStreamOptions): () => void {
+	let open = true;
+	const deliver = (e: ServerEvent): void => {
+		if (!open) return;
+		if (e.type === 'hello') {
+			opts.onStatus?.(true);
+			opts.onReconnect?.(e);
+		} else if (opts.types && !opts.types.includes(e.type)) {
+			return;
+		}
+		opts.onEvent(e);
+	};
+	const off = shell.subscribe((m) => {
+		const e = m.t === 'event' ? toServerEvent(m.event) : null;
+		if (e) deliver(e);
+	});
+	// A stream opened after this page life's hello gets it too, as each SSE connection gets its own.
+	const seen = lastHello();
+	const replay = seen ? toServerEvent(seen) : null;
+	if (replay) queueMicrotask(() => deliver(replay));
+	sendReady();
+	return () => {
+		open = false;
+		off();
+	};
 }
