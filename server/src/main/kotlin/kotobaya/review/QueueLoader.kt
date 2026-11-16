@@ -3,6 +3,7 @@ package kotobaya.review
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.WordStatus
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
@@ -102,6 +103,10 @@ internal class QueueLoader(private val dsl: DSLContext) {
             )
         }
         if (deckFilter != null) candidates = candidates.filter { c -> c.memberships.any { it.deckId == deckFilter } }
+        // ADR-035: retired cards are dropped here as well as by core rule 0 (the builder's result is the same either
+        // way, QueueRetiredCardsTest), so callers counting `LoadedQueue.candidates` (later learning in /review/queue
+        // and /stats/summary) never count a card that is never served.
+        candidates = candidates.filterNot { CardKinds.isRetired(it.noteBaseType, it.kind, readingEnabled) }
 
         val today = todayRows.map { it.copy(deckIds = memberships[it.noteId].orEmpty().map(DeckMembership::deckId)) }.map { it.review }
         val input = QueueInput(

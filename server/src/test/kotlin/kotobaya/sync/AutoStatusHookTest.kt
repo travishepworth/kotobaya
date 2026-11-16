@@ -166,6 +166,14 @@ class AutoStatusHookTest : SyncFixture() {
         val stale = op(SETTINGS_SET, A, base + 1, """{"key":"cards.reading_enabled","value":false}""", ctr = 1)
         assertAccepted(push(principal(A), stale).single())
         assertEquals(after.last(), shownOnServer())
+        // The typed value did not change, so the re-derive is skipped: a marker row written outside the rule survives
+        // a lost op and a same-value op, and is replaced by the next real flip.
+        db.txBlocking { it.execute("update app.word_status set status = 'known', auto_status = 'known' where entry_seq = 2001") }
+        assertAccepted(push(principal(A), op(SETTINGS_SET, A, base + 1, """{"key":"cards.reading_enabled","value":false}""", ctr = 2)).single())
+        assertAccepted(push(principal(A), readingSetting(base + 500, true)).single())
+        assertEquals("known" to "known", shownOnServer().getValue(2001L))
+        assertAccepted(push(principal(A), readingSetting(base + 501, false)).single())
+        assertEquals("new" to null, shownOnServer().getValue(2001L))
     }
 
     @Test

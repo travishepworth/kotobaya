@@ -1,5 +1,6 @@
 package kotobaya.cards
 
+import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.cards.CardKinds
 import kotobaya.server.json
 import kotobaya.sync.SyncJson
@@ -16,4 +17,11 @@ internal object ReadingSetting {
             .map { it.get(0, String::class.java) }.orElse(null) ?: return CardKinds.readingEnabled(null)
         return CardKinds.readingEnabled(SyncJson.fromJackson(json.readTree(text)))
     }
+
+    /**
+     * SQL predicate "card [card] of note [note] is not retired" ([CardKinds.isRetired] in SQL; `note.type` is the
+     * note's base type). Constant text, no bind values.
+     */
+    fun notRetiredSql(readingEnabled: Boolean, card: String = "c", note: String = "n"): String =
+        if (readingEnabled) "true" else "not ($card.kind = '${CardKinds.READING}' and $note.type = '${NoteBaseType.VOCAB.wire}')"
 }

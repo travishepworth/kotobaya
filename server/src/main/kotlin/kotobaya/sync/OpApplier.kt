@@ -2,6 +2,7 @@ package kotobaya.sync
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import kotobaya.cards.ReadingSetting
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.sync.JsonArray
@@ -101,8 +102,6 @@ internal class OpApplier(
                 .ifPresent { touchEntriesOfCards(listOf(it.get(0, String::class.java))) }
             CARD_PRESET_SET -> touchEntriesOfCards(listOf(p.reqStr("id")))
             NOTE_MERGED -> touchEntriesOfNotes(listOf(p.reqStr("loser_id"), p.reqStr("survivor_id")))
-            // ADR-035 (OPS.md settings.set): won or lost, the key re-derives every entry with the value now stored.
-            SETTINGS_SET -> if (p.str("key") == CardKinds.SETTING_READING_ENABLED) touchAllEntries(dsl, autoStatus)
             else -> if (op.opType.wire.startsWith("fsrs_params.")) touchAllEntries(dsl, autoStatus)
         }
     }
@@ -713,11 +712,16 @@ internal class OpApplier(
         // JSON null is a stored value ("use the default"), so the value goes in as jsonb text, never via populate_record.
         val value = DefaultCanonicalJson.encode(p.members["value"] ?: JsonNull)
         val at = SyncJson.iso(wall(h))
+        val reading = key == CardKinds.SETTING_READING_ENABLED
+        val readingBefore = if (reading) ReadingSetting.load(dsl) else null
         val stored = dsl.fetchOptional("select hlc::text from app.settings where key = ?", key).map { it.get(0, String::class.java) }.orElse(null)
         when {
             stored == null -> dsl.execute("insert into app.settings (key, value, hlc, updated_at) values (?, ?::jsonb, ?, ?::timestamptz)", key, value, h, at)
             h > stored -> dsl.execute("update app.settings set value = ?::jsonb, hlc = ?, updated_at = ?::timestamptz where key = ?", value, h, at, key)
         }
+        // ADR-035 (OPS.md settings.set): re-derive every entry with the value now stored. If the typed value did not
+        // change (a lost op, or the same value again), re-deriving would change nothing, so it is skipped.
+        if (reading && ReadingSetting.load(dsl) != readingBefore) touchAllEntries(dsl, autoStatus)
         return none()
     }
 

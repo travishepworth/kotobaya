@@ -1,25 +1,21 @@
-# HANDOFF ONE-CARD-SRV
+# HANDOFF ONE-CARD-SRV (attempt 2)
 
 STATUS: DONE
 BRANCH: t/ONE-CARD-SRV (from t/C-28-ONE-CARD-CORE)
-CHECK: `make check MODULE=server` → green (490); `make check MODULE=acceptance` → green
+CHECK: `make check MODULE=server` → green (491); `make check MODULE=acceptance` → green
 
-## Changed
-- `cards/ReadingSetting.kt` reads the `cards.reading_enabled` setting with the 6.1 bool test. The value goes to NoteApi, AnkiConnect, DeckEntryPlan, QueueLoader (`QueueInput`) and knownSeries.
-- `createCard` with a retired kind → 422 `/kind`. `updateSettings` checks the key as bool.
-- CoreAutoStatusHook passes `kind` and the setting. Applying `settings.set` of the key (won or lost) re-derives every entry.
-- Startup re-derives every entry once, under the `server_state.word_status_rules` marker = core `WORD_STATUS_RULES_VERSION`.
-- Tests: 7 old tests updated (default cards are now meaning only, or the setting is turned on); MergeScenarioTest and acceptance ScenarioFilesTest 16→17.
+## Changed (attempt 2)
+- Major: QueueLoader now drops retired candidates (`CardKinds.isRetired`). So `laterLearning` in /review/queue and /stats/summary no longer counts them. Core rule 0 still applies; the builder's output does not change (QueueRetiredCardsTest).
+- `/stats/summary` `next_due_at` and `/stats/forecast` now leave out retired cards (`ReadingSetting.notRetiredSql`).
+- OpApplier: the re-derive moved into the `settings.set` apply. It runs only when the typed value changes, so a lost or same-value op is skipped.
+- Attempt 1 is unchanged: the setting is passed to every generator and queue call, `kind` goes to the hook, createCard returns 422, there is a bool check, and a startup marker.
 
 ## Acceptance → tests
-- Server/device convergence with a reviewed reading card, both orders and a losing op → AutoStatusHookTest `reviewedReadingCardConverges…` ×2, `aLosingSettingsSet…`. With `kind` removed, these fail.
-- Startup marker → `startupRederivesEveryEntryOnce…`
-- Queue, Today and materialization → DeckMaterializeTest `readingCardsAreCreatedAndServedOnly…`
-- createNote/createCard → CardsApiTest `readingCardsAreRetired…`. Bool check → SettingsApiTest.
+- Retired learning card: not counted in queue or summary, no `next_learning_due_at`, not in next_due_at or the forecast; the queue ends "done" before and after its due time → DeckMaterializeTest `aRetiredLearningCardIsNeverCountedAndTheQueueEndsDone`. It fails when the loader filter is removed.
+- The skip → AutoStatusHookTest `aLosingSettingsSet…`.
 
 ## New dependencies
 - none
 
 ## For the reviewer
-- knownSeries applies the setting's current value to past points in the series.
-- LegacyStatsQueries (the test oracle) got the same `kind`/setting change.
+- The core README says "loaders keep passing retired cards". Dropping them in the loader gives the same builder result, so the README sentence should be relaxed.

@@ -146,7 +146,9 @@ class StatsModule(
             )!!
             val next = dsl.fetchOne(
                 "select ${msOf("min(c.due_at)")} from app.card c join app.note n on n.id = c.note_id " +
-                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended and c.due_at > ?::timestamptz",
+                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended and c.due_at > ?::timestamptz " +
+                    // ADR-035: a retired card is never served, so it is never "next".
+                    "and ${kotobaya.cards.ReadingSetting.notRetiredSql(kotobaya.cards.ReadingSetting.load(dsl))}",
                 java.sql.Timestamp(nowMs),
             )!!.get(0) as Number?
             linkedMapOf(
@@ -288,7 +290,9 @@ class StatsModule(
             val today = todayOf(settings, nowMs)
             val due = dsl.fetch(
                 "select ${msOf("c.due_at")} from app.card c join app.note n on n.id = c.note_id " +
-                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended and c.due_at is not null",
+                    "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended and c.due_at is not null " +
+                    // ADR-035: retired cards are never due.
+                    "and ${kotobaya.cards.ReadingSetting.notRetiredSql(kotobaya.cards.ReadingSetting.load(dsl))}",
             ).map { (it.get(0) as Number).toLong() }
             val ends = (1..days).map { rolloverMs(settings.timezone, settings.dayRolloverHour, today.date.plusDays(it.toLong())) }
             val perDay = IntArray(days)

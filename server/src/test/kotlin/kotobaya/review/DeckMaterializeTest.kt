@@ -176,6 +176,51 @@ class DeckMaterializeTest : SyncFixture() {
         assertEquals(2, fetch(t)["counts"]["new"].asInt(), "the same card comes back")
     }
 
+    /**
+     * ADR-035 + ADR-033 (review ONE-CARD-SRV major): a reading card left in learning while the setting is off is never
+     * served, so it is not counted in `counts.learning` or `due.learning`, gives no `next_learning_due_at` and is not
+     * `next_due_at` or in the forecast: the queue ends as "done", not "waiting".
+     */
+    @Test
+    fun aRetiredLearningCardIsNeverCountedAndTheQueueEndsDone() = reviewApp {
+        val t = token()
+        setting("cards.reading_enabled", "true")
+        setting("scheduler.bury_siblings", "false")
+        val deck = deckWithEntries(1, base = 8200)
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"card_kinds":["meaning","reading"]}}}""")
+        val items = fetch(t)["items"]
+        fun cardOfKind(kind: String) = items.first { it["card"]["kind"].asText() == kind }["card"]["id"].asText()
+        val reading = cardOfKind("reading")
+        val meaning = cardOfKind("meaning")
+        // reading → learning (Again, due in minutes); meaning → review (Easy, due in days).
+        for ((card, rating) in listOf(reading to 1, meaning to 4)) {
+            val body = mapOf("id" to Uuid7.generate().toString(), "card_id" to card, "rating" to rating)
+            assertEquals(200, client.call(HttpMethod.Post, "/review/answer", bearer = t, body = body).status.value)
+        }
+        assertEquals("learning", db.txBlocking { it.fetchValue("select state from app.card where id = ?::uuid", reading) as String })
+        val readingDue = db.txBlocking { (it.fetchValue("select (extract(epoch from due_at) * 1000)::bigint from app.card where id = ?::uuid", reading) as Number).toLong() }
+        suspend fun forecastTotal() = client.call(HttpMethod.Get, "/stats/forecast?days=365", bearer = t).json()["days"].sumOf { it["due"].asInt() }
+        // Control, setting on: the learning reading card is waited for.
+        val waiting = fetch(t)
+        assertEquals(1, waiting["counts"]["learning"].asInt())
+        assertTrue(waiting.has("next_learning_due_at"))
+        assertEquals(2, forecastTotal())
+
+        setting("cards.reading_enabled", "false")
+        for (at in listOf(syncNow.get(), java.time.Instant.ofEpochMilli(readingDue + 1_000))) {
+            syncNow.set(at)
+            val q = fetch(t)
+            assertEquals(0, q["items"].size(), "at $at")
+            assertEquals(0, q["counts"]["learning"].asInt(), "at $at")
+            assertEquals(0, q["counts"]["new"].asInt() + q["counts"]["review"].asInt(), "at $at")
+            assertTrue(!q.has("next_learning_due_at") || q["next_learning_due_at"].isNull, "done, not waiting, at $at")
+            val s = client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()
+            assertEquals(0, s["due"]["learning"].asInt(), "at $at")
+            assertTrue(s["next_due_at"].isNull || java.time.Instant.parse(s["next_due_at"].asText()).toEpochMilli() > readingDue + 86_400_000L, "next_due_at is the meaning card's")
+            assertEquals(1, forecastTotal(), "at $at")
+        }
+    }
+
     private fun headword(seq: Long, h: String) = db.txBlocking { it.execute("update ref.dict_entry set headword = ? where seq = ?", h, seq) }
 
     /**
