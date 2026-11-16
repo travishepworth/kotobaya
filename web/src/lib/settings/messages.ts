@@ -18,6 +18,7 @@ const en = {
 	'settings.buttons4': '4 buttons (Again, Hard, Good, Easy)',
 	'settings.buttons5': '5 buttons (jpdb style)',
 	'settings.leechThreshold': 'Leech threshold (lapses)',
+	'settings.readingCards': 'Also create reading cards',
 	'settings.burySiblings': 'Bury sibling cards',
 	'settings.kanjiBeforeVocab': 'Introduce kanji before vocabulary that uses them',
 	'settings.minedPriority': 'Priority of mined (deckless) new cards',

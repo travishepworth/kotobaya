@@ -6,6 +6,7 @@ const en = {
 	'sx.study': 'Study',
 	'sx.studyLead': 'When your day starts, how much comes each day, and how you grade.',
 	'sx.day': 'Your day',
+	'sx.cards': 'Cards',
 	'sx.limits': 'Daily limits',
 	'sx.grading': 'Grading',
 	'sx.queue': 'Queue order',

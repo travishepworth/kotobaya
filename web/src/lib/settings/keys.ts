@@ -17,6 +17,8 @@ export const STUDY_SETTINGS: SettingDef[] = [
 	{ key: 'scheduler.new_per_session', label: 'settings.newPerSession', type: 'int', default: 10, min: 0 },
 	{ key: 'scheduler.grading_buttons', label: 'settings.gradingButtons', type: 'buttons', default: 4 },
 	{ key: 'scheduler.leech_threshold', label: 'settings.leechThreshold', type: 'int', default: 8, min: 1 },
+	// ADR-035: while not true, vocab reading cards are retired (never created or queued).
+	{ key: 'cards.reading_enabled', label: 'settings.readingCards', type: 'bool', default: false },
 	{ key: 'scheduler.bury_siblings', label: 'settings.burySiblings', type: 'bool', default: true },
 	{ key: 'scheduler.kanji_before_vocab', label: 'settings.kanjiBeforeVocab', type: 'bool', default: false },
 	{ key: 'scheduler.mined_priority', label: 'settings.minedPriority', type: 'int', default: 0 },
