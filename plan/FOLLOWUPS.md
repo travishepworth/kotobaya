@@ -483,3 +483,4 @@
 - REVIEW-UNLIMITED (minor): QueueBuilder.kt:337 KDoc says SCHEMA 6.2 → 6.3.
 - REVIEW-UNLIMITED (minor, do soon): no Android test that LocalQueueLoader passes reviewsUnlimited into QueueLimits (silent server/device count divergence if dropped). Add loader test 3 due, cap 1, key true → 3.
 - REVIEW-UNLIMITED (minor): SettingsViewModels.kt:51 invalid number field blocks saving the toggle.
+- SHELVED (user 2026-11-16) AND-DICT-FALLBACK: review card with no local dict entry → fetch /dict/entries/{seq} or /kanji/{literal} when online, cache, trigger dict update; offline keeps CardUnavailable with 'loads when online' wording. Currently no review fallback (InstalledRenderData.kt:17-21 → CardUnavailable). User thinks the phone dictionary is just out of date.
