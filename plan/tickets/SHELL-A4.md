@@ -32,3 +32,10 @@
 SPA handling of navigate/back (W3). Removing IntakeSheet/ViewModel files (Z1).
 
 ## Notes from previous attempts
+
+## Orchestrator note (from SHELL-A3 review minors; fix here)
+- Widget/tile/hot-word/notification intents hit MainActivity, which ignores their data (StruggleDeepLink no longer called) — this ticket routes them (SHELL.md 6.1).
+- BridgeCore.kt:842: if helloData() throws, still send `hello` (high_water_seq 0, nil UUID, device clock) once per page life.
+- MainActivity resolves ShellWiring deps (LocalApi, store, BlobStore, syncAppDriver) on main thread; point a NoDbOnMainThread check at MainActivity or resolve lazily on IO.
+- ShellWiring: one process-wide shell CoroutineScope in Koin instead of one per MainActivity instance.
+- BridgeCodec MAX_BODY_CHARS: count code points (schema maxLength) not UTF-16 units.

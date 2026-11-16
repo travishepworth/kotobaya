@@ -1248,3 +1248,6 @@
 2026-11-16T14:49:49Z SHELL-L3 HANDOFF; check RED x2 after rebase = infra (/tmp usrquota tmpfs full: old rel worktrees + leaked /tmp/parity* dirs, ~500/run) -> cleaned, re-run GREEN; reviewer dispatched
 2026-11-16T14:49:49Z SHELL-A3 DISPATCH writer-senior from t/SHELL-L3 (chain) [gradle lane]
 2026-11-16T14:51:01Z SHELL-L3 REVIEW_APPROVE (6 minors -> L2b/FOLLOWUPS) + MERGE (re-rebased over plan-only commit, no code change)
+2026-11-16T15:08:27Z SHELL-A3 HANDOFF + CHECK_GREEN; reviewer dispatched. New dep androidx.webkit 1.12.1
+2026-11-16T15:08:27Z SHELL-A5 DISPATCH writer-senior from t/SHELL-A3 (chain) [gradle lane]; plan: first-test APK after A3 approve (A5 if close)
+2026-11-16T15:11:02Z SHELL-A3 REVIEW_APPROVE (6 minors -> SHELL-A4 notes) + MERGE
