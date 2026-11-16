@@ -1,20 +1,22 @@
-# HANDOFF SHELL-L8
+# HANDOFF SHELL-L5b
 
 STATUS: DONE
-BRANCH: t/SHELL-L8-local-struggle
+BRANCH: t/SHELL-L5b
 CHECK: `make check MODULE=android` → green
 
-## Changed (≤ 6 lines)
-- shell/api/struggle/: Routes.kt (4 local routes), HotSources.kt (server's hot-note rule over the replica: core DefaultHotScorer + HotHistory), StruggleRoutes.kt (listHotWords, listHotKanji, listLeeches), DrillRoute.kt (createDrillSession: core DrillSelector, items via L2 QueueViews, read-only store).
-- RouteTableTest: PENDING emptied. No ParityDevice change needed.
+## Changed
+- ShellResponse.forwarded (ShellHttp.kt); LocalApi omits `kotobaya-local` on it; DictEnv.forward() marks every server answer.
+- CreateNoteRoute: source_sentence_id/source_media_id reject JSON null (422).
+- DictSearch: package page keys keep the package order (monotone grades, last item = pkg cursor); in-memory GapEntryIndex per (cache generation, release) used by search and listKanjiWords (one table scan, one presentEntries call).
+- DictGapCache: `generation`, `snapshot()` memo, `scans` counter.
+- MediaSentences: json_each/json_extract pre-filter, falls back to all media sentences without json1.
 
 ## Acceptance → tests
-- Parity scenarios, three lists + hot_words drill → StruggleParityTest (shapes, order, 422 codes, cursors, window, undo)
-- No ops/no table change → DrillNoOpsTest (all five sources; drill answer leaves card unchanged)
+- 1–5 → MiningFollowUpsTest (forwarded header, null ids, 3000-entry paging + one scan, media spacing)
 
 ## New dependencies
 - none
 
-## For the reviewer (≤ 3 lines)
-- No contracts/api/shell/parity files exist for struggle, so scenarios are written in Kotlin (as L7). Hot kanji uses the installed dictionary's entry kanji (no dict entry: no contribution). `query` source forwards when CardQuery says Forward.
-- Leeches / leech candidates scan all card rows (`all(CARD)`); fine for now, no range query exists on LearningTables.
+## For the reviewer
+- Edited ShellHttp.kt (not listed as owned) for the flag, as the ticket required.
+- InstalledDictionary is not owned, so the package's per-item grade is reconstructed (clamped to its cursor), not read.

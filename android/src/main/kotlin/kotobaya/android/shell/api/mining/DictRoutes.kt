@@ -50,7 +50,7 @@ internal class DictEnv(private val call: LocalCall) {
      */
     suspend fun forward(): ShellResponse? {
         val r = upstream.forward(call.request, call.operation, call.requestId)
-        return if (isShellOffline(r)) null else r
+        return if (isShellOffline(r)) null else r.copy(forwarded = true)
     }
 
     /** L-7 "Negative results": the server answered `404` for [ref] under the current last known release. */

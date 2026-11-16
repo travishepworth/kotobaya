@@ -37,6 +37,8 @@ data class ShellResponse(
     val status: Int,
     val headers: Map<String, String> = emptyMap(),
     val body: String? = null,
+    /** The answer came from the server (forwarded, or merged from a forwarded page): `kotobaya-local` is never stamped (SHELL.md 3.3). */
+    val forwarded: Boolean = false,
 ) {
     companion object {
         /** A `200` (or [status]) JSON answer. [LocalApi] adds `kotobaya-local` and `x-request-id`. */

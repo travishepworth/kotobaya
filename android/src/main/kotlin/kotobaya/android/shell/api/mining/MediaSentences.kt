@@ -24,9 +24,15 @@ import kotobaya.sync.client.apply.Row
  */
 internal object MediaSentences {
     fun forEntry(cache: DictGapCache, store: SqlDelightDeviceStore, seq: Long, limit: Int): List<JsonObject> {
-        // a cheap pre-filter on the stored JSON text; every candidate is then checked on its parsed tokens
+        // candidates by the stored token JSON (any whitespace, no substring false hits such as 12 for 123); every
+        // candidate is then checked on its parsed tokens. Without json1 every media sentence is a candidate.
         val ids = runCatching {
-            cache.column("SELECT id FROM sentence WHERE origin = 'media' AND instr(tokens, '\"seq\":$seq') > 0") { it.getString(0) }
+            cache.column(
+                "SELECT id FROM sentence WHERE origin = 'media' AND EXISTS " +
+                    "(SELECT 1 FROM json_each(sentence.tokens) WHERE json_extract(json_each.value, '\$.seq') = $seq)",
+            ) { it.getString(0) }
+        }.recoverCatching {
+            cache.column("SELECT id FROM sentence WHERE origin = 'media'") { it.getString(0) }
         }.getOrDefault(emptyList()).filterNotNull()
         if (ids.isEmpty()) return emptyList()
         return store.read { tx ->

@@ -51,7 +51,8 @@ object LocalRoutes {
  * 6. otherwise the readiness gate (20 s, then `503 shell_rebuilding`), the rebuild gate (L-8),
  *    then the handler. A handler returning [Fallthrough] is forwarded through [Upstream]; an
  *    operation with no registered handler yet is forwarded too (`shell.yaml` operations: `404`).
- * Every response the shell produces carries `kotobaya-local: 1` and `x-request-id`.
+ * Every response the shell produces carries `kotobaya-local: 1` and `x-request-id`; a [ShellResponse.forwarded] one
+ * (the server's answer, possibly with the overlay recomputed) carries only `x-request-id` (3.3).
  */
 class LocalApi(
     routes: List<LocalRoute>,
@@ -124,7 +125,7 @@ class LocalApi(
         if (response === Fallthrough) return forward(request, op, requestId)
         val headers = LinkedHashMap<String, String>()
         response.headers.forEach { (k, v) -> headers[k.lowercase()] = v }
-        headers[ShellHeaders.LOCAL] = "1"
+        if (response.forwarded) headers.remove(ShellHeaders.LOCAL) else headers[ShellHeaders.LOCAL] = "1"
         headers[ShellHeaders.REQUEST_ID] = requestId
         return response.copy(headers = headers)
     }

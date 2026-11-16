@@ -83,11 +83,6 @@ private fun FieldErrors.uuid(o: JsonObject, key: String, required: Boolean = fal
     return uuidValue(v, "/$key")
 }
 
-private fun FieldErrors.nullableUuid(o: JsonObject, key: String): String? {
-    val v = o.members[key] ?: return null
-    return if (v == JsonNull) null else uuidValue(v, "/$key")
-}
-
 private fun FieldErrors.kindList(node: JsonValue): List<String>? {
     val items = (node as? JsonArray)?.items
     if (items == null) {
@@ -121,8 +116,8 @@ internal fun noteCreate(call: LocalCall): NoteCreate {
     val tags = body.members["tags"]?.let { e.tagList(it, "/tags", 0, 100) } ?: emptyList()
     val mnemonic = e.string(body, "mnemonic", 0, 10_000) ?: ""
     val sourceSentence = e.string(body, "source_sentence", 0, 10_000) ?: ""
-    val sourceSentenceId = e.nullableUuid(body, "source_sentence_id")
-    val sourceMediaId = e.nullableUuid(body, "source_media_id")
+    val sourceSentenceId = e.uuid(body, "source_sentence_id")
+    val sourceMediaId = e.uuid(body, "source_media_id")
     val origin = e.string(body, "origin", 1, 40)?.also {
         if (!KEY_RE.matches(it)) e.add("/origin", "invalid_value", "A lowercase identifier.")
     } ?: "api"

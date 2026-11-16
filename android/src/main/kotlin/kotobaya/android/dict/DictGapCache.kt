@@ -56,6 +56,27 @@ data class GapFillCounts(val cached: Int, val missing: Int)
 class DictGapCache(private val store: SqlDelightDeviceStore, private val driver: SqlDriver) {
     @Volatile private var installed = false
 
+    /** Bumped by every write; in-memory indexes built over the rows ([snapshot]) are valid for one generation. */
+    @Volatile var generation: Long = 0
+        private set
+
+    /** Full scans of a kind ([rows]); lets a test assert that searching does not rescan the table. */
+    @Volatile internal var scans: Int = 0
+        private set
+
+    private var memo: Triple<Any, Long, Any>? = null
+
+    /**
+     * The in-memory index [build] derives from the rows, rebuilt only when [key] or the cache [generation] changed
+     * (search-as-you-type must not decode every cached entry per keystroke).
+     */
+    @Suppress("UNCHECKED_CAST")
+    internal fun <T : Any> snapshot(key: Any, build: () -> T): T = synchronized(this) {
+        val gen = generation
+        memo?.let { if (it.first == key && it.second == gen) return it.third as T }
+        build().also { memo = Triple(key, gen, it) }
+    }
+
     /** Creates the table if missing. Idempotent. */
     fun install() {
         if (installed) return
@@ -79,6 +100,7 @@ class DictGapCache(private val store: SqlDelightDeviceStore, private val driver:
     /** Every row of [kind]. */
     fun rows(kind: GapKind): List<GapRow> {
         install()
+        scans++
         return store.read {
             driver.executeQuery(
                 null, "SELECT kind, key, release_id, body, fetched_ms FROM $TABLE WHERE kind = ? ORDER BY key",
@@ -106,6 +128,7 @@ class DictGapCache(private val store: SqlDelightDeviceStore, private val driver:
                 }
             }
         }
+        generation++
     }
 
     fun delete(refs: Collection<GapRef>) {
@@ -118,6 +141,7 @@ class DictGapCache(private val store: SqlDelightDeviceStore, private val driver:
                 }
             }
         }
+        generation++
     }
 
     /** The last known server dictionary release (L-7 "Authoritative"), or null before the first answer. */

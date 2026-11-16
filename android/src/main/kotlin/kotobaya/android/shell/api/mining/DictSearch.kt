@@ -87,18 +87,30 @@ internal object SearchMatch {
 
     fun isLatin(q: String): Boolean = q.codePoints().noneMatch { isKana(it) || isKanji(it) }
 
+    /** A cached entry with what matching needs precomputed (normalised forms, lower-cased glosses). */
+    class Indexed(val e: DictEntryDetail, val forms: List<String>, val glosses: List<String>, val inPackage: Boolean)
+
+    fun index(e: DictEntryDetail, inPackage: Boolean = false): Indexed {
+        val forms = (0 until e.kanjiForms.length()).mapNotNull { e.kanjiForms.optJSONObject(it)?.optString("text") } +
+            (0 until e.readings.length()).mapNotNull { e.readings.optJSONObject(it)?.optString("text") }
+        val glosses = (0 until e.senses.length()).flatMap { i ->
+            val gl = e.senses.optJSONObject(i)?.optJSONArray("gloss")
+            if (gl == null) emptyList() else (0 until gl.length()).mapNotNull { j -> gl.optJSONObject(j)?.optString("text")?.lowercase(Locale.ROOT) }
+        }
+        return Indexed(e, forms.map { foldKatakana(Normalizer.normalize(it, Normalizer.Form.NFKC)) }, glosses, inPackage)
+    }
+
     /** The match grade of [e] for the NFKC-normalised, trimmed [q]: 0 exact, 1 prefix, 2 substring/gloss; null = no match. */
-    fun grade(e: DictEntryDetail, q: String): Int? {
+    fun grade(e: DictEntryDetail, q: String): Int? = grade(index(e), q)
+
+    fun grade(ix: Indexed, q: String): Int? {
         val latin = isLatin(q)
         val kana = if (latin) Romaji.toHiragana(q) else q
         var best: Int? = null
         if (kana != null) {
             val key = foldKatakana(kana)
             val short = key.codePointCount(0, key.length) <= 2
-            val forms = (0 until e.kanjiForms.length()).mapNotNull { e.kanjiForms.optJSONObject(it)?.optString("text") } +
-                (0 until e.readings.length()).mapNotNull { e.readings.optJSONObject(it)?.optString("text") }
-            for (f in forms) {
-                val norm = foldKatakana(Normalizer.normalize(f, Normalizer.Form.NFKC))
+            for (norm in ix.forms) {
                 val g = when {
                     norm == key -> 0
                     norm.startsWith(key) -> 1
@@ -110,13 +122,28 @@ internal object SearchMatch {
         }
         if (latin && best == null) {
             val needle = q.lowercase(Locale.ROOT)
-            val hit = (0 until e.senses.length()).any { i ->
-                val gl = e.senses.optJSONObject(i)?.optJSONArray("gloss")
-                gl != null && (0 until gl.length()).any { j -> gl.optJSONObject(j)?.optString("text")?.lowercase(Locale.ROOT)?.contains(needle) == true }
-            }
-            if (hit) best = 2
+            if (ix.glosses.any { it.contains(needle) }) best = 2
         }
         return best
+    }
+}
+
+/**
+ * Every cached entry, decoded once per cache generation and package release (SHELL-L5b): search-as-you-type then costs
+ * string comparisons over memory, not a table scan, a JSON decode and a package query per row.
+ */
+internal class GapEntryIndex(val entries: List<SearchMatch.Indexed>, val byLiteral: Map<String, List<SearchMatch.Indexed>>) {
+    companion object {
+        fun of(env: DictEnv): GapEntryIndex = env.cache.snapshot(Pair("entries", env.releaseId)) {
+            val decoded = env.cache.rows(GapKind.ENTRY).mapNotNull { row ->
+                row.body?.let { runCatching { DictJson.entry(it) }.getOrNull() }?.takeIf { !it.retired }
+            }
+            val present = if (decoded.isEmpty()) emptySet() else env.dict.presentEntries(decoded.map { it.seq })
+            val all = decoded.map { SearchMatch.index(it, it.seq in present) }
+            val lit = HashMap<String, MutableList<SearchMatch.Indexed>>()
+            all.forEach { ix -> ix.e.kanji.toSet().forEach { lit.getOrPut(it) { ArrayList() } += ix } }
+            GapEntryIndex(all, lit)
+        }
     }
 }
 
@@ -125,6 +152,23 @@ private data class SearchKey(val g: Int, val f: Int, val seq: Long) : Comparable
 }
 
 private fun queryHash(q: String, commonOnly: Boolean): String = Integer.toHexString("$q\u0000$commonOnly".hashCode())
+
+/**
+ * The merge keys of the package's page: its own (grade, frequency, seq) order. The grade of an item is not reported by the
+ * package, so it is recomputed from the entry; to keep the merged order the package's, grades are made non-decreasing along
+ * the page, at least the cursor's, and the last item of a page with a next cursor takes exactly the grade the package put in it.
+ */
+private fun packageKeys(env: DictEnv, pkg: kotobaya.android.dict.DictSearchPage, q: String, after: SearchKey?): List<Pair<SearchKey, kotobaya.android.dict.DictSummary>> {
+    var floor = after?.g ?: 0
+    val last = pkg.next
+    return pkg.items.mapIndexed { i, s ->
+        val computed = env.lookup.entry(s.seq)?.let { SearchMatch.grade(it, q) } ?: 2
+        val isLast = i == pkg.items.lastIndex
+        val g = if (isLast && last != null && last.seq == s.seq) last.grade else maxOf(computed, floor).coerceAtMost(last?.grade ?: 2)
+        floor = g
+        SearchKey(g, s.freqRank ?: NO_RANK, s.seq) to s
+    }
+}
 
 /**
  * The local page of `searchDictionary`: the installed package's search (`InstalledDictionary.search`, the server's
@@ -139,11 +183,10 @@ private fun localSearch(env: DictEnv, q: String, commonOnly: Boolean, limit: Int
     }
     val pkg = env.dict.search(q, commonOnly, limit, after?.let { DictSearchCursor(it.g, it.f, it.seq) })
     val pkgSeqs = pkg.items.mapTo(HashSet()) { it.seq }
-    val cached = env.cache.rows(GapKind.ENTRY).mapNotNull { row ->
-        val e = row.body?.let { runCatching { DictJson.entry(it) }.getOrNull() } ?: return@mapNotNull null
-        if (e.retired || (commonOnly && !e.isCommon) || e.seq in pkgSeqs) return@mapNotNull null
-        if (env.dict.presentEntries(listOf(e.seq)).isNotEmpty()) return@mapNotNull null // the package answers for it
-        val g = SearchMatch.grade(e, q) ?: return@mapNotNull null
+    val cached = GapEntryIndex.of(env).entries.mapNotNull { ix ->
+        val e = ix.e
+        if (ix.inPackage || (commonOnly && !e.isCommon) || e.seq in pkgSeqs) return@mapNotNull null // the package answers for the rest
+        val g = SearchMatch.grade(ix, q) ?: return@mapNotNull null
         SearchKey(g, e.freqRank ?: NO_RANK, e.seq).takeIf { k -> after == null || k > after }?.let { it to e }
     }
     if (cached.isEmpty()) {
@@ -152,10 +195,7 @@ private fun localSearch(env: DictEnv, q: String, commonOnly: Boolean, limit: Int
         return jsonObj("items" to JsonArray(views), "next_cursor" to (next?.let(::JsonString) ?: JsonNull))
     }
     // rare: gap-filled entries match too; grade the package's page the same way to merge by (grade, frequency, seq)
-    val fromPkg = pkg.items.map { s ->
-        val g = env.lookup.entry(s.seq)?.let { SearchMatch.grade(it, q) } ?: 2
-        SearchKey(g, s.freqRank ?: NO_RANK, s.seq) to { t: LearningTables -> DictViews.summary(t, s) }
-    }
+    val fromPkg = packageKeys(env, pkg, q, after).map { (k, sum) -> k to { t: LearningTables -> DictViews.summary(t, sum) } }
     val fromCache = cached.map { (k, e) -> k to { t: LearningTables -> DictViews.summary(t, e) } }
     val merged = (fromPkg + fromCache).sortedBy { it.first }
     val page = merged.take(limit)
@@ -202,9 +242,8 @@ private fun localKanjiWords(env: DictEnv, literal: String, deckId: String?, mine
     }
     val keys = LinkedHashMap<Long, Int>()
     env.pkg.kanjiEntries(literal).forEach { keys[it.seq] = it.freqKey }
-    env.cache.rows(GapKind.ENTRY).forEach { row ->
-        val e = row.body?.let { runCatching { DictJson.entry(it) }.getOrNull() } ?: return@forEach
-        if (!e.retired && literal in e.kanji && e.seq !in keys) keys[e.seq] = e.freqRank ?: NO_RANK
+    GapEntryIndex.of(env).byLiteral[literal]?.forEach { ix ->
+        if (ix.e.seq !in keys) keys[ix.e.seq] = ix.e.freqRank ?: NO_RANK
     }
     return env.read { t ->
         val occ: Map<Long, Int>? = deckId?.let { id -> deckOccurrences(t, id) }
