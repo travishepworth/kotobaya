@@ -826,7 +826,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-L5 — Local dictionary and mining: dictionary reads, createNote · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: MERGED (ticket: plan/tickets/SHELL-L5.md)
 - SHELL-L6 — Local browse and search: listCards, listNotes · model: sonnet · risk: med · deps: SHELL-L1, SHELL-P2 · status: MERGED (ticket: plan/tickets/SHELL-L6.md)
 - SHELL-L7 — Local decks: read, items, create/update/delete · model: opus · risk: med · deps: SHELL-L1, SHELL-P2 · status: MERGED (ticket: plan/tickets/SHELL-L7.md)
-- SHELL-L8 — Local struggle and drill: hot words, hot kanji, leeches, drill session · model: sonnet · risk: med · deps: SHELL-L3 · status: TODO (ticket: plan/tickets/SHELL-L8.md)
+- SHELL-L8 — Local struggle and drill: hot words, hot kanji, leeches, drill session · model: sonnet · risk: med · deps: SHELL-L3 · status: MERGED (ticket: plan/tickets/SHELL-L8.md)
 - SHELL-P1 — Server parity runner and golden recording · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-P1.md)
 - SHELL-P2 — Android parity harness against the goldens · model: opus · risk: med · deps: SHELL-A2, SHELL-P1 · status: MERGED (ticket: plan/tickets/SHELL-P2.md)
 - SHELL-W1 — SPA transport, shell state and capabilities, session in shell mode · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-W1.md)
