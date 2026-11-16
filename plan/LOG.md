@@ -1203,3 +1203,4 @@
 2026-11-16T06:31:14Z ONE-CARD-SRV REVIEW_CHANGES 1 major (retired learning cards counted via QueueLoader candidates -> phantom learning/waiting) -> attempt 2
 2026-11-16T06:32:53Z ONE-CARD-AND REVIEW_APPROVE (3 minors -> FOLLOWUPS); waits for ONE-CARD-SRV attempt 2 to merge together
 2026-11-16T06:40:35Z ONE-CARD-SRV REVIEW_CHANGES r2: loader dropping retired keeps their today-reviews (budget/bury divergence vs Android) -> attempt 3: keep in QueueInput, exclude only in laterLearning/next-due/forecast
+2026-11-16T06:48:26Z ONE-CARD-SRV REVIEW_APPROVE r3. Chain rebased C-28 -> SRV -> AND onto main; full module checks running on combined tip
