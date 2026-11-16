@@ -489,3 +489,6 @@
 - C-28 (minor): scenario reading-retired-offline-review.json:199 second review_log row lacks hlc.
 - C-28 (note for user): on the day the setting takes effect, reading cards introduced/reviewed today give back their new/review budget (rule 0 "never counts").
 - ONE-CARD-SRV (minor): knownSeries applies current reading_enabled to past points.
+- ONE-CARD-AND (minor): DeckRepository.kt:229 totalCards counts retired reading cards (deck "N cards" label).
+- ONE-CARD-AND (minor): CardAudioNeeds.kt:34 prefetches audio for retired reading cards.
+- ONE-CARD-AND (minor): SettingsViewModels.kt:52 Save re-mints stale reading_enabled/reviewsUnlimited values if changed elsewhere while screen open; mint only touched toggles.

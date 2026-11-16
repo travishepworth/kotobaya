@@ -1201,3 +1201,4 @@
 2026-11-16T06:13:10Z C-28+ONE-CARD-CORE REVIEW_APPROVE (5 minors); merge together with SRV+AND
 2026-11-16T06:29:36Z ONE-CARD-SRV HANDOFF (server 490 + acceptance green); review dispatched
 2026-11-16T06:31:14Z ONE-CARD-SRV REVIEW_CHANGES 1 major (retired learning cards counted via QueueLoader candidates -> phantom learning/waiting) -> attempt 2
+2026-11-16T06:32:53Z ONE-CARD-AND REVIEW_APPROVE (3 minors -> FOLLOWUPS); waits for ONE-CARD-SRV attempt 2 to merge together
