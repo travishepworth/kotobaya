@@ -1,5 +1,6 @@
 package kotobaya.android.review.ui
 
+import java.io.File
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -98,6 +99,7 @@ import kotobaya.android.ui.theme.kbDistance
 import kotobaya.android.ui.theme.kbTween
 import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.render.CardSide
+import kotobaya.contracts.render.RenderedCard
 import kotobaya.sync.client.mint.MintRefusal
 
 @StringRes
@@ -353,19 +355,21 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
                 )
             },
     ) {
-        Column(Modifier.fillMaxSize()) {
-            // KIND-CHIP-OVERLAP: the chip row is in normal flow above the content, so nothing can sit under a chip
-            CardHeaderRow(
-                isNew = card.kind == kotobaya.contracts.queue.QueueItemKind.NEW,
-                kindRes = kindLabelRes(card.noteType),
-                hasAudio = rendered.audio.isNotEmpty(),
-                audioMissing = state.audioMissing,
-                onPlayAudio = { intents.playAudio(rendered.audio.first()) },
-            )
-            CardContent(rendered, intents::mediaFile, Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = reveal.value }.testTag(TAG_CARD_CONTENT))
-            // AND-REVIEW-INFO: example words, deck chips and the dictionary button, from the prefetched card
-            if (side == CardSide.BACK) BackPanel(card.extras, intents, Modifier.graphicsLayer { alpha = reveal.value })
-        }
+        CardFace(
+            rendered = rendered,
+            isNew = card.kind == kotobaya.contracts.queue.QueueItemKind.NEW,
+            noteType = card.noteType,
+            audioMissing = state.audioMissing,
+            onPlayAudio = { intents.playAudio(rendered.audio.first()) },
+            mediaFile = intents::mediaFile,
+            contentAlpha = { reveal.value },
+            backPanel = if (side == CardSide.BACK) {
+                // AND-REVIEW-INFO: example words, deck chips and the dictionary button, from the prefetched card
+                { BackPanel(card.extras, intents, Modifier.graphicsLayer { alpha = reveal.value }) }
+            } else {
+                null
+            },
+        )
         card.noExamplePattern?.let { pattern ->
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(12.dp)
@@ -375,6 +379,28 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
                 if (pattern.isNotEmpty()) Text(T(R.string.review_no_example_pattern, pattern), style = KbTheme.type.bodySm.copy(localeList = kotobaya.android.ui.theme.JapaneseLocale), color = c.textMuted)
             }
         }
+    }
+}
+
+/**
+ * The card's face: the tag row in normal flow above the content (KIND-CHIP-OVERLAP: nothing can sit under a chip),
+ * the card content filling the rest, and the back panel when on the back. Used by [ReviewCard]; tests compose it.
+ */
+@Composable
+internal fun CardFace(
+    rendered: RenderedCard,
+    isNew: Boolean,
+    noteType: String,
+    audioMissing: Boolean,
+    onPlayAudio: () -> Unit,
+    mediaFile: (String) -> File?,
+    contentAlpha: () -> Float,
+    backPanel: (@Composable () -> Unit)?,
+) {
+    Column(Modifier.fillMaxSize()) {
+        CardHeaderRow(isNew, kindLabelRes(noteType), rendered.audio.isNotEmpty(), audioMissing, onPlayAudio)
+        CardContent(rendered, mediaFile, Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = contentAlpha() }.testTag(TAG_CARD_CONTENT))
+        backPanel?.invoke()
     }
 }
 

@@ -2,18 +2,21 @@
 
 STATUS: DONE
 BRANCH: t/KIND-CHIP-OVERLAP-AND
-CHECK: `make check MODULE=android` → green (see reviewer note)
+CHECK: `make check MODULE=android` → green
 
 ## Changed
-- ReviewScreen.kt: new `CardHeaderRow` (New chip start, kind chip centre, audio button end; three weighted slots) placed in the card Column above `CardContent`; removed the three absolute TopStart/TopCenter/TopEnd overlays. Row height is reserved, so the WebView starts below it. Row is omitted when it has nothing to show.
-- New test CardHeaderOverlapTest.kt.
+- ReviewScreen.kt: tag row is `CardHeaderRow` (New start, kind chip centre, audio end) in normal flow above the content. New `internal CardFace` (header + CardContent + optional back panel) is what `ReviewCard` now calls, so there is one layout path. Absolute overlays removed.
+- CardHeaderOverlapTest composes the REAL `CardFace`, with the WebView swapped for a placeholder via `LocalCardContent`.
 
 ## Acceptance → tests
-- No overlap, test guards → CardHeaderOverlapTest (widths 320/360/411 dp, font scale 1.0/1.3, New+audio+missing-audio caption): chip and header bottom <= content top.
+- No overlap → CardHeaderOverlapTest: 320/360/411 dp, font scale 1.0/1.3, with and without New/audio; chip and header bottom <= content top.
+- PNGs (Robolectric native, 360 dp, x1.3, placeholder text at the content's top edge), written by the test on each run:
+  - /tmp/claude-1000/-home-travmonkey-repos-kotobaya/05f3536e-dc73-4935-83df-766bf71b9d1a/scratchpad/and-chip/new-vocab-audio-360dp-x1.3.png
+  - /tmp/claude-1000/-home-travmonkey-repos-kotobaya/05f3536e-dc73-4935-83df-766bf71b9d1a/scratchpad/and-chip/vocab-only-360dp-x1.3.png
 
 ## New dependencies
-- none
+- none (roborazzi already a test dependency)
 
 ## For the reviewer
-- The test composes `CardHeaderRow` plus a content Box in a Column (mirrors ReviewCard's structure), not the whole private ReviewCard.
-- Audio button also moved into the row (it overlapped content too).
+- PNGs use `captureRoboImage` with `roborazzi.test.record` set in-test, because `captureToImage` times out under Robolectric. They are 1x-density renders. The test writes them to a fixed scratchpad path.
+- Web part of the ticket not done here.
