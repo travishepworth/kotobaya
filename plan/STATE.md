@@ -5,6 +5,7 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
+| WRK-DICT-LISTSEQ | writer | 1 | t/WRK-DICT-LISTSEQ (worker, no gradle) |
 Gradle lane next: L9 -> L1 -> L2 -> L3 -> A3.
 First-phone-test path: C1 -> A1 -> A2 -> P1 -> P2 -> L9 -> L1 -> L2 -> L3 -> A3 (+W1 parallel after C1). Then tell user.
 

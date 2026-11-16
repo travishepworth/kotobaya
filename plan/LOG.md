@@ -1236,3 +1236,5 @@
 2026-11-16T13:23:43Z SHELL-P2 CHECK_GREEN + MERGE (flaky SyncCoordinatorTest fixed test-side)
 2026-11-16T13:23:43Z SHELL-W4 CHECK_GREEN + orchestrator viewed review/settings PNGs + MERGE; fixes live web bug: Keep going reset itself ($effect re-ran start) -> ship in next web release
 2026-11-16T13:23:43Z SHELL-L9 DISPATCH writer-senior [gradle lane]
+2026-11-16T13:41:31Z SHELL-L9 CHECK_GREEN + MERGE. Cause confirmed: top60k package built before list-deck rebuilds -> list words outside top 60k absent. New WRK-DICT-LISTSEQ (worker, non-gradle) for the root fix
+2026-11-16T13:41:31Z SHELL-L1 DISPATCH writer [gradle lane]; WRK-DICT-LISTSEQ DISPATCH writer [worker lane]

@@ -43,3 +43,6 @@ Also owned: delete your ops' lines from PENDING in the android RouteTableTest (s
 
 ## Orchestrator note (from SHELL-P2)
 Register any new handler services in the test ParityDevice (android/src/test/.../shell/parity/) — also owned. Scenarios covering your ops must stop being pending and match their goldens.
+
+## Orchestrator note (from SHELL-L9)
+QueueItem.entry / BackExtras: InstalledDictionary.entry/kanji now already do installed+sidecar cache (L-7 steps 1-2). Never call the network from the queue.
