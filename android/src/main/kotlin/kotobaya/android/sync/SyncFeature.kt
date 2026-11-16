@@ -231,6 +231,7 @@ val syncModule = module {
                 // AND-POSTSYNC: one line per finished cycle (`adb logcat -s KotobayaSync`)
                 Log.i("KotobayaSync", "sync $trigger finished: $outcome (retry in $retryDelayMs ms if failed)")
                 status.onOutcome(outcome.asCycleResult(), unreachable = outcome is SyncOutcome.Unreachable)
+                kotobaya.android.shell.ShellEventHub.onSyncOutcome(outcome) // SHELL-A7: sync.changed / shell.dict
                 runCatching { SyncWork.applyOutcome(WorkManager.getInstance(ctx), outcome, retryDelayMs) }
                 val r = (outcome as? SyncOutcome.Ran)?.result
                 if (outcome is SyncOutcome.Ran) koin.getOrNull<kotobaya.android.report.ClientErrorFlusher>()?.flushAsync() // OBS-1c-and

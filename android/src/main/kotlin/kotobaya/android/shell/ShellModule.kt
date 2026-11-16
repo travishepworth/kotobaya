@@ -8,6 +8,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotobaya.android.dict.DictStore
+import kotobaya.android.ankiconnect.AnkiConnectController
+import kotobaya.android.ankiconnect.AnkiConnectPrefs
+import kotobaya.android.media.BlobStore
+import kotobaya.android.shell.api.device.AnkiConnectOps
+import kotobaya.android.shell.api.device.CoreAnkiConnectOps
+import kotobaya.android.shell.api.device.CoreDeviceOps
+import kotobaya.android.shell.api.device.CoreDictOps
+import kotobaya.android.shell.api.device.CoreNotifyOps
+import kotobaya.android.shell.api.device.CorePushOps
+import kotobaya.android.shell.api.device.CoreStorageOps
+import kotobaya.android.shell.api.device.DeviceOps
+import kotobaya.android.shell.api.device.DictEvents
+import kotobaya.android.shell.api.device.DictOps
+import kotobaya.android.shell.api.device.NotifyOps
+import kotobaya.android.shell.api.device.PushOps
+import kotobaya.android.shell.api.device.StorageOps
+import kotobaya.android.shell.api.device.toJson
+import kotobaya.android.shell.events.ShellEvents
+import kotobaya.android.shell.web.BridgeMessage
+import kotobaya.android.shell.web.BridgeTransport
+import kotobaya.android.sync.SyncOutcome
+import kotobaya.android.sync.SyncStatusRepository
 import kotobaya.android.shell.web.ShellWiring
 import kotobaya.android.di.FeatureEntry
 import kotobaya.android.net.MetaLimitsStore
@@ -56,6 +78,38 @@ private class KoinShellServices(private val koin: Koin) : ShellServices {
 
 private const val TAG = "KotobayaShell"
 
+/**
+ * Where native producers (sync outcome, local write commit, connectivity, notes added by other apps) reach the SPA:
+ * [transport] is the current page's bridge (set by `ShellWiring.bridge`); [events] and [dict] exist once the
+ * shell's graph built them. Nothing here creates them, so a background sync with no page costs nothing.
+ */
+object ShellEventHub {
+    @Volatile
+    var transport: BridgeTransport? = null
+
+    @Volatile
+    internal var events: ShellEvents? = null
+
+    @Volatile
+    internal var dict: DictEvents? = null
+
+    /** `BridgeTransport.send`; a dropped event (no page) is fine. */
+    fun send(event: BridgeMessage.Event) {
+        transport?.send(event)
+    }
+
+    /** The `SyncCoordinator` outcome hook. */
+    fun onSyncOutcome(outcome: SyncOutcome) {
+        events?.onSyncOutcome(outcome)
+        dict?.poke()
+    }
+
+    /** The `LocalWrites` after-commit hook. */
+    fun onLocalWrite() {
+        events?.onLocalWrite()
+    }
+}
+
 /** SHELL-A2 (ADR-036): the local API kernel. [ServerUpstream] is the [Upstream] (SHELL-A5); A3 calls [LocalApi.handle]. */
 val shellFeature = FeatureEntry(
     id = "shell",
@@ -86,9 +140,37 @@ val shellFeature = FeatureEntry(
                 nowMs = System::currentTimeMillis,
             )
         }
+        // SHELL-A7: the device group's seams (singletons: the dictionary install must not start twice)
+        single<DeviceOps> { CoreDeviceOps.from(KoinShellServices(getKoin())) }
+        single<DictOps> { CoreDictOps.from(KoinShellServices(getKoin()), get<CoroutineScope>(ShellWiring.SCOPE)) }
+        single<StorageOps> { CoreStorageOps.from(KoinShellServices(getKoin())) }
+        single<NotifyOps> { CoreNotifyOps.from(KoinShellServices(getKoin())) }
+        single<PushOps> { CorePushOps.from(KoinShellServices(getKoin())) }
+        single<AnkiConnectOps> { CoreAnkiConnectOps.from(KoinShellServices(getKoin())) }
+        // SHELL-A6/A7: native -> web events
+        single<ShellEvents> {
+            val device = get<DeviceOps>()
+            ShellEvents(
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+                send = ShellEventHub::send,
+                syncChanged = { device.syncStatus().let { it.pullSeq to it.view.status.pendingCount } },
+                syncStatus = { device.syncStatus().toJson() },
+            ).also { ev ->
+                ev.watch(get<SyncStatusRepository>().status)
+                get<NetworkMonitor>().onConnectivity = ev::onConnectivity
+                ShellEventHub.events = ev
+            }
+        }
+        single<DictEvents> {
+            DictEvents(CoroutineScope(SupervisorJob() + Dispatchers.IO), get<DictOps>(), ShellEventHub::send)
+                .also { it.start(); ShellEventHub.dict = it }
+        }
         single<LocalWrites<SqlLearningTables>> {
             val koin = getKoin()
-            LocalWrites(get<SqlDelightDeviceStore>(), get<SyncClient>().minter) { koin.get<SyncTriggers>().localChange() }
+            LocalWrites(get<SqlDelightDeviceStore>(), get<SyncClient>().minter) {
+                koin.get<SyncTriggers>().localChange()
+                ShellEventHub.onLocalWrite()
+            }
         }
         single {
             val koin = getKoin()

@@ -6,7 +6,11 @@ import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotobaya.android.media.BlobDownloader
+import kotobaya.android.shell.ShellEventHub
+import kotobaya.android.shell.api.device.DictEvents
+import kotobaya.android.shell.events.ShellEvents
 import kotobaya.android.media.BlobStore
 import kotobaya.android.net.ApiClient
 import kotobaya.android.pairing.TokenStore
@@ -59,7 +63,14 @@ object ShellWiring {
             warn = { Log.w(TAG, it) },
             onPageReset = onPageReset,
         )
-        return BridgeTransport(core)
+        val transport = BridgeTransport(core)
+        ShellEventHub.transport = transport
+        // the event producers are built on IO, once per process (they are idle without a page)
+        koin.get<CoroutineScope>(SCOPE).launch(Dispatchers.IO) {
+            runCatching { koin.get<ShellEvents>() }.onFailure { Log.w(TAG, "shell events: $it") }
+            runCatching { koin.get<DictEvents>() }.onFailure { Log.w(TAG, "shell dict events: $it") }
+        }
+        return transport
     }
 
     /** Built on first use (a WebView background thread), not on the main thread. */

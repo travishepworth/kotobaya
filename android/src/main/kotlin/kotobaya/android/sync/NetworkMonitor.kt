@@ -17,6 +17,10 @@ class NetworkMonitor(context: Context) {
     @Volatile
     private var wasOnline: Boolean = isOnline()
 
+    /** SHELL-A6: told whenever the default network gains or loses internet (the shell's `shell.connectivity`). */
+    @Volatile
+    var onConnectivity: ((Boolean) -> Unit)? = null
+
     /** True when the default network has internet capability. Unknown (no service) reads as online. */
     fun isOnline(): Boolean {
         val m = cm ?: return true
@@ -33,11 +37,13 @@ class NetworkMonitor(context: Context) {
                     val online = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     val regained = online && !wasOnline
                     wasOnline = online
+                    onConnectivity?.let { runCatching { it(online) } }
                     if (regained) onRegained()
                 }
 
                 override fun onLost(network: Network) {
                     wasOnline = false
+                    onConnectivity?.let { runCatching { it(false) } }
                 }
             },
         )

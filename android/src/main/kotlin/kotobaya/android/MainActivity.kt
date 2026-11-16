@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
             setContentView(unsupportedScreen())
             return
         }
+        kotobaya.android.shell.api.device.NotificationPermissionLauncher.register(this) // SHELL-A7
         val container = FrameLayout(this)
         this.container = container
         setContentView(container)

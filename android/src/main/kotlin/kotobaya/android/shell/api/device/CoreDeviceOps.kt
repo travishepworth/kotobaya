@@ -81,8 +81,9 @@ class CoreDeviceOps(
     override fun startSync() = triggers.background(SyncTrigger.MANUAL)
 
     companion object {
-        /** Features this build offers; A7 adds `dict_install`, `offline_storage`, `notifications`, `push`, `ankiconnect`. */
-        val CAPABILITIES: List<String> = listOf("sync", "pairing", "takoboto")
+        /** Features this build offers (`ShellInfo.capabilities`). */
+        val CAPABILITIES: List<String> =
+            listOf("sync", "pairing", "takoboto", "dict_install", "offline_storage", "notifications", "push", "ankiconnect")
 
         /** Resolves the production instance from the app's services. */
         fun from(s: ShellServices): CoreDeviceOps {

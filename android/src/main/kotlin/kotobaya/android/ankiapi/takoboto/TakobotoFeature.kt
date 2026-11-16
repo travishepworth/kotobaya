@@ -83,7 +83,12 @@ val takobotoModule = module {
             csums = ChecksumIndex(get<SqlDriver>(APP_DB_DRIVER), get<NoteChangeLog>(), entries),
         )
     }
-    single<AnkiStore> { get<TakobotoAnkiStore<SqlLearningTables>>() }
+    // SHELL-A7: notes added by Takoboto / AnkiProvider callers reach the SPA as `note.created`
+    single<AnkiStore> {
+        val store = get<TakobotoAnkiStore<SqlLearningTables>>()
+        val pairing = get<kotobaya.android.pairing.PairingRepository>()
+        kotobaya.android.shell.events.EventingAnkiStore(store, store::add, get<kotobaya.android.shell.events.ShellEvents>()) { pairing.deviceId }
+    }
     single(named("takobotoStartup"), createdAtStart = true) {
         val koin = getKoin()
         TakobotoStartup {
