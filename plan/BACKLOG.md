@@ -843,7 +843,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 
 ### Review loop rework + portrait lock (2026-11-17, human-confirmed, ADR-037; design docs/REVIEW-LOOP.md)
 - LOOP-AND — Android: local QueueRoute + native counts through ReviewLoop · model: sonnet · risk: med · deps: LOOP-CORE, LOOP-SRV (goldens), SHELL-L2/L3 state as merged · status: TODO (ticket: plan/tickets/LOOP-AND.md)
-- LOOP-CLI — CLI daemon + widget on `loop` · model: sonnet · risk: low-med · deps: LOOP-C (regenerated Python client); LOOP-SRV for the live check · status: TODO (ticket: plan/tickets/LOOP-CLI.md)
+- LOOP-CLI — CLI daemon + widget on `loop` · model: sonnet · risk: low-med · deps: LOOP-C (regenerated Python client); LOOP-SRV for the live check · status: MERGED (ticket: plan/tickets/LOOP-CLI.md)
 - LOOP-C — Contracts: review loop (ADR-037) + shell display prefs · model: fable · risk: high · deps: none (SHELL-A6 may be in flight; no owned-path overlap) · status: MERGED (ticket: plan/tickets/LOOP-C.md)
 - LOOP-CORE — Core: DefaultReviewLoop + queue rule 4/5 changes · model: opus · risk: high · deps: LOOP-C · status: TODO (ticket: plan/tickets/LOOP-CORE.md)
 - LOOP-SRV — Server: `loop` on getReviewQueue, legacy fields from core, parity goldens · model: sonnet · risk: med · deps: LOOP-CORE · status: TODO (ticket: plan/tickets/LOOP-SRV.md)

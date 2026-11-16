@@ -1281,3 +1281,4 @@
 2026-11-16T16:49:05Z LOOP-CORE DISPATCH writer-senior [gradle lane]
 2026-11-16T16:49:05Z LOOP-WEB+PORTRAIT-WEB DISPATCH writer-senior [web]
 2026-11-16T16:49:05Z LOOP-CLI DISPATCH writer [cli]
+2026-11-16T16:55:53Z LOOP-CLI CHECK_GREEN (120) + MERGE; no legacy fallback (server_too_old) -> release api before daemon reinstall

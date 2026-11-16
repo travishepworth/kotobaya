@@ -7,7 +7,6 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## Running (run 32)
 | LOOP-CORE | writer-senior | 1 | t/LOOP-CORE (gradle lane) |
 | LOOP-WEB+PORTRAIT-WEB | writer-senior | 1 | t/LOOP-WEB+PORTRAIT-WEB (web) |
-| LOOP-CLI | writer | 1 | t/LOOP-CLI (cli) |
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
 CONFIRMED by user 2026-11-17 (design in progress, architect): REVIEW-LOOP rework (+unlimited keeps new-goal stop w/ Keep going) (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.
@@ -52,6 +51,7 @@ FOLLOWUPS
 (none). B2 gate closed 2026-11-14 (approved).
 
 ## Notes
+- RELEASE ORDER for LOOP: deploy api (LOOP-SRV) BEFORE reinstalling the CLI daemon/kby (LOOP-CLI has no legacy fallback: missing `loop` -> server_too_old).
 - MERGE ONLY IF the re-check exit code is 0 (gate the merge command on it; A7 slipped through red once — main re-check was green).
 - 1 unidentified flaky android test seen after A7 (1/647); if it recurs, capture android/build/test-results before removing the worktree.
 - /tmp is a usrquota tmpfs: android parity tests leak /tmp/parity* (~500/run, fix in SHELL-L2b). `rm -rf /tmp/parity*` (also parity-dictstore*, ~3000/run) after each android check; remove release worktrees after deploy.
