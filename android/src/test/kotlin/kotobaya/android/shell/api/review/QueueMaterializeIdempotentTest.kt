@@ -1,8 +1,5 @@
 package kotobaya.android.shell.api.review
 
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -25,7 +22,7 @@ import org.robolectric.annotation.Config
 /**
  * SHELL-L2 acceptance "MaterializeIdempotentTest" (C-27, SHELL.md L-2/L-4): fetches create one note per drawn deck
  * entry however often and however concurrently they run, mint as this device, and every minted op validates against
- * `op.schema.json`. Seed: `queue-materialize-count` (a user deck with entries 1000220, 1000440, 1000450 and no
+ * `op.schema.json` (concurrent fetches: [MaterializeRaceTest], on the production driver). Seed: `queue-materialize-count` (a user deck with entries 1000220, 1000440, 1000450 and no
  * notes; `new_per_day` 2).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -54,25 +51,6 @@ class QueueMaterializeIdempotentTest {
         val second = d.queue(at = d.clock.now + 1_000).json()
         assertEquals(first.items().map { it.at("/card/id") }, second.items().map { it.at("/card/id") })
         assertEquals(afterFirst, d.minted().size, "the second fetch mints nothing")
-        assertOneNotePerDrawnEntry(d)
-    }
-
-    @Test
-    fun twoConcurrentFetchesCreateOneNotePerDrawnEntry() {
-        val d = device("queue-materialize-count")
-        val pool = Executors.newFixedThreadPool(2)
-        val start = CountDownLatch(1)
-        val results = (1..2).map { pool.submit<Int> { start.await(); d.queue().status } }
-        start.countDown()
-        val statuses = results.map { it.get(60, TimeUnit.SECONDS) }
-        pool.shutdown()
-        // the bodies are not compared: the harness's one in-memory connection lets a build read the other fetch's
-        // uncommitted rows; what must hold under any interleaving is that no entry gets a second note
-        assertEquals(listOf(200, 200), statuses)
-        assertOneNotePerDrawnEntry(d)
-        // whichever fetch lost the race serves the winner's cards (its own rebuild), never a second note
-        val third = d.queue().json()
-        assertEquals(2, third.items().size)
         assertOneNotePerDrawnEntry(d)
     }
 

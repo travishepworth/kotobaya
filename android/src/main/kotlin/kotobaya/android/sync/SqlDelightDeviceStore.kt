@@ -20,6 +20,11 @@ import kotobaya.sync.client.store.SyncStateTable
  *   inner exception — SQLDelight's own nesting would roll the outer back in that case).
  * - If the block throws, SQLite rolls back everything it wrote (outbox, `sync_state`, learning
  *   tables) and the exception propagates.
+ * - Isolation (AND-MATERIALIZE-RACE): on the production driver (AndroidSqliteDriver) an outermost transaction is
+ *   `beginTransactionNonExclusive` = `BEGIN IMMEDIATE` on the pool's ONE primary connection, held by this thread until
+ *   commit: writers are serialized before their first read, so a check-then-mint inside one [transaction] (the
+ *   duplicate-note checks of `NoteCreator`, L-4) cannot interleave with another writer's. A driver whose threads share
+ *   one connection and one transaction (JDBC `IN_MEMORY`, tests only) gives no such isolation.
  * - Durability: the driver must be opened with WAL and `synchronous=FULL` ([DurableDriver]), so a
  *   committed mint or push result survives a process kill and a power cut.
  *

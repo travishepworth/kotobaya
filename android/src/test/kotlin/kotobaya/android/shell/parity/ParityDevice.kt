@@ -43,6 +43,8 @@ import kotobaya.android.queue.EntryMaterializer
 import kotobaya.android.review.InstalledRenderData
 import kotobaya.contracts.render.KanjiData
 import kotobaya.sync.client.store.UuidV7Source
+import kotobaya.sync.client.store.OpIdSource
+import app.cash.sqldelight.db.SqlDriver
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -143,11 +145,17 @@ class ParityDevice(
     remote: DictGapRemote? = null,
     /** SHELL-L5: false = no dictionary package installed on this device. */
     withDictionary: Boolean = true,
+    /**
+     * The database under [store] (SHELL-L4: bound as the app driver in the Koin wiring test). Default: one in-memory
+     * JDBC connection shared by every thread (SQLDelight's static connection manager: a second thread's transaction
+     * JOINS the first one, so concurrency tests must pass the production driver, AND-MATERIALIZE-RACE).
+     */
+    val driver: SqlDriver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) },
+    /** The ids [noteCreator] mints with (AND-MATERIALIZE-RACE: a test gate holds threads in the check-then-mint window). */
+    noteIds: OpIdSource = UuidV7Source(Random(7)),
 ) {
     val clock = ParityClock(startMs)
     val log = SeedLog(clock)
-    /** The in-memory database under [store] (SHELL-L4: bound as the app driver in the Koin wiring test). */
-    val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
     val store = SqlDelightDeviceStore(driver)
     val client = SyncClient(store, log, clock)
     var localChanges: Int = 0
@@ -187,7 +195,7 @@ class ParityDevice(
         store = store,
         minter = client.minter,
         matcher = EntryMatcher(InstalledCandidateSource(installedDictionary)),
-        ids = UuidV7Source(Random(7)),
+        ids = noteIds,
         clock = clock,
         kanjiData = { literal -> installedDictionary.kanji(literal)?.let { KanjiData(it.literal, it.meanings, it.onReadings, it.kunReadings, it.strokeCount) } },
         afterCreate = { localChanges++ },

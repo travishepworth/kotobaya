@@ -1,23 +1,25 @@
-# HANDOFF SHELL-Z1
+# HANDOFF AND-MATERIALIZE-RACE
 
 STATUS: DONE
-BRANCH: t/SHELL-Z1-delete-compose
-CHECK: `make check MODULE=android` → green (`node --test design/tokens/` green)
+BRANCH: t/AND-MATERIALIZE-RACE
+CHECK: `make check MODULE=android` → green
 
-## Changed (≤ 6 lines)
-- Deleted all Compose screens, ViewModels, ui/, nav/, demo/, vm/, LegacyActivity + launcher, Theme.Kotobaya.Sheet, styleguide, Compose/Roborazzi tests, dead UI-only features (search, struggle, grammar capture, decks ops, ReviewBackend/Actions) and unused strings: 203 files, +122/-23219 lines.
-- `grep androidx.compose android/src/main` matches only widget/. No PENDING routes left.
-- Kept: shell, Glance widgets, tile, Anki provider/AnkiConnect, sync, notify, push, dict, media, queue, DeckRepository/EntryLabelCache (ContentInstallerTest and DeckCountsTest use them). Restored small ports (DictSettingsPort, MediaSettingsPort, ScreenLog, Lookups) that the shell needs.
-- APK (ankidroid release, unsigned, web bundle excluded): 16.65 MB to 11.27 MB (dex 12.4 to 7.7 MB).
-- Same app id, signing and DB; no migration.
+**Verdict: the failure came from the test harness. Production has no race.** Evidence: AndroidSqliteDriver 2.0.2 (bytecode) begins with `beginTransactionNonExclusive` (BEGIN IMMEDIATE) on the pool's one primary connection, so writers run one at a time before their first read. The JDBC `IN_MEMORY` harness uses `StaticConnectionManager`, which keeps a plain shared `transaction` field. A second thread's transaction joins the first, so there is no isolation. Shell fetches get a fresh `LoadGate` each, so only the DB serializes them. That has now been measured: 50 of 50 iterations had the second writer parked in `SQLiteConnectionPool.waitForConnection`.
+
+## Changed
+- New `MaterializeRaceTest`: runs on the production driver (WAL file) and holds each writer between its duplicate check and its mint.
+- `ParityDevice`: takes optional `driver` and `noteIds` parameters.
+- Removed the shared-connection concurrent case from `QueueMaterializeIdempotentTest`.
+- `SqlDelightDeviceStore`: added a KDoc note on isolation. No code change.
 
 ## Acceptance → tests
-- Widgets, tile, AnkiProvider, AnkiConnect, due alarm → their existing tests, green.
+- Two fetches, 50 iterations → `twoConcurrentFetchesOnTheProductionDriverCreateOneNotePerDrawnEntry`
+- Takoboto add vs materialize, both orders → `aTakobotoAddRacingAQueueMaterializeOnTheProductionDriverCreatesOneNote`
+- Fails when no transaction is used → `theSameRaceDuplicatesWhenCheckAndMintAreNotOneTransaction`
+- Whole class ran green 8 times.
 
 ## New dependencies
-- Removed: compose bom/ui/material3/tooling/test, activity-compose, navigation-compose, koin-compose, lifecycle-viewmodel-compose, roborazzi. Kept Glance and the compose compiler plugin.
-- Added `androidx.test:core:1.6.1` (test): ApplicationProvider was transitive via compose ui-test.
+- none
 
-## For the reviewer (≤ 3 lines)
-- I edited `design/tokens/generate.mjs` and its test (outside owned paths) to drop the Compose Tokens.kt output; otherwise tokens-check would fail on drift.
-- Deleted review/decks/settings tests exercised only deleted code (ReviewSession etc.); install-over-previous is a HUMAN_CHECK.
+## For the reviewer
+- The gate checks thread stack frames for `SQLiteConnectionPool.waitForConnection`. This depends on Robolectric running native SQLite.
