@@ -1312,3 +1312,4 @@
 2026-11-16T20:18:16Z RELEASE APK 0.1.34 BUILT (pin 6d357310: +Z1 Compose deleted, single launcher, 25.0 MB incl web; cert ok) supersedes 0.1.33 (not installed)
 2026-11-16T20:18:16Z CORE-WS-UPDATED DISPATCH writer-senior [gradle lane]
 2026-11-16T20:19:17Z CORE-WS-UPDATED DECIDE close: contract (SYNC.md 7.5, 11.4) defines updated_at as local/non-comparable; CCR would be breaking with no user-visible gain. ActionOpsTest exclusion is correct. AND-FLAKY-DUPCHECK DISPATCH writer [gradle lane]
+2026-11-16T20:26:18Z AND-FLAKY-DUPCHECK CHECK_GREEN + MERGE (JDBC driver classloader registration); LOOP-C2 DISPATCH architect
