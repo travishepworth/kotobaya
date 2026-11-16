@@ -1,22 +1,25 @@
-# HANDOFF SHELL-L6
+# HANDOFF SHELL-L7
 
 STATUS: DONE
-BRANCH: t/SHELL-L6-local-browse (from t/SHELL-L5-local-mining)
-CHECK: `make check MODULE=android` → green (one unrelated flake seen once: DuplicateCheckExpressionTest "No suitable driver", passed on rerun)
+BRANCH: t/SHELL-L7-local-decks
+CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- shell/api/browse/: Routes.kt (listCards, listNotes), ListCardsRoute.kt, ListNotesRoute.kt; RouteTableTest PENDING line removed.
-- listCards: reuses `CardQuery`/`LocalCardQuery` (L4), sorts in Kotlin, keyset cursor (sort value|id|hash); Forward → Fallthrough.
-- listNotes: replica filters of server NoteApi.list, keyset (created_at, id); notes embed cards via ActionViews.note.
+- `shell/api/decks/`: listDecks, getDeck, createDeck, updateDeck, deleteDeck, listDeckItems, addDeckItems, putDeckItem, removeDeckItem. The 422 checks and their order are ported from the server's DeckApi and DeckItemApi.
+- Item visibility, identity and removal use core `MergeReaders` (the readers native `DeckMembership` uses). Mint requests are copied into `DeckMints`. Every write goes through `LocalWrites.exclusive`.
+- createDeck `list` → Fallthrough (503 offline); a retry with an existing `id` gets 200 locally. `media` → 422 /type.
+- Entry checks in add/put use `DictLookup.resolveEntry`, the same as `updateNote`. An authoritative miss → 422; a miss the device cannot decide → 503 shell_dict_missing.
+- RouteTableTest: the PENDING list no longer has the deck ops. ParityDevice needed no new services.
 
 ## Acceptance → tests
-- SearchExamplesTest → SearchExamplesTest.everyExampleCompilesAndReturnsTheSharedSelection (+ hand-pinned ids)
-- CursorTest (250 cards, insert between pages) → CursorTest
-- Parse error 422 pointer/position → SearchExamplesTest (every `-` row)
+- Parity list/get/items and each write → `DeckParityTest` (server answers written out by hand)
+- Ops validate, duplicate add, missing remove, delete then older pulled put, out-of-order convergence → `DeckOpsTest`
+- Count relation → `DeckCountsTest`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- No listCards golden parity scenario exists in contracts/api/shell/parity, so "same ids" is checked against the shared LocalCardQuery selection plus hand-pinned ids.
-- Cursors are 3-part (`value|id|hash`); a server-issued cursor is `422 /cursor`. SHELL.md has no documented forward list for listCards (only the L4 dictionary-form guard); contract not edited.
+- `Deck` has no counts field, so `DeckCountsTest` checks `getReviewQueue?deck_id=` and native `DeckRepository` against `getReviewQueue`: they are equal, and deck ≤ queue ≤ sum over decks.
+- There are no deck parity scenarios in `contracts/api/shell/parity`. Adding them and recording their goldens needs a contracts plus SHELL-P1 follow-up.
+- Keyset cursor for items (the server uses offset). With mixed bad elements, the add can name a different element than the server.
