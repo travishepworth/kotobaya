@@ -193,9 +193,14 @@ class HttpBackend:
                     for name in ("front", "back", "reading", "sentence")
                     if isinstance(value := getattr(text_obj, name, None), str)
                 }
+            note = item.card.note
             items.append(
                 CardEntry(
-                    card_id=item.card.id, kind=str(item.card.kind), previews=previews, text=text
+                    card_id=item.card.id,
+                    kind=str(item.card.kind),
+                    previews=previews,
+                    text=text,
+                    note_type=None if note is None else str(note.type.value),
                 )
             )
         c = queue.counts

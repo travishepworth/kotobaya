@@ -18,6 +18,21 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+KIND_LABELS = {
+    "vocab": "Vocab",
+    "kanji": "Kanji",
+    "phrase": "Phrase",
+    "grammar": "Grammar",
+    "sentence": "Sentence",
+    "custom": "Custom",
+}
+
+
+def kind_label(note_type: str) -> str:
+    """English label shown on every client's card-type badge: vocab -> Vocab, grammar -> Grammar."""
+    return KIND_LABELS.get(note_type) or note_type.replace("_", " ").title()
+
+
 @dataclass(frozen=True)
 class CardEntry:
     """One queued card. `text` stays None until the server sends QueueItem.text (ARCH-CARD-TEXT)."""
@@ -26,6 +41,7 @@ class CardEntry:
     kind: str
     previews: dict[str, str] | None = None
     text: dict[str, str] | None = None
+    note_type: str | None = None  # Card.note.type (NoteBaseType value), None when not sent
 
 
 @dataclass(frozen=True)
@@ -180,6 +196,8 @@ class Session:
 
     def _card_dict(self, entry: CardEntry) -> dict[str, object]:
         card: dict[str, object] = {"id": entry.card_id, "kind": entry.kind}
+        if entry.note_type:
+            card["kind_label"] = kind_label(entry.note_type)
         if entry.text:
             # While hidden only the front leaves the daemon; the rest is answer-side.
             for name in TEXT_FIELDS if self.revealed else ("front",):

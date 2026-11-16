@@ -407,6 +407,18 @@ def test_waiting_re_emits_once_per_changed_second_with_a_decreasing_countdown(
     assert daemon.tick() is False  # a card is shown: nothing emitted
 
 
+def test_card_state_carries_kind_label_from_note_type() -> None:
+    types = ["vocab", "kanji", "phrase", "grammar", "sentence", "custom", None]
+    labels = []
+    for i, note_type in enumerate(types):
+        s = Session()
+        s.conn = "ok"
+        entry = CardEntry(f"c{i}", "meaning", None, None, note_type)
+        s.apply_queue(QueueSnapshot([entry], Counts(1, 0, 0), DAY_END), check_current=False)
+        labels.append(check_state(s.state())["card"].get("kind_label"))
+    assert labels == ["Vocab", "Kanji", "Phrase", "Grammar", "Sentence", "Custom", None]
+
+
 class _Sub:
     def __init__(self) -> None:
         self.lines: list[str] = []

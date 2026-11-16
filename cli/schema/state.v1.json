@@ -35,6 +35,7 @@
           "properties": {
             "id": {"type": "string"},
             "kind": {"type": "string"},
+            "kind_label": {"type": "string", "description": "Note type of the card in English title case (Vocab, Kanji, Grammar, Phrase, Sentence, Custom). Omitted when the server did not send the note."},
             "front": {"type": "string"},
             "back": {"type": "string"},
             "reading": {"type": "string"},

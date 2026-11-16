@@ -17,7 +17,7 @@ WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 
 DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going stop_keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
-card_id kind front back reading sentence revealed preview_again preview_hard preview_good
+card_id kind kind_label kind_badge kind_prefix front back reading sentence revealed preview_again preview_hard preview_good
 preview_easy next_due_at next_due_in can_keep_going keep_hint"
 
 die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
@@ -54,7 +54,7 @@ SERVE (machine interface for GUI widgets; data only, no widget confs)
   line (v 1): {"v":1, "state":"loading|front|back|waiting|done|offline|auth|error",
                "rev":"<card_id>:<n>" (changes every line; send it back as `kby do ... --rev`),
                "text":"語 12", "counts":{"new","learning","review"},
-               "card":null|{"id","kind","front"; "reading","sentence","back" only when revealed},
+               "card":null|{"id","kind","kind_label" (Kanji/Vocab/..),"front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
                "keep_going":bool, "more_available":bool, "can_keep_going":bool,
                "next_due_at":null|"<UTC ISO>" and "next_due_in":null|"m:ss" (state waiting: nothing due now,
@@ -255,7 +255,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
           else "語 \($st)" end),
    counts: {new: $c.new, learning: $c.learning, review: $c.review},
    card: (if $k == null then null
-          else ({id: $k.id, kind: $k.kind, front: $k.front}
+          else ({id: $k.id, kind: $k.kind, kind_label: $k.kind_label, front: $k.front}
                 + (if $rev then {reading: $k.reading, sentence: $k.sentence, back: $k.back} else {} end))
                | nonull end),
    last: {rating: ($s.last.rating // null), undoable: $undo},
@@ -363,17 +363,17 @@ default_widget() {
 # class[.STATE]    CSS class (--json only). Default: {state}.
 # Templates: {field} or {field:N} (cut to N chars with …). `kby fields` lists the fields.
 text         = 語 {new}/{learning}/{review}
-text.front   = 語 {new}/{learning}/{review}  {front:30}
+text.front   = 語 {new}/{learning}/{review}  {kind_badge}{front:30}
 text.back    = 語 {front:20} 【{reading:15}】 {back:40}
 text.waiting = 語 next in {next_due_in}
 text.done    = 語 ✓
 text.loading = 語 …
 text.offline = 語 offline
 text.auth    = 語 token rejected
-tooltip      = new {new} · learning {learning} · review {review} · pending {pending}  {notice}{keep_hint}
+tooltip      = {kind_prefix}new {new} · learning {learning} · review {review} · pending {pending}  {notice}{keep_hint}
 tooltip.offline = daemon not reachable (systemctl --user status kotobaya)
 tooltip.auth = token rejected: the PAT needs scopes read and review
-tooltip.back = again {preview_again} · hard {preview_hard} · good {preview_good} · easy {preview_easy}
+tooltip.back = {kind_prefix}again {preview_again} · hard {preview_hard} · good {preview_good} · easy {preview_easy}
 
 # button.NAME[.STATE] = ACTION...  (NAME is anything your bar sends to `kby click`)
 # ACTION: reveal again hard good easy undo skip refresh next keep_going stop_keep_going none (several: space-separated),
@@ -490,6 +490,8 @@ def flat($s):
       revealed: (($k.revealed // false) | tostring),
       preview_again: ($p.again // ""), preview_hard: ($p.hard // ""),
       preview_good: ($p.good // ""), preview_easy: ($p.easy // "") }
+    # Only when the card has a type label (older daemons omit it), so the flat JSON stays as before.
+    + (if $k.kind_label then {kind_label: $k.kind_label, kind_badge: "[\($k.kind_label)] ", kind_prefix: "\($k.kind_label) · "} else {} end)
     # Only while waiting, so the flat JSON of every other state stays as before; a template
     # field that is absent reads as empty.
     # Likewise only while Keep going is available.

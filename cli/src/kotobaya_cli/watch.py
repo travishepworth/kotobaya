@@ -32,6 +32,7 @@ _SAMPLE: State = {
     "card": {
         "id": "x",
         "kind": "vocab",
+        "kind_label": "Vocab",
         "front": "f",
         "back": "b",
         "reading": "r",
@@ -87,6 +88,7 @@ def _fields(state: State) -> dict[str, object]:
         "undoable": _flag(last.get("undoable")),
         "card_id": card.get("id", ""),
         "kind": card.get("kind", ""),
+        "kind_label": card.get("kind_label", ""),
         "front": card.get("front", ""),
         "back": card.get("back", ""),
         "reading": card.get("reading", ""),
@@ -142,6 +144,10 @@ def _waybar(state: State) -> str:
         tooltip = "token rejected: the PAT needs scopes read and review"
     else:
         text, tooltip = "offline", "daemon not reachable"
+    card = _obj(state.get("card"))
+    label = card.get("kind_label")
+    if conn == "ok" and isinstance(label, str) and label:
+        tooltip = f"{label}: {tooltip}"
     notice = state.get("notice")
     if isinstance(notice, str) and notice:
         tooltip = f"{tooltip}; {notice}"
