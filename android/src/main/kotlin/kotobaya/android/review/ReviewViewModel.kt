@@ -145,7 +145,8 @@ class ReviewViewModel(
 
     /** A failed load shows [ReviewState.Failed] (Retry); a failed intent on a shown card shows the inline error. */
     override fun onFailure(e: Throwable) {
-        if (session == null || current.review == ReviewState.Loading) {
+        // the session may already show Failed itself (a failed build): the same Retry page, no inline error
+        if (session == null || current.review == ReviewState.Loading || current.review == ReviewState.Failed) {
             sessionJob?.cancel()
             sessionJob = null
             session = null
@@ -219,13 +220,16 @@ class ReviewViewModel(
     private val refreshAgain = java.util.concurrent.atomic.AtomicBoolean(false)
     private var rollJob: Job? = null
 
-    /** States with nothing on screen that a later build may change: they reload on resume, sync and their wake-up. */
+    /**
+     * States with nothing on screen that a later build may change: they reload on resume, sync and their wake-up.
+     * RC-AND: the summary too, or a session finished before the day rolled over says "done" while Today counts cards.
+     */
     private fun idle(st: ReviewState): Boolean =
-        st is ReviewState.Empty || st is ReviewState.DeckDone || st is ReviewState.Waiting
+        st is ReviewState.Empty || st is ReviewState.Summary || st is ReviewState.DeckDone || st is ReviewState.Waiting
 
     /**
-     * Re-runs the queue load while the session shows [ReviewState.Empty], [ReviewState.DeckDone] or
-     * [ReviewState.Waiting] (resume, sync completed, day rollover; a learning card fell due); never touches a session
+     * Re-runs the queue load while the session shows [ReviewState.Empty], [ReviewState.Summary], [ReviewState.DeckDone]
+     * or [ReviewState.Waiting] (resume, sync completed, day rollover; a learning card fell due); never touches a session
      * that shows a card. A call during a load is not lost: the load runs once more after it (a Waiting session must
      * not miss its due instant because a resume's load started a moment before it).
      */
@@ -246,7 +250,7 @@ class ReviewViewModel(
     }
 
     /**
-     * While idle (Empty, DeckDone, Waiting), wakes at the next study-day start, or at [dueAt] (the next learning
+     * While idle (Empty, Summary, DeckDone, Waiting), wakes at the next study-day start, or at [dueAt] (the next learning
      * card: ADR-033's Waiting, a deck's DeckDone) if earlier, to reload; cancelled once something is showing. The
      * wait is repeated until the clock has reached the instant, so an early wake-up never reloads too soon.
      */

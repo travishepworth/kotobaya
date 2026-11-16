@@ -46,6 +46,11 @@ data class QueueCounts(
 class LoadedQueue internal constructor(
     internal val input: QueueInput,
     val queue: ReviewQueue,
+    /**
+     * RC-AND: creating the notes of drawn deck entries threw, so `queue.toMaterialize`
+     * holds new cards that [counts] includes but `queue.items` does not; null when nothing failed.
+     */
+    val materializeFailure: Throwable? = null,
 ) {
     val counts: QueueCounts
         get() = QueueCounts(
@@ -133,8 +138,15 @@ class LocalQueueLoader(
             var rounds = 0
             val m = materializer
             while (m != null && loaded.queue.toMaterialize.isNotEmpty() && rounds < MAX_MATERIALIZE_ROUNDS) {
-                // a failed write costs this build its new entries, never the queue (Today, widget, review keep working)
-                val created = runCatching { m.materialize(loaded.queue.toMaterialize) }.getOrDefault(emptySet())
+                // a failed write costs this build its new entries, never the queue (Today, widget keep working); it is
+                // recorded so a review session does not end as "done" while those cards are counted (RC-AND)
+                val created = try {
+                    m.materialize(loaded.queue.toMaterialize)
+                } catch (e: Exception) {
+                    kotobaya.android.vm.ScreenLog.loadFailed("LocalQueueLoader.materialize", e)
+                    return@run LoadedQueue(loaded.input, loaded.queue, MaterializeFailed(e))
+                }
+                // nothing created is not a failure: the entries may have notes by now (another build, a pull)
                 if (created.isEmpty()) break
                 loaded = build(newShownThisSession, deckFilter, keepGoing)
                 rounds++
@@ -356,6 +368,9 @@ class LocalQueueLoader(
         private val HTML_TAG = Regex("<[^>]*>")
     }
 }
+
+/** RC-AND: drawn deck entries could not be given notes and cards; the review session shows Retry instead of "done". */
+class MaterializeFailed(cause: Throwable) : RuntimeException("deck entries not materialized", cause)
 
 /** A deck entry `e:<seq>` of one deck. */
 data class EntryRef(val deckId: String, val entrySeq: Long)

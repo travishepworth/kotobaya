@@ -261,6 +261,12 @@ class ReviewSession<L : LearningTables>(
     private var dayEndMs = Long.MAX_VALUE
     private var lastBuildAt = Long.MIN_VALUE
 
+    /**
+     * RC-AND: a sync changed the due state since the last build: the in-memory queue may hold cards answered on another
+     * device, so the next card comes from a fresh build, never from memory.
+     */
+    private var staleQueue = false
+
     /** The queue the session builds from; becomes the all-decks queue on [continueWithAll]. */
     private var source: QueueSource = queue
 
@@ -311,11 +317,34 @@ class ReviewSession<L : LearningTables>(
                 current = null
                 awaitingFor = null
             }
-            rebuild("start")
-            synchronized(lock) { if (!showFromMemoryLocked(null)) finishLocked() }
+            buildAndShowLocked("start")
         }
         refreshPendingOps()
         prefetch()
+    }
+
+    /**
+     * A full build, then the first card (caller holds [commitLock]). A storage error shows [ReviewState.Failed] (Retry)
+     * and is rethrown; the screen is never left on a card it cannot answer.
+     */
+    private fun buildAndShowLocked(why: String) {
+        try {
+            rebuild(why)
+            synchronized(lock) { if (!showFromMemoryLocked(null)) finishLocked() }
+        } catch (e: Exception) {
+            ScreenLog.loadFailed("ReviewSession.$why", e)
+            synchronized(lock) { failLocked() }
+            throw e
+        }
+    }
+
+    /** Nothing can be shown (a build or a render failed): [ReviewState.Failed], whose Retry starts the session again. */
+    private fun failLocked() {
+        awaitingFor?.let { it.advanceMs = ReviewTiming.ms(it.tapNs) }
+        current = null
+        awaitingFor = null
+        updateMetaLocked()
+        _state.value = ReviewState.Failed
     }
 
     /** C-26: switches this (all-decks) session to keep-going mode and rebuilds the queue. No-op for a deck session. */
@@ -356,8 +385,14 @@ class ReviewSession<L : LearningTables>(
         prefetch()
     }
 
-    /** The due state may have changed outside the session (a sync pulled ops): the next answer rebuilds the queue. */
-    fun markStale() = synchronized(lock) { lastBuildAt = Long.MIN_VALUE }
+    /**
+     * The due state may have changed outside the session (a sync pulled ops): the next answer rebuilds the queue
+     * before showing the next card (RC-AND: a card already answered on another device is not shown again).
+     */
+    fun markStale() = synchronized(lock) {
+        lastBuildAt = Long.MIN_VALUE
+        staleQueue = true
+    }
 
     private fun refreshLocked() {
         generation++
@@ -405,10 +440,16 @@ class ReviewSession<L : LearningTables>(
             if (card.kind == QueueItemKind.NEW) newShown++
             // The answer is held in `pending` until committed; showing the next card cannot lose it.
             try {
-                if (!showFromMemoryLocked(c)) {
+                if (staleQueue) {
+                    // RC-AND: a sync changed the queue: the next card comes from the build after this answer's write
+                    awaitingFor = c
+                    current = null
+                    _state.value = ReviewState.Loading
+                } else if (!showFromMemoryLocked(c)) {
                     // Nothing in memory (the end of the queue, or only this card's own learning step is left): the
                     // answered card stays drawn, no longer answerable, until its write decides what comes next. No
-                    // Loading state: the screen keeps its one WebView instead of tearing it down for a few ms.
+                    // Loading state unless a build is needed: the screen keeps its one WebView instead of tearing it
+                    // down for a few ms.
                     awaitingFor = c
                     current = null
                 }
@@ -481,23 +522,32 @@ class ReviewSession<L : LearningTables>(
      * screen ("ahead"), so the end of the queue never waits for a build. Returns the build's ms, or null.
      */
     private fun settleLocked(): Double? {
-        var rebuildMs: Double? = null
-        synchronized(lock) {
-            if (pending.isNotEmpty()) return null
-            val waiting = awaitingFor ?: return@synchronized
-            showFromMemoryLocked(waiting)
-            // Nothing in memory: always rebuild before ending. No earlier build is final: a normal one that still held
-            // the answered card cannot say whether keep going has more, a deck session needs to know whether other
-            // decks have cards due, and a keep-going build holds only one new batch (AND-KEEPGOING-FIX), so the
-            // session ends only when a fresh build has nothing to show.
-        }
-        if (synchronized(lock) { awaitingFor != null }) {
-            rebuildMs = rebuild("end of queue")
-            synchronized(lock) {
-                val waiting = awaitingFor
-                if (waiting != null && pending.isEmpty() && !showFromMemoryLocked(waiting)) finishLocked()
+        try {
+            val awaiting = synchronized(lock) {
+                if (pending.isNotEmpty()) return null
+                val waiting = awaitingFor ?: return@synchronized false
+                // stale (a sync since the last build): memory may hold cards answered elsewhere; build first
+                if (!staleQueue) showFromMemoryLocked(waiting)
+                // Nothing in memory: always rebuild before ending. No earlier build is final: a normal one that still
+                // held the answered card cannot say whether keep going has more, a deck session needs to know whether
+                // other decks have cards due, and a keep-going build holds only one new batch (AND-KEEPGOING-FIX), so
+                // the session ends only when a fresh build has nothing to show.
+                if (awaitingFor != null) _state.value = ReviewState.Loading // RC-AND: not the dead answered card
+                awaitingFor != null
             }
-            return rebuildMs
+            if (awaiting) {
+                val rebuildMs = rebuild("end of queue")
+                synchronized(lock) {
+                    val waiting = awaitingFor
+                    if (waiting != null && pending.isEmpty() && !showFromMemoryLocked(waiting)) finishLocked()
+                }
+                return rebuildMs
+            }
+        } catch (e: Exception) {
+            // RC-AND: the answer is committed but the next card cannot be found or drawn: Retry, not a dead card
+            ScreenLog.loadFailed("ReviewSession.settle", e)
+            synchronized(lock) { failLocked() }
+            return null
         }
         val why = synchronized(lock) {
             when {
@@ -506,9 +556,14 @@ class ReviewSession<L : LearningTables>(
                 peekLocked(clock()) == null && commitCount > commitsAtBuild -> "ahead"
                 else -> null
             }
+        } ?: return null
+        return try {
+            rebuild(why)
+        } catch (e: Exception) {
+            // the card on screen stays answerable; the build is retried after the next answer (lastBuildAt is unchanged)
+            ScreenLog.loadFailed("ReviewSession.$why", e)
+            null
         }
-        if (why != null) rebuildMs = rebuild(why)
-        return rebuildMs
     }
 
     private fun staleLocked(): Boolean = clock() - lastBuildAt >= rebuildEveryMs
@@ -687,8 +742,7 @@ class ReviewSession<L : LearningTables>(
                 current = null
                 awaitingFor = null
             }
-            rebuild("all decks")
-            synchronized(lock) { if (!showFromMemoryLocked(null)) finishLocked() }
+            buildAndShowLocked("all decks")
         }
         refreshPendingOps()
         prefetch()
@@ -726,6 +780,17 @@ class ReviewSession<L : LearningTables>(
     private fun rebuild(why: String): Double {
         val t0 = System.nanoTime()
         val (shownNew, from, all) = synchronized(lock) { Triple(newShown, source, allDecks) }
+        // a markStale from here on applies to the next build; a failed build leaves the queue stale
+        val wasStale = synchronized(lock) { staleQueue.also { staleQueue = false } }
+        try {
+            return rebuildFrom(why, t0, shownNew, from, all)
+        } catch (e: Exception) {
+            synchronized(lock) { staleQueue = staleQueue || wasStale }
+            throw e
+        }
+    }
+
+    private fun rebuildFrom(why: String, t0: Long, shownNew: Int, from: QueueSource, all: QueueSource?): Double {
         var built = from.loadSession(shownNew, synchronized(lock) { keepGoing && allDecks == null })
         synchronized(lock) {
             if (keepGoing) {

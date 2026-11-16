@@ -60,8 +60,14 @@ class DeckEntriesTest {
 
     /** The materializer as production gates it ([syncReady] stands in for the sync coordinator's state). */
     private var syncReady = true
+
+    /** RC-AND: the materializer's write fails. */
+    private var materializeFails = false
     private val gated = object : EntryMaterializer {
-        override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>) = creator.materialize(entries)
+        override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> {
+            if (materializeFails) error("disk full")
+            return creator.materialize(entries)
+        }
         override fun plan(entries: List<EntryRef>, burySiblings: Boolean) = creator.plan(entries, burySiblings)
         override fun ready() = creator.ready() && syncReady
     }
@@ -237,6 +243,26 @@ class DeckEntriesTest {
         assertEquals(5, loaded.queue.items.count { it.kind == QueueItemKind.NEW })
         assertEquals(5, loaded.counts.new)
         assertTrue(loaded.queue.toMaterialize.isEmpty())
+    }
+
+    /** RC-AND finding 4: counted new cards whose materialization failed are an error with Retry, never "done". */
+    @Test
+    fun aFailedMaterializationIsSurfacedNotASummary() {
+        setting("scheduler.new_per_day", "5")
+        listDeck((4300L until 4310L).toList())
+        materializeFails = true
+        val loaded = loader.load()
+        assertEquals(5, loaded.counts.new, "Today still counts them")
+        assertTrue(loaded.queue.items.isEmpty())
+        assertTrue(loaded.materializeFailure != null)
+
+        val s = session()
+        assertTrue(runCatching { s.start() }.isFailure)
+        assertEquals(ReviewState.Failed, s.state.value, "not Empty / Summary while new cards are counted")
+
+        materializeFails = false
+        s.start() // Retry
+        assertEquals(QueueItemKind.NEW, assertIs<ReviewState.Showing>(s.state.value).card.kind)
     }
 
     /** Review finding 2: nothing is materialized while a pull is incomplete; the queue still builds, without entries. */

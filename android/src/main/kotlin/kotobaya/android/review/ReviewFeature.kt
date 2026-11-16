@@ -28,6 +28,9 @@ fun LocalQueueLoader.asQueueSource(deckId: String? = null): QueueSource = object
 
     override fun loadSession(newShownThisSession: Int, keepGoing: Boolean): SessionQueue {
         val loaded = load(newShownThisSession, deckId, keepGoing)
+        // RC-AND: new cards counted on Today but not created must not end the session as "done": the session shows
+        // Retry. With other cards to show, the session goes on; its next build retries the entries.
+        loaded.materializeFailure?.let { if (loaded.queue.items.isEmpty()) throw it }
         return SessionQueue(
             loaded.queue,
             loaded.input.limits.burySiblings,
