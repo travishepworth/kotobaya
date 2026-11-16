@@ -1,26 +1,23 @@
-# HANDOFF SHELL-W1
+# HANDOFF SHELL-A2
 
 STATUS: DONE
-BRANCH: t/SHELL-W1-spa-transport
-CHECK: `make check MODULE=web` → green (used the existing core npm build, no Gradle)
+BRANCH: t/SHELL-A2-local-api
+CHECK: `make check MODULE=android` → green (3rd run; runs 1–2 hit the existing flaky `SyncCoordinatorTest.concurrentTriggersRunOneSync`, see below)
 
 ## Changed (≤ 6 lines)
-- `web/src/lib/api/shell/`: protocol validators, `ShellTransport`/`shellFetch`, `sendReady`, generated shell client config, `ops.json` lookup
-- `api/client.ts`, `errors/index.ts`: in shell mode use `fetchApi: shellFetch` with no credentials and no CSRF header. Browser config unchanged. Shell 503s: offline/dict_missing give one info toast and are not reported; rebuilding is retried once
-- `events.ts`: in shell mode, events come from bridge `event` messages. `hello` is replayed to streams opened later. `state/shell.svelte.ts`: present/info/online/incompatible, `has`, `modeOf`, `initShell`
-- `session.svelte.ts`: `refreshSession` calls `initShell`; `canLogout`; `logout()` does nothing in shell mode
-- `mock/fake-shell.js` and `demo-api.ts`: fake `KotobayaShell`, turned on with `/__mock/shell/on` or `KOTOBAYA_MOCK_SHELL=1`. Smoke-tested in Chromium
+- `shell/api/`: `ShellHttp` (request/response, `Fallthrough`, query parse), `ApiOperations` (139 ops + matcher), `Problems`, `LocalRoute`/`LocalCall`/`ShellServices`, `LocalApi` (gates, `Upstream`, `OfflineUpstream`), `LocalWrites`/`WritePlan`
+- Empty `Routes.kt` in identity, review, actions, mining, browse, decks, struggle, device
+- `shell/ShellModule.kt` (Koin wiring) and one line in `di/FeatureModules.kt`
 
 ## Acceptance → tests
-- shellFetch → `tests/shell/shellFetch.test.ts` (round trip, out of order, timeout, abort, duplicate/unknown res, every valid and invalid contract example)
-- client → `tests/shell/client.test.ts` "browser mode … configuration equals today"
-- events → `tests/shell/events.shell.test.ts`
-- extra → `tests/shell/shellState.test.ts`
+- route table vs ops.json, PENDING → `RouteTableTest` (everyLocalOperationIsRegisteredOrPending, pendingOnlyShrinks, noRouteIsRegisteredForAProxyOrHiddenOperation)
+- 403/503/401/422 → `DispatchTest` (hiddenAnswers403…, proxyWithTheDefaultUpstream…, unpairedAnswers401…, unknownQueryParameterIs422…, unknownBodyPropertyIs422…)
+- refused mint / committed write → `LocalWritesTest` (aRefusedMint…, aCommittedWrite…)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- **Breaks the release image:** `web/Dockerfile` (not owned) must add `COPY clients/typescript-shell …` and `COPY contracts/api/shell/ops.json …`
-- An abort rejects with `AbortError` like `fetch` does, not `TypeError`, so a cancelled request shows no "network error" toast. The layout still shows Log out; it should hide it using `canLogout` (W2)
-- `ready.web_version` is `VITE_APP_VERSION` (the manifest uses package.json). `MIN_LOCAL_API` is defined twice (protocol.ts and scripts/)
+- ops.json isn't a bundled resource. That would need `android/build.gradle.kts`, which I don't own. The classes and paths are a Kotlin table instead, and a drift test checks it against ops.json, openapi.yaml and shell.yaml.
+- Routes are top-level vals, so handlers get their dependencies through `call.services` (Koin). A local op with no handler yet goes to `Upstream`; an unregistered shell op answers 404. `local_or_proxy` is rebuild-gated before its handler runs.
+- `PENDING` is in `RouteTableTest`: each L ticket must be allowed to delete its own line there. Separate problem (FOLLOWUP): `SyncCoordinatorTest.concurrentTriggersRunOneSync` is flaky, failing about 1 run in 3. A trigger launched late on `Dispatchers.Default` runs a second cycle. That file is outside my paths.
