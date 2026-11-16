@@ -1271,3 +1271,4 @@
 2026-11-16T16:16:38Z SHELL-A6 CHECK_GREEN + MERGE (ShellEvents unwired -> folded into SHELL-A7); SHELL-A7 DISPATCH writer [gradle lane]
 2026-11-16T16:18:01Z LOOP design done (ADR-037, docs/REVIEW-LOOP.md, 8 tickets); LOOP-C DISPATCH architect
 2026-11-16T16:19:16Z USER: order unchanged; SHELL-Z2 (web bundle OTA) now in scope, scheduled last
+2026-11-16T16:21:26Z USER: keep new/review interleave as a smart proportional mix in BOTH modes (both pools hit zero together); new_per_session dropped OK; keep-going per device confirmed. Sent to LOOP-C (post-cap backlog-first rule kept)

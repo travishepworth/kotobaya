@@ -31,3 +31,6 @@
 Android local API (LOOP-AND); web/CLI rendering; contract edits.
 
 ## Notes from previous attempts
+
+## Orchestrator note (user, 2026-11-17)
+Normal session in BOTH modes: proportional mix of ready reviews and the remaining new goal so both reach zero together (recomputed after each answer, deterministic). Due learning/relearning is served next, outside the ratio. Capped mode after done_for_today → Keep going: backlog first, then the endless new loop. new_per_session is ignored. Keep going is per device.
