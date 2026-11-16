@@ -91,6 +91,9 @@ class ShellWebHost(
             setSupportMultipleWindows(false)
             // Safe browsing: platform default (on).
         }
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.ALGORITHMIC_DARKENING)) {
+            androidx.webkit.WebSettingsCompat.setAlgorithmicDarkeningAllowed(v.settings, false) // SPA has a real dark theme
+        }
         v.overScrollMode = View.OVER_SCROLL_NEVER
         v.webViewClient = ShellWebClient(
             context = context,

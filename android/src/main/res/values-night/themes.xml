@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.Kotobaya" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/kb_window_bg</item>
+        <item name="android:statusBarColor">@color/kb_window_bg</item>
+        <item name="android:navigationBarColor">@color/kb_window_surface</item>
+        <item name="android:windowLightStatusBar">@bool/kb_light_bars</item>
+    </style>
     <color name="kb_window_bg">#131211</color>
     <color name="kb_window_surface">#1B1A18</color>
     <bool name="kb_light_bars">false</bool>
