@@ -401,6 +401,98 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
+	it('per-session new cap (counts.new > 0, more_available, nothing else due) → done for now, no polling', async () => {
+		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0, 0, 10), moreAvailable: true }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		expect(page.phase).toBe('doneForNow');
+		await tick(30 * 60_000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+		dispose();
+	});
+
+	it('pending polling stops after a few tries and offers a refresh, which resumes it', async () => {
+		api.getReviewQueue.mockResolvedValue(queue({ counts: counts(0, 2) })); // server never serves them
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		expect(page.phase).toBe('pending');
+		await tick(60 * 60_000);
+		const calls = api.getReviewQueue.mock.calls.length;
+		expect(calls).toBeLessThanOrEqual(7);
+		expect(page.pendingStopped).toBe(true);
+		expect(vi.getTimerCount()).toBe(0);
+		expect(page.phase).toBe('pending'); // never "done" while counts say cards remain
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')], counts: counts(0, 2) }));
+		await page.reload();
+		await tick();
+		expect(page.pendingStopped).toBe(false);
+		expect(page.phase).toBe('card');
+		dispose();
+	});
+
+	it('a prefetch that lands after a newer refresh is dropped (no buried sibling comes back)', async () => {
+		let n = 0;
+		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
+		api.getReviewQueue.mockImplementation(() => {
+			n++;
+			if (n === 1) return Promise.resolve(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+			// The prefetch (fired at the tap) is slow and was built before the answer buried sibling s.
+			if (n === 2) return slow(5000, queue({ items: [card('b'), card('s')], counts: counts(0, 2) }));
+			return Promise.resolve(queue({ items: [card('b')], counts: counts(0, 1) }));
+		});
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		void page.grade(good);
+		await tick(100); // answer saved, refresh applied: [b]
+		expect(page.items.map((i) => i.card.id)).toEqual(['b']);
+		await tick(5000); // the late prefetch arrives
+		expect(page.items.map((i) => i.card.id)).toEqual(['b']);
+		dispose();
+	});
+
+	it('a 422 reviewed_at in_future (fast clock) keeps the card with a clock notice; retry uses server time', async () => {
+		const reqs: { id: string; reviewedAt?: Date }[] = [];
+		const problem = {
+			type: 'urn:kotobaya:problem:validation_failed',
+			code: 'validation_failed',
+			status: 422,
+			title: 'Validation failed',
+			errors: [{ pointer: '/reviewed_at', code: 'in_future', message: 'in the future' }]
+		};
+		api.answerReview
+			.mockImplementationOnce(async (r: { reviewAnswerRequest: { id: string; reviewedAt?: Date } }) => {
+				reqs.push(r.reviewAnswerRequest);
+				throw new ResponseError(new Response(JSON.stringify(problem), { status: 422, headers: { 'Content-Type': 'application/problem+json' } }));
+			})
+			.mockImplementation(async (r: { reviewAnswerRequest: { id: string; reviewedAt?: Date } }) => {
+				reqs.push(r.reviewAnswerRequest);
+				return { review: { id: r.reviewAnswerRequest.id } };
+			});
+		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')], counts: counts(0, 2) }));
+		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')], counts: counts(0, 1) }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		page.flip();
+		await page.grade(good);
+		await tick();
+		expect(page.current?.card.id).toBe('a');
+		expect(page.notice).toBe('clockSkew');
+		await page.retryAnswer();
+		await tick();
+		expect(reqs).toHaveLength(2);
+		expect(reqs[1].id).toBe(reqs[0].id);
+		expect(reqs[0].reviewedAt).toBeInstanceOf(Date);
+		expect(reqs[1].reviewedAt).toBeUndefined(); // the server's now
+		expect(page.current?.card.id).toBe('b');
+		dispose();
+	});
+
 	it('a failed wake fetch while waiting keeps the countdown (inline notice, no full-page error)', async () => {
 		const due = new Date(Date.now() + 10_000);
 		api.getReviewQueue.mockResolvedValueOnce(queue({ counts: counts(2), nextLearningDueAt: due }));
@@ -459,8 +551,12 @@ describe('reviewPhase', () => {
 		expect(reviewPhase({ ...base, counts: counts(0, 0, 1) })).toBe('pending');
 		expect(reviewPhase({ ...base, moreAvailable: true })).toBe('doneForNow');
 		expect(reviewPhase({ ...base, moreAvailable: true, keepGoing: true })).toBe('done');
-		// Counts first: cards left today are never "done for now".
-		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 0, 2) })).toBe('pending');
+		// Per-session new-card cap (contract: "done for now"): only new cards left and keep going has more.
+		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 0, 2) })).toBe('doneForNow');
+		// Learning or review cards left are never "done for now".
+		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(1, 0, 2) })).toBe('pending');
+		expect(reviewPhase({ ...base, moreAvailable: true, counts: counts(0, 1, 2) })).toBe('pending');
+		expect(reviewPhase({ ...base, moreAvailable: true, keepGoing: true, counts: counts(0, 0, 2) })).toBe('pending');
 	});
 	it('loading and errors are never done', () => {
 		expect(reviewPhase({ ...base, loaded: false })).toBe('loading');

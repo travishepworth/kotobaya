@@ -176,8 +176,17 @@ export function reviewPhase(s: PhaseInput): ReviewPhase {
 	if (s.settling) return 'settling';
 	if (s.isDrill) return s.drillUnavailable ? 'drillUnavailable' : 'drillDone';
 	if (s.nextLearningDueAt !== null) return 'waiting';
+	if (sessionCapReached(s)) return 'doneForNow';
 	if (remainingCount(s.counts) > 0) return 'pending';
 	if (s.refreshFailed) return 'error';
 	if (s.moreAvailable && !s.keepGoing) return 'doneForNow';
 	return 'done';
+}
+
+/**
+ * The per-session new-card cap (or the daily limits) are reached: only new cards are left in `counts`, nothing
+ * learning or due, and keep going has more. The contract's "done for now": offer Keep going, never poll.
+ */
+export function sessionCapReached(s: Pick<PhaseInput, 'counts' | 'moreAvailable' | 'keepGoing'>): boolean {
+	return s.moreAvailable && !s.keepGoing && (s.counts?.learning ?? 0) === 0 && (s.counts?.review ?? 0) === 0;
 }

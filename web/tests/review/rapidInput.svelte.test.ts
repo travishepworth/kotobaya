@@ -223,11 +223,14 @@ describe('rapid review input', () => {
 
 	it('a refresh keeps the card on screen, back showing', async () => {
 		const { page, dispose } = setup(['a', 'b', 'c']);
-		let resolveRefresh!: () => void;
-		api.getReviewQueue.mockImplementationOnce(
+		// Every fetch from now on (the prefetch at the tap and the refresh after the answer) hangs until the server
+		// has a learning card x first.
+		const waiting: (() => void)[] = [];
+		const resolveRefresh = () => waiting.splice(0).forEach((r) => r());
+		api.getReviewQueue.mockImplementation(
 			() =>
 				new Promise((res) => {
-					resolveRefresh = () => res({ items: ['x', 'b', 'c'].map(card), counts: null, dayEndsAt: new Date() });
+					waiting.push(() => res({ items: ['x', 'b', 'c'].map(card), counts: null, dayEndsAt: new Date() }));
 				})
 		);
 		page.flip();

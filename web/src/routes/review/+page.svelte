@@ -288,7 +288,12 @@
 
 	{#if s.notice}
 		<div class="notice">
-			{#if s.notice === 'answerFailed'}
+			{#if s.notice === 'clockSkew'}
+				<Banner tone="error" title={rv('rv.clockSkew.title')}>
+					{rv('rv.clockSkew.body')}
+					{#snippet action()}<Button size="sm" variant="outline" icon="sync" onclick={() => void s.retryAnswer()}>{rv('rv.slow.retry')}</Button>{/snippet}
+				</Banner>
+			{:else if s.notice === 'answerFailed'}
 				<Banner tone="error" title={rv('rv.answerFailed.title')}>
 					{rv('rv.answerFailed.body')}
 					{#snippet action()}<Button size="sm" variant="outline" icon="sync" onclick={() => void s.retryAnswer()}>{rv('rv.slow.retry')}</Button>{/snippet}
@@ -360,13 +365,18 @@
 						<p class="countdown kb-num" aria-label={rv('rv.waiting.body', { time: countdown })}>{countdown}</p>
 						<p class="muted">{rv('rv.waiting.hint')}</p>
 					{:else}
-						<p class="muted">{rv('rv.pending.body')}</p>
+						<p class="muted">{s.pendingStopped ? rv('rv.pending.stopped') : rv('rv.pending.body')}</p>
 					{/if}
 					<div class="done-actions">
 						{#if s.moreAvailable && !s.keepGoing}
 							<Button variant="outline" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.waiting.keepGoing')}</Button>
 						{/if}
-						<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
+						<Button
+							variant={s.pendingStopped ? 'primary' : 'outline'}
+							icon="sync"
+							loading={s.busy}
+							onclick={() => s.reload()}>{s.pendingStopped ? rv('rv.pending.refresh') : rv('rv.done.check')}</Button
+						>
 						{#if s.history.length > 0}
 							<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
 						{/if}

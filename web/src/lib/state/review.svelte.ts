@@ -10,7 +10,7 @@ import type {
 	QueueItem,
 	ReviewQueueCounts
 } from '../api/generated';
-import { ResponseError } from '../api/client';
+import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
 import { pushToast } from '../toasts.svelte';
 import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, wordsApi } from '../review/api';
@@ -21,6 +21,7 @@ import {
 	formatInterval,
 	remainingCount,
 	reviewPhase,
+	sessionCapReached,
 	toCorePreset,
 	toSchedule,
 	uuidv7,
@@ -58,15 +59,25 @@ const PENDING_BASE_MS = 2000;
 /** RC-WEB: when this few cards are left locally, fetch more while answers are still being saved (no drain). */
 const PREFETCH_LOW = 3;
 const PENDING_MAX_MS = 30_000;
+/** ... and stops after this many refetches in a row (the view then offers Refresh): no endless polling. */
+const PENDING_MAX_TRIES = 5;
 
 /**
- * RC-WEB: an answer the server refused for good (card deleted 410, suspended 409, unknown 404, rejected 422).
- * Resending the same answer cannot succeed, so the card is dropped instead of pinned. Timeouts, network errors,
- * 401, 408, 429 and 5xx are worth a retry.
+ * RC-WEB: what a failed answer means.
+ * - 'clock': 422 on `/reviewed_at` (this device's clock is off, e.g. `in_future`): the card stays, the retry is
+ *   sent without `reviewed_at` (the server's now).
+ * - 'permanent': refused for good (card deleted 410, suspended 409, unknown 404, other 422): resending the same
+ *   answer cannot succeed, so the card is dropped instead of pinned.
+ * - 'retry': timeouts, network errors, 401, 408, 429 and 5xx.
  */
-function isPermanent(e: unknown): boolean {
-	if (!(e instanceof ResponseError)) return false;
-	return [404, 409, 410, 422].includes(e.response.status);
+async function classify(e: unknown): Promise<'clock' | 'permanent' | 'retry'> {
+	if (!(e instanceof ResponseError)) return 'retry';
+	const status = e.response.status;
+	if (status === 422) {
+		const p = await readProblem(e.response);
+		if (p?.errors?.some((f) => f.pointer === '/reviewed_at')) return 'clock';
+	}
+	return [404, 409, 410, 422].includes(status) ? 'permanent' : 'retry';
 }
 
 /** The request did not answer in time (it was aborted). */
@@ -188,7 +199,8 @@ async function Outbox_send(entry: PendingAnswer): Promise<void> {
 		outbox.remove([entry]);
 		entry.page.sent(entry, r.review.id);
 	} catch (e) {
-		if (isPermanent(e)) {
+		const kind = await classify(e);
+		if (kind === 'permanent') {
 			// Never recordable: drop this card (with a toast) and keep sending the taps behind it.
 			entry.state = 'failed';
 			outbox.remove([entry]);
@@ -210,7 +222,7 @@ async function Outbox_send(entry: PendingAnswer): Promise<void> {
 		outbox.retryIds.set(entry.item.card.id, entry.answerId);
 		for (const pg of new Set([entry.page, ...later.map((e) => e.page)])) {
 			const mine = [entry, ...later].filter((e) => e.page === pg);
-			pg.restore(mine, mine.includes(entry) ? entry : null);
+			pg.restore(mine, mine.includes(entry) ? entry : null, kind === 'clock');
 		}
 	}
 	await entry.page.afterSend(); // no-op while more taps are queued behind this one
@@ -237,6 +249,10 @@ export class ReviewPage {
 	private lastWake = 0;
 	/** Refetches in a row in the pending phase (backoff). */
 	private pendingTries = 0;
+	/** Pending polling gave up after PENDING_MAX_TRIES; the view offers Refresh (`reload`), which resumes it. */
+	pendingStopped = $state(false);
+	/** Bumped whenever a full (non-prefetch) queue fetch is applied; a prefetch begun before it is stale. */
+	private applied = 0;
 	/** Bumped by start/dispose: a load or fetch begun under an older generation is dropped. */
 	private gen = 0;
 	/** The screen was left: nothing (refresh, wake, fetch) runs on this page any more. Never reset. */
@@ -253,9 +269,10 @@ export class ReviewPage {
 	/**
 	 * RC-WEB: an action failed and the user should know (beside the client's toast, which a timeout does not get).
 	 * answerFailed: the card is back on its back and `retryAnswer` sends the same answer again.
+	 * clockSkew: the same, but the server refused this device's time (`reviewed_at`); the retry uses the server's.
 	 */
-	notice = $state<'answerFailed' | 'undoFailed' | null>(null);
-	private failedAnswer: { cardId: string; button: GradeButton } | null = null;
+	notice = $state<'answerFailed' | 'clockSkew' | 'undoFailed' | null>(null);
+	private failedAnswer: { cardId: string; button: GradeButton; serverTime: boolean } | null = null;
 	private failedCardId = $state<string | null>(null);
 	private keepGoingDay: number | null = null;
 	noteTypes = $state<Map<string, NoteType>>(new Map());
@@ -284,7 +301,9 @@ export class ReviewPage {
 	readonly buttons = $derived<GradeButton[]>(this.fiveButtons ? BUTTONS_5 : BUTTONS_4);
 	readonly current = $derived<QueueItem | undefined>(this.items[0]);
 	/** The card on screen cannot be graded until the failed answer is retried (same answer id). */
-	readonly gradeLocked = $derived(this.notice === 'answerFailed' && !!this.current && this.failedCardId === this.current.card.id);
+	readonly gradeLocked = $derived(
+		(this.notice === 'answerFailed' || this.notice === 'clockSkew') && !!this.current && this.failedCardId === this.current.card.id
+	);
 	/** Nothing to show yet, but answers are still being recorded: the queue will be refreshed when they are. */
 	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
 	/** What the stage shows: the current card, or the held one while answers settle. */
@@ -430,6 +449,7 @@ export class ReviewPage {
 		if (this.isDrill || this.disposed) return false;
 		const gen = this.gen;
 		const epoch = this.epoch;
+		const appliedAtStart = this.applied;
 		const outboxSeq = outbox.seq;
 		const pendingAtStart = new Set(outbox.pending.map((e) => e.item.card.id));
 		let q = await this.getQueue(this.keepGoing);
@@ -449,6 +469,7 @@ export class ReviewPage {
 		}
 		// A newer start (retry) or leaving the screen supersedes this fetch.
 		if (gen !== this.gen || this.disposed) return false;
+		if (append && this.applied !== appliedAtStart) return false; // stale prefetch: see below
 		this.moreAvailable = q.moreAvailable ?? false;
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
@@ -459,6 +480,9 @@ export class ReviewPage {
 		const fresh = q.items.filter((i) => !answered.has(i.card.id) && !pendingAtStart.has(i.card.id));
 		const cur = this.current;
 		if (append) {
+			// A full fetch applied while this prefetch was in flight is newer (it may already reflect an answer that
+			// buried a sibling, or a card suspended elsewhere): drop this one.
+			if (this.applied !== appliedAtStart) return false;
 			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
 			// (an undo or restore may have put one back meanwhile): never removes a local card. Counts and the next
 			// due instant wait for the refresh after the answers.
@@ -474,6 +498,7 @@ export class ReviewPage {
 			keepCur
 				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
 				: fresh;
+		this.applied++;
 		this.counts = q.counts;
 		this.dayEndsAt = q.dayEndsAt;
 		this.nextLearningDueAt = q.nextLearningDueAt ?? null;
@@ -504,11 +529,20 @@ export class ReviewPage {
 		if (due) {
 			this.pendingTries = 0;
 			at = due.getTime() + WAKE_SLACK_MS;
-		} else if (!this.current && remainingCount(this.counts) > 0) {
+		} else if (
+			!this.current &&
+			remainingCount(this.counts) > 0 &&
+			!sessionCapReached({ counts: this.counts, moreAvailable: this.moreAvailable, keepGoing: this.keepGoing })
+		) {
+			if (this.pendingTries >= PENDING_MAX_TRIES) {
+				this.pendingStopped = true; // the view offers Refresh
+				return;
+			}
 			at = Date.now() + Math.min(PENDING_MAX_MS, PENDING_BASE_MS * 2 ** this.pendingTries);
 			this.pendingTries++;
 		} else {
 			this.pendingTries = 0;
+			this.pendingStopped = false;
 			return;
 		}
 		const delay = Math.max(at - Date.now(), this.lastWake + WAKE_MIN_MS - Date.now(), 0);
@@ -620,6 +654,7 @@ export class ReviewPage {
 		this.moreAvailable = false;
 		this.nextLearningDueAt = null;
 		this.pendingTries = 0;
+		this.pendingStopped = false;
 		this.clearWake();
 		this.loaded = false;
 		this.loadFailed = false;
@@ -663,6 +698,9 @@ export class ReviewPage {
 	async reload(): Promise<void> {
 		this.busy = true;
 		this.refreshFailed = false;
+		// A manual Refresh resumes pending polling with a fresh backoff.
+		this.pendingTries = 0;
+		this.pendingStopped = false;
 		try {
 			await this.fetchQueue();
 		} catch {
@@ -730,7 +768,7 @@ export class ReviewPage {
 		return this.send(item, b);
 	}
 
-	private send(item: QueueItem, b: GradeButton): Promise<void> {
+	private send(item: QueueItem, b: GradeButton, serverTime = false): Promise<void> {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
@@ -746,7 +784,8 @@ export class ReviewPage {
 				rating: b.rating,
 				...(b.button ? { button: b.button } : {}),
 				mode: item.reviewType === 'drill' || item.reviewType === 'cram' ? item.reviewType : 'schedule',
-				reviewedAt: new Date(),
+				// After a clock error the server's now is used (reviewed_at omitted).
+				...(serverTime ? {} : { reviewedAt: new Date() }),
 				durationMs: Math.max(0, Date.now() - this.shownAt),
 				utcOffsetMin: this.utcOffsetMin
 			},
@@ -781,16 +820,16 @@ export class ReviewPage {
 	 * A send failed: put these cards (the failed one first, then the taps withdrawn behind it) back at the
 	 * front in order. The failed card comes back on its back so the retry is one tap.
 	 */
-	restore(withdrawn: PendingAnswer[], failed: PendingAnswer | null): void {
+	restore(withdrawn: PendingAnswer[], failed: PendingAnswer | null, clockSkew = false): void {
 		const ids = new Set(withdrawn.map((e) => e.answerId));
 		this.history = this.history.filter((h) => !ids.has(h.reviewId));
 		this.items = [...withdrawn.map((e) => e.item), ...this.items];
 		this.epoch++;
 		if (failed) {
 			this.showCard(failed.item.card.id, failed.answerId, true, failed.shownAt);
-			this.failedAnswer = { cardId: failed.item.card.id, button: failed.button };
+			this.failedAnswer = { cardId: failed.item.card.id, button: failed.button, serverTime: clockSkew };
 			this.failedCardId = failed.item.card.id;
-			this.notice = 'answerFailed';
+			this.notice = clockSkew ? 'clockSkew' : 'answerFailed';
 		} else this.syncCard();
 	}
 
@@ -820,7 +859,7 @@ export class ReviewPage {
 		}
 		this.flipped = true;
 		this.clearNotice();
-		return this.send(cur, f.button);
+		return this.send(cur, f.button, f.serverTime);
 	}
 
 	async undo(): Promise<void> {
