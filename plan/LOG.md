@@ -1189,3 +1189,4 @@
 2026-11-16T04:07:58Z AND-FLAKY-BACKNAV CHECK_GREEN(writer, 3 full runs) + MERGE (test-only: lost global snapshot apply across Robolectric tests)
 2026-11-16T04:14:56Z AND-BATCH (CARD-KIND-BADGE-AND + RC-FOLLOW-AND) DISPATCH writer(sonnet)
 2026-11-16T04:15:05Z REVIEW-UNLIMITED CHECK_GREEN (contracts/core/server/web/android) + MERGE (ADR-034)
+2026-11-16T04:21:42Z RELEASE api 0.1.22 + web 0.1.24 DEPLOYED helm rev 34 (pin c8fc3151: REVIEW-UNLIMITED, CARD-KIND-BADGE-WEB, RC-FOLLOW-SERVER/WEB); queue ~240 ms server-side
