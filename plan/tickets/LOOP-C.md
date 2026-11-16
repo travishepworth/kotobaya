@@ -20,7 +20,7 @@
 4. SCHEMA.md §6: `scheduler.new_per_session` deprecated/ignored. contracts/core README: C-26 device section and C-27 window formula (`B = max(1, keepGoingNewBatch)`).
 5. Shell: SHELL.md 4.3 queue note, 7.2 (`LOCAL_API_VERSION` 2 + the added bump reason), 8.4 table (retire `queue.session_cap_more_available`; add the five `queue.loop_*` tags), new parity scenario files of design §9 (inputs + `expect` on `loop`), delete `parity/queue-session-cap-more-available.json`; `check_shell.py` tag list.
 6. Shell display prefs: `getDisplayPrefs` / `updateDisplayPrefs`, `ShellDisplay`, `ShellDisplayPatch`, capability `display`, SHELL.md 6.3 + §12 row, examples (design §6).
-7. Regenerate clients (`make check MODULE=contracts`), update contracts SUMMARY.md files (decisions, rejected alternatives, the 3 second-look choices of design §12), append the ADR-037 line (scratchpad `loop-adr-037.md`) to docs/DECISIONS.md.
+7. Regenerate clients (`make check MODULE=contracts`), update contracts SUMMARY.md files (decisions, rejected alternatives, the 3 second-look choices of design §12) (ADR-037 is already in docs/DECISIONS.md; do not append it again).
 
 ## Acceptance (each bullet → at least one named test)
 - [ ] `make check MODULE=contracts` green, no client drift; `check_shell.py` enforces the new tags.
