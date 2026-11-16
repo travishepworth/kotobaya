@@ -1294,3 +1294,5 @@
 2026-11-16T17:42:19Z RELEASE api 0.1.24 + web 0.1.27 PUSHED (pin 91140ed8); values bumped; helm BLOCKED (kube OIDC expired) -> user login. APK 0.1.32 BUILT (pin 91140ed8, cert ok, min_local_api 2) waiting for phone
 2026-11-16T17:42:19Z SHELL-L4 DISPATCH writer-senior [gradle lane]
 2026-11-16T18:00:02Z SHELL-L4 HANDOFF; sent back 1b for ShellModule CardQuery wiring. New CORE-WS-UPDATED; parity scenarios folded into LOOP-C2
+2026-11-16T18:07:10Z SHELL-L4 attempt 1b CHECK_GREEN; reviewer dispatched
+2026-11-16T18:07:10Z SHELL-L5 DISPATCH writer-senior from t/SHELL-L4 (chain) [gradle lane]
