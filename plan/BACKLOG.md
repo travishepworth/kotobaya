@@ -840,3 +840,13 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-L2b — local queue follow-ups (keep-going batch=limit, kanji_examples batching, headword cache) · model: sonnet · risk: med · deps: SHELL-L2 · status: MERGED (ticket: plan/tickets/SHELL-L2b.md)
 - SHELL-DARK — shell WebView follows system light/dark (user, 0.1.30) · model: sonnet · risk: low · deps: SHELL-A4 · status: MERGED (ticket: plan/tickets/SHELL-DARK.md)
 - WEB-TOAST-REVIEW — review toasts cover Show answer (user) · model: sonnet · risk: low · deps: — · status: MERGED (ticket: plan/tickets/WEB-TOAST-REVIEW.md)
+
+### Review loop rework + portrait lock (2026-11-17, human-confirmed, ADR-037; design docs/REVIEW-LOOP.md)
+- LOOP-AND — Android: local QueueRoute + native counts through ReviewLoop · model: sonnet · risk: med · deps: LOOP-CORE, LOOP-SRV (goldens), SHELL-L2/L3 state as merged · status: TODO (ticket: plan/tickets/LOOP-AND.md)
+- LOOP-CLI — CLI daemon + widget on `loop` · model: sonnet · risk: low-med · deps: LOOP-C (regenerated Python client); LOOP-SRV for the live check · status: TODO (ticket: plan/tickets/LOOP-CLI.md)
+- LOOP-C — Contracts: review loop (ADR-037) + shell display prefs · model: fable · risk: high · deps: none (SHELL-A6 may be in flight; no owned-path overlap) · status: TODO (ticket: plan/tickets/LOOP-C.md)
+- LOOP-CORE — Core: DefaultReviewLoop + queue rule 4/5 changes · model: opus · risk: high · deps: LOOP-C · status: TODO (ticket: plan/tickets/LOOP-CORE.md)
+- LOOP-SRV — Server: `loop` on getReviewQueue, legacy fields from core, parity goldens · model: sonnet · risk: med · deps: LOOP-CORE · status: TODO (ticket: plan/tickets/LOOP-SRV.md)
+- LOOP-WEB — Web: Home + review screens on `loop` · model: opus · risk: med · deps: LOOP-C (generated client); LOOP-SRV for the live check · status: TODO (ticket: plan/tickets/LOOP-WEB.md)
+- PORTRAIT-AND — Shell: Lock to portrait (device preference) · model: sonnet · risk: low · deps: LOOP-C (shell.yaml display ops), SHELL-A6 and SHELL-A7 merged (device Routes.kt) · status: TODO (ticket: plan/tickets/PORTRAIT-AND.md)
+- PORTRAIT-WEB — This device: "Lock to portrait" row · model: haiku · risk: low · deps: LOOP-C (generated shell client); PORTRAIT-AND for the phone check · status: TODO (ticket: plan/tickets/PORTRAIT-WEB.md)
