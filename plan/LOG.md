@@ -1260,3 +1260,4 @@
 2026-11-16T15:45:19Z RELEASE APK 0.1.30 INSTALLED (users 0+10); smoke: launches into SPA signed in, Today counts 0/7/0 == server; no crash in logcat
 2026-11-16T15:48:44Z SHELL-L2b CHECK_GREEN + MERGE (tmp leak fixed at source: 0 parity dirs after run; keepGoingNewBatch=limit)
 2026-11-16T15:49:20Z USER 0.1.30 feedback: 'looks pretty good', UI works; no light/dark. Logs clean (sync pushing reviews). SHELL-DARK DISPATCH writer
+2026-11-16T15:57:54Z SHELL-DARK CHECK_GREEN + MERGE
