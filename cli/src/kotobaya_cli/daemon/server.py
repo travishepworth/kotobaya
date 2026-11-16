@@ -217,6 +217,11 @@ class Daemon:
                 session.keep_going = True
                 session.keep_going_day = None
                 self._spawn_refetch()
+            elif cmd.name == "stop_keep_going":
+                # Back to the normal limits (the web leaves keep going by leaving the screen).
+                session.keep_going = False
+                session.keep_going_day = None
+                self._spawn_refetch()
         return self.emit()
 
     def _spawn_refetch(self) -> None:

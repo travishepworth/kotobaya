@@ -191,6 +191,16 @@ class Session:
             card["previews"] = dict(entry.previews)
         return card
 
+    @property
+    def can_keep_going(self) -> bool:
+        return (
+            self.more_available
+            and not self.keep_going
+            and self.current is None
+            and self.counts is not None
+            and self.conn == "ok"
+        )
+
     def state(self) -> dict[str, object]:
         """The full state object (schema/state.v1.json). Does not clear the notice."""
         counts = self.counts
@@ -210,6 +220,9 @@ class Session:
             "notice": self.notice,
             "keep_going": self.keep_going,
             "more_available": self.more_available,
+            # ADR-031/033: Keep going is offered whenever nothing is shown, the server says it has
+            # more (done, done-for-now and waiting alike) and it is not already on.
+            "can_keep_going": self.can_keep_going,
             "loading": self.loading,
             # ADR-033: only while nothing is shown; the widget's "waiting" state.
             "next_due_at": self.next_due_at if current is None and counts is not None else None,

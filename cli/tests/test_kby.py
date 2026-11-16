@@ -218,6 +218,7 @@ def test_front_lines_omit_answer_fields_and_back_lines_carry_them(kenv: Env) -> 
     assert en == {
         "reveal": True, "again": False, "hard": False, "good": False, "easy": False,
         "undo": False, "skip": True, "refresh": True, "next": True, "keep_going": False,
+        "stop_keep_going": False,
     }  # fmt: skip
     assert front["actions"]["good"] == {"enabled": False, "hint": "1d"}
     en = {k: v["enabled"] for k, v in back["actions"].items()}
@@ -361,3 +362,22 @@ def test_waiting_state_shows_the_countdown_and_old_configs_still_render(kenv: En
     kenv.append(waiting, DONE)
     out = kenv.run(KBY, "-f", "w", "--text", FAKE_ONESHOT="1").stdout.splitlines()
     assert any(x in ("next 2:05", "next 2:04") for x in out) and "done |" in out
+
+
+def test_keep_going_is_enabled_when_done_or_waiting_with_more_available(kenv: Env) -> None:
+    due = "2099-01-01T00:00:00Z"
+    more = '"notice":null,"can_keep_going":true,"more_available":true'
+    waiting = DONE.replace('"notice":null', f'{more},"next_due_at":"{due}"')
+    done = DONE.replace('"notice":null', more)
+    keeping = DONE.replace('"notice":null', '"notice":null,"keep_going":true')
+    s = kenv.serve()
+    s.next()
+    kenv.append(waiting, done, DONE, FRONT, keeping)
+    lines = [s.next() for _ in range(5)]
+    got = [(x["state"], x["actions"]["keep_going"]["enabled"], x["can_keep_going"]) for x in lines]
+    assert got == [
+        ("waiting", True, True), ("done", True, True), ("done", False, False),
+        ("front", False, False), ("done", False, False),
+    ]  # fmt: skip
+    assert [x["actions"]["stop_keep_going"]["enabled"] for x in lines] == [False] * 4 + [True]
+    assert s.stop() == 0

@@ -15,10 +15,10 @@ SOCK="$RUNTIME_DIR/sock"
 CACHE="$RUNTIME_DIR/state.json" # last state seen by any `kby stream`; read by `next` and `click`
 WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 
-DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going "
+DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going stop_keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
 card_id kind front back reading sentence revealed preview_again preview_hard preview_good
-preview_easy next_due_at next_due_in"
+preview_easy next_due_at next_due_in can_keep_going keep_hint"
 
 die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
 
@@ -31,10 +31,12 @@ ACTIONS (instant; written to the daemon FIFO, several run in order)
   kby -1 | again         kby -2 | hard            kby -s | skip       move card to the back
   kby -3 | good          kby -4 | easy            kby -R | refresh    refetch the queue
   kby -n | next          reveal if hidden, else good (needs a running `kby stream`)
-  kby keep_going         past today's limits until nothing is left (this daemon run, this day)
+  kby -k | keep          KEEP GOING: study past today's limits (when done, done for now, or waiting for
+                         a learning card; alias keep_going). Learning cards still wait for their time.
+  kby -K | unkeep        stop keep going (back to today's limits; alias stop_keep_going)
   five-button names also work: nothing, something, okay
   kby do ACTION [--rev REV]       one action for GUI widgets: reveal again hard good easy undo skip
-                                  refresh next keep_going. Exit 2 (stderr only) if unknown or not enabled in
+                                  refresh next keep_going stop_keep_going. Exit 2 (stderr only) if unknown or not enabled in
                                   the current state. With --rev a stale click is dropped (exit 0)
                                   and the next `serve` line says "Ignored: screen changed".
 
@@ -54,10 +56,10 @@ SERVE (machine interface for GUI widgets; data only, no widget confs)
                "text":"語 12", "counts":{"new","learning","review"},
                "card":null|{"id","kind","front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
-               "keep_going":bool, "more_available":bool,
+               "keep_going":bool, "more_available":bool, "can_keep_going":bool,
                "next_due_at":null|"<UTC ISO>" and "next_due_in":null|"m:ss" (state waiting: nothing due now,
                a learning card falls due then; fixed when the line was written), "error":null|"...",
-               "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next","keep_going":
+               "actions":{"reveal","again","hard","good","easy","undo","skip","refresh","next","keep_going","stop_keep_going":
                           {"enabled":bool, "hint":"1m" (grades; only when known)}}}
   Each line is also written to $XDG_RUNTIME_DIR/kotobaya/state.json (temp file + rename).
 
@@ -146,7 +148,7 @@ send() {
 
 # ---------------------------------------------------------------- do
 
-DO_ACTIONS=" reveal again hard good easy undo skip refresh next keep_going "
+DO_ACTIONS=" reveal again hard good easy undo skip refresh next keep_going stop_keep_going "
 NOTICE_FILE="$RUNTIME_DIR/kby-notice" # one-shot note for the next `serve` line
 STALE_NOTICE="Ignored: screen changed"
 
@@ -167,10 +169,11 @@ state_rev() {
 
 # Is ACTION enabled in STATE (UNDOABLE: true|false)? Same table as `serve`'s "actions".
 action_enabled() {
-  local state=$1 undoable=$2 action=$3
+  local state=$1 undoable=$2 action=$3 json=${4:-}
   case $action in
     refresh) return 0 ;;
-    keep_going) [[ $state == done ]] ;;
+    keep_going) [[ $json == *'"can_keep_going":true'* ]] ;;
+    stop_keep_going) [[ $json == *'"keep_going":true'* ]] ;;
     reveal) [[ $state == front ]] ;;
     again | hard | good | easy) [[ $state == back ]] ;;
     skip | next) [[ $state == front || $state == back ]] ;;
@@ -209,7 +212,7 @@ do_action() {
   fi
   state=$(state_name "$s")
   [[ $s == *'"undoable":true'* ]] && undoable=true
-  action_enabled "$state" "$undoable" "$action" ||
+  action_enabled "$state" "$undoable" "$action" "$s" ||
     fail2 "'$action' is not available while the card is: $state"
   KBY_STATE=$state send "$action"
 }
@@ -258,6 +261,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
    last: {rating: ($s.last.rating // null), undoable: $undo},
    keep_going: ($s.keep_going // false),
    more_available: ($s.more_available // false),
+   can_keep_going: ($s.can_keep_going // false),
    next_due_at: (if $st == "waiting" then $s.next_due_at else null end),
    next_due_in: (if $st == "waiting" then nextin($s.next_due_at) else null end),
    notice: ([$notice, $s.notice] | map(select(. != null and . != "")) | join("; ") | nz),
@@ -270,7 +274,8 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
      good: act($st == "back"; $p.good), easy: act($st == "back"; $p.easy),
      undo: act($undo; null), skip: act($card; null), refresh: act(true; null),
      next: act($card; null),
-     keep_going: act($st == "done" and ($s.more_available // false) and (($s.keep_going // false) | not); null)}}
+     keep_going: act(($st == "done" or $st == "waiting") and ($s.can_keep_going // false); null),
+     stop_keep_going: act($s.keep_going // false; null)}}
 '
 
 SERVE_WPID="" SERVE_N=0 SERVE_ERRF=""
@@ -296,7 +301,7 @@ serve_emit() {
         actions:{reveal:{enabled:false},again:{enabled:false},hard:{enabled:false},
                  good:{enabled:false},easy:{enabled:false},undo:{enabled:false},
                  skip:{enabled:false},refresh:{enabled:true},next:{enabled:false},
-                 keep_going:{enabled:false}}}')
+                 keep_going:{enabled:false},stop_keep_going:{enabled:false}}}')
   # Cache first: whoever reacts to a printed line (`kby do --rev`) finds the same line there.
   printf '%s\n' "$line" >"$tmp" && mv -f -- "$tmp" "$CACHE"
   printf '%s\n' "$line"
@@ -365,17 +370,19 @@ text.done    = 語 ✓
 text.loading = 語 …
 text.offline = 語 offline
 text.auth    = 語 token rejected
-tooltip      = new {new} · learning {learning} · review {review} · pending {pending}  {notice}
+tooltip      = new {new} · learning {learning} · review {review} · pending {pending}  {notice}{keep_hint}
 tooltip.offline = daemon not reachable (systemctl --user status kotobaya)
 tooltip.auth = token rejected: the PAT needs scopes read and review
 tooltip.back = again {preview_again} · hard {preview_hard} · good {preview_good} · easy {preview_easy}
 
 # button.NAME[.STATE] = ACTION...  (NAME is anything your bar sends to `kby click`)
-# ACTION: reveal again hard good easy undo skip refresh next none (several: space-separated),
+# ACTION: reveal again hard good easy undo skip refresh next keep_going stop_keep_going none (several: space-separated),
 # or `!command` to run a shell command instead.
 button.left             = next
 button.right            = undo
 button.middle           = skip
+button.left.done        = keep_going
+button.left.waiting     = keep_going
 button.scroll-up.back   = good
 button.scroll-down.back = again
 button.1.back           = again
@@ -420,6 +427,11 @@ click() {
     action=$(conf_get "button.$2" <<<"$conf") || return 0
   if [[ $action == '!'* ]]; then
     KBY_STATE=$state exec sh -c "${action#!}"
+  fi
+  # keep_going only when the daemon says there is more (a stray click must not start it).
+  if [[ $action == *keep_going* && $action != *stop_keep_going* ]] &&
+    [[ $(current_state_json) != *'"can_keep_going":true'* ]]; then
+    return 0
   fi
   # shellcheck disable=SC2086 # split the action list on spaces
   KBY_STATE=$state send $action
@@ -480,6 +492,8 @@ def flat($s):
       preview_good: ($p.good // ""), preview_easy: ($p.easy // "") }
     # Only while waiting, so the flat JSON of every other state stays as before; a template
     # field that is absent reads as empty.
+    # Likewise only while Keep going is available.
+    + (if (.can_keep_going // false) then {can_keep_going: "true", keep_hint: " · click: keep going"} else {} end)
     + (if $s == "waiting" then {next_due_at: .next_due_at, next_due_in: (nextin(.next_due_at) // "")} else {} end);
 def fill($f):
   gsub("\\{(?<k>[a-z_]+)(:(?<n>[0-9]+))?\\}";
@@ -575,6 +589,7 @@ main() {
         case $a in
           -r) words+=(reveal) ;; -1) words+=(again) ;; -2) words+=(hard) ;;
           -3) words+=(good) ;; -4) words+=(easy) ;; -u) words+=(undo) ;;
+          -k | keep) words+=(keep_going) ;; -K | unkeep) words+=(stop_keep_going) ;;
           -s) words+=(skip) ;; -R) words+=(refresh) ;; -n) words+=(next) ;;
           -*) die "unknown flag $a (try: kby help)" ;;
           *) words+=("$a") ;;

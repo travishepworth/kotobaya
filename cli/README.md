@@ -45,7 +45,7 @@ echo good   1<>$XDG_RUNTIME_DIR/kotobaya/in
 ```
 
 Actions: `reveal`, `again`, `hard`, `good`, `easy`, `nothing`, `something`, `okay`, `undo`,
-`skip`, `refresh`, `keep_going`. The five-button names (`nothing`, `something`, `okay`) are mapped to the
+`skip`, `refresh`, `keep_going`, `stop_keep_going`. The five-button names (`nothing`, `something`, `okay`) are mapped to the
 user's button mode, so `good` and `again` work in both modes. On the socket the same names are
 `{"cmd": "..."}`.
 
@@ -57,6 +57,19 @@ when it builds the queue; the daemon never creates notes itself. It ends only wh
 fetch is empty (`"card": null`, `"keep_going": true`, `"more_available": false`: nothing is left
 today). Keep going lives in the daemon's memory: it stops when the study day changes and when the
 daemon restarts. The state carries `"keep_going"` (bool) and `"more_available"` (bool). `"loading"` (bool) is true while a `refresh`/`keep_going` refetch runs in the background.
+
+### Keep going from `kby`
+
+```sh
+kby -k          # or: kby keep    start keep going (alias: kby do keep_going)
+kby -K          # or: kby unkeep  back to today's limits (alias: kby do stop_keep_going)
+```
+
+Offered whenever nothing is shown and the server has more (`"can_keep_going": true`): done,
+done for now, and while waiting for a learning card. A learning card that falls due is still
+served at its due instant, never early. `kby -f` shows it in the tooltip and the default widget
+binds left click to it in the done and waiting states; `kby serve` has `actions.keep_going` and
+`actions.stop_keep_going`. The daemon state also has `"keep_going"` (active).
 
 ## watch
 
@@ -159,8 +172,8 @@ it and the `kotobaya watch` child.
 - `rev` changes on every line (`-` stands for "no card"); send it back with each action.
 - `notice` appears on one line only. `hint` (next interval per grade) only when known.
 - Enabled: `reveal` on front; grades on back; `skip`/`next` on front and back (`next` = reveal if
-  hidden, else good); `undo` only when `last.undoable`; `refresh` always; `keep_going` when `done`,
-  `more_available` and not already keeping going.
+  hidden, else good); `undo` only when `last.undoable`; `refresh` always; `keep_going` when `done` or `waiting`
+  and `can_keep_going`; `stop_keep_going` while `keep_going`.
 - `keep_going` and `more_available` are the daemon's (see "Keep going" above): `done` with
   `more_available` means "done for now, keep going has more"; `done` while `keep_going` means
   nothing is left today.

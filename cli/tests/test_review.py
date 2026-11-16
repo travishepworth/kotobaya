@@ -944,3 +944,84 @@ def test_keep_going_does_not_block_a_concurrent_reveal(paths: Paths) -> None:
             worker.cancel()
 
     asyncio.run(scenario())
+
+
+class WaitingServer(FakeServer):
+    """Normal queue: empty, more_available, and a learning card due in a minute. Keep going: new
+    cards n0..n2, and the same not-yet-due learning card is never served."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.flags: list[bool] = []
+
+    def fetch_queue(self, keep_going: bool = False) -> QueueSnapshot:
+        with self.lock:
+            self.flags.append(keep_going)
+            done = {a.card_id for a in self.answers}
+            counts = Counts(3, 1, 0)
+            due = "2026-11-15T10:01:00.000Z"
+            if not keep_going:
+                return QueueSnapshot(
+                    [], counts, DAY_END, more_available=True, study_day="2026-11-15",
+                    next_learning_due_at=due,
+                )  # fmt: skip
+            items = [f"n{i}" for i in range(3) if f"n{i}" not in done]
+            return QueueSnapshot(
+                [CardEntry(i, "meaning") for i in items], counts, DAY_END,
+                study_day="2026-11-15", next_learning_due_at=due,
+            )  # fmt: skip
+
+
+def test_keep_going_from_waiting_serves_new_cards_but_not_the_learning_card_early(
+    paths: Paths,
+) -> None:
+    server = WaitingServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        out = st(daemon.session.state())
+        assert out["card"] is None and out["next_due_at"] is not None
+        assert out["can_keep_going"] is True and out["keep_going"] is False
+        await daemon.handle(Action("keep_going"))
+        await daemon.idle()
+        assert server.flags[-1] is True
+        out = st(daemon.session.state())
+        assert out["can_keep_going"] is False and out["keep_going"] is True
+        shown = []
+        for _ in range(10):
+            card = daemon.session.current
+            if card is None:
+                break
+            shown.append(card.card_id)
+            await grade(daemon, "good")
+            await handler.idle()
+        assert shown == ["n0", "n1", "n2"]  # the learning card (due later) is never among them
+        out = st(daemon.session.state())
+        assert out["card"] is None and out["next_due_at"] is not None  # waiting again
+        assert out["can_keep_going"] is False
+        await daemon.handle(Action("stop_keep_going"))
+        await daemon.idle()
+        out = st(daemon.session.state())
+        assert out["keep_going"] is False and server.flags[-1] is False
+
+    asyncio.run(scenario())
+
+
+def test_can_keep_going_for_done_waiting_and_reviewing(paths: Paths) -> None:
+    server = KeepGoingServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        assert st(daemon.session.state())["can_keep_going"] is False  # reviewing
+        await grade(daemon, "good")
+        await handler.idle()
+        out = st(daemon.session.state())
+        assert out["card"] is None and out["next_due_at"] is None
+        assert out["can_keep_going"] is True  # done under the limits
+        await daemon.handle(Action("keep_going"))
+        await daemon.idle()
+        assert st(daemon.session.state())["can_keep_going"] is False  # reviewing again
+
+    asyncio.run(scenario())
