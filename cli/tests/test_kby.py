@@ -381,3 +381,67 @@ def test_keep_going_is_enabled_when_done_or_waiting_with_more_available(kenv: En
     ]  # fmt: skip
     assert [x["actions"]["stop_keep_going"]["enabled"] for x in lines] == [False] * 4 + [True]
     assert s.stop() == 0
+
+
+def loop_raw(**over: Any) -> str:
+    """A daemon state line of an ADR-037 daemon with no card (done under the limits)."""
+    state: dict[str, Any] = json.loads(DONE)
+    state["counts"] = {"new": 40, "learning": 26, "review": 9}  # deprecated: learning counts later
+    state.update(
+        {
+            "phase": "reviewing",
+            "ready": 9,
+            "later_today": 26,
+            "later_next_due_at": "2099-01-01T00:00:00.000Z",
+            "backlog": 9,
+            "backlog_beyond_limit": 0,
+            "reviews_today": 0,
+            "reviews_limit": None,
+            "new_today": 12,
+            "new_goal": 40,
+        }
+    )
+    state.update(over)
+    return json.dumps(state, ensure_ascii=False, separators=(",", ":"))
+
+
+def test_widget_ready_not_later(kenv: Env) -> None:
+    """9 ready + 26 learning later: the number is 9 (never 35), everywhere."""
+    front = json.loads(FRONT)
+    front.update(json.loads(loop_raw()))
+    front["card"] = json.loads(FRONT)["card"]
+    s = kenv.serve()
+    s.next()
+    kenv.append(json.dumps(front, ensure_ascii=False), loop_raw(phase="goal_reached", ready=0))
+    line = s.next()
+    assert line["state"] == "front" and line["text"].endswith(" 9") and line["ready"] == 9
+    assert line["phase"] == "reviewing" and line["later_today"] == 26
+    assert s.next()["text"] == "語 ✓"  # no card: no number
+    assert s.stop() == 0
+    # The follow stream (default widget): text is the ready number, tooltip the loop lines.
+    front.update({"backlog": 335, "backlog_beyond_limit": 135})
+    kenv.append(json.dumps(front, ensure_ascii=False), loop_raw(phase="goal_reached", ready=0))
+    lines = [json.loads(x) for x in kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()]
+    out = lines[-2]
+    assert out["text"].startswith("語 9  ") and out["class"] == "front"
+    assert lines[-1]["class"] == "goal_reached"  # no card: the class is the phase
+    assert out["tooltip"].startswith("new 12/40 · backlog 335 (135 beyond the limit)")
+    assert "26 learning later · next in " in out["tooltip"]
+    assert out["tooltip"].split("  ")[0].endswith(" · pending 0")
+
+
+def test_server_too_old(kenv: Env) -> None:
+    old = json.loads(DONE)
+    old.update({"conn": "server_too_old", "counts": None})
+    line_raw = json.dumps(old)
+    s = kenv.serve()
+    s.next()
+    kenv.append(line_raw)
+    line = s.next()
+    assert line["state"] == "server_too_old" and "server too old" in line["text"]
+    assert "server too old" in line["error"]
+    assert s.stop() == 0
+    kenv.append(line_raw)
+    out = json.loads(kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()[-1])
+    assert out["state"] == "server_too_old" and out["class"] == "server_too_old"
+    assert "server too old" in out["text"] and "upgrade" in out["tooltip"]

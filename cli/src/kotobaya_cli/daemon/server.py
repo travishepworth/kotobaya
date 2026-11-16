@@ -42,11 +42,20 @@ KEEP_GOING_RETRIES = (
 )
 
 
+TOO_OLD_NOTICE = "server too old: this CLI needs a Kotobaya server with the review loop (ADR-037)"
+C1_POST_WAIT_S = 3.0  # C1: how long a refetch waits for the answer POST before it goes anyway
+
+
 @dataclass(frozen=True)
 class Paths:
     fifo: Path
     sock: Path
     journal: Path  # CLI-REVIEW writes here; the daemon only knows where it lives
+
+    @property
+    def keep_going_file(self) -> Path:
+        """C2: the study day Keep going was started on (daemon state dir, next to the journal)."""
+        return self.journal.parent / "keep-going-day"
 
     @staticmethod
     def from_env(env: Mapping[str, str]) -> Paths:
@@ -86,6 +95,10 @@ class AnswerHandler(Protocol):
         """Cancel background sends; the journal keeps whatever is unsent."""
         ...
 
+    async def idle(self) -> None:
+        """Return once nothing more can be sent right now."""
+        ...
+
 
 class NoAnswers:
     """Default until CLI-REVIEW: answering is not available, with a notice."""
@@ -112,6 +125,9 @@ class NoAnswers:
         return None
 
     def close(self) -> None:
+        return None
+
+    async def idle(self) -> None:
         return None
 
 
@@ -168,6 +184,32 @@ class Daemon:
         self._stream: EventStream | None = None
         self._fifo_buf = b""
         self._writers: set[asyncio.StreamWriter] = set()
+        self._restore_keep_going()
+
+    # ---- keep going, persisted per study day (C2) ---------------------------------
+
+    def _restore_keep_going(self) -> None:
+        try:
+            day = self.paths.keep_going_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            return
+        if day:
+            self.session.keep_going = True
+            self.session.keep_going_day = day
+
+    def _save_keep_going(self) -> None:
+        """Persist (or, with keep going off, delete) the day file; a failure is never fatal."""
+        file = self.paths.keep_going_file
+        try:
+            if self.session.keep_going and self.session.keep_going_day:
+                file.parent.mkdir(parents=True, exist_ok=True)
+                tmp = file.with_name(file.name + ".tmp")
+                tmp.write_text(self.session.keep_going_day + "\n", encoding="utf-8")
+                tmp.replace(file)
+            else:
+                file.unlink(missing_ok=True)
+        except OSError:
+            self.session.set_notice("keep going state not saved")
 
     # ---- output -------------------------------------------------------------
 
@@ -215,14 +257,35 @@ class Daemon:
             elif cmd.name == "keep_going":
                 # C-26/C-27: same semantics as the web: past today's limits until a keep-going fetch is empty.
                 session.keep_going = True
-                session.keep_going_day = None
+                session.keep_going_day = session.study_day  # None: adopted from the next response
+                self._save_keep_going()
                 self._spawn_refetch()
             elif cmd.name == "stop_keep_going":
                 # Back to the normal limits (the web leaves keep going by leaving the screen).
                 session.keep_going = False
                 session.keep_going_day = None
+                self._save_keep_going()
                 self._spawn_refetch()
         return self.emit()
+
+    def serve_due_first(self) -> bool:
+        """C1: called after an answer advanced the queue. Once now >= T the cached cards are held
+        back and the queue is fetched again (after the answer's POST), so a card that came due is
+        the very next one. True when it did."""
+        session = self.session
+        if not session.queue or not session.due_passed():
+            return False
+        session.drop_queue()
+        session.loading = True
+        task = asyncio.create_task(self._refetch_after_post())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return True
+
+    async def _refetch_after_post(self) -> None:
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(self.handler.idle(), C1_POST_WAIT_S)
+        await self.refetch()
 
     def _spawn_refetch(self) -> None:
         """Refetch in the background so the command worker stays free for reveal and answers."""
@@ -286,6 +349,9 @@ class Daemon:
         except Exception as exc:  # noqa: BLE001
             self._settings_stale = True
             kind = classify(exc).kind
+            if kind == "too_old":
+                self._server_too_old()
+                return
             if kind == "auth":
                 self.session.conn = "auth"
             elif kind != "degraded" or self.session.conn == "auth":
@@ -303,13 +369,28 @@ class Daemon:
         self._stale_due = (
             self._stale_due + 1
             if not snapshot.items
-            and (due := self._seconds_until(snapshot.next_learning_due_at)) is not None
+            and (
+                due := self._seconds_until(
+                    snapshot.loop.next_due_at if snapshot.loop else snapshot.next_learning_due_at
+                )
+            )
+            is not None
             and due <= 0
             else 0
         )
         self._timer_wake.set()
         if not was_ok:
             await self.handler.on_online(self)
+
+    def _server_too_old(self) -> None:
+        """No `loop` in the response: one clear status, no cards, no fallback derivation."""
+        session = self.session
+        session.conn = "server_too_old"
+        session.queue = []
+        session.counts = None
+        session.loop = None
+        session.set_notice(TOO_OLD_NOTICE)
+        self._timer_wake.set()  # the periodic timer retries; an upgraded server is picked up
 
     def _schedule_retry(self) -> None:
         """Refetch after a failed fetch: 2 s, 5 s, 10 s, then every 30 s, until one succeeds."""
@@ -337,9 +418,11 @@ class Daemon:
         snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
         if session.keep_going_day is None:
             session.keep_going_day = snapshot.study_day
+            self._save_keep_going()
         elif snapshot.study_day != session.keep_going_day:
-            session.keep_going = False
+            session.keep_going = False  # C2: the stored day is not today: drop it, fetch normally
             session.keep_going_day = None
+            self._save_keep_going()
             return await asyncio.to_thread(self.backend.fetch_queue)
         for _ in range(KEEP_GOING_RETRIES):
             if snapshot.items or snapshot.to_materialize <= 0:
@@ -363,7 +446,7 @@ class Daemon:
         if day_end is not None:
             wait = min(wait, max(1.0, day_end))
         if self.session.current is None:
-            due = self._seconds_until(self.session.next_due_at)
+            due = self._seconds_until(self.session.timer_due)  # C4: waiting only
             if due is not None:
                 # A due instant already past with still no card (clock skew) backs off.
                 slack = NEXT_DUE_SLACK_S * 2 ** min(self._stale_due, 5)
@@ -374,10 +457,10 @@ class Daemon:
         """While waiting (ADR-033), re-emit the state when the m:ss countdown text changed, so a
         widget rendering `next_due_in` counts down. Emits nothing in any other state."""
         session = self.session
-        if session.conn != "ok" or session.current is not None or session.next_due_at is None:
+        if session.conn != "ok" or session.current is not None or session.timer_due is None:
             self._last_tick = None
             return False
-        text = next_due_in(session.next_due_at, self._clock())
+        text = next_due_in(session.timer_due, self._clock())
         if text == self._last_tick:
             return False
         self._last_tick = text

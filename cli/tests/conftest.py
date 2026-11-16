@@ -135,3 +135,27 @@ def job_json(
         "started_at": None,
         "status": status,
     }
+
+
+def make_loop(phase: str = "reviewing", **kw: Any) -> Any:
+    """A daemon-side ADR-037 Loop with every field defaulted."""
+    from kotobaya_cli.daemon.session import Loop
+
+    fields: dict[str, Any] = {
+        "phase": phase,
+        "keep_going": False,
+        "ready_learning": 0,
+        "ready_review": 0,
+        "ready_total": 0,
+        "later_count": 0,
+        "next_due_at": None,
+        "backlog_reviews": 0,
+        "backlog_beyond_limit": 0,
+        "reviews_today": 0,
+        "reviews_limit": None,
+        "new_today": 0,
+        "new_goal": 40,
+        "new_available": False,
+    }
+    fields.update(kw)
+    return Loop(**fields)

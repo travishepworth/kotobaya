@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import FakeHttp
+from conftest import FakeHttp, make_loop
 
 from kotobaya_cli.api import Settings
 from kotobaya_cli.daemon.backend import BackendError, EventStream, HttpBackend
@@ -810,6 +810,7 @@ class KeepGoingServer(FakeServer):
                     DAY_END,
                     more_available=not items and bool(left),
                     study_day="2026-11-15",
+                    loop=make_loop("reviewing" if items else "goal_reached" if left else "empty"),
                 )
             if len(done) == 4 and self.hiccup:
                 self.hiccup = False
@@ -964,11 +965,14 @@ class WaitingServer(FakeServer):
                 return QueueSnapshot(
                     [], counts, DAY_END, more_available=True, study_day="2026-11-15",
                     next_learning_due_at=due,
+                    loop=make_loop("goal_reached", later_count=1, next_due_at=due),
                 )  # fmt: skip
             items = [f"n{i}" for i in range(3) if f"n{i}" not in done]
             return QueueSnapshot(
                 [CardEntry(i, "meaning") for i in items], counts, DAY_END,
                 study_day="2026-11-15", next_learning_due_at=due,
+                loop=make_loop("reviewing" if items else "waiting", keep_going=True,
+                               later_count=1, next_due_at=due),
             )  # fmt: skip
 
 
@@ -981,7 +985,7 @@ def test_keep_going_from_waiting_serves_new_cards_but_not_the_learning_card_earl
         daemon, handler = make(server, paths)
         await daemon.refetch()
         out = st(daemon.session.state())
-        assert out["card"] is None and out["next_due_at"] is not None
+        assert out["card"] is None and out["next_due_at"] is None  # goal_reached, not waiting
         assert out["can_keep_going"] is True and out["keep_going"] is False
         await daemon.handle(Action("keep_going"))
         await daemon.idle()

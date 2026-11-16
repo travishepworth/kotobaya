@@ -18,7 +18,8 @@ WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going stop_keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
 card_id kind kind_label kind_badge kind_prefix front back reading sentence revealed preview_again preview_hard preview_good
-preview_easy next_due_at next_due_in can_keep_going keep_hint"
+preview_easy next_due_at next_due_in can_keep_going keep_hint
+phase ready later_today later_next_in backlog backlog_beyond_limit new_today new_goal counts_text loop_line"
 
 die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
 
@@ -51,9 +52,11 @@ STREAM (long-lived, one waybar-style JSON line per state change)
 SERVE (machine interface for GUI widgets; data only, no widget confs)
   kby serve                       one compact JSON line per state change, flushed at once, forever.
                                   Offline / auth / error never end it: they are lines too.
-  line (v 1): {"v":1, "state":"loading|front|back|waiting|done|offline|auth|error",
+  line (v 1): {"v":1, "state":"loading|front|back|waiting|done|offline|auth|server_too_old|error",
                "rev":"<card_id>:<n>" (changes every line; send it back as `kby do ... --rev`),
-               "text":"語 12", "counts":{"new","learning","review"},
+               "text":"語 12" (12 = ready now), "counts":{"new","learning","review"} (deprecated),
+               "phase":null|"reviewing|goal_reached|done_for_today|waiting|empty", "ready", "later_today",
+               "backlog", "backlog_beyond_limit", "new_today", "new_goal" (null from an older daemon),
                "card":null|{"id","kind","kind_label" (Kanji/Vocab/..),"front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
                "keep_going":bool, "more_available":bool, "can_keep_going":bool,
@@ -71,7 +74,7 @@ WIDGETS (${XDG_CONFIG_HOME:-~/.config}/kotobaya/widgets/NAME.conf)
 
 OTHER
   kby status                      current state JSON (cache, else asks the daemon)
-  kby state                       current state name: front back waiting done loading offline auth
+  kby state                       current state name: front back waiting done loading offline auth server_too_old
 EOF
 }
 
@@ -103,7 +106,13 @@ state_name() {
     return
   fi
   if [[ -z $s || $s != *'"conn":"ok"'* ]]; then
-    if [[ $s == *'"conn":"auth"'* ]]; then echo auth; else echo offline; fi
+    if [[ $s == *'"conn":"auth"'* ]]; then
+      echo auth
+    elif [[ $s == *'"conn":"server_too_old"'* ]]; then
+      echo server_too_old
+    else
+      echo offline
+    fi
   elif [[ $s == *'"card":null'* ]]; then
     if [[ $s == *'"counts":null'* ]]; then
       echo loading
@@ -225,7 +234,7 @@ JQ_SERVE='
 def nz: if . == "" then null else . end;
 def statename($s):
   if $s == null then "loading"
-  elif $s.conn != "ok" then (if $s.conn == "auth" then "auth" else "offline" end)
+  elif $s.conn != "ok" then (if $s.conn == "auth" then "auth" elif $s.conn == "server_too_old" then "server_too_old" else "offline" end)
   elif $s.card != null then (if $s.card.revealed then "back" else "front" end)
   elif $s.counts == null then "loading"
   elif ($s.next_due_at // null) != null then "waiting" else "done" end;
@@ -241,7 +250,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
 | ($force // statename($s)) as $st
 | (if $s == null then null else $s.card end) as $k
 | (($s.counts // null) // {new: 0, learning: 0, review: 0}) as $c
-| ($c.new + $c.learning + $c.review) as $due
+| (if ($s.ready // null) != null then $s.ready else ($c.new + $c.learning + $c.review) end) as $due
 | ($k.revealed // false) as $rev
 | (($s.last.undoable // false) and ($st == "front" or $st == "back" or $st == "done" or $st == "waiting")) as $undo
 | ($k.previews // {}) as $p
@@ -252,6 +261,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
           elif $st == "waiting" then "語 \(nextin($s.next_due_at) // "…")"
           elif $st == "done" then "語 ✓"
           elif $st == "loading" then "語 …"
+          elif $st == "server_too_old" then "語 server too old"
           else "語 \($st)" end),
    counts: {new: $c.new, learning: $c.learning, review: $c.review},
    card: (if $k == null then null
@@ -262,11 +272,15 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
    keep_going: ($s.keep_going // false),
    more_available: ($s.more_available // false),
    can_keep_going: ($s.can_keep_going // false),
+   phase: ($s.phase // null), ready: ($s.ready // null), later_today: ($s.later_today // null),
+   backlog: ($s.backlog // null), backlog_beyond_limit: ($s.backlog_beyond_limit // null),
+   new_today: ($s.new_today // null), new_goal: ($s.new_goal // null),
    next_due_at: (if $st == "waiting" then $s.next_due_at else null end),
    next_due_in: (if $st == "waiting" then nextin($s.next_due_at) else null end),
    notice: ([$notice, $s.notice] | map(select(. != null and . != "")) | join("; ") | nz),
    error: ($err // (if $st == "offline" then "daemon not reachable (systemctl --user status kotobaya)"
                     elif $st == "auth" then "token rejected: the PAT needs scopes read and review"
+                    elif $st == "server_too_old" then "server too old: it has no review loop (ADR-037); upgrade the Kotobaya server"
                     else null end)),
    actions: {
      reveal: act($st == "front"; null),
@@ -355,22 +369,28 @@ default_widget() {
 # kotobaya widget. key = value; '#' starts a comment line.
 #
 # States: front (card hidden), back (revealed), waiting (nothing due now, a learning card falls due
-# at {next_due_at}; {next_due_in} is m:ss), done (nothing left), loading, offline, auth.
+# at {next_due_at}; {next_due_in} is m:ss), done (nothing left), loading, offline, auth, server_too_old.
+# class defaults to {state}; without a card it is the loop phase (goal_reached, done_for_today,
+# waiting, empty) when the daemon sends one.
 # Fields unknown to an older config read as empty; {next_due_in} is fixed when the line is written.
 #
 # text[.STATE]     the line shown. text.STATE wins over text.
 # tooltip[.STATE]  hover text (--json only).
 # class[.STATE]    CSS class (--json only). Default: {state}.
 # Templates: {field} or {field:N} (cut to N chars with …). `kby fields` lists the fields.
-text         = 語 {new}/{learning}/{review}
-text.front   = 語 {new}/{learning}/{review}  {kind_badge}{front:30}
+# {counts_text} is the ready-now number (cards you can answer now; new cards and learning cards
+# due later are not in it); against a daemon older than ADR-037 it reads new/learning/review.
+text         = 語 {counts_text}
+text.front   = 語 {counts_text}  {kind_badge}{front:30}
 text.back    = 語 {front:20} 【{reading:15}】 {back:40}
 text.waiting = 語 next in {next_due_in}
 text.done    = 語 ✓
 text.loading = 語 …
 text.offline = 語 offline
 text.auth    = 語 token rejected
-tooltip      = {kind_prefix}new {new} · learning {learning} · review {review} · pending {pending}  {notice}{keep_hint}
+text.server_too_old = 語 server too old
+tooltip      = {kind_prefix}{loop_line} · pending {pending}  {notice}{keep_hint}
+tooltip.server_too_old = server too old: upgrade the Kotobaya server (review loop, ADR-037)
 tooltip.offline = daemon not reachable (systemctl --user status kotobaya)
 tooltip.auth = token rejected: the PAT needs scopes read and review
 tooltip.back = {kind_prefix}again {preview_again} · hard {preview_hard} · good {preview_good} · easy {preview_easy}
@@ -473,10 +493,20 @@ def conf: [ $conf | split("\n")[]
             | capture("^\\s*(?<k>[^=\\s]+)\\s*=\\s*(?<v>.*?)\\s*$")? ]
           | map({(.k): .v}) | add // {};
 def statename:
-  if .conn != "ok" then (if .conn == "auth" then "auth" else "offline" end)
+  if .conn != "ok" then (if .conn == "auth" then "auth" elif .conn == "server_too_old" then "server_too_old" else "offline" end)
   elif .card != null then (if .card.revealed then "back" else "front" end)
   elif .counts == null then "loading"
   elif (.next_due_at // null) != null then "waiting" else "done" end;
+def later_in($at): (try (((($at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) - now) / 60) | ceil | if . < 1 then 1 else . end) catch null);
+# ADR-037 tooltip lines: new k/goal, backlog beyond the limit, learning later and when.
+def loop_line($c):
+  if (.phase // null) == null then "new \($c.new // 0) · learning \($c.learning // 0) · review \($c.review // 0)"
+  else [ "new \(.new_today // 0)/\(.new_goal // 0)",
+         (if (.backlog_beyond_limit // 0) > 0 then "backlog \(.backlog) (\(.backlog_beyond_limit) beyond the limit)" else empty end),
+         (if (.later_today // 0) > 0
+          then "\(.later_today) learning later" + (later_in(.later_next_due_at) as $m | if $m == null then "" else " · next in \($m) min" end)
+          else empty end) ] | join(" · ")
+  end;
 def flat($s):
   (.counts // {}) as $c | (.card // {}) as $k | ($k.previews // {}) as $p | (.last // {}) as $l
   | { state: $s, conn: .conn,
@@ -490,6 +520,12 @@ def flat($s):
       revealed: (($k.revealed // false) | tostring),
       preview_again: ($p.again // ""), preview_hard: ($p.hard // ""),
       preview_good: ($p.good // ""), preview_easy: ($p.easy // "") }
+    # ADR-037 fields only when the daemon sends the loop (older daemons: absent reads as empty).
+    + (if (.phase // null) != null then
+        {phase: .phase, ready: .ready, later_today: .later_today, backlog: .backlog,
+         backlog_beyond_limit: .backlog_beyond_limit, new_today: .new_today, new_goal: .new_goal,
+         later_next_in: (later_in(.later_next_due_at) // "")}
+       else {} end)
     # Only when the card has a type label (older daemons omit it), so the flat JSON stays as before.
     + (if $k.kind_label then {kind_label: $k.kind_label, kind_badge: "[\($k.kind_label)] ", kind_prefix: "\($k.kind_label) · "} else {} end)
     # Only while waiting, so the flat JSON of every other state stays as before; a template
@@ -512,9 +548,12 @@ def buttons($w; $s):
                  else . end)})
   | add // {};
 conf as $w | statename as $s | flat($s) as $f
-| $f + { text: (pick($w; "text"; $s; "{new}/{learning}/{review}") | fill($f) | sub("\\s+$"; "")),
-    tooltip: (pick($w; "tooltip"; $s; "") | fill($f) | sub("\\s+$"; "")),
-    class: (pick($w; "class"; $s; "{state}") | fill($f)),
+# Template-only fields: not part of the flat JSON, so older output stays byte-identical.
+| ($f + {counts_text: (if (.ready // null) != null then "\(.ready)" else "\(.counts.new // 0)/\(.counts.learning // 0)/\(.counts.review // 0)" end),
+         loop_line: loop_line(.counts // {})}) as $t
+| $f + { text: (pick($w; "text"; $s; "{counts_text}") | fill($t) | sub("\\s+$"; "")),
+    tooltip: (pick($w; "tooltip"; $s; "") | fill($t) | sub("\\s+$"; "")),
+    class: (pick($w; "class"; $s; (if $s != "front" and $s != "back" and ($f.phase // "") != "" then "{phase}" else "{state}" end)) | fill($t)),
     alt: $s, state: $s, buttons: buttons($w; $s) }
 | if $json then . else .text end
 '

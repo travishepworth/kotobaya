@@ -107,9 +107,11 @@ class ReviewHandler:
         )
         self._journal.append(entry)  # durable before the card advances or anything is sent
         session.pop_current()
+        session.note_answer(card, rating)
         session.last = Last(rating=sent_button, undoable=True, review_id=entry.id)
         self._last_card = card
         self._kick(daemon)
+        daemon.serve_due_first()
 
     async def undo(self, daemon: Daemon) -> None:
         session = daemon.session

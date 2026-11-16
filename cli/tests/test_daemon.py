@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from conftest import make_loop
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 
 from kotobaya_cli.daemon.backend import BackendError, EventStream, iter_sse_events
@@ -425,3 +426,237 @@ class _Sub:
 
     def put(self, line: str) -> None:
         self.lines.append(line)
+
+
+# ---- ADR-037: the review loop --------------------------------------------------
+
+
+def _loop_snapshot(
+    phase: str, *ids: str, study_day: str = "2026-11-15", **loop: Any
+) -> QueueSnapshot:
+    items = [CardEntry(i, "recognition", dict(PREVIEWS)) for i in ids]
+    return QueueSnapshot(
+        items,
+        Counts(40, 26, 9),  # the deprecated counts: never what the widget shows
+        DAY_END,
+        study_day=study_day,
+        loop=make_loop(phase, **loop),
+    )
+
+
+def test_status_per_phase(paths: Paths) -> None:
+    due = "2026-11-15T10:05:00.000Z"
+    cases: list[tuple[QueueSnapshot, dict[str, Any]]] = [
+        (
+            _loop_snapshot("reviewing", "a", ready_review=9, ready_total=9, later_count=26),
+            {"phase": "reviewing", "ready": 9, "later_today": 26, "can_keep_going": False},
+        ),
+        (
+            _loop_snapshot("goal_reached", backlog_reviews=335, new_today=40),
+            {"phase": "goal_reached", "backlog": 335, "can_keep_going": True, "next_due_at": None},
+        ),
+        (
+            _loop_snapshot(
+                "done_for_today",
+                reviews_limit=200,
+                reviews_today=200,
+                backlog_reviews=335,
+                backlog_beyond_limit=135,
+            ),
+            {
+                "phase": "done_for_today",
+                "backlog_beyond_limit": 135,
+                "reviews_limit": 200,
+                "can_keep_going": True,
+            },
+        ),
+        (
+            _loop_snapshot("waiting", later_count=3, next_due_at=due),
+            {"phase": "waiting", "next_due_at": due, "can_keep_going": False},
+        ),
+        (
+            _loop_snapshot("empty"),
+            {"phase": "empty", "next_due_at": None, "can_keep_going": False},
+        ),
+    ]
+
+    async def scenario() -> None:
+        backend = FakeBackend()
+        for snap, expected in cases:
+            daemon = Daemon(backend, paths)
+            backend.snap = snap
+            await daemon.refetch()
+            state = check_state(daemon.session.state())
+            assert state["conn"] == "ok"
+            for key, value in expected.items():
+                assert state[key] == value, (expected["phase"], key)
+
+    asyncio.run(scenario())
+
+
+def test_waiting_timer_only_in_phase_waiting(paths: Paths) -> None:
+    now = datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)
+    daemon = Daemon(FakeBackend(), paths, clock=lambda: now, timer_seconds=3600)
+    due = (now + timedelta(seconds=90)).isoformat()
+    daemon.session.apply_queue(
+        _loop_snapshot("goal_reached", later_count=2, next_due_at=due), check_current=False
+    )
+    assert daemon._timer_wait() == 3600  # C4: a later hint is not a timer
+    daemon.session.apply_queue(
+        _loop_snapshot("waiting", later_count=2, next_due_at=due), check_current=False
+    )
+    assert daemon._timer_wait() == pytest.approx(91.0)
+
+
+def test_server_without_loop_is_server_too_old(paths: Paths) -> None:
+    backend = FakeBackend()
+    backend.error = BackendError("too_old", "no loop")
+
+    async def scenario() -> None:
+        daemon = Daemon(backend, paths)
+        sub = _Sub()
+        daemon._subscribers.add(sub)  # type: ignore[arg-type]
+        await daemon.refetch()
+        state = check_state(daemon.session.state())
+        assert state["conn"] == "server_too_old" and state["card"] is None
+        assert state["counts"] is None and state["phase"] is None
+        assert "server too old" in json.loads(sub.lines[-1])["notice"]
+
+    asyncio.run(scenario())
+
+
+def _recording(backend: FakeBackend) -> list[bool]:
+    flags: list[bool] = []
+    original = backend.fetch_queue
+
+    def fetch(keep_going: bool = False) -> QueueSnapshot:
+        flags.append(keep_going)
+        return original(keep_going)
+
+    backend.fetch_queue = fetch  # type: ignore[method-assign]
+    return flags
+
+
+def test_keep_going_day_survives_restart(paths: Paths) -> None:
+    backend = FakeBackend()
+    flags = _recording(backend)
+    backend.snap = _loop_snapshot("goal_reached")
+
+    async def scenario() -> None:
+        first = Daemon(backend, paths)
+        await first.refetch()
+        await first.handle(Action("keep_going"))
+        await first.idle()
+        assert paths.keep_going_file.read_text().strip() == "2026-11-15"
+        flags.clear()
+        second = Daemon(backend, paths)  # a restart
+        assert second.session.keep_going and second.session.keep_going_day == "2026-11-15"
+        await second.refetch()
+        assert flags[0] is True  # the first fetch already keeps going
+        assert second.session.keep_going is True
+
+    asyncio.run(scenario())
+
+
+def test_keep_going_dropped_on_new_day(paths: Paths) -> None:
+    backend = FakeBackend()
+    flags = _recording(backend)
+    paths.keep_going_file.parent.mkdir(parents=True, exist_ok=True)
+    paths.keep_going_file.write_text("2026-11-14\n")  # started yesterday
+    backend.snap = _loop_snapshot("reviewing", "a", study_day="2026-11-15")
+
+    async def scenario() -> None:
+        daemon = Daemon(backend, paths)
+        assert daemon.session.keep_going is True
+        await daemon.refetch()
+        assert flags == [True, False]  # the mismatching response is discarded, refetched normally
+        assert daemon.session.keep_going is False and daemon.session.keep_going_day is None
+        assert not paths.keep_going_file.exists()
+        assert check_state(daemon.session.state())["keep_going"] is False
+        await Daemon(backend, paths).refetch()
+        assert flags[-1] is False  # a later restart stays off
+
+    asyncio.run(scenario())
+
+
+class _AckBackend(FakeBackend):
+    """post_answer succeeds; the queue it serves is whatever the test sets."""
+
+    def post_answer(self, entry: AnswerEntry) -> None:
+        return None
+
+
+def test_due_card_served_before_cached_new(paths: Paths) -> None:
+    """C1: once now >= T the cached cards are not served; the due learning card comes first."""
+    from kotobaya_cli.daemon.journal import Journal
+    from kotobaya_cli.daemon.review import ReviewHandler
+
+    t0 = datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)
+    clock = [t0]
+    due = (t0 + timedelta(seconds=60)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    backend = _AckBackend()
+    backend.snap = _loop_snapshot(
+        "reviewing", "r1", "new1", "new2", later_count=1, next_due_at=due, ready_total=1
+    )
+
+    async def scenario() -> None:
+        handler = ReviewHandler(Journal(paths.journal), utc_offset_min=lambda: 0)
+        daemon = Daemon(backend, paths, clock=lambda: clock[0], handler=handler, timer_seconds=3600)
+        await daemon.refetch()
+        assert daemon.session.due_floor == datetime.fromisoformat(due)
+        # Before T the cache is served as it is.
+        await daemon.handle(Action("reveal"))
+        await daemon.handle(AnswerCmd("good"))
+        await handler.idle()
+        assert daemon.session.current is not None and daemon.session.current.card_id == "new1"
+        # The learning card came due while "new1" was on screen. Answering it must not show
+        # the cached "new2": the refetch puts the due card first.
+        backend.snap = _loop_snapshot("reviewing", "late", "new2", ready_learning=1, ready_total=1)
+        clock[0] = t0 + timedelta(seconds=61)
+        await daemon.handle(Action("reveal"))
+        await daemon.handle(AnswerCmd("good"))
+        await daemon.idle()
+        await handler.idle()
+        assert daemon.session.current is not None
+        assert [c.card_id for c in daemon.session.queue] == ["late", "new2"]
+
+    asyncio.run(scenario())
+
+
+def test_http_backend_maps_loop_and_rejects_a_server_without_one(fake_http: Any) -> None:
+    from kotobaya_cli.api import Settings
+    from kotobaya_cli.daemon.backend import HttpBackend
+
+    body: dict[str, Any] = {
+        "items": [],
+        "counts": {"new": 40, "learning": 26, "review": 9},
+        "study_day": "2026-11-15",
+        "day_ends_at": DAY_END,
+        "generated_at": "2026-11-15T09:00:00.000Z",
+    }
+    backend = HttpBackend(Settings("https://kotobaya.test/api/v1", "kbp_x"))
+    fake_http.add("GET", "/api/v1/review/queue", 200, body)
+    with pytest.raises(BackendError) as err:
+        backend.fetch_queue()
+    assert err.value.kind == "too_old"
+    body = dict(body)
+    body["loop"] = {
+        "phase": "waiting",
+        "keep_going": False,
+        "ready": {"learning": 0, "review": 0, "total": 0},
+        "later_today": {"count": 26, "next_due_at": "2026-11-15T09:06:00.000Z"},
+        "backlog": {"reviews": 0, "beyond_limit": 0},
+        "reviews": {"today": 0, "limit": None},
+        "new": {"today": 12, "goal": 40, "available": False},
+    }
+    fake_http.routes.clear()
+    fake_http.add("GET", "/api/v1/review/queue", 200, body)
+    loop = backend.fetch_queue().loop
+    assert loop is not None
+    assert (loop.phase, loop.ready_total, loop.later_count, loop.next_due_at) == (
+        "waiting",
+        0,
+        26,
+        "2026-11-15T09:06:00.000Z",
+    )
+    assert loop.reviews_limit is None and loop.new_goal == 40

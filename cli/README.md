@@ -49,14 +49,23 @@ Actions: `reveal`, `again`, `hard`, `good`, `easy`, `nothing`, `something`, `oka
 user's button mode, so `good` and `again` work in both modes. On the socket the same names are
 `{"cmd": "..."}`.
 
-**Keep going** (same semantics as the web and Android). When the queue is done under today's
-limits, the state has `"card": null` and `"more_available": true`; send `keep_going` to continue
-past every limit: all reviews due today first (no review cap), then new cards in batches, refilled
-automatically after each answer. Deck words that have no note yet become new cards on the server
-when it builds the queue; the daemon never creates notes itself. It ends only when a keep-going
-fetch is empty (`"card": null`, `"keep_going": true`, `"more_available": false`: nothing is left
-today). Keep going lives in the daemon's memory: it stops when the study day changes and when the
-daemon restarts. The state carries `"keep_going"` (bool) and `"more_available"` (bool). `"loading"` (bool) is true while a `refresh`/`keep_going` refetch runs in the background.
+**Review loop (ADR-037).** The daemon renders what the server's `loop` says and decides nothing
+itself. The state carries `phase` (`reviewing`, `goal_reached`, `done_for_today`, `waiting`,
+`empty`), `ready` (cards answerable now: learning due + reviews; new cards and learning cards due
+later are not in it), `later_today` (+ `later_next_due_at`), `backlog`, `backlog_beyond_limit`,
+`reviews_today`, `reviews_limit`, `new_today`, `new_goal`. `counts`, `more_available` and
+`can_keep_going` stay but are deprecated (`can_keep_going` = phase is `goal_reached` or
+`done_for_today`, nothing shown, keep going off). `next_due_at` is set only in phase `waiting`
+(the daemon's single timer). A server without `loop` gives `"conn": "server_too_old"` (no cards,
+`counts` null); the widget says "server too old". A card that came due is always the next card:
+once the earliest expected due instant has passed, the cached queue is not served and the daemon
+fetches again first.
+
+**Keep going** (per device, not synced). In phase `goal_reached`/`done_for_today` send
+`keep_going` to continue past every limit: due reviews first (no cap), then new cards without
+end. The study day it was started on is stored in `$XDG_STATE_HOME/kotobaya/keep-going-day`, so
+it survives a daemon restart; on a different study day it is dropped. `stop_keep_going` clears it.
+The state carries `"keep_going"` (bool); `"loading"` (bool) is true while a refetch runs.
 
 ### Keep going from `kby`
 
@@ -65,10 +74,9 @@ kby -k          # or: kby keep    start keep going (alias: kby do keep_going)
 kby -K          # or: kby unkeep  back to today's limits (alias: kby do stop_keep_going)
 ```
 
-Offered whenever nothing is shown and the server has more (`"can_keep_going": true`): done,
-done for now, and while waiting for a learning card. A learning card that falls due is still
-served at its due instant, never early. `kby -f` shows it in the tooltip and the default widget
-binds left click to it in the done and waiting states; `kby serve` has `actions.keep_going` and
+Offered in phases `goal_reached` and `done_for_today` (`"can_keep_going": true`). A learning
+card that falls due is still served at its due instant, never early. `kby -f` shows it in the tooltip and the default widget
+binds left click to it in the done state; `kby serve` has `actions.keep_going` and
 `actions.stop_keep_going`. The daemon state also has `"keep_going"` (active).
 
 ## watch

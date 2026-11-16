@@ -8,8 +8,9 @@
   "required": ["v", "conn", "counts", "day_ends_at", "card", "last", "pending", "notice"],
   "properties": {
     "v": {"const": 1},
-    "conn": {"enum": ["ok", "offline", "auth"]},
+    "conn": {"enum": ["ok", "offline", "auth", "server_too_old"], "description": "server_too_old (ADR-037): the server sends no review loop; no cards, counts null, notice says so."},
     "counts": {
+      "description": "Deprecated (ADR-037): the server's legacy counts (learning includes cards due later). Use phase/ready/later_today/new_today.",
       "oneOf": [
         {"type": "null"},
         {
@@ -73,9 +74,19 @@
     "pending": {"type": "integer", "minimum": 0},
     "notice": {"type": ["string", "null"]},
     "keep_going": {"type": "boolean", "description": "C-26/C-27: keep going is on for this daemon run (past today's limits until a keep-going fetch is empty)."},
-    "more_available": {"type": "boolean", "description": "C-26: the server's more_available of the last fetch: done under today's limits, keep going has more."},
-    "can_keep_going": {"type": "boolean", "description": "Keep going can be started now: no card is shown, the server's more_available is true (done, done-for-now or waiting) and keep going is not already on."},
+    "more_available": {"type": "boolean", "description": "Deprecated (ADR-037; use phase). C-26: the server's more_available of the last fetch: done under today's limits, keep going has more."},
+    "can_keep_going": {"type": "boolean", "description": "Deprecated: phase in goal_reached/done_for_today, no card shown, keep going not on."},
     "loading": {"type": "boolean", "description": "A refresh or keep-going refetch is running in the background; reveal and answer still work."},
-    "next_due_at": {"type": ["string", "null"], "description": "ADR-033: with no card shown, the UTC instant the next learning card falls due today (the daemon refetches then); null otherwise. Counts are the server's, unchanged."}
+    "next_due_at": {"type": ["string", "null"], "description": "ADR-033: with no card shown, the UTC instant the next learning card falls due today (the daemon refetches then); null otherwise. Only in phase waiting (C4: the one timer)."},
+    "phase": {"enum": ["reviewing", "goal_reached", "done_for_today", "waiting", "empty", null], "description": "ADR-037 loop phase of the last response; null until loaded or while not conn ok."},
+    "ready": {"type": ["integer", "null"], "minimum": 0, "description": "Ready now = ready learning + ready reviews (new cards excluded)."},
+    "later_today": {"type": ["integer", "null"], "minimum": 0, "description": "Learning cards due later today."},
+    "later_next_due_at": {"type": ["string", "null"], "description": "UTC instant of the earliest of those; null when none."},
+    "backlog": {"type": ["integer", "null"], "minimum": 0, "description": "Due reviews regardless of the review limit."},
+    "backlog_beyond_limit": {"type": ["integer", "null"], "minimum": 0},
+    "reviews_today": {"type": ["integer", "null"], "minimum": 0},
+    "reviews_limit": {"type": ["integer", "null"], "minimum": 0, "description": "null: reviews unlimited (or not loaded)."},
+    "new_today": {"type": ["integer", "null"], "minimum": 0},
+    "new_goal": {"type": ["integer", "null"], "minimum": 0}
   }
 }

@@ -23,6 +23,7 @@ from kotobaya_cli.daemon.session import (
     QUEUE_LIMIT,
     CardEntry,
     Counts,
+    Loop,
     QueueSnapshot,
     format_interval,
 )
@@ -33,7 +34,7 @@ GRADING_KEY = "scheduler.grading_buttons"
 
 
 class BackendError(Exception):
-    """kind is 'offline' (unreachable), 'degraded' (reachable but the fetch failed: read timeout,
+    """kind is 'too_old' (the server sends no `loop`: older than ADR-037), 'offline' (unreachable), 'degraded' (reachable but the fetch failed: read timeout,
     5xx, unparsable body), 'auth' (401/403) or 'terminal'.
 
     Review POSTs (classify_review) also use 'forbidden' (403: the token lacks the review scope)
@@ -42,6 +43,13 @@ class BackendError(Exception):
     def __init__(self, kind: str, message: str = "") -> None:
         super().__init__(message or kind)
         self.kind = kind
+
+
+def _iso(instant: datetime) -> str:
+    return (
+        instant.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
+        + f"{instant.microsecond // 1000:03d}Z"
+    )
 
 
 def classify(exc: Exception) -> BackendError:
@@ -169,12 +177,26 @@ class HttpBackend:
             )
         except (OpenApiException, urllib3.exceptions.HTTPError, OSError) as exc:
             raise classify(exc) from exc
+        wire = queue.loop
+        if wire is None:  # ADR-037: no fallback to the deprecated counts
+            raise BackendError("too_old", "server too old: no review loop in the queue")
         now = datetime.now(UTC)
         items = []
         for item in queue.items:
             previews = None
+            learn_due = None
             if item.preview is not None:
                 p = item.preview
+                learn_due = {
+                    name: _iso(opt.due_at)
+                    for name, opt in (
+                        ("again", p.again),
+                        ("hard", p.hard),
+                        ("good", p.good),
+                        ("easy", p.easy),
+                    )
+                    if opt.interval_days <= 0
+                }
                 previews = {
                     name: format_interval(opt.due_at, opt.interval_days, now)
                     for name, opt in (
@@ -201,22 +223,37 @@ class HttpBackend:
                     previews=previews,
                     text=text,
                     note_type=None if note is None else str(note.type.value),
+                    learn_due=learn_due or None,
                 )
             )
         c = queue.counts
         return QueueSnapshot(
             items=items,
             counts=Counts(new=c.new, learning=c.learning, review=c.review),
-            day_ends_at=queue.day_ends_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
-            + f"{queue.day_ends_at.microsecond // 1000:03d}Z",
+            day_ends_at=_iso(queue.day_ends_at),
+            loop=Loop(
+                phase=str(getattr(wire.phase, "value", wire.phase)),
+                keep_going=wire.keep_going,
+                ready_learning=wire.ready.learning,
+                ready_review=wire.ready.review,
+                ready_total=wire.ready.total,
+                later_count=wire.later_today.count,
+                next_due_at=None
+                if wire.later_today.next_due_at is None
+                else _iso(wire.later_today.next_due_at),
+                backlog_reviews=wire.backlog.reviews,
+                backlog_beyond_limit=wire.backlog.beyond_limit,
+                reviews_today=wire.reviews.today,
+                reviews_limit=wire.reviews.limit,
+                new_today=wire.new.today,
+                new_goal=wire.new.goal,
+                new_available=wire.new.available,
+            ),
             more_available=bool(queue.more_available),
             study_day=queue.study_day.isoformat(),
             to_materialize=queue.to_materialize or 0,
             next_learning_due_at=(
-                None
-                if queue.next_learning_due_at is None
-                else queue.next_learning_due_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
-                + f"{queue.next_learning_due_at.microsecond // 1000:03d}Z"
+                None if queue.next_learning_due_at is None else _iso(queue.next_learning_due_at)
             ),
         )
 
