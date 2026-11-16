@@ -75,6 +75,9 @@ android {
         buildConfig = true // UI-FOUND-APP: BuildConfig.DEBUG gates the demo-data switch
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    // SHELL-A3: AAPT's default pattern has `<dir>_*`, which silently drops the SPA's `web/_app/` (every script and
+    // stylesheet). Same list without that entry.
+    androidResources { ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~" }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -329,6 +332,8 @@ dependencies {
     testImplementation("androidx.glance:glance-appwidget-testing:1.1.1")
     // T309: UnifiedPush connector (ntfy app as distributor)
     implementation("org.unifiedpush.android:connector:3.0.10")
+    // SHELL-A3: WebViewAssetLoader + WebMessageListener for the web shell (ADR-036)
+    implementation("androidx.webkit:webkit:1.12.1")
     // T303c: WorkManager test driver for the sync work scheduling tests
     testImplementation("androidx.work:work-testing:2.10.0")
     testImplementation("com.github.luben:zstd-jni:1.5.6-4")

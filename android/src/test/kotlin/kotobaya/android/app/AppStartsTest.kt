@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import kotlin.test.assertTrue
-import kotobaya.android.MainActivity
+import kotobaya.android.legacy.LegacyActivity
 import kotobaya.android.R
 import kotobaya.android.nav.Tab
 import kotobaya.android.nav.navTag
@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 @Config(application = KotobayaApp::class, sdk = [34])
 class AppStartsTest {
     @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    val rule = createAndroidComposeRule<LegacyActivity>()
 
     @After
     fun tearDown() = stopKoin()

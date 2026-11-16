@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import kotlin.test.assertTrue
-import kotobaya.android.MainActivity
+import kotobaya.android.legacy.LegacyActivity
 import kotobaya.android.R
 import kotobaya.android.app.KotobayaApp
 import kotobaya.android.di.FeatureRegistry
@@ -32,7 +32,7 @@ class SettingsTabTest {
     }
 
     @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    val rule = createAndroidComposeRule<LegacyActivity>()
 
     @After
     fun tearDown() = stopKoin()

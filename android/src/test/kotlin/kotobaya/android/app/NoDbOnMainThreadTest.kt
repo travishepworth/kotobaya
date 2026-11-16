@@ -6,7 +6,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.work.testing.WorkManagerTestInitHelper
 import kotlin.test.assertEquals
-import kotobaya.android.MainActivity
+import kotobaya.android.legacy.LegacyActivity
 import kotobaya.android.R
 import kotobaya.android.db.DbThreadGuard
 import kotobaya.android.di.FeatureRegistry
@@ -42,7 +42,7 @@ class NoDbOnMainThreadTest {
     }
 
     @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    val rule = createAndroidComposeRule<LegacyActivity>()
 
     @After
     fun tearDown() = stopKoin()

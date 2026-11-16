@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.WindowCompat
 import kotlin.test.assertEquals
-import kotobaya.android.MainActivity
+import kotobaya.android.legacy.LegacyActivity
 import kotobaya.android.app.KotobayaApp
 import kotobaya.android.ui.theme.KbColorsDark
 import kotobaya.android.ui.theme.KbColorsLight
@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 @Config(application = KotobayaApp::class, sdk = [34])
 class SystemBarsTest {
     @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    val rule = createAndroidComposeRule<LegacyActivity>()
 
     @After
     fun tearDown() {

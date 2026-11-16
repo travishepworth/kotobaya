@@ -1,0 +1,153 @@
+package kotobaya.android.shell.web
+
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotobaya.android.shell.api.LocalApi
+import kotobaya.android.shell.api.Problems
+import kotobaya.android.shell.api.ShellRequest
+import kotobaya.android.shell.api.ShellResponse
+import kotobaya.contracts.sync.JsonObject
+
+/** Where native posts a message to: the reply proxy of the page that sent the last message. */
+fun interface BridgeReply {
+    fun post(text: String)
+}
+
+/**
+ * The transport-independent half of the bridge (SHELL.md 2.1-2.5): origin and main-frame filter, decoding,
+ * duplicate ids, page lives, `ready` → `hello`, dispatch of `req` to [handle] on [io] and posting of `res`
+ * on [main]. The Android adapter is [BridgeTransport]; tests drive this directly.
+ *
+ * Threading: [onMessage], [onPageStarted] and [send] are called on the main thread.
+ */
+class BridgeCore(
+    private val scope: CoroutineScope,
+    private val io: CoroutineDispatcher,
+    private val main: CoroutineDispatcher,
+    private val handle: suspend (ShellRequest) -> ShellResponse,
+    /** `ShellEventHello` data (device pull cursor, log epoch, device clock); called on [io]. */
+    private val helloData: () -> JsonObject,
+    private val nowMs: () -> Long = System::currentTimeMillis,
+    /** Messages of types this layer does not act on itself (`back.result`, `back.state`, `haptic`, `theme`): A4. */
+    private val onWebMessage: (BridgeMessage) -> Unit = {},
+    /** A `ready` asked for a newer `LOCAL_API_VERSION` than this shell has (SHELL.md 7.2). */
+    private val onIncompatible: (BridgeMessage.Ready) -> Unit = {},
+    private val warn: (String) -> Unit = {},
+) {
+    /** Incremented by every page load; a `res` of an older page life is dropped (2.5 "Reload"). */
+    private var pageLife = 0L
+    private val seenIds = HashSet<String>()
+    private var ready = false
+    private var reply: BridgeReply? = null
+    private var pendingNavigate: String? = null
+
+    /** True once `ready` arrived in this page life. */
+    val isReady: Boolean get() = ready
+
+    /** A new page load started (reload, renderer restart): forget ids, drop late `res`, not ready (2.5). */
+    fun onPageStarted() {
+        pageLife++
+        seenIds.clear()
+        ready = false
+        reply = null
+    }
+
+    /**
+     * One message from the WebView. Dropped without a reply unless [sourceOrigin] is exactly the shell origin and
+     * [isMainFrame] (SHELL.md 2.1); invalid messages are dropped silently and logged without the body (2.3).
+     */
+    fun onMessage(text: String?, sourceOrigin: String, isMainFrame: Boolean, replyTo: BridgeReply) {
+        if (sourceOrigin.trimEnd('/') != ShellOrigin.ORIGIN || !isMainFrame) {
+            warn("bridge: dropped a message from ${if (isMainFrame) sourceOrigin else "a sub-frame"}")
+            return
+        }
+        if (text == null) return
+        val msg = when (val d = BridgeCodec.decode(text, BridgeDirection.WEB_TO_NATIVE)) {
+            is Decoded.Valid -> d.message
+            is Decoded.Unknown -> return
+            is Decoded.Invalid -> {
+                warn("bridge: dropped an invalid message (${d.reason})")
+                return
+            }
+        }
+        reply = replyTo
+        when (msg) {
+            is BridgeMessage.Req -> dispatch(msg, replyTo)
+            is BridgeMessage.Ready -> onReady(msg, replyTo)
+            else -> onWebMessage(msg)
+        }
+    }
+
+    private fun dispatch(req: BridgeMessage.Req, replyTo: BridgeReply) {
+        if (!seenIds.add(req.id)) return // duplicate id: not executed again, no second res (2.5)
+        val life = pageLife
+        scope.launch(io) {
+            val response = try {
+                handle(ShellRequest.fromRaw(req.method, req.path, req.query, req.headers, req.body))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                warn("bridge: ${req.method} ${req.path} failed: ${e.javaClass.simpleName}")
+                Problems.internal().toResponse(req.path, req.header("x-request-id") ?: req.id)
+            }
+            val text = BridgeCodec.encode(BridgeMessage.Res(req.id, response.status, response.headers, response.body))
+            withContext(main) {
+                if (life == pageLife) replyTo.post(text)
+            }
+        }
+    }
+
+    private fun onReady(ready: BridgeMessage.Ready, replyTo: BridgeReply) {
+        if (this.ready) return // once per page life
+        if (ready.minLocalApi > LocalApi.LOCAL_API_VERSION) onIncompatible(ready)
+        this.ready = true
+        val life = pageLife
+        scope.launch(io) {
+            val data = try {
+                helloData()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                warn("bridge: hello data failed: ${e.javaClass.simpleName}")
+                null
+            }
+            withContext(main) {
+                if (life != pageLife) return@withContext
+                if (data != null) replyTo.post(BridgeCodec.encode(BridgeMessage.Event("hello", formatAt(nowMs()), data)))
+                pendingNavigate?.let {
+                    pendingNavigate = null
+                    replyTo.post(BridgeCodec.encode(BridgeMessage.Navigate(it)))
+                }
+            }
+        }
+    }
+
+    /**
+     * Sends a native message (A4/A6). Before `ready` nothing is sent (2.5): a `navigate` is kept (only the latest)
+     * and delivered right after `hello`; `event` and `back` are dropped. Returns true when posted now.
+     */
+    fun send(message: BridgeMessage): Boolean {
+        val r = reply
+        if (!ready || r == null) {
+            if (message is BridgeMessage.Navigate) pendingNavigate = message.path
+            return false
+        }
+        r.post(BridgeCodec.encode(message))
+        return true
+    }
+
+    private fun BridgeMessage.Req.header(name: String): String? = headers[name]
+
+    companion object {
+        private val AT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
+
+        /** RFC 3339 UTC with milliseconds (`event.at`). */
+        fun formatAt(ms: Long): String = AT.format(Instant.ofEpochMilli(ms))
+    }
+}

@@ -17,9 +17,24 @@
         android:theme="@style/Theme.Kotobaya"
         android:allowBackup="false"
         android:enableOnBackInvokedCallback="true">
+        <!-- SHELL-A3 (ADR-036): the WebView shell. configChanges keep the SPA (and its in-flight requests) across
+             rotation, keyboard and dark-mode changes instead of reloading the page. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- SHELL-A3: the Compose app under its own launcher entry and task until SHELL-Z1. -->
+        <activity
+            android:name=".legacy.LegacyActivity"
+            android:exported="true"
+            android:label="@string/legacy_launcher_label"
+            android:taskAffinity="kotobaya.android.legacy">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
