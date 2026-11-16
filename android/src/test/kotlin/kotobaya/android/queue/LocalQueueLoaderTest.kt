@@ -260,6 +260,21 @@ class LocalQueueLoaderTest {
     }
 
     @Test
+    fun reviewsUnlimitedReachesTheQueueLimits() {
+        setting("scheduler.timezone", "\"Asia/Tokyo\"")
+        setting("scheduler.reviews_per_day", "1")
+        for (i in 1..3) {
+            addNote(i)
+            addCard(i, i, state = "review", due = NOW - HOUR)
+        }
+        assertEquals(1, loader().load().queue.items.count { it.kind == QueueItemKind.REVIEW })
+        setting("scheduler.reviews_unlimited", "true")
+        val loaded = loader().load()
+        assertTrue(loaded.input.limits.reviewsUnlimited)
+        assertEquals(3, loaded.queue.items.count { it.kind == QueueItemKind.REVIEW })
+    }
+
+    @Test
     fun addKanjiCountsOnlyForTheExactStrings() {
         setting("scheduler.kanji_before_vocab", "true")
         addDeck(1, settings = """{"add_kanji":"off"}""")

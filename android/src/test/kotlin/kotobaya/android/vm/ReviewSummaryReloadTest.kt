@@ -98,4 +98,21 @@ class ReviewSummaryReloadTest {
         assertIs<ReviewState.Showing>(vm.state.value.review, "reloaded by itself at the new study day")
         vm.leave()
     }
+
+    @Test
+    fun theDayRollTimerIsRearmedAfterAReloadIntoTheSameSummary() {
+        val t0 = System.currentTimeMillis()
+        val first = t0 + 3_000
+        val second = t0 + 8_000
+        val r = Rig(nextDay = { c -> if (c < first) first else if (c < second) second else Long.MAX_VALUE / 4 })
+        val vm = finished(r)
+        // first roll: nothing new, the summary stays; then cards appear and only the second roll can show them
+        while (System.currentTimeMillis() < first + 1_000) Thread.sleep(20)
+        assertIs<ReviewState.Summary>(vm.state.value.review)
+        r.due = true
+        val until = System.currentTimeMillis() + 20_000
+        while (vm.state.value.review !is ReviewState.Showing && System.currentTimeMillis() < until) Thread.sleep(20)
+        assertIs<ReviewState.Showing>(vm.state.value.review, "the second day roll reloaded the summary")
+        vm.leave()
+    }
 }

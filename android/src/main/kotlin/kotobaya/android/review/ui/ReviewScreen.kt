@@ -365,6 +365,12 @@ private fun ReviewCard(card: ShownCard, side: CardSide, state: ReviewUiState, in
                 Modifier.align(Alignment.TopStart).padding(8.dp),
             )
         }
+        // CARD-KIND-BADGE: the note type, top centre (same wording as web), never wider than 30% so it cannot hit the New tag
+        kindLabelRes(card.noteType)?.let { res ->
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth(0.3f).padding(top = 8.dp), contentAlignment = Alignment.Center) {
+                kotobaya.android.ui.components.KbTagChip(T(res))
+            }
+        }
         if (rendered.audio.isNotEmpty()) {
             Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End) {
                 KbIconButton(KbIcons.Audio, T(R.string.review_play_audio), { intents.playAudio(rendered.audio.first()) }, variant = KbIconVariant.Tonal)
@@ -645,3 +651,14 @@ private fun EditSheet(note: kotobaya.android.review.actions.EditableNote, cardId
 
 private const val SWIPE_PX = 120f
 private const val TOAST_MS = 5_000L
+
+@androidx.annotation.StringRes
+private fun kindLabelRes(noteType: String): Int? = when (noteType) {
+    "vocab" -> R.string.review_kind_vocab
+    "kanji" -> R.string.review_kind_kanji
+    "phrase" -> R.string.review_kind_phrase
+    "grammar" -> R.string.review_kind_grammar
+    "sentence" -> R.string.review_kind_sentence
+    "custom" -> R.string.review_kind_custom
+    else -> null
+}

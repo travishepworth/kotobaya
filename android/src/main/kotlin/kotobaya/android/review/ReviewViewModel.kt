@@ -147,13 +147,17 @@ class ReviewViewModel(
     override fun onFailure(e: Throwable) {
         // the session may already show Failed itself (a failed build): the same Retry page, no inline error
         if (session == null || current.review == ReviewState.Loading || current.review == ReviewState.Failed) {
-            sessionJob?.cancel()
-            sessionJob = null
-            session = null
-            update { it.copy(review = ReviewState.Failed) }
+            failLoad()
         } else {
             setResult(R.string.review_error_action, false, 0)
         }
+    }
+
+    private fun failLoad() {
+        sessionJob?.cancel()
+        sessionJob = null
+        session = null
+        update { it.copy(review = ReviewState.Failed) }
     }
 
     /** 'Retry' after [ReviewState.Failed]: starts a fresh session. */
@@ -241,8 +245,25 @@ class ReviewViewModel(
         launchIo {
             try {
                 while (refreshAgain.getAndSet(false) && session === s && idle(current.review)) s.start()
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                // RC-FOLLOW-AND: a failed reload is a load failure (Failed + Retry), not an inline error over a page
+                if (session === s) failLoad()
+                return@launchIo
             } finally {
                 refreshing.set(false)
+            }
+            // RC-FOLLOW-AND: a reload into an equal state is not re-emitted, so re-arm the wake-up here
+            if (session === s) {
+                val st = current.review
+                scheduleDayRoll(
+                    idle(st),
+                    when (st) {
+                        is ReviewState.DeckDone -> st.nextLearningDueAt
+                        is ReviewState.Waiting -> st.nextDueAt
+                        else -> null
+                    },
+                )
             }
             // a call between the last check and the release
             if (refreshAgain.get()) refreshIfEmpty()

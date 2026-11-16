@@ -40,6 +40,12 @@
     <string name="review_caught_up_title">All caught up</string>
     <string name="review_caught_up_body">There are no more cards to study today.</string>
     <string name="review_new_badge">New</string>
+    <string name="review_kind_vocab">Vocab</string>
+    <string name="review_kind_kanji">Kanji</string>
+    <string name="review_kind_phrase">Phrase</string>
+    <string name="review_kind_grammar">Grammar</string>
+    <string name="review_kind_sentence">Sentence</string>
+    <string name="review_kind_custom">Custom</string>
     <string name="review_finished_back">Back to Today</string>
     <string name="review_summary_body">Everything due is reviewed. Your answers sync in the background.</string>
     <string name="review_stat_answered">Cards</string>

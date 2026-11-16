@@ -137,12 +137,13 @@ class ReviewHardeningTest {
 
     @Test
     fun aStaleQueueWhoseBuildFailsShowsFailed() {
-        seed("meaning")
-        seed("meaning")
+        val (a, b) = (seed("meaning") + seed("meaning")).sorted()
         val s = newSession()
         s.start()
         val first = assertIs<ReviewState.Showing>(s.state.value).card
+        assertEquals(a, first.cardId)
         s.flip()
+        answeredElsewhere(b) // the next card changed: a build is needed
         failing = true
         s.markStale()
         // stale: the next card waits for a build, which fails
@@ -201,5 +202,21 @@ class ReviewHardeningTest {
         s.answer(shown.token, Button.EASY)
         assertIs<ReviewState.Showing>(s.state.value)
         assertEquals(builds, loads, "no build between two cards in the normal case")
+    }
+
+    @Test
+    fun afterSyncAnUnchangedNextCardStillComesFromMemory() {
+        seed("meaning", "reading")
+        seed("meaning")
+        val s = newSession()
+        s.start()
+        val shown = assertIs<ReviewState.Showing>(s.state.value).card
+        val builds = loads
+        s.markStale() // a sync that changed nothing about the queue
+        s.flip()
+        now += 5_000
+        s.answer(shown.token, Button.EASY)
+        assertIs<ReviewState.Showing>(s.state.value)
+        assertEquals(builds, loads, "no rebuild (no WebView teardown) while the next card is unchanged")
     }
 }

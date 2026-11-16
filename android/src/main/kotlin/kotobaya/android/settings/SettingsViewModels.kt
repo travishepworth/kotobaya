@@ -49,6 +49,12 @@ class StudySettingsViewModel(
     @StringRes
     private fun save(fields: Map<StudyKey, String>, unlimited: Boolean): Int {
         var out: Int = R.string.study_unchanged
+        // The toggle is saved first and independently: an invalid number field must not block it.
+        when (model.setReviewsUnlimited(unlimited)) {
+            is StudyResult.Refused -> return R.string.study_refused
+            StudyResult.Saved -> out = R.string.study_saved
+            StudyResult.OutOfRange, StudyResult.Unchanged -> Unit
+        }
         for (k in StudyKey.entries) {
             // The greyed-out field keeps its stored value; it is not validated or saved while unlimited.
             if (unlimited && k == StudyKey.REVIEWS_PER_DAY) continue
@@ -59,11 +65,6 @@ class StudySettingsViewModel(
                 StudyResult.Saved -> out = R.string.study_saved
                 StudyResult.Unchanged -> Unit
             }
-        }
-        when (model.setReviewsUnlimited(unlimited)) {
-            is StudyResult.Refused -> return R.string.study_refused
-            StudyResult.Saved -> out = R.string.study_saved
-            StudyResult.OutOfRange, StudyResult.Unchanged -> Unit
         }
         return out
     }
