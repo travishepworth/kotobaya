@@ -855,4 +855,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - CORE-WS-UPDATED — word_status.updated_at order-dependent (from SHELL-L4) · model: opus · risk: med · deps: — · status: TODO (ticket: plan/tickets/CORE-WS-UPDATED.md)
 - SHELL-L5b — local mining follow-ups (forwarded header, uuid null, cursor, search perf, media prefilter) · model: sonnet · risk: med · deps: SHELL-L5 · status: MERGED (ticket: plan/tickets/SHELL-L5b.md)
 - AND-FLAKY-DUPCHECK — flaky DuplicateCheckExpressionTest (No suitable driver) · model: sonnet · risk: low · deps: — · status: TODO (ticket: plan/tickets/AND-FLAKY-DUPCHECK.md)
-- AND-MATERIALIZE-RACE — possible duplicate note from concurrent materialize (flaky test seen in Z1 check) · model: opus · risk: high · deps: — · status: TODO (ticket: plan/tickets/AND-MATERIALIZE-RACE.md)
+- AND-MATERIALIZE-RACE — possible duplicate note from concurrent materialize (flaky test seen in Z1 check) · model: opus · risk: high · deps: — · status: MERGED (ticket: plan/tickets/AND-MATERIALIZE-RACE.md)
