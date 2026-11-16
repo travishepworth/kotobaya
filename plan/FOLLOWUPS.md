@@ -499,3 +499,4 @@
 - SHELL-L2 review minor 2: materializeAllowed=false (server unreachable) counts pending entries in New but never serves them; SHELL.md 4.3 says to_materialize is then 0 — decide in contract/ADR (native app hides pending entries).
 - SHELL-L3 minors: idempotent-retry checkNotNull -> map to 404/410 if hard purge ever arrives; publish core fuzz harness as test fixture if sharing matters.
 - SHELL-A7 follow-ups: gap-fill counts announced only after sync outcome (not after gap-fill run); on-device AnkiConnect adds emit no note.created (uses TakobotoAnkiStore directly).
+- LOOP-CORE minors: unbounded new draw per fetch with huge new_per_day (cap draw at max(batch,|R|+1) if profiling shows cost); QueueBuilderTest.kt:77 comment 's 0' should be 's 1'; laterToday dedups ids (contract says no dedup; harmless).

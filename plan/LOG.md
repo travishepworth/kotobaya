@@ -1284,3 +1284,4 @@
 2026-11-16T16:55:53Z LOOP-CLI CHECK_GREEN (120) + MERGE; no legacy fallback (server_too_old) -> release api before daemon reinstall
 2026-11-16T17:00:10Z LOOP-CORE HANDOFF + CHECK_GREEN (core jvm+js); reviewer dispatched; chain CORE->SRV->AND merges together (core change breaks server/android tests alone)
 2026-11-16T17:00:10Z LOOP-SRV DISPATCH writer from t/LOOP-CORE [gradle lane]
+2026-11-16T17:01:55Z LOOP-CORE REVIEW_APPROVE (3 minors -> FOLLOWUPS); waits to merge with SRV+AND
