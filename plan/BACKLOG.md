@@ -851,3 +851,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - PORTRAIT-AND — Shell: Lock to portrait (device preference) · model: sonnet · risk: low · deps: LOOP-C (shell.yaml display ops), SHELL-A6 and SHELL-A7 merged (device Routes.kt) · status: TODO (ticket: plan/tickets/PORTRAIT-AND.md)
 - PORTRAIT-WEB — This device: "Lock to portrait" row · model: haiku · risk: low · deps: LOOP-C (generated shell client); PORTRAIT-AND for the phone check · status: MERGED (ticket: plan/tickets/PORTRAIT-WEB.md)
 - LOOP-WEB2 — loop UI follow-ups (explicit 200/200·40/40, drop new-per-session row, fake-shell v2) · model: haiku · risk: low · deps: LOOP-WEB · status: TODO (ticket: plan/tickets/LOOP-WEB2.md)
+- LOOP-C2 — parity scenario fix (fuzzed due order) · model: opus · risk: low · deps: LOOP-SRV, LOOP-AND · status: TODO (ticket: plan/tickets/LOOP-C2.md)
