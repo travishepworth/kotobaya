@@ -6,3 +6,4 @@
 LOOP-SRV found the hand-derived `expect` orders review cards by answer order, but Easy-graduated seed cards get fuzzed intervals (6 vs 7 days) so dueAt order differs (server is correct: most overdue first by dueAt). Fix the scenario (seed explicit due dates or expect by dueAt), re-record, remove the EXPECT_DISAGREES allowlist entry on both server and android.
 ## Acceptance
 - [ ] contracts, server, android checks green with no allowlist entry.
+- Also (from SHELL-L4 CONTRACT_CHANGE_REQUEST, additive): add parity scenarios bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews; record goldens (server) and run them on android.

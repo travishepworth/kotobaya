@@ -852,3 +852,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - PORTRAIT-WEB — This device: "Lock to portrait" row · model: haiku · risk: low · deps: LOOP-C (generated shell client); PORTRAIT-AND for the phone check · status: MERGED (ticket: plan/tickets/PORTRAIT-WEB.md)
 - LOOP-WEB2 — loop UI follow-ups (explicit 200/200·40/40, drop new-per-session row, fake-shell v2) · model: haiku · risk: low · deps: LOOP-WEB · status: MERGED (ticket: plan/tickets/LOOP-WEB2.md)
 - LOOP-C2 — parity scenario fix (fuzzed due order) · model: opus · risk: low · deps: LOOP-SRV, LOOP-AND · status: TODO (ticket: plan/tickets/LOOP-C2.md)
+- CORE-WS-UPDATED — word_status.updated_at order-dependent (from SHELL-L4) · model: opus · risk: med · deps: — · status: TODO (ticket: plan/tickets/CORE-WS-UPDATED.md)
