@@ -1298,3 +1298,5 @@
 2026-11-16T18:07:10Z SHELL-L5 DISPATCH writer-senior from t/SHELL-L4 (chain) [gradle lane]
 2026-11-16T18:08:49Z SHELL-L4 REVIEW_CHANGES 1 major (bulk query ignores live smart decks -> negated smart-deck query would suspend everything) + minors -> attempt 2. NOTE L5 branched from L4: rebase L5 after
 2026-11-16T18:16:28Z SHELL-L4 attempt 2 CHECK_GREEN + MERGE (smart decks compiled like server; negated smart-deck test)
+2026-11-16T18:35:41Z SHELL-L5 HANDOFF + CHECK_GREEN (rebased over L4 attempt 2); reviewer dispatched (focus: add_kanji parity with server createNote)
+2026-11-16T18:35:41Z SHELL-L6 DISPATCH writer from t/SHELL-L5 (chain) [gradle lane]
