@@ -32,7 +32,10 @@ check-android:
 	@if [ -z "$(ANDROID_SDK)" ] && [ ! -f local.properties ]; then \
 	  echo "SKIPPED: Android SDK not found (set ANDROID_HOME or create local.properties)"; \
 	else \
-	  $(GRADLE) :android:testDebugUnitTest; \
+	  $(GRADLE) :android:mergeOwnDebugAssets && \
+	  test -f android/build/intermediates/assets/ownDebug/mergeOwnDebugAssets/web/index.html && \
+	  test -f android/build/intermediates/assets/ownDebug/mergeOwnDebugAssets/web/shell-manifest.json && \
+	  $(GRADLE) :android:testDebugUnitTest -PskipWebBundle; \
 	fi
 
 check-acceptance:

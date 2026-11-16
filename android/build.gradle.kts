@@ -108,6 +108,73 @@ androidComponents {
     }
 }
 
+// SHELL-A1 (ADR-036): the SvelteKit SPA bundled as assets under web/ (the shell maps that to `/`).
+// Runs the same `pnpm build` nginx serves; build/shell-manifest.json is written by web/vite.config.ts.
+// -PskipWebBundle never invokes pnpm and keeps whatever the last run left in the output dir.
+val skipWebBundle = providers.gradleProperty("skipWebBundle").isPresent
+
+abstract class BundleWeb : DefaultTask() {
+    @get:Inject
+    abstract val exec: ExecOperations
+
+    @get:Internal
+    abstract val webDir: DirectoryProperty
+
+    @get:Input
+    abstract val skip: Property<Boolean>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val webInputs: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun bundle() {
+        val out = outputDir.get().asFile
+        if (skip.get()) {
+            File(out, "web").mkdirs()
+            return
+        }
+        val dir = webDir.get().asFile
+        exec.exec { workingDir = dir; commandLine("pnpm", "install", "--frozen-lockfile") }
+        exec.exec { workingDir = dir; commandLine("pnpm", "build") }
+        val dest = File(out, "web")
+        dest.deleteRecursively()
+        File(dir, "build").copyRecursively(dest, overwrite = true)
+    }
+}
+
+val bundleWeb = tasks.register<BundleWeb>("bundleWeb") {
+    val root = rootProject.layout.projectDirectory
+    webDir.set(root.dir("web"))
+    skip.set(skipWebBundle)
+    outputDir.set(layout.buildDirectory.dir("generated/shellAssets"))
+    if (!skipWebBundle) {
+        dependsOn(":core:npmPackage")
+        webInputs.from(
+            root.dir("web/src"),
+            root.dir("web/static"),
+            root.dir("web/scripts"),
+            root.dir("assets/card"),
+            root.dir("clients/typescript"),
+            root.dir("clients/typescript-shell"),
+            root.dir("core/build/npm/core"),
+            root.file("web/package.json"),
+            root.file("web/pnpm-lock.yaml"),
+            root.file("web/vite.config.ts"),
+            root.file("web/svelte.config.js"),
+            root.file("web/tsconfig.json"),
+        )
+    }
+}
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(bundleWeb) { it.outputDir }
+    }
+}
+
 // UI-FOUND-APP: the shared demo dataset (fixtures/demo/*.json, CC0) as debug-only assets under demo/, for the
 // debug "demo data" switch, the Compose previews and the screenshot harness. Release builds never carry it.
 abstract class CopyDemoAssets : DefaultTask() {
