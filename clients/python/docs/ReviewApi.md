@@ -279,6 +279,12 @@ numbers at the same moment whatever mode it is in.
 `day_ends_at` is returned and counted in `counts.review`. New-card limits, ordering and
 interleaving are unchanged. It is an ordinary setting written with `updateSettings`.
 
+**Reading cards retired (ADR-035).** While the setting `cards.reading_enabled` is not
+`true` (default `false`; SCHEMA.md 6.4), vocab `reading` cards are never returned, never
+counted in `counts`, never bury their siblings, and today's reviews of them use no limit
+(core `QueueInput.readingEnabled`, QueueBuilder rule 0). Materialized deck entries get
+no `reading` card. Setting it `true` returns the same cards with their history.
+
 **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
 `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).
 When nothing else is left but learning cards due later today, `items` is empty and

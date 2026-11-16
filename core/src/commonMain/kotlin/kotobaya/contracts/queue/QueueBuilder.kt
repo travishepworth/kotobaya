@@ -255,6 +255,15 @@ public data class QueueInput(
      * and behaves as for a deck.
      */
     public val decklessAddKanji: AddKanjiMode = AddKanjiMode.OFF,
+    /**
+     * ADR-035 (additive): setting `cards.reading_enabled` (bool, default **false**; SCHEMA.md 6.4),
+     * read by the platform loader with `kotobaya.contracts.cards.CardKinds.readingEnabled` (the 6.1
+     * bool test: only JSON `true` is true). While false, every candidate for which
+     * `CardKinds.isRetired(noteBaseType, kind, false)` holds (vocab `reading` cards) is **retired**
+     * and rule 0 removes it. Loaders keep passing retired cards (they are live); the builder alone
+     * applies the rule, so server and devices agree. True = the behaviour before ADR-035, bit for bit.
+     */
+    public val readingEnabled: Boolean = kotobaya.contracts.cards.CardKinds.READING_ENABLED_DEFAULT,
 )
 
 /** Why an item is in the queue. */
@@ -322,6 +331,20 @@ public data class ReviewQueue(
  * after every answer (it is cheap to rebuild and that keeps sibling burying and limits exact).
  *
  * Rules, in order:
+ * 0. **Retired cards** (ADR-035): the set `X` = ids of candidates with
+ *    `CardKinds.isRetired(noteBaseType, kind, input.readingEnabled)`. Every candidate in `X` is
+ *    dropped, and every [QueueInput.today] review whose `cardId` is in `X` is dropped, before any
+ *    other rule runs. So a retired card is never served, counted, drawn (new or add_kanji), never
+ *    sibling-buries another card (not even through a review answered today, e.g. an offline
+ *    review synced later) and does not use up any daily limit; [ReviewQueue.nextLearningDueAt]
+ *    and [ReviewQueue.moreAvailable] ignore it. A today review of a card that is not among the
+ *    candidates is kept as before (it cannot be identified as retired; loaders never omit a live
+ *    retired card). Pending entries are unaffected: the kinds their materialization creates come
+ *    from `CardGenerator.kindsForNewNote`, which never returns a retired kind, and an entry counts
+ *    1 for its vocab card(s) as before.
+ *    Example (burySiblings, readingEnabled false): note N with meaning M (REVIEW, due today) and
+ *    reading R (REVIEW, due today, answered `scheduled` today) → `[M]` (R neither shown nor burying
+ *    M); with readingEnabled true → `[]` (R's review buries M; R is not due again).
  * 1. **Eligible**: not `suspended`; `buriedUntil == null || buriedUntil <= now`; `wordOverride`
  *    not NEVER_FORGET, BLACKLISTED or IGNORED; and, if `burySiblings`, not **sibling-buried**: a
  *    card in state NEW or REVIEW is buried when [QueueInput.today] has a `scheduled` or `learning`
@@ -460,6 +483,11 @@ public data class WordCardState(
     public val state: CardState,
     /** `card.interval_days`. */
     public val intervalDays: Int?,
+    /**
+     * ADR-035 (additive): `card.kind`, or null when the caller does not know it (then the card is
+     * never treated as retired). Callers MUST pass it for the retirement rule to apply.
+     */
+    public val kind: String? = null,
 )
 
 /**
@@ -469,15 +497,31 @@ public data class WordCardState(
  */
 public interface WordStatusRules {
     /**
-     * Auto status from the live, non-loser cards of the **live vocab note** of the entry:
+     * Auto status from the live, non-loser cards of the **live vocab note** of the entry, after
+     * removing every card that is **retired** (ADR-035: `kind != null &&
+     * CardKinds.isRetired(VOCAB, kind, readingEnabled)`, i.e. `reading` cards while
+     * `cards.reading_enabled` is not true):
      * - no live vocab note → null;
      * - [cards] empty, or every card NEW → [WordStatus.NEW];
      * - every non-NEW card in REVIEW with `intervalDays >= KNOWN_INTERVAL_DAYS` → [WordStatus.KNOWN];
      * - otherwise → [WordStatus.LEARNING].
      *
-     * [noteLive] false means there is no live vocab note for the entry.
+     * [noteLive] false means there is no live vocab note for the entry. [readingEnabled] is the
+     * typed setting `cards.reading_enabled` (default false).
+     *
+     * Example (readingEnabled false): meaning NEW + reading LEARNING → NEW; meaning REVIEW 30 d +
+     * reading LEARNING → KNOWN; only a reading card in REVIEW 40 d → NEW. With true: LEARNING,
+     * LEARNING, KNOWN.
+     *
+     * When to re-derive: whenever a card of the entry's vocab note is created, deleted, merged or
+     * replayed (above), **and for every vocab entry** when a replica applies a `settings.set` of
+     * `cards.reading_enabled` (whichever value wins; re-deriving is idempotent).
      */
-    public fun autoStatus(noteLive: Boolean, cards: List<WordCardState>): WordStatus?
+    public fun autoStatus(
+        noteLive: Boolean,
+        cards: List<WordCardState>,
+        readingEnabled: Boolean = kotobaya.contracts.cards.CardKinds.READING_ENABLED_DEFAULT,
+    ): WordStatus?
 
     /** `status = coalesce(override, auto, NEW)` (the `word_status` CHECK). */
     public fun effective(override: WordStatus?, auto: WordStatus?): WordStatus

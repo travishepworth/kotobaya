@@ -1,6 +1,7 @@
 package kotobaya.cards
 
 import kotobaya.contracts.cards.CardGenerator
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.queue.AddKanjiMode
 
@@ -8,17 +9,23 @@ import kotobaya.contracts.queue.AddKanjiMode
  * Reference [CardGenerator]. Pure and deterministic; card ids are minted by the caller.
  *
  * "Create exactly these kinds" (e.g. imports, ADR-009) is `kindsForNewNote(type, listOf("meaning"))`.
+ * ADR-035: retired kinds ([CardKinds.isRetired]) are filtered out of both lists.
  * Toggling an optional kind on = [missingKinds] with the kind requested; toggling off creates nothing
  * and the generator never reports deletions (suspend/delete is a user action).
  */
 public object DefaultCardGenerator : CardGenerator {
-    override fun kindsForNewNote(noteType: NoteTypeInfo, deckCardKinds: List<String>?): List<String> {
-        if (deckCardKinds == null) return noteType.templates.filter { it.isDefault }.map { it.kind }
-        return existing(noteType, deckCardKinds)
+    override fun kindsForNewNote(noteType: NoteTypeInfo, deckCardKinds: List<String>?, readingEnabled: Boolean): List<String> {
+        val kinds = if (deckCardKinds == null) noteType.templates.filter { it.isDefault }.map { it.kind } else existing(noteType, deckCardKinds)
+        return kinds.filterNot { CardKinds.isRetired(noteType.baseType, it, readingEnabled) }
     }
 
-    override fun missingKinds(noteType: NoteTypeInfo, liveKinds: Set<String>, requested: List<String>): List<String> =
-        existing(noteType, requested).filter { it !in liveKinds }
+    override fun missingKinds(
+        noteType: NoteTypeInfo,
+        liveKinds: Set<String>,
+        requested: List<String>,
+        readingEnabled: Boolean,
+    ): List<String> =
+        existing(noteType, requested).filter { it !in liveKinds && !CardKinds.isRetired(noteType.baseType, it, readingEnabled) }
 
     private fun existing(noteType: NoteTypeInfo, kinds: List<String>): List<String> {
         val known = noteType.templates.map { it.kind }.toSet()

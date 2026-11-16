@@ -119,7 +119,7 @@ FSRS schedules every card, with parameters tuned weekly on your own review histo
 
 | Note type | Default cards | Optional cards |
 | --- | --- | --- |
-| Vocab | Meaning (JP → EN), Reading (kanji → kana) | Listening (audio → word), Production (EN → JP), Pitch |
+| Vocab | Meaning (JP → EN; back shows reading, pitch and meaning) — one card per word (ADR-035) | Reading (kanji → kana; only with the setting "Also create reading cards", `cards.reading_enabled`, default off — while off existing reading cards are retired: kept, never shown), Listening (audio → word), Production (EN → JP), Pitch |
 | Kanji | Keyword (kanji → keyword + readings) | Writing (keyword → kanji, self-graded), Components |
 | Phrase | Meaning | Production, Listening |
 | Grammar | Cloze (rotating sentences) | Production, Spot-the-grammar |

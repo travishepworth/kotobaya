@@ -476,8 +476,8 @@ Names: the op names are those of `contracts/db/SCHEMA.md` 4.1 and 4.3, unchanged
 - **Payload:** [`ops/settings.set.schema.json`](ops/settings.set.schema.json)
 - **Server rejects:** None beyond the common checks. Unknown keys are accepted and stored (forward compatibility); values are not type-checked by the server.
 - **Conflict rule:** One register per key: applied iff no row exists or the op's hlc > the row's `hlc`.
-- **Apply:** Upsert `value`, `hlc`, `updated_at` = wall(hlc). JSON null is stored as JSON null and means 'use the default'; the row is never deleted.
-- **Replay:** None. `scheduler.*` settings change queue building and day boundaries, never a card's cache.
+- **Apply:** Upsert `value`, `hlc`, `updated_at` = wall(hlc). JSON null is stored as JSON null and means 'use the default'; the row is never deleted. **ADR-035:** after applying an op whose `key` is `cards.reading_enabled` (whether it won or lost), re-derive `word_status.auto_status` of every entry that has a vocab note (or a `word_status` row), in the same transaction, with the value now stored (SCHEMA.md 6.4). Nothing else: no card op, no card row change.
+- **Replay:** None. `scheduler.*` settings change queue building and day boundaries, never a card's cache; `cards.reading_enabled` changes which cards are created and queued and the derived word status, never a card's cache.
 - **Example:** [`settings.set.json`](examples/ops/settings.set.json)
 
 ## `fsrs_params`

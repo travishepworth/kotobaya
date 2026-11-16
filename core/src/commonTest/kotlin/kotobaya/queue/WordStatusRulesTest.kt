@@ -36,6 +36,26 @@ class WordStatusRulesTest {
         assertEquals(WordStatus.LEARNING, rules.autoStatus(true, listOf(c(CardState.REVIEW, null))))
     }
 
+    /** ADR-035: retired (vocab `reading`) cards are ignored while `cards.reading_enabled` is not true. */
+    @Test
+    fun retiredReadingCardsAreIgnored() {
+        fun k(state: CardState, interval: Int?, kind: String) = WordCardState(state, interval, kind)
+        val meaningNewReadingLearning = listOf(k(CardState.NEW, null, "meaning"), k(CardState.LEARNING, 0, "reading"))
+        val meaningMatureReadingLearning = listOf(k(CardState.REVIEW, 30, "meaning"), k(CardState.LEARNING, 0, "reading"))
+        val readingOnlyMature = listOf(k(CardState.REVIEW, 40, "reading"))
+        // default (setting absent) = false
+        assertEquals(WordStatus.NEW, rules.autoStatus(true, meaningNewReadingLearning))
+        assertEquals(WordStatus.KNOWN, rules.autoStatus(true, meaningMatureReadingLearning))
+        assertEquals(WordStatus.NEW, rules.autoStatus(true, readingOnlyMature, readingEnabled = false))
+        assertNull(rules.autoStatus(false, readingOnlyMature))
+        // enabled: the old behaviour
+        assertEquals(WordStatus.LEARNING, rules.autoStatus(true, meaningNewReadingLearning, readingEnabled = true))
+        assertEquals(WordStatus.LEARNING, rules.autoStatus(true, meaningMatureReadingLearning, readingEnabled = true))
+        assertEquals(WordStatus.KNOWN, rules.autoStatus(true, readingOnlyMature, readingEnabled = true))
+        // kind unknown (null): never treated as retired
+        assertEquals(WordStatus.LEARNING, rules.autoStatus(true, listOf(c(CardState.NEW), c(CardState.LEARNING, 0))))
+    }
+
     @Test
     fun effectiveIsOverrideThenAutoThenNew() {
         assertEquals(WordStatus.BLACKLISTED, rules.effective(WordStatus.BLACKLISTED, WordStatus.KNOWN))

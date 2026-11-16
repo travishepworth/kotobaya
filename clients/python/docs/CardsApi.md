@@ -245,7 +245,9 @@ Add an optional card kind to an existing note.
 Server emits `card.created`. `kind` must be a key of the note type's `templates`.
 If the note already has a live card of that kind it is returned with `200` and nothing
 is emitted (REST never creates a duplicate `(note, kind)`). A merge loser's `note_id`
-acts on the survivor. A deleted note is `410 gone`.
+acts on the survivor. A deleted note is `410 gone`. A retired kind (ADR-035: `reading`
+on a vocab-based note while the setting `cards.reading_enabled` is not `true`, SCHEMA.md
+6.4) without an existing live card is `422` with `pointer` `/kind`; nothing is emitted.
 
 
 ### Example

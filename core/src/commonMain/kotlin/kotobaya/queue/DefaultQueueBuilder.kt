@@ -3,6 +3,7 @@ package kotobaya.queue
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.Uuid
 import kotobaya.contracts.WordStatus
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
@@ -66,7 +67,19 @@ public object DefaultQueueBuilder : QueueBuilder {
         var cursor = 0
     }
 
-    private class Build(private val input: QueueInput) {
+    private class Build(raw: QueueInput) {
+        // Rule 0 (ADR-035): retired candidates and today's reviews of them do not exist for the builder.
+        private val retired: Set<Uuid> = raw.candidates
+            .filter { CardKinds.isRetired(it.noteBaseType, it.kind, raw.readingEnabled) }
+            .mapTo(HashSet()) { it.cardId }
+        private val input: QueueInput = if (retired.isEmpty()) {
+            raw
+        } else {
+            raw.copy(
+                candidates = raw.candidates.filter { it.cardId !in retired },
+                today = raw.today.filter { it.cardId !in retired },
+            )
+        }
         private val limits = input.limits
         private val decksById: Map<Uuid, QueueDeck> = buildMap {
             // Deterministic even with duplicate ids: keep the first in deck order.

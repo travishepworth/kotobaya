@@ -6,7 +6,7 @@ import kotobaya.contracts.NoteBaseType
  * One card kind of a note type (`note_type.templates.<kind>`).
  *
  * Built-in kinds per base type (seeded in `contracts/db/V1__init.sql`; default ones marked *):
- * vocab: meaning*, reading*, listening, production, pitch · kanji: keyword*, writing, components ·
+ * vocab: meaning*, reading* (retired unless `cards.reading_enabled`, ADR-035: [CardKinds]), listening, production, pitch · kanji: keyword*, writing, components ·
  * phrase: meaning*, production, listening · grammar: cloze*, recognition, spot, production ·
  * sentence: comprehension*, listening · custom: basic*.
  */
@@ -52,17 +52,37 @@ public interface CardGenerator {
      *   removed (first occurrence kept). May be empty: a note with no cards is legal.
      * - null: every template with `isDefault`, in template order.
      *
-     * Example: built-in vocab, `deckCardKinds = null` → `["meaning", "reading"]`;
-     * `deckCardKinds = ["listening", "foo", "meaning", "listening"]` → `["listening", "meaning"]`.
+     * - ADR-035: then every kind [CardKinds.isRetired] under [readingEnabled] is removed (it beats
+     *   both the template `default` flag and [deckCardKinds]).
+     *
+     * [readingEnabled] is the typed setting `cards.reading_enabled` ([CardKinds.readingEnabled];
+     * default false). Callers that do not pass it get the product default (reading cards off).
+     *
+     * Example: built-in vocab, `deckCardKinds = null` → `["meaning"]` (readingEnabled false) or
+     * `["meaning", "reading"]` (true); `deckCardKinds = ["listening", "foo", "meaning", "listening"]`
+     * → `["listening", "meaning"]`; `deckCardKinds = ["reading"]` → `[]` when false (a caller that
+     * falls back to defaults on empty, as deck materialization does, then gets `["meaning"]`).
      */
-    public fun kindsForNewNote(noteType: NoteTypeInfo, deckCardKinds: List<String>?): List<String>
+    public fun kindsForNewNote(
+        noteType: NoteTypeInfo,
+        deckCardKinds: List<String>?,
+        readingEnabled: Boolean = CardKinds.READING_ENABLED_DEFAULT,
+    ): List<String>
 
     /**
      * Kinds from [requested] that may be created for an **existing** note: those that exist in the
      * note type and are not in [liveKinds] (the kinds of the note's live cards). A client MUST NOT
      * knowingly create a duplicate `(note, kind)` (SYNC.md 4). Order and de-duplication as above.
+     * ADR-035: a kind [CardKinds.isRetired] under [readingEnabled] is never returned, even when
+     * requested explicitly. Example: vocab, live `{meaning}`, requested `["reading", "pitch"]` →
+     * `["pitch"]` (false), `["reading", "pitch"]` (true).
      */
-    public fun missingKinds(noteType: NoteTypeInfo, liveKinds: Set<String>, requested: List<String>): List<String>
+    public fun missingKinds(
+        noteType: NoteTypeInfo,
+        liveKinds: Set<String>,
+        requested: List<String>,
+        readingEnabled: Boolean = CardKinds.READING_ENABLED_DEFAULT,
+    ): List<String>
 
     /**
      * The kanji of [expression] in order of first appearance, distinct: code points in

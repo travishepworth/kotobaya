@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.sync.JsonArray
+import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNull
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
@@ -182,7 +183,12 @@ class BatchApplyEquivalenceTest {
                 roll < 91 -> out += op(OpType.NOTE_DELETED, n, mapOf("id" to s(notes.random(r))))
                 roll < 93 -> out += op(OpType.CARD_DELETED, n, mapOf("id" to s(cards.random(r))))
                 roll < 96 -> out += op(OpType.CARD_SUSPENDED, n, mapOf("id" to s(cards.random(r))))
-                else -> if (r.nextInt(3) == 0) out += op(OpType.FSRS_PARAMS_DELETED, n, mapOf("id" to s(custom)))
+                else -> when (r.nextInt(3)) {
+                    0 -> out += op(OpType.FSRS_PARAMS_DELETED, n, mapOf("id" to s(custom)))
+                    // ADR-035: flipping cards.reading_enabled re-derives every vocab entry
+                    1 -> out += op(OpType.SETTINGS_SET, n, mapOf("key" to s("cards.reading_enabled"), "value" to JsonBool(r.nextBoolean())))
+                    else -> Unit
+                }
             }
         }
         return out

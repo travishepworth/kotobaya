@@ -235,6 +235,43 @@ The normal Review entry point and the Today counts always use `keepGoing = false
 every rebuild: if `day.startMs` differs from the day keep going started, it drops the flag and
 builds normally.
 
+## ADR-035: reading cards retired by a setting (C-28)
+
+One rule, `kotobaya.contracts.cards.CardKinds` (`CardKinds.kt`): a card is retired iff
+`kind == "reading"`, the note's base type is vocab and the typed setting `cards.reading_enabled`
+(SCHEMA.md 6.4; default **false**, `CardKinds.readingEnabled(jsonValue)` = the 6.1 bool test) is
+false. Each platform reads the setting once per operation and passes the bool; the core applies it:
+
+| Core API (additive; old calls compile) | Caller passes | Effect when false |
+|---|---|---|
+| `CardGenerator.kindsForNewNote(type, deckCardKinds, readingEnabled = false)` | the setting | never returns `reading` for vocab |
+| `CardGenerator.missingKinds(type, liveKinds, requested, readingEnabled = false)` | the setting | never returns `reading` for vocab (API `createCard` → 422 `/kind`) |
+| `QueueInput.readingEnabled = false` | the setting | QueueBuilder rule 0: retired candidates and today's reviews of them are dropped |
+| `WordCardState.kind = null`, `WordStatusRules.autoStatus(noteLive, cards, readingEnabled = false)` | `card.kind` of each card + the setting | retired cards ignored; `kind = null` is never retired |
+| Device apply (`DeviceOpApplier`, `AutoStatus`, internal) | — (reads the replica's `settings` row) | `settings.set` of the key re-derives every vocab entry; derivation ignores retired cards |
+
+Defaults are the product default (false), so a caller that is not wired yet already creates and
+serves no reading cards; it only cannot turn them back on. Loaders keep passing retired cards as
+candidates (they are live): the builder alone removes them, so every platform agrees.
+
+**Server (ONE-CARD-SRV)** must: pass `readingEnabled` to `QueueInput` (QueueLoader) and to every
+`kindsForNewNote` / `missingKinds` call (NoteApi, DeckEntryPlan, AnkiConnect, createCard → 422);
+pass `kind` in `WordCardState` and `readingEnabled` to `autoStatus` (CoreAutoStatusHook,
+StatsQueries); re-derive every vocab entry when applying `settings.set` of the key (OPS.md);
+validate the key as `bool` in `updateSettings`.
+**Android (ONE-CARD-AND)** must: pass `readingEnabled` in LocalQueueLoader and to
+NoteCreator/DeckEntryPlan's generator calls; the toggle writes `settings.set`; word-status
+re-derivation is already done by the core `DeviceOpApplier`.
+
+**Tests** (`core/src/commonTest`, jvm and js): `queue/QueueRetiredCardsTest.kt` (never served in any
+state, no `nextLearningDueAt`, no sibling burying incl. through today's reviews, no limit use, only
+vocab, same result with or without retired candidates, pending entries unchanged, `moreAvailable`);
+`cards/CardGeneratorTest.kt` (defaults, deck `card_kinds: ["reading"]` → `[]` → fallback
+`["meaning"]`, `missingKinds`, non-vocab `reading` kept, bool test);
+`queue/WordStatusRulesTest.kt` (`retiredReadingCardsAreIgnored`, a learning reading card);
+`sync/client/apply/ReadingRetiredApplyTest.kt` (scenario `reading-retired-offline-review`, setting
+flips re-derive op by op and in a batch); `BatchApplyEquivalenceTest` logs flip the setting.
+
 ## C-27: pending entries and materialization (ADR-032)
 
 Materialization is defined once, here, and every platform does exactly this: the server inside
@@ -244,9 +281,11 @@ op path. Clients of the API never create these notes.
 **What materializing entry `e:<seq>` drawn by deck D creates** (normative):
 1. Skip the entry if a live note now holds `entry_seq = seq` (idempotent) or the dictionary entry
    is missing.
-2. **Vocab card kinds** `V` = `CardGenerator.kindsForNewNote(vocab type, D.card_kinds)`; if that is
-   empty (`card_kinds` is `[]` or names no kind of the type), the type's default kinds
-   (`kindsForNewNote(vocab type, null)`). Then drop every kind whose front would render empty:
+2. **Vocab card kinds** `V` = `CardGenerator.kindsForNewNote(vocab type, D.card_kinds, readingEnabled)`;
+   if that is empty (`card_kinds` is `[]` or names no kind of the type, or only retired kinds,
+   e.g. `["reading"]` while reading cards are off — ADR-035), the type's default kinds
+   (`kindsForNewNote(vocab type, null, readingEnabled)`, i.e. `["meaning"]`). `readingEnabled` =
+   setting `cards.reading_enabled` (SCHEMA.md 6.4, `CardKinds.readingEnabled`). Then drop every kind whose front would render empty:
    `DefaultCardRenderer.frontIsEmpty(vocab type, kind, {}, dictionary = the entry's data)` (e.g.
    `listening` without audio; the same rule devices apply when adding a note). If `V` is empty the
    entry is not materialized, and loaders never pass it (below), so it is never drawn.

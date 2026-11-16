@@ -143,3 +143,25 @@ Worth a second look:
   when toggled back); making it the default (ADR-034 chose opt-in).
 - Worth a second look: (1) per-deck review caps are lifted too, not only the global one; (2) rule 5
   still interleaves new cards among a large review backlog (keep going puts reviews first).
+
+## ADR-035 changes (additive): one card per word (C-28)
+- **What.** `kotobaya.contracts.cards.CardKinds` holds the only retirement rule (`isRetired`), the
+  key `cards.reading_enabled` and its bool test (`readingEnabled`). `CardGenerator` methods,
+  `QueueInput` and `WordStatusRules.autoStatus` gain a `readingEnabled` parameter/field defaulting
+  to **false**; `WordCardState` gains `kind` (null = unknown = not retired). QueueBuilder rule 0
+  drops retired candidates and today's reviews of them before every other rule. The device apply
+  path re-derives all vocab entries on `settings.set` of the key.
+- **Default false, explicitly.** The first ADR-035 draft said "missing key = true = old
+  behaviour"; the user wants reading cards off by default, so a missing/null/invalid value means
+  false, and reversal is by storing `true` (SCHEMA.md 6.4).
+- Rejected: a stored retired flag or mass `card.suspended` (needs ops, mixes with user
+  suspensions); a template-default change (second source of truth; deck `card_kinds` and explicit
+  requests would still create reading cards); default `true` for the new parameters (every
+  unwired call site would keep creating and serving reading cards).
+- Worth a second look: (1) today's reviews of a retired card no longer count against today's
+  limits (consistent "absent" rule; matters only on the day of the flip or for offline reviews);
+  (2) `createNote card_kinds:[reading]` silently creates a note without cards while
+  `createCard {kind: reading}` is `422`; (3) between this merge and ONE-CARD-SRV the server's
+  `auto_status` still counts reading cards (it passes no `kind`) while devices do not, so derived
+  word statuses may differ for words with a reviewed reading card until the server ticket lands
+  (`auto_status` is outside the SYNC.md 11 projection; `status` is not).

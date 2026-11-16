@@ -1,6 +1,7 @@
 package kotobaya.sync.client.apply
 
 import kotobaya.contracts.WordStatus
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.queue.WordCardState
 import kotobaya.contracts.queue.WordStatusRules
@@ -9,6 +10,7 @@ import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
 import kotobaya.contracts.sync.Op
+import kotobaya.contracts.sync.OpType
 import kotobaya.queue.DefaultWordStatusRules
 
 /**
@@ -26,6 +28,10 @@ internal object AutoStatus {
     fun entriesOf(tables: LearningTables, op: Op): Set<Long> {
         val out = LinkedHashSet<Long>()
         if (op.opType.wire.startsWith("fsrs_params.")) return allEntries(tables)
+        // ADR-035: retiring or un-retiring reading cards changes the derivation of every vocab entry.
+        if (op.opType == OpType.SETTINGS_SET && (op.payload.members["key"] as? JsonString)?.value == CardKinds.SETTING_READING_ENABLED) {
+            return allEntries(tables)
+        }
         if (!(op.entityType == "note" || op.entityType == "card" || op.entityType == "review_log")) return out
         for (k in ID_KEYS) {
             val id = (op.payload.members[k] as? JsonString)?.value ?: continue
@@ -58,8 +64,12 @@ internal object AutoStatus {
 
     private fun live(r: Row): Boolean = (r["deleted_at"] ?: JsonNull) == JsonNull && (r["merged_into_id"] ?: JsonNull) == JsonNull
 
+    /** The typed setting `cards.reading_enabled` as the tables stand now (ADR-035; no row = false). */
+    fun readingEnabled(t: LearningTables): Boolean =
+        CardKinds.readingEnabled(t.get(LearningTable.SETTINGS, listOf(JsonString(CardKinds.SETTING_READING_ENABLED)))?.get("value"))
+
     /** The derived status of [entry] now, or null when no live vocab note holds it. */
-    fun derive(t: LearningTables, entry: Long): WordStatus? {
+    fun derive(t: LearningTables, entry: Long, readingEnabled: Boolean = readingEnabled(t)): WordStatus? {
         val notes = t.where(LearningTable.NOTE, "entry_seq", JsonNumber(entry.toDouble()))
             .filter { live(it) && entryOfRow(t, it) == entry }
             .sortedBy { (it["id"] as? JsonString)?.value }
@@ -68,15 +78,18 @@ internal object AutoStatus {
             WordCardState(
                 state = CardState.entries.first { s -> s.wire == (it["state"] as? JsonString)?.value },
                 intervalDays = (it["interval_days"] as? JsonNumber)?.value?.toInt(),
+                kind = (it["kind"] as? JsonString)?.value,
             )
         }
-        return rules.autoStatus(true, cards)
+        return rules.autoStatus(true, cards, readingEnabled)
     }
 
     /** Re-derives [entries] and writes `auto_status` / `status`; [nowMs] stamps `updated_at` when the status changes. */
     fun rederive(t: LearningTables, entries: Collection<Long>, nowMs: Long?) {
+        if (entries.isEmpty()) return
+        val readingEnabled = readingEnabled(t)
         for (entry in entries) {
-            val auto = derive(t, entry)
+            val auto = derive(t, entry, readingEnabled)
             val key = listOf<JsonValue>(JsonNumber(entry.toDouble()))
             val existing = t.get(LearningTable.WORD_STATUS, key)
             if (existing == null && (auto == null || auto == WordStatus.NEW)) continue

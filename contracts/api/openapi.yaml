@@ -1681,6 +1681,11 @@ paths:
           sorted ascending.
         - `card_kinds` entries must be keys of the note type's `templates`; an empty array
           creates a note without cards.
+        - **Retired kinds (ADR-035).** While the setting `cards.reading_enabled` is not `true`
+          (default; SCHEMA.md 6.4), the `reading` kind of a vocab-based note type is never
+          created: it is dropped from `card_kinds` and from the defaults (core
+          `CardGenerator`), so `card_kinds: [meaning, reading]` creates only `meaning` and
+          `card_kinds: [reading]` creates a note without cards.
         - `deck_id` must be a live deck of type `user`; otherwise `409 deck_read_only`.
 
         **Duplicate reference.** If a live note already references the same entry, kanji or
@@ -1898,7 +1903,9 @@ paths:
         Server emits `card.created`. `kind` must be a key of the note type's `templates`.
         If the note already has a live card of that kind it is returned with `200` and nothing
         is emitted (REST never creates a duplicate `(note, kind)`). A merge loser's `note_id`
-        acts on the survivor. A deleted note is `410 gone`.
+        acts on the survivor. A deleted note is `410 gone`. A retired kind (ADR-035: `reading`
+        on a vocab-based note while the setting `cards.reading_enabled` is not `true`, SCHEMA.md
+        6.4) without an existing live card is `422` with `pointer` `/kind`; nothing is emitted.
       x-emits-ops: [card.created]
       security:
         - bearerAuth: [write]
@@ -2175,6 +2182,12 @@ paths:
         `scheduler.reviews_per_day` and deck `reviews_per_day`: every review due before
         `day_ends_at` is returned and counted in `counts.review`. New-card limits, ordering and
         interleaving are unchanged. It is an ordinary setting written with `updateSettings`.
+
+        **Reading cards retired (ADR-035).** While the setting `cards.reading_enabled` is not
+        `true` (default `false`; SCHEMA.md 6.4), vocab `reading` cards are never returned, never
+        counted in `counts`, never bury their siblings, and today's reviews of them use no limit
+        (core `QueueInput.readingEnabled`, QueueBuilder rule 0). Materialized deck entries get
+        no `reading` card. Setting it `true` returns the same cards with their history.
 
         **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
         `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).

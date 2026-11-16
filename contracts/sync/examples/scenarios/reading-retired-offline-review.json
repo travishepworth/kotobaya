@@ -1,0 +1,196 @@
+{
+  "id": "reading-retired-offline-review",
+  "title": "Reading cards retired by a setting while a device reviews one offline (ADR-035)",
+  "covers": [
+    "ADR-035: cards.reading_enabled is an ordinary settings.set register; retiring emits no card op",
+    "ADR-035: an offline review of a retired reading card is kept and replays on its own card",
+    "ADR-035: the reading review never feeds the meaning card"
+  ],
+  "narrative": [
+    "A creates vocab note N with meaning card M and reading card R (reading cards were still on: A set cards.reading_enabled = true at T+5).",
+    "B pulls everything up to seq 4 and goes offline. At T+30 B answers R (Again).",
+    "At T+40 A turns reading cards off (settings.set false, the UI toggle) and syncs; at T+50 A answers M. No card op is minted: R is not suspended, deleted or merged.",
+    "B comes back and pushes its T+30 review of R. The server accepts it as usual (seq 7); every replica appends it and replays R, whose cache moves to learning. M's replay set holds only A's review.",
+    "Whatever the arrival order, the setting ends false (T+40 beats T+5) and R stays live with its review. Derived state (not modelled by tools/model.py): every QueueBuilder ignores R (QueueBuilder rule 0) and word_status.auto_status of entry 1358280 is derived from M alone (learning), not from R; turning the setting back on would show R again with this history."
+  ],
+  "devices": {
+    "A": "01931f3e-0000-7000-8000-0000000000a1",
+    "B": "01931f3e-0000-7000-8000-0000000000b2",
+    "S": "00000000-0000-7000-8000-000000000001"
+  },
+  "log": [
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000001",
+      "op_type": "note.created",
+      "op_version": 1,
+      "entity_type": "note",
+      "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0001-7000-8000-000000000001",
+        "note_type_id": "00000000-0000-7000-8000-000000000101",
+        "entry_seq": 1358280
+      },
+      "seq": 1,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000002",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0001-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000001",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "meaning"
+      },
+      "seq": 2,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000003",
+      "op_type": "card.created",
+      "op_version": 1,
+      "entity_type": "card",
+      "entity_id": "0193a1b2-0002-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c001-0002-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0002-7000-8000-000000000002",
+        "note_id": "0193a1b2-0001-7000-8000-000000000001",
+        "kind": "reading"
+      },
+      "seq": 3,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000004",
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": "cards.reading_enabled",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c005-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "key": "cards.reading_enabled",
+        "value": true
+      },
+      "seq": 4,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000005",
+      "op_type": "settings.set",
+      "op_version": 1,
+      "entity_type": "settings",
+      "entity_id": "cards.reading_enabled",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c028-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "key": "cards.reading_enabled",
+        "value": false
+      },
+      "seq": 5,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000006",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+      "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+      "hlc": "0193a1b2c032-0000-01931f3e-0000-7000-8000-0000000000a1",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000002",
+        "card_id": "0193a1b2-0002-7000-8000-000000000001",
+        "reviewed_at": 1733584666674,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 3,
+        "button": "good",
+        "duration_ms": 4200
+      },
+      "seq": 6,
+      "caused_by_op_id": null
+    },
+    {
+      "op_id": "0193a1b2-00ff-7035-8000-000000000007",
+      "op_type": "review.logged",
+      "op_version": 1,
+      "entity_type": "review_log",
+      "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+      "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+      "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+      "payload": {
+        "id": "0193a1b2-0003-7000-8000-000000000001",
+        "card_id": "0193a1b2-0002-7000-8000-000000000002",
+        "reviewed_at": 1733584666654,
+        "utc_offset_min": 540,
+        "review_type": "learning",
+        "rating": 1,
+        "button": "again",
+        "duration_ms": 6100
+      },
+      "seq": 7,
+      "caused_by_op_id": null
+    }
+  ],
+  "order_free": true,
+  "expected": {
+    "rows": {
+      "settings": [
+        {
+          "key": "cards.reading_enabled",
+          "value": false,
+          "hlc": "0193a1b2c028-0000-01931f3e-0000-7000-8000-0000000000a1"
+        }
+      ],
+      "card": [
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000001",
+          "kind": "meaning",
+          "deleted_at": null,
+          "merged_into_id": null,
+          "suspended": false
+        },
+        {
+          "id": "0193a1b2-0002-7000-8000-000000000002",
+          "kind": "reading",
+          "deleted_at": null,
+          "merged_into_id": null,
+          "suspended": false
+        }
+      ],
+      "review_log": [
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000002",
+          "device_id": "01931f3e-0000-7000-8000-0000000000b2",
+          "hlc": "0193a1b2c01e-0000-01931f3e-0000-7000-8000-0000000000b2",
+          "reviewed_at": 1733584666654,
+          "undone_at": null
+        },
+        {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000001",
+          "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+          "reviewed_at": 1733584666674,
+          "undone_at": null
+        }
+      ]
+    },
+    "replay_sets": {
+      "0193a1b2-0002-7000-8000-000000000001": [
+        "0193a1b2-0003-7000-8000-000000000002"
+      ],
+      "0193a1b2-0002-7000-8000-000000000002": [
+        "0193a1b2-0003-7000-8000-000000000001"
+      ]
+    }
+  }
+}

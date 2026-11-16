@@ -34,6 +34,11 @@ Rules:
   sorted ascending.
 - `card_kinds` entries must be keys of the note type's `templates`; an empty array
   creates a note without cards.
+- **Retired kinds (ADR-035).** While the setting `cards.reading_enabled` is not `true`
+  (default; SCHEMA.md 6.4), the `reading` kind of a vocab-based note type is never
+  created: it is dropped from `card_kinds` and from the defaults (core
+  `CardGenerator`), so `card_kinds: [meaning, reading]` creates only `meaning` and
+  `card_kinds: [reading]` creates a note without cards.
 - `deck_id` must be a live deck of type `user`; otherwise `409 deck_read_only`.
 
 **Duplicate reference.** If a live note already references the same entry, kanji or

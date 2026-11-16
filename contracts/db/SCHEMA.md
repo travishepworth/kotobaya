@@ -150,7 +150,7 @@ emitted by the server (origin device = the server device).
 | `note` | S D | `note.created`, `note.updated`, `note.deleted`, `note.merged` *(server)* | `note.updated` sets any subset of registers, including `entry_seq`. |
 | `card` | S D | `card.created`, `card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`, `card.preset_set`, `card.deleted`, `card.merged` *(server)*; cache columns: indirectly by `review.logged`, `review.undone`, `fsrs_params.published` | Cache columns are recomputed locally, never transmitted. |
 | `review_log` | S D | `review.logged` (insert), `review.undone` (sets `undone_*`) | Append-only. |
-| `word_status` | S D | `word.status_set`, `word.status_cleared`; `auto_status`: derived locally after any op that changes a vocab card | |
+| `word_status` | S D | `word.status_set`, `word.status_cleared`; `auto_status`: derived locally after any op that changes a vocab card, and for every vocab entry after a `settings.set` of `cards.reading_enabled` (6.4) | |
 | `deck` | S D | `deck.created` (clients: `user`/`smart` only; `media`/`list` decks are created *(server)* only), `deck.updated`, `deck.deleted`, `deck.content_published` *(server)* | |
 | `deck_item` | S D | user decks: `deck.item_put`, `deck.item_removed`; media/list decks: replaced wholesale when `deck.content_published` announces a new snapshot | |
 | `confusable` | S D | `confusable.suggested` *(server)*, `confusable.confirmed`, `confusable.rejected` | |
@@ -567,6 +567,7 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.kanji_before_vocab` | bool | `false` | Queue order only (C-7): default for the `add_kanji` ordering where no deck sets one. See 6.2. |
 | `scheduler.mined_priority` | int (int4, see 6.1) | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
 | `audio.prefetch_days` | int | `7` | Audio prefetch horizon. |
+| `cards.reading_enabled` | bool | `false` | ADR-035 "Also create reading cards": while not `true`, vocab `reading` cards are **retired** (never created, never in a queue, ignored by `auto_status`; kept with their history). See 6.4. |
 
 ### 6.1 Storage and validation
 
@@ -576,6 +577,8 @@ one exception to `foreign_keys = ON` above.
   client's key).
 - **One validity test per type**, used identically by `updateSettings` and by every platform
   loader (Android, web, server). The core never reads `settings`; it receives typed values.
+  (One exception, ADR-035: the core's device apply path reads `cards.reading_enabled` from the
+  replica's `settings` table to re-derive `word_status`, with the same `bool` test; 6.4.)
   - `int`: valid iff the value is a JSON number whose value is an integer inside the key's
     range. The range is int4 (−2147483648…2147483647) unless the table gives a narrower one
     (`day_rollover_hour` 0–23, `grading_buttons` 4 or 5). The number's value is the IEEE-754
@@ -695,6 +698,34 @@ client. No new op: it syncs as an ordinary `settings.set` (Replay: none). Exampl
 `reviews_per_day` 200 → `false`: 200 served, `counts.review` 200; `true`: 300 and 300.
 `reviews_per_day` keeps its stored value while the key is `true` (UIs grey the field out) and
 applies again when it is set back to `false` or `null`.
+
+### 6.4 `cards.reading_enabled` (ADR-035)
+
+One card per word. Bool, default **`false`**, read by the 6.1 `bool` test: only JSON `true` is
+true; a missing row, JSON `null`, `false` and every invalid value (`1`, `"true"`, …) mean `false`.
+(This reverses the first ADR-035 draft's "missing key = true": reading cards are off unless the
+user turns them on; the old behaviour is restored by storing `true`, e.g. `PATCH /settings
+{"values": {"cards.reading_enabled": true}}`.) The core helper is
+`kotobaya.contracts.cards.CardKinds.readingEnabled(value)`; the rule is `CardKinds.isRetired`:
+
+> a card is **retired** iff `card.kind = 'reading'` and its note's `note_type.base_type = 'vocab'`
+> (built-in or custom vocab types) and `cards.reading_enabled` is not `true`.
+
+Nothing is stored about retirement: no column, no op, no migration; the cards stay live
+(`deleted_at` null, not suspended) with their `review_log` and cache. Effects on every replica:
+
+| Where | Effect while retired |
+|---|---|
+| Card creation (`createNote`, `createCard`, deck materialization C-27, AnkiConnect, device add-note) | `CardGenerator.kindsForNewNote` / `missingKinds` never return `reading` for a vocab type, whatever the template `default`, a deck's `card_kinds` or the request says. `createCard {kind: reading}` → `422` (pointer `/kind`) unless the note already has a live reading card (then `200` with it, as before). |
+| Queue (`getReviewQueue`, Today counts, stats due counts, device queue) | `QueueBuilder` rule 0: not served, not counted, not drawn, never sibling-buries; today's reviews of it use no limit. The loader passes `QueueInput.readingEnabled`. |
+| `word_status.auto_status` | Derived without retired cards (`WordStatusRules.autoStatus(…, readingEnabled)`, `WordCardState.kind`). Applying a `settings.set` of this key (won or lost) re-derives **every** vocab entry in the same transaction. |
+| `review_log`, replay, optimizer, browse/search | Unchanged: reviews of a retired card (incl. offline ones pushed later) are accepted and replay on that card; `kind:reading` still finds it. A reading review never feeds the meaning card. |
+
+Turning it on brings the same cards back with their schedule; notes created while it was off get
+no reading card (ADR-011, no backfill). Worked example: `contracts/sync/examples/scenarios/
+reading-retired-offline-review.json`. Example: vocab note with meaning M (REVIEW, 30 d) and reading
+R (LEARNING): key absent → queue shows M when due, never R; `auto_status` = `known` (from M); key
+`true` → R is served when due and `auto_status` = `learning`.
 
 ## 7. Cross-check: table ↔ op ↔ API
 

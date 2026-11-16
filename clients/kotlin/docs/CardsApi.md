@@ -126,7 +126,7 @@ ApiClient.accessToken = ""
 
 Add an optional card kind to an existing note.
 
-Server emits &#x60;card.created&#x60;. &#x60;kind&#x60; must be a key of the note type&#39;s &#x60;templates&#x60;. If the note already has a live card of that kind it is returned with &#x60;200&#x60; and nothing is emitted (REST never creates a duplicate &#x60;(note, kind)&#x60;). A merge loser&#39;s &#x60;note_id&#x60; acts on the survivor. A deleted note is &#x60;410 gone&#x60;. 
+Server emits &#x60;card.created&#x60;. &#x60;kind&#x60; must be a key of the note type&#39;s &#x60;templates&#x60;. If the note already has a live card of that kind it is returned with &#x60;200&#x60; and nothing is emitted (REST never creates a duplicate &#x60;(note, kind)&#x60;). A merge loser&#39;s &#x60;note_id&#x60; acts on the survivor. A deleted note is &#x60;410 gone&#x60;. A retired kind (ADR-035: &#x60;reading&#x60; on a vocab-based note while the setting &#x60;cards.reading_enabled&#x60; is not &#x60;true&#x60;, SCHEMA.md 6.4) without an existing live card is &#x60;422&#x60; with &#x60;pointer&#x60; &#x60;/kind&#x60;; nothing is emitted. 
 
 ### Example
 ```kotlin
