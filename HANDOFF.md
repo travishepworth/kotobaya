@@ -13,7 +13,7 @@ CHECK: `make check MODULE=android` → green
 
 ## Acceptance → tests
 - 1 → `ReviewSummaryReloadTest.theDayRollTimerIsRearmedAfterAReloadIntoTheSameSummary`
-- 3 → `ReviewHardeningTest.afterSyncAnUnchangedNextCardStillComesFromMemory` (existing stale test still passes)
+- 3 (now safety tests) → `ReviewHardeningTest.aCardSuspendedElsewhereIsNotShownAfterSync`, `aCardBuriedElsewhereIsNotShownAfterSync`, `aDeletedCardFollowedByAnAnsweredElsewhereCardShowsNeitherAndLogsNoDuplicate` (word known/blacklist not tested: loader owns it, session always rebuilds)
 - 4 → `LocalQueueLoaderTest.reviewsUnlimitedReachesTheQueueLimits`
 
 ## New dependencies
