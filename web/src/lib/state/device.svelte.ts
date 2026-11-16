@@ -9,6 +9,7 @@ import {
 	type ShellAnkiConnectState,
 	type ShellDictInstall,
 	type ShellDictInstallRequestScopeEnum,
+	type ShellDisplay,
 	type ShellNotificationState,
 	type ShellPairRequest,
 	type ShellPushState,
@@ -68,6 +69,8 @@ export class DeviceState {
 	notifications = $state<ShellNotificationState | null>(null);
 	push = $state<ShellPushState | null>(null);
 	anki = $state<ShellAnkiConnectState | null>(null);
+	/** Display preferences (capability `display`; device-local, never synced). */
+	display = $state<ShellDisplay | null>(null);
 	/** Download size per scope from the server's release artifacts (full artifacts); empty when unknown. */
 	sizes = $state<Partial<Record<ShellDictInstallRequestScopeEnum, number>>>({});
 	busy = $state(false);
@@ -89,7 +92,8 @@ export class DeviceState {
 			run('offline_storage', () => shellDeviceApi.getStorage(), (v) => (this.storage = v)),
 			run('notifications', () => shellDeviceApi.getNotificationState(), (v) => (this.notifications = v)),
 			run('push', () => shellDeviceApi.getPushState(), (v) => (this.push = v)),
-			run('ankiconnect', () => shellDeviceApi.getAnkiConnectState(), (v) => (this.anki = v))
+			run('ankiconnect', () => shellDeviceApi.getAnkiConnectState(), (v) => (this.anki = v)),
+			run('display', () => shellDeviceApi.getDisplayPrefs(), (v) => (this.display = v))
 		]);
 		this.loaded = true;
 		void this.loadSizes();
@@ -167,6 +171,22 @@ export class DeviceState {
 			this.anki = await shellDeviceApi.updateAnkiConnectState({ shellAnkiConnectPatch: { enabled } });
 		} catch {
 			this.failed = true;
+		}
+	}
+
+	/**
+	 * Lock to portrait (shell.yaml `updateDisplayPrefs`): the switch moves at once and goes back if the shell
+	 * refuses. Resolves whether it was saved.
+	 */
+	async setLockPortrait(lockPortrait: boolean): Promise<boolean> {
+		const before = this.display;
+		this.display = { lockPortrait };
+		try {
+			this.display = await shellDeviceApi.updateDisplayPrefs({ shellDisplayPatch: { lockPortrait } });
+			return true;
+		} catch {
+			this.display = before;
+			return false;
 		}
 	}
 

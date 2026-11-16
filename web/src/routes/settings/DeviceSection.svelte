@@ -71,6 +71,8 @@
 	const prefetchOptions = $derived(numOptions([0, 1, 3, 7], vm.storage?.prefetchDays ?? 3, (n) => sh('dev.days', { n })));
 	const thresholdOptions = $derived(numOptions([5, 10, 20, 50], vm.notifications?.nudgeThreshold ?? 20, (n) => String(n)));
 
+	let displayFailed = $state(false);
+
 	let unpairing = $state(false);
 	let unpairError = $state(false);
 	async function unpair(): Promise<void> {
@@ -157,6 +159,19 @@
 				<Select label={sh('dev.storagePrefetch')} options={prefetchOptions} value={st.prefetchDays} onchange={(v) => vm.patchStorage({ prefetchDays: v })} />
 				<Switch label={sh('dev.storageMetered')} checked={st.allowMetered} onchange={(v) => vm.patchStorage({ allowMetered: v })} />
 				<div class="act"><Button variant="quiet" icon="trash" onclick={() => vm.patchStorage({ clearCache: true })}>{sh('dev.storageClear')}</Button></div>
+			</section>
+		{/if}
+
+		{#if has('display') && vm.display}
+			<section aria-labelledby="dev-display">
+				<h3 id="dev-display">{sh('dev.display')}</h3>
+				<Switch
+					label={sh('dev.lockPortrait')}
+					description={sh('dev.lockPortraitBody')}
+					checked={vm.display.lockPortrait}
+					onchange={async (v) => (displayFailed = !(await vm.setLockPortrait(v)))}
+				/>
+				{#if displayFailed}<p class="hint" role="status">{sh('dev.lockPortraitFailed')}</p>{/if}
 			</section>
 		{/if}
 
