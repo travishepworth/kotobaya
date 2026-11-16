@@ -841,6 +841,12 @@ components:
           maxLength: 500
           description: English diagnostic for `insufficient_space` and `failed`; null otherwise. Not for parsing.
           examples: [null]
+        server_release_id:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+          description: Optional (omitted by a shell without gap fill). The last known dictionary release of the server (`dict_release.id` of the last `getMeta` / `getDictRelease` answer from the server); null before the first. The installed package is authoritative - a missing entry means "no such entry" - only when its scope is `all` and `installed.release_id` is at least this value (SHELL.md rule L-7); otherwise the UI offers an update.
+          examples: [3]
         gap_fill:
           type: object
           description: Optional (omitted by a shell without gap fill, SHELL-L9). State of the sidecar cache - dictionary entries and kanji that local notes, deck items and queue-relevant cards reference but the installed package lacks (SHELL.md rule L-7, 10.7). Refreshed after every sync; a change is announced by `shell.dict`.
@@ -1257,6 +1263,7 @@ components:
         total_bytes: 0
         last_result: installed
         last_error: null
+        server_release_id: 3
         gap_fill: {cached: 212, missing: 3}
     ShellDictInstallDownloading:
       value:

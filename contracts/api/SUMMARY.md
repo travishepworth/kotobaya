@@ -695,7 +695,10 @@ New directory `contracts/api/shell/`; nothing in `openapi.yaml`, `contracts/sync
    a deck entry it lacks is not materialized or counted until gap fill has cached it, so phone and web
    counts can differ for a while on a `top60k` install. Creating a note by `entry_seq` fetches the entry
    and still mints locally; it is `503 shell_dict_missing` only when cache and server both fail. An
-   installed package of scope `all` is treated as authoritative (a miss is `404` / `422`, no retry).
+   installed package is authoritative (a miss is `404` / `422`) only when its scope is `all` and it is
+   not older than the last dictionary release the server reported; a server `404` is remembered only
+   until the server's release changes. Online, a search that the package cannot answer with authority
+   is forwarded and its per-user fields recomputed locally, so list words outside `top60k` can be mined.
 3. **The parity `expect` values were written from the contract text, not from a running server.** They
    are deliberately narrow (status, problem code, a few counts and lengths), but SHELL-P1 may find one
    that the server does not produce — most likely in `queue-materialize-count`, `queue-learning-wait`

@@ -14,6 +14,7 @@ Name | Type
 `totalBytes` | number
 `lastResult` | string
 `lastError` | string
+`serverReleaseId` | number
 `gapFill` | [ShellDictInstallGapFill](ShellDictInstallGapFill.md)
 
 ## Example
@@ -30,6 +31,7 @@ const example = {
   "totalBytes": null,
   "lastResult": null,
   "lastError": null,
+  "serverReleaseId": null,
   "gapFill": null,
 } satisfies ShellDictInstall
 

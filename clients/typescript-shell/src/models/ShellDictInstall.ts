@@ -66,6 +66,10 @@ export interface ShellDictInstall {
      */
     lastError: string | null;
     /**
+     * Optional (omitted by a shell without gap fill). The last known dictionary release of the server (`dict_release.id` of the last `getMeta` / `getDictRelease` answer from the server); null before the first. The installed package is authoritative - a missing entry means "no such entry" - only when its scope is `all` and `installed.release_id` is at least this value (SHELL.md rule L-7); otherwise the UI offers an update.
+     */
+    serverReleaseId?: number | null;
+    /**
      * 
      */
     gapFill?: ShellDictInstallGapFill;
@@ -139,6 +143,7 @@ export function ShellDictInstallFromJSONTyped(json: any, ignoreDiscriminator: bo
         'totalBytes': json['total_bytes'],
         'lastResult': json['last_result'],
         'lastError': json['last_error'],
+        'serverReleaseId': json['server_release_id'] === undefined ? undefined : json['server_release_id'] === null ? null : json['server_release_id'],
         'gapFill': json['gap_fill'] == null ? undefined : ShellDictInstallGapFillFromJSON(json['gap_fill']),
     };
 }
@@ -161,6 +166,7 @@ export function ShellDictInstallToJSONTyped(value?: ShellDictInstall | null, ign
         'total_bytes': value['totalBytes'],
         'last_result': value['lastResult'],
         'last_error': value['lastError'],
+        'server_release_id': value['serverReleaseId'],
         'gap_fill': ShellDictInstallGapFillToJSON(value['gapFill']),
     };
 }
