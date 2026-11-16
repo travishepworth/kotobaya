@@ -3,6 +3,10 @@ package kotobaya.android.nav
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
+import android.os.Handler
+import android.os.Looper
+import androidx.compose.runtime.snapshots.ObserverHandle
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -19,6 +23,8 @@ import kotobaya.android.search.ui.SearchScreen
 import kotobaya.android.ui.theme.KotobayaTheme
 import kotobaya.android.ui.theme.ThemeMode
 import kotlin.test.assertEquals
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +39,27 @@ class BackNavigationTest {
     val rule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var nav: NavHostController
+
+    private var applyObserver: ObserverHandle? = null
+
+    /**
+     * Compose applies global-snapshot writes through a process-wide dispatcher created by the first Compose test of
+     * the Robolectric sandbox and bound to that test's main looper state. After the looper is reset between tests the
+     * apply can be lost: `Snapshot.current.hasPendingChanges()` then stays true with an empty looper and the recomposer
+     * idle, and `waitForIdle` spins until AppNotIdleException (60 s) under the full suite (never alone). Every test here
+     * therefore registers its own write observer that posts `sendApplyNotifications` to the current main looper.
+     */
+    @Before
+    fun applyGlobalWritesOnThisTestsLooper() {
+        val handler = Handler(Looper.getMainLooper())
+        applyObserver = Snapshot.registerGlobalWriteObserver { handler.post { Snapshot.sendApplyNotifications() } }
+        rule.runOnUiThread { Snapshot.sendApplyNotifications() }
+    }
+
+    @After
+    fun stopApplyingGlobalWrites() {
+        applyObserver?.dispose()
+    }
 
     private fun host() {
         rule.setContent {
