@@ -1188,3 +1188,4 @@
 2026-11-16T04:05:04Z AND-DICT-FALLBACK SHELVED (user)
 2026-11-16T04:07:58Z AND-FLAKY-BACKNAV CHECK_GREEN(writer, 3 full runs) + MERGE (test-only: lost global snapshot apply across Robolectric tests)
 2026-11-16T04:14:56Z AND-BATCH (CARD-KIND-BADGE-AND + RC-FOLLOW-AND) DISPATCH writer(sonnet)
+2026-11-16T04:15:05Z REVIEW-UNLIMITED CHECK_GREEN (contracts/core/server/web/android) + MERGE (ADR-034)
