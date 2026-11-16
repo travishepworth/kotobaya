@@ -3,14 +3,7 @@ package kotobaya.android.dict
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotobaya.android.db.DbThreadGuard
-import kotobaya.android.dict.ui.DictSettingsSection
-import org.koin.compose.getKoin
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.Constraints
@@ -25,7 +18,6 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
-import kotobaya.android.di.SettingsSection
 import kotobaya.android.net.ApiClient
 import kotobaya.android.pairing.TokenStore
 import kotobaya.android.settings.SettingsStore
@@ -114,21 +106,7 @@ private val dictModule = module {
     }
 }
 
-@Composable
-private fun DictSettingsRoute() {
-    val koin = getKoin()
-    val context = LocalContext.current.applicationContext
-    val vm: DictSettingsViewModel = viewModel {
-        DictSettingsViewModel(
-            AppDictSettingsPort(koin.get(), koin.get(), koin.get(), koin.get(), ensurePeriodic = { DictWork.ensurePeriodic(context) }),
-        )
-    }
-    val state by vm.state.collectAsState()
-    DictSettingsSection(state, vm)
-}
-
 val dictFeature = FeatureEntry(
     id = "dict",
     module = dictModule,
-    settingsSections = listOf(SettingsSection("dict", R.string.dict_section_title) { DictSettingsRoute() }),
 )

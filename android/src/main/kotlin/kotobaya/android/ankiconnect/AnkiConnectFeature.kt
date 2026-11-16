@@ -5,12 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.IBinder
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
-import kotobaya.android.ankiconnect.ui.AnkiConnectSettings
-import org.koin.compose.getKoin
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotobaya.android.R
 import kotobaya.android.ankiapi.store.TakobotoAnkiStore
 import kotobaya.android.di.FeatureEntry
-import kotobaya.android.di.SettingsSection
 import kotobaya.android.media.BlobStore
 import kotobaya.android.sync.SqlLearningTables
 import org.koin.core.context.GlobalContext
@@ -126,21 +119,8 @@ private val ankiConnectModule = module {
     single { AnkiConnectController(get(), get()) }
 }
 
-@Composable
-private fun AnkiConnectSettingsRoute() {
-    val koin = getKoin()
-    val vm: AnkiConnectSettingsViewModel = viewModel {
-        val controller = koin.get<AnkiConnectController>()
-        val context = koin.get<Context>()
-        AnkiConnectSettingsViewModel(koin.get(), controller.status, apply = { controller.apply(context) })
-    }
-    val state by vm.state.collectAsState()
-    AnkiConnectSettings(state, vm)
-}
-
 /** THE registration for featureEntries. */
 val ankiConnectFeature = FeatureEntry(
     id = "ankiconnect",
     module = ankiConnectModule,
-    settingsSections = listOf(SettingsSection("ankiconnect", R.string.ankiconnect_section_title) { AnkiConnectSettingsRoute() }),
 )

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Token generator (UI-DS): design/tokens/tokens.json → web CSS, the card stylesheet's token block, the
-// styleguide's token table and the Compose theme. `node design/tokens/generate.mjs` writes the outputs;
+// styleguide's token table. `node design/tokens/generate.mjs` writes the outputs;
 // `--check` writes nothing and exits 1 when any output differs from what the JSON generates (drift).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -13,8 +13,7 @@ export const ROOT = join(HERE, '..', '..');
 export const OUT = {
 	webCss: 'web/src/lib/tokens.css',
 	webTs: 'web/src/lib/ui/tokens.generated.ts',
-	cardCss: 'assets/card/card.css',
-	compose: 'android/src/main/kotlin/kotobaya/android/ui/theme/Tokens.kt'
+	cardCss: 'assets/card/card.css'
 };
 
 export const CARD_START = '/* @generated tokens:start (design/tokens/tokens.json; `make tokens`) */';
@@ -164,140 +163,12 @@ function contrastPairs(tokens) {
 	return [...rows.values()];
 }
 
-/** Kotlin `Color(0xAARRGGBB)`. @param {string} hex */
-function ktColor(hex) {
-	const [r, g, b, a] = parseHex(hex);
-	const h = (/** @type {number} */ n) => n.toString(16).padStart(2, '0').toUpperCase();
-	return `Color(0x${h(Math.round(a * 255))}${h(r)}${h(g)}${h(b)})`;
-}
-
-/** @param {any} tokens */
-export function compose(tokens) {
-	const colors = resolveColors(tokens);
-	const names = Object.keys(tokens.color);
-	const t = tokens.type;
-	const L = [];
-	L.push(`// ${BANNER}`);
-	L.push('// Kotobaya design tokens for Compose (docs/DESIGN.md). KotobayaTheme (UI-APP) wires these into MaterialTheme.');
-	L.push('@file:Suppress("MagicNumber", "unused")');
-	L.push('');
-	L.push('package kotobaya.android.ui.theme');
-	L.push('');
-	for (const i of [
-		'androidx.compose.animation.core.CubicBezierEasing',
-		'androidx.compose.foundation.shape.RoundedCornerShape',
-		'androidx.compose.material3.ColorScheme',
-		'androidx.compose.material3.Shapes',
-		'androidx.compose.material3.Typography',
-		'androidx.compose.material3.darkColorScheme',
-		'androidx.compose.material3.lightColorScheme',
-		'androidx.compose.runtime.Immutable',
-		'androidx.compose.ui.graphics.Color',
-		'androidx.compose.ui.text.TextStyle',
-		'androidx.compose.ui.text.font.FontFamily',
-		'androidx.compose.ui.text.font.FontWeight',
-		'androidx.compose.ui.unit.dp',
-		'androidx.compose.ui.unit.em',
-		'androidx.compose.ui.unit.sp'
-	])
-		L.push(`import ${i}`);
-	L.push('');
-	L.push('/** Every semantic colour of one theme (names match the web `--kb-color-*` tokens). */');
-	L.push('@Immutable');
-	L.push('data class KbColors(');
-	for (const n of names) L.push(`    val ${camel(n)}: Color,`);
-	L.push(')');
-	for (const theme of /** @type {const} */ (['light', 'dark'])) {
-		L.push('');
-		L.push(`val KbColors${theme === 'light' ? 'Light' : 'Dark'}: KbColors = KbColors(`);
-		for (const n of names) L.push(`    ${camel(n)} = ${ktColor(colors[theme][n])},`);
-		L.push(')');
-	}
-	L.push('');
-	L.push('/** The Material 3 colour scheme derived from the semantic colours, so stock components fit the palette. */');
-	L.push('fun KbColors.toColorScheme(dark: Boolean): ColorScheme =');
-	L.push('    if (dark) {');
-	L.push('        darkColorScheme(');
-	for (const [m, s] of Object.entries(tokens.material3)) L.push(`            ${m} = ${camel(s)},`);
-	L.push('        )');
-	L.push('    } else {');
-	L.push('        lightColorScheme(');
-	for (const [m, s] of Object.entries(tokens.material3)) L.push(`            ${m} = ${camel(s)},`);
-	L.push('        )');
-	L.push('    }');
-	L.push('');
-	L.push('/** Text styles (sp, so they follow the system font scale). Family-less: [kbTypography] applies the fonts. */');
-	L.push('object KbType {');
-	for (const [role, r] of Object.entries(t.roles)) {
-		L.push(`    /** ${r.use} */`);
-		L.push(
-			`    val ${camel(role)}: TextStyle = TextStyle(fontSize = ${r.sp}.sp, lineHeight = ${fmt(Math.round(r.sp * r.lh))}.sp, fontWeight = FontWeight(${r.weight}), letterSpacing = ${fmt(r.tracking)}.em)`
-		);
-	}
-	L.push(`    /** Furigana: base size × RUBY_SCALE, never below RUBY_MIN_SP. */`);
-	L.push(`    const val RUBY_SCALE: Float = ${fmt(t.ruby.scale)}f`);
-	L.push(`    const val RUBY_MIN_SP: Float = ${fmt(t.ruby.minSp)}f`);
-	L.push(`    const val RUBY_LINE_HEIGHT: Float = ${fmt(t.ruby.lineHeight)}f`);
-	L.push('}');
-	L.push('');
-	L.push('/** The family of each role (serif roles use the Mincho face). */');
-	L.push('private val serifRoles: Set<String> = setOf(' + Object.entries(t.roles).filter(([, r]) => r.family === 'serif').map(([n]) => `"${camel(n)}"`).join(', ') + ')');
-	L.push('');
-	L.push('/** Material 3 typography from [KbType]. Pass the bundled Noto Sans JP / Noto Serif JP families (UI-APP). */');
-	L.push('fun kbTypography(sans: FontFamily = FontFamily.Default, serif: FontFamily = FontFamily.Serif): Typography {');
-	L.push('    fun f(role: String, s: TextStyle): TextStyle = s.copy(fontFamily = if (role in serifRoles) serif else sans)');
-	L.push('    return Typography(');
-	for (const [m, role] of Object.entries(t.material3)) L.push(`        ${m} = f("${camel(role)}", KbType.${camel(role)}),`);
-	L.push('    )');
-	L.push('}');
-	L.push('');
-	L.push('object KbSpace {');
-	for (const [k, v] of Object.entries(tokens.space).sort((a, b) => a[1] - b[1])) L.push(`    val s${k.replace('-', '_')} = ${v}.dp`);
-	L.push('}');
-	L.push('');
-	L.push('object KbRadius {');
-	for (const [k, v] of Object.entries(tokens.radius)) L.push(`    val ${camel(k)} = ${v}.dp`);
-	L.push('}');
-	L.push('');
-	const r = tokens.radius;
-	L.push('val KbShapes: Shapes = Shapes(');
-	L.push(`    extraSmall = RoundedCornerShape(${r.xs}.dp),`);
-	L.push(`    small = RoundedCornerShape(${r.sm}.dp),`);
-	L.push(`    medium = RoundedCornerShape(${r.md}.dp),`);
-	L.push(`    large = RoundedCornerShape(${r.lg}.dp),`);
-	L.push(`    extraLarge = RoundedCornerShape(${r.xl}.dp),`);
-	L.push(')');
-	L.push('');
-	L.push('object KbElevation {');
-	for (const [k, v] of Object.entries(tokens.elevation)) L.push(`    val level${k} = ${v.dp}.dp`);
-	L.push('}');
-	L.push('');
-	L.push('/** Durations in ms (all under 250). Under reduced motion (animator scale 0) use fades only, no movement. */');
-	L.push('object KbMotion {');
-	for (const [k, v] of Object.entries(tokens.motion.duration)) L.push(`    const val ${k.toUpperCase()}: Int = ${v}`);
-	for (const [k, v] of Object.entries(tokens.motion.easing))
-		L.push(`    val ${camel(k)}: CubicBezierEasing = CubicBezierEasing(${v.map((/** @type {number} */ n) => `${fmt(n)}f`).join(', ')})`);
-	for (const [k, v] of Object.entries(tokens.motion.distance)) L.push(`    val distance${k[0].toUpperCase() + k.slice(1)} = ${v}.dp`);
-	L.push('}');
-	L.push('');
-	L.push('object KbSize {');
-	for (const [k, v] of Object.entries(tokens.size)) L.push(`    val ${camel(k)} = ${v.dp}.dp`);
-	L.push('}');
-	L.push('');
-	L.push('/** Window width breakpoints (dp, min-width); same values as the web breakpoints in px. */');
-	L.push('object KbBreakpoint {');
-	for (const [k, v] of Object.entries(tokens.breakpoint)) L.push(`    val ${camel(k)} = ${v}.dp`);
-	L.push('}');
-	return L.join('\n') + '\n';
-}
-
 /** Every output path (repo-relative) → the content the token file generates. */
 export function generateAll(tokens = loadTokens()) {
 	return {
 		[OUT.webCss]: webCss(tokens),
 		[OUT.webTs]: webTs(tokens),
-		[OUT.cardCss]: cardCss(tokens, read(OUT.cardCss)),
-		[OUT.compose]: compose(tokens)
+		[OUT.cardCss]: cardCss(tokens, read(OUT.cardCss))
 	};
 }
 

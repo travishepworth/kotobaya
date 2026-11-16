@@ -136,7 +136,7 @@ class LocalQueueLoader(
                 val created = try {
                     m.materialize(loaded.queue.toMaterialize)
                 } catch (e: Exception) {
-                    kotobaya.android.vm.ScreenLog.loadFailed("LocalQueueLoader.materialize", e)
+                    kotobaya.android.report.ScreenLog.loadFailed("LocalQueueLoader.materialize", e)
                     return@run LoadedQueue(loaded.input, loaded.result, MaterializeFailed(e))
                 }
                 // nothing created is not a failure: the entries may have notes by now (another build, a pull)

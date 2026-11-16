@@ -1,33 +1,16 @@
 package kotobaya.android.di
 
-import androidx.annotation.StringRes
-import androidx.compose.runtime.Composable
-import kotobaya.android.nav.NavRoute
 import org.koin.core.module.Module
 
-/** A section shown on the Settings screen, contributed by a feature. */
-data class SettingsSection(
-    val id: String,
-    @StringRes val titleRes: Int,
-    val content: @Composable () -> Unit,
-)
-
-/** Everything a feature package contributes to the shell. Later tickets add one per package. */
+/** What a feature package contributes: its Koin module. */
 data class FeatureEntry(
     val id: String,
     val module: Module? = null,
-    val routes: List<NavRoute> = emptyList(),
-    val settingsSections: List<SettingsSection> = emptyList(),
-    /** Home screen sync status chip slot (T303e). */
-    val homeStatusChip: (@Composable () -> Unit)? = null,
 )
 
-/** Aggregated view over feature entries; the nav graph and Settings read only this. */
+/** Aggregated view over feature entries. */
 class FeatureRegistry(val entries: List<FeatureEntry>) {
-    val routes: List<NavRoute> get() = entries.flatMap { it.routes }
-    val settingsSections: List<SettingsSection> get() = entries.flatMap { it.settingsSections }
     val modules: List<Module> get() = entries.mapNotNull { it.module }
-    val homeStatusChips: List<@Composable () -> Unit> get() = entries.mapNotNull { it.homeStatusChip }
 }
 
 /**
@@ -43,20 +26,11 @@ val featureEntries: List<FeatureEntry> = listOf(
     kotobaya.android.push.pushFeature,
     kotobaya.android.media.mediaFeature,
     kotobaya.android.media.browse.mediaBrowseFeature,
-    kotobaya.android.review.reviewFeature,
     kotobaya.android.notes.notesFeature,
     kotobaya.android.ankiapi.takoboto.takobotoFeature,
     kotobaya.android.intake.intakeFeature,
     kotobaya.android.ankiconnect.ankiConnectFeature,
     kotobaya.android.sync.syncFeature,
     kotobaya.android.report.reportFeature,
-    kotobaya.android.sync.syncUiFeature,
-    kotobaya.android.struggle.struggleFeature,
-    kotobaya.android.decks.decksFeature,
-    kotobaya.android.search.searchFeature,
-    kotobaya.android.settings.settingsUiFeature,
-    kotobaya.android.grammar.grammarCaptureFeature,
-    kotobaya.android.demo.demoFeature,
     kotobaya.android.shell.shellFeature, // SHELL-A2: local API kernel (ADR-036)
-    kotobaya.android.styleguide.styleguideFeature, // UI-DS-APP: debug-only (src/debug; src/release has an empty entry)
 )

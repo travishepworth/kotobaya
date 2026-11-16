@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, OUT, drift, generateAll, loadTokens, compose, webCss } from './generate.mjs';
+import { ROOT, OUT, drift, generateAll, loadTokens, webCss } from './generate.mjs';
 import { camel, contrast, contrastReport, fluid, resolveColors } from './lib.mjs';
 
 const tokens = loadTokens();
 
-test('generated outputs are in sync with tokens.json (web CSS, card.css block, styleguide table, Compose theme)', () => {
+test('generated outputs are in sync with tokens.json (web CSS, card.css block, styleguide table)', () => {
 	assert.deepEqual(drift(tokens), [], 'run `make tokens` and commit the outputs');
 });
 
@@ -103,15 +103,3 @@ test('web CSS: themes are switchable per subtree and carry no legacy POC tokens'
 	for (const n of Object.keys(tokens.color)) assert.ok(css.includes(`--kb-color-${n}:`), n);
 });
 
-test('Compose output: unique, valid identifiers and both colour sets complete', () => {
-	const kt = compose(tokens);
-	const ids = Object.keys(tokens.color).map(camel);
-	assert.equal(new Set(ids).size, ids.length);
-	for (const id of ids) assert.match(id, /^[a-z][A-Za-z0-9_]*$/);
-	for (const set of ['KbColorsLight', 'KbColorsDark']) {
-		const start = kt.indexOf(`val ${set}`);
-		const block = kt.slice(start, kt.indexOf('\n)\n', start));
-		for (const id of ids) assert.ok(block.includes(`    ${id} = Color(0x`), `${set}.${id}`);
-	}
-	assert.match(kt, /^package kotobaya\.android\.ui\.theme$/m);
-});

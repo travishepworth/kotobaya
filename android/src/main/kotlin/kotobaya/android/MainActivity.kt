@@ -25,7 +25,6 @@ import org.koin.android.ext.android.getKoin
 
 /**
  * SHELL-A3 (ADR-036): hosts the SPA in one WebView loaded from `https://appassets.androidplatform.net/`.
- * The Compose app lives on in [kotobaya.android.legacy.LegacyActivity] ("Kotobaya (old)") until SHELL-Z1.
  * Widget, tile and notification intents keep targeting this activity (navigation: SHELL-A4).
  */
 class MainActivity : ComponentActivity() {

@@ -72,7 +72,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true // UI-FOUND-APP: BuildConfig.DEBUG gates the demo-data switch
+        buildConfig = true
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
     // SHELL-A3: AAPT's default pattern has `<dir>_*`, which silently drops the SPA's `web/_app/` (every script and
@@ -178,49 +178,6 @@ androidComponents {
     }
 }
 
-// UI-FOUND-APP: the shared demo dataset (fixtures/demo/*.json, CC0) as debug-only assets under demo/, for the
-// debug "demo data" switch, the Compose previews and the screenshot harness. Release builds never carry it.
-abstract class CopyDemoAssets : DefaultTask() {
-    @get:InputDirectory
-    abstract val source: DirectoryProperty
-
-    @get:OutputDirectory
-    abstract val outputDir: DirectoryProperty
-
-    @TaskAction
-    fun copy() {
-        val dest = outputDir.get().dir("demo").asFile
-        dest.deleteRecursively()
-        dest.mkdirs()
-        source.get().asFile.listFiles { f -> f.extension == "json" }.orEmpty().forEach { it.copyTo(File(dest, it.name)) }
-    }
-}
-
-val copyDemoAssets = tasks.register<CopyDemoAssets>("copyDemoAssets") {
-    source.set(rootProject.layout.projectDirectory.dir("fixtures/demo"))
-    outputDir.set(layout.buildDirectory.dir("generated/demoAssets"))
-}
-androidComponents {
-    onVariants(selector().withBuildType("debug")) { variant ->
-        variant.sources.assets?.addGeneratedSourceDirectory(copyDemoAssets) { it.outputDir }
-    }
-}
-
-// UI-FOUND-APP: the screenshot matrix (ScreenshotMatrixTest) runs only with -Pscreenshots (`make screenshots-app`);
-// `make check` skips it. Images go to android/screenshots/ (gitignored except the README).
-val screenshotsRequested = providers.gradleProperty("screenshots").isPresent
-tasks.withType<Test>().configureEach {
-    systemProperty("kotobaya.screenshots", screenshotsRequested.toString())
-    systemProperty("kotobaya.screenshots.dir", layout.projectDirectory.dir("screenshots").asFile.path)
-    if (screenshotsRequested) {
-        systemProperty("roborazzi.test.record", "true")
-        outputs.upToDateWhen { false }
-        maxHeapSize = "3g"
-    } else {
-        filter.excludeTestsMatching("kotobaya.android.screenshots.*")
-    }
-}
-
 // --- T305a: flavor verification, aggregate test task, APK names --------------------------------
 
 // Fails unless a variant's merged manifest has the expected package and declares AnkiDroid's
@@ -312,13 +269,7 @@ dependencies {
     implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(platform(libs.compose.bom))
-    implementation(libs.compose.ui)
-    implementation(libs.compose.material3)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.navigation.compose)
     implementation(libs.koin.android)
-    implementation(libs.koin.compose)
     implementation(libs.sqldelight.android.driver)
     // T301b: HTTP client and QR scanner (see HANDOFF)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -341,15 +292,6 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
+    testImplementation("androidx.test:core:1.6.1") // ApplicationProvider (was transitive via compose ui-test)
     testImplementation(libs.sqldelight.sqlite.driver)
-    testImplementation(platform(libs.compose.bom))
-    testImplementation(libs.compose.ui.test.junit4)
-    debugImplementation(libs.compose.ui.test.manifest)
-    // UI-FOUND-APP: ViewModels (androidx lifecycle, the one koinViewModel uses), @Preview, and the Roborazzi
-    // screenshot harness (`make screenshots-app`; recording only, not a gate)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.40.1")
-    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.40.1")
 }

@@ -5,7 +5,6 @@ import kotobaya.android.db.createAppDatabase
 import kotobaya.android.queue.LocalQueueLoader
 import kotobaya.android.search.EntryLabel
 import kotobaya.android.search.EntryLabeler
-import kotobaya.android.review.asQueueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -64,10 +63,10 @@ class DeckRepositoryTest {
         assertEquals(1, decks.getValue(id(3, 1)).counts.due)
         assertEquals(1, decks.getValue(id(3, 1)).counts.new)
 
-        val studied = loader.asQueueSource().forDeck(id(3, 1)).load(0).items.map { it.cardId }.toSet()
+        val studied = loader.load(deckFilter = id(3, 1)).queue.items.map { it.cardId }.toSet()
         assertEquals(setOf(id(2, 1), id(2, 2)), studied)
         // No deck argument: the unfiltered queue holds cards of both decks.
-        val all = loader.asQueueSource().load(0).items.map { it.cardId }.toSet()
+        val all = loader.load(deckFilter = null).queue.items.map { it.cardId }.toSet()
         assertTrue(id(2, 3) in all && id(2, 1) in all)
     }
 

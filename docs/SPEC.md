@@ -49,7 +49,7 @@ The API enqueues heavy work (parsing, imports, optimizer runs) in Postgres; the 
 | API | Ktor | Same language as the core; small and fast to start |
 | Worker | Python | Sudachi, the FSRS optimizer, and text tooling live there |
 | Database | Postgres server-side, SQLite (SQLDelight) on the phone | Same logical schema in both |
-| Android | Jetpack Compose, Glance widgets, WorkManager | Native: needed for the AnkiDroid stand-in, widget, and alarms |
+| Android | WebView shell, Glance widgets, WorkManager | Native: needed for the AnkiDroid stand-in, widget, and alarms |
 | Web | SvelteKit, static build | Light, fast, consumes the generated API client |
 | Storage | MinIO (S3-compatible) | Audio and uploads, addressed by content hash |
 | TTS | VOICEVOX engine | Self-hosted, good Japanese voices |
@@ -238,7 +238,7 @@ There are two clients: a native Android app for reviewing and mining, and a sepa
 
 ### Android app
 
-Kotlin and Jetpack Compose, with the shared Kotlin Multiplatform core and SQLDelight for the local SQLite database.
+A WebView shell around the web app; native: sync, local API, widgets, notifications, integrations. The shared Kotlin Multiplatform core and SQLDelight (local SQLite) sit behind the local API (ADR-036).
 
 **Screens**
 

@@ -4,19 +4,12 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
-import kotobaya.android.di.SettingsSection
 import kotobaya.android.net.ApiClient
 import kotobaya.android.net.MetaLimitsStore
 import kotobaya.android.net.ServerReachability
-import kotobaya.android.pairing.ui.DevicesSection
 import kotobaya.android.settings.SettingsStore
-import org.koin.compose.getKoin
 import org.koin.dsl.module
 
 private fun isOnline(context: Context): Boolean {
@@ -46,20 +39,10 @@ private val pairingModule = module {
             clientFor = { url -> ApiClient({ url }, { null }, { isOnline(ctx) }) },
         )
     }
-    factory<DevicesPort> { AppDevicesPort(get()) }
-}
-
-@Composable
-private fun DevicesRoute() {
-    val koin = getKoin()
-    val vm: DevicesViewModel = viewModel { DevicesViewModel(koin.get<DevicesPort>()) }
-    val state by vm.state.collectAsState()
-    DevicesSection(state, vm)
 }
 
 /** THE registration for featureEntries. */
 val pairingFeature = FeatureEntry(
     id = "pairing",
     module = pairingModule,
-    settingsSections = listOf(SettingsSection("devices", R.string.devices_title) { DevicesRoute() }),
 )

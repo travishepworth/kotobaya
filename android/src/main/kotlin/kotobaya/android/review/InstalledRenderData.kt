@@ -4,7 +4,7 @@ import android.util.Log
 import kotobaya.android.dict.DictEntryDetail
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.dict.KanjiDetail
-import kotobaya.android.vm.ScreenLog
+import kotobaya.android.report.ScreenLog
 import kotobaya.contracts.render.DictionaryData
 import kotobaya.contracts.render.KanjiData
 

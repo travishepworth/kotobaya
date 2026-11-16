@@ -41,17 +41,6 @@
                 <data android:scheme="kotobaya" android:host="media" />
             </intent-filter>
         </activity>
-        <!-- SHELL-A3: the Compose app under its own launcher entry and task until SHELL-Z1. -->
-        <activity
-            android:name=".legacy.LegacyActivity"
-            android:exported="true"
-            android:label="@string/legacy_launcher_label"
-            android:taskAffinity="kotobaya.android.legacy">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
         <activity
             android:name=".intake.IntakeActivity"
             android:exported="true"

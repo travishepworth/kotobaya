@@ -1,4 +1,4 @@
-package kotobaya.android.vm
+package kotobaya.android.report
 
 import android.util.Log
 

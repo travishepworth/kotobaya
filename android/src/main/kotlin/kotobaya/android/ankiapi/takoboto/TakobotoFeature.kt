@@ -1,11 +1,5 @@
 package kotobaya.android.ankiapi.takoboto
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
-import kotobaya.android.ankiapi.takoboto.ui.TakobotoDebug
-import org.koin.compose.getKoin
 import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +15,6 @@ import kotobaya.android.ankiapi.store.InstalledEntryLookup
 import kotobaya.android.ankiapi.store.SqliteAnkiIdMap
 import kotobaya.android.ankiapi.store.TakobotoAnkiStore
 import kotobaya.android.di.FeatureEntry
-import kotobaya.android.di.SettingsSection
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.notes.DuplicateCheck
 import kotobaya.android.notes.LearningReader
@@ -99,41 +92,8 @@ val takobotoModule = module {
     }
 }
 
-/** Debug section: counts of notes added, whether the note type exists, unknown calls and the last provider calls. */
-/** BUG-8: both databases are read on IO, never in composition (the sync writer may hold the app one). */
-private fun loadDebug(map: AnkiIdMap, store: SqlDelightDeviceStore): TakobotoDebugUiState {
-    val ready = runCatching {
-        store.read { tx ->
-            tx.learning.all(LearningTable.NOTE_TYPE).any {
-                it["name"] == kotobaya.contracts.sync.JsonString(TakobotoVocab.NAME) &&
-                    (it["deleted_at"] ?: kotobaya.contracts.sync.JsonNull) == kotobaya.contracts.sync.JsonNull
-            }
-        }
-    }.getOrDefault(false)
-    return TakobotoDebugUiState(
-        calls = ProviderCallLog.snapshot(),
-        added = map.counter(AnkiIds.COUNT_ADDED),
-        duplicates = map.counter(AnkiIds.COUNT_DUPLICATE),
-        refused = map.counter(AnkiIds.COUNT_REFUSED),
-        noteTypeReady = ready,
-    )
-}
-
-@Composable
-private fun TakobotoDebugRoute() {
-    val koin = getKoin()
-    val vm: TakobotoDebugViewModel = viewModel {
-        val map = koin.get<AnkiIdMap>()
-        val store = koin.get<SqlDelightDeviceStore>()
-        TakobotoDebugViewModel({ loadDebug(map, store) })
-    }
-    val state by vm.state.collectAsState()
-    TakobotoDebug(state, vm)
-}
-
 /** THE registration for featureEntries. */
 val takobotoFeature = FeatureEntry(
     id = "takoboto",
     module = takobotoModule,
-    settingsSections = listOf(SettingsSection("takoboto", R.string.ankiapi_section_title) { TakobotoDebugRoute() }),
 )
