@@ -5,7 +5,7 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
-FIRST-TEST APK 0.1.30 BUILT (pin e11d613e, ~/kotobaya-apk/kotobaya-0.1.30-release.apk; includes A4) — user to plug in; adb install -r, check user 10. Lane after L2b: A6, A7, L4..L8, Z1.
+FIRST-TEST APK 0.1.30 INSTALLED 2026-11-17 (pin e11d613e); smoke OK, counts == server. Awaiting user feedback. Lane after L2b: A6, A7, L4..L8, Z1.
 | SHELL-L2b | writer | 1 | t/SHELL-L2b-queue-followups (gradle lane) |
 Gradle lane next: L9 -> L1 -> L2 -> L3 -> A3.
 First-phone-test path: C1 -> A1 -> A2 -> P1 -> P2 -> L9 -> L1 -> L2 -> L3 -> A3 (+W1 parallel after C1). Then tell user.

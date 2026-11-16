@@ -1257,3 +1257,4 @@
 2026-11-16T15:35:28Z SHELL-A4 CHECK_GREEN + MERGE (back protocol, deep links, intake trampoline, A3 minors)
 2026-11-16T15:36:34Z RELEASE APK 0.1.30 built (pin e11d613e, code 130, cert ok; +A4) supersedes 0.1.29 (never installed)
 2026-11-16T15:36:34Z SHELL-L2b DISPATCH writer [gradle lane] (tmp leak fix first)
+2026-11-16T15:45:19Z RELEASE APK 0.1.30 INSTALLED (users 0+10); smoke: launches into SPA signed in, Today counts 0/7/0 == server; no crash in logcat
