@@ -40,3 +40,8 @@ Server latency today: /review/queue ~6 s per call (being fixed in RC-SERVER); st
 
 ## Out of scope
 Server performance (RC-SERVER), Android, CLI.
+
+## Scope addition (user, run 31)
+Web client slows down over time and flickers a little. Find and fix root cause(s): leaked
+intervals/listeners/SSE, refetch loops, remounting {#key}/{#if} on refetch, loading states that
+blank content, re-fired dashboard requests. Measure, name cause in HANDOFF; test leaks/loops.
