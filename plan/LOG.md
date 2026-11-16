@@ -1205,3 +1205,4 @@
 2026-11-16T06:40:35Z ONE-CARD-SRV REVIEW_CHANGES r2: loader dropping retired keeps their today-reviews (budget/bury divergence vs Android) -> attempt 3: keep in QueueInput, exclude only in laterLearning/next-due/forecast
 2026-11-16T06:48:26Z ONE-CARD-SRV REVIEW_APPROVE r3. Chain rebased C-28 -> SRV -> AND onto main; full module checks running on combined tip
 2026-11-16T06:53:18Z C-28+ONE-CARD-CORE, ONE-CARD-SRV, ONE-CARD-AND MERGE (all modules green; cli 1 flaky timing test, 3 reruns green -> FOLLOWUPS). ONE-CARD-WEB next
+2026-11-16T06:54:31Z ONE-CARD-WEB CHECK_GREEN + MERGE
