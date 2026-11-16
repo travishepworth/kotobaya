@@ -46,8 +46,7 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  *   create at least one vocab card ([DeckEntryPlan.vocabKinds]). Each carries `expressionKanji` (the headword's kanji)
  *   and `newKanjiCards` ([DeckEntryPlan.newKanjiCards] under the deck's present `add_kanji`), so the builder draws it
  *   as the group its card will be. Only the first `2 × B + 16` per deck in `(position, item_key)` order are passed,
- *   `B` = the larger of the normal budget bound and the keep-going batch (the `moreAvailable` probe builds with the
- *   batch even when a normal limit is 0); an entry beyond that is reached by a later build.
+ *   `B` = `max(1, batch)` (ADR-037: the batch bounds both builds of the loop); an entry beyond that is reached by a later build.
  */
 internal class QueueLoader(private val dsl: DSLContext) {
     fun load(
@@ -62,8 +61,8 @@ internal class QueueLoader(private val dsl: DSLContext) {
         val decks = loadDecks(settings)
         val batch = maxOf(1, keepGoingNewBatch)
         val pending = pendingEntries(
-            // ADR-033: the normal-budget count is needed under keep going too (counts come from the normal build).
-            maxOf(batch, minOf(settings.newPerDay, settings.newPerSession)),
+            // ADR-037: both builds of the loop draw at most the batch; new_per_session is ignored.
+            batch,
             deckFilter,
             settings.burySiblings,
             readingEnabled,
@@ -118,7 +117,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
             limits = QueueLimits(
                 newPerDay = settings.newPerDay,
                 reviewsPerDay = settings.reviewsPerDay,
-                newPerSession = settings.newPerSession,
+                newPerSession = 0, // ADR-037: deprecated, ignored by the builder
                 newShownThisSession = 0,
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS, // 0: ADR-033, no learn-ahead

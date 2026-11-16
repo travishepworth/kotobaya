@@ -452,6 +452,151 @@ class ReviewApiTest : SyncFixture() {
         assertTrue(normal in ids)
     }
 
+    // ADR-037 review loop ------------------------------------------------------------------------------------
+
+    private fun ids(r: JsonNode) = r["items"].map { it["card"]["id"].asText() }
+
+    /** `loop` minus the two members that depend on the caller's keep-going flag. */
+    private fun loopSame(r: JsonNode): JsonNode = (r["loop"].deepCopy<JsonNode>() as com.fasterxml.jackson.databind.node.ObjectNode).apply { remove("phase"); remove("keep_going") }
+
+    /** [reviews] notes graduated by Easy and due 60 days later, so they are due reviews now. */
+    private suspend fun ApplicationTestBuilder.dueReviews(t: String, reviews: Int): List<String> {
+        val cards = (1..reviews).map { cardOf(note(t, "due$it"), "meaning") }
+        cards.forEach { assertEquals(200, answer(t, it, 4).status.value) }
+        advance(60L * 24 * 60)
+        return cards
+    }
+
+    /** A1: reviews unlimited, learning cards later today, new cards remain: the loop never waits. */
+    @Test
+    fun loopUnlimitedLaterLearningServesNew() = reviewApp {
+        val t = token()
+        setting("scheduler.reviews_unlimited", "true")
+        setting("scheduler.new_per_day", "40")
+        val later = (1..26).map { cardOf(note(t, "l$it"), "meaning") }
+        later.forEach { assertEquals(200, answer(t, it, 1).status.value) }
+        repeat(12) { note(t, "n$it") }
+        val r = fetchQueue(t, "?limit=5")
+        val loop = r["loop"]
+        assertEquals("reviewing", loop["phase"].asText())
+        assertEquals(false, loop["keep_going"].asBoolean())
+        assertEquals(5, r["items"].size())
+        assertTrue(r["items"].all { it["is_new"].asBoolean() })
+        assertEquals(0, loop["ready"]["total"].asInt())
+        assertEquals(26, loop["later_today"]["count"].asInt())
+        assertTrue(!loop["later_today"]["next_due_at"].isNull)
+        assertEquals(loop["later_today"]["next_due_at"].asText(), r["next_learning_due_at"].asText())
+        assertTrue(loop["reviews"]["limit"].isNull)
+        assertEquals(26, loop["new"]["today"].asInt())
+        assertEquals(40, loop["new"]["goal"].asInt())
+        assertEquals(true, loop["new"]["available"].asBoolean())
+        assertEquals(26, r["counts"]["learning"].asInt(), "legacy over-count kept for old clients")
+        assertEquals(12, r["counts"]["new"].asInt(), "legacy: unbounded by the batch")
+        assertEquals(0, r["counts"]["review"].asInt())
+        assertEquals(false, r["more_available"].asBoolean())
+    }
+
+    /** B3 then B4: review cap reached; Keep going serves the backlog first, then new. */
+    @Test
+    fun loopDoneForTodayThenKeepGoingBacklogFirst() = reviewApp {
+        val t = token()
+        setting("scheduler.reviews_per_day", "2")
+        setting("scheduler.new_per_day", "0")
+        val due = dueReviews(t, 4)
+        val first = fetchQueue(t)
+        assertEquals(2, first["loop"]["ready"]["review"].asInt())
+        assertEquals(4, first["loop"]["backlog"]["reviews"].asInt())
+        ids(first).forEach { assertEquals(200, answer(t, it, 4).status.value) }
+        note(t, "fresh")
+        val b3 = fetchQueue(t)
+        assertEquals(0, b3["items"].size())
+        assertEquals("done_for_today", b3["loop"]["phase"].asText())
+        assertEquals(2, b3["loop"]["backlog"]["reviews"].asInt())
+        assertEquals(2, b3["loop"]["backlog"]["beyond_limit"].asInt())
+        assertEquals(2, b3["loop"]["reviews"]["today"].asInt())
+        assertEquals(2, b3["loop"]["reviews"]["limit"].asInt())
+        assertEquals(true, b3["loop"]["new"]["available"].asBoolean())
+        assertEquals(true, b3["more_available"].asBoolean())
+        val b4 = fetchQueue(t, "?keep_going=true")
+        assertEquals("reviewing", b4["loop"]["phase"].asText())
+        assertEquals(true, b4["loop"]["keep_going"].asBoolean())
+        assertEquals(loopSame(b3), loopSame(b4))
+        val kinds = b4["items"].map { if (it["is_new"].asBoolean()) "new" else "review" }
+        assertEquals(listOf("review", "review", "new"), kinds, "backlog first, then new")
+        assertEquals(false, b4["more_available"].asBoolean())
+        assertEquals(b3["counts"], b4["counts"])
+        assertTrue(due.size == 4)
+    }
+
+    /** A3: reviews unlimited, goal reached; Keep going goes on with new cards. */
+    @Test
+    fun loopGoalReachedThenKeepGoing() = reviewApp {
+        val t = token()
+        setting("scheduler.reviews_unlimited", "true")
+        setting("scheduler.new_per_day", "1")
+        listOf("a", "b", "c").forEach { note(t, it) }
+        assertEquals(200, answer(t, ids(fetchQueue(t))[0], 4).status.value)
+        val done = fetchQueue(t)
+        assertEquals(0, done["items"].size())
+        assertEquals("goal_reached", done["loop"]["phase"].asText())
+        assertEquals(1, done["loop"]["new"]["today"].asInt())
+        assertEquals(1, done["loop"]["new"]["goal"].asInt())
+        val kg = fetchQueue(t, "?keep_going=true")
+        assertEquals("reviewing", kg["loop"]["phase"].asText())
+        assertTrue(kg["items"].size() > 0 && kg["items"].all { it["is_new"].asBoolean() })
+        assertEquals(loopSame(done), loopSame(kg))
+        ids(kg).forEach { assertEquals(200, answer(t, it, 4).status.value) }
+        val after = fetchQueue(t, "?keep_going=true")
+        assertEquals(3, after["loop"]["new"]["today"].asInt(), "past the goal of 1")
+        assertEquals("empty", after["loop"]["phase"].asText())
+    }
+
+    @Test
+    fun loopIndependentOfKindsAndLimit() = reviewApp {
+        val t = token()
+        setting("scheduler.reviews_per_day", "1")
+        setting("scheduler.new_per_day", "5")
+        dueReviews(t, 3)
+        repeat(4) { note(t, "n$it") }
+        val base = fetchQueue(t)["loop"]
+        for (q in listOf("?limit=1", "?kinds=review", "?kinds=new&limit=2", "?kinds=learning")) {
+            assertEquals(base, fetchQueue(t, q)["loop"], q)
+        }
+        val limitedItems = fetchQueue(t, "?kinds=learning")["items"]
+        assertEquals(0, limitedItems.size())
+        assertEquals("reviewing", base["phase"].asText(), "phase follows the served queue, not the kinds filter")
+    }
+
+    /** Snapshot of the shape and meaning an old client (CLI, older web, APK 0.1.31) reads. */
+    @Test
+    fun legacyFieldsFrozen() = reviewApp {
+        val t = token()
+        setting("scheduler.new_per_day", "1")
+        note(t, "a")
+        note(t, "b")
+        val first = fetchQueue(t)
+        assertEquals(
+            setOf("items", "counts", "study_day", "day_ends_at", "generated_at", "more_available", "to_materialize", "loop"),
+            first.fieldNames().asSequence().toSet(),
+        )
+        assertEquals(listOf("new", "learning", "review"), first["counts"].fieldNames().asSequence().toList())
+        assertEquals(1, first["counts"]["new"].asInt())
+        assertEquals(false, first["more_available"].asBoolean())
+        assertTrue(!first.has("next_learning_due_at"))
+        val card = ids(first)[0]
+        assertEquals(200, answer(t, card, 1).status.value)
+        val waiting = fetchQueue(t)
+        assertEquals(0, waiting["items"].size())
+        assertEquals(0, waiting["counts"]["new"].asInt())
+        assertEquals(1, waiting["counts"]["learning"].asInt(), "ready + later today")
+        assertEquals(waiting["loop"]["later_today"]["next_due_at"].asText(), waiting["next_learning_due_at"].asText())
+        assertEquals(true, waiting["more_available"].asBoolean())
+        assertEquals(false, fetchQueue(t, "?keep_going=true")["more_available"].asBoolean(), "a keep-going request never reports more")
+        val summary = client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()
+        assertEquals(waiting["counts"], summary["due"])
+        assertEquals(true, summary["more_available"].asBoolean())
+    }
+
     @Test
     fun settingsFollowTheSchemaValidityTest() {
         fun v(json: String) = ReviewSettings.intValue(kotobaya.server.json.readTree(json), Int.MIN_VALUE, Int.MAX_VALUE)

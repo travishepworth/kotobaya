@@ -8,11 +8,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotobaya.contracts.fsrs.CardState
-import kotobaya.contracts.queue.QueueBuilder
-import kotobaya.contracts.queue.QueueItemKind
+import kotobaya.contracts.queue.ReviewLoop
 import kotobaya.notes.Errors
-import kotobaya.queue.DefaultQueueBuilder
+import kotobaya.queue.DefaultReviewLoop
 import kotobaya.review.QueueLoader
 import kotobaya.review.ReviewSettings
 import kotobaya.review.rolloverMs
@@ -32,8 +30,6 @@ import java.time.temporal.IsoFields
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.min
 
-// Core QueueBuilder rule 1 (KNOWN only stops introducing NEW cards; its learning cards still count). ADR-033.
-private val BLOCKED = setOf("never_forget", "blacklisted", "ignored")
 private const val HOUR_MS = 3_600_000L
 private const val MAX_RANGE_DAYS = 3660L
 private const val BINS = 20
@@ -48,7 +44,7 @@ private const val STATS_CONNECTIONS = 3
 class StatsModule(
     private val db: Database,
     private val clock: () -> Instant = Instant::now,
-    private val builder: QueueBuilder = DefaultQueueBuilder,
+    private val loop: ReviewLoop = DefaultReviewLoop,
 ) {
     val handlers: Map<String, OperationHandler> = mapOf(
         "getStatsSummary" to { summary(this) },
@@ -125,16 +121,9 @@ class StatsModule(
         val body = db.tx { dsl ->
             val settings = ReviewSettings.load(dsl)
             val day = todayOf(settings, nowMs)
-            val loaded = QueueLoader(dsl).load(nowMs, settings)
-            val built = builder.build(loaded.input)
-            val items = built.items
-            val shown = items.mapTo(HashSet()) { it.cardId }
-            // ADR-035: retired cards are never served, so never counted (loaded.servable).
-            val laterLearning = loaded.servable.count { c ->
-                c.cardId !in shown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
-                    (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride?.wire !in BLOCKED &&
-                    c.dueAt != null && c.dueAt!! < day.day.endMs
-            }
+            val loaded = QueueLoader(dsl).load(nowMs, settings, keepGoingNewBatch = 20) // 20: the default `limit` of getReviewQueue
+            // ADR-037: the deprecated `due` / `more_available` are the loop's frozen legacy counts (same as the queue).
+            val legacy = loop.evaluate(loaded.input).state.legacy
             val today = dayRows(dsl, day.date, day.date, settings.timezone, settings.dayRolloverHour)
             val scheduled = today.filter { it.type == "scheduled" && it.rating != null }
             val streak = streak(dsl, day.date, settings)
@@ -156,10 +145,9 @@ class StatsModule(
                 "study_day" to day.date.toString(),
                 "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
                 "due" to linkedMapOf(
-                    // C-27: deck entries drawn but not yet materialized are new cards still to introduce.
-                    "new" to items.count { it.kind == QueueItemKind.NEW } + built.toMaterialize.size,
-                    "learning" to items.count { it.kind == QueueItemKind.LEARNING } + laterLearning,
-                    "review" to items.count { it.kind == QueueItemKind.REVIEW },
+                    "new" to legacy.new,
+                    "learning" to legacy.learning,
+                    "review" to legacy.review,
                 ),
                 "done_today" to linkedMapOf(
                     "reviews" to today.size,
@@ -176,7 +164,7 @@ class StatsModule(
                 "streak_days" to streak,
                 "next_due_at" to next?.let { formatInstant(Instant.ofEpochMilli(it.toLong())) },
                 // C-26: the core signal of the same normal build behind `due` (Today page Keep going).
-                "more_available" to built.moreAvailable,
+                "more_available" to legacy.moreAvailable,
             )
         }
         call.respondJson(body)

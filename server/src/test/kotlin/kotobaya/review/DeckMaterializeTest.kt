@@ -72,8 +72,8 @@ class DeckMaterializeTest : SyncFixture() {
     fun deckEntriesWithoutNotesBecomeNewCardsOnceThroughOps() = reviewApp {
         val t = token()
         deckWithEntries(30)
-        val q = fetch(t)
-        // Default limits: new_per_session 10 bounds one session's build.
+        val q = fetch(t, "?limit=10")
+        // ADR-037: the batch (`limit`) bounds one build; the legacy count is the unbounded remaining goal.
         assertEquals(10, q["items"].size())
         assertTrue(q["items"].all { it["is_new"].asBoolean() })
         assertEquals(10, q["items"].map { it["card"]["note_id"].asText() }.toSet().size, "one card per note (sibling burying)")
@@ -83,18 +83,18 @@ class DeckMaterializeTest : SyncFixture() {
         assertEquals(10L, changes("card.created"), "the vocab type's default kinds: meaning (reading is retired, ADR-035)")
         assertEquals(20L, count("select count(*) from app.change where op_type in ('note.created', 'card.created') and device_id = '00000000-0000-7000-8000-000000000001'::uuid"))
         assertEquals(0, q["to_materialize"].asInt())
-        assertEquals(10, q["counts"]["new"].asInt())
+        assertEquals(20, q["counts"]["new"].asInt())
         // The first entries in deck order.
         assertEquals((5001L..5010L).toSet(), db.txBlocking { d -> d.fetch("select entry_seq from app.note where deleted_at is null").map { (it.get(0) as Number).toLong() }.toSet() })
 
         // Repeated fetches create nothing more and return the same cards.
         val head = count("select max(seq) from app.change")
-        val again = fetch(t)
+        val again = fetch(t, "?limit=10")
         assertEquals(q["items"].map { it["card"]["id"] }, again["items"].map { it["card"]["id"] })
         assertEquals(head, count("select max(seq) from app.change"))
         assertEquals(10L, liveNotes())
         // The Today counts agree.
-        assertEquals(10, client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()["due"]["new"].asInt())
+        assertEquals(20, client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()["due"]["new"].asInt())
     }
 
     @Test

@@ -391,6 +391,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 1
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 1,
+          "review" : 1,
+          "total" : 2
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
@@ -534,6 +560,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 1
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 1,
+          "review" : 1,
+          "total" : 2
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
@@ -803,6 +855,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 1
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 1,
+          "review" : 1,
+          "total" : 2
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
@@ -951,6 +1029,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 1
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 1,
+          "review" : 1,
+          "total" : 2
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0

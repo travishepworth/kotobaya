@@ -83,6 +83,32 @@
       },
       "day_ends_at" : "2026-11-21T04:00:00.000Z",
       "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "empty",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0

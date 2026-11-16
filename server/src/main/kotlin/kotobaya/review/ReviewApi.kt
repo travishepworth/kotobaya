@@ -3,13 +3,16 @@ package kotobaya.review
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
-import kotobaya.contracts.WordStatus
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.queue.QueueBuilder
 import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
+import kotobaya.contracts.queue.LoopResult
+import kotobaya.contracts.queue.LoopState
+import kotobaya.contracts.queue.ReviewLoop
 import kotobaya.contracts.queue.ReviewQueue
+import kotobaya.queue.DefaultReviewLoop
 import kotobaya.auth.authenticated
 import kotobaya.notes.Errors
 import kotobaya.notes.Reply
@@ -33,9 +36,6 @@ import java.time.format.DateTimeParseException
 
 private val ANSWER_KEYS = setOf("id", "card_id", "rating", "button", "mode", "duration_ms", "reviewed_at", "utc_offset_min", "sentence_id")
 private val BUTTON_RATING = mapOf("again" to 1, "nothing" to 1, "something" to 1, "hard" to 2, "good" to 3, "okay" to 3, "easy" to 4)
-// Core QueueBuilder rule 1: these overrides make a card ineligible. KNOWN only stops introducing NEW cards (rule 4), so a
-// learning card of a KNOWN word is still served and must be counted (same numbers as the device, ADR-033).
-private val BLOCKED = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
 
 /** `FLOOR` of `answerReview`: 2020-01-01T00:00:00Z. */
 private const val CLOCK_FLOOR_MS = 1_577_836_800_000L
@@ -54,6 +54,7 @@ internal class ReviewApi(
     private val builder: QueueBuilder,
     private val clock: () -> Instant,
     private val materializer: DeckMaterializer = DeckMaterializer(),
+    private val loop: ReviewLoop = DefaultReviewLoop,
 ) {
     suspend fun queue(call: ApplicationCall) {
         val q = call.request.queryParameters
@@ -112,13 +113,16 @@ internal class ReviewApi(
 
     private class QueueRequest(val nowMs: Long, val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean)
 
-    private class Built(val settings: ReviewSettings, val loaded: LoadedQueue, val queue: ReviewQueue)
+    private class Built(val settings: ReviewSettings, val loaded: LoadedQueue, val result: LoopResult) {
+        /** The build to serve (N, or K under keep going); the only one whose `toMaterialize` may be materialized. */
+        val queue: ReviewQueue get() = result.queue
+    }
 
     private fun buildQueue(dsl: DSLContext, r: QueueRequest): Built {
         val settings = ReviewSettings.load(dsl)
         // C-26: keep going is a per-request override (core rule 6); the batch is the page size.
         val loaded = QueueLoader(dsl).load(r.nowMs, settings, r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
-        return Built(settings, loaded, builder.build(loaded.input))
+        return Built(settings, loaded, loop.evaluate(loaded.input))
     }
 
     private fun render(dsl: DSLContext, r: QueueRequest, b: Built): Map<String, Any?> {
@@ -129,34 +133,22 @@ internal class ReviewApi(
         val kinds = r.kinds
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour)
 
-        val items = queue.items
-        // ADR-033: counts always describe the normal build, so every client shows the same numbers; keep going only
-        // changes `items`. Same loaded input, no extra DB load.
-        val normal = if (r.keepGoing) {
-            builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = false)))
-        } else {
-            queue
-        }
-        val nItems = normal.items
-        val nShown = nItems.mapTo(HashSet()) { it.cardId }
-        // ADR-035: retired cards are never served, so never counted (loaded.servable).
-        val laterLearning = loaded.servable.count { c ->
-            c.cardId !in nShown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
-                (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride !in BLOCKED &&
-                c.dueAt != null && c.dueAt!! < day.day.endMs
-        }
+        val state = b.result.state
+        val legacy = state.legacy
+        // ADR-037: `counts` keep their frozen pre-loop meaning for old clients; they come from the loop's legacy block.
         val counts = json.createObjectNode()
-            // C-27: a drawn deck entry without a note yet is a new card still to introduce.
-            .put("new", nItems.count { it.kind == QueueItemKind.NEW } + normal.toMaterialize.size)
-            .put("learning", nItems.count { it.kind == QueueItemKind.LEARNING } + laterLearning)
-            .put("review", nItems.count { it.kind == QueueItemKind.REVIEW })
+            .put("new", legacy.new)
+            .put("learning", legacy.learning)
+            .put("review", legacy.review)
+        val items = queue.items
         fun inKinds(i: QueueItem) = i.kind.name.lowercase() in kinds
         val wanted = items.filter(::inKinds).take(r.limit)
         // C-26 `more_available`: only for an empty normal response, by the same build under keep going.
         // All kinds: the core's own signal (it counts pending entries too). A kinds filter: one extra keep-going
         // build, only when the filtered page is empty; drawn entries count when `new` is asked for.
         val moreAvailable = if (kinds == ALL_KINDS) {
-            queue.moreAvailable
+            // A keep-going request never reports more (the served build K is the "more").
+            !r.keepGoing && legacy.moreAvailable
         } else {
             !r.keepGoing && wanted.isEmpty() &&
                 builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).let { kg ->
@@ -178,10 +170,22 @@ internal class ReviewApi(
             "more_available" to moreAvailable,
             "to_materialize" to if ("new" in kinds) queue.toMaterialize.size else 0,
         )
+        out["loop"] = loopJson(state)
         // ADR-033: omitted when no learning card is waiting later today.
-        queue.nextLearningDueAt?.let { out["next_learning_due_at"] = formatInstant(Instant.ofEpochMilli(it)) }
+        state.nextDueAt?.let { out["next_learning_due_at"] = formatInstant(Instant.ofEpochMilli(it)) }
         return out
     }
+
+    /** `ReviewQueue.loop`: the wire form of [LoopState]. */
+    private fun loopJson(s: LoopState): Map<String, Any?> = linkedMapOf(
+        "phase" to s.phase.wire,
+        "keep_going" to s.keepGoing,
+        "ready" to linkedMapOf("learning" to s.readyLearning, "review" to s.readyReviews, "total" to s.readyLearning + s.readyReviews),
+        "later_today" to linkedMapOf("count" to s.laterToday, "next_due_at" to s.nextDueAt?.let { formatInstant(Instant.ofEpochMilli(it)) }),
+        "backlog" to linkedMapOf("reviews" to s.backlog, "beyond_limit" to s.backlogBeyondLimit),
+        "reviews" to linkedMapOf("today" to s.reviewsToday, "limit" to s.reviewsLimit),
+        "new" to linkedMapOf("today" to s.newToday, "goal" to s.newGoal, "available" to s.newAvailable),
+    )
 
     suspend fun answer(call: ApplicationCall) {
         val body = call.jsonBody()

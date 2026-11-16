@@ -134,6 +134,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 2,
+          "reviews" : 3
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 1,
+          "total" : 1
+        },
+        "reviews" : {
+          "limit" : 1,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
@@ -545,6 +571,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 3
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 3,
+          "total" : 3
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
@@ -695,6 +747,32 @@
           "sentence" : null
         }
       } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 2,
+          "reviews" : 3
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 1,
+          "total" : 1
+        },
+        "reviews" : {
+          "limit" : 1,
+          "today" : 0
+        }
+      },
       "more_available" : false,
       "study_day" : "2026-11-20",
       "to_materialize" : 0
