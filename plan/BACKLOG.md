@@ -839,3 +839,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - WRK-DICT-LISTSEQ — worker: top60k package misses list-deck seqs (root cause of the phone's missing card info) · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/WRK-DICT-LISTSEQ.md)
 - SHELL-L2b — local queue follow-ups (keep-going batch=limit, kanji_examples batching, headword cache) · model: sonnet · risk: med · deps: SHELL-L2 · status: MERGED (ticket: plan/tickets/SHELL-L2b.md)
 - SHELL-DARK — shell WebView follows system light/dark (user, 0.1.30) · model: sonnet · risk: low · deps: SHELL-A4 · status: MERGED (ticket: plan/tickets/SHELL-DARK.md)
+- WEB-TOAST-REVIEW — review toasts cover Show answer (user) · model: sonnet · risk: low · deps: — · status: TODO (ticket: plan/tickets/WEB-TOAST-REVIEW.md)
