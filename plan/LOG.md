@@ -1165,3 +1165,4 @@
 2026-11-16T02:22:50Z RC-AND DISPATCH writer-senior(opus)
 2026-11-16T02:27:29Z RC-WEB HANDOFF + CHECK_GREEN (122 tests); review dispatched (incl. flicker coverage)
 2026-11-16T02:29:47Z RC-WEB REVIEW_CHANGES 2 majors (dispose leak via outbox afterSend; 409/410 answer pinned forever) + flicker causes (settling skeleton, wake error swap, home empty flash) -> attempt 2
+2026-11-16T02:36:06Z REVIEW-UNLIMITED DECIDE ADR-034 opt-in toggle (user); ticket queued behind RC-SERVER/RC-AND/RC-WEB
