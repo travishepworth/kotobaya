@@ -831,7 +831,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-P2 — Android parity harness against the goldens · model: opus · risk: med · deps: SHELL-A2, SHELL-P1 · status: TODO (ticket: plan/tickets/SHELL-P2.md)
 - SHELL-W1 — SPA transport, shell state and capabilities, session in shell mode · model: opus · risk: med · deps: SHELL-C1 · status: MERGED (ticket: plan/tickets/SHELL-W1.md)
 - SHELL-W2 — SPA device UI: pair screen, sync chip, device settings, hide by scope, needs-connection states · model: sonnet · risk: med · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W2.md)
-- SHELL-W3 — SPA navigation: navigate, back stack with ADR-030, intake params, haptics, theme · model: sonnet · risk: med · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W3.md)
+- SHELL-W3 — SPA navigation: navigate, back stack with ADR-030, intake params, haptics, theme · model: sonnet · risk: med · deps: SHELL-W1 · status: MERGED (ticket: plan/tickets/SHELL-W3.md)
 - SHELL-W4 — SPA mobile gaps audit and fixes · model: sonnet · risk: low · deps: SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-W4.md)
 - SHELL-Z1 — Delete the Compose UI · model: sonnet · risk: med · deps: SHELL-A4, SHELL-A5, SHELL-A7, SHELL-L4, SHELL-L5, SHELL-L6, SHELL-L7, SHELL-L8, SHELL-W2, SHELL-W3, SHELL-W4, human phone check recorded in plan/HUMAN_CHECKS.md · status: TODO (ticket: plan/tickets/SHELL-Z1.md)
 - SHELL-Z2 — Web bundle OTA (optional, later) · model: opus · risk: med · deps: SHELL-A3, SHELL-W1 · status: TODO (ticket: plan/tickets/SHELL-Z2.md)

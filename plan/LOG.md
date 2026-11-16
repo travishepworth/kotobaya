@@ -1228,3 +1228,6 @@
 2026-11-16T12:47:27Z SHELL-W2 DISPATCH writer(sonnet) [web lane; +Dockerfile, canLogout]
 2026-11-16T12:56:22Z SHELL-A2 CHECK_GREEN (run 2; run 1 hit known flaky SyncCoordinatorTest.concurrentTriggersRunOneSync -> FOLLOWUPS) + MERGE
 2026-11-16T12:56:22Z SHELL-W2 CHECK_GREEN (web) + MERGE (playwright 360/412 + screenshots viewed by writer)
+2026-11-16T12:56:40Z SHELL-P1 DISPATCH writer-senior [gradle lane, server]
+2026-11-16T12:56:40Z SHELL-W3 DISPATCH writer [web lane]
+2026-11-16T13:01:09Z SHELL-W3 CHECK_GREEN (web 270) + MERGE (small unowned edit lib/state/dictionary.svelte.ts accepted: same module, web lane serial); SHELL-W4 DISPATCH writer
