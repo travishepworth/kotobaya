@@ -130,10 +130,15 @@ class LocalQueueLoader(
      * Builds the queue now ([keepGoing]: C-26, one visit to the review screen only). [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter.
      * Concurrent calls with the same arguments share one build that started after they were made ([LoadGate]).
      */
-    fun load(newShownThisSession: Int = 0, deckFilter: String? = null, keepGoing: Boolean = false): LoadedQueue {
+    fun load(
+        newShownThisSession: Int = 0,
+        deckFilter: String? = null,
+        keepGoing: Boolean = false,
+        keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
+    ): LoadedQueue {
         awaitReady()
-        return gate.run(LoadKey(newShownThisSession, deckFilter, keepGoing)) {
-            var loaded = build(newShownThisSession, deckFilter, keepGoing)
+        return gate.run(LoadKey(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)) {
+            var loaded = build(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)
             // C-27 rounds (as the server): a drawn entry needs its note and cards first (ReviewQueue.toMaterialize), then
             // a rebuild draws those cards in its place. Another round only if the last one's notes reached `items`, so a
             // mismatch between what was drawn and what shows can never create notes that are not shown.
@@ -150,7 +155,7 @@ class LocalQueueLoader(
                 }
                 // nothing created is not a failure: the entries may have notes by now (another build, a pull)
                 if (created.isEmpty()) break
-                loaded = build(newShownThisSession, deckFilter, keepGoing)
+                loaded = build(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)
                 rounds++
                 val noteOf = loaded.input.candidates.associate { it.cardId to it.noteId }
                 if (loaded.queue.items.none { noteOf[it.cardId] in created }) break
@@ -159,9 +164,9 @@ class LocalQueueLoader(
         }
     }
 
-    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?, val keepGoing: Boolean)
+    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?, val keepGoing: Boolean, val keepGoingNewBatch: Int)
 
-    private fun build(newShownThisSession: Int, deckFilter: String?, keepGoing: Boolean): LoadedQueue {
+    private fun build(newShownThisSession: Int, deckFilter: String?, keepGoing: Boolean, keepGoingNewBatch: Int): LoadedQueue {
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -206,7 +211,7 @@ class LocalQueueLoader(
                 deckIds = memberships[r.note_id].orEmpty().map(DeckMembership::deckId),
             )
         }
-        val pending = pendingEntries(decks, deckFilter, settings, keepGoing)
+        val pending = pendingEntries(decks, deckFilter, settings, keepGoing, keepGoingNewBatch)
         val input = QueueInput(
             now = now,
             day = day,
@@ -218,6 +223,7 @@ class LocalQueueLoader(
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS,
                 keepGoing = keepGoing,
+                keepGoingNewBatch = keepGoingNewBatch,
                 reviewsUnlimited = settings.reviewsUnlimited,
             ),
             decks = decks,
@@ -282,10 +288,10 @@ class LocalQueueLoader(
      * larger of it and `min(newPerDay, newPerSession)` (`moreAvailable` probes with the batch); later ones are reached by
      * a later build.
      */
-    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoing: Boolean): List<PendingEntry> {
+    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoing: Boolean, keepGoingNewBatch: Int): List<PendingEntry> {
         val m = materializer ?: return emptyList()
         if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList()
-        val batch = maxOf(1, QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH)
+        val batch = maxOf(1, keepGoingNewBatch)
         val budget = if (keepGoing) batch else maxOf(batch, minOf(settings.newPerDay, settings.newPerSession))
         val window = 2 * budget + 16
         val page = maxOf(window * 2, MIN_PENDING_PAGE).toLong()

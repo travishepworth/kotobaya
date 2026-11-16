@@ -7,6 +7,7 @@ import kotobaya.android.grammar.GrammarSentenceSource
 import kotobaya.android.review.CardRows
 import kotobaya.android.review.InstalledKanjiWords
 import kotobaya.android.review.InstalledRenderData
+import kotobaya.android.sync.SqlLearningTables
 import kotobaya.android.shell.api.identity.obj
 import kotobaya.android.shell.api.identity.timestamp
 import kotobaya.cards.BuiltInNoteTypes
@@ -52,6 +53,7 @@ internal class QueueViews(
 ) {
     private val renderData = InstalledRenderData(dict)
     private val noteTypes = HashMap<String, NoteTypeInfo?>()
+    private val decks = HashMap<String, Row?>()
 
     /** Items for [cards] (card id to `review_type`) in order; a card that is gone (or its note) is dropped. */
     fun items(cards: List<Pair<String, String>>, nowMs: Long): List<JsonValue> = cards.mapNotNull { (id, type) -> item(id, type, nowMs) }
@@ -60,7 +62,7 @@ internal class QueueViews(
         val card = CardRows.get(t, LearningTable.CARD, cardId) ?: return null
         val noteId = CardRows.str(card["note_id"]) ?: return null
         val note = CardRows.get(t, LearningTable.NOTE, noteId) ?: return null
-        val cardJson = cardView(card, note)
+        val cardJson = AnswerViews.card(card, note, leechThreshold)
         val entrySeq = seq(note["entry_seq"])
         val literal = CardRows.str(note["kanji_literal"])
         val entryDetail = entrySeq?.let { s -> guarded { dict.entry(s) } }
@@ -94,46 +96,6 @@ internal class QueueViews(
     }
 
     // ---- card ---------------------------------------------------------------------------------------------------------
-
-    /** `Card` with its `note` summary (the server's `ReviewViews.cards`). */
-    private fun cardView(card: Row, note: Row): JsonObject {
-        val lapses = int(card["lapses"]) ?: 0
-        return obj(
-            "id" to card["id"].orNull(),
-            "note_id" to card["note_id"].orNull(),
-            "kind" to card["kind"].orNull(),
-            "preset_id" to card["preset_id"].orNull(),
-            "suspended" to (card["suspended"] as? JsonBool ?: JsonBool(false)),
-            "buried_until" to stamp(card["buried_until"]),
-            "flags" to (card["flags"] as? JsonNumber ?: num(0)),
-            "state" to card["state"].orNull(),
-            "step" to card["step"].orNull(),
-            "stability" to card["stability"].orNull(),
-            "difficulty" to card["difficulty"].orNull(),
-            "due_at" to stamp(card["due_at"]),
-            "interval_days" to card["interval_days"].orNull(),
-            "last_review_at" to stamp(card["last_review_at"]),
-            "reps" to (card["reps"] as? JsonNumber ?: num(0)),
-            "lapses" to num(lapses.toLong()),
-            "created_at" to stamp(card["created_at"]),
-            "updated_at" to stamp(card["updated_at"]),
-            "deleted_at" to stamp(card["deleted_at"]),
-            "merged_into_id" to card["merged_into_id"].orNull(),
-            "note" to obj(
-                "id" to note["id"].orNull(),
-                "note_type_id" to note["note_type_id"].orNull(),
-                "type" to note["type"].orNull(),
-                "entry_seq" to note["entry_seq"].orNull(),
-                "kanji_literal" to note["kanji_literal"].orNull(),
-                "grammar_point_id" to note["grammar_point_id"].orNull(),
-                "fields" to (note["fields"] as? JsonObject ?: JsonObject(emptyMap())),
-                "tags" to (note["tags"] as? JsonArray ?: JsonArray(emptyList())),
-                "mnemonic" to (note["mnemonic"] as? JsonString ?: JsonString("")),
-                "source_sentence" to (note["source_sentence"] as? JsonString ?: JsonString("")),
-            ),
-            "leech" to JsonBool(lapses >= leechThreshold),
-        )
-    }
 
     /** The four ratings' due time and interval, from the core scheduler at [nowMs] (unfuzzed, as the server). */
     private fun preview(card: Row, nowMs: Long): JsonValue {
@@ -190,8 +152,10 @@ internal class QueueViews(
         "note_id" to (liveNote("kanji_literal", JsonString(k.literal))?.let { it["id"] } ?: JsonNull),
     )
 
-    private fun statusOf(seq: Long): WordStatus {
-        val wire = CardRows.str(t.get(LearningTable.WORD_STATUS, listOf(num(seq)))?.get("status"))
+    private fun statusOf(seq: Long): WordStatus = wordStatus(t.get(LearningTable.WORD_STATUS, listOf(num(seq))))
+
+    private fun wordStatus(row: Row?): WordStatus {
+        val wire = CardRows.str(row?.get("status"))
         return WordStatus.entries.firstOrNull { it.wire == wire } ?: WordStatus.NEW
     }
 
@@ -219,7 +183,7 @@ internal class QueueViews(
 
     private fun decksOf(items: List<Row>, smartToo: Boolean): List<Row> =
         items.asSequence().filter { isNull(it["deleted_at"]) }.mapNotNull { CardRows.str(it["deck_id"]) }.distinct()
-            .mapNotNull { CardRows.get(t, LearningTable.DECK, it) }
+            .mapNotNull { id -> decks.getOrPut(id) { CardRows.get(t, LearningTable.DECK, id) } }
             .filter { isNull(it["deleted_at"]) && (smartToo || CardRows.str(it["type"]) != "smart") }
             .sortedWith(compareBy<Row>({ (it["priority"] as? JsonNumber)?.value ?: 0.0 }, { CardRows.str(it["id"]).orEmpty() }))
             .toList()
@@ -229,15 +193,21 @@ internal class QueueViews(
     /** The core picker over the installed dictionary's words with the kanji and the replica's status / note / deck. */
     private fun kanjiExamples(literal: String, kanji: KanjiDetail?): JsonArray {
         val words = InstalledKanjiWords(dict).words(literal)
+        // one IN read per table for all candidates (chunks of 500), not three lookups per word
+        val keys = words.map { num(it.seq) }
+        val sql = t as? SqlLearningTables
+        val statuses = sql?.whereIn(LearningTable.WORD_STATUS, "entry_seq", keys)?.associateBy { seq(it["entry_seq"]) }
+        val notes = sql?.whereIn(LearningTable.NOTE, "entry_seq", keys)?.filter { isNull(it["deleted_at"]) }?.groupBy { seq(it["entry_seq"]) }
+        val items = sql?.whereIn(LearningTable.DECK_ITEM, "entry_seq", keys)?.groupBy { seq(it["entry_seq"]) }
         val candidates = words.map { w ->
             KanjiExampleCandidate(
                 seq = w.seq,
                 headword = w.headword,
                 reading = w.reading,
                 freqRank = w.freqRank,
-                status = statusOf(w.seq),
-                hasNote = liveNote("entry_seq", num(w.seq)) != null,
-                inDecks = entryDecks(w.seq).isNotEmpty(),
+                status = if (statuses != null) wordStatus(statuses[w.seq]) else statusOf(w.seq),
+                hasNote = if (notes != null) notes[w.seq].orEmpty().isNotEmpty() else liveNote("entry_seq", num(w.seq)) != null,
+                inDecks = if (items != null) decksOf(items[w.seq].orEmpty(), smartToo = true).isNotEmpty() else entryDecks(w.seq).isNotEmpty(),
             )
         }
         val readings = KanjiReadings(literal, kanji?.onReadings.orEmpty(), kanji?.kunReadings.orEmpty())

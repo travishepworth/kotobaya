@@ -148,6 +148,17 @@ class SqlLearningTables internal constructor(
         return select(table, "WHERE ${col.name} IS ?", 1) { stmt -> bind(stmt, 0, col, value) }
     }
 
+    /** Rows of [table] whose [column] equals any of [values] (one `IN (...)` read per chunk of [IN_CHUNK]); no NULLs. */
+    fun whereIn(table: LearningTable, column: String, values: Collection<JsonValue>): List<Row> {
+        val col = schema.column(table, column)
+        val distinct = values.filter { it != JsonNull }.distinct()
+        return distinct.chunked(IN_CHUNK).flatMap { chunk ->
+            select(table, "WHERE ${col.name} IN (${chunk.joinToString { "?" }})", chunk.size) { stmt ->
+                chunk.forEachIndexed { i, v -> bind(stmt, i, col, v) }
+            }
+        }
+    }
+
     override fun all(table: LearningTable): List<Row> = select(table, "", 0) {}
 
     override fun clear(table: LearningTable) {
@@ -164,6 +175,10 @@ class SqlLearningTables internal constructor(
     ) { bindString(0, Reserved.REPLAY_REFUSED_ID) }.value
 
     // ---------------------------------------------------------------------------------------------
+
+    private companion object {
+        const val IN_CHUNK = 500
+    }
 
     private fun keyClause(table: LearningTable, key: List<JsonValue>): Pair<String, List<Column>> {
         require(key.size == table.keyColumns.size) { "${table.sqlName}: key $key does not match ${table.keyColumns}" }

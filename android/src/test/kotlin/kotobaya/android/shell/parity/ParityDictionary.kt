@@ -42,7 +42,7 @@ class ParityDictionary private constructor(val packageFile: File, val releaseId:
                 .split(";").map { it.trim() }.filter { it.isNotEmpty() }
 
         private fun build(): ParityDictionary {
-            val file = File.createTempFile("parity-dict", ".db").also { it.delete(); it.deleteOnExit() }
+            val file = ParityTemp.file("parity-dict.db")
             val tables = readCopies()
             var releaseId = -1L
             val seqs = HashSet<Long>()

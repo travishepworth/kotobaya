@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, backCallback)
         // Only the Koin handle is taken here; the API, the stores and the DB driver are resolved on IO when used.
         val koin = getKoin()
-        val transport = ShellWiring.bridge(koin, onWebMessage = ::onWebMessage, onPageReset = back::onPageStarted)
+        val transport = ShellWiring.bridge(koin, onWebMessage = ::onWebMessage, onPageReset = { back.onPageStarted(); SystemBars.reset(window, container) })
         bridge = transport
         // A restored instance keeps its page; a fresh launch goes to the path of its intent (SHELL.md 6.1).
         val start = if (savedInstanceState == null) ShellLinks.target(intent) else null

@@ -96,16 +96,17 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
             materializeAllowed(true, coordinator.running.value, coordinator.consecutiveFailures, lastSyncAt, rebuild)
         }
     }
+    val headwords = HashMap<Long, String?>() // per-request cache
     val loader = LocalQueueLoader(
         db = db,
         // one instant for the whole request, as the server's `nowMs`
         clock = { now },
-        headwordOf = { seq -> runCatching { dict.entry(seq)?.headword }.getOrNull() },
+        headwordOf = { seq -> headwords.getOrPut(seq) { runCatching { dict.entry(seq)?.headword }.getOrNull() } },
         // a gate of its own: a build of another caller (native screens, another request) is never served for this one
         gate = LoadGate(),
         materializer = materializer,
     )
-    val loaded = loader.load(newShownThisSession = 0, deckFilter = r.deckId, keepGoing = r.keepGoing)
+    val loaded = loader.load(newShownThisSession = 0, deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
     return ShellResponse.json(render(r, now, loaded, settings, store, dict))
 }

@@ -41,4 +41,17 @@ object SystemBars {
         c.isAppearanceLightStatusBars = !dark
         c.isAppearanceLightNavigationBars = !dark
     }
+
+    /** A new page life: back to the system default until the page sends `theme` again (SHELL-A4 note). */
+    fun reset(window: Window, container: View) {
+        val dark = (container.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val tv = android.util.TypedValue()
+        val bg = if (container.context.theme.resolveAttribute(android.R.attr.colorBackground, tv, true)) {
+            tv.data
+        } else {
+            if (dark) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        }
+        apply(window, container, dark, "#%06X".format(bg and 0xFFFFFF))
+    }
 }

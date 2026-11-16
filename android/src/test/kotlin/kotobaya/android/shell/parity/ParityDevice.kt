@@ -132,7 +132,7 @@ class ParityDevice(
     val deviceId: String,
     startMs: Long,
     routes: List<LocalRoute>,
-    dictDir: File = File.createTempFile("parity-dictstore", "").also { it.delete() },
+    dictDir: File = ParityTemp.next("dictstore"),
 ) {
     val clock = ParityClock(startMs)
     val log = SeedLog(clock)
@@ -280,3 +280,14 @@ class ParityDevice(
 
 /** Helper used by the seed tests: the learning tables of [device], read outside a transaction. */
 fun ParityDevice.tables(): SqlLearningTables = store.read { it.learning }
+
+/** One temp root per JVM for every parity test, removed on exit (per-device dirs used to leak 2.7 MB each into /tmp). */
+object ParityTemp {
+    private val root: File = kotlin.io.path.createTempDirectory("parity-root").toFile().also { r ->
+        Runtime.getRuntime().addShutdownHook(Thread { r.deleteRecursively() })
+    }
+    private val counter = java.util.concurrent.atomic.AtomicInteger()
+
+    fun next(prefix: String): File = File(root, "$prefix-${counter.incrementAndGet()}")
+    fun file(name: String): File = File(root, name)
+}

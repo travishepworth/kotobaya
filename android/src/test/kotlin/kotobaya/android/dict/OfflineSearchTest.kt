@@ -97,7 +97,7 @@ class OfflineSearchTest {
     @Test
     fun firstResultMatchesTheServerOnTheFiftyFixtureQueries() {
         val file = loadServerFixture()
-        val dir = File.createTempFile("parity", "").also { it.delete(); it.mkdirs() }
+        val dir = kotobaya.android.shell.parity.ParityTemp.next("offline").also { it.mkdirs() }
         val store = DictStore(File(dir, "store"))
         file.copyTo(store.installed)
         val d = InstalledDictionary(store)

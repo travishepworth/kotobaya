@@ -95,7 +95,7 @@ private fun FieldErrors.long(v: JsonValue, at: String, min: Long, max: Long = Lo
     }
     val n = d.toLong()
     if (n < min || n > max) {
-        add(at, "out_of_range", "Must be at least $min.")
+        add(at, "out_of_range", if (n < min) "Must be at least $min." else "Must be at most $max.")
         return null
     }
     return n
@@ -294,7 +294,8 @@ internal fun undoReview(call: LocalCall): ShellResponse {
             requests = listOf(MintRequest(OpType.REVIEW_UNDONE, JsonObject(linkedMapOf<String, JsonValue>("review_id" to JsonString(id))))),
             invalidPointer = { "/review_id" },
         ) { after, _ ->
-            minted = true
+            // drill and cram reviews never feed the schedule (SYNC.md 9.2): undoing one changes nothing due
+            minted = CardRows.str(row["review_type"]) !in setOf("drill", "cram")
             val stored = checkNotNull(after.learning.get(LearningTable.REVIEW_LOG, listOf(JsonString(id)))) { "review $id vanished" }
             AnswerViews.result(after.learning, stored)
         }

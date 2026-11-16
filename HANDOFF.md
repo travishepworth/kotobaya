@@ -1,23 +1,12 @@
-# HANDOFF SHELL-A4
+# HANDOFF SHELL-L2b — DONE
+`make check MODULE=android` green. New test: `QueueKeepGoingBatchTest` (3 tests: keep_going limit=20 serves 3/3 deck entries; limit=1 creates exactly 1 note; counts equal with/without keep_going).
 
-STATUS: DONE
-BRANCH: t/SHELL-A4-native-nav
-CHECK: `make check MODULE=android` → green
+- /tmp leak fixed at source: `ParityTemp` (one per-JVM root, removed by shutdown hook) used for `parity-dictstore*`, `parity-dict.db`, and OfflineSearchTest's `parity*` dir. `ls /tmp | grep parity` = 0 after a full run.
+- `LocalQueueLoader.load(keepGoingNewBatch)` added, in the pending window and the builder limits; QueueRoute passes `limit`. Native callers keep default 10.
+- kanji_examples: one `IN` read per table (chunk 500) via new `SqlLearningTables.whereIn` (additive; outside owned paths, needed since core's `LearningTables` has no IN).
+- `headwordOf` per-request cache; deck rows cached in QueueViews.
+- AnswerRoute: out_of_range says "at most $max" when n > max; undo no longer fires DueTrigger for drill/cram reviews.
+- QueueViews now uses `AnswerViews.card` (shared card view; duplicate removed).
+- Theme reset to system default at page start: `SystemBars.reset`, wired in `MainActivity` onPageReset (outside owned paths, one line). Unverified visually (no device).
 
-## Changed
-- shell/nav/: ShellLinks (intent→path), BackProtocol (300 ms), ShellChrome (Haptics, SystemBars); MainActivity wires navigate/onNewIntent, back, haptic, theme.
-- IntakeActivity = NoDisplay trampoline (EXTRA_PATH → MainActivity); manifest: VIEW filters for review/word/struggle/pair/settings/media moved to MainActivity.
-- Widget/notification/push PendingIntents → MainActivity with kotobaya:// URIs (stale→settings, import job→media, due/nudge→review).
-- A3 fixes: hello always sent (fallback data); lazy IO resolution of LocalApi/store/BlobIntercept (`Lazy<BlobIntercept>` in ShellWebHost/Client); process-wide Koin scope (ShellModule); body maxLength by code points.
-
-## Acceptance → tests
-- ShellLinksTest (table rows, hostile, 2000 trunc) · BackProtocolTest · IntakeTrampolineTest (Robolectric)
-
-## New dependencies
-none
-
-## For the reviewer
-- Deleted IntakeActivityTest (tested the removed sheet; outside owned paths, unavoidable). IntakeSheet/ViewModel left for Z1.
-- No MainActivity NoDbOnMainThread test: Robolectric has no WebView listener support, so it would only hit the "unsupported" screen; fixed by construction (nothing resolved on main).
-- Existing parity tests leak /tmp/parity-dictstore* dirs (~3000 per run, filled tmpfs → spurious disk I/O failures). I deleted them; not fixed.
-- Theme is not reset to system default at page start.
+New dependencies: none.
