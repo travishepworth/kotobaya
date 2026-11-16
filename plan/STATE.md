@@ -5,7 +5,8 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
-| LOOP-CORE | writer-senior | 1 | t/LOOP-CORE (gradle lane) |
+| LOOP-CORE | reviewer | 1 | t/LOOP-CORE (IN REVIEW; merge with SRV+AND as one chain) |
+| LOOP-SRV | writer | 1 | t/LOOP-SRV (from LOOP-CORE; gradle lane) |
 | LOOP-WEB+PORTRAIT-WEB | writer-senior | 1 | t/LOOP-WEB+PORTRAIT-WEB (web) |
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.

@@ -1282,3 +1282,5 @@
 2026-11-16T16:49:05Z LOOP-WEB+PORTRAIT-WEB DISPATCH writer-senior [web]
 2026-11-16T16:49:05Z LOOP-CLI DISPATCH writer [cli]
 2026-11-16T16:55:53Z LOOP-CLI CHECK_GREEN (120) + MERGE; no legacy fallback (server_too_old) -> release api before daemon reinstall
+2026-11-16T17:00:10Z LOOP-CORE HANDOFF + CHECK_GREEN (core jvm+js); reviewer dispatched; chain CORE->SRV->AND merges together (core change breaks server/android tests alone)
+2026-11-16T17:00:10Z LOOP-SRV DISPATCH writer from t/LOOP-CORE [gradle lane]
