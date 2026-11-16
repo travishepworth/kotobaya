@@ -1231,3 +1231,5 @@
 2026-11-16T12:56:40Z SHELL-P1 DISPATCH writer-senior [gradle lane, server]
 2026-11-16T12:56:40Z SHELL-W3 DISPATCH writer [web lane]
 2026-11-16T13:01:09Z SHELL-W3 CHECK_GREEN (web 270) + MERGE (small unowned edit lib/state/dictionary.svelte.ts accepted: same module, web lane serial); SHELL-W4 DISPATCH writer
+2026-11-16T13:06:11Z SHELL-P1 CHECK_GREEN (server) + MERGE; all 17 goldens matched contract expect
+2026-11-16T13:06:11Z SHELL-P2 DISPATCH writer-senior [gradle lane]
