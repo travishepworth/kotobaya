@@ -141,7 +141,8 @@ class ParityDevice(
 ) {
     val clock = ParityClock(startMs)
     val log = SeedLog(clock)
-    private val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
+    /** The in-memory database under [store] (SHELL-L4: bound as the app driver in the Koin wiring test). */
+    val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
     val store = SqlDelightDeviceStore(driver)
     val client = SyncClient(store, log, clock)
     var localChanges: Int = 0

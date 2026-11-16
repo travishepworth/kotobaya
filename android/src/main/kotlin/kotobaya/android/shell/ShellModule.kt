@@ -60,6 +60,12 @@ import kotobaya.sync.client.store.UuidV7Source
 import kotobaya.sync.client.store.bookkeeping
 import org.koin.core.Koin
 import org.koin.dsl.module
+import org.koin.core.qualifier.named
+import app.cash.sqldelight.db.SqlDriver
+import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.shell.api.actions.CardQuery
+import kotobaya.android.shell.api.actions.LocalCardQuery
+import kotobaya.db.app.AppDatabase
 
 /** The Android side of the [ShellGate]: pairing from `TokenStore`, L-8 from `sync_state`, readiness from `SyncBootstrap`. */
 private class AppShellGate(private val koin: Koin) : ShellGate {
@@ -165,6 +171,8 @@ val shellFeature = FeatureEntry(
             DictEvents(CoroutineScope(SupervisorJob() + Dispatchers.IO), get<DictOps>(), ShellEventHub::send)
                 .also { it.start(); ShellEventHub.dict = it }
         }
+        // SHELL-L4: the `bulkCards` `query` selector over the replica (the app driver, as the legacy card search)
+        single<CardQuery> { LocalCardQuery(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), get<InstalledDictionary>()) }
         single<LocalWrites<SqlLearningTables>> {
             val koin = getKoin()
             LocalWrites(get<SqlDelightDeviceStore>(), get<SyncClient>().minter) {
