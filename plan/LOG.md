@@ -1304,3 +1304,5 @@
 2026-11-16T18:53:39Z SHELL-L6 CHECK_GREEN + MERGE (listCards via LocalCardQuery, listNotes); AND-FLAKY-DUPCHECK filed; SHELL-L7 DISPATCH writer-senior [gradle lane]
 2026-11-16T19:12:23Z SHELL-L7 CHECK_GREEN + MERGE (decks local; list->forward); deck parity scenarios -> LOOP-C2. SHELL-L8 DISPATCH writer [gradle lane]
 2026-11-16T19:26:22Z SHELL-L8 CHECK_GREEN + MERGE: RouteTableTest PENDING empty -> every local op answered on the phone
+2026-11-16T19:27:45Z RELEASE APK 0.1.33 BUILT (pin 41433ef4: loop + portrait + all offline ops L4-L8; cert ok) supersedes 0.1.32 (not installed)
+2026-11-16T19:27:45Z SHELL-L5b DISPATCH writer [gradle lane]
