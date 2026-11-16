@@ -46,6 +46,7 @@ FOLLOWUPS
 (none). B2 gate closed 2026-11-14 (approved).
 
 ## Notes
+- /tmp is a usrquota tmpfs: android parity tests leak /tmp/parity* (~500/run, fix in SHELL-L2b). `rm -rf /tmp/parity[0-9]*` after each android check; remove release worktrees after deploy.
 - Phone gets RELEASE builds from run 27 (user request): env ANDROID_KEYSTORE_PATH=~/.config/.android/debug.keystore, password/alias android/androiddebugkey; assembleAnkidroidRelease. run-as unavailable on release.
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
 - Disk: / 19G free, /home 37G free (run 14). Check `df -h /` before Testcontainers-heavy batches.

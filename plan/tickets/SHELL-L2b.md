@@ -9,3 +9,4 @@
 ## Acceptance
 - [ ] Parity/test: keep_going with limit=20 serves up to 20 new (golden-equivalent to server); counts equal with and without keep_going after raising new_per_day mid-visit.
 - [ ] make check MODULE=android green.
+- Also: the android parity tests leak /tmp/parity<random> dirs (2.7 MB each, 60 found) — delete them in test teardown. /tmp is a usrquota tmpfs; leaks caused a red L3 check (Disk quota exceeded).

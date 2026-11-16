@@ -1245,3 +1245,5 @@
 2026-11-16T14:18:59Z SHELL-L2 HANDOFF + CHECK_GREEN (517); reviewer dispatched
 2026-11-16T14:18:59Z SHELL-L3 DISPATCH architect from t/SHELL-L2 (chain) [gradle lane]
 2026-11-16T14:22:48Z SHELL-L2 REVIEW_APPROVE (5 minors: #1,#3,#4 -> SHELL-L2b; #2 -> FOLLOWUPS) + MERGE
+2026-11-16T14:49:49Z SHELL-L3 HANDOFF; check RED x2 after rebase = infra (/tmp usrquota tmpfs full: old rel worktrees + leaked /tmp/parity* dirs, ~500/run) -> cleaned, re-run GREEN; reviewer dispatched
+2026-11-16T14:49:49Z SHELL-A3 DISPATCH writer-senior from t/SHELL-L3 (chain) [gradle lane]
