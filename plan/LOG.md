@@ -1266,3 +1266,4 @@
 2026-11-16T16:04:24Z WEB-TOAST-REVIEW CHECK_GREEN + MERGE (toast lifted above review action bar; playwright hit-test 4/4)
 2026-11-16T16:05:22Z SHELL-A6 DISPATCH writer [gradle lane]
 2026-11-16T16:05:22Z HOLD: review-loop rework (unlimited on/off) + lock-portrait setting await user confirmation of outlined loop A/B
+2026-11-16T16:11:15Z USER CONFIRMED review loop A/B (+tweak: unlimited still has new-goal 40/40 -> goal_reached + Keep going) and Lock-to-portrait. Design dispatch architect (ADR-037)

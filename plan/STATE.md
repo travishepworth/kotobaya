@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## Running (run 32)
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
-ON HOLD (user must confirm outlined loop A/B first): REVIEW-LOOP rework (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.
+CONFIRMED by user 2026-11-17 (design in progress, architect): REVIEW-LOOP rework (+unlimited keeps new-goal stop w/ Keep going) (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.
 | SHELL-A6 | writer | 1 | t/SHELL-A6-device-ops (gradle lane) |
 Gradle lane next: L9 -> L1 -> L2 -> L3 -> A3.
 First-phone-test path: C1 -> A1 -> A2 -> P1 -> P2 -> L9 -> L1 -> L2 -> L3 -> A3 (+W1 parallel after C1). Then tell user.
