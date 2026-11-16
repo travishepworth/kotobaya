@@ -35,3 +35,10 @@ reviewed once (jpdb-style: front = word, back = reading + meaning).
 ## Deliverable
 HANDOFF with: recommended design (≤ 400 words), ADR-035 draft text, ticket list. Read-only investigation
 (prod read-only via API token GET / kubectl psql SELECT if auth works).
+
+## Design accepted (ADR-035) — tickets
+Design: plan/handoffs/ONE-CARD-design.md
+1. C-28+ONE-CARD-CORE (architect; contracts/ + core/; high) — setting key docs, CardKinds.isRetired, generator, QueueBuilder, WordStatusRules, PendingEntry kind counts; sync scenario example (offline reading review after retirement); SPEC card-kinds table. Tests: builder golden (retired never served/counted/burying; entry draws only meaning), generator with deck card_kinds:["reading"].
+2. ONE-CARD-SRV (server/; dep 1) — QueueLoader + materializer pass setting; settings validation bool; op apply of the key re-derives word statuses; stats/Today counts from builder.
+3. ONE-CARD-AND (android/; dep 1) — LocalQueueLoader, apply hook re-derive, settings toggle "Also create reading cards" (i18n), add-card hides reading when off.
+4. ONE-CARD-WEB (web/; dep 2) — settings toggle; add-card hides reading when off.
