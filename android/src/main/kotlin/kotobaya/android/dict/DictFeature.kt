@@ -29,7 +29,10 @@ import kotobaya.android.di.SettingsSection
 import kotobaya.android.net.ApiClient
 import kotobaya.android.pairing.TokenStore
 import kotobaya.android.settings.SettingsStore
+import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.db.app.AppDatabase
+import app.cash.sqldelight.db.SqlDriver
+import org.koin.core.qualifier.named
 import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
 
@@ -77,23 +80,37 @@ private fun isOnline(ctx: Context): Boolean {
     return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 }
 
+private const val DICT_API = "dictApi"
+const val GAP_FILL_TAG: String = "KotobayaDictGap"
+
 private val dictModule = module {
     single { DictStore(File(get<Context>().filesDir, "dict")) }
-    // BUG-8 review: main-thread reads of the dictionary file are reported like the app database's
-    single { InstalledDictionary(get(), get<DbThreadGuard>()) }
-    single<DictRemote> {
+    // SHELL-L9: the sidecar cache of L-7 lives in the learning database (the sync store's driver)
+    single { DictGapCache(get<SqlDelightDeviceStore>(), get<SqlDriver>(named("syncAppDriver"))) }
+    // BUG-8 review: main-thread reads of the dictionary file are reported like the app database's.
+    // With the cache attached, entry()/kanji() are L-7 steps 1-2 for every reader (review rendering included).
+    single { InstalledDictionary(get(), get<DbThreadGuard>(), get<DictGapCache>()) }
+    single(named(DICT_API)) {
         val ctx = get<Context>()
         val settings = get<SettingsStore>()
         val tokens = get<TokenStore>()
-        HttpDictRemote(
-            ApiClient({ settings.serverBaseUrl }, { tokens.token }, { isOnline(ctx) }),
-            { settings.serverBaseUrl }, { tokens.token },
-        )
+        ApiClient({ settings.serverBaseUrl }, { tokens.token }, { isOnline(ctx) })
+    }
+    single<DictRemote> {
+        val settings = get<SettingsStore>()
+        val tokens = get<TokenStore>()
+        HttpDictRemote(get(named(DICT_API)), { settings.serverBaseUrl }, { tokens.token })
+    }
+    single<DictGapRemote> { HttpDictGapRemote(get(named(DICT_API))) }
+    single { DictLookup(get<InstalledDictionary>(), get(), get<DictGapRemote>()) }
+    single {
+        DictGapFill(get<InstalledDictionary>(), get(), get(), log = { android.util.Log.i(GAP_FILL_TAG, it) })
     }
     single {
         val settings = get<SettingsStore>()
         val db = get<AppDatabase>()
-        DictInstaller(get(), get(), { settings.dictionaryScope }, db)
+        val cache = get<DictGapCache>()
+        DictInstaller(get(), get(), { settings.dictionaryScope }, db, onServerRelease = cache::recordServerRelease)
     }
 }
 

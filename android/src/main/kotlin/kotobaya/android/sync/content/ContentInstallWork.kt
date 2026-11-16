@@ -13,6 +13,8 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotobaya.android.dict.DictGapFill
+import kotobaya.android.dict.GAP_FILL_TAG
 import kotobaya.android.media.BlobDownloader
 import kotobaya.android.media.BlobStore
 import kotobaya.android.media.DownloadResult
@@ -52,12 +54,18 @@ object ContentInstallWork {
         wm.enqueueUniqueWork(NAME, ExistingWorkPolicy.KEEP, req)
     }
 
-    /** Enqueues only when [installer] has something pending (cheap query; call off the main thread). */
+    /**
+     * Enqueues only when [installer] has something pending or dictionary gap fill (SHELL-L9) is due (cheap queries;
+     * call off the main thread).
+     */
     fun enqueueIfPending(installer: ContentInstaller, wm: () -> WorkManager?) {
         val n = runCatching { installer.pending().size }
             .onFailure { Log.e(ContentInstaller.TAG, "pending content check failed", it) }
             .getOrDefault(0)
-        if (n > 0) runCatching { wm()?.let(::enqueue) }
+        val gapDue = runCatching { GlobalContext.getOrNull()?.getOrNull<DictGapFill>()?.isDue() == true }
+            .onFailure { Log.e(GAP_FILL_TAG, "gap fill due check failed", it) }
+            .getOrDefault(false)
+        if (n > 0 || gapDue) runCatching { wm()?.let(::enqueue) }
     }
 }
 
@@ -66,6 +74,11 @@ class ContentInstallWorker(context: Context, params: WorkerParameters) : Corouti
         val installer = GlobalContext.getOrNull()?.getOrNull<ContentInstaller>() ?: return@withContext Result.retry()
         val s = installer.runAll()
         Log.i(ContentInstaller.TAG, "content install run: $s")
+        // SHELL-L9: after the deck items are in, fetch the dictionary entries they and the notes reference that the
+        // installed package lacks. Budget-limited; what is left waits for the next sync (not a WorkManager retry).
+        GlobalContext.getOrNull()?.getOrNull<DictGapFill>()?.let { gap ->
+            runCatching { gap.run() }.onFailure { Log.e(GAP_FILL_TAG, "gap fill failed", it) }
+        }
         if (s.retry > 0) Result.retry() else Result.success()
     }
 }

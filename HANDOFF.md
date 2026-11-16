@@ -1,22 +1,28 @@
-# HANDOFF SHELL-W4
+# HANDOFF SHELL-L9
 
 STATUS: DONE
-BRANCH: t/SHELL-W4-mobile-gaps
-CHECK: `make check MODULE=web` → green (Playwright run separately: shell-mobile, chip-overlap, shell-device all pass)
+BRANCH: t/SHELL-L9-dict-gapfill
+CHECK: `make check MODULE=android` → green
 
-## Changed (≤ 6 lines)
-- Bug: review `$effect` re-ran `start()` when `keepGoing` flipped, so tapping "Keep going" reset itself (aborted fetch, no cards). Fixed with `untrack` in review/+page.svelte.
-- Touch (`pointer: coarse`) 44 px boxes: Button sm, button Chip, SegmentedControl, Browse card buttons; Browse card column truncates instead of overlapping; `overscroll-behavior: none` on html. 100dvh and safe-area were already in place; text stays selectable.
-- New `web/playwright/shell-mobile.spec.ts` (+ `.gitignore` un-ignores screenshots/shell).
+## Cause (confirmed by reading the scope build)
+`worker/.../dict/package/source.py` adds referenced seqs to `top60k` only when dict-refresh builds a release; `dict_refresh.py` builds packages right after `_requeue_decks` merely *enqueues* list-deck rebuilds. So list-deck items (and notes added later) outside the top 60k are not in the package until a new JMdict release. Conversational words rank low in written-frequency lists. The phone default is `top60k`, and a local miss rendered nothing.
+
+## Changed
+- `dict/DictGapCache.kt`: sidecar table `dict_gap_cache` (runtime `IF NOT EXISTS`, no .sq, since there are no migrations), negative results, `dict.server_release_id`, counts
+- `dict/DictGapFill.kt`: per-run budget 300, batches, pruning, `isDue`; `DictLookup.kt`: L-7 steps 1–4 + authority
+- `InstalledDictionary.entry/kanji` = steps 1–2 (all readers incl. review); `DictInstaller` records server release
+- `sync/content/ContentInstallWork.kt`: runs gap fill after content install; enqueues when due
+- Parity: `JdbcPackageSource`, `DictGapCache`/`DictLookup` registered in `ParityDevice`
 
 ## Acceptance → tests
-- No overflow / actions in viewport / no chip overlap / 44 px / above bottom bar → shell-mobile "<route> fits", "primary actions inside the viewport, chips clear of card text", "grade bar ... keyboard open"
-- 60-card keep-going stream, waiting only with next_learning_due_at → "60 cards with keep going never end early", "waiting screen only with next_learning_due_at"
-- Screenshots → web/screenshots/shell/ (360x800, 412x915): home, search, dictionary, dictionary-entry, browse, decks, struggle, settings, review front/back/keyboard/waiting/done (all viewed; browse fixed after looking)
+- renders after one run, offline → `DictGapFillTest.aNoteWhoseEntryIsAbsentFromATop60kPackage…`
+- nothing dropped → `…nothingReferencedIsSilentlyDropped…`, `offlineRunReports…`
+- cache row removed → `aCacheRowIsRemovedWhenTheInstalledPackageGainsTheEntry`
 
 ## New dependencies
 - none
 
-## For the reviewer (≤ 3 lines)
-- The stream test runs in plain mode (`/__mock/shell/off`): the fake shell answers queue fetches itself, invisible to `page.route`.
-- Follow-ups: Browse table is still dense on phones; the settings mock-shell shows not_implemented toasts (mock gap, not UI).
+## For the reviewer
+- On a release change, positive rows stay readable and get refreshed (only negatives are dropped). Dropping them would blank cards until the refetch.
+- `JdbcPackageSource` detail reads throw: plain JVM has only org.json stubs.
+- Counts are exposed through `DictGapCache.counts()`/`serverReleaseId()`. Nothing shows them in the UI yet; that is A7/W2.

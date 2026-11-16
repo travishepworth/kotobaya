@@ -71,12 +71,40 @@ class InstalledDictionary(
     private val store: DictStore,
     /** Reports reads on the main thread (BUG-8); null in tests that build it alone. */
     private val guard: kotobaya.android.db.DbThreadGuard? = null,
-) {
+    /**
+     * SHELL-L9: the sidecar cache (SHELL.md L-7 step 2). With it, [entry] and [kanji] are the lookup's steps 1-2, so
+     * every reader of this class (review rendering, back extras, word page, note kanji data) sees gap-filled entries
+     * the installed package lacks. Null = package only.
+     */
+    private val cache: DictGapCache? = null,
+) : PackageSource {
     private var handle: SQLiteDatabase? = null
     private var handleGeneration = -1L
 
     /** The installed release, or null when none is installed. */
-    fun info(): PackageInfo? = withDb { PackageFile.info(it) }
+    override fun info(): PackageInfo? = withDb { PackageFile.info(it) }
+
+    /** L-7 steps 1-2: the installed package, then the sidecar cache. Never the network. */
+    fun entry(seq: Long): DictEntryDetail? = packageEntry(seq) ?: cache?.entry(seq)
+
+    /** L-7 steps 1-2 for a kanji. */
+    fun kanji(literal: String): KanjiDetail? = packageKanji(literal) ?: cache?.kanji(literal)
+
+    override fun presentEntries(seqs: Collection<Long>): Set<Long> =
+        present(seqs.distinct().map { it.toString() }, "SELECT seq FROM dict_entry WHERE seq IN ") { it.toLong() }
+
+    override fun presentKanji(literals: Collection<String>): Set<String> =
+        present(literals.distinct(), "SELECT literal FROM kanji WHERE literal IN ") { it }
+
+    private fun <K> present(keys: List<String>, select: String, parse: (String) -> K): Set<K> {
+        if (keys.isEmpty()) return emptySet()
+        val out = HashSet<K>()
+        for (chunk in keys.chunked(PRESENT_CHUNK)) {
+            val sql = select + chunk.joinToString(",", "(", ")") { "?" }
+            withDb { db -> db.rawQuery(sql, chunk.toTypedArray()).use { c -> while (c.moveToNext()) out += parse(c.getString(0)) } } ?: return emptySet()
+        }
+        return out
+    }
 
     private fun <T> withDb(block: (SQLiteDatabase) -> T?): T? = synchronized(this) {
         guard?.check("dictionary read")
@@ -171,7 +199,7 @@ class InstalledDictionary(
         return DictSearchPage(page.map { it.first }, next)
     }
 
-    fun entry(seq: Long): DictEntryDetail? = withDb { db ->
+    override fun packageEntry(seq: Long): DictEntryDetail? = withDb { db ->
         val base = db.rawQuery(
             "SELECT language, headword, headword_reading, is_common, kanji_forms, readings, senses, pos, misc, freq_rank, retired " +
                 "FROM dict_entry WHERE seq = ?",
@@ -212,7 +240,7 @@ class InstalledDictionary(
         )
     }
 
-    fun kanji(literal: String): KanjiDetail? = withDb { db ->
+    override fun packageKanji(literal: String): KanjiDetail? = withDb { db ->
         db.rawQuery(
             "SELECT on_readings, kun_readings, nanori, meanings, stroke_count, grade, jlpt, freq_rank, radical, components " +
                 "FROM kanji WHERE literal = ?",
@@ -246,6 +274,8 @@ class InstalledDictionary(
     private fun stringList(json: String): List<String> = JSONArray(json).let { a -> (0 until a.length()).map { a.getString(it) } }
 
     private companion object {
+        /** Bind variables per `IN (...)` (SQLite's default limit is 999). */
+        const val PRESENT_CHUNK = 500
         const val NO_RANK = Int.MAX_VALUE
         /** U+10FFFF: sorts after every other code point, so `[key, key + TOP)` is the prefix range. */
         const val TOP = "􏿿"

@@ -31,6 +31,8 @@ class DictInstaller(
     private val work: CoroutineDispatcher = Dispatchers.IO,
     private val onWork: (String) -> Unit = {},
     private val log: (String) -> Unit = {},
+    /** SHELL-L9: every release id the server reports (L-7 "last known server release"). */
+    private val onServerRelease: (Long) -> Unit = {},
 ) {
     private val lock = Mutex()
     private val stateFlow = MutableStateFlow<InstallState>(InstallState.Idle)
@@ -86,6 +88,7 @@ class DictInstaller(
 
     private suspend fun decideAndInstall(): InstallResult {
         val release = remote.release() ?: return InstallResult.NoRelease
+        runCatching { withContext(work) { onServerRelease(release.id) } }.onFailure { log("dict: recording the server release failed: $it") }
         val chosen = scope()
         val installed = withContext(work) { store.info() }
 

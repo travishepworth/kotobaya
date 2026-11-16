@@ -4,6 +4,8 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
 import kotlin.reflect.KClass
 import kotlinx.coroutines.runBlocking
+import kotobaya.android.dict.DictGapCache
+import kotobaya.android.dict.DictLookup
 import kotobaya.android.dict.DictStore
 import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.LocalRoute
@@ -97,7 +99,7 @@ class SeedLog(private val clock: Clock) : SyncTransport {
  *
  * Handlers get their dependencies from [services] by type, like `KoinShellServices` in production. Registered:
  * [SqlDelightDeviceStore], [SyncClient], `LocalWrites<SqlLearningTables>`, [Clock], [DictStore],
- * [ParityDictionary]. An L ticket whose handler needs something else registers it here.
+ * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9). An L ticket whose handler needs something else registers it here.
  */
 class ParityDevice(
     val deviceId: String,
@@ -107,13 +109,20 @@ class ParityDevice(
 ) {
     val clock = ParityClock(startMs)
     val log = SeedLog(clock)
-    val store = SqlDelightDeviceStore(JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) })
+    private val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { AppDatabase.Schema.create(it) }
+    val store = SqlDelightDeviceStore(driver)
     val client = SyncClient(store, log, clock)
     var localChanges: Int = 0
         private set
     val writes = LocalWrites(store, client.minter) { localChanges++ }
     val dictionary: ParityDictionary = ParityDictionary.fixture
     val dictStore: DictStore = dictionary.install(dictDir)
+
+    /** SHELL-L9: the sidecar cache in the device's learning database, empty (no network in a scenario). */
+    val gapCache = DictGapCache(store, driver)
+
+    /** SHELL-L9: the one L-7 lookup over the installed fixture (JDBC) and [gapCache]; never online here. */
+    val dictLookup = DictLookup(JdbcPackageSource(dictStore.installed), gapCache, remote = null)
 
     /** Requests [LocalApi] forwarded upstream (a scenario never goes online: each one is a finding). */
     val forwarded = ArrayList<String>()
@@ -126,6 +135,8 @@ class ParityDevice(
             Clock::class to clock,
             DictStore::class to dictStore,
             ParityDictionary::class to dictionary,
+            DictGapCache::class to gapCache,
+            DictLookup::class to dictLookup,
         ),
     )
 
@@ -150,6 +161,8 @@ class ParityDevice(
         store.transaction { it.syncState.put(SyncStateKeys.DEVICE_ID, deviceId) }
         // As SyncBootstrap at app start: the startup replay before anything reads or applies.
         client.startup.run(store)
+        // L-7 authority: the last known server release is the fixture's (the server under the goldens serves it)
+        gapCache.recordServerRelease(dictionary.releaseId)
     }
 
     /**
