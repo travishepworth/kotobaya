@@ -8,5 +8,6 @@ LOOP-SRV found the hand-derived `expect` orders review cards by answer order, bu
 - [ ] contracts, server, android checks green with no allowlist entry.
 - Also (from SHELL-L4 CONTRACT_CHANGE_REQUEST, additive): add parity scenarios bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews; record goldens (server) and run them on android.
 - Also: clarify SHELL.md §4.3 createNote row: createNote creates NO add_kanji kanji notes (server NoteApi emits note.created, card.created, deck.item_put only; kanji notes come from C-27 materialization).
-- Also: deck parity scenarios (list/get/items, create user/smart, update, delete, add/put/remove items) + listCards scenario; record goldens on server (SHELL-P1 runner) and run on android (DeckParityTest currently hand-written).
-- Also: struggle/drill parity scenarios (StruggleParityTest is hand-written).
+## SPLIT (orchestrator): the two bullets below are LOOP-C2b, NOT this ticket
+- C2b: deck parity scenarios (list/get/items, create user/smart, update, delete, add/put/remove items) + listCards scenario; record goldens on server (SHELL-P1 runner) and run on android (DeckParityTest currently hand-written).
+- C2b: struggle/drill parity scenarios (StruggleParityTest is hand-written).

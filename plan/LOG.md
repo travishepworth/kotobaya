@@ -1313,3 +1313,4 @@
 2026-11-16T20:18:16Z CORE-WS-UPDATED DISPATCH writer-senior [gradle lane]
 2026-11-16T20:19:17Z CORE-WS-UPDATED DECIDE close: contract (SYNC.md 7.5, 11.4) defines updated_at as local/non-comparable; CCR would be breaking with no user-visible gain. ActionOpsTest exclusion is correct. AND-FLAKY-DUPCHECK DISPATCH writer [gradle lane]
 2026-11-16T20:26:18Z AND-FLAKY-DUPCHECK CHECK_GREEN + MERGE (JDBC driver classloader registration); LOOP-C2 DISPATCH architect
+2026-11-16T20:26:40Z LOOP-C2 SPLIT -> C2 (fix expect + createNote doc + L4 scenarios) and C2b (decks/listCards/struggle)
