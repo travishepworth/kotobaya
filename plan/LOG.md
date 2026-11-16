@@ -1191,3 +1191,4 @@
 2026-11-16T04:15:05Z REVIEW-UNLIMITED CHECK_GREEN (contracts/core/server/web/android) + MERGE (ADR-034)
 2026-11-16T04:21:42Z RELEASE api 0.1.22 + web 0.1.24 DEPLOYED helm rev 34 (pin c8fc3151: REVIEW-UNLIMITED, CARD-KIND-BADGE-WEB, RC-FOLLOW-SERVER/WEB); queue ~240 ms server-side
 2026-11-16T04:27:04Z AND-BATCH REVIEW_CHANGES 2 majors (stale shortcut ignores suspended/buried/override; check not applied to the card actually shown) -> attempt 2 (revert to always-rebuild if not cleanly safe)
+2026-11-16T04:31:16Z AND-BATCH attempt 2 (item 3 reverted to always-rebuild = RC-AND reviewed behaviour) CHECK_GREEN + MERGE
