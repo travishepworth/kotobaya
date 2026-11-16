@@ -17,7 +17,8 @@ import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.ReviewQueue
 
 /**
- * [QueueBuilder] following the contract KDoc rules 1–5 literally. Pure: no clock, no randomness;
+ * [QueueBuilder] following the contract KDoc rules 0–6 literally (ADR-037: rule 4 budget = the day's
+ * remainder with a batch, rule 5 = the proportional mix). Pure: no clock, no randomness;
  * every order is a total order on input keys, so the result does not depend on the order of any
  * input list and is identical on jvm, android and js.
  *
@@ -40,7 +41,41 @@ public object DefaultQueueBuilder : QueueBuilder {
     private val excludedEntryOverrides = excludedOverrides + WordStatus.KNOWN
     private val deckOrder: Comparator<QueueDeck> = compareBy<QueueDeck> { it.priority }.thenBy { it.id }
 
-    override fun build(input: QueueInput): ReviewQueue = Build(input).run()
+    override fun build(input: QueueInput): ReviewQueue = Build(input).run(probeMoreAvailable = true).queue
+
+    /**
+     * One build plus what [DefaultReviewLoop] derives its counts from, without the `moreAvailable`
+     * probe (the loop sets it from its own keep-going build, so it runs exactly two builds).
+     */
+    internal fun buildDetailed(input: QueueInput): Built = Build(input).run(probeMoreAvailable = false)
+
+    /** A build and the numbers [DefaultReviewLoop] needs from the same pass. */
+    internal class Built(
+        /** The build ([ReviewQueue.moreAvailable] false unless probed). */
+        val queue: ReviewQueue,
+        /** Rule 4 `availableToday` (normal build); the drawn count of a keep-going build. */
+        val availableToday: Int,
+        /** NEW items + pending entries of the batch-unbounded draw: `LegacyCounts.new` (normal build). */
+        val unboundedNewCount: Int,
+        /** Eligible LEARNING/RELEARNING cards with `now < dueAt < day.endMs` (distinct ids). */
+        val laterToday: Int,
+        /** Smallest `dueAt` of those, or null. */
+        val nextDueAt: Long?,
+        /** Today's `countsAsReview` rows after rule 0. */
+        val reviewsToday: Int,
+        /** Today's `introducedNew` rows after rule 0. */
+        val newToday: Int,
+    )
+
+    /** One drawn group of rule 4 (a card with its add_kanji cards, or a pending entry with its group). */
+    private class Group(val drawnBefore: Int, val items: List<QueueItem>, val entry: PendingEntry?)
+
+    private class NewDraw(
+        val items: List<QueueItem>,
+        val materialize: List<PendingEntry>,
+        val availableToday: Int,
+        val unboundedNewCount: Int,
+    )
 
     /** Where a NEW card is drawn from (rule 4). */
     private sealed interface Home {
@@ -129,7 +164,7 @@ public object DefaultQueueBuilder : QueueBuilder {
 
         private val byDueThenId = compareBy<QueueCandidate>({ due(it) }, { it.cardId })
 
-        fun run(): ReviewQueue {
+        fun run(probeMoreAvailable: Boolean): Built {
             val eligible = input.candidates.filter { eligible(it) }
 
             // Rule 2: learning, split into due now (`dueAt <= now`) and learn-ahead (C-22, ADR-023).
@@ -147,16 +182,56 @@ public object DefaultQueueBuilder : QueueBuilder {
                 .mapNotNull { it.dueAt }
                 .filter { it > horizon && it < input.day.endMs }
                 .minOrNull()
+            // ADR-037 "later today": the same eligibility, learn-ahead ignored.
+            val later = learningAll.filter { c -> c.dueAt.let { it != null && it > input.now && it < input.day.endMs } }
 
             val reviews = buildReviews(eligible)
             val news = buildNew(eligible)
-            // Rule 6 (C-26): under keep going, the backlog of reviews comes before more new cards.
-            val middle = if (limits.keepGoing) reviews + news.first else interleave(reviews, news.first)
+            // Rule 6 (C-26): under keep going, the backlog of reviews comes before more new cards (no mix).
+            val middle = if (limits.keepGoing) reviews + news.items else mix(reviews, news.items, news.availableToday)
             val items = learningNow + middle + learningAhead
-            val moreAvailable = !limits.keepGoing && items.isEmpty() && news.second.isEmpty() &&
-                Build(input.copy(limits = limits.copy(keepGoing = true))).run()
+            val moreAvailable = probeMoreAvailable && !limits.keepGoing && items.isEmpty() && news.materialize.isEmpty() &&
+                Build(input.copy(limits = limits.copy(keepGoing = true))).run(probeMoreAvailable = false).queue
                     .let { it.items.isNotEmpty() || it.toMaterialize.isNotEmpty() }
-            return ReviewQueue(items, news.second, nextLearningDueAt, moreAvailable)
+            return Built(
+                queue = ReviewQueue(items, news.materialize, nextLearningDueAt, moreAvailable),
+                availableToday = news.availableToday,
+                unboundedNewCount = news.unboundedNewCount,
+                laterToday = later.mapTo(HashSet()) { it.cardId }.size,
+                nextDueAt = later.mapNotNull { it.dueAt }.minOrNull(),
+                reviewsToday = input.today.count { it.countsAsReview },
+                newToday = input.today.count { it.introducedNew },
+            )
+        }
+
+        /**
+         * Rule 5 (ADR-037) proportional mix of the ready reviews [r] and the drawn new cards [n]: the next
+         * item is new iff `s * gRem >= rRem`, `s` = today's reviews answered after the latest introduction.
+         */
+        private fun mix(r: List<QueueItem>, n: List<QueueItem>, availableToday: Int): List<QueueItem> {
+            if (r.isEmpty()) return n
+            if (n.isEmpty()) return r
+            val lastIntro = input.today.filter { it.introducedNew }.maxOfOrNull { it.reviewedAt }
+            var s = input.today.count { it.countsAsReview && (lastIntro == null || it.reviewedAt > lastIntro) }.toLong()
+            var rRem = r.size.toLong()
+            var gRem = availableToday.toLong()
+            val out = ArrayList<QueueItem>(r.size + n.size)
+            var ri = 0
+            var ni = 0
+            while (ri < r.size && ni < n.size) {
+                if (s * gRem >= rRem) {
+                    out += n[ni++]
+                    s = 0
+                    gRem--
+                } else {
+                    out += r[ri++]
+                    s++
+                    rRem--
+                }
+            }
+            while (ri < r.size) out += r[ri++]
+            while (ni < n.size) out += n[ni++]
+            return out
         }
 
         // Rule 3.
@@ -189,22 +264,30 @@ public object DefaultQueueBuilder : QueueBuilder {
         }
 
         // Rule 4.
-        private fun buildNew(eligible: List<QueueCandidate>): Pair<List<QueueItem>, List<PendingEntry>> {
-            // Rule 6: keep going replaces the daily and session caps with the batch.
-            var budget = if (limits.keepGoing) {
-                maxOf(1, limits.keepGoingNewBatch)
-            } else {
-                maxOf(
-                    0,
-                    minOf(
-                        limits.newPerDay - input.today.count { it.introducedNew },
-                        limits.newPerSession - limits.newShownThisSession,
-                    ),
-                )
-            }
+        private fun buildNew(eligible: List<QueueCandidate>): NewDraw {
+            val batch = maxOf(1, limits.keepGoingNewBatch)
+            // Normal build (ADR-037): the draw runs against the day's remainder alone (each group must fit
+            // it), which gives `availableToday`; the batch then keeps the groups started while fewer than
+            // the batch were drawn, a prefix of that draw. Keep going (rule 6): the batch alone, no fit test.
+            val initial = if (limits.keepGoing) batch else maxOf(0, limits.newPerDay - input.today.count { it.introducedNew })
+            var budget = initial
+            val groups = mutableListOf<Group>()
+            var groupItems = mutableListOf<QueueItem>()
             val out = mutableListOf<QueueItem>()
             val materialize = mutableListOf<PendingEntry>()
-            if (budget == 0) return out to materialize
+
+            fun finish(): NewDraw {
+                val drawn = initial - budget
+                if (limits.keepGoing) return NewDraw(out, materialize, drawn, out.size + materialize.size)
+                val kept = groups.filter { it.drawnBefore < batch }
+                return NewDraw(
+                    items = kept.flatMap { it.items },
+                    materialize = kept.mapNotNull { it.entry },
+                    availableToday = drawn,
+                    unboundedNewCount = out.size + materialize.size,
+                )
+            }
+            if (budget == 0) return finish()
 
             val pool = eligible
                 .filter { it.state == CardState.NEW && it.wordOverride != WordStatus.KNOWN }
@@ -277,7 +360,9 @@ public object DefaultQueueBuilder : QueueBuilder {
                 take(c)
                 budget--
                 charge(home)
-                out += QueueItem(c.cardId, QueueItemKind.NEW, home)
+                val item = QueueItem(c.cardId, QueueItemKind.NEW, home)
+                out += item
+                groupItems += item
             }
 
             /**
@@ -317,6 +402,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                             val group = if (grouped) kanjiGroup(e.expressionKanji, null) else emptyList()
                             val created = if (grouped) maxOf(0, e.newKanjiCards) else 0
                             if (!limits.keepGoing && 1 + group.size + created > budget) return true
+                            groups += Group(initial - budget, emptyList(), e)
                             materialized += e.entrySeq
                             materialize += e
                             budget -= 1 + created
@@ -338,6 +424,8 @@ public object DefaultQueueBuilder : QueueBuilder {
                             // budget, or none of it is drawn and V is skipped for this build. Under keep
                             // going (rule 6) any budget >= 1 draws the whole group, so it never starves.
                             if (!limits.keepGoing && 1 + group.size > budget) return true
+                            val drawnBefore = initial - budget
+                            groupItems = mutableListOf()
                             if (s.addKanji == AddKanjiMode.BEFORE) {
                                 group.forEach { takeNew(it) }
                                 takeNew(c)
@@ -345,6 +433,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                                 takeNew(c)
                                 group.forEach { takeNew(it) }
                             }
+                            groups += Group(drawnBefore, groupItems, null)
                             return true
                         }
                     }
@@ -359,13 +448,13 @@ public object DefaultQueueBuilder : QueueBuilder {
                 while (true) {
                     var progressed = false
                     for (s in tier) {
-                        if (budget <= 0) return out to materialize
+                        if (budget <= 0) return finish()
                         if (turn(s)) progressed = true
                     }
                     if (!progressed) break
                 }
             }
-            return out to materialize
+            return finish()
         }
     }
 
@@ -388,21 +477,5 @@ public object DefaultQueueBuilder : QueueBuilder {
             { it.cardId },
             { it.entrySeq },
         )
-    }
-
-    // Rule 5.
-    private fun interleave(r: List<QueueItem>, n: List<QueueItem>): List<QueueItem> {
-        if (r.isEmpty()) return n
-        if (n.isEmpty()) return r
-        val total = r.size + n.size
-        val k = maxOf(1, total / n.size)
-        val out = ArrayList<QueueItem>(total)
-        var ri = 0
-        var ni = 0
-        for (i in 0 until total) {
-            val newHere = ni < n.size && ((i + 1) % k == 0 || ri >= r.size)
-            if (newHere) out += n[ni++] else out += r[ri++]
-        }
-        return out
     }
 }

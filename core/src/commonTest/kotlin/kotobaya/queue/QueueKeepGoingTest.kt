@@ -51,9 +51,11 @@ class QueueKeepGoingTest {
         assertFalse(l.keepGoing)
         assertEquals(QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH, l.keepGoingNewBatch)
         val c = listOf(review(1, past), card(2), card(3), learning(4, past))
-        val explicit = build(input(c, limits = l.copy(keepGoing = false, keepGoingNewBatch = 1)))
+        val explicit = build(input(c, limits = l.copy(keepGoing = false)))
         assertEquals(build(input(c, limits = l)), explicit)
         assertFalse(explicit.moreAvailable, "non-empty normal queue")
+        // ADR-037: the batch bounds the normal build too (before it, only keep going).
+        assertEquals("L4 R1 N2", build(input(c, limits = l.copy(keepGoingNewBatch = 1))).shape())
     }
 
     @Test
@@ -135,8 +137,8 @@ class QueueKeepGoingTest {
     @Test
     fun dueLearningStillLeadsAndReviewsPrecedeNewUnderKeepGoing() {
         val c = listOf(card(1), card(2), card(3), review(4, past), learning(5, past))
-        // normal: k = max(1, 4 / 3) = 1 puts new cards first in the interleave
-        assertEquals("L5 N1 N2 N3 R4", build(input(c)).shape())
+        // normal (ADR-037 mix): a fresh day starts with a review, then the new cards
+        assertEquals("L5 R4 N1 N2 N3", build(input(c)).shape())
         assertEquals("L5 R4 N1 N2 N3", build(input(c, limits = limits().keepGoing())).shape())
     }
 

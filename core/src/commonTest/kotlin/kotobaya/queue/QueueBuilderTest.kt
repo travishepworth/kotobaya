@@ -74,7 +74,8 @@ class QueueBuilderTest {
     fun burySiblingsOffKeepsSiblings() {
         val c = listOf(review(1, past, note = 9), review(2, past + 1, note = 9), card(3, note = 9))
         val t = listOf(today(5, note = 9))
-        assertEquals("R1 R2 N3", build(input(c, today = t, limits = limits(burySiblings = false))).shape())
+        // ADR-037 rule 5 mix: rRem 2, gRem 1, s 0 -> R, then 1 * 1 >= 1 -> N.
+        assertEquals("R1 N3 R2", build(input(c, today = t, limits = limits(burySiblings = false))).shape())
     }
 
     @Test
@@ -216,10 +217,13 @@ class QueueBuilderTest {
     }
 
     @Test
-    fun sessionCapLimitsNewCards() {
+    fun sessionCapIsIgnoredAndTheBatchBoundsOneBuild() {
+        // ADR-037 replaces sessionCapLimitsNewCards: newPerSession/newShownThisSession change nothing.
         val c = (1..5).map { card(it, created = it.toLong()) }
-        assertEquals(listOf(1, 2, 3), build(input(c, limits = limits(newPerSession = 10, newShown = 7))).cards())
-        assertEquals(emptyList<Int>(), build(input(c, limits = limits(newPerSession = 10, newShown = 12))).cards())
+        assertEquals(listOf(1, 2, 3, 4, 5), build(input(c, limits = limits(newPerSession = 10, newShown = 7))).cards())
+        assertEquals(listOf(1, 2, 3, 4, 5), build(input(c, limits = limits(newPerSession = 10, newShown = 12))).cards())
+        assertEquals(listOf(1, 2, 3), build(input(c, limits = limits().copy(keepGoingNewBatch = 3))).cards())
+        assertEquals(listOf(1, 2), build(input(c, limits = limits(newPerDay = 2).copy(keepGoingNewBatch = 3))).cards())
     }
 
     @Test
@@ -401,12 +405,18 @@ class QueueBuilderTest {
     }
 
     @Test
-    fun addKanjiGroupMustFitTheSessionCapToo() {
+    fun addKanjiGroupMayOvershootTheBatchButMustFitTheDay() {
+        // ADR-037 replaces addKanjiGroupMustFitTheSessionCapToo: the group is atomic against the day's
+        // remainder; the batch only stops drawing once reached, so batch 1 still draws a 4-card group.
         for (mode in listOf(AddKanjiMode.BEFORE, AddKanjiMode.ALONGSIDE)) {
             val c = listOf(word(1, 1, 0)) + kanjiCards
-            val q = build(input(c, decks = listOf(deck(1, addKanji = mode)), limits = limits(newPerSession = 4, newShown = 1)))
-            // Group of 4 > session remaining 3: the deckless source draws 51, 52 (53 buried), 54.
-            assertEquals(listOf(51, 52, 54), q.cards(), "$mode")
+            val d = listOf(deck(1, addKanji = mode))
+            val q = build(input(c, decks = d, limits = limits().copy(keepGoingNewBatch = 1)))
+            val group = if (mode == AddKanjiMode.BEFORE) listOf(52, 54, 51, 1) else listOf(1, 52, 54, 51)
+            assertEquals(group, q.cards(), "$mode")
+            // 3 left in the day: the group of 4 is skipped; the deckless source draws 51 and the batch is full.
+            val short = build(input(c, decks = d, limits = limits(newPerDay = 3).copy(keepGoingNewBatch = 1)))
+            assertEquals(listOf(51), short.cards(), "$mode")
         }
     }
 
@@ -479,21 +489,22 @@ class QueueBuilderTest {
         assertEquals(listOf(1, 51, 52, 54), build(input(c)).cards())
     }
 
-    // ---- Rule 5: interleaving --------------------------------------------------------------------
+    // ---- Rule 5: proportional mix (ADR-037; replaces the interleave) ----------------------------------
 
     @Test
-    fun interleaveWorkedExamples() {
+    fun mixWorkedExamples() {
+        // Nothing done today (s = 0), every new card available (gRem = n): new iff s * gRem >= rRem.
         fun shape(r: Int, n: Int): String {
             val c = (1..r).map { review(it, past + it) } + (1..n).map { card(100 + it, created = it.toLong()) }
             return build(input(c, limits = limits(newPerDay = 50))).items.joinToString("") { it.kind.name.take(1) }
         }
-        assertEquals("RRNRRN", shape(4, 2)) // k = 3
-        assertEquals("RRNRRNR", shape(5, 2)) // k = 3
-        assertEquals("NNNR", shape(1, 3)) // k = max(1, 4 / 3) = 1
-        assertEquals("RNRN", shape(2, 2)) // k = 2
+        assertEquals("RRNRNR", shape(4, 2)) // contract example R1 R2 N1 R3 N2 R4
+        assertEquals("RRNRRNR", shape(5, 2))
+        assertEquals("RNNN", shape(1, 3)) // a fresh day starts with a review
+        assertEquals("RNRN", shape(2, 2))
         assertEquals("RRR", shape(3, 0))
         assertEquals("NN", shape(0, 2))
-        assertEquals("RRRRNRRRRN", shape(8, 2)) // k = 5
+        assertEquals("RRRNRRRNRR", shape(8, 2))
     }
 
     @Test

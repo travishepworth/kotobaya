@@ -62,11 +62,12 @@ class QueueReviewsUnlimitedTest {
     }
 
     @Test
-    fun neverStudiesAheadAndStillInterleaves() {
+    fun neverStudiesAheadAndStillMixes() {
         val c = listOf(review(1, past), review(2, past + 1), review(3, tomorrow), card(4), learning(5, NOW + HOUR))
         val l = limits(reviewsPerDay = 1, learnAheadMs = 0).copy(reviewsUnlimited = true)
         val q = build(input(c, limits = l))
-        assertEquals("R1 R2 N4", q.shape())
+        // ADR-037 mix: rRem 2, gRem 1 -> R1, then 1 * 1 >= 1 -> N4, then R2.
+        assertEquals("R1 N4 R2", q.shape())
         assertEquals(NOW + HOUR, q.nextLearningDueAt)
     }
 
