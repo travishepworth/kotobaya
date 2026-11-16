@@ -3,7 +3,6 @@ package kotobaya.review
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.WordStatus
-import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
@@ -20,7 +19,15 @@ import kotobaya.server.ApiException
 import org.jooq.DSLContext
 
 /** What [QueueLoader.load] hands to the core plus what the caller needs to answer counts. */
-internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCandidate>)
+/**
+ * [candidates] are exactly `input.candidates`, retired cards included (ADR-035: loaders pass them; core rule 0 drops them
+ * and their today-reviews). Anything counted outside the builder must skip them: [servable].
+ */
+internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCandidate>) {
+    /** [candidates] the builder can ever serve: not `CardKinds.isRetired` under `input.readingEnabled`. */
+    val servable: List<QueueCandidate>
+        get() = candidates.filterNot { kotobaya.contracts.cards.CardKinds.isRetired(it.noteBaseType, it.kind, input.readingEnabled) }
+}
 
 /**
  * The platform loader of the core queue builder (QueueBuilder.kt, SCHEMA.md 6): turns the server replica into a
@@ -103,10 +110,6 @@ internal class QueueLoader(private val dsl: DSLContext) {
             )
         }
         if (deckFilter != null) candidates = candidates.filter { c -> c.memberships.any { it.deckId == deckFilter } }
-        // ADR-035: retired cards are dropped here as well as by core rule 0 (the builder's result is the same either
-        // way, QueueRetiredCardsTest), so callers counting `LoadedQueue.candidates` (later learning in /review/queue
-        // and /stats/summary) never count a card that is never served.
-        candidates = candidates.filterNot { CardKinds.isRetired(it.noteBaseType, it.kind, readingEnabled) }
 
         val today = todayRows.map { it.copy(deckIds = memberships[it.noteId].orEmpty().map(DeckMembership::deckId)) }.map { it.review }
         val input = QueueInput(

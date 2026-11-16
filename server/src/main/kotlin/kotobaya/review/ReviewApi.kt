@@ -139,7 +139,8 @@ internal class ReviewApi(
         }
         val nItems = normal.items
         val nShown = nItems.mapTo(HashSet()) { it.cardId }
-        val laterLearning = loaded.candidates.count { c ->
+        // ADR-035: retired cards are never served, so never counted (loaded.servable).
+        val laterLearning = loaded.servable.count { c ->
             c.cardId !in nShown && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
                 (c.buriedUntil == null || c.buriedUntil!! <= nowMs) && c.wordOverride !in BLOCKED &&
                 c.dueAt != null && c.dueAt!! < day.day.endMs

@@ -221,6 +221,51 @@ class DeckMaterializeTest : SyncFixture() {
         }
     }
 
+    /**
+     * ADR-035 (review ONE-CARD-SRV attempt 3): the loader passes retired cards, so core rule 0 also drops their
+     * today-reviews. A reading card introduced today, then retired, neither uses new_per_day nor buries its meaning
+     * sibling: the server serves what the core builder gives for the input with the retired card in it (as Android).
+     */
+    @Test
+    fun aRetiredCardIntroducedTodayUsesNoLimitAndBuriesNoSibling() = reviewApp {
+        val t = token()
+        setting("cards.reading_enabled", "true")
+        setting("scheduler.new_per_day", "1")
+        setting("scheduler.bury_siblings", "true")
+        val created = client.call(
+            HttpMethod.Post, "/notes", bearer = t,
+            body = mapOf("note_type_id" to "00000000-0000-7000-8000-000000000101", "fields" to mapOf("expression" to "食べる"), "card_kinds" to listOf("meaning", "reading")),
+        )
+        assertEquals(201, created.status.value)
+        val cards = created.json()["cards"].associate { it["kind"].asText() to it["id"].asText() }
+        val reading = cards.getValue("reading")
+        val meaning = cards.getValue("meaning")
+        val again = mapOf("id" to Uuid7.generate().toString(), "card_id" to reading, "rating" to 1)
+        assertEquals(200, client.call(HttpMethod.Post, "/review/answer", bearer = t, body = again).status.value)
+
+        // Control, setting on: the reading card used today's new card and buries its sibling.
+        val on = fetch(t)
+        assertTrue(on["items"].none { it["card"]["id"].asText() == meaning })
+        assertEquals(0, on["counts"]["new"].asInt())
+
+        setting("cards.reading_enabled", "false")
+        val off = fetch(t)
+        assertEquals(listOf(meaning), off["items"].map { it["card"]["id"].asText() })
+        assertEquals(1, off["counts"]["new"].asInt())
+        assertEquals(0, off["counts"]["learning"].asInt())
+        assertEquals(1, client.call(HttpMethod.Get, "/stats/summary", bearer = t).json()["due"]["new"].asInt())
+
+        // Same as the core builder over the loader's input, which still holds the retired card and its today-review.
+        val core = db.txBlocking { dsl ->
+            val loaded = QueueLoader(dsl).load(syncNow.get().toEpochMilli(), ReviewSettings.load(dsl))
+            assertTrue(loaded.input.candidates.any { it.cardId == reading }, "the loader passes retired cards")
+            assertTrue(loaded.input.today.any { it.cardId == reading })
+            assertTrue(loaded.servable.none { it.cardId == reading })
+            kotobaya.queue.DefaultQueueBuilder.build(loaded.input).items.map { it.cardId }
+        }
+        assertEquals(core, off["items"].map { it["card"]["id"].asText() })
+    }
+
     private fun headword(seq: Long, h: String) = db.txBlocking { it.execute("update ref.dict_entry set headword = ? where seq = ?", h, seq) }
 
     /**
