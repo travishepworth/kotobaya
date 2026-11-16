@@ -73,6 +73,7 @@
     "notice": {"type": ["string", "null"]},
     "keep_going": {"type": "boolean", "description": "C-26/C-27: keep going is on for this daemon run (past today's limits until a keep-going fetch is empty)."},
     "more_available": {"type": "boolean", "description": "C-26: the server's more_available of the last fetch: done under today's limits, keep going has more."},
+    "loading": {"type": "boolean", "description": "A refresh or keep-going refetch is running in the background; reveal and answer still work."},
     "next_due_at": {"type": ["string", "null"], "description": "ADR-033: with no card shown, the UTC instant the next learning card falls due today (the daemon refetches then); null otherwise. Counts are the server's, unchanged."}
   }
 }

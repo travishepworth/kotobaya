@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 STATE_VERSION = 1
 DURATION_CAP_MS = 60_000
+QUEUE_LIMIT = 20  # items asked of GET /review/queue
 TEXT_FIELDS = ("front", "back", "reading", "sentence")
 Clock = Callable[[], datetime]
 
@@ -87,6 +88,7 @@ class Session:
         self.keep_going_day: str | None = None
         self.more_available = False
         self.next_due_at: str | None = None
+        self.loading = False  # a refresh / keep-going refetch is running in the background
 
     @property
     def current(self) -> CardEntry | None:
@@ -127,6 +129,10 @@ class Session:
                 self._new_card_shown()
         elif (
             check_current
+            # A full snapshot may simply have pushed the card past the limit, and a card the user
+            # already revealed is answered (a 409 is handled then), not swapped away.
+            and len(snapshot.items) < QUEUE_LIMIT
+            and not self.revealed
             and current.card_id not in pending
             and all(i.card_id != current.card_id for i in items)
         ):
@@ -204,6 +210,7 @@ class Session:
             "notice": self.notice,
             "keep_going": self.keep_going,
             "more_available": self.more_available,
+            "loading": self.loading,
             # ADR-033: only while nothing is shown; the widget's "waiting" state.
             "next_due_at": self.next_due_at if current is None and counts is not None else None,
         }

@@ -56,7 +56,7 @@ automatically after each answer. Deck words that have no note yet become new car
 when it builds the queue; the daemon never creates notes itself. It ends only when a keep-going
 fetch is empty (`"card": null`, `"keep_going": true`, `"more_available": false`: nothing is left
 today). Keep going lives in the daemon's memory: it stops when the study day changes and when the
-daemon restarts. The state carries `"keep_going"` (bool) and `"more_available"` (bool).
+daemon restarts. The state carries `"keep_going"` (bool) and `"more_available"` (bool). `"loading"` (bool) is true while a `refresh`/`keep_going` refetch runs in the background.
 
 ## watch
 

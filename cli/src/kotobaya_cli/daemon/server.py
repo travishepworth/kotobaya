@@ -35,6 +35,7 @@ from kotobaya_cli.watch import next_due_in
 
 TIMER_SECONDS = 60.0
 MAX_BACKOFF_S = 30.0
+RETRY_BACKOFF_S = (2.0, 5.0, 10.0, 30.0)  # refetch delays after a failed queue fetch
 NEXT_DUE_SLACK_S = 1.0  # ADR-033: refetch this long after a learning card's due instant
 KEEP_GOING_RETRIES = (
     3  # C-27: refetches of a keep-going response with only entries left to materialize
@@ -156,6 +157,10 @@ class Daemon:
         self._dirty = False
         self._want_check = False
         self._settings_stale = True
+        self._retry_task: asyncio.Task[None] | None = None
+        self._failures = 0
+        self._stale_due = 0  # fetches in a row that returned no card although next_due was past
+        self._tasks: set[asyncio.Task[None]] = set()
         self._stop = asyncio.Event()
         self._timer_wake = asyncio.Event()
         self._last_tick: str | None = None
@@ -206,13 +211,25 @@ class Daemon:
             elif cmd.name == "undo":
                 await self.handler.undo(self)
             elif cmd.name == "refresh":
-                await self.refetch(emit=False)
+                self._spawn_refetch()
             elif cmd.name == "keep_going":
                 # C-26/C-27: same semantics as the web: past today's limits until a keep-going fetch is empty.
                 session.keep_going = True
                 session.keep_going_day = None
-                await self.refetch(emit=False)
+                self._spawn_refetch()
         return self.emit()
+
+    def _spawn_refetch(self) -> None:
+        """Refetch in the background so the command worker stays free for reveal and answers."""
+        self.session.loading = True
+        task = asyncio.create_task(self.refetch())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def idle(self) -> None:
+        """Wait for background refetches started by commands (tests, shutdown)."""
+        while self._tasks:
+            await asyncio.wait(set(self._tasks))
 
     async def _worker(self) -> None:
         while True:
@@ -244,6 +261,7 @@ class Daemon:
                     break
         finally:
             self._fetching = False
+            self.session.loading = False
         if emit:
             self.emit()
 
@@ -262,16 +280,44 @@ class Daemon:
             snapshot = await self._fetch_snapshot()
         except Exception as exc:  # noqa: BLE001
             self._settings_stale = True
-            self.session.conn = "auth" if classify(exc).kind == "auth" else "offline"
+            kind = classify(exc).kind
+            if kind == "auth":
+                self.session.conn = "auth"
+            elif kind != "degraded" or self.session.conn == "auth":
+                self.session.conn = "offline"
+            # degraded (slow or failing server): keep conn as it was, so answers still POST
+            # (journaled, idempotent) and the shown queue stays usable; just retry soon.
+            self._schedule_retry()
             return
+        self._failures = 0
         self.session.conn = "ok"
         self.session.more_available = snapshot.more_available
         pending.update(self.handler.pending_cards())
         self.session.apply_queue(snapshot, check_current=check_current, pending=pending)
         self.handler.end_fetch(token)
+        self._stale_due = (
+            self._stale_due + 1
+            if not snapshot.items
+            and (due := self._seconds_until(snapshot.next_learning_due_at)) is not None
+            and due <= 0
+            else 0
+        )
         self._timer_wake.set()
         if not was_ok:
             await self.handler.on_online(self)
+
+    def _schedule_retry(self) -> None:
+        """Refetch after a failed fetch: 2 s, 5 s, 10 s, then every 30 s, until one succeeds."""
+        delay = RETRY_BACKOFF_S[min(self._failures, len(RETRY_BACKOFF_S) - 1)]
+        self._failures += 1
+        if self._retry_task is not None and not self._retry_task.done():
+            return
+
+        async def retry() -> None:
+            await asyncio.sleep(delay)
+            await self.refetch()
+
+        self._retry_task = asyncio.create_task(retry())
 
     async def _fetch_snapshot(self) -> QueueSnapshot:
         """One queue fetch, with keep going when it is on (C-26/C-27).
@@ -314,7 +360,9 @@ class Daemon:
         if self.session.current is None:
             due = self._seconds_until(self.session.next_due_at)
             if due is not None:
-                wait = min(wait, max(0.0, due) + NEXT_DUE_SLACK_S)
+                # A due instant already past with still no card (clock skew) backs off.
+                slack = NEXT_DUE_SLACK_S * 2 ** min(self._stale_due, 5)
+                wait = min(wait, max(0.0, due) + slack)
         return wait
 
     def tick(self) -> bool:
@@ -517,7 +565,9 @@ class Daemon:
         finally:
             self._stop_thread.set()
             self.handler.close()
-            for task in (worker, timer, ticker, initial):
+            for task in (worker, timer, ticker, initial, *self._tasks, self._retry_task):
+                if task is None:
+                    continue
                 task.cancel()
             loop.remove_reader(fd)
             os.close(fd)

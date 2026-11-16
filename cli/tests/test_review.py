@@ -832,7 +832,10 @@ def test_keep_going_streams_every_card_once_and_ends_on_an_empty_keep_going_fetc
         out = st(daemon.session.state())
         assert out["card"] is None and out["more_available"] is True and out["keep_going"] is False
         out = st(await daemon.handle(Action("keep_going")))
-        assert out["keep_going"] is True and out["card"] is not None
+        assert out["keep_going"] is True and out["loading"] is True  # fetch runs in the background
+        await daemon.idle()
+        out = st(daemon.session.state())
+        assert out["loading"] is False and out["card"] is not None
         shown = ["c0"]
         for _ in range(20):
             card = daemon.session.current
@@ -857,6 +860,7 @@ def test_keep_going_ends_when_the_study_day_changes(paths: Paths) -> None:
     async def scenario() -> None:
         daemon, _handler = make(server, paths)
         await daemon.handle(Action("keep_going"))
+        await daemon.idle()
         assert daemon.session.keep_going_day == "2026-11-15"
         original = server.fetch_queue
 
@@ -875,3 +879,68 @@ def test_keep_going_ends_when_the_study_day_changes(paths: Paths) -> None:
 def test_keep_going_is_a_fifo_and_socket_action() -> None:
     assert parse_fifo_line("keep_going\n") == Action("keep_going")
     assert parse_socket_request('{"cmd": "keep_going"}') == Action("keep_going")
+
+
+def test_queue_fetch_timeout_keeps_answers_working_and_schedules_a_refetch(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("kotobaya_cli.daemon.server.RETRY_BACKOFF_S", (0.05,))
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, handler = make(server, paths)
+        await daemon.refetch()
+        assert daemon.session.conn == "ok"
+        shown = daemon.session.current
+        assert shown is not None
+        real = server.fetch_queue
+        calls: list[int] = []
+
+        def slow(keep_going: bool = False) -> QueueSnapshot:
+            calls.append(1)
+            if len(calls) == 1:
+                raise BackendError("degraded", "read timeout")
+            return real(keep_going)
+
+        server.fetch_queue = slow  # type: ignore[method-assign]
+        await daemon.refetch()
+        assert daemon.session.conn == "ok"  # a slow fetch is not offline
+        await daemon.handle(Action("reveal"))
+        await grade(daemon, "good")  # still accepted and POSTed
+        await handler.idle()
+        assert [a.card_id for a in server.answers] == [shown.card_id]
+        for _ in range(100):  # the scheduled retry refetches
+            if len(calls) >= 2:
+                break
+            await asyncio.sleep(0.02)
+        assert len(calls) >= 2
+        await daemon.idle()
+
+    asyncio.run(scenario())
+
+
+def test_keep_going_does_not_block_a_concurrent_reveal(paths: Paths) -> None:
+    server = FakeServer()
+
+    async def scenario() -> None:
+        daemon, _handler = make(server, paths)
+        await daemon.refetch()
+        release = threading.Event()
+        real = server.fetch_queue
+
+        def blocked(keep_going: bool = False) -> QueueSnapshot:
+            release.wait(5)
+            return real(keep_going)
+
+        server.fetch_queue = blocked  # type: ignore[method-assign]
+        worker = asyncio.create_task(daemon._worker())
+        try:
+            await asyncio.wait_for(daemon.submit(Action("keep_going")), 1)
+            out = await asyncio.wait_for(daemon.submit(Action("reveal")), 1)
+            assert out["loading"] is True and out["card"]["revealed"] is True  # type: ignore[index]
+        finally:
+            release.set()
+            await daemon.idle()
+            worker.cancel()
+
+    asyncio.run(scenario())

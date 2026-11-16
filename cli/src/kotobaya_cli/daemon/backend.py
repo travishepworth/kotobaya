@@ -19,16 +19,22 @@ from kotobaya_client.models.review_undo_request import ReviewUndoRequest
 
 from kotobaya_cli.api import Settings
 from kotobaya_cli.daemon.journal import AnswerEntry
-from kotobaya_cli.daemon.session import CardEntry, Counts, QueueSnapshot, format_interval
+from kotobaya_cli.daemon.session import (
+    QUEUE_LIMIT,
+    CardEntry,
+    Counts,
+    QueueSnapshot,
+    format_interval,
+)
 
-QUEUE_LIMIT = 20
 HTTP_TIMEOUT = (3.0, 15.0)
 SSE_TIMEOUT = urllib3.Timeout(connect=5.0, read=60.0)  # the server pings every 25 s
 GRADING_KEY = "scheduler.grading_buttons"
 
 
 class BackendError(Exception):
-    """kind is 'offline' (unreachable / 5xx / timeout), 'auth' (401/403) or 'terminal'.
+    """kind is 'offline' (unreachable), 'degraded' (reachable but the fetch failed: read timeout,
+    5xx, unparsable body), 'auth' (401/403) or 'terminal'.
 
     Review POSTs (classify_review) also use 'forbidden' (403: the token lacks the review scope)
     and 'rejected' (an unexpected 4xx, e.g. a proxy's plain-text 404: retried, never dropped)."""
@@ -46,10 +52,16 @@ def classify(exc: Exception) -> BackendError:
         status = exc.status or 0
         if status in (401, 403):
             return BackendError("auth", f"HTTP {status}")
-        if status >= 500 or status in (0, 408, 429):
-            return BackendError("offline", f"HTTP {status}")
+        if status >= 500 or status in (408, 429):
+            return BackendError("degraded", f"HTTP {status}")
+        if status == 0:
+            return BackendError("offline", "HTTP 0")
         return BackendError("terminal", f"HTTP {status}")
-    return BackendError("offline", type(exc).__name__)
+    if isinstance(exc, urllib3.exceptions.ReadTimeoutError):
+        return BackendError("degraded", "read timeout")
+    if isinstance(exc, urllib3.exceptions.HTTPError | OSError):
+        return BackendError("offline", type(exc).__name__)
+    return BackendError("degraded", type(exc).__name__)  # e.g. a body that does not parse
 
 
 TERMINAL_REVIEW_STATUSES = (409, 410, 422)
