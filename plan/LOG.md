@@ -1301,3 +1301,4 @@
 2026-11-16T18:35:41Z SHELL-L5 HANDOFF + CHECK_GREEN (rebased over L4 attempt 2); reviewer dispatched (focus: add_kanji parity with server createNote)
 2026-11-16T18:35:41Z SHELL-L6 DISPATCH writer from t/SHELL-L5 (chain) [gradle lane]
 2026-11-16T18:37:27Z SHELL-L5 REVIEW_APPROVE (7 minors -> SHELL-L5b + LOOP-C2 doc clarification) + MERGE; server createNote makes no kanji notes, so phone parity correct
+2026-11-16T18:53:39Z SHELL-L6 CHECK_GREEN + MERGE (listCards via LocalCardQuery, listNotes); AND-FLAKY-DUPCHECK filed; SHELL-L7 DISPATCH writer-senior [gradle lane]
