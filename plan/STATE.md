@@ -5,7 +5,6 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
-| SHELL-C1 | architect | 1 | t/SHELL-C1-shell-contract |
 First-phone-test path: C1 -> A1 -> A2 -> P1 -> P2 -> L9 -> L1 -> L2 -> L3 -> A3 (+W1 parallel after C1). Then tell user.
 
 ## RESUME HERE (run 32): user decided Android moves ENTIRELY to the web UI in a WebView (Compose deleted). Design: architect -> scratchpad shell-design.md + shell-tickets/, then SHELL-* tickets. Goal: tell user when ready for first phone test. LIVE api 0.1.23 / web 0.1.26 (helm rev 36); APK 0.1.28 built (pin 6607e50d).

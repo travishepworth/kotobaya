@@ -1218,3 +1218,7 @@
 2026-11-16T11:46:22Z SHELL-A1 DISPATCH writer(sonnet) [gradle lane]
 2026-11-16T11:56:19Z SHELL-A1 CHECK_GREEN (web+android) + MERGE
 2026-11-16T12:03:32Z SHELL-L9 NEW ticket (user: cards from conversation list lack dict info even when dict up to date; likely top60k scope gap) -> L2/L5 depend on it; supersedes AND-DICT-FALLBACK
+2026-11-16T12:17:32Z SHELL-C1 HANDOFF + CHECK_GREEN (contracts; additive, contracts/api/shell only); reviewer dispatched (architect authored, so reviewer is the 2nd pass)
+2026-11-16T12:19:57Z SHELL-C1 REVIEW_CHANGES 2 majors (dict lookup vs L9 gap-fill; createDeck list is server_only) -> attempt 2
+2026-11-16T12:26:55Z SHELL-C1 REVIEW_CHANGES r2: 'scope all authoritative' recreates L9 symptom when phone release < server -> attempt 3 (+search forward when online)
+2026-11-16T12:30:48Z SHELL-C1 attempt 3 CHECK_GREEN + MERGE (fix targeted the r2 major exactly; no 3rd review round)

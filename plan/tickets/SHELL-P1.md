@@ -29,3 +29,6 @@ Commit the recorded goldens.
 Any server main-code change. Android runner (P2).
 
 ## Notes from previous attempts
+
+## Orchestrator note (2026-11-16, from SHELL-C1 review)
+Parity scenarios use TWO devices (seed device + device under test), and a scenario's `settings` is an index, not applied; follow contracts/api/shell/SHELL.md + parity.schema.json over any text above that differs.

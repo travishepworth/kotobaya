@@ -818,7 +818,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-A5 — Server proxy for non-local operations · model: opus · risk: med · deps: SHELL-A2 · status: TODO (ticket: plan/tickets/SHELL-A5.md)
 - SHELL-A6 — Shell device ops I: info, sync status, sync now, events, pairing · model: sonnet · risk: med · deps: SHELL-A2 · status: TODO (ticket: plan/tickets/SHELL-A6.md)
 - SHELL-A7 — Shell device ops II: dictionary install, storage, notifications, push, AnkiConnect · model: sonnet · risk: med · deps: SHELL-A6 · status: TODO (ticket: plan/tickets/SHELL-A7.md)
-- SHELL-C1 — Contract: shell bridge, shell ops, local-op map, parity scenarios · model: fable · risk: high · deps: none · status: TODO (ticket: plan/tickets/SHELL-C1.md)
+- SHELL-C1 — Contract: shell bridge, shell ops, local-op map, parity scenarios · model: fable · risk: high · deps: none · status: MERGED (ticket: plan/tickets/SHELL-C1.md)
 - SHELL-L1 — Local ops: identity, meta, settings, presets, note types, client errors · model: sonnet · risk: med · deps: SHELL-A2, SHELL-P2 · status: TODO (ticket: plan/tickets/SHELL-L1.md)
 - SHELL-L2 — Local getReviewQueue · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: TODO (ticket: plan/tickets/SHELL-L2.md)
 - SHELL-L3 — Local answerReview and undoReview · model: fable · risk: high · deps: SHELL-L2 · status: TODO (ticket: plan/tickets/SHELL-L3.md)
