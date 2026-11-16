@@ -1210,3 +1210,4 @@
 2026-11-16T10:11:04Z KIND-CHIP-OVERLAP (user, bug in 0.1.27: card text under type chip on Android) DISPATCH AND + WEB writers
 2026-11-16T10:19:28Z KIND-CHIP-OVERLAP-WEB CHECK_GREEN + playwright chip-overlap 6 passed + orchestrator viewed PNGs + MERGE
 2026-11-16T10:22:51Z RELEASE web 0.1.26 DEPLOYED helm rev 36 (pin dc632544, chip row fix); api 0.1.23
+2026-11-16T10:37:28Z KIND-CHIP-OVERLAP-AND CHECK_GREEN + real-layout bounds test + orchestrator viewed PNGs + MERGE
