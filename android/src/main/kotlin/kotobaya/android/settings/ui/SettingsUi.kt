@@ -212,6 +212,12 @@ fun StudySection(state: StudySettingsUiState, intents: StudySettingsIntents) {
                         )
                     }
                 }
+                KbSwitchRow(
+                    T(R.string.study_reading_cards),
+                    state.readingEnabled,
+                    intents::setReadingEnabled,
+                    supporting = T(R.string.study_reading_cards_hint),
+                )
                 KbButton(T(R.string.study_save), intents::save, Modifier.align(Alignment.End))
             }
         }

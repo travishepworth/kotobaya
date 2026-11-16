@@ -68,6 +68,29 @@ class StudySettingsModelTest {
         assertEquals(JsonBool(true), minted[0].members["value"])
     }
 
+    /** ADR-035: "Also create reading cards" mints `settings.set cards.reading_enabled` (JSON bool); default off. */
+    @Test
+    fun readingCardsToggleMintsABoolSettingsOp() {
+        assertEquals(false, model.readingEnabled(), "missing key = false (SCHEMA.md 6.4)")
+        assertEquals(StudyResult.Unchanged, model.setReadingEnabled(false))
+        assertEquals(0, pending())
+        assertEquals(StudyResult.Saved, model.setReadingEnabled(true))
+        assertEquals(1, pending())
+        assertEquals(JsonString("cards.reading_enabled"), minted[0].members["key"])
+        assertEquals(JsonBool(true), minted[0].members["value"])
+    }
+
+    /** The stored value is read by the 6.1 bool test: only JSON `true` is on. */
+    @Test
+    fun readingCardsSettingIsReadByTheBoolTest() {
+        fun on(text: String?) = StudySettingsModel(
+            readRaw = { if (text == null) emptyMap() else mapOf("cards.reading_enabled" to text) },
+            mint = { _, _ -> error("no mint") },
+        ).readingEnabled()
+        assertEquals(true, on("true"))
+        for (t in listOf(null, "false", "null", "1", "\"true\"")) assertEquals(false, on(t), "$t")
+    }
+
     @Test
     fun unpairedDeviceIsRefused() {
         store.transaction { it.syncState.remove(SyncStateKeys.DEVICE_ID) }

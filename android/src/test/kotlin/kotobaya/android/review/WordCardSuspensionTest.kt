@@ -9,6 +9,7 @@ import kotobaya.android.notes.DEVICE_A
 import kotobaya.android.notes.NoteRequest
 import kotobaya.android.notes.T0
 import kotobaya.android.notes.creator
+import kotobaya.android.notes.readingCards
 import kotobaya.android.review.actions.WordCardSuspension
 import kotobaya.android.sync.SqlDevice
 import kotobaya.android.sync.TestServer
@@ -22,6 +23,7 @@ class WordCardSuspensionTest {
 
     @Test
     fun suspendMintsOnePerLiveCardAndUnsuspendRestores() {
+        readingCards(d, true) // ADR-035: two cards per word only with reading cards on
         assertIs<CreateResult.Created>(creator(d).create(NoteRequest(word = "食べる", reading = "たべる")))
         val seq = 1358280L
         val cards = s.cardsOf(seq)

@@ -62,6 +62,12 @@ fun userDeck(d: SqlDevice, id: String, settings: Map<String, JsonValue> = emptyM
     return id
 }
 
+/** ADR-035: mints `settings.set cards.reading_enabled` (the Study toggle "Also create reading cards"). */
+fun readingCards(d: SqlDevice, enabled: Boolean) {
+    val payload = JsonObject(linkedMapOf("key" to JsonString("cards.reading_enabled"), "value" to kotobaya.contracts.sync.JsonBool(enabled)))
+    assertIs<MintResult.Minted>(d.stack.minter.mint(OpType.SETTINGS_SET, payload))
+}
+
 fun str(row: Row, col: String): String? = (row[col] as? JsonString)?.value
 
 fun isLive(row: Row): Boolean = (row["deleted_at"] ?: JsonNull) == JsonNull && (row["merged_into_id"] ?: JsonNull) == JsonNull

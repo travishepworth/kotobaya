@@ -44,7 +44,8 @@ class NoteCreatorTest {
         var triggered = 0
         val r = assertIs<CreateResult.Created>(creator(d, afterCreate = { triggered++ }).create(taberu.copy(deckId = deckId)))
 
-        assertEquals(listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.CARD_CREATED, OpType.DECK_ITEM_PUT), r.ops.map { it.opType })
+        // ADR-035: reading cards are off by default (cards.reading_enabled absent): one card per word.
+        assertEquals(listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.DECK_ITEM_PUT), r.ops.map { it.opType })
         assertEquals(r.ops.sortedBy { it.hlc }, r.ops, "ascending hlc: the note sorts before what references it")
         for (op in r.ops) {
             assertIs<OpDecodeResult.Known>(DefaultOpCodec.decodeTree(DefaultOpCodec.encodeTree(op), OpSource.PUSHED), op.opType.wire)
@@ -58,24 +59,39 @@ class NoteCreatorTest {
         assertEquals(listOf("anime"), stringList(note["tags"]))
         assertEquals(JsonString("パンを食べる"), note["source_sentence"])
         assertEquals(JsonString("takoboto"), note["origin"])
-        assertEquals(listOf("meaning", "reading"), r.ops.subList(1, 3).map { (it.payload.members["kind"] as JsonString).value })
-        assertEquals(r.cardIds, r.ops.subList(1, 3).map { it.entityId })
-        r.ops.subList(1, 3).forEach { assertEquals(JsonString(r.noteId), it.payload.members["note_id"]) }
-        val put = r.ops[3].payload.members
+        assertEquals(listOf("meaning"), r.ops.subList(1, 2).map { (it.payload.members["kind"] as JsonString).value })
+        assertEquals(r.cardIds, r.ops.subList(1, 2).map { it.entityId })
+        r.ops.subList(1, 2).forEach { assertEquals(JsonString(r.noteId), it.payload.members["note_id"]) }
+        val put = r.ops[2].payload.members
         assertEquals(JsonString("e:1358280"), put["item_key"])
         assertEquals(JsonNumber(1024.0), put["position"])
 
         // the local effect and the outbox, all in one commit
-        assertEquals(before + 4, pending(d))
+        assertEquals(before + 3, pending(d))
         assertEquals(1, triggered)
         val t = d.tables()
         val row = t.get(LearningTable.NOTE, listOf(JsonString(r.noteId)))!!
         assertEquals(JsonString("vocab"), row["type"])
         assertEquals(JsonNumber(1358280.0), row["entry_seq"])
-        assertEquals(setOf("meaning", "reading"), cards(t, r.noteId).map { str(it, "kind") }.toSet())
+        assertEquals(setOf("meaning"), cards(t, r.noteId).map { str(it, "kind") }.toSet())
         assertTrue(cards(t, r.noteId).all { str(it, "state") == "new" })
         assertEquals(1, t.where(LearningTable.DECK_ITEM, "deck_id", JsonString(deckId)).size)
         assertNotEquals(r.noteId, r.cardIds[0])
+    }
+
+    /** ADR-035: the reading card comes only from the setting; a deck's card_kinds or the template default cannot force it. */
+    @Test
+    fun readingCardsFollowTheSetting() {
+        val d = device()
+        userDeck(d, deckId, mapOf("card_kinds" to kotobaya.contracts.sync.JsonArray(listOf("reading", "meaning").map(::JsonString))))
+        fun kinds(r: CreateResult) = assertIs<CreateResult.Created>(r).ops.filter { it.opType == OpType.CARD_CREATED }
+            .map { (it.payload.members["kind"] as JsonString).value }
+        assertEquals(listOf("meaning"), kinds(creator(d).create(taberu.copy(deckId = deckId))), "off: card_kinds' reading is dropped")
+        readingCards(d, true)
+        assertEquals(listOf("reading", "meaning"), kinds(creator(d, seed = 2).create(NoteRequest(word = "猫", reading = "ねこ", deckId = deckId))))
+        assertEquals(listOf("meaning", "reading"), kinds(creator(d, seed = 3).create(NoteRequest(word = "犬", reading = "いぬ"))), "template defaults")
+        readingCards(d, false)
+        assertEquals(listOf("meaning"), kinds(creator(d, seed = 4).create(NoteRequest(word = "ぴえん", reading = "ぴえん"))))
     }
 
     @Test
@@ -100,7 +116,7 @@ class NoteCreatorTest {
         // the retry after the restart creates it
         val r = assertIs<CreateResult.Created>(creator(d).create(taberu.copy(requestId = "req-1")))
         assertTrue(!r.retried)
-        assertEquals(before + 3, pending(d))
+        assertEquals(before + 2, pending(d), "note.created + one card.created (ADR-035: no reading card by default)")
     }
 
     @Test
@@ -163,7 +179,7 @@ class NoteCreatorTest {
         userDeck(d, deckId)
         val r = assertIs<CreateResult.Created>(creator(d).create(NoteRequest(word = "ぴえん", reading = "ぴえん", deckId = deckId)))
         assertEquals(MatchResult.NoMatch, r.match)
-        assertEquals(listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.CARD_CREATED), r.ops.map { it.opType }, "no deck.item_put")
+        assertEquals(listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED), r.ops.map { it.opType }, "no deck.item_put")
         val note = r.ops[0].payload.members
         assertNull(note["entry_seq"])
         assertEquals(listOf(NoteCreator.UNMATCHED_TAG), stringList(note["tags"]))
@@ -199,7 +215,7 @@ class NoteCreatorTest {
         val first = assertIs<CreateResult.Created>(creator(d).create(NoteRequest(word = "食べる", reading = "たべる", deckId = deckId)))
         assertEquals(1, first.kanjiNoteIds.size)
         assertEquals(
-            listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.CARD_CREATED, OpType.DECK_ITEM_PUT),
+            listOf(OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.NOTE_CREATED, OpType.CARD_CREATED, OpType.DECK_ITEM_PUT),
             first.ops.map { it.opType },
         )
         val kanji = first.ops[0].payload.members

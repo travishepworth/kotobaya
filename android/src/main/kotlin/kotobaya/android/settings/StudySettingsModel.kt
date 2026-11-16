@@ -1,6 +1,7 @@
 package kotobaya.android.settings
 
 import kotobaya.android.queue.QueueSettings
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
@@ -50,6 +51,15 @@ class StudySettingsModel(
     fun setReviewsUnlimited(value: Boolean): StudyResult {
         if (reviewsUnlimited() == value) return StudyResult.Unchanged
         return mintSetting("scheduler.reviews_unlimited", JsonBool(value))
+    }
+
+    /** `cards.reading_enabled` (ADR-035, SCHEMA.md 6.4): "Also create reading cards"; false (default) retires them. */
+    fun readingEnabled(): Boolean = current().readingEnabled
+
+    /** Sets `cards.reading_enabled`; an unchanged value mints nothing. Applying it re-derives word statuses (core). */
+    fun setReadingEnabled(value: Boolean): StudyResult {
+        if (readingEnabled() == value) return StudyResult.Unchanged
+        return mintSetting(CardKinds.SETTING_READING_ENABLED, JsonBool(value))
     }
 
     private fun mintSetting(key: String, value: JsonValue): StudyResult {

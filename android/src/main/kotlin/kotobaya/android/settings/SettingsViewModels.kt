@@ -6,17 +6,20 @@ import kotlinx.coroutines.Dispatchers
 import kotobaya.android.R
 import kotobaya.android.vm.StateViewModel
 
-/** Settings > Study: the three study settings as typed text, the no-review-limit toggle, and the last save's result. */
+/** Settings > Study: the three study settings as typed text, the no-review-limit and reading-card toggles, and the last save's result. */
 data class StudySettingsUiState(
     val fields: Map<StudyKey, String> = StudyKey.entries.associateWith { "" },
     /** `scheduler.reviews_unlimited` (ADR-034) as toggled, saved with the fields; true greys out reviews per day. */
     val reviewsUnlimited: Boolean = false,
+    /** `cards.reading_enabled` (ADR-035) as toggled, saved with the fields: "Also create reading cards". */
+    val readingEnabled: Boolean = false,
     @StringRes val message: Int? = null,
 )
 
 interface StudySettingsIntents {
     fun setField(key: StudyKey, text: String) {}
     fun setReviewsUnlimited(value: Boolean) {}
+    fun setReadingEnabled(value: Boolean) {}
     fun save() {}
 }
 
@@ -29,7 +32,8 @@ class StudySettingsViewModel(
         launchIo {
             val loaded = StudyKey.entries.associateWith { model.valueOf(it).toString() }
             val unlimited = model.reviewsUnlimited()
-            update { it.copy(fields = loaded, reviewsUnlimited = unlimited) }
+            val reading = model.readingEnabled()
+            update { it.copy(fields = loaded, reviewsUnlimited = unlimited, readingEnabled = reading) }
         }
     }
 
@@ -37,23 +41,28 @@ class StudySettingsViewModel(
 
     override fun setReviewsUnlimited(value: Boolean) = update { it.copy(reviewsUnlimited = value) }
 
+    override fun setReadingEnabled(value: Boolean) = update { it.copy(readingEnabled = value) }
+
     override fun save() {
         val fields = current.fields
         val unlimited = current.reviewsUnlimited
+        val reading = current.readingEnabled
         launchIo {
-            val res = save(fields, unlimited)
+            val res = save(fields, unlimited, reading)
             update { it.copy(message = res) }
         }
     }
 
     @StringRes
-    private fun save(fields: Map<StudyKey, String>, unlimited: Boolean): Int {
+    private fun save(fields: Map<StudyKey, String>, unlimited: Boolean, reading: Boolean): Int {
         var out: Int = R.string.study_unchanged
-        // The toggle is saved first and independently: an invalid number field must not block it.
-        when (model.setReviewsUnlimited(unlimited)) {
-            is StudyResult.Refused -> return R.string.study_refused
-            StudyResult.Saved -> out = R.string.study_saved
-            StudyResult.OutOfRange, StudyResult.Unchanged -> Unit
+        // The toggles are saved first and independently: an invalid number field must not block them.
+        for (toggle in listOf({ model.setReviewsUnlimited(unlimited) }, { model.setReadingEnabled(reading) })) {
+            when (toggle()) {
+                is StudyResult.Refused -> return R.string.study_refused
+                StudyResult.Saved -> out = R.string.study_saved
+                StudyResult.OutOfRange, StudyResult.Unchanged -> Unit
+            }
         }
         for (k in StudyKey.entries) {
             // The greyed-out field keeps its stored value; it is not validated or saved while unlimited.

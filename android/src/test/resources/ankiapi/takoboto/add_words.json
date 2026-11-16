@@ -93,7 +93,7 @@
       "method": "query",
       "uri": "content://com.ichi2.anki.flashcards/notes/${taberu}/cards",
       "projection": ["ord", "card_name", "deck_id"],
-      "expect": { "rows": [[0, "meaning", "${inbox}"], [1, "reading", "${inbox}"]] }
+      "expect": { "rows": [[0, "meaning", "${inbox}"]] }
     },
     {
       "comment": "all notes of the model",

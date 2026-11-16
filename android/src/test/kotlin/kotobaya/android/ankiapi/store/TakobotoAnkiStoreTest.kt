@@ -142,7 +142,7 @@ class TakobotoAnkiStoreTest {
         val s = takobotoStore(d, SqliteAnkiIdMap(app, file.path), seed = 8)
         assertEquals(first, s.findNotes(NoteFilter(mid, setOf(AnkiContract.fieldChecksum("猫")))).single().id)
         assertEquals("猫", s.note(first)!!.fields[0])
-        assertEquals(2, s.cards(first).size)
+        assertEquals(1, s.cards(first).size, "ADR-035: one card per word (reading cards off by default)")
     }
 
     @Test

@@ -80,7 +80,7 @@ class LocalQueueLoaderTest {
         // N1 (entry 100, in deck 1): a NEW card; its sibling card of the same note is REVIEW due.
         addNote(1, entrySeq = 100)
         addCard(1, 1, "meaning")
-        addCard(2, 1, "reading", state = "review", due = NOW - HOUR)
+        addCard(2, 1, "listening", state = "review", due = NOW - HOUR) // not "reading": that kind is retired (ADR-035)
         addItem(1, "e:100", entrySeq = 100, position = 1)
         // N2L merged into N2: the deck item names the loser, the card is the survivor's.
         addNote(2, created = 2)
@@ -143,6 +143,43 @@ class LocalQueueLoaderTest {
         assertFalse(card(1) in items.map { it.cardId })
         assertEquals(QueueCounts(due = 2, new = 2, learning = 1), loaded.counts)
         assertEquals(items.take(3), loaded.sessionPrefix(3))
+    }
+
+    /**
+     * ADR-035: while `cards.reading_enabled` is not true a vocab reading card is passed (it is live) but never served,
+     * counted or waited for (nextDueInstant, forecast); it does not bury its sibling. Turning the setting on brings it back.
+     */
+    @Test
+    fun retiredReadingCardsAreNeitherServedNorWaitedFor() {
+        setting("scheduler.timezone", "\"Asia/Tokyo\"")
+        addNote(1)
+        addCard(1, 1, "meaning") // NEW
+        addCard(2, 1, "reading", state = "review", due = NOW - HOUR)
+        addNote(2)
+        addCard(3, 2, "reading", state = "learning", due = NOW + 600_000)
+
+        val off = loader().load()
+        assertEquals(DefaultQueueBuilder.build(off.input), off.queue)
+        assertFalse(off.input.readingEnabled, "missing key = false")
+        assertEquals(setOf(card(1), card(2), card(3)), off.input.candidates.map { it.cardId }.toSet())
+        assertEquals(listOf(card(1)), off.queue.items.map { it.cardId }, "the reading review neither shows nor buries")
+        assertEquals(QueueCounts(due = 0, new = 1, learning = 0), off.counts)
+        assertEquals(null, off.queue.nextLearningDueAt)
+        assertEquals(0, loader().forecast24h().sum())
+
+        // Nothing due but a retired learning card: the waiting screen must not wait for it.
+        exec("UPDATE card SET deleted_at = 1 WHERE id = '${card(1)}'")
+        assertEquals(null, loader().nextDueInstant())
+        // A non-JSON-true value is still off (SCHEMA.md 6.1 bool test).
+        setting("cards.reading_enabled", "\"true\"")
+        assertEquals(null, loader().nextDueInstant())
+
+        setting("cards.reading_enabled", "true")
+        val on = loader().load()
+        assertTrue(on.input.readingEnabled)
+        assertEquals(listOf(card(2)), on.queue.items.map { it.cardId })
+        assertEquals(NOW, loader().nextDueInstant())
+        assertEquals(2, loader().forecast24h().sum())
     }
 
     @Test

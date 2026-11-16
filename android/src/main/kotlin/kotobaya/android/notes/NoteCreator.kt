@@ -98,7 +98,8 @@ sealed interface CreateRefusal {
  *   [NoteRequest.force] a new note is created **without** `entry_seq`: SYNC.md 4 forbids knowingly creating a
  *   second live note of one entry, so a forced duplicate is a separate entry-less note (not tagged
  *   unmatched); in a deck it is the item `n:<id>`.
- * - **Cards**: [CardGenerator.kindsForNewNote] with the deck's `card_kinds`, minus every kind whose front
+ * - **Cards**: [CardGenerator.kindsForNewNote] with the deck's `card_kinds` and `cards.reading_enabled` (ADR-035:
+ *   while off, a vocab note never gets a `reading` card), minus every kind whose front
  *   renders empty ([DefaultCardRenderer.frontIsEmpty], with the entry's dictionary data) — the
  *   "skip empty front" rule the generator leaves to its caller. No card at all is legal.
  * - **add_kanji**: when the target deck's `settings.add_kanji` is present and not `off` (SCHEMA.md 6.2),
@@ -300,7 +301,7 @@ class NoteCreator<L : LearningTables>(
         requests += MintRequest(OpType.NOTE_CREATED, JsonObject(note))
 
         val cardIds = ArrayList<String>()
-        for (kind in generator.kindsForNewNote(type, deck?.let(::cardKinds))) {
+        for (kind in generator.kindsForNewNote(type, deck?.let(::cardKinds), readingEnabled(tables))) {
             if (DefaultCardRenderer.frontIsEmpty(type, kind, fields, dictionary = dictionary)) continue
             val id = ids.newOpId(now)
             cardIds += id
@@ -354,7 +355,7 @@ class NoteCreator<L : LearningTables>(
                 obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
             )
             val kd = kanjiData(literal) ?: KanjiData(literal, emptyList(), emptyList(), emptyList())
-            for (kind in generator.kindsForNewNote(kanjiType, null)) {
+            for (kind in generator.kindsForNewNote(kanjiType, null, readingEnabled(tables))) {
                 if (DefaultCardRenderer.frontIsEmpty(kanjiType, kind, emptyMap(), kanji = kd)) continue
                 out += cardRequest(ids.newOpId(now), id, kind)
             }

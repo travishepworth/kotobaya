@@ -1,8 +1,9 @@
 -- Android queue loader queries (T304a). Reads only; learning-data writes go through sync ops.
 -- Every query is set-based (one pass per table); nothing is looked up per card.
 
+-- The scheduler.* settings plus cards.reading_enabled (ADR-035, SCHEMA.md 6.4): everything QueueSettings reads.
 schedulerSettings:
-SELECT key, value FROM settings WHERE key LIKE 'scheduler.%';
+SELECT key, value FROM settings WHERE key LIKE 'scheduler.%' OR key = 'cards.reading_enabled';
 
 -- Live cards of live notes that can be queued today. A refused cache (SYNC.md 9.4) is never a candidate.
 queueCandidates:
@@ -68,7 +69,8 @@ JOIN card sc ON sc.id = COALESCE(c.merged_into_id, c.id)
 WHERE r.undone_at IS NULL AND r.review_type IN ('scheduled', 'learning', 'drill', 'cram')
   AND r.reviewed_at >= :dayStart AND r.reviewed_at <= :now;
 
--- Earliest instant a started, queueable card becomes due after now (a buried card: when the bury ends).
+-- Earliest instant a started, queueable card becomes due after now (a buried card: when the bury ends). Retired cards
+-- (ADR-035: vocab reading cards while :readingEnabled = 0) never count: the waiting screen must not wait for them.
 nextDueAfter:
 SELECT MIN(CASE WHEN c.buried_until IS NOT NULL AND c.buried_until > c.due_at THEN c.buried_until ELSE c.due_at END)
 FROM card c
@@ -78,9 +80,11 @@ WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
   AND c.state <> 'new' AND c.due_at IS NOT NULL
   AND c.last_review_id IS NOT :refusedId
   AND (ws.override_status IS NULL OR ws.override_status = 'known')
+  AND (c.kind <> 'reading' OR n.type <> 'vocab' OR :readingEnabled = 1)
   AND (CASE WHEN c.buried_until IS NOT NULL AND c.buried_until > c.due_at THEN c.buried_until ELSE c.due_at END) > :now;
 
--- Hour buckets of started, queueable cards due before :horizon; overdue cards fall in bucket 0.
+-- Hour buckets of started, queueable cards due before :horizon; overdue cards fall in bucket 0. Like nextDueAfter,
+-- retired cards (ADR-035: vocab reading cards while :readingEnabled = 0) are left out: the builder never serves them.
 forecastBuckets:
 SELECT CASE WHEN due < :now THEN 0 ELSE (due - :now) / 3600000 END AS bucket, COUNT(*) AS n
 FROM (
@@ -92,6 +96,7 @@ FROM (
     AND c.state <> 'new' AND c.due_at IS NOT NULL
     AND c.last_review_id IS NOT :refusedId
     AND (ws.override_status IS NULL OR ws.override_status = 'known')
+    AND (c.kind <> 'reading' OR n.type <> 'vocab' OR :readingEnabled = 1)
 )
 WHERE due < :horizon
 GROUP BY bucket;

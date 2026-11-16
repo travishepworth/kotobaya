@@ -25,6 +25,9 @@ class SameWordTwoDevicesTest {
         val b = SqlDevice(DEVICE_B, server, T0 + 5_000, seed = 2)
         a.transport.offline = true
         b.transport.offline = true
+        // ADR-035: with reading cards on, each note has two cards, so the merge covers every kind (card.merged × 2).
+        readingCards(a, true)
+        readingCards(b, true)
 
         // both offline: neither sees the other's note, so neither is a local duplicate
         val w = assertIs<CreateResult.Created>(creator(a, seed = 11).create(NoteRequest(word = "食べる", reading = "たべる", origin = "takoboto")))

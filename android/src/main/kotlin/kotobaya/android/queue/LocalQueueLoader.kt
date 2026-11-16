@@ -5,6 +5,7 @@ import kotobaya.cards.DefaultCardGenerator
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.WordStatus
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
@@ -65,13 +66,14 @@ class LoadedQueue internal constructor(
     /**
      * Learning and relearning candidates not in the queue but due before the study day ends, eligible as core's rule 1
      * has it for learning cards (not suspended, not buried now, no excluding word override): they make
-     * `nextLearningDueAt` and show once due.
+     * `nextLearningDueAt` and show once due. A retired card (ADR-035, core rule 0) never counts.
      */
     private fun laterLearning(): Int {
         val inQueue = queue.items.mapTo(HashSet()) { it.cardId }
         return input.candidates.count { c ->
             val due = c.dueAt
-            c.cardId !in inQueue && (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) && !c.suspended &&
+            c.cardId !in inQueue && !CardKinds.isRetired(c.noteBaseType, c.kind, input.readingEnabled) &&
+                (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) && !c.suspended &&
                 (c.buriedUntil?.let { it <= input.now } ?: true) && c.wordOverride !in LATER_EXCLUDED &&
                 due != null && due < input.day.endMs
         }
@@ -224,6 +226,7 @@ class LocalQueueLoader(
             pendingEntries = pending,
             decklessPriority = settings.minedPriority,
             decklessAddKanji = settings.decklessAddKanji,
+            readingEnabled = settings.readingEnabled,
         )
         return LoadedQueue(input, DefaultQueueBuilder.build(input))
     }
@@ -240,7 +243,7 @@ class LocalQueueLoader(
     /** [nextDueInstant] for a queue the caller already loaded (no second build). */
     fun nextDueInstant(loaded: LoadedQueue): Long? {
         if (loaded.queue.items.isNotEmpty()) return loaded.input.now
-        return q.nextDueAfter(Reserved.REPLAY_REFUSED_ID, loaded.input.now).executeAsOne().MIN
+        return q.nextDueAfter(Reserved.REPLAY_REFUSED_ID, if (loaded.input.readingEnabled) 1L else 0L, loaded.input.now).executeAsOne().MIN
     }
 
     /** Started, queueable cards due in each of the next 24 hours from now (hour 0 includes everything overdue). */
@@ -248,7 +251,8 @@ class LocalQueueLoader(
         awaitReady()
         val now = clock()
         val out = IntArray(24)
-        for (b in q.forecastBuckets(now, Reserved.REPLAY_REFUSED_ID, now + 24 * HOUR_MS).executeAsList()) {
+        val readingEnabled = if (settings().readingEnabled) 1L else 0L
+        for (b in q.forecastBuckets(now, Reserved.REPLAY_REFUSED_ID, readingEnabled, now + 24 * HOUR_MS).executeAsList()) {
             val i = b.bucket.toInt()
             if (i in 0..23) out[i] += b.n.toInt()
         }

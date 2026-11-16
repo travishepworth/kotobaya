@@ -1,5 +1,6 @@
 package kotobaya.android.queue
 
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.StudyDay
 import kotobaya.contracts.sync.JsonBool
@@ -13,7 +14,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 
 /**
- * The `scheduler.*` settings the queue reads, by the validity test of SCHEMA.md 6.1: an invalid value, a missing row
+ * The `scheduler.*` settings (and `cards.reading_enabled`) the queue reads, by the validity test of SCHEMA.md 6.1: an invalid value, a missing row
  * and JSON null alike mean the default; nothing is clamped or rounded. Same rules as the server's ReviewSettings.
  */
 internal data class QueueSettings(
@@ -28,6 +29,8 @@ internal data class QueueSettings(
     val kanjiBeforeVocab: Boolean = false,
     val minedPriority: Int = 0,
     val leechThreshold: Int = 8,
+    /** `cards.reading_enabled` (ADR-035, SCHEMA.md 6.4): false = vocab reading cards are retired. */
+    val readingEnabled: Boolean = CardKinds.READING_ENABLED_DEFAULT,
 ) {
     /** `decklessAddKanji` of the queue input (SCHEMA.md 6.2). */
     val decklessAddKanji: AddKanjiMode get() = if (kanjiBeforeVocab) AddKanjiMode.BEFORE else AddKanjiMode.OFF
@@ -51,6 +54,7 @@ internal data class QueueSettings(
                 kanjiBeforeVocab = bool("kanji_before_vocab", d.kanjiBeforeVocab),
                 minedPriority = int("mined_priority", d.minedPriority),
                 leechThreshold = int("leech_threshold", d.leechThreshold),
+                readingEnabled = CardKinds.readingEnabled(values[CardKinds.SETTING_READING_ENABLED]),
             )
         }
 

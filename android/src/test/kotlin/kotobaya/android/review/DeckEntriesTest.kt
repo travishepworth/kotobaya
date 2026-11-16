@@ -413,6 +413,24 @@ class DeckEntriesTest {
         assertTrue(kindsOf(noteId).isNotEmpty())
     }
 
+    /** ADR-035: a deck's card_kinds cannot bring back the retired reading card; the setting does. */
+    @Test
+    fun readingCardsFollowTheSettingNotTheDeck() {
+        setting("scheduler.new_per_day", "10")
+        listDeck(listOf(5300L), settings = """{"card_kinds":["reading"]}""")
+        loader.load()
+        assertEquals(listOf("meaning"), kindsOf(deckNotes().single().second), "only retired kinds: the defaults, i.e. meaning")
+    }
+
+    @Test
+    fun readingCardsAreMaterializedWhenTheSettingIsOn() {
+        setting("scheduler.new_per_day", "10")
+        setting("cards.reading_enabled", "true")
+        listDeck(listOf(5400L), settings = """{"card_kinds":["reading","meaning"]}""")
+        loader.load()
+        assertEquals(listOf("meaning", "reading"), kindsOf(deckNotes().single().second))
+    }
+
     private fun kindsOf(noteId: String): List<String> =
         d.ops("card.created").filter { d.str(it, "note_id") == noteId }.mapNotNull { d.str(it, "kind") }.sorted()
 

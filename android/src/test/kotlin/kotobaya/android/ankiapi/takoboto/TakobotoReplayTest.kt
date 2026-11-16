@@ -65,7 +65,8 @@ class TakobotoReplayTest {
         val ops = pendingOps(d)
         val n = OpType.NOTE_CREATED.wire
         val c = OpType.CARD_CREATED.wire
-        assertEquals(listOf(OpType.NOTE_TYPE_CREATED.wire, n, c, c, n, c, c, n, c, c), ops.map { it.type })
+        // ADR-035: a custom vocab type too gets one card per word while reading cards are off (the default).
+        assertEquals(listOf(OpType.NOTE_TYPE_CREATED.wire, n, c, n, c, n, c), ops.map { it.type })
         assertEquals(TakobotoVocab.NOTE_TYPE_ID, ops[0].entityId)
         assertEquals(TakobotoVocab.createPayload(TakobotoVocab.NOTE_TYPE_ID), ops[0].payload)
 
@@ -87,22 +88,22 @@ class TakobotoReplayTest {
         assertEquals(listOf("takoboto"), stringList(taberu["tags"]))
         assertEquals(JsonString("パンを食べる。"), taberu["source_sentence"])
         assertEquals(JsonString("api"), taberu["origin"], "Robolectric's caller is not Takoboto")
-        assertEquals(listOf("meaning", "reading"), ops.subList(2, 4).map { (it.payload.members["kind"] as JsonString).value })
-        ops.subList(2, 4).forEach { assertEquals(JsonString(ops[1].entityId), it.payload.members["note_id"]) }
+        assertEquals(listOf("meaning"), ops.subList(2, 3).map { (it.payload.members["kind"] as JsonString).value })
+        ops.subList(2, 3).forEach { assertEquals(JsonString(ops[1].entityId), it.payload.members["note_id"]) }
 
-        assertEquals(JsonNumber(1489780.0), ops[4].payload.members["entry_seq"]) // 猫
-        val funya = ops[7].payload.members
+        assertEquals(JsonNumber(1489780.0), ops[3].payload.members["entry_seq"]) // 猫
+        val funya = ops[5].payload.members
         assertEquals(null, funya["entry_seq"], "unknown word: no entry")
         assertEquals(listOf("takoboto", NoteCreator.UNMATCHED_TAG), stringList(funya["tags"]))
         assertEquals(JsonString("ふにゃふにゃ"), (funya["fields"] as JsonObject).members["expression"])
         assertTrue(ops.none { it.type == OpType.DECK_ITEM_PUT.wire }, "the inbox is deckless")
 
-        // --- local rows: three live notes (the duplicate created nothing), six cards
+        // --- local rows: three live notes (the duplicate created nothing), three cards
         val t = d.tables()
         val live = notes(t).filter(::isLive)
         assertEquals(3, live.size)
         assertEquals(setOf("食べる", "猫", "ふにゃふにゃ"), live.map { ((it["fields"] as JsonObject).members["expression"] as JsonString).value }.toSet())
-        assertEquals(6, t.all(LearningTable.CARD).size)
+        assertEquals(3, t.all(LearningTable.CARD).size)
         assertEquals(TakobotoVocab.NAME, str(t.get(LearningTable.NOTE_TYPE, listOf(JsonString(TakobotoVocab.NOTE_TYPE_ID)))!!, "name"))
         assertEquals(3, map.counter(AnkiIds.COUNT_ADDED))
         assertEquals(1, map.counter(AnkiIds.COUNT_DUPLICATE))

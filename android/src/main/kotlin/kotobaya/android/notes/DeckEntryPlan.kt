@@ -3,6 +3,7 @@ package kotobaya.android.notes
 import kotobaya.cards.BuiltInNoteTypes
 import kotobaya.cards.DefaultCardGenerator
 import kotobaya.contracts.cards.CardGenerator
+import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.render.DictionaryData
@@ -20,8 +21,8 @@ import kotobaya.sync.client.apply.Row
  * ops), so the two always agree. The device twin of the server's `DeckEntryPlan`. One instance per transaction or
  * read; caches its lookups.
  *
- * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds)`; if that is empty (card_kinds `[]` or no valid
- *   kind) the type's default kinds; then every kind whose front would render empty for the entry is dropped. An entry
+ * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds, cards.reading_enabled)`; if that is empty
+ *   (card_kinds `[]`, no valid kind, or only retired kinds — ADR-035) the type's default kinds; then every kind whose front would render empty for the entry is dropped. An entry
  *   left with no kind is never passed nor created.
  * - Kanji notes, only when the drawing deck's `add_kanji` is present and not `off`: `kanjiToAdd(headword, blocked,
  *   mode)`, `blocked` = the headword's kanji with a live kanji note or a user-deleted one (`deleted_at` set, no
@@ -41,6 +42,9 @@ class DeckEntryPlan(
     private val blocked = HashMap<String, Boolean>()
     private val kanjiKindsCache = HashMap<String, List<String>>()
 
+    /** `cards.reading_enabled` (ADR-035, SCHEMA.md 6.4) as the replica stands now: false = no vocab reading card. */
+    val readingEnabled: Boolean by lazy { readingEnabled(tables) }
+
     /** The entry's dictionary data; null = not installed on this device (the entry is skipped until it is). */
     fun dict(seq: Long): DictionaryData? = dicts.getOrPut(seq) { runCatching { dictionary(seq) }.getOrNull() }
 
@@ -52,7 +56,8 @@ class DeckEntryPlan(
     /** Card kinds of the new vocab note for [seq] drawn by [deck]; empty = the entry is never materialized. */
     fun vocabKinds(seq: Long, deck: Row?): List<String> {
         val dict = dict(seq) ?: return emptyList()
-        val kinds = cards.kindsForNewNote(vocabType, deck?.let(NoteCreator.Companion::cardKinds)).ifEmpty { cards.kindsForNewNote(vocabType, null) }
+        val kinds = cards.kindsForNewNote(vocabType, deck?.let(NoteCreator.Companion::cardKinds), readingEnabled)
+            .ifEmpty { cards.kindsForNewNote(vocabType, null, readingEnabled) }
         return kinds.filterNot { DefaultCardRenderer.frontIsEmpty(vocabType, it, emptyMap(), dictionary = dict) }
     }
 
@@ -69,7 +74,7 @@ class DeckEntryPlan(
         val type = kanjiType ?: return emptyList()
         return kanjiKindsCache.getOrPut(literal) {
             val data = runCatching { kanjiData(literal) }.getOrNull() ?: KanjiData(literal, emptyList(), emptyList(), emptyList())
-            cards.kindsForNewNote(type, null).filterNot { DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), kanji = data) }
+            cards.kindsForNewNote(type, null, readingEnabled).filterNot { DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), kanji = data) }
         }
     }
 
@@ -99,3 +104,7 @@ class DeckEntryPlan(
         fun expressionKanji(headword: String): List<String> = DefaultCardGenerator.kanjiOf(headword.replace(HTML_TAG, ""))
     }
 }
+
+/** The typed setting `cards.reading_enabled` from the replica's `settings` row (ADR-035; no row or not JSON true = false). */
+internal fun readingEnabled(tables: LearningTables): Boolean =
+    CardKinds.readingEnabled(tables.get(LearningTable.SETTINGS, listOf(JsonString(CardKinds.SETTING_READING_ENABLED)))?.get("value"))
