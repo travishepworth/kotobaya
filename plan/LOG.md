@@ -1194,3 +1194,4 @@
 2026-11-16T04:31:16Z AND-BATCH attempt 2 (item 3 reverted to always-rebuild = RC-AND reviewed behaviour) CHECK_GREEN + MERGE
 2026-11-16T04:32:22Z RELEASE APK 0.1.26 built (pin ccb2bd78, code 126, cert ok) + sent to user
 2026-11-16T05:23:41Z SYNC-NEWSTATE DISPATCH architect(opus) — phone shows New on cards reviewed via web/CLI yesterday; server says review/is_new=false
+2026-11-16T05:31:23Z SYNC-NEWSTATE DONE no bug: 'New' cards are never-reviewed reading siblings of yesterday's meaning cards; phone sync verified via op log (seq 1-115668). Follow-up: show Meaning/Reading in badge
