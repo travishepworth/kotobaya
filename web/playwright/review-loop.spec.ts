@@ -189,7 +189,7 @@ for (const s of SIZES) {
 				await page.locator(`.finished[data-phase]`).waitFor();
 				await page.waitForTimeout(300);
 				if (phase === 'done_for_today') {
-					await expect(page.locator('[data-testid="end-reviews"] dt')).toHaveText('Reviews 200/200');
+					await expect(page.locator('[data-testid="end-quota"]')).toHaveText('200/200 reviews · 40/40 new');
 					await expect(page.locator('[data-testid="end-backlog"]')).toHaveText('135 more reviews in backlog');
 				}
 				if (phase === 'waiting') await expect(page.locator('.finished .countdown')).toHaveText('4:30');

@@ -101,8 +101,7 @@ describe('review screen per loop phase', () => {
 		const { page, el, dispose } = await reviewScreen({ phase: 'goal_reached', reviews: { today: 120, limit: null }, newCards: { today: 40, goal: 40, available: true } });
 		expect(page.phase).toBe('goalReached');
 		expect(el.textContent).toContain('New-card goal reached');
-		expect(el.querySelector('[data-testid="end-new"]')?.textContent).toContain('New 40/40');
-		expect(el.querySelector('[data-testid="end-reviews"]')).toBeNull();
+		expect(el.querySelector('[data-testid="end-quota"]')?.textContent).toBe('40/40 new · New-card goal reached');
 		expect([...el.querySelectorAll('button')].map((b) => b.textContent?.trim())).toContain('Keep going');
 		dispose();
 	});
@@ -116,10 +115,15 @@ describe('review screen per loop phase', () => {
 		});
 		expect(page.phase).toBe('doneForToday');
 		expect(el.textContent).toContain('Done for today');
-		expect(el.querySelector('[data-testid="end-reviews"]')?.textContent).toContain('Reviews 200/200');
-		expect(el.querySelector('[data-testid="end-new"]')?.textContent).toContain('New 40/40');
+		expect(el.querySelector('[data-testid="end-quota"]')?.textContent).toBe('200/200 reviews · 40/40 new');
 		expect(el.querySelector('[data-testid="end-backlog"]')?.textContent).toBe('135 more reviews in backlog');
 		expect([...el.querySelectorAll('button')].map((b) => b.textContent?.trim())).toContain('Keep going');
+		dispose();
+	});
+
+	it('done_for_today unlimited: the quota line has no reviews part', async () => {
+		const { el, dispose } = await reviewScreen({ phase: 'done_for_today', reviews: { today: 212, limit: null }, newCards: { today: 40, goal: 40, available: true } });
+		expect(el.querySelector('[data-testid="end-quota"]')?.textContent).toBe('40/40 new');
 		dispose();
 	});
 

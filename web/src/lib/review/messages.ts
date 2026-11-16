@@ -63,9 +63,9 @@ const en = {
 	'loop.newToday': '{n} new today',
 	'loop.backlog': 'Backlog: {n} reviews due · {limit}/day limit',
 	'loop.backlogMore': '{n} more reviews in backlog',
-	'loop.reviewsOf': 'Reviews {today}/{limit}',
-	'loop.reviewsToday': 'Reviews {today}',
-	'loop.newOfLong': 'New {today}/{goal}',
+	'loop.quota.capped': '{rToday}/{rLimit} reviews · {nToday}/{nGoal} new',
+	'loop.quota.unlimited': '{nToday}/{nGoal} new',
+	'loop.quota.goalReached': '{nToday}/{nGoal} new · New-card goal reached',
 	'loop.start': 'Start review',
 	'loop.keepGoing': 'Keep going',
 	'loop.goalReached.title': 'New-card goal reached',
@@ -88,4 +88,18 @@ export function tr(key: ReviewMessageKey, params?: Record<string, string | numbe
 	let s: string = en[key];
 	if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll(`{${k}}`, String(v));
 	return s;
+}
+
+/**
+ * ADR-037 done-for-today quota line (Home and the review end screen), from `loop` only. Capped mode shows the
+ * reviews against the limit too; unlimited shows the new cards only; goal reached appends its title.
+ */
+export function quotaLine(
+	loop: { reviews: { today: number; limit: number | null }; _new: { today: number; goal: number } },
+	goalReached: boolean
+): string {
+	const n = { nToday: loop._new.today, nGoal: loop._new.goal };
+	if (goalReached) return tr('loop.quota.goalReached', n);
+	if (loop.reviews.limit === null) return tr('loop.quota.unlimited', n);
+	return tr('loop.quota.capped', { ...n, rToday: loop.reviews.today, rLimit: loop.reviews.limit });
 }

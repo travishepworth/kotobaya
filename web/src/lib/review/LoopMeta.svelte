@@ -4,7 +4,7 @@
 	// (only when reviews are held back by the limit). Hidden in legacy mode (no `loop` from the server).
 	import ProgressBar from '../ui/ProgressBar.svelte';
 	import { minutesUntil, type LoopView } from '../state/today.svelte';
-	import { tr } from './messages';
+	import { quotaLine, tr } from './messages';
 
 	interface Props {
 		view: LoopView;
@@ -15,6 +15,9 @@
 	let { view, now, hint = true }: Props = $props();
 
 	const loop = $derived(view.loop);
+	// Done for today / goal reached: the quota line replaces the new-card bar (ADR-037 C3, quota form).
+	const endPhase = $derived(view.phase === 'goal_reached' || view.phase === 'done_for_today');
+	const quota = $derived(quotaLine(loop, view.phase === 'goal_reached'));
 	const later = $derived.by(() => {
 		const at = loop.laterToday.nextDueAt;
 		if (!hint || view.legacy || loop.laterToday.count === 0 || !at) return null;
@@ -29,13 +32,17 @@
 {#if !view.legacy}
 	<div class="meta">
 		{#if later}<p class="later" data-testid="loop-later">{later}</p>{/if}
-		<div class="new" data-testid="loop-new">
-			<span class="label">{goalMet ? tr('loop.newToday', { n: loop._new.today }) : tr('loop.newBar')}</span>
-			<div class="bar">
-				<ProgressBar value={Math.min(loop._new.today, loop._new.goal)} max={loop._new.goal} label={tr('loop.newBar')} />
+		{#if endPhase}
+			<p class="quota kb-num" data-testid="loop-quota">{quota}</p>
+		{:else}
+			<div class="new" data-testid="loop-new">
+				<span class="label">{goalMet ? tr('loop.newToday', { n: loop._new.today }) : tr('loop.newBar')}</span>
+				<div class="bar">
+					<ProgressBar value={Math.min(loop._new.today, loop._new.goal)} max={loop._new.goal} label={tr('loop.newBar')} />
+				</div>
+				{#if !goalMet}<span class="num kb-num">{tr('loop.newOf', { today: loop._new.today, goal: loop._new.goal })}</span>{/if}
 			</div>
-			{#if !goalMet}<span class="num kb-num">{tr('loop.newOf', { today: loop._new.today, goal: loop._new.goal })}</span>{/if}
-		</div>
+		{/if}
 		{#if loop.backlog.beyondLimit > 0}
 			<p class="backlog" data-testid="loop-backlog">
 				{tr('loop.backlog', { n: loop.backlog.reviews.toLocaleString(), limit: loop.reviews.limit ?? '–' })}
@@ -55,6 +62,7 @@
 		width: 100%;
 	}
 	.later,
+	.quota,
 	.backlog {
 		margin: 0;
 		font: var(--kb-type-body-sm);

@@ -1,12 +1,11 @@
 <script lang="ts">
 	// The review screen with no card (ADR-037 C4): rendered from `loop.phase` only.
-	// goalReached: the new bar full, Keep going. doneForToday: reviews and new against their limits, the backlog
-	// left, Keep going. waiting: the countdown to the next learning card. done: nothing left today.
+	// goalReached: the quota line, Keep going. doneForToday: the quota line (reviews against the limit in capped
+	// mode), the backlog left, Keep going. waiting: the countdown to the next learning card. done: nothing left today.
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import Icon from '../../lib/ui/Icon.svelte';
-	import ProgressBar from '../../lib/ui/ProgressBar.svelte';
-	import { tr } from '../../lib/review/messages';
+	import { quotaLine, tr } from '../../lib/review/messages';
 	import { countdown, type LoopView } from '../../lib/state/review.svelte';
 	import { rv } from './messages';
 
@@ -60,18 +59,7 @@
 			{#snippet action()}
 				<div class="stack">
 					{#if loop}
-						<dl class="figures">
-							{#if phase === 'doneForToday'}
-								<div data-testid="end-reviews">
-									<dt>{loop.reviews.limit === null ? tr('loop.reviewsToday', { today: loop.reviews.today }) : tr('loop.reviewsOf', { today: loop.reviews.today, limit: loop.reviews.limit })}</dt>
-									<dd><ProgressBar value={Math.min(loop.reviews.today, loop.reviews.limit ?? loop.reviews.today)} max={loop.reviews.limit ?? Math.max(loop.reviews.today, 1)} label={tr('loop.reviewsToday', { today: loop.reviews.today })} /></dd>
-								</div>
-							{/if}
-							<div data-testid="end-new">
-								<dt>{tr('loop.newOfLong', { today: loop._new.today, goal: loop._new.goal })}</dt>
-								<dd><ProgressBar value={Math.min(loop._new.today, loop._new.goal)} max={loop._new.goal} label={tr('loop.newBar')} /></dd>
-							</div>
-						</dl>
+						<p class="quota" data-testid="end-quota">{quotaLine(loop, phase === 'goalReached')}</p>
 						{#if loop.backlog.beyondLimit > 0}
 							<p class="muted" data-testid="end-backlog">{tr('loop.backlogMore', { n: loop.backlog.reviews.toLocaleString() })}</p>
 						{/if}
@@ -142,24 +130,12 @@
 		gap: var(--kb-space-4);
 		width: 100%;
 	}
-	.figures {
-		display: grid;
-		gap: var(--kb-space-3);
-		width: min(18rem, 100%);
+	.quota {
 		margin: 0;
-	}
-	.figures div {
-		display: flex;
-		flex-direction: column;
-		gap: var(--kb-space-1);
-	}
-	dt {
 		font: var(--kb-type-body-sm);
 		color: var(--kb-color-text);
 		font-variant-numeric: tabular-nums;
-	}
-	dd {
-		margin: 0;
+		text-align: center;
 	}
 	.muted {
 		margin: 0;
