@@ -9,7 +9,6 @@ import kotobaya.contracts.fsrs.Button
 import kotobaya.contracts.fsrs.RatingOutcome
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.queue.QueueItem
-import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.ReviewQueue
 import kotobaya.contracts.render.CardRenderer
@@ -443,7 +442,7 @@ class ReviewSession<L : LearningTables>(
             if (card.kind == QueueItemKind.NEW) newShown++
             // The answer is held in `pending` until committed; showing the next card cannot lose it.
             try {
-                if (staleQueue && !nextInMemoryStillValidLocked()) {
+                if (staleQueue) {
                     // RC-AND: a sync changed the queue: the next card comes from the build after this answer's write
                     awaitingFor = c
                     current = null
@@ -530,7 +529,7 @@ class ReviewSession<L : LearningTables>(
                 if (pending.isNotEmpty()) return null
                 val waiting = awaitingFor ?: return@synchronized false
                 // stale (a sync since the last build): memory may hold cards answered elsewhere; build first
-                if (!staleQueue || nextInMemoryStillValidLocked()) showFromMemoryLocked(waiting)
+                if (!staleQueue) showFromMemoryLocked(waiting)
                 // Nothing in memory: always rebuild before ending. No earlier build is final: a normal one that still
                 // held the answered card cannot say whether keep going has more, a deck session needs to know whether
                 // other decks have cards due, and a keep-going build holds only one new batch (AND-KEEPGOING-FIX), so
@@ -765,31 +764,6 @@ class ReviewSession<L : LearningTables>(
     private fun pickLocked(now: Long): QueueItem? {
         learning.filter { it.dueAt <= now }.minWithOrNull(TIMED_ORDER)?.let { learning.remove(it); return it.item }
         return main.removeFirstOrNull()
-    }
-
-    /**
-     * RC-FOLLOW-AND: after a sync (stale queue) the next in-memory card may be shown without a rebuild (no WebView
-     * teardown) when its row still matches what the queue assumed: state fits the item's kind and it is still due.
-     * A card answered elsewhere changes state or due date, so it fails this and the queue is rebuilt.
-     */
-    private fun nextInMemoryStillValidLocked(): Boolean {
-        val item = peekLocked(clock()) ?: return false
-        return try {
-            read { tx ->
-                val card = CardRows.get(tx.learning, LearningTable.CARD, item.cardId) ?: return@read false
-                if (!CardRows.live(card)) return@read false
-                val sched = CardRows.scheduleOf(card)
-                when (item.kind) {
-                    QueueItemKind.NEW -> sched.state == CardState.NEW
-                    QueueItemKind.LEARNING ->
-                        (sched.state == CardState.LEARNING || sched.state == CardState.RELEARNING) &&
-                            (sched.dueAt ?: Long.MAX_VALUE) <= clock()
-                    else -> sched.state == CardState.REVIEW && (sched.dueAt ?: Long.MAX_VALUE) < dayEndMs
-                }
-            }
-        } catch (e: Exception) {
-            false
-        }
     }
 
     private fun peekLocked(now: Long): QueueItem? =

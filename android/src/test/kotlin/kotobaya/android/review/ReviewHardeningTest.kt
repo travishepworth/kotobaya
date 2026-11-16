@@ -53,7 +53,10 @@ class ReviewHardeningTest {
         val cards = store.learning().all(LearningTable.CARD)
             .filter { c ->
                 val st = CardRows.str(c["state"])
-                st == "new" || ((c["due_at"] as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE) <= now
+                (c["suspended"] as? kotobaya.contracts.sync.JsonBool)?.value != true &&
+                    ((c["buried_until"] as? JsonNumber)?.value?.toLong() ?: 0L) <= now &&
+                    CardRows.live(c) &&
+                    (st == "new" || ((c["due_at"] as? JsonNumber)?.value?.toLong() ?: Long.MIN_VALUE) <= now)
             }
             .sortedBy { CardRows.str(it["id"]) }
         ReviewQueue(
@@ -204,19 +207,45 @@ class ReviewHardeningTest {
         assertEquals(builds, loads, "no build between two cards in the normal case")
     }
 
-    @Test
-    fun afterSyncAnUnchangedNextCardStillComesFromMemory() {
-        seed("meaning", "reading")
-        seed("meaning")
+    private fun mint(type: OpType, vararg p: Pair<String, JsonValue>) = assertIs<MintResult.Minted>(minter.mint(type, obj(*p)))
+
+    /** a is shown, b next in memory, c after; [change] happens on b (as a sync would apply it) before a is answered. */
+    private fun nextCardChangedThenAnswerA(change: (String) -> Unit) {
+        val (a, b, c) = (seed("meaning") + seed("meaning") + seed("meaning")).sorted()
         val s = newSession()
         s.start()
         val shown = assertIs<ReviewState.Showing>(s.state.value).card
-        val builds = loads
-        s.markStale() // a sync that changed nothing about the queue
+        assertEquals(a, shown.cardId)
+        change(b)
+        s.markStale()
         s.flip()
         now += 5_000
-        s.answer(shown.token, Button.EASY)
-        assertIs<ReviewState.Showing>(s.state.value)
-        assertEquals(builds, loads, "no rebuild (no WebView teardown) while the next card is unchanged")
+        assertTrue(s.answer(shown.token, Button.EASY))
+        assertEquals(c, assertIs<ReviewState.Showing>(s.state.value).card.cardId, "b must not be shown")
+    }
+
+    @Test
+    fun aCardSuspendedElsewhereIsNotShownAfterSync() =
+        nextCardChangedThenAnswerA { mint(OpType.CARD_SUSPENDED, "id" to JsonString(it)) }
+
+    @Test
+    fun aCardBuriedElsewhereIsNotShownAfterSync() =
+        nextCardChangedThenAnswerA { mint(OpType.CARD_BURIED, "id" to JsonString(it), "until" to JsonNumber((now + 3_600_000).toDouble())) }
+
+    @Test
+    fun aDeletedCardFollowedByAnAnsweredElsewhereCardShowsNeitherAndLogsNoDuplicate() {
+        val (a, b, c, d) = (seed("meaning") + seed("meaning") + seed("meaning") + seed("meaning")).sorted()
+        val s = newSession()
+        s.start()
+        val shown = assertIs<ReviewState.Showing>(s.state.value).card
+        assertEquals(a, shown.cardId)
+        mint(OpType.CARD_DELETED, "id" to JsonString(b))
+        answeredElsewhere(c)
+        s.markStale()
+        s.flip()
+        now += 5_000
+        assertTrue(s.answer(shown.token, Button.EASY))
+        assertEquals(d, assertIs<ReviewState.Showing>(s.state.value).card.cardId)
+        assertEquals(1, store.rows().count { it.opType == "review.logged" && it.payload.contains(c) }, "c is not reviewed twice")
     }
 }

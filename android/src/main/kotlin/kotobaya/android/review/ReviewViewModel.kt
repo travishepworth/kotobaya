@@ -223,6 +223,7 @@ class ReviewViewModel(
     /** A [refreshIfEmpty] arrived while one was running: run once more after it (its build may predate the call). */
     private val refreshAgain = java.util.concurrent.atomic.AtomicBoolean(false)
     private var rollJob: Job? = null
+    private val rollLock = Any()
 
     /**
      * States with nothing on screen that a later build may change: they reload on resume, sync and their wake-up.
@@ -276,19 +277,21 @@ class ReviewViewModel(
      * wait is repeated until the clock has reached the instant, so an early wake-up never reloads too soon.
      */
     private fun scheduleDayRoll(idle: Boolean, dueAt: Long? = null) {
-        rollJob?.cancel()
-        rollJob = null
-        val b = backend ?: return
-        // not `sessionJob`: the first state can arrive before `enter` has stored it
-        if (!idle || session == null) return
-        rollJob = launchIo {
-            val wakeAt = minOf(b.nextStudyDayStart(b.clock()), dueAt ?: Long.MAX_VALUE)
-            while (true) {
-                val wait = wakeAt - b.clock()
-                if (wait <= 0) break
-                kotlinx.coroutines.delay(minOf(wait, MAX_WAIT_STEP_MS))
+        synchronized(rollLock) {
+            rollJob?.cancel()
+            rollJob = null
+            val b = backend ?: return
+            // not `sessionJob`: the first state can arrive before `enter` has stored it
+            if (!idle || session == null) return
+            rollJob = launchIo {
+                val wakeAt = minOf(b.nextStudyDayStart(b.clock()), dueAt ?: Long.MAX_VALUE)
+                while (true) {
+                    val wait = wakeAt - b.clock()
+                    if (wait <= 0) break
+                    kotlinx.coroutines.delay(minOf(wait, MAX_WAIT_STEP_MS))
+                }
+                refreshIfEmpty()
             }
-            refreshIfEmpty()
         }
     }
 
@@ -317,8 +320,10 @@ class ReviewViewModel(
         val s = session
         sessionJob?.cancel()
         sessionJob = null
-        rollJob?.cancel()
-        rollJob = null
+        synchronized(rollLock) {
+            rollJob?.cancel()
+            rollJob = null
+        }
         session = null
         audio?.release()
         if (s != null && s.meta.value.answered > 0) onSessionEnd()
