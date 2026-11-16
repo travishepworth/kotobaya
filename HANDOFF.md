@@ -19,5 +19,7 @@ PNGs, all in `web/screenshots/chip-overlap/` (gitignored):
 
 Caveat: the demo queue has no New card, because they unlock later. The "new-card" cases fill the real row's tag and New slots with text ("Relearning", "New") to get all three chips at once.
 
-Existing behaviour, unchanged: on a revealed card that does not fit, the body auto-scrolls to the divider. The headword is then clipped at the body's top edge, directly under the chip row. It is no longer under a chip.
+Clipped headword fix: on a revealed card that does not fit, `bringAnswerIntoView` used to scroll the divider to 16px under the top edge, which could leave the headword half cut (the divider sat only about 7px below it). It now scrolls so the question's bottom edge plus 5px sits at the container top. The cut falls in the whitespace above the divider and the divider stays visible. If the answer is short, extra bottom padding (`extraBottom`) gives the scroll room to get there. A card that fits never scrolls.
+Spec now also asserts that no text line (Range client rects) straddles the scroll container's top edge after reveal. It passes at 340x600, 390x500 and 1280x600. The headword is fully scrolled out in all of them.
+
 No new dependencies.

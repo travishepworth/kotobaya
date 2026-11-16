@@ -35,6 +35,28 @@ async function assertNoOverlap(page: Page): Promise<number> {
 	return rects.chips.length;
 }
 
+/** No text line may straddle the scroll container's top edge (a half-cut glyph row reads as an overlap). */
+async function assertNoClippedLine(page: Page): Promise<void> {
+	await page.waitForTimeout(300);
+	const cut = await page.evaluate(() => {
+		const body = document.querySelector('.card-body');
+		if (!body) return ['no body'];
+		const top = body.getBoundingClientRect().top;
+		const out: string[] = [];
+		const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+		for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+			if (!(n.textContent ?? '').trim()) continue;
+			const range = document.createRange();
+			range.selectNodeContents(n);
+			for (const r of range.getClientRects()) {
+				if (r.height > 0 && r.top < top - 0.5 && r.bottom > top + 0.5) out.push(`${(n.textContent ?? '').trim().slice(0, 20)} [${r.top}..${r.bottom}] edge ${top}`);
+			}
+		}
+		return out;
+	});
+	expect(cut, 'text lines cut by the scroll container top edge').toEqual([]);
+}
+
 for (const c of CASES) {
 	test(`chip row does not overlap card content: ${c.name}`, async ({ page, context }) => {
 		await page.clock.setFixedTime(NOW);
@@ -61,6 +83,7 @@ for (const c of CASES) {
 			await page.locator('.grade').first().waitFor();
 		}
 		const n = await assertNoOverlap(page);
+		if (c.reveal) await assertNoClippedLine(page);
 		console.log(`${c.name}: ${n} chips, no overlap`);
 		await page.screenshot({ path: `screenshots/chip-overlap/${c.name}.png` });
 	});
