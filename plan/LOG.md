@@ -1171,3 +1171,7 @@
 2026-11-16T02:43:55Z RELEASE web 0.1.23 DEPLOYED helm rev 32 (pin dd2f3ade, RC-WEB); api 0.1.20/worker 0.1.18 unchanged
 2026-11-16T02:46:44Z RC-AND REVIEW_APPROVE + CHECK_GREEN + MERGE (1 attempt); 3 minors + flaky BackNavigationTest -> FOLLOWUPS
 2026-11-16T02:54:27Z RC-SERVER REVIEW_APPROVE + CHECK_GREEN + MERGE (1 attempt). Root cause: jOOQ array bind any(?::uuid[]) re-parsed per row; queue 6s->~0.1-0.2s, known-words 44s->2s; stats capped 3 conns
+2026-11-16T02:59:46Z RELEASE api 0.1.21 DEPLOYED helm rev 33 (pin 296e5a16, RC-SERVER+RC-CLI+RC-AND on main); live queue 6s -> ~225 ms server-side, stats 14-76s -> 0.6-1.3s; web 0.1.23, worker 0.1.18
+2026-11-16T02:59:46Z RELEASE CLI daemon reinstalled (uv tool, pin 296e5a16), kotobaya.service restarted active
+2026-11-16T02:59:46Z RELEASE APK 0.1.25 built (pin 4ed6beaa, code 125, cert ec6b7f45 ok) ~/kotobaya-apk/kotobaya-0.1.25-release.apk; no adb device -> install pending
+2026-11-16T02:59:46Z REVIEW-UNLIMITED DISPATCH architect(opus)
