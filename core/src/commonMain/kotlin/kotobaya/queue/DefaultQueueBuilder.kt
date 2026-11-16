@@ -148,10 +148,12 @@ public object DefaultQueueBuilder : QueueBuilder {
 
         // Rule 3.
         private fun buildReviews(eligible: List<QueueCandidate>): List<QueueItem> {
-            // Rule 6: keep going lifts the global and per-deck review caps (no deck entry = no limit).
-            var global = if (limits.keepGoing) Int.MAX_VALUE else limits.reviewsPerDay - input.today.count { it.countsAsReview }
+            // Rule 6: keep going lifts the global and per-deck review caps (no deck entry = no limit);
+            // so does the `scheduler.reviews_unlimited` setting (ADR-034).
+            val uncapped = limits.keepGoing || limits.reviewsUnlimited
+            var global = if (uncapped) Int.MAX_VALUE else limits.reviewsPerDay - input.today.count { it.countsAsReview }
             val deckRemaining = HashMap<Uuid, Int>()
-            if (!limits.keepGoing) for (d in decksById.values) d.reviewsPerDay?.let { deckRemaining[d.id] = it }
+            if (!uncapped) for (d in decksById.values) d.reviewsPerDay?.let { deckRemaining[d.id] = it }
             for (t in input.today) {
                 if (!t.countsAsReview) continue
                 val h = homeDeck(t.deckIds) ?: continue

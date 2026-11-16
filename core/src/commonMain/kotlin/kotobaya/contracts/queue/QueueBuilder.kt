@@ -56,7 +56,7 @@ public data class QueueDeck(
     public val enabled: Boolean,
     /** `deck.new_cards_per_day`; null = only the global limit. */
     public val newPerDay: Int?,
-    /** `deck.reviews_per_day`; null = only the global limit. */
+    /** `deck.reviews_per_day`; null = only the global limit. Ignored when `QueueLimits.reviewsUnlimited` (ADR-034). */
     public val reviewsPerDay: Int?,
     /**
      * Effective `add_kanji` ordering: `deck.settings.add_kanji` if **present**, i.e. exactly the JSON
@@ -166,7 +166,7 @@ public data class PendingEntry(
 public data class QueueLimits(
     /** `scheduler.new_per_day` (default 20). */
     public val newPerDay: Int,
-    /** `scheduler.reviews_per_day` (default 200). */
+    /** `scheduler.reviews_per_day` (default 200). Ignored when [reviewsUnlimited] (ADR-034). */
     public val reviewsPerDay: Int,
     /** `scheduler.new_per_session` (default 10). */
     public val newPerSession: Int,
@@ -198,6 +198,20 @@ public data class QueueLimits(
      * note creation for pending entries to a handful per build.
      */
     public val keepGoingNewBatch: Int = DEFAULT_KEEP_GOING_NEW_BATCH,
+    /**
+     * ADR-034 (additive): setting `scheduler.reviews_unlimited` (bool, default false; SCHEMA.md
+     * 6.2). When true, rule 3 ignores the global [reviewsPerDay] cap and every
+     * `QueueDeck.reviewsPerDay` cap: every eligible REVIEW card with `dueAt < day.endMs` is taken
+     * (still at most one NEW/REVIEW item per note if [burySiblings]; never a card due at or after
+     * `day.endMs`). Nothing else changes: new-card limits (rule 4), learning and learn-ahead
+     * (rule 2), the interleaving of rule 5 and [ReviewQueue.moreAvailable] are as for false, and
+     * [keepGoing] behaves as before (it already lifts the review caps). Unlike [keepGoing] this is
+     * a persisted, synced setting and applies to every build, including the Today counts, so all
+     * clients show the same counts. Default false = the behaviour before ADR-034, bit for bit.
+     * The platform loader reads it with the bool test of SCHEMA.md 6.1 (anything but JSON
+     * `true` → false).
+     */
+    public val reviewsUnlimited: Boolean = false,
 ) {
     /** Constants. */
     public companion object {
@@ -326,7 +340,11 @@ public data class ReviewQueue(
  *    (enabled or not); null without memberships. A card is taken iff the global remaining
  *    (`reviewsPerDay` − today's `countsAsReview` reviews) and its home deck's remaining
  *    (`reviewsPerDay` − today's reviews attributed to that home deck, if the deck has a limit) are
- *    both `> 0`; taking it decrements both.
+ *    both `> 0`; taking it decrements both. **Unlimited reviews** (ADR-034): if
+ *    `limits.reviewsUnlimited`, both remainders are unlimited (as under rule 6), so every eligible
+ *    REVIEW card with `dueAt < day.endMs` is taken; rules 1, 2, 4 and 5 are unchanged.
+ *    Example: 300 eligible reviews due today, `reviewsPerDay` 200, nothing reviewed today →
+ *    200 REVIEW items when false, 300 when true.
  * 4. **New**: budget = `min(newPerDay − today's introducedNew, newPerSession − newShownThisSession)`
  *    (`>= 0`). Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
  *    holding the NEW cards with **no deck membership at all** (`memberships` empty), ordered by

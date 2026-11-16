@@ -132,3 +132,14 @@ Worth a second look:
 - Attempt 2: rule 6 "Scope" (one review-screen visit; cleared on leave, study-day change, restart;
   never persisted), `newShownThisSession` keeps counting during keep going, and `moreAvailable` may
   be true when only the session cap is reached ("done for now").
+
+## ADR-034 changes (additive): no daily review limit
+- **What.** `QueueLimits.reviewsUnlimited` (default false), fed from the synced setting
+  `scheduler.reviews_unlimited` (SCHEMA.md 6.3). Rule 3 then treats the global and per-deck review
+  remainders as unlimited (exactly as rule 6 does for reviews). Rules 1, 2, 4, 5, keep going and
+  `moreAvailable` are unchanged; default false is bit-for-bit the old behaviour.
+- Rejected: a nullable `reviewsPerDay` (breaking for every caller; a stored sentinel such as
+  `reviews_per_day = 0`/`-1` would collide with the meaning "no reviews" and lose the user's cap
+  when toggled back); making it the default (ADR-034 chose opt-in).
+- Worth a second look: (1) per-deck review caps are lifted too, not only the global one; (2) rule 5
+  still interleaves new cards among a large review backlog (keep going puts reviews first).

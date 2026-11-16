@@ -2170,6 +2170,12 @@ paths:
         going (ADR-033): what remains today under the limits, so every client shows the same
         numbers at the same moment whatever mode it is in.
 
+        **No review limit (ADR-034).** If the setting `scheduler.reviews_unlimited` is `true`
+        (SCHEMA.md 6.3; default `false`), every build (keep going or not) ignores
+        `scheduler.reviews_per_day` and deck `reviews_per_day`: every review due before
+        `day_ends_at` is returned and counted in `counts.review`. New-card limits, ordering and
+        interleaving are unchanged. It is an ordinary setting written with `updateSettings`.
+
         **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
         `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).
         When nothing else is left but learning cards due later today, `items` is empty and

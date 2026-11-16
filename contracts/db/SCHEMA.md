@@ -558,7 +558,8 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.timezone` | string (IANA) | `"UTC"` | Zone for day boundaries. |
 | `scheduler.day_rollover_hour` | int 0–23 | `4` | Local hour at which a new study day starts. |
 | `scheduler.new_per_day` | int | `20` | Global new-card limit. |
-| `scheduler.reviews_per_day` | int | `200` | Global review limit. |
+| `scheduler.reviews_per_day` | int | `200` | Global review limit. Ignored while `scheduler.reviews_unlimited` is `true`. |
+| `scheduler.reviews_unlimited` | bool | `false` | ADR-034: when `true`, no daily review cap at all (global and per-deck `reviews_per_day` ignored); every review due today is served. See 6.3. |
 | `scheduler.new_per_session` | int | `10` | Cap on new cards per session. |
 | `scheduler.grading_buttons` | `4` \| `5` | `4` | Five = jpdb-style. |
 | `scheduler.leech_threshold` | int | `8` | Lapses at which a card is a leech. |
@@ -678,6 +679,22 @@ home new-source (ADR-006: a kanji card whose decks are all disabled is never int
 this way). They count against that source and the budget. The key only orders cards that already exist; whether adding a
 vocab card *creates* kanji cards stays governed by the deck's present `add_kanji` alone (absent =
 none created). With the default `false` every source behaves exactly as before C-7.
+
+### 6.3 `scheduler.reviews_unlimited` (ADR-034)
+
+Opt-in "no daily review limit" (jpdb-style), bool, default `false`, validated and loaded by the
+6.1 `bool` test (anything but JSON `true` - including a missing row, `null`, `1`, `"true"` -
+means `false`). Each platform loader (Android, web via the API, server) passes it as
+`QueueLimits.reviewsUnlimited`; QueueBuilder rule 3 then ignores `scheduler.reviews_per_day` and
+every `deck.reviews_per_day`, so every eligible review with `due_at` before the end of the study
+day is served. Unchanged: new-card limits (`scheduler.new_per_day`, `scheduler.new_per_session`,
+`deck.new_cards_per_day`), no learn-ahead (ADR-033), no study-ahead, interleaving, keep going.
+Queue counts (`getReviewQueue` `counts`, the device's Today counts) come from
+the same build, so with the key `true` they include every review due today, identically on every
+client. No new op: it syncs as an ordinary `settings.set` (Replay: none). Example: 300 reviews due,
+`reviews_per_day` 200 → `false`: 200 served, `counts.review` 200; `true`: 300 and 300.
+`reviews_per_day` keeps its stored value while the key is `true` (UIs grey the field out) and
+applies again when it is set back to `false` or `null`.
 
 ## 7. Cross-check: table ↔ op ↔ API
 
