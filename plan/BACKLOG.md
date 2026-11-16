@@ -821,7 +821,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SHELL-C1 — Contract: shell bridge, shell ops, local-op map, parity scenarios · model: fable · risk: high · deps: none · status: MERGED (ticket: plan/tickets/SHELL-C1.md)
 - SHELL-L1 — Local ops: identity, meta, settings, presets, note types, client errors · model: sonnet · risk: med · deps: SHELL-A2, SHELL-P2 · status: MERGED (ticket: plan/tickets/SHELL-L1.md)
 - SHELL-L2 — Local getReviewQueue · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: MERGED (ticket: plan/tickets/SHELL-L2.md)
-- SHELL-L3 — Local answerReview and undoReview · model: fable · risk: high · deps: SHELL-L2 · status: TODO (ticket: plan/tickets/SHELL-L3.md)
+- SHELL-L3 — Local answerReview and undoReview · model: fable · risk: high · deps: SHELL-L2 · status: MERGED (ticket: plan/tickets/SHELL-L3.md)
 - SHELL-L4 — Local review actions and notes: bulkCards, word status, note read/edit/delete, card history · model: opus · risk: high · deps: SHELL-L3 · status: TODO (ticket: plan/tickets/SHELL-L4.md)
 - SHELL-L5 — Local dictionary and mining: dictionary reads, createNote · model: opus · risk: high · deps: SHELL-L1, SHELL-P2, SHELL-L9 · status: TODO (ticket: plan/tickets/SHELL-L5.md)
 - SHELL-L6 — Local browse and search: listCards, listNotes · model: sonnet · risk: med · deps: SHELL-L1, SHELL-P2 · status: TODO (ticket: plan/tickets/SHELL-L6.md)
