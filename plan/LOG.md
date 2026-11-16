@@ -1302,3 +1302,4 @@
 2026-11-16T18:35:41Z SHELL-L6 DISPATCH writer from t/SHELL-L5 (chain) [gradle lane]
 2026-11-16T18:37:27Z SHELL-L5 REVIEW_APPROVE (7 minors -> SHELL-L5b + LOOP-C2 doc clarification) + MERGE; server createNote makes no kanji notes, so phone parity correct
 2026-11-16T18:53:39Z SHELL-L6 CHECK_GREEN + MERGE (listCards via LocalCardQuery, listNotes); AND-FLAKY-DUPCHECK filed; SHELL-L7 DISPATCH writer-senior [gradle lane]
+2026-11-16T19:12:23Z SHELL-L7 CHECK_GREEN + MERGE (decks local; list->forward); deck parity scenarios -> LOOP-C2. SHELL-L8 DISPATCH writer [gradle lane]
