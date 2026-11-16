@@ -39,8 +39,8 @@ const en = {
 	'home.emptyBody': 'Look words up in the dictionary, import what you already know, or start a deck. Your reviews will appear here.',
 	'home.emptySearch': 'Search the dictionary',
 	'home.emptyImport': 'Import from jpdb',
-	'home.errorTitle': 'Could not load today’s numbers',
-	'home.errorBody': 'The server did not answer. Your reviews are safe.'
+	'home.countsFailed': 'Could not load today’s counts. Your reviews are safe; you can still start.',
+	'home.figuresFailed': 'Some figures could not be loaded.'
 } as const;
 
 export type HomeMessageKey = keyof typeof en;

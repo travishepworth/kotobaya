@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Stats: today's figures, then charts that read in both themes (muted axes, hairline grids, labelled legends).
 	// Every panel loads on its own; one failing never blanks the others.
+	import { onDestroy } from 'svelte';
 	import BarChart from '../../lib/ui/BarChart.svelte';
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
@@ -11,13 +12,14 @@
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import { kindLabel } from '../../lib/ui/cardState';
 	import { ut } from '../../lib/ui/messages';
-	import { iso, StatsPage } from '../../lib/state/stats.svelte';
+	import { iso, StatsPage, type StatsPanel } from '../../lib/state/stats.svelte';
 	import { ts, type StatsMessageKey } from './messages';
 
 	const vm = new StatsPage();
 	$effect(() => {
 		vm.start();
 	});
+	onDestroy(() => vm.dispose());
 
 	type Range = 'week' | 'month' | 'year';
 	let range = $state<Range>('month');
@@ -79,14 +81,14 @@
 
 <svelte:head><title>{ts('stats.title')} · Kotobaya</title></svelte:head>
 
-{#snippet failed()}
+{#snippet failed(panel: StatsPanel)}
 	<EmptyState tone="error" art="alert" title={ts('stats.panelError')}>
-		{#snippet action()}<Button variant="outline" size="sm" onclick={() => vm.start()}>{ut('app.retry')}</Button>{/snippet}
+		{#snippet action()}<Button variant="outline" size="sm" onclick={() => vm.retry(panel)}>{ut('app.retry')}</Button>{/snippet}
 	</EmptyState>
 {/snippet}
 
-{#snippet pending(p: { failed: boolean }, h: string)}
-	{#if p.failed}{@render failed()}{:else}<Skeleton shape="block" height={h} />{/if}
+{#snippet pending(p: { failed: boolean }, h: string, panel: StatsPanel)}
+	{#if p.failed}{@render failed(panel)}{:else}<Skeleton shape="block" height={h} />{/if}
 {/snippet}
 
 <Page title={ts('stats.title')}>
@@ -125,7 +127,7 @@
 					{#if vm.heatmap}
 						<BarChart caption={ts('stats.reviewsChart')} bars={reviewBars} {series} height="12rem" />
 					{:else}
-						{@render pending(vm.heatmapP, '15rem')}
+						{@render pending(vm.heatmapP, '15rem', 'heatmap')}
 					{/if}
 				</Panel>
 			</div>
@@ -134,7 +136,7 @@
 				{#if vm.forecast}
 					<BarChart caption={ts('stats.forecast')} bars={forecastBars} series={[{ label: ts('stats.forecast'), color: css('primary') }]} current={forecastBars[0]?.key} />
 				{:else}
-					{@render pending(vm.forecastP, '12rem')}
+					{@render pending(vm.forecastP, '12rem', 'forecast')}
 				{/if}
 			</Panel>
 
@@ -144,7 +146,7 @@
 				{:else if vm.known}
 					<p class="muted">{ts('stats.none')}</p>
 				{:else}
-					{@render pending(vm.knownP, '12rem')}
+					{@render pending(vm.knownP, '12rem', 'known')}
 				{/if}
 			</Panel>
 
@@ -168,7 +170,7 @@
 						{/each}
 					</ul>
 				{:else}
-					{@render pending(vm.retentionP, '12rem')}
+					{@render pending(vm.retentionP, '12rem', 'retention')}
 				{/if}
 			</Panel>
 
@@ -193,7 +195,7 @@
 				{:else if vm.calibration}
 					<p class="muted">{ts('stats.none')}</p>
 				{:else}
-					{@render pending(vm.calibrationP, '12rem')}
+					{@render pending(vm.calibrationP, '12rem', 'calibration')}
 				{/if}
 			</Panel>
 

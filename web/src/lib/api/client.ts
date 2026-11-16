@@ -41,7 +41,8 @@ export function setUnauthenticatedHandler(fn: () => void): void {
  * Error toasts for every failed call, except those the caller handles itself:
  * login failures (shown inline) and 401 (turns into a redirect to /login).
  */
-const errorToasts: Middleware = {
+function errorMiddleware(toast: boolean): Middleware {
+	return {
 	async post({ response, url, init }) {
 		if (response.ok || url.endsWith('/auth/login')) return;
 		if (response.status === 401) {
@@ -59,21 +60,34 @@ const errorToasts: Middleware = {
 				requestId: response.headers.get('X-Request-Id') ?? problem?.requestId
 			});
 		}
-		pushToast(problemMessage(problem, response.status), 'error');
+		if (toast) pushToast(problemMessage(problem, response.status), 'error');
 	},
 	async onError({ error, url, init }) {
 		if (error instanceof FetchError || error instanceof TypeError) {
 			reportApiFailure({ method: init?.method, url });
-			pushToast(t('error.network'), 'error');
+			if (toast) pushToast(t('error.network'), 'error');
 		}
 	}
-};
+	};
+}
 
 export const apiConfig = new Configuration({
 	basePath: API_BASE,
 	credentials: 'same-origin',
 	headers: CSRF_HEADERS,
-	middleware: [errorToasts]
+	middleware: [errorMiddleware(true)]
+});
+
+/**
+ * RC-WEB: for background widgets that show their own inline "couldn't load" + retry (stats panels). Failures are
+ * still reported and a 401 still signs out, but no global error toast: a slow or 504 stats call is not an error
+ * of the whole app.
+ */
+export const quietApiConfig = new Configuration({
+	basePath: API_BASE,
+	credentials: 'same-origin',
+	headers: CSRF_HEADERS,
+	middleware: [errorMiddleware(false)]
 });
 
 export const authApi = new AuthApi(apiConfig);

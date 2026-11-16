@@ -128,3 +128,51 @@ export function uuidv7(now: number = Date.now()): string {
 	const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 	return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+/**
+ * What the review screen shows (RC-WEB). The end screen ("done") only when the server says nothing is left:
+ * counts all 0 and no learning card falling due later. Learning cards due later are a countdown ("waiting");
+ * counts above 0 with nothing served and nothing to wait for is a server/client race, fetched again
+ * ("pending"); `more_available` with 0 items is the contract's "done for now, keep going has more".
+ */
+export type ReviewPhase =
+	| 'loading'
+	| 'error'
+	| 'card'
+	| 'drillUnavailable'
+	| 'drillDone'
+	| 'waiting'
+	| 'pending'
+	| 'doneForNow'
+	| 'done';
+
+export interface PhaseInput {
+	loaded: boolean;
+	loadFailed: boolean;
+	refreshFailed: boolean;
+	/** Answers still on their way and nothing on screen. */
+	settling: boolean;
+	hasCurrent: boolean;
+	isDrill: boolean;
+	drillUnavailable: boolean;
+	counts: { _new: number; learning: number; review: number } | null;
+	nextLearningDueAt: Date | null;
+	moreAvailable: boolean;
+	keepGoing: boolean;
+}
+
+export function remainingCount(c: PhaseInput['counts']): number {
+	return c ? c._new + c.learning + c.review : 0;
+}
+
+export function reviewPhase(s: PhaseInput): ReviewPhase {
+	if (!s.loaded || s.settling) return 'loading';
+	if (s.loadFailed) return 'error';
+	if (s.hasCurrent) return 'card';
+	if (s.refreshFailed) return 'error';
+	if (s.isDrill) return s.drillUnavailable ? 'drillUnavailable' : 'drillDone';
+	if (s.nextLearningDueAt !== null) return 'waiting';
+	if (s.moreAvailable && !s.keepGoing) return 'doneForNow';
+	if (remainingCount(s.counts) > 0) return 'pending';
+	return 'done';
+}

@@ -12,6 +12,7 @@
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
 	import GradeBar from '../../lib/ui/GradeBar.svelte';
+	import Icon from '../../lib/ui/Icon.svelte';
 	import IconButton from '../../lib/ui/IconButton.svelte';
 	import Kbd from '../../lib/ui/Kbd.svelte';
 	import Menu from '../../lib/ui/Menu.svelte';
@@ -33,10 +34,22 @@
 
 	onDestroy(() => s.dispose());
 
+	// RC-WEB: a load that takes long says so and offers a retry, instead of a skeleton that never ends.
+	const SLOW_MS = 5000;
+	let slow = $state(false);
+	$effect(() => {
+		if (s.phase !== 'loading') {
+			slow = false;
+			return;
+		}
+		const t = setTimeout(() => (slow = true), SLOW_MS);
+		return () => clearTimeout(t);
+	});
+
 	// ADR-033 waiting state: the display ticks once a second; the refetch itself is one timer in the state.
 	let nowMs = $state(Date.now());
 	$effect(() => {
-		if (!s.waiting) return;
+		if (s.phase !== 'waiting') return;
 		nowMs = Date.now();
 		const t = setInterval(() => (nowMs = Date.now()), 1000);
 		return () => clearInterval(t);
@@ -273,6 +286,22 @@
 		<Menu label={rv('rv.menu')} items={menuItems} />
 	</header>
 
+	{#if s.notice}
+		<div class="notice">
+			{#if s.notice === 'answerFailed'}
+				<Banner tone="error" title={rv('rv.answerFailed.title')}>
+					{rv('rv.answerFailed.body')}
+					{#snippet action()}<Button size="sm" variant="outline" icon="sync" onclick={() => void s.retryAnswer()}>{rv('rv.slow.retry')}</Button>{/snippet}
+				</Banner>
+			{:else}
+				<Banner tone="error" title={rv('rv.undoFailed.title')}>
+					{rv('rv.undoFailed.body')}
+					{#snippet action()}<Button size="sm" variant="outline" icon="undo" onclick={() => void s.undo()}>{rv('rv.slow.retry')}</Button>{/snippet}
+				</Banner>
+			{/if}
+		</div>
+	{/if}
+
 	{#if bigDay && s.current}
 		<div class="notice">
 			<Banner title={rv('rv.big.title', { n: remaining })}>{rv('rv.big.body')}</Banner>
@@ -280,67 +309,97 @@
 	{/if}
 
 	<section class="stage" aria-label={rv('rv.title')}>
-		{#if !s.loaded || s.settling}
+		{#if s.phase === 'loading'}
 			<div class="card" aria-busy="true">
 				<div class="card-body skeleton">
 					<span class="kb-sr">{rv('rv.loading')}</span>
 					<Skeleton shape="block" height="4.5rem" />
 					<Skeleton shape="text" count={2} />
+					{#if slow}
+						<div class="slow" role="status">
+							<p>{s.loaded ? rv('rv.slow.saving') : rv('rv.slow.loading')}</p>
+							{#if !s.loaded}
+								<Button variant="outline" icon="sync" onclick={() => s.retry()}>{rv('rv.slow.retry')}</Button>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			</div>
-		{:else if s.loadFailed || (s.refreshFailed && !s.current)}
+		{:else if s.phase === 'error'}
 			<div class="finished">
 				<LoadError size="page" title={rv('rv.loadFailed')} onretry={() => (s.loadFailed ? s.retry() : void s.reload())} />
 			</div>
-		{:else if s.drillUnavailable}
+		{:else if s.phase === 'drillUnavailable'}
 			<div class="finished">
 				<EmptyState size="page" art="info" title={rv('rv.drillUnavailable.title')} body={rv('rv.drillUnavailable.body')}>
 					{#snippet action()}<Button variant="primary" href="/struggle">{rv('rv.leaveDrill')}</Button>{/snippet}
 				</EmptyState>
 			</div>
+		{:else if s.phase === 'drillDone'}
+			<div class="finished" aria-live="polite">
+				<EmptyState size="page" art="enso" title={rv('rv.drillDone.title')} body={rv('rv.drillDone.body')}>
+					{#snippet action()}
+						<div class="done-actions">
+							<Button variant="primary" href="/struggle">{rv('rv.leaveDrill')}</Button>
+							{#if s.history.length > 0}
+								<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
+							{/if}
+						</div>
+					{/snippet}
+				</EmptyState>
+			</div>
+		{:else if s.phase === 'waiting' || s.phase === 'pending'}
+			<!-- Not the end: cards remain today. Waiting counts down to the next learning card; pending fetches again. -->
+			<div class="finished" aria-live="polite">
+				<div class="wait">
+					<Icon name="clock" size={40} />
+					<h2>{s.phase === 'waiting' ? rv('rv.waiting.title') : rv('rv.pending.title')}</h2>
+					{#if s.phase === 'waiting'}
+						<p class="countdown kb-num" aria-label={rv('rv.waiting.body', { time: countdown })}>{countdown}</p>
+						<p class="muted">{rv('rv.waiting.hint')}</p>
+					{:else}
+						<p class="muted">{rv('rv.pending.body')}</p>
+					{/if}
+					<div class="done-actions">
+						{#if s.moreAvailable && !s.keepGoing}
+							<Button variant="outline" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.waiting.keepGoing')}</Button>
+						{/if}
+						<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
+						{#if s.history.length > 0}
+							<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
+						{/if}
+						<Button variant="quiet" href="/">{rv('rv.done.today')}</Button>
+					</div>
+				</div>
+			</div>
 		{:else if !s.current}
 			<div class="finished" aria-live="polite">
-				{#if s.isDrill}
-					<EmptyState size="page" art="enso" title={rv('rv.drillDone.title')} body={rv('rv.drillDone.body')}>
-						{#snippet action()}
-							<div class="done-actions">
-								<Button variant="primary" href="/struggle">{rv('rv.leaveDrill')}</Button>
-								{#if s.history.length > 0}
-									<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
-								{/if}
-							</div>
-						{/snippet}
-					</EmptyState>
-				{:else}
-					<EmptyState
-						size="page"
-						art="enso"
-						title={s.waiting
-							? rv('rv.waiting.title')
-							: s.keepGoing ? rv('rv.caughtUp.title') : s.moreAvailable ? rv('rv.doneNow.title') : rv('rv.done.title')}
-						body={s.waiting
-							? rv('rv.waiting.body', { time: countdown })
-							: s.keepGoing
+				<EmptyState
+					size="page"
+					art="enso"
+					title={s.phase === 'doneForNow' ? rv('rv.doneNow.title') : s.keepGoing ? rv('rv.caughtUp.title') : rv('rv.done.title')}
+					body={s.phase === 'doneForNow'
+						? rv('rv.done.body')
+						: s.keepGoing
 							? rv('rv.caughtUp.body')
-							: s.dayEndsAt && !s.moreAvailable
+							: s.dayEndsAt
 								? rv('rv.done.next', { time: timeOf(s.dayEndsAt) })
 								: rv('rv.done.body')}
-					>
-						{#snippet action()}
-							<div class="done-actions">
-								{#if s.moreAvailable && !s.keepGoing}
-									<Button variant="primary" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.keepGoing')}</Button>
-								{/if}
-								<Button variant={s.moreAvailable && !s.keepGoing ? 'outline' : 'primary'} href="/">{rv('rv.done.today')}</Button>
-								<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
-								{#if s.history.length > 0}
-									<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
-								{/if}
-								<a class="quiet-link" href="/struggle/leeches">{rv('rv.done.leeches')}</a>
-							</div>
-						{/snippet}
-					</EmptyState>
-				{/if}
+				>
+					{#snippet action()}
+						<div class="done-actions">
+							{#if s.phase === 'doneForNow'}
+								<Button variant="primary" loading={s.busy} onclick={() => s.keepGoingOn()}>{rv('rv.keepGoing')}</Button>
+							{/if}
+							<Button variant={s.phase === 'doneForNow' ? 'outline' : 'primary'} href="/">{rv('rv.done.today')}</Button>
+							<Button variant="outline" icon="sync" loading={s.busy} onclick={() => s.reload()}>{rv('rv.done.check')}</Button>
+							{#if s.history.length > 0}
+								<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
+							{/if}
+							<a class="quiet-link" href="/struggle/leeches">{rv('rv.done.leeches')}</a>
+						</div>
+					{/snippet}
+				</EmptyState>
 			</div>
 		{:else}
 			{#key s.current.card.id}
@@ -646,6 +705,44 @@
 	}
 	.compact .card-body :global(.kb-divider) {
 		margin: min(1rem, 3cqh) 0;
+	}
+
+	/* ---------- slow load, waiting ---------- */
+	.slow {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--kb-space-3);
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
+		text-align: center;
+	}
+	.wait {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--kb-space-3);
+		text-align: center;
+		color: var(--kb-color-text);
+	}
+	.wait :global(svg) {
+		color: var(--kb-color-state-learning);
+	}
+	.wait h2 {
+		font: var(--kb-type-title);
+		margin: 0;
+	}
+	.countdown {
+		font-size: 3rem;
+		line-height: 1;
+		margin: 0;
+		font-variant-numeric: tabular-nums;
+	}
+	.muted {
+		margin: 0;
+		max-width: 28rem;
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
 	}
 
 	/* ---------- finished ---------- */

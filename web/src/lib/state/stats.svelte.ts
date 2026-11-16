@@ -8,9 +8,13 @@ import type {
 	StatsRetention,
 	StatsSummary
 } from '../api/generated';
-import { apiConfig } from '../api/client';
+import { quietApiConfig } from '../api/client';
 
-const api = new StatsApi(apiConfig);
+// RC-WEB: stats are slow (14-76 s, some 504) and each panel shows its own "couldn't load" + retry: no global toast.
+const api = new StatsApi(quietApiConfig);
+
+export type StatsPanel = 'summary' | 'heatmap' | 'retention' | 'forecast' | 'known' | 'calibration';
+const ALL: readonly StatsPanel[] = ['summary', 'heatmap', 'retention', 'forecast', 'known', 'calibration'];
 
 // Each panel loads on its own: one slow or failing endpoint never blanks the others.
 export type Panel<T> = { data: T | null; failed: boolean };
@@ -58,20 +62,45 @@ export class StatsPage {
 	readonly knownMax = $derived(Math.max(1, ...(this.known?.series.map((p) => p.known) ?? [0])));
 	readonly knownNow = $derived(this.known ? this.known.current.known + this.known.current.neverForget : 0);
 
-	/** Start all panel loads (reads no state). */
-	start(): void {
-		load(() => api.getStatsSummary(), (p) => (this.summaryP = p));
-		load(() => api.getStatsHeatmap(), (p) => (this.heatmapP = p));
-		load(() => api.getStatsRetention({ groupBy: 'card_kind' }), (p) => (this.retentionP = p));
-		load(() => api.getStatsForecast({ days: 30 }), (p) => (this.forecastP = p));
-		load(() => api.getStatsKnownWords({ interval: 'week' }), (p) => (this.knownP = p));
-		load(() => api.getStatsCalibration(), (p) => (this.calibrationP = p));
+	/** Aborts the requests still in flight when the screen is left (they would hold browser connections). */
+	#abort = new AbortController();
+
+	/** Start the loads of `panels` (all by default; reads no state). */
+	start(panels: readonly StatsPanel[] = ALL): void {
+		for (const p of panels) this.retry(p);
+	}
+
+	/** Load one panel (again). A panel that has data keeps showing it until the new data arrives. */
+	retry(panel: StatsPanel): void {
+		const init: RequestInit = { signal: this.#abort.signal };
+		switch (panel) {
+			case 'summary':
+				return load(() => api.getStatsSummary(init), (p) => (this.summaryP = p), init.signal);
+			case 'heatmap':
+				return load(() => api.getStatsHeatmap({}, init), (p) => (this.heatmapP = p), init.signal);
+			case 'retention':
+				return load(() => api.getStatsRetention({ groupBy: 'card_kind' }, init), (p) => (this.retentionP = p), init.signal);
+			case 'forecast':
+				return load(() => api.getStatsForecast({ days: 30 }, init), (p) => (this.forecastP = p), init.signal);
+			case 'known':
+				return load(() => api.getStatsKnownWords({ interval: 'week' }, init), (p) => (this.knownP = p), init.signal);
+			case 'calibration':
+				return load(() => api.getStatsCalibration({}, init), (p) => (this.calibrationP = p), init.signal);
+		}
+	}
+
+	/** Leaving the screen: abort what is still loading; nothing is written after this. */
+	dispose(): void {
+		this.#abort.abort();
 	}
 }
 
-function load<T>(fetch: () => Promise<T>, set: (p: Panel<T>) => void): void {
+function load<T>(fetch: () => Promise<T>, set: (p: Panel<T>) => void, signal?: AbortSignal | null): void {
 	fetch().then(
 		(data) => set({ data, failed: false }),
-		() => set({ data: null, failed: true }) // the client already toasted
+		() => {
+			if (signal?.aborted) return; // the screen was left: not a failure
+			set({ data: null, failed: true }); // shown inline by the panel, with a retry
+		}
 	);
 }

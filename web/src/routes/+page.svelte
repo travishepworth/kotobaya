@@ -1,8 +1,8 @@
 <script lang="ts">
 	// Today: what is due now and one button to start; decks, recent activity and what is giving trouble around it.
+	import { onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import ActivityStrip from '../lib/ui/ActivityStrip.svelte';
-	import Banner from '../lib/ui/Banner.svelte';
 	import Button from '../lib/ui/Button.svelte';
 	import Chip from '../lib/ui/Chip.svelte';
 	import EmptyState from '../lib/ui/EmptyState.svelte';
@@ -17,27 +17,36 @@
 	import { DecksListPage } from '../lib/state/decks.svelte';
 	import { StatsPage, iso } from '../lib/state/stats.svelte';
 	import { StrugglePage } from '../lib/state/struggle.svelte';
+	import { TodayQueue } from '../lib/state/today.svelte';
 	import { noteTitle } from '../lib/ui/cardState';
 	import { th } from './messages';
 
 	const stats = new StatsPage();
 	const decks = new DecksListPage();
 	const struggle = new StrugglePage();
+	const queue = new TodayQueue();
+	// RC-WEB: the counts and the Start button come from the review queue (as on every client). The slow stats
+	// (14-76 s, some 504) start only after it settles, so they never hold a browser connection the counts need,
+	// load only what this page shows, fail per widget, and are aborted when the page is left.
+	const HOME_STATS = ['summary', 'heatmap', 'retention'] as const;
 	$effect(() => {
-		stats.start();
 		decks.start();
 		struggle.start();
+		void queue.load().then(() => stats.start(HOME_STATS));
+	});
+	onDestroy(() => {
+		queue.dispose();
+		stats.dispose();
 	});
 
 	const summary = $derived(stats.summary);
-	const loading = $derived(!summary && !stats.summaryP.failed);
-	const due = $derived(summary ? summary.due._new + summary.due.learning + summary.due.review : 0);
+	const counts = $derived(queue.counts);
+	const due = $derived(queue.due);
 	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && !decks.loadFailed && decks.items.length === 0);
 	// Average answer time today, else ~10 s a card.
 	const etaMin = $derived.by(() => {
-		if (!summary) return 0;
-		const d = summary.doneToday;
-		const perCard = d.reviews > 0 && d.timeMs > 0 ? d.timeMs / d.reviews : 10_000;
+		const d = summary?.doneToday;
+		const perCard = d && d.reviews > 0 && d.timeMs > 0 ? d.timeMs / d.reviews : 10_000;
 		return Math.round((due * perCard) / 60_000);
 	});
 
@@ -79,24 +88,7 @@
 <svelte:head><title>{th('home.title')} · Kotobaya</title></svelte:head>
 
 <Page title={th('home.title')} eyebrow={dateLine}>
-	{#if stats.summaryP.failed}
-		<div class="error">
-			<Banner tone="error" title={th('home.errorTitle')}>
-				{th('home.errorBody')}
-				{#snippet action()}<Button size="sm" variant="outline" onclick={() => stats.start()}>{ut('app.retry')}</Button>{/snippet}
-			</Banner>
-		</div>
-	{/if}
-
-	{#if loading}
-		<div class="layout" aria-busy="true">
-			<div class="main">
-				<div class="hero skeleton"><Skeleton shape="block" height="11rem" /></div>
-				<Panel><Skeleton shape="row" count={4} /></Panel>
-			</div>
-			<div class="side"><Skeleton shape="block" height="9rem" /><Skeleton shape="block" height="7rem" /></div>
-		</div>
-	{:else if emptyAccount}
+	{#if emptyAccount}
 		<EmptyState size="page" art="sparkle" title={th('home.emptyTitle')} body={th('home.emptyBody')}>
 			{#snippet action()}
 				<div class="empty-actions">
@@ -109,8 +101,22 @@
 	{:else}
 		<div class="layout">
 			<div class="main">
+				{#if !queue.loaded}
+					<div class="hero skeleton" aria-busy="true"><Skeleton shape="block" height="11rem" /></div>
+				{:else}
 				<section class="hero" aria-labelledby="due-title">
-					{#if summary && due > 0}
+					{#if queue.failed && !counts}
+						<div class="due">
+							<p class="overline" id="due-title">{th('home.dueNow')}</p>
+							<p class="muted">{th('home.countsFailed')}</p>
+							<div class="row-actions">
+								<Button size="sm" variant="outline" icon="sync" onclick={() => void queue.load()}>{ut('app.retry')}</Button>
+							</div>
+						</div>
+						<div class="go">
+							<Button variant="primary" size="lg" href="/review" icon="review" full>{th('home.start')}</Button>
+						</div>
+					{:else if counts && due > 0}
 						<div class="due">
 							<p class="overline" id="due-title">{th('home.dueNow')}</p>
 							<p class="figure">
@@ -118,16 +124,16 @@
 								<span class="unit">{due === 1 ? th('home.card') : th('home.cards')}</span>
 							</p>
 							<ul class="breakdown">
-								<li><i class="new"></i>{th('home.new', { n: summary.due._new })}</li>
-								<li><i class="learning"></i>{th('home.learning', { n: summary.due.learning })}</li>
-								<li><i class="review"></i>{th('home.review', { n: summary.due.review })}</li>
+								<li><i class="new"></i>{th('home.new', { n: counts._new })}</li>
+								<li><i class="learning"></i>{th('home.learning', { n: counts.learning })}</li>
+								<li><i class="review"></i>{th('home.review', { n: counts.review })}</li>
 							</ul>
 						</div>
 						<div class="go">
 							<Button variant="primary" size="lg" href="/review" icon="review" full>{th('home.start')}</Button>
 							<p class="eta"><Icon name="clock" size={16} />{etaMin < 1 ? th('home.etaShort') : th('home.eta', { n: etaMin })}</p>
 						</div>
-					{:else if summary}
+					{:else}
 						<div class="done">
 							<svg class="enso" viewBox="0 0 120 120" aria-hidden="true">
 								<path
@@ -139,9 +145,9 @@
 								/>
 							</svg>
 							<div>
-								<h2 id="due-title">{summary.moreAvailable ? th('home.doneNow') : th('home.doneTitle')}</h2>
-								<p>{nextDue(summary.nextDueAt)}</p>
-								{#if summary.moreAvailable}
+								<h2 id="due-title">{queue.moreAvailable ? th('home.doneNow') : th('home.doneTitle')}</h2>
+								{#if summary}<p>{nextDue(summary.nextDueAt)}</p>{/if}
+								{#if queue.moreAvailable}
 									<Button variant="primary" href="/review?more=1" icon="review">{th('home.keepGoing')}</Button>
 								{/if}
 							</div>
@@ -156,6 +162,7 @@
 						</p>
 					{/if}
 				</section>
+				{/if}
 
 				<Panel title={th('home.decks')} link={decks.items.length > 0 ? { href: '/decks', label: th('home.allDecks') } : undefined} flush>
 					{#if !decks.loaded}
@@ -188,7 +195,10 @@
 					{#if stats.heatmap}
 						<ActivityStrip caption={th('home.activityCaption')} days={recent} />
 					{:else if stats.heatmapP.failed}
-						<p class="muted">{ut('app.loadFailed')}</p>
+						<p class="muted inline-error">
+							{ut('app.loadFailed')}
+							<Button size="sm" variant="quiet" icon="sync" onclick={() => stats.retry('heatmap')}>{ut('app.retry')}</Button>
+						</p>
 					{:else}
 						<Skeleton shape="block" height="3.5rem" />
 					{/if}
@@ -197,6 +207,20 @@
 						<div><dt>{th('home.retention')}</dt><dd class="kb-num">{pct(stats.retention?.overall.retention)}</dd></div>
 						<div><dt>{th('home.totalCards')}</dt><dd class="kb-num">{summary?.totals.cards.toLocaleString() ?? '–'}</dd></div>
 					</dl>
+					{#if stats.summaryP.failed || stats.retentionP.failed}
+						<p class="muted small inline-error">
+							{th('home.figuresFailed')}
+							<Button
+								size="sm"
+								variant="quiet"
+								icon="sync"
+								onclick={() => {
+									if (stats.summaryP.failed) stats.retry('summary');
+									if (stats.retentionP.failed) stats.retry('retention');
+								}}>{ut('app.retry')}</Button
+							>
+						</p>
+					{/if}
 				</Panel>
 
 				<Panel title={th('home.struggle')} link={{ href: '/struggle', label: th('home.struggleLink') }}>
@@ -226,8 +250,15 @@
 </Page>
 
 <style>
-	.error {
-		margin-bottom: var(--kb-space-5);
+	.inline-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--kb-space-2);
+	}
+	.row-actions {
+		display: flex;
+		gap: var(--kb-space-2);
 	}
 	.layout {
 		display: grid;
