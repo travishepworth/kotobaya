@@ -1177,3 +1177,4 @@
 2026-11-16T02:59:46Z REVIEW-UNLIMITED DISPATCH architect(opus)
 2026-11-16T03:17:46Z REVIEW-UNLIMITED HANDOFF (android red only on known-flaky BackNavigationTest); review dispatched. AND-FLAKY-BACKNAV DISPATCH writer(sonnet) — flaky now fails every full run, blocks green
 2026-11-16T03:18:28Z REVIEW-UNLIMITED REVIEW_APPROVE (3 minors -> FOLLOWUPS); merge waits on AND-FLAKY-BACKNAV for green android
+2026-11-16T03:50:24Z APK 0.1.25 sent to user (SendUserFile) for self-install. Backlog queued: RC-FOLLOW-SERVER, RC-FOLLOW-WEB DISPATCH; RC-FOLLOW-AND queued (deps AND-FLAKY-BACKNAV, REVIEW-UNLIMITED)
