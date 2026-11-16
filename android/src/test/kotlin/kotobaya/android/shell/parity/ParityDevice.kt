@@ -5,6 +5,7 @@ import java.io.File
 import kotlin.reflect.KClass
 import kotlinx.coroutines.runBlocking
 import kotobaya.android.dict.DictGapCache
+import kotobaya.android.dict.DictGapRemote
 import kotobaya.android.dict.DictLookup
 import kotobaya.android.dict.DictStore
 import kotobaya.android.dict.DictEntryDetail
@@ -125,7 +126,7 @@ class SeedLog(private val clock: Clock) : SyncTransport {
  *
  * Handlers get their dependencies from [services] by type, like `KoinShellServices` in production. Registered:
  * [SqlDelightDeviceStore], [SyncClient], `LocalWrites<SqlLearningTables>`, [Clock], [DictStore],
- * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [DueTrigger] (SHELL-L3, counted in `dueChanges`); [CardQuery] (SHELL-L4); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
+ * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [Upstream] (SHELL-L5, [server]); [DueTrigger] (SHELL-L3, counted in `dueChanges`); [CardQuery] (SHELL-L4); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
  * fixture and the cache), [EntryMaterializer] (`NoteCreator`), [SyncCoordinator] (idle, never runs) (SHELL-L2). An L
  * ticket whose handler needs something else registers it here.
  *
@@ -138,6 +139,10 @@ class ParityDevice(
     startMs: Long,
     routes: List<LocalRoute>,
     dictDir: File = ParityTemp.next("dictstore"),
+    /** SHELL-L5: L-7 step 3 (the server's `getDictEntry` / `getKanji`); null = never online (a scenario). */
+    remote: DictGapRemote? = null,
+    /** SHELL-L5: false = no dictionary package installed on this device. */
+    withDictionary: Boolean = true,
 ) {
     val clock = ParityClock(startMs)
     val log = SeedLog(clock)
@@ -149,7 +154,7 @@ class ParityDevice(
         private set
     val writes = LocalWrites(store, client.minter) { localChanges++ }
     val dictionary: ParityDictionary = ParityDictionary.fixture
-    val dictStore: DictStore = dictionary.install(dictDir)
+    val dictStore: DictStore = if (withDictionary) dictionary.install(dictDir) else DictStore(dictDir)
 
     /** SHELL-L9: the sidecar cache in the device's learning database, empty (no network in a scenario). */
     val gapCache = DictGapCache(store, driver)
@@ -173,7 +178,8 @@ class ParityDevice(
             override fun packageKanji(literal: String): KanjiDetail? = installedDictionary.packageKanji(literal)
         },
         gapCache,
-        remote = null,
+        remote = remote,
+        nowMs = { clock.nowMs() },
     )
 
     /** SHELL-L2: C-27 materialization as production wires it (`NoteCreator` over the device's minter). */
@@ -204,6 +210,18 @@ class ParityDevice(
 
     /** Requests [LocalApi] forwarded upstream (a scenario never goes online: each one is a finding). */
     val forwarded = ArrayList<String>()
+
+    /**
+     * SHELL-L5: the server behind [Upstream] (rules P-1 … P-3) when a test puts the device online; null = offline, every
+     * forward answers `503 shell_offline` without a network attempt. Handlers that forward themselves (L-7 "forward and
+     * merge") get the same [Upstream] from the services.
+     */
+    var server: Upstream? = null
+
+    private val upstream = Upstream { request, op, requestId ->
+        forwarded += "${op.operationId} ${request.method} ${request.path}"
+        (server ?: OfflineUpstream).forward(request, op, requestId)
+    }
 
     /** SHELL-L1: what `getPrincipal` / `getMeta` read besides the replica (a scenario never fetched `/meta`). */
     val identity = object : ShellIdentity {
@@ -246,6 +264,7 @@ class ParityDevice(
             SyncCoordinator::class to coordinator,
             DueTrigger::class to dueTrigger,
             CardQuery::class to cardQuery,
+            Upstream::class to upstream,
         ),
     )
 
@@ -258,10 +277,7 @@ class ParityDevice(
             override fun isRebuildPending(): Boolean = store.read { it.bookkeeping.rebuildPending }
             override suspend fun awaitReady() = Unit
         },
-        upstream = Upstream { request, op, requestId ->
-            forwarded += "${op.operationId} ${request.method} ${request.path}"
-            OfflineUpstream.forward(request, op, requestId)
-        },
+        upstream = upstream,
         services = services,
         newRequestId = { "parity-${++requestIds}" },
     )

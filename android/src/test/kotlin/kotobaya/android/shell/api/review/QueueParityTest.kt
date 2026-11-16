@@ -86,11 +86,10 @@ class QueueParityTest {
             problems += ParityJson.diff(expected, actual).map { "${s.id}: $it" }
         }
         assertTrue(problems.isEmpty(), problems.joinToString("\n"))
-        assertTrue(
-            // SHELL-L3: `empty-replica` and `queue-day-rollover-timezone` are no longer pending (they run whole, AnswerParityTest)
-            checked.containsAll(listOf("dict-entry-missing", "reading-retired-reenabled")),
-            "checked: $checked",
-        )
+        // SHELL-L3: `empty-replica` and `queue-day-rollover-timezone` are no longer pending (they run whole, AnswerParityTest).
+        // SHELL-L5: `dict-entry-missing` and `reading-retired-reenabled` run whole too (LocalParityTest); a scenario still
+        // pending here (a later ticket's operation) is checked up to that operation.
+        assertTrue(checked.none { it in listOf("dict-entry-missing", "reading-retired-reenabled") }, "checked: $checked")
     }
 
     /** `queue-day-rollover-timezone` without its answer: the study day of Asia/Tokyo changes at 19:00:00.000Z. */
