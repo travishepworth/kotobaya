@@ -81,8 +81,8 @@ class LoadGateTest {
         SyntheticReviews(cards = 50, historyRows = 300, todayRows = 30, dayStart = NOW - 3_600_000, now = NOW).insert(db, raw)
         val gate = LoadGate()
         val loader = LocalQueueLoader(db, { NOW }, gate = gate)
-        // a review session: one key per answer (newShownThisSession), plus a per-deck load
-        for (newShown in 0..20) loader.load(newShownThisSession = newShown)
+        // a review session: one build per answer, plus a per-deck load
+        repeat(21) { loader.load() }
         loader.load(deckFilter = "d1")
         assertEquals(0, gate.liveSlots())
         assertTrue(runCatching { gate.run("k") { error("boom") } }.isFailure)

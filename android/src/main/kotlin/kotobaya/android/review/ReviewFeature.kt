@@ -24,17 +24,17 @@ import java.io.File
 
 /** Adapts T304a's loader to the session's queue seam. */
 fun LocalQueueLoader.asQueueSource(deckId: String? = null): QueueSource = object : QueueSource {
-    override fun load(newShownThisSession: Int) = load(newShownThisSession, deckId).queue
+    override fun load(newShownThisSession: Int) = load(deckId).queue
 
     override fun loadSession(newShownThisSession: Int, keepGoing: Boolean): SessionQueue {
-        val loaded = load(newShownThisSession, deckId, keepGoing)
+        val loaded = load(deckId, keepGoing)
         // RC-AND: new cards counted on Today but not created must not end the session as "done": the session shows
         // Retry. With other cards to show, the session goes on; its next build retries the entries.
         loaded.materializeFailure?.let { if (loaded.queue.items.isEmpty()) throw it }
         return SessionQueue(
             loaded.queue,
             loaded.input.limits.burySiblings,
-            moreAvailable = loaded.queue.moreAvailable,
+            moreAvailable = !keepGoing && loaded.state.legacy.moreAvailable,
             dayStartMs = loaded.input.day.startMs,
             dayEndMs = loaded.input.day.endMs,
         )

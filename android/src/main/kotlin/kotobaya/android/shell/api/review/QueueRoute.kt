@@ -21,11 +21,13 @@ import kotobaya.android.shell.api.identity.timestamp
 import kotobaya.android.review.CardRows
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SyncCoordinator
+import kotobaya.contracts.queue.LoopState
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.sync.JsonArray
 import kotobaya.contracts.sync.JsonBool
+import kotobaya.contracts.sync.JsonNull
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -69,11 +71,8 @@ internal fun queueRequest(call: LocalCall): QueueRequest {
  * `getReviewQueue` (SHELL.md 4.3): a stateless view over [LocalQueueLoader.load] — the core builder decides every queue
  * rule; this handler only shapes the answer like the server's `ReviewApi.queue`.
  *
- * - `newShownThisSession` is always 0: the handler has no session (the SPA's session is a sequence of stateless
- *   fetches, as against the server), so `scheduler.new_per_session` caps every fetch the same way; the parity scenario
- *   `queue-session-cap-more-available` covers it. Learn-ahead is 0 (the loader's constant, ADR-033).
- * - `counts`, `study_day`, `day_ends_at` describe the normal build also with `keep_going=true` (ADR-033): the keep-going
- *   build's input is rebuilt with `keepGoing = false` (no second load), and `counts` are [LoadedQueue.counts] of it.
+ * - ADR-037: the loop ([LoadedQueue.state], core's `DefaultReviewLoop`) decides items, `loop` and the legacy `counts`;
+ *   `new_per_session` is ignored. Learn-ahead is 0 (the loader's constant, ADR-033).
  * - C-27: drawn deck entries are materialized by the loader's rounds through the app's [EntryMaterializer]
  *   (`NoteCreator.materialize`, ops minted as this device, idempotent in one store transaction) when
  *   [materializeAllowed] and `kinds` includes `new` (the server's rule for a caller that may review); otherwise they
@@ -106,7 +105,7 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
         gate = LoadGate(),
         materializer = materializer,
     )
-    val loaded = loader.load(newShownThisSession = 0, deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
+    val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
     return ShellResponse.json(render(r, now, loaded, settings, store, dict))
 }
@@ -121,19 +120,13 @@ private fun render(
 ): JsonObject {
     val queue = loaded.queue
     val input = loaded.input
-    // ADR-033: counts always describe the normal build (same loaded input, no extra load)
-    val normal = if (r.keepGoing) {
-        val normalInput = input.copy(limits = input.limits.copy(keepGoing = false))
-        LoadedQueue(normalInput, DefaultQueueBuilder.build(normalInput))
-    } else {
-        loaded
-    }
-    val c = normal.counts
+    val state = loaded.state
+    val legacy = state.legacy
     fun inKinds(i: QueueItem) = i.kind.name.lowercase() in r.kinds
     val wanted = queue.items.filter(::inKinds).take(r.limit)
-    // C-26: all kinds -> the core's own signal; a kinds filter -> one keep-going build, only for an empty normal page
+    // C-26: all kinds -> the loop's own signal (never under keep going); a kinds filter -> one keep-going build, only for an empty normal page
     val moreAvailable = if (r.kinds == ALL_KINDS) {
-        queue.moreAvailable
+        !r.keepGoing && legacy.moreAvailable
     } else {
         !r.keepGoing && wanted.isEmpty() &&
             DefaultQueueBuilder.build(input.copy(limits = input.limits.copy(keepGoing = true))).let { kg ->
@@ -147,16 +140,31 @@ private fun render(
     }
     val out = LinkedHashMap<String, JsonValue>()
     out["items"] = JsonArray(items)
-    out["counts"] = JsonObject(linkedMapOf("new" to n(c.new), "learning" to n(c.learning), "review" to n(c.due)))
+    // ADR-037: the deprecated `counts` keep their frozen meaning, from the loop's legacy block
+    out["counts"] = JsonObject(linkedMapOf("new" to n(legacy.new), "learning" to n(legacy.learning), "review" to n(legacy.review)))
     out["study_day"] = JsonString(day.date.toString())
     out["day_ends_at"] = JsonString(timestamp(day.day.endMs))
     out["generated_at"] = JsonString(timestamp(now))
     out["more_available"] = JsonBool(moreAvailable)
     out["to_materialize"] = n(if ("new" in r.kinds) queue.toMaterialize.size else 0)
+    out["loop"] = loopJson(state)
     // ADR-033: absent when no learning card falls due later today
-    queue.nextLearningDueAt?.let { out["next_learning_due_at"] = JsonString(timestamp(it)) }
+    state.nextDueAt?.let { out["next_learning_due_at"] = JsonString(timestamp(it)) }
     return JsonObject(out)
 }
+
+/** `ReviewQueue.loop`, field for field as the server's `ReviewApi.loopJson`. */
+private fun loopJson(s: LoopState): JsonObject = JsonObject(
+    linkedMapOf(
+        "phase" to JsonString(s.phase.wire),
+        "keep_going" to JsonBool(s.keepGoing),
+        "ready" to JsonObject(linkedMapOf("learning" to n(s.readyLearning), "review" to n(s.readyReviews), "total" to n(s.readyLearning + s.readyReviews))),
+        "later_today" to JsonObject(linkedMapOf("count" to n(s.laterToday), "next_due_at" to (s.nextDueAt?.let { JsonString(timestamp(it)) } ?: JsonNull))),
+        "backlog" to JsonObject(linkedMapOf("reviews" to n(s.backlog), "beyond_limit" to n(s.backlogBeyondLimit))),
+        "reviews" to JsonObject(linkedMapOf("today" to n(s.reviewsToday), "limit" to (s.reviewsLimit?.let { n(it) } ?: JsonNull))),
+        "new" to JsonObject(linkedMapOf("today" to n(s.newToday), "goal" to n(s.newGoal), "available" to JsonBool(s.newAvailable))),
+    ),
+)
 
 private fun n(v: Int): JsonNumber = JsonNumber(v.toDouble())
 

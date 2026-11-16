@@ -74,15 +74,16 @@ class ParityHarnessSelfTest {
     @Test
     fun invariantsAreCheckedOnTheShellsAnswers() {
         val s = ParityScenario.load("queue-counts-keep-going")
-        assertEquals(1, s.invariants.size)
+        assertEquals(6, s.invariants.size) // /counts and five /loop blocks, equal in all three steps
+        val loop = """"loop":{"ready":{"total":1},"later_today":{"count":0},"backlog":{"reviews":0},"reviews":{"today":0},"new":{"today":0}}"""
         fun answers(body: (Int) -> String) =
             s.steps.indices.map { i -> RawResponse(200, mapOf("content-type" to "application/json"), body(i)) }
-        val differ = ParityRunner.invariantProblems(s, ParityRunner.normalise(s, answers { """{"counts":{"new":$it}}""" }))
+        val differ = ParityRunner.invariantProblems(s, ParityRunner.normalise(s, answers { """{"counts":{"new":$it},$loop}""" }))
         assertEquals(1, differ.size, differ.joinToString("\n"))
         assertTrue(differ.single().startsWith("invariant 0: not equal: step 0 /counts={\"new\":0}"), differ.single())
-        val same = ParityRunner.normalise(s, answers { """{"counts":{"new":1,"learning":0,"review":0}}""" })
+        val same = ParityRunner.normalise(s, answers { """{"counts":{"new":1,"learning":0,"review":0},$loop}""" })
         assertEquals(emptyList(), ParityRunner.invariantProblems(s, same))
-        val missing = ParityRunner.invariantProblems(s, ParityRunner.normalise(s, answers { if (it == 1) "{}" else """{"counts":{}}""" }))
+        val missing = ParityRunner.invariantProblems(s, ParityRunner.normalise(s, answers { if (it == 1) """{$loop}""" else """{"counts":{},$loop}""" }))
         assertEquals(listOf("invariant 0: unresolved step 1 /counts"), missing)
     }
 

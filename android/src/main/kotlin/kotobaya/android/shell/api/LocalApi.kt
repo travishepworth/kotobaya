@@ -140,14 +140,14 @@ class LocalApi(
 
     companion object {
         /** `LOCAL_API_VERSION` (SHELL.md 7.2). */
-        const val LOCAL_API_VERSION: Int = 1
+        const val LOCAL_API_VERSION: Int = 2
 
         const val MAX_BODY_BYTES: Long = 4L * 1024 * 1024
         const val READY_TIMEOUT_MS: Long = 20_000
         const val GET_BLOB: String = "getBlob"
 
         /** Answered while unpaired (SHELL.md 3.1 step 3). */
-        val UNPAIRED_ALLOWED: Set<String> = setOf("getShellInfo", "pairShell")
+        val UNPAIRED_ALLOWED: Set<String> = setOf("getShellInfo", "pairShell", "getDisplayPrefs", "updateDisplayPrefs")
 
         /** Exempt from the readiness gate (2.5) and the rebuild gate (L-8). */
         val GATE_EXEMPT: Set<String> = setOf("getShellInfo", "pairShell", "unpairShell", "getSyncStatus", "syncNow")

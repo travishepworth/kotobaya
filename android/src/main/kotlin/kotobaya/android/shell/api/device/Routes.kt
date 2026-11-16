@@ -27,7 +27,7 @@ val routes: List<LocalRoute> = listOf(
     LocalRoute("unpairShell", "POST", "/shell/v1/unpair") { call -> unpairShell(call) },
     LocalRoute("getSyncStatus", "GET", "/shell/v1/sync") { call -> getSyncStatus(call) },
     LocalRoute("syncNow", "POST", "/shell/v1/sync") { call -> syncNow(call) },
-) + settingsRoutes
+) + settingsRoutes + displayRoutes
 
 /** The registered [DeviceOps] (tests), else the production one over the app's services. */
 private fun ops(call: LocalCall): DeviceOps =

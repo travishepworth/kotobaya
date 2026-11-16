@@ -44,7 +44,7 @@ class QueueParityTest {
     @Test
     fun theQueueScenariosThatOnlyNeedThisTicketMatchTheirGoldensWhole() {
         val ids = listOf(
-            "queue-counts-keep-going", "queue-learning-wait", "queue-session-cap-more-available", "queue-kinds-filter-counts",
+            "queue-counts-keep-going", "queue-learning-wait", "queue-kinds-filter-counts",
             "queue-reviews-unlimited", "queue-materialize-count",
         )
         for (id in ids) {

@@ -60,9 +60,12 @@ class HomeQueueAgreementTest {
         val state = vm.state.value
         val decks = assertNotNull(state.decks, "decks still loading")
         val queue = assertNotNull(state.queue, "queue counts still loading")
-        assertEquals(review.items.size, queue.total, "Home's count == the Review queue size")
-        assertEquals(QueueCounts(dueItems, 10, 1), queue)
-        assertEquals(TodayHero.Waiting(review.items.size), todayHero(queue))
+        // ADR-037: the old counts keep their frozen meaning (new = the day's unbounded new goal, here 20); the ready-now
+        // number the widget shows is the loop's, and equals what the Review tab serves besides new cards.
+        val ready = loader.load().state
+        assertEquals(dueItems + 1, ready.readyReviews + ready.readyLearning, "ready now == the Review queue's due + learning")
+        assertEquals(QueueCounts(dueItems, 20, 1), queue)
+        assertEquals(TodayHero.Waiting(dueItems + 20 + 1), todayHero(queue))
 
         // The pre-fix hero: a sum over enabled user decks. Zero here, which is the "caught up" of the bug report.
         val oldSum = decks.filter { it.type == "user" && it.enabled }.sumOf { it.counts.total }

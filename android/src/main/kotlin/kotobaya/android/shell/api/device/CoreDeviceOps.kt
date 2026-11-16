@@ -83,7 +83,7 @@ class CoreDeviceOps(
     companion object {
         /** Features this build offers (`ShellInfo.capabilities`). */
         val CAPABILITIES: List<String> =
-            listOf("sync", "pairing", "takoboto", "dict_install", "offline_storage", "notifications", "push", "ankiconnect")
+            listOf("sync", "pairing", "takoboto", "dict_install", "offline_storage", "notifications", "push", "ankiconnect", "display")
 
         /** Resolves the production instance from the app's services. */
         fun from(s: ShellServices): CoreDeviceOps {

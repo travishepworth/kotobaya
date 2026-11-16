@@ -103,7 +103,7 @@ class KeepGoingTest {
     }
 
     /**
-     * AND-KEEPGOING-FIX acceptance: 300 reviews due (cap 200), 40 new (20/day, 10/session). The normal session ends
+     * AND-KEEPGOING-FIX acceptance: 300 reviews due (cap 200), 40 new (20/day; ADR-037: no session cap). The normal session ends
      * after the capped queue with Keep going offered; Keep going then serves every remaining due review and every new
      * card in one uninterrupted stream, through periodic "refresh" rebuilds and batch boundaries, and only then ends.
      */
@@ -111,7 +111,6 @@ class KeepGoingTest {
     fun keepGoingServesEveryDueReviewAndEveryNewCardWithoutStopping() {
         setting("scheduler.reviews_per_day", "200")
         setting("scheduler.new_per_day", "20")
-        setting("scheduler.new_per_session", "10")
         val reviews = d.seed(300)
         makeDueReviews(reviews)
         val news = d.seed(40)
@@ -133,7 +132,7 @@ class KeepGoingTest {
         assertTrue(s.meta.value.moreAvailable, "done for now, Keep going offered")
         assertFalse(s.meta.value.keepingGoing)
         assertEquals(200, normal.count { it in reviews }, "review cap")
-        assertEquals(10, normal.count { it in news }, "session new cap")
+        assertEquals(20, normal.count { it in news }, "day goal")
 
         // keep going: one stream to the very end
         s.startKeepGoing()
@@ -157,8 +156,8 @@ class KeepGoingTest {
         assertEquals(reviews.toSet(), (normal + kept).filterTo(HashSet()) { it in reviews }, "every due review served")
         assertEquals(news.toSet(), (normal + kept).filterTo(HashSet()) { it in news }, "every new card served")
         assertEquals(100, kept.count { it in reviews && it !in normal })
-        assertEquals(30, kept.count { it in news && it !in normal })
-        assertTrue(answers >= 130, "answers while keeping going: $answers")
+        assertEquals(20, kept.count { it in news && it !in normal })
+        assertTrue(answers >= 120, "answers while keeping going: $answers")
         assertIs<ReviewState.Summary>(s.state.value)
         assertTrue(s.meta.value.keepingGoing)
         assertFalse(s.meta.value.moreAvailable, "truly out: no button")

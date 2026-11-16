@@ -81,6 +81,37 @@ class DueNotificationsTest {
         assertEquals("142 due · 38 new", n.dueCountText(142, 38))
     }
 
+    /** ADR-037: the ongoing count is what can be answered now; learning cards due later today are not in it. */
+    @Test
+    fun countIsReadyNow() {
+        val rec = Recorder()
+        val n = build(rec, Signals(null))
+        GlobalContext.get().get<AppDatabase>().localQueueQueries.liveDecks().executeAsList() // creates the schema on the file
+        val sql = android.database.sqlite.SQLiteDatabase.openDatabase(
+            context.getDatabasePath(kotobaya.android.db.APP_DB_FILE).path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
+        )
+        try {
+            for (i in 1..35) {
+                val id = "0193a1b2-0001-7000-8000-%012d".format(i)
+                sql.execSQL(
+                    "INSERT INTO note (id, note_type_id, type, entry_seq, fields, created_by_device_id, created_at, updated_at) VALUES " +
+                        "('$id', '00000000-0000-7000-8000-000000000101', 'vocab', ${100 + i}, " +
+                        "'{\"expression\":\"w$i\",\"reading\":\"r$i\",\"meaning\":\"m$i\"}', 'dev', $i, $i)",
+                )
+                val (state, due) = if (i <= 9) "review" to now - 3_600_000 else "learning" to now + 3_600_000
+                val card = "0193a1b2-0002-7000-8000-%012d".format(i)
+                sql.execSQL(
+                    "INSERT INTO card (id, note_id, kind, state, due_at, lapses, created_at, updated_at) VALUES " +
+                        "('$card', '$id', 'meaning', '$state', $due, 0, 0, 0)",
+                )
+            }
+        } finally {
+            sql.close()
+        }
+        n.onDueChanged()
+        assertEquals("9 due · 0 new", title(rec.posted.single { it.first == DueNotifications.ID_DUE }.second))
+    }
+
     @Test
     fun deniedPermissionPostsNothingButStillSchedules() {
         val rec = Recorder().also { it.allowed = false }

@@ -191,7 +191,7 @@ class DeckRepository(
     private fun countsOf(loaded: LoadedQueue, deckId: String): QueueCounts {
         val input = loaded.input
         val filtered = input.copy(candidates = input.candidates.filter { c -> c.memberships.any { it.deckId == deckId } })
-        return LoadedQueue(filtered, DefaultQueueBuilder.build(filtered)).counts
+        return LoadedQueue(filtered).counts
     }
 
     private fun summary(r: Row, loaded: LoadedQueue): DeckSummary = DeckSummary(

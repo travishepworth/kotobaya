@@ -17,6 +17,8 @@ import kotobaya.contracts.queue.QueueInput
 import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.QueueLimits
+import kotobaya.contracts.queue.LoopResult
+import kotobaya.contracts.queue.LoopState
 import kotobaya.contracts.queue.ReviewQueue
 import kotobaya.contracts.queue.StudyDay
 import kotobaya.contracts.queue.TodayReview
@@ -24,10 +26,13 @@ import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
 import kotobaya.db.app.AppDatabase
-import kotobaya.queue.DefaultQueueBuilder
+import kotobaya.queue.DefaultReviewLoop
 import kotobaya.sync.DefaultCanonicalJson
 
-/** Counts shown on Home: what the queue holds right now (limits applied by core's builder). */
+/**
+ * The frozen pre-ADR-037 counts (`LoopState.legacy`), kept only for the legacy Compose screens until SHELL-Z1 deletes
+ * them. Nothing new reads them: widget, notification and the shell route use [LoopState].
+ */
 data class QueueCounts(
     val due: Int,
     val new: Int,
@@ -46,46 +51,28 @@ data class QueueCounts(
 /** A built queue with the exact input that produced it. */
 class LoadedQueue internal constructor(
     internal val input: QueueInput,
-    val queue: ReviewQueue,
+    val result: LoopResult,
     /**
      * RC-AND: creating the notes of drawn deck entries threw, so `queue.toMaterialize`
-     * holds new cards that [counts] includes but `queue.items` does not; null when nothing failed.
+     * holds new cards that [state] counts but `queue.items` does not; null when nothing failed.
      */
     val materializeFailure: Throwable? = null,
 ) {
-    val counts: QueueCounts
-        get() = QueueCounts(
-            due = queue.items.count { it.kind == QueueItemKind.REVIEW },
-            // entries still to materialize (no materializer, or it refused) are new cards of this queue too
-            new = queue.items.count { it.kind == QueueItemKind.NEW } + queue.toMaterialize.size,
-            // ADR-033: learning cards due later today are still to do today (as the server's `counts.learning`)
-            learning = queue.items.count { it.kind == QueueItemKind.LEARNING } + laterLearning(),
-            moreAvailable = queue.moreAvailable,
-        )
+    /** The loop evaluated over [input] (DeckRepository's per-deck counts). */
+    internal constructor(input: QueueInput) : this(input, DefaultReviewLoop.evaluate(input))
 
-    /**
-     * Learning and relearning candidates not in the queue but due before the study day ends, eligible as core's rule 1
-     * has it for learning cards (not suspended, not buried now, no excluding word override): they make
-     * `nextLearningDueAt` and show once due. A retired card (ADR-035, core rule 0) never counts.
-     */
-    private fun laterLearning(): Int {
-        val inQueue = queue.items.mapTo(HashSet()) { it.cardId }
-        return input.candidates.count { c ->
-            val due = c.dueAt
-            c.cardId !in inQueue && !CardKinds.isRetired(c.noteBaseType, c.kind, input.readingEnabled) &&
-                (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) && !c.suspended &&
-                (c.buriedUntil?.let { it <= input.now } ?: true) && c.wordOverride !in LATER_EXCLUDED &&
-                due != null && due < input.day.endMs
-        }
-    }
+    /** The queue the loop serves (N, or K under keep going). */
+    val queue: ReviewQueue get() = result.queue
+
+    /** The loop's phase and numbers (ADR-037). */
+    val state: LoopState get() = result.state
+
+    /** Legacy view of [state] for the old Compose screens (frozen meaning, see [QueueCounts]). */
+    val counts: QueueCounts
+        get() = state.legacy.let { QueueCounts(due = it.review, new = it.new, learning = it.learning, moreAvailable = it.moreAvailable) }
 
     /** The first [size] items: what a review session starts with. */
     fun sessionPrefix(size: Int): List<QueueItem> = queue.items.take(size)
-
-    private companion object {
-        /** Core rule 1's excluded overrides (QueueBuilder `excludedOverrides`). */
-        val LATER_EXCLUDED = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
-    }
 }
 
 /** Card ids a smart deck selects (needs the search evaluator on SQLite; none until that ships). */
@@ -127,18 +114,17 @@ class LocalQueueLoader(
         QueueSettings.from(q.schedulerSettings().executeAsList().associate { it.key to it.value_ })
 
     /**
-     * Builds the queue now ([keepGoing]: C-26, one visit to the review screen only). [deckFilter] limits candidates to one deck; [newShownThisSession] is the UI's counter.
+     * Evaluates the review loop now (ADR-037; [keepGoing]: C-26, per device). [deckFilter] limits candidates to one deck.
      * Concurrent calls with the same arguments share one build that started after they were made ([LoadGate]).
      */
     fun load(
-        newShownThisSession: Int = 0,
         deckFilter: String? = null,
         keepGoing: Boolean = false,
         keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
     ): LoadedQueue {
         awaitReady()
-        return gate.run(LoadKey(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)) {
-            var loaded = build(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)
+        return gate.run(LoadKey(deckFilter, keepGoing, keepGoingNewBatch)) {
+            var loaded = build(deckFilter, keepGoing, keepGoingNewBatch)
             // C-27 rounds (as the server): a drawn entry needs its note and cards first (ReviewQueue.toMaterialize), then
             // a rebuild draws those cards in its place. Another round only if the last one's notes reached `items`, so a
             // mismatch between what was drawn and what shows can never create notes that are not shown.
@@ -151,11 +137,11 @@ class LocalQueueLoader(
                     m.materialize(loaded.queue.toMaterialize)
                 } catch (e: Exception) {
                     kotobaya.android.vm.ScreenLog.loadFailed("LocalQueueLoader.materialize", e)
-                    return@run LoadedQueue(loaded.input, loaded.queue, MaterializeFailed(e))
+                    return@run LoadedQueue(loaded.input, loaded.result, MaterializeFailed(e))
                 }
                 // nothing created is not a failure: the entries may have notes by now (another build, a pull)
                 if (created.isEmpty()) break
-                loaded = build(newShownThisSession, deckFilter, keepGoing, keepGoingNewBatch)
+                loaded = build(deckFilter, keepGoing, keepGoingNewBatch)
                 rounds++
                 val noteOf = loaded.input.candidates.associate { it.cardId to it.noteId }
                 if (loaded.queue.items.none { noteOf[it.cardId] in created }) break
@@ -164,9 +150,9 @@ class LocalQueueLoader(
         }
     }
 
-    private data class LoadKey(val newShownThisSession: Int, val deckFilter: String?, val keepGoing: Boolean, val keepGoingNewBatch: Int)
+    private data class LoadKey(val deckFilter: String?, val keepGoing: Boolean, val keepGoingNewBatch: Int)
 
-    private fun build(newShownThisSession: Int, deckFilter: String?, keepGoing: Boolean, keepGoingNewBatch: Int): LoadedQueue {
+    private fun build(deckFilter: String?, keepGoing: Boolean, keepGoingNewBatch: Int): LoadedQueue {
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -211,15 +197,15 @@ class LocalQueueLoader(
                 deckIds = memberships[r.note_id].orEmpty().map(DeckMembership::deckId),
             )
         }
-        val pending = pendingEntries(decks, deckFilter, settings, keepGoing, keepGoingNewBatch)
+        val pending = pendingEntries(decks, deckFilter, settings, keepGoingNewBatch)
         val input = QueueInput(
             now = now,
             day = day,
             limits = QueueLimits(
                 newPerDay = settings.newPerDay,
                 reviewsPerDay = settings.reviewsPerDay,
-                newPerSession = settings.newPerSession,
-                newShownThisSession = newShownThisSession,
+                newPerSession = 0, // ADR-037: deprecated, ignored
+                newShownThisSession = 0,
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS,
                 keepGoing = keepGoing,
@@ -234,7 +220,7 @@ class LocalQueueLoader(
             decklessAddKanji = settings.decklessAddKanji,
             readingEnabled = settings.readingEnabled,
         )
-        return LoadedQueue(input, DefaultQueueBuilder.build(input))
+        return LoadedQueue(input)
     }
 
     /** Due / new / learning counts of the current queue. */
@@ -284,16 +270,13 @@ class LocalQueueLoader(
      * user-deleted note, override filter) plus the [materializer]'s plan (dictionary entry installed, at least one vocab
      * kind; `expressionKanji` and `newKanjiCards` for the builder's add_kanji group). None while the materializer is
      * not [EntryMaterializer.ready] (no dictionary, or a pull in progress: the notes may still be on their way). Per deck
-     * the first `2 * B + 16` in `(position, item_key)` order, `B` = the keep-going batch when keeping going, else the
-     * larger of it and `min(newPerDay, newPerSession)` (`moreAvailable` probes with the batch); later ones are reached by
-     * a later build.
+     * the first `2 * B + 16` in `(position, item_key)` order, `B` = `max(1, batch)` (ADR-037); later ones are reached by a later build.
      */
-    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoing: Boolean, keepGoingNewBatch: Int): List<PendingEntry> {
+    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoingNewBatch: Int): List<PendingEntry> {
         val m = materializer ?: return emptyList()
         if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList()
         val batch = maxOf(1, keepGoingNewBatch)
-        val budget = if (keepGoing) batch else maxOf(batch, minOf(settings.newPerDay, settings.newPerSession))
-        val window = 2 * budget + 16
+        val window = 2 * batch + 16 // ADR-037: B = max(1, batch) bounds both builds of the loop
         val page = maxOf(window * 2, MIN_PENDING_PAGE).toLong()
         return decks.filter { it.enabled && (deckFilter == null || it.id == deckFilter) }.flatMap { deck ->
             val out = ArrayList<PendingEntry>()

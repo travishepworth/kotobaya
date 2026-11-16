@@ -87,11 +87,12 @@ class SqliteWidgetSource(private val context: Context) : WidgetSource {
 class WidgetData(private val loader: LocalQueueLoader, private val source: WidgetSource) {
     fun snapshot(): WidgetSnapshot {
         val loaded = loader.load()
-        val counts = loaded.counts
+        val state = loaded.state
         val day = loaded.input.day
         return WidgetSnapshot(
-            due = counts.due + counts.learning,
-            new = counts.new,
+            // ADR-037: what can be answered now; cards waiting for a learning step (laterToday) are not counted
+            due = state.readyLearning + state.readyReviews,
+            new = state.legacy.new,
             forecast = loader.forecast24h(),
             doneToday = source.doneSince(day.startMs),
             hotWord = pickHotWord(source.hotCandidates(), day.startMs),

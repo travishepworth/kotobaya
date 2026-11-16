@@ -173,6 +173,8 @@ object ApiOperations {
         op("updatePushState", "PATCH", "/shell/v1/push", SHELL),
         op("getAnkiConnectState", "GET", "/shell/v1/ankiconnect", SHELL),
         op("updateAnkiConnectState", "PATCH", "/shell/v1/ankiconnect", SHELL),
+        op("getDisplayPrefs", "GET", "/shell/v1/display", SHELL),
+        op("updateDisplayPrefs", "PATCH", "/shell/v1/display", SHELL),
     )
 
     val byId: Map<String, ApiOperation> = all.associateBy { it.operationId }

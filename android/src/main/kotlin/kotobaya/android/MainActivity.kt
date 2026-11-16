@@ -61,6 +61,10 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         @Suppress("DEPRECATION") // Below API 30 the IME insets only reach the views with adjustResize.
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        // PORTRAIT-AND: the stored lock applies before anything is shown (SHELL.md 6.3); the activity handles rotation itself
+        kotobaya.android.shell.api.device.ActivityOrientation.attach(
+            this, kotobaya.android.shell.api.device.CoreDisplayOps.storedLockPortrait(this),
+        )
         if (!BridgeTransport.isSupported()) {
             setContentView(unsupportedScreen())
             return
@@ -122,6 +126,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        kotobaya.android.shell.api.device.ActivityOrientation.detach(this)
         handler.removeCallbacksAndMessages(null)
         host?.destroy()
         host = null
