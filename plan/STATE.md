@@ -4,7 +4,9 @@ Phase: P9 UI rewrite DONE   Gate: none open (B2 approved 2026-11-14); GATE-P2..P
 Updated: RUN28 resume
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 30): LIVE api/web 0.1.19 (helm rev 27, pin 5dfeec90, C-27 deck materialization + web/CLI keep going; verified 10 deck notes, no growth from CLI polls), worker 0.1.18. AND-KEEPGOING-FIX MERGED 0ef9296e. APK 0.1.20 INSTALLED (~/kotobaya-apk/kotobaya-0.1.20-release.apk, code 120, cert ok, pin 0ef9296e, worktree scratchpad/rel0120). Next: adb install -r when phone connected; user may need to reinstall CLI daemon (uv tool) for keep_going action.
+## RESUME HERE (run 31): user report: web 3 cards -> loading -> session over + 'something went wrong'. Live api 0.1.20/web 0.1.22/worker 0.1.18 (helm rev 31), APK 0.1.24. Running RC-SERVER, RC-WEB, RC-AUDIT (P10 review-cycle hardening). Then: android/cli fix tickets from audit, release.
+
+## Previous (run 30): LIVE api/web 0.1.19 (helm rev 27, pin 5dfeec90, C-27 deck materialization + web/CLI keep going; verified 10 deck notes, no growth from CLI polls), worker 0.1.18. AND-KEEPGOING-FIX MERGED 0ef9296e. APK 0.1.20 INSTALLED (~/kotobaya-apk/kotobaya-0.1.20-release.apk, code 120, cert ok, pin 0ef9296e, worktree scratchpad/rel0120). Next: adb install -r when phone connected; user may need to reinstall CLI daemon (uv tool) for keep_going action.
 
 ## Previous (run 29): LIVE api/web/worker 0.1.18 (helm rev 26); freq_rebuild run, list decks republished. APK 0.1.19 INSTALLED (pin cc8fe927). Nothing running. Next: user feedback; FOLLOWUPS.
 
@@ -26,6 +28,9 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| RC-SERVER | architect(opus) | 1 | t/RC-SERVER | run31 |
+| RC-WEB | writer-senior(opus) | 1 | t/RC-WEB | run31 |
+| RC-AUDIT | reviewer(opus) read-only | 1 | - | run31 |
 
 
 ## Queued

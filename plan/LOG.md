@@ -1154,3 +1154,7 @@
 2026-11-15T07:20:40Z RELEASE 0.1.18 DEPLOYED helm rev 26 (api/web c960233b, worker 624d4305); APK 0.1.19 INSTALLED (pin cc8fe927)
 2026-11-15T07:22:06Z FREQ_REBUILD ran on live (freq_rank_changed 15879; 3 freq decks + 3 JLPT republished, content_version bump). Conversation deck そう: 16 -> 6 (kanji-row words 層/総/僧/草/沿う + 然う)
 - run 30: user reported keep going stops + web unable to review. Root cause: deck entries never materialized (pendingEntries empty on server+device). C-27 (architect, 2 rounds, reviewer+architect approved) + AND-KEEPGOING-FIX (3 rounds, approved). Deployed api/web 0.1.19; APK 0.1.20 built.
+2026-11-16T02:17:29Z RUN31 START user: web shows 3 cards, click -> stuck loading -> session over; web "something went wrong". Live: /review/queue ~6s every call; stats 14-76s, 504s; queue items=0 learning=3 next_due +2min
+2026-11-16T02:17:29Z RC-SERVER DISPATCH architect(opus) (queue/stats latency root cause + server review-cycle audit)
+2026-11-16T02:17:29Z RC-WEB DISPATCH writer-senior(opus) (waiting vs done, loading/error states, per-widget stats errors)
+2026-11-16T02:17:29Z RC-AUDIT DISPATCH reviewer(opus) read-only audit of android + cli review cycle
