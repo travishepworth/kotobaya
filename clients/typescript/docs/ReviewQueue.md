@@ -11,6 +11,7 @@ Name | Type
 `dayEndsAt` | Date
 `generatedAt` | Date
 `items` | [Array&lt;QueueItem&gt;](QueueItem.md)
+`loop` | [ReviewLoop](ReviewLoop.md)
 `moreAvailable` | boolean
 `nextLearningDueAt` | Date
 `studyDay` | Date
@@ -27,6 +28,7 @@ const example = {
   "dayEndsAt": null,
   "generatedAt": null,
   "items": null,
+  "loop": null,
   "moreAvailable": null,
   "nextLearningDueAt": null,
   "studyDay": null,

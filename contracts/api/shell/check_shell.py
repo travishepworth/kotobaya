@@ -12,7 +12,7 @@ Named checks (each prints one line; the run fails if any fails):
                                and uses only local | local_or_proxy | proxy | hidden
   ops_map_scopes               an operation a device token cannot call (needs import/admin only, or is
                                cookie-only) is `hidden`; `local` / `local_or_proxy` ones need read/write/review or none
-  shell_operations             shell.yaml has exactly the 16 operationIds of ADR-036, each `security: []`,
+  shell_operations             shell.yaml has exactly the 18 operationIds (ADR-036 + display prefs, ADR-037), each `security: []`,
                                each JSON body with an example, Problem referenced from ../openapi.yaml (not copied)
   shell_schema_docs            every schema property in shell.yaml has a description, and an example unless
                                it is a $ref / object
@@ -30,7 +30,10 @@ Named checks (each prints one line; the run fails if any fails):
                                local / local_or_proxy; `operations`, `settings` and `dict_entries` are what the
                                scenario really uses (dict_missing seqs are absent from the fixture dictionary);
                                expectations and invariants are well formed
-  parity_mandatory_covered     every mandatory coverage tag of SHELL.md 8.4 is covered by a scenario
+  parity_mandatory_covered     every mandatory coverage tag of SHELL.md 8.4 is covered by a scenario (incl. the five
+                               queue.loop_* tags of ADR-037); a scenario covering a queue.loop_* tag expects
+                               /loop/phase (or a whole /loop with phase) in at least one step; a retired tag
+                               is used by none
   selftest_*                   negative cases: the checks above really fail on a removed operationId, an
                                invented one, a bad class, a broken seed op, a seed the server would reject
                                and a missing mandatory scenario
@@ -59,10 +62,14 @@ SHELL_OPS = {
     "getShellInfo", "pairShell", "unpairShell", "getSyncStatus", "syncNow", "getDictInstall", "startDictInstall",
     "getStorage", "updateStorage", "getNotificationState", "requestNotificationPermission", "updateNotificationPrefs",
     "getPushState", "updatePushState", "getAnkiConnectState", "updateAnkiConnectState",
+    "getDisplayPrefs", "updateDisplayPrefs",
 }
-# SHELL.md 8.4. Design section 6 (ADR-036) plus the edge cases of ticket SHELL-C1.
+# SHELL.md 8.4. Design section 6 (ADR-036) plus the edge cases of ticket SHELL-C1; ADR-037 (LOOP-C) retired
+# queue.session_cap_more_available and added the five queue.loop_* tags.
 MANDATORY = [
-    "queue.counts_keep_going", "queue.learning_wait", "queue.session_cap_more_available", "queue.kinds_counts",
+    "queue.counts_keep_going", "queue.learning_wait", "queue.kinds_counts",
+    "queue.loop_never_waits", "queue.loop_done_backlog_first", "queue.loop_goal_reached", "queue.loop_waiting",
+    "queue.loop_empty",
     "queue.reviews_unlimited", "cards.reading_retired", "cards.reading_reenabled", "notes.create_no_reading_card",
     "queue.materialize_count", "queue.day_rollover_timezone", "answer.retry_same_id", "answer.suspended_409",
     "answer.deleted_410", "answer.reviewed_at_in_future", "answer.reviewed_at_before_floor",
@@ -70,6 +77,7 @@ MANDATORY = [
     "notes.create_duplicate", "notes.create_retry_same_id", "replica.empty", "sync.parent_deleted_by_pull",
     "dict.entry_missing",
 ]
+RETIRED = ["queue.session_cap_more_available"]  # ADR-037: no session cap
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.
 TABLES = ["note_type", "note", "card", "review_log", "word_status", "deck", "deck_item", "confusable", "grammar_point",
           "sentence_grammar_span", "settings", "fsrs_params", "media", "parse_override"]
@@ -361,6 +369,12 @@ def entry_seqs(value) -> set[int]:
     return found
 
 
+def pins_phase(body: dict) -> bool:
+    """An expect.body that fixes loop.phase: by /loop/phase, or by a whole /loop object holding phase."""
+    whole = body.get("/loop")
+    return "/loop/phase" in body or (isinstance(whole, dict) and "phase" in whole)
+
+
 def check_parity(scenarios: dict[str, dict], schema: dict, sync: Sync, api_spec: dict, ops_map: dict,
                  dict_seqs: set[int]) -> dict[str, list[str]]:
     res: dict[str, list[str]] = {"parity_schema": [], "parity_seed_ops": [], "parity_seed_accepted": [], "parity_steps": [],
@@ -453,6 +467,16 @@ def check_parity(scenarios: dict[str, dict], schema: dict, sync: Sync, api_spec:
     for tag in MANDATORY:
         if tag not in covered:
             res["parity_mandatory_covered"].append(f"parity/: mandatory coverage tag {tag} is covered by no scenario")
+    # ADR-037: a scenario covering a queue.loop_* tag must pin the phase, so a golden cannot be recorded without it.
+    for name, sc in scenarios.items():
+        if not any(t.startswith("queue.loop_") for t in sc.get("covers", [])):
+            continue
+        pinned = [st for st in sc.get("steps", []) if pins_phase(st.get("expect", {}).get("body", {}))]
+        if not pinned:
+            res["parity_mandatory_covered"].append(f"parity/{name}.json: covers a queue.loop_* tag but no step expects /loop/phase")
+    for tag in RETIRED:
+        if tag in covered:
+            res["parity_mandatory_covered"].append(f"parity/: retired coverage tag {tag} is still used by a scenario")
     return res
 
 
@@ -521,6 +545,19 @@ def main() -> int:
     fewer = {n: s for n, s in scenarios.items() if "undo.twice" not in s["covers"]}
     r = check_parity(fewer, parity_schema, sync, api_spec, ops_map, dict_seqs)
     expect_failure("selftest_parity_missing_mandatory", r["parity_mandatory_covered"], "undo.twice")
+    fewer = {n: s for n, s in scenarios.items() if "queue.loop_goal_reached" not in s["covers"]}
+    r = check_parity(fewer, parity_schema, sync, api_spec, ops_map, dict_seqs)
+    expect_failure("selftest_parity_missing_loop_tag", r["parity_mandatory_covered"], "queue.loop_goal_reached")
+    with_loop = next((n for n, s in scenarios.items() if any(t.startswith("queue.loop_") for t in s["covers"])), None)
+    if with_loop is None:
+        results["selftest_parity_loop_phase_unpinned"] = ["no scenario covers a queue.loop_* tag"]
+    else:
+        broken = copy.deepcopy(scenarios[with_loop])
+        for st in broken["steps"]:
+            st.get("expect", {}).get("body", {}).pop("/loop/phase", None)
+            st.get("expect", {}).get("body", {}).pop("/loop", None)
+        r = check_parity({with_loop: broken}, parity_schema, sync, api_spec, ops_map, dict_seqs)
+        expect_failure("selftest_parity_loop_phase_unpinned", r["parity_mandatory_covered"], "no step expects /loop/phase")
 
     failed = 0
     for name, errs in results.items():

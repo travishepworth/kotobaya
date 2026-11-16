@@ -27,13 +27,14 @@ package app.kotobaya.client.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Remaining today under the current limits (same as `ReviewQueue.counts`).
+ * **Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`, computed through `ReviewLoop` for an unfiltered normal request with the default `limit` 20): the over-counting `learning` and the batch-bounded `new` documented there. No `loop` is added here. 
  *
  * @param learning Learning and relearning cards due before the day ends.
  * @param new New cards still to introduce, including deck entries the build draws that have no note yet (C-27; this endpoint never creates them).
  * @param review Review cards due.
  */
 
+@Deprecated(message = "This schema is deprecated.")
 
 data class StatsSummaryDue (
 

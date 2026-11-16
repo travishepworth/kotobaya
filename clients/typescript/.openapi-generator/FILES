@@ -253,6 +253,12 @@ docs/ReviewApi.md
 docs/ReviewButton.md
 docs/ReviewLog.md
 docs/ReviewLoggedSchema.md
+docs/ReviewLoop.md
+docs/ReviewLoopBacklog.md
+docs/ReviewLoopLaterToday.md
+docs/ReviewLoopNew.md
+docs/ReviewLoopReady.md
+docs/ReviewLoopReviews.md
 docs/ReviewPage.md
 docs/ReviewQueue.md
 docs/ReviewQueueCounts.md
@@ -564,6 +570,12 @@ src/models/ReviewAnswerRequest.ts
 src/models/ReviewButton.ts
 src/models/ReviewLog.ts
 src/models/ReviewLoggedSchema.ts
+src/models/ReviewLoop.ts
+src/models/ReviewLoopBacklog.ts
+src/models/ReviewLoopLaterToday.ts
+src/models/ReviewLoopNew.ts
+src/models/ReviewLoopReady.ts
+src/models/ReviewLoopReviews.ts
 src/models/ReviewPage.ts
 src/models/ReviewQueue.ts
 src/models/ReviewQueueCounts.ts

@@ -649,6 +649,7 @@ New directory `contracts/api/shell/`; nothing in `openapi.yaml`, `contracts/sync
   idempotency by client id; device clock; deleted parents; dictionary fallback; rebuild) and P-1 … P-4
   (offline, forwarding with the device token, holding a proxied write until it is pulled, hidden).
 - **Shell-only operations** (`shell/shell.yaml`, generated into `clients/typescript-shell`): 16 operations
+  (18 since LOOP-C: display preferences)
   under `/shell/v1` for pairing, sync status, dictionary install, storage, notifications, push and the
   on-device AnkiConnect server. `Problem` is referenced from `openapi.yaml`, not copied.
 - **Problem codes**: the four of ADR-036 (`shell_offline`, `shell_dict_missing`, `shell_rebuilding`,
@@ -711,3 +712,60 @@ that still holds data with a *different* server is not prevented (SHELL.md 13, s
 
 **Verifying**: `contracts/api/check.sh` lints `shell/shell.yaml` and runs `shell/check_shell.py` (named
 checks listed at the top of that file, including negative self-tests).
+
+## LOOP-C changes (additive): the review loop on the wire and shell display prefs (ADR-037)
+
+**What was decided**
+
+- **`ReviewQueue.loop`** (schema `ReviewLoop`, all members required): `phase` (`reviewing`,
+  `goal_reached`, `done_for_today`, `waiting`, `empty`; open for readers), `keep_going`, `ready`
+  {learning, review, total}, `later_today` {count, next_due_at}, `backlog` {reviews, beyond_limit},
+  `reviews` {today, limit|null}, `new` {today, goal, available}. It is the wire form of the core's
+  `LoopState`. Not in `required` only because "absent" means "server older than ADR-037". Computed
+  for the request's `deck_id`; unaffected by `kinds`, `limit` and (except `phase`, `keep_going`) by
+  `keep_going`.
+- **Deprecated, still sent, meaning frozen**: `ReviewQueue.counts` (`new` = what the normal build
+  drew, now also bounded by `limit`; `learning` = ready + later, the old over-count; `review` =
+  `loop.ready.review`), `more_available`, `next_learning_due_at`, `StatsSummary.due`,
+  `StatsSummary.more_available`. No new `StatsSummary` member: Home calls `getReviewQueue?limit=1`.
+- **Order**: ready learning, then ready reviews and new cards in the proportional mix (core rule 5),
+  in both modes; keep going: ready learning, all due reviews, then new cards.
+- **Client rules C1-C5** in the `getReviewQueue` description: refetch when a learning card may have
+  come due; keep going persisted per client for the study day (`localStorage["kotobaya.keepGoingDay"]`
+  on web and in the shell SPA); what to display; empty `items` rendered from `phase` only; C-27
+  retries.
+- **`scheduler.new_per_session`** is ignored (SCHEMA.md 6); `updateSettings` still accepts it.
+- **Shell**: `LOCAL_API_VERSION` 2 (SHELL.md 7.2: a field a new SPA requires was added);
+  `getDisplayPrefs` / `updateDisplayPrefs` (`GET`/`PATCH /shell/v1/display`, `ShellDisplay`,
+  `ShellDisplayPatch`, capability `display`): device-local "lock to portrait". Parity: tag
+  `queue.session_cap_more_available` and its scenario retired; four new scenarios with the five
+  `queue.loop_*` tags, each pinning `loop.phase` and the numbers (`check_shell.py` enforces both);
+  three existing scenarios gained `loop` expectations. Goldens are re-recorded by LOOP-SRV.
+- Cross-check: no table, no op, no `SCHEDULER_VERSION` change. The queue is a pure view; the only ops
+  `getReviewQueue` emits are still C-27's `note.created` / `card.created`, and only for the served
+  build's entries.
+
+**Alternatives rejected**
+
+- A closed `phase` enum (a sixth phase would break generated clients' exhaustive switches at
+  runtime): readers treat unknown values by rule C4.
+- `loop` on `StatsSummary` as well: two sources for Home; one extra cheap queue call instead.
+- Removing the deprecated members or changing their meaning to the new numbers: the old CLI daemon
+  and an older web bundle read them.
+- Timing rule C1/C4 from wall-clock equality: the client's clock may differ; one timer at
+  `next_due_at` + 1 s with a 3 s minimum gap, and the next response reschedules.
+- Reviews strictly before new cards in the normal session (the design's first reading; the user
+  called it a regression on 2026-11-17).
+
+**Three choices most worth a second look**
+
+1. **The proportional mix replaces the fixed-stride interleave** (core rule 5): new cards are
+   spread over the day's review pool by comparing progress against today's totals. With a lopsided
+   history (many reviews done, goal raised later) new cards come in a run first.
+2. **Keep going is per client and persisted for the study day**: pressing it on the phone does not
+   switch web or the widget; all numbers are the same everywhere regardless.
+3. **`done_for_today` vs `goal_reached` follows the `reviews_unlimited` setting**, not which limit
+   was hit: with the cap on, reaching only the new goal with no backlog is still `done_for_today`.
+
+Known follow-ups outside this ticket's paths: `fixtures/shell-parity/golden/queue-session-cap-more-available.json`
+is orphaned (LOOP-SRV deletes it when re-recording); `web` reads `counts` / `more_available` until LOOP-WEB.

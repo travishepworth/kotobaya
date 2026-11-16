@@ -1,20 +1,26 @@
-# HANDOFF SHELL-A7 — DONE
+# HANDOFF LOOP-C
 
-`make check MODULE=android` green. New tests: DeviceSettingsRoutesTest (14), DeviceEventSourcesTest (4).
+STATUS: DONE
+BRANCH: t/LOOP-C-review-loop-contract
+CHECK: `make check MODULE=contracts` → green; core `compileKotlinJvm`/`compileKotlinJs` → green
 
-## Built
-- 11 routes in `shell/api/device/DeviceSettingsRoutes.kt` over seams in `DeviceSettingsOps.kt` (Dict/Storage/Notify/Push/AnkiConnect Ops, `Core*` over the existing Settings ports). Fakes in tests; 422s per contract.
-- Dict: scope choice stored, one install at a time, `last_result`, `server_release_id`, `gap_fill` counts. `shell.dict` via `DictEvents` (<=2/s, final state delivered, no repeats).
-- Notifications: permission via `NotificationPermissionLauncher` (25 s limit, API<33 answers at once). Capabilities list extended.
-- ShellEvents wired: `ShellEventHub` (ShellModule.kt) is the sink; sources: status flow, local write, NetworkMonitor.onConnectivity, EventingAnkiStore (Takoboto), sync outcome.
+## Changed (≤ 6 lines)
+- core contract: new `contracts/queue/ReviewLoop.kt`; `QueueBuilder.kt` KDoc rules 4-6 (no signature change).
+- openapi: `ReviewLoop`, `ReviewQueue.loop`, phases + C1-C5, legacy fields deprecated; clients regenerated.
+- Shell: `LOCAL_API_VERSION` 2, display prefs ops, capability `display`, 4 new parity scenarios, `queue-session-cap-more-available` deleted.
+- SCHEMA.md 6, core README (C-26, C-27), three SUMMARY.md, SPEC note, ADR-037 line.
+- User amendment: rule 5 is a proportional mix (both modes); keep going stays learning, reviews, new. `docs/REVIEW-LOOP.md` edited on coordinator instruction (outside ticket paths).
 
-## Edits outside owned paths (one-liners, please accept)
-- `MainActivity`: `NotificationPermissionLauncher.register(this)`.
-- `SyncFeature`: `ShellEventHub.onSyncOutcome(outcome)` in the coordinator's onOutcome.
-- `TakobotoFeature` (AnkiStore wrap), `NetworkMonitor` (hook), `ShellWiring`, `ShellModule`.
+## Acceptance → tests
+- contracts green, tags enforced → `parity_mandatory_covered`, `selftest_parity_missing_loop_tag`, `selftest_parity_loop_phase_unpinned`
+- core compiles → `check_kotlin.py`, gradle compile
+- `ReviewLoop` documented, example valid → redocly lint, `shell_schema_docs`
+- scenarios pin `loop` → the four `queue-loop-*.json`
 
-## Notes
-- No PENDING lines to delete (these are `shell` ops).
-- Gap-fill count changes are announced after each sync outcome, not when a later gap-fill run ends (follow-up).
-- Release artifact sizes for the scope choice: SPA reads `getDictRelease`; not duplicated here.
-- On-device AnkiConnect adds emit no `note.created` (it uses TakobotoAnkiStore directly).
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- Mix formula is mine: new next iff `introducedToday * (reviewsToday + |R|) < reviewsToday * newPerDay`. Lopsided history gives a run of new cards.
+- My decisions: `evaluate` forces learn-ahead 0; only the served build's `toMaterialize` is materialized; `getStatsSummary` batch 20.
+- Parity `expect` values are hand-derived, not run; goldens are stale until LOOP-SRV.

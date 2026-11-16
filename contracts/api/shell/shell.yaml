@@ -10,7 +10,7 @@ info:
     The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell
     over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path
     starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says.
-    Requests whose path starts with `/shell/v1/` are the 16 operations of this file: device state
+    Requests whose path starts with `/shell/v1/` are the 18 operations of this file: device state
     that has no server equivalent (pairing, sync status, dictionary install, storage,
     notifications, push, AnkiConnect).
 
@@ -66,7 +66,7 @@ servers:
     description: Path prefix inside the bridge. Not an HTTP endpoint.
 tags:
   - {name: shell, description: 'Shell identity, pairing and sync.'}
-  - {name: device, description: 'Device features: dictionary package, storage, notifications, push, AnkiConnect.'}
+  - {name: device, description: 'Device features: dictionary package, storage, notifications, push, AnkiConnect, display.'}
 paths:
   /info:
     get:
@@ -481,6 +481,59 @@ paths:
               examples:
                 default: {$ref: '#/components/examples/ShellAnkiConnectState'}
         default: {$ref: '#/components/responses/ShellProblem'}
+  /display:
+    get:
+      operationId: getDisplayPrefs
+      tags: [device]
+      summary: Display preferences of this device (lock to portrait).
+      description: |
+        Device-local preferences (not synced, no op, no learning data). Offered only when
+        `ShellInfo.capabilities` contains `display`; the SPA hides the settings row without it.
+        Unpaired: `401 unauthenticated`; during a rebuild: `503 shell_rebuilding` (as the other
+        preference operations, SHELL.md section 12).
+      security: []
+      responses:
+        '200':
+          description: Display preferences.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellDisplay'}
+              examples:
+                default: {$ref: '#/components/examples/ShellDisplay'}
+        default: {$ref: '#/components/responses/ShellProblem'}
+    patch:
+      operationId: updateDisplayPrefs
+      tags: [device]
+      summary: Change the display preferences.
+      description: |
+        Device-local preferences (not synced, no op). Absent properties are left unchanged; an
+        empty object, an unknown property or a non-boolean value is `422 validation_failed`
+        (pointer `/lock_portrait` for a wrong type, `""` for an empty object) and changes
+        nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores
+        the value in device preferences, so it survives a restart. Repeating the same request is
+        a no-op with the same answer. Answers with the state after the change.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShellDisplayPatch'}
+            examples:
+              lock:
+                summary: Lock the app to portrait
+                value: {lock_portrait: true}
+              unlock:
+                summary: Follow the system rotation again
+                value: {lock_portrait: false}
+      responses:
+        '200':
+          description: Display preferences after the change.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShellDisplay'}
+              examples:
+                default: {$ref: '#/components/examples/ShellDisplay'}
+        default: {$ref: '#/components/responses/ShellProblem'}
 components:
   responses:
     ShellProblem:
@@ -587,8 +640,8 @@ components:
         local_api_version:
           type: integer
           minimum: 1
-          description: '`LOCAL_API_VERSION` of this shell (SHELL.md section 7). The SPA refuses to run when its own `min_local_api` is higher.'
-          examples: [1]
+          description: '`LOCAL_API_VERSION` of this shell (SHELL.md section 7; `2` since ADR-037: `getReviewQueue` answers with `loop`). The SPA refuses to run when its own `min_local_api` is higher.'
+          examples: [2]
         paired:
           type: boolean
           description: A device token is stored. While false every operation except `getShellInfo` and `pairShell` answers `401 unauthenticated`.
@@ -625,12 +678,13 @@ components:
             maxLength: 40
           description: |
             Features this shell build offers; the SPA shows a feature only when its capability is
-            listed and ignores names it does not know. Known in LOCAL_API_VERSION 1: `sync`
+            listed and ignores names it does not know. Known in LOCAL_API_VERSION 2: `sync`
             (getSyncStatus, syncNow), `pairing` (pairShell, unpairShell), `dict_install`,
             `offline_storage` (getStorage, updateStorage), `notifications`, `push`, `ankiconnect`,
             `takoboto` (the native AnkiProvider is present; informational), `haptics` (the
-            `haptic` bridge message does something), `ota` (web bundle updates, SHELL-Z2).
-          examples: [[sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]]
+            `haptic` bridge message does something), `ota` (web bundle updates, SHELL-Z2),
+            `display` (getDisplayPrefs, updateDisplayPrefs; added with LOCAL_API_VERSION 2).
+          examples: [[sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]]
         web_version:
           type: string
           minLength: 1
@@ -1094,6 +1148,25 @@ components:
             pattern: ^\S+$
           description: As `ShellAnkiConnectState.origins`.
           examples: [['https://app.example']]
+    ShellDisplay:
+      type: object
+      description: Display preferences of this device. Device-local, not synced.
+      required: [lock_portrait]
+      properties:
+        lock_portrait:
+          type: boolean
+          description: true = the app is locked to portrait (the host activity requests `SCREEN_ORIENTATION_PORTRAIT`); false = it follows the system (`SCREEN_ORIENTATION_UNSPECIFIED`). Default false (an install that never set it).
+          examples: [false]
+    ShellDisplayPatch:
+      type: object
+      description: Display preferences to change. At least one property.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        lock_portrait:
+          type: boolean
+          description: As `ShellDisplay.lock_portrait`.
+          examples: [true]
     ShellEvent:
       type: object
       description: |
@@ -1185,28 +1258,28 @@ components:
       value:
         shell_version: 0.2.0
         shell_version_code: 29
-        local_api_version: 1
+        local_api_version: 2
         paired: true
         auth_required: false
         server_url: https://kotobaya.example.net/api/v1
         device_id: 01931f3e-0000-7000-8000-0000000000d4
         device_name: Pixel 9
         online: true
-        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]
         web_version: 0.1.26
         web_source: bundled
     ShellInfoUnpaired:
       value:
         shell_version: 0.2.0
         shell_version_code: 29
-        local_api_version: 1
+        local_api_version: 2
         paired: false
         auth_required: false
         server_url: null
         device_id: null
         device_name: null
         online: false
-        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics]
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]
         web_version: 0.1.26
         web_source: bundled
     ShellSyncStatusIdle:
@@ -1296,6 +1369,9 @@ components:
       value:
         state: 'on'
         has_endpoint: true
+    ShellDisplay:
+      value:
+        lock_portrait: false
     ShellAnkiConnectState:
       value:
         enabled: true

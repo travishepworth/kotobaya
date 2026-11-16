@@ -26,11 +26,11 @@ from pydantic_core import to_jsonable_python
 
 class ReviewQueueCounts(BaseModel):
     """
-    Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). The same with `keep_going=true` (ADR-033, replacing the C-26 batch counts) - they always describe the normal queue, so all clients agree; keep going only lifts the limits on what is served.
+    **Deprecated (ADR-037): use `loop`.** Still sent, with the frozen pre-ADR-037 meaning, for old clients (core `LoopState.legacy`): the normal queue's remaining cards (whole queue, not only `items`; unaffected by `kinds` and by `keep_going`). 
     """ # noqa: E501
-    learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Cards in learning or relearning due before the day ends.")
-    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce today, including drawn deck entries not yet materialized (`to_materialize`, C-27).")
-    review: Annotated[int, Field(strict=True, ge=0)] = Field(description="Review cards due today (including overdue).")
+    learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Deprecated. Cards in learning or relearning due before the day ends, **ready or not**: `loop.ready.learning + loop.later_today.count`. This is the over-count ADR-037 replaces (26 here could mean 0 cards to show now); kept unchanged so old clients see what they always saw. ")
+    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at most about `limit` new cards, so this is bounded by `limit` as well as by the day's remaining goal. ")
+    review: Annotated[int, Field(strict=True, ge=0)] = Field(description="Deprecated. Review cards due today within the limits (including overdue). Equals `loop.ready.review`.")
     __properties: ClassVar[List[str]] = ["learning", "new", "review"]
 
     model_config = ConfigDict(

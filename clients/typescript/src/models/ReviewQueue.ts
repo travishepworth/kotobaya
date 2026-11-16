@@ -20,6 +20,13 @@ import {
     ReviewQueueCountsToJSON,
     ReviewQueueCountsToJSONTyped,
 } from './ReviewQueueCounts';
+import type { ReviewLoop } from './ReviewLoop';
+import {
+    ReviewLoopFromJSON,
+    ReviewLoopFromJSONTyped,
+    ReviewLoopToJSON,
+    ReviewLoopToJSONTyped,
+} from './ReviewLoop';
 import type { QueueItem } from './QueueItem';
 import {
     QueueItemFromJSON,
@@ -36,6 +43,7 @@ import {
 export interface ReviewQueue {
     /**
      * 
+     * @deprecated
      */
     counts: ReviewQueueCounts;
     /**
@@ -51,6 +59,20 @@ export interface ReviewQueue {
      */
     items: Array<QueueItem>;
     /**
+     * ADR-037 (additive). The review loop's phase and numbers, from the core's
+     * `ReviewLoop.evaluate` (`LoopState`). Sent by every server and local API that
+     * implements ADR-037, on every `200`; **absent = server older than ADR-037** (the only
+     * reason it is not in `required`). A client built for ADR-037 treats a missing `loop` as
+     * "server too old" and does not fall back to the deprecated fields.
+     * 
+     */
+    loop?: ReviewLoop;
+    /**
+     * **Deprecated (ADR-037): use `loop.phase`** (`goal_reached` / `done_for_today`). Still
+     * sent with the frozen meaning below (for a request without `kinds`: the core's
+     * `LoopState.legacy.moreAvailable`, forced to false when `keep_going=true`). There is no
+     * per-session cap any more, so the "done for now" case below no longer occurs. Since
+     * ADR-037 the second build always runs.
      * C-26 (additive). "Done for today, but Keep going has more." True iff **all** of:
      * the request had `keep_going=false` (or omitted it); `items` is empty; and the same
      * request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a
@@ -64,15 +86,19 @@ export interface ReviewQueue {
      * server's keep-going test.
      * Servers implementing C-26 always send it; absent (older server) is treated as false.
      * 
+     * @deprecated
      */
     moreAvailable?: boolean;
     /**
+     * **Deprecated (ADR-037): use `loop.later_today.next_due_at`** (the same instant; this
+     * member is absent where that one is null). Frozen meaning:
      * ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that
      * is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with
      * learn-ahead 0); absent when there is none. With empty `items` the client waits until this
      * instant and fetches again (the card is not shown early). Unaffected by `kinds` and
      * `keep_going`.
      * 
+     * @deprecated
      */
     nextLearningDueAt?: Date;
     /**
@@ -118,6 +144,7 @@ export function ReviewQueueFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'dayEndsAt': (json['day_ends_at'] == null ? json['day_ends_at'] : parseDateTime(json['day_ends_at'])),
         'generatedAt': (json['generated_at'] == null ? json['generated_at'] : parseDateTime(json['generated_at'])),
         'items': ((json['items'] as Array<any>).map(QueueItemFromJSON)),
+        'loop': json['loop'] == null ? undefined : ReviewLoopFromJSON(json['loop']),
         'moreAvailable': json['more_available'] == null ? undefined : json['more_available'],
         'nextLearningDueAt': json['next_learning_due_at'] == null ? undefined : (parseDateTime(json['next_learning_due_at'])),
         'studyDay': (json['study_day'] == null ? json['study_day'] : parseDate(json['study_day'])),
@@ -140,6 +167,7 @@ export function ReviewQueueToJSONTyped(value?: ReviewQueue | null, ignoreDiscrim
         'day_ends_at': value['dayEndsAt'] == null ? value['dayEndsAt'] : serializeDateTime(value['dayEndsAt']),
         'generated_at': value['generatedAt'] == null ? value['generatedAt'] : serializeDateTime(value['generatedAt']),
         'items': ((value['items'] as Array<any>).map(QueueItemToJSON)),
+        'loop': ReviewLoopToJSON(value['loop']),
         'more_available': value['moreAvailable'],
         'next_learning_due_at': value['nextLearningDueAt'] == null ? value['nextLearningDueAt'] : serializeDateTime(value['nextLearningDueAt']),
         'study_day': value['studyDay'] == null ? value['studyDay'] : serializeDate(value['studyDay']),

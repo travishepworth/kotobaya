@@ -7,7 +7,8 @@
   "narrative": [
     "The only card was answered Again 5 s before the scenario clock, so it sits in the first learning step (60 s).",
     "Step 0, 1 s later: nothing may be served (no learn-ahead). items is empty, more_available is false, next_learning_due_at is the card's due time.",
-    "Step 1, 1 s after that due time: the card is served."
+    "Step 1, 1 s after that due time: the card is served.",
+    "ADR-037: step 0 is loop.phase waiting (no new card exists, keep going has nothing); step 1 is reviewing."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -89,7 +90,17 @@
             "review": 0
           },
           "/more_available": false,
-          "/next_learning_due_at": "2026-11-20T10:00:55.000Z"
+          "/next_learning_due_at": "2026-11-20T10:00:55.000Z",
+          "/loop/phase": "waiting",
+          "/loop/ready": {
+            "learning": 0,
+            "review": 0,
+            "total": 0
+          },
+          "/loop/later_today": {
+            "count": 1,
+            "next_due_at": "2026-11-20T10:00:55.000Z"
+          }
         }
       }
     },
@@ -107,7 +118,8 @@
           "/items": 1
         },
         "body": {
-          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010"
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/loop/phase": "reviewing"
         }
       }
     }

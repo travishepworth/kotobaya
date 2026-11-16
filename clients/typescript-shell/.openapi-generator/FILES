@@ -13,6 +13,8 @@ docs/ShellDictInstall.md
 docs/ShellDictInstallGapFill.md
 docs/ShellDictInstallInstalled.md
 docs/ShellDictInstallRequest.md
+docs/ShellDisplay.md
+docs/ShellDisplayPatch.md
 docs/ShellEvent.md
 docs/ShellEventConnectivity.md
 docs/ShellEventHello.md
@@ -43,6 +45,8 @@ src/models/ShellDictInstall.ts
 src/models/ShellDictInstallGapFill.ts
 src/models/ShellDictInstallInstalled.ts
 src/models/ShellDictInstallRequest.ts
+src/models/ShellDisplay.ts
+src/models/ShellDisplayPatch.ts
 src/models/ShellEvent.ts
 src/models/ShellEventConnectivity.ts
 src/models/ShellEventHello.ts

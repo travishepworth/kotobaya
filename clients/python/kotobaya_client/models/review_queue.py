@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from kotobaya_client.models.queue_item import QueueItem
+from kotobaya_client.models.review_loop import ReviewLoop
 from kotobaya_client.models.review_queue_counts import ReviewQueueCounts
 from typing import Optional, Set
 from typing_extensions import Self
@@ -35,11 +36,12 @@ class ReviewQueue(BaseModel):
     day_ends_at: datetime = Field(description="Instant the study day rolls over.")
     generated_at: datetime = Field(description="When the queue was built.")
     items: List[QueueItem] = Field(description="Cards in the order to show them.")
-    more_available: Optional[StrictBool] = Field(default=None, description="C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. ")
-    next_learning_due_at: Optional[datetime] = Field(default=None, description="ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. ")
+    loop: Optional[ReviewLoop] = Field(default=None, description="ADR-037 (additive). The review loop's phase and numbers, from the core's `ReviewLoop.evaluate` (`LoopState`). Sent by every server and local API that implements ADR-037, on every `200`; **absent = server older than ADR-037** (the only reason it is not in `required`). A client built for ADR-037 treats a missing `loop` as \"server too old\" and does not fall back to the deprecated fields. ")
+    more_available: Optional[StrictBool] = Field(default=None, description="**Deprecated (ADR-037): use `loop.phase`** (`goal_reached` / `done_for_today`). Still sent with the frozen meaning below (for a request without `kinds`: the core's `LoopState.legacy.moreAvailable`, forced to false when `keep_going=true`). There is no per-session cap any more, so the \"done for now\" case below no longer occurs. Since ADR-037 the second build always runs. C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. ")
+    next_learning_due_at: Optional[datetime] = Field(default=None, description="**Deprecated (ADR-037): use `loop.later_today.next_due_at`** (the same instant; this member is absent where that one is null). Frozen meaning: ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. ")
     study_day: date = Field(description="The current study day.")
     to_materialize: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. ")
-    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "more_available", "next_learning_due_at", "study_day", "to_materialize"]
+    __properties: ClassVar[List[str]] = ["counts", "day_ends_at", "generated_at", "items", "loop", "more_available", "next_learning_due_at", "study_day", "to_materialize"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -89,6 +91,9 @@ class ReviewQueue(BaseModel):
             for _item_items in self.items:
                 _items.append(_item_items.to_dict() if _item_items is not None else None)
             _dict['items'] = _items
+        # override the default output from pydantic by calling `to_dict()` of loop
+        if self.loop:
+            _dict['loop'] = self.loop.to_dict()
         return _dict
 
     @classmethod
@@ -105,6 +110,7 @@ class ReviewQueue(BaseModel):
             "day_ends_at": obj.get("day_ends_at"),
             "generated_at": obj.get("generated_at"),
             "items": [QueueItem.from_dict(_item) for _item in obj["items"]] if obj.get("items") is not None else None,
+            "loop": ReviewLoop.from_dict(obj["loop"]) if obj.get("loop") is not None else None,
             "more_available": obj.get("more_available"),
             "next_learning_due_at": obj.get("next_learning_due_at"),
             "study_day": obj.get("study_day"),

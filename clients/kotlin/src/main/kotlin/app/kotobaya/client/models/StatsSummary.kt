@@ -39,7 +39,7 @@ import com.google.gson.annotations.SerializedName
  * @param streakDays Consecutive study days with at least one review, ending today or yesterday.
  * @param studyDay The current study day.
  * @param totals
- * @param moreAvailable C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false. 
+ * @param moreAvailable **Deprecated (ADR-037): use `loop.phase` of `getReviewQueue?limit=1`.** Still sent with the frozen meaning below (core `LoopState.legacy.moreAvailable`); the per-session cap no longer exists. C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false. 
  */
 
 
@@ -53,6 +53,7 @@ data class StatsSummary (
     val doneToday: StatsSummaryDoneToday,
 
     @SerializedName("due")
+    @Deprecated(message = "This property is deprecated.")
     val due: StatsSummaryDue,
 
     /* Earliest `due_at` in the future among live unsuspended cards; null if none. */
@@ -70,8 +71,9 @@ data class StatsSummary (
     @SerializedName("totals")
     val totals: StatsSummaryTotals,
 
-    /* C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false.  */
+    /* **Deprecated (ADR-037): use `loop.phase` of `getReviewQueue?limit=1`.** Still sent with the frozen meaning below (core `LoopState.legacy.moreAvailable`); the per-session cap no longer exists. C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the normal queue is empty and a keep-going queue would not be (the core's `ReviewQueue.moreAvailable` of the build behind `due`). Lets the Today page show Keep going without an extra queue call. As there, true may mean only that the per-session new-card cap is reached (\"done for now\", not necessarily \"done for today\"). Servers implementing C-26 always send it; absent (older server) is treated as false.  */
     @SerializedName("more_available")
+    @Deprecated(message = "This property is deprecated.")
     val moreAvailable: kotlin.Boolean? = null
 
 ) {

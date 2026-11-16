@@ -12,7 +12,7 @@ one has a bug (return `CONTRACT_CHANGE_REQUEST`).
 |---|---|
 | `SHELL.md` | This file. |
 | `bridge.schema.json` | JSON Schema of every bridge message; `examples/bridge/` (valid), `examples/bridge-invalid/` (must be rejected). |
-| `shell.yaml` | OpenAPI 3.1 of the 16 shell-only operations under `/shell/v1`; generated into `clients/typescript-shell`. |
+| `shell.yaml` | OpenAPI 3.1 of the 18 shell-only operations under `/shell/v1`; generated into `clients/typescript-shell`. |
 | `ops.json` | `{operationId: class}` for every operationId of `openapi.yaml`: `local`, `local_or_proxy`, `proxy` or `hidden`. A flat object, no other keys. Read by the Android route-table test and by the SPA. |
 | `parity.schema.json`, `parity/*.json` | Parity scenario inputs (section 8). Goldens are recorded by SHELL-P1 into `fixtures/shell-parity/golden/`. |
 | `check_shell.py` | Run by `contracts/api/check.sh`. |
@@ -467,7 +467,7 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `getPrincipal` | From the stored pairing: `kind: "device"`, `scopes: ["read","write","review"]`, `device_id`, `name` = device name, `token_id` = the `token_id` of `PairResponse`, `expires_at: null`, `totp_enabled: false`. No cookie, no CSRF. |
 | `getMeta` | `api_version: "v1"`; `server_version` = value of the last `/meta` fetched from the server, `"unknown"` before the first; `core_version` = the app's core; `server_device_id` = the fixed server device id; `high_water_seq` = pull cursor; `log_epoch` = `sync_state.log_epoch` or the nil UUID; `server_time` = device clock; `dict_release` = the installed package or null; `limits` = last fetched, else the contract defaults. |
 | `reportClientErrors` | Validated and limited exactly as the server (so `429`, `413`, `422` are identical), then queued (`ClientErrorQueue`) and flushed when online; `202` means "queued". |
-| `getReviewQueue` | The core `QueueBuilder` over the replica with `newShownThisSession = 0` and learn-ahead 0, as the server. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. Dictionary data by L-7 steps 1–2 only (installed package, then sidecar cache; never the network): `QueueItem.entry` / `kanji` are `null` on a miss and the card is still served; a deck entry `e:<seq>` is passed to the builder as a pending entry only when steps 1–2 find it, so an entry the device does not have is neither materialized nor counted until gap fill has cached it (10.7). |
+| `getReviewQueue` | ADR-037: the handler is the core `ReviewLoop.evaluate` over the replica plus the views, exactly as the server: `keepGoing` = the request's `keep_going`, `keepGoingNewBatch` = the request's `limit`, learn-ahead 0, no session counter (`newPerSession` / `newShownThisSession` are passed as 0 and ignored). The response carries `loop` (from `LoopState`) and the deprecated `counts`, `more_available`, `next_learning_due_at` (from `LoopState.legacy`), like the server's. Only `LoopResult.queue.toMaterialize` (the served build) is materialized, never the other build's. The SPA follows client rules C1-C5 of `getReviewQueue` in `openapi.yaml` unchanged; its keep-going day (`localStorage["kotobaya.keepGoingDay"]`, C2) lives in the WebView's storage and is per device. Native surfaces (widget, due notification, nudge threshold) show `readyLearning + readyReviews` of `ReviewLoop.evaluate` with `keepGoing = false` and never count cards themselves; they do not read the SPA's keep-going state. C-27 materialization is performed by the device (ops minted by rule L-2, at most 3 rounds), since a device token holds `review` and `write`; `to_materialize` is then 0. Dictionary data by L-7 steps 1–2 only (installed package, then sidecar cache; never the network): `QueueItem.entry` / `kanji` are `null` on a miss and the card is still served; a deck entry `e:<seq>` is passed to the builder as a pending entry only when steps 1–2 find it, so an entry the device does not have is neither materialized nor counted until gap fill has cached it (10.7). |
 | `answerReview`, `undoReview` | Stateless (no session object). Card state is recomputed by the replay path, never by handler arithmetic. After commit the due alarm and widgets are refreshed. |
 | `bulkCards` | Action `suspend`, `unsuspend`, `bury`, `unbury`, `flag`: local, for both selectors (`card_ids`, `query`) and for `dry_run`; all-or-nothing as the server. Any other action (`set_preset`, `add_tags`, `remove_tags`, `move`, `delete`): the handler forwards the request by rules P-1 … P-3, so it is `503 shell_offline` offline. The request is validated locally first in both cases. |
 | `createNote` | Duplicate check against the replica (L-4); kinds by core `CardGenerator` / `CardKinds.isRetired` (ADR-035); `created_by_device_id` is this device. `entry_seq` is resolved by the full L-7 lookup: installed package → sidecar cache → when online, the shell fetches the entry from the server (`getDictEntry`, 12 s limit of P-1) and stores it in the cache; the note is then created **locally** as always (minted by the device, never forwarded). The server answers that fetch `404` (now or earlier: a standing negative result), or the installed package is authoritative (L-7: scope `all` **and** not older than the last known server release) and lacks the entry: `422 validation_failed`, `errors[0] = {pointer: "/entry_seq", code: "not_found"}`, as the server. In every other miss — offline or unreachable with `top60k`, no package, or a package older than the server's release — `503 shell_dict_missing`, nothing minted: the device cannot say the word does not exist, only that it must connect to look it up. Kanji data for `add_kanji` notes uses steps 1–2 only (a miss means "the literal alone", as on the server when `ref.kanji` lacks it). |
@@ -552,7 +552,7 @@ Native, on `back.result`: `handled: true` → nothing more; `handled: false` →
 `id` is ignored. A second back press while one is pending is handled by the fallback at once.
 The SPA sends `back.state` after `ready` and whenever the answer to "would step 1–4 match" changes.
 
-### 6.3 Haptics, theme, insets
+### 6.3 Haptics, theme, insets, orientation
 
 - `haptic`: `View.performHapticFeedback` — `tick` → `CLOCK_TICK`, `confirm` → `CONFIRM`, `reject`
   → `REJECT` (pre-API-30 fallbacks chosen by native). No permission, no reply, dropped when the
@@ -563,6 +563,14 @@ The SPA sends `back.state` after `ready` and whenever the answer to "would step 
 - Insets: native pads the WebView with the system-bar and IME insets, so `100dvh` shrinks with
   the keyboard and `env(safe-area-inset-*)` is `0`. `mediaPlaybackRequiresUserGesture = false`
   (audio autoplay on reveal), overscroll glow off, text zoom 100.
+- Orientation (capability `display`; `getDisplayPrefs` / `updateDisplayPrefs`, `ShellDisplay`):
+  the host activity sets `requestedOrientation = SCREEN_ORIENTATION_PORTRAIT` when
+  `lock_portrait` is true and `SCREEN_ORIENTATION_UNSPECIFIED` when false - at activity create
+  (before the WebView is shown, from the stored value; default false) and immediately on a
+  successful `updateDisplayPrefs`, before its answer. The value is stored in device preferences
+  (not in the replica), survives restart and `unpairShell`, is not synced and mints no op. A
+  rotation caused by the change does not reload the page (the activity handles the configuration
+  change). Without the capability the SPA hides the settings row and never calls the operations.
 
 ## 7. Shipping and versions
 
@@ -575,7 +583,7 @@ The APK contains the output of the web build (the same build the server serves) 
 |---|---|---|---|
 | `web_version` | string | The web app's version. | `"0.1.26"` |
 | `build_sha` | string | Git commit of the build. | `"b7048b32"` |
-| `min_local_api` | integer ≥ 1 | Lowest `LOCAL_API_VERSION` this bundle works with. | `1` |
+| `min_local_api` | integer ≥ 1 | Lowest `LOCAL_API_VERSION` this bundle works with. `2` for every bundle built from the ADR-037 SPA. | `2` |
 | `files` | object, path → lower-case hex SHA-256 | Every file of the bundle except the manifest itself. | `{"index.html":"9f86d0…"}` |
 
 Over-the-air bundles (capability `ota`, SHELL-Z2) use the same manifest: downloaded to
@@ -585,13 +593,20 @@ consecutive starts.
 
 ### 7.2 `LOCAL_API_VERSION`
 
-An integer constant of the shell, `1` for this contract, reported as
+An integer constant of the shell, **`2`** for this contract, reported as
 `ShellInfo.local_api_version`.
+
+| Value | Since | Why |
+|---|---|---|
+| `1` | SHELL-C1 (ADR-036) | First version. |
+| `2` | LOOP-C (ADR-037) | `getReviewQueue` answers with `ReviewQueue.loop`, which the ADR-037 SPA cannot render without; that SPA's bundle has `min_local_api: 2`. Capability `display` appears with it. |
 
 - **Bump it** only when a change could break an SPA built against the previous value: an
   operation leaves class `local` or `local_or_proxy` (it would stop working offline); a bridge
   message, a field or a shell operation is removed or changes meaning; a rule of this file changes
-  incompatibly.
+  incompatibly; **or a field a new SPA requires is added** to a local operation's answer (the
+  bump is what lets that SPA's `min_local_api` demand it; an older SPA on the newer shell keeps
+  working, here through the deprecated legacy fields).
 - **Do not bump it** for additive changes: a new bridge message type or optional field, a new
   shell operation, capability, event type or problem code, an operation moving *into* `local`.
   The SPA detects those by capability (`ShellInfo.capabilities`) or by ignoring what it does not
@@ -694,9 +709,12 @@ difference is a finding.
 
 | Tag | Scenario | Shows |
 |---|---|---|
-| `queue.counts_keep_going` | `queue-counts-keep-going` | `counts` equal with and without `keep_going` (ADR-033). |
-| `queue.learning_wait` | `queue-learning-wait` | Only a not-yet-due learning card left → empty `items` + `next_learning_due_at`. |
-| `queue.session_cap_more_available` | `queue-session-cap-more-available` | `more_available` true when only `scheduler.new_per_session` is reached. |
+| `queue.counts_keep_going` | `queue-counts-keep-going` | `counts`, and `loop` minus `phase` / `keep_going`, equal with and without `keep_going` (ADR-033, ADR-037). |
+| `queue.learning_wait` | `queue-learning-wait` | Only a not-yet-due learning card left → empty `items`, `loop.phase` `waiting`, `next_learning_due_at`. |
+| `queue.loop_never_waits` | `queue-loop-unlimited-later-new` | ADR-037 A1: reviews unlimited, nothing ready, learning cards later, new cards exist → `reviewing` with new cards, never `waiting`; a learning card that comes due is first. |
+| `queue.loop_done_backlog_first` | `queue-loop-cap-keep-going-backlog` | ADR-037 B1-B4: the proportional mix under the cap, `done_for_today` at both limits, Keep going serves the backlog before any new card. |
+| `queue.loop_goal_reached` | `queue-loop-goal-reached` | ADR-037 A3: reviews unlimited, new goal reached → `goal_reached`; Keep going serves new cards past the goal. |
+| `queue.loop_waiting`, `queue.loop_empty` | `queue-loop-waiting-empty` | ADR-037 B6: nothing ready, no new card anywhere, learning later → `waiting`; nothing later → `empty`; with and without `keep_going`. |
 | `queue.kinds_counts` | `queue-kinds-filter-counts` | The `kinds` filter leaves `counts` unchanged. |
 | `queue.reviews_unlimited` | `queue-reviews-unlimited` | `scheduler.reviews_unlimited` (ADR-034), toggled by a local `updateSettings`. |
 | `cards.reading_retired`, `cards.reading_reenabled`, `notes.create_no_reading_card` | `reading-retired-reenabled` | Reading cards retired, re-enabled; `createNote` makes no reading card while retired (ADR-035). |
@@ -711,6 +729,10 @@ difference is a finding.
 | `replica.empty` | `empty-replica` | A paired device that has pulled nothing. |
 | `sync.parent_deleted_by_pull` | `parent-deleted-by-pull` | A note deleted elsewhere after this device answered its card (L-6). |
 | `dict.entry_missing` | `dict-entry-missing` | Per-entry miss (L-7): a note whose entry is not in the dictionary is still served, a deck entry without dictionary data is not materialized, `createNote` for it is `422` at `/entry_seq`. |
+
+`queue.session_cap_more_available` (scenario `queue-session-cap-more-available`) was retired by
+ADR-037: there is no session cap. Every golden whose steps call `getReviewQueue` is re-recorded by
+LOOP-SRV (the body gains `loop`; the order follows the proportional mix).
 
 Further scenarios (one per remaining `local` operation) are added by the L tickets through a
 `CONTRACT_CHANGE_REQUEST`; they need no schema change.
@@ -844,6 +866,8 @@ Not learning data, listed for completeness — `proxy`: `getHealth`, `getOwnDevi
 | `updatePushState` | `PATCH /shell/v1/push` | `401` | `503` | UnifiedPush registration |
 | `getAnkiConnectState` | `GET /shell/v1/ankiconnect` | `401` | `503` | — |
 | `updateAnkiConnectState` | `PATCH /shell/v1/ankiconnect` | `401` | `503` | device preferences, restarts the server |
+| `getDisplayPrefs` | `GET /shell/v1/display` | `401` | `503` | — |
+| `updateDisplayPrefs` | `PATCH /shell/v1/display` | `401` | `503` | device preferences, activity orientation (6.3) |
 
 None of them mints a sync op or writes a learning-data table. Their state is device-local and
 not synced.
@@ -868,7 +892,7 @@ contracts/api/check.sh        # or: make check MODULE=contracts
 
 lints `shell.yaml`, then runs `shell/check_shell.py`, whose named checks are listed at the top of
 that file: bridge examples valid / invalid ones rejected; `ops.json` complete, nothing invented;
-the 16 shell operations; this file's cross-check; every parity seed op against
+the 18 shell operations; this file's cross-check; every parity seed op against
 `contracts/sync/op.schema.json`; every seed pushed to the sync contract's reference server
 (`contracts/sync/tools/model.py`), which must accept each op and emit none of its own; the mandatory
 coverage of 8.4; and negative self-tests (a removed operationId, an invented one, a bad class, a

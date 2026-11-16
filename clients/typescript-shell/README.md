@@ -47,12 +47,14 @@ All URIs are relative to */shell/v1*
 | ----- | ------ | ------------ | -------------
 *DeviceApi* | [**getAnkiConnectState**](docs/DeviceApi.md#getankiconnectstate) | **GET** /ankiconnect | On-device AnkiConnect server settings and status.
 *DeviceApi* | [**getDictInstall**](docs/DeviceApi.md#getdictinstall) | **GET** /dict | State of the on-device dictionary package.
+*DeviceApi* | [**getDisplayPrefs**](docs/DeviceApi.md#getdisplayprefs) | **GET** /display | Display preferences of this device (lock to portrait).
 *DeviceApi* | [**getNotificationState**](docs/DeviceApi.md#getnotificationstate) | **GET** /notifications | Notification permission and reminder preferences.
 *DeviceApi* | [**getPushState**](docs/DeviceApi.md#getpushstate) | **GET** /push | UnifiedPush registration state.
 *DeviceApi* | [**getStorage**](docs/DeviceApi.md#getstorage) | **GET** /storage | Offline storage use and audio prefetch settings.
 *DeviceApi* | [**requestNotificationPermission**](docs/DeviceApi.md#requestnotificationpermission) | **POST** /notifications/permission | Show the system notification permission dialog.
 *DeviceApi* | [**startDictInstall**](docs/DeviceApi.md#startdictinstall) | **POST** /dict/install | Download and install (or update) the dictionary package.
 *DeviceApi* | [**updateAnkiConnectState**](docs/DeviceApi.md#updateankiconnectstate) | **PATCH** /ankiconnect | Change the on-device AnkiConnect server settings.
+*DeviceApi* | [**updateDisplayPrefs**](docs/DeviceApi.md#updatedisplayprefs) | **PATCH** /display | Change the display preferences.
 *DeviceApi* | [**updateNotificationPrefs**](docs/DeviceApi.md#updatenotificationprefs) | **PATCH** /notifications | Change reminder preferences.
 *DeviceApi* | [**updatePushState**](docs/DeviceApi.md#updatepushstate) | **PATCH** /push | Enable, retry or disable push.
 *DeviceApi* | [**updateStorage**](docs/DeviceApi.md#updatestorage) | **PATCH** /storage | Change prefetch settings or clear the blob cache.
@@ -74,6 +76,8 @@ All URIs are relative to */shell/v1*
 - [ShellDictInstallGapFill](docs/ShellDictInstallGapFill.md)
 - [ShellDictInstallInstalled](docs/ShellDictInstallInstalled.md)
 - [ShellDictInstallRequest](docs/ShellDictInstallRequest.md)
+- [ShellDisplay](docs/ShellDisplay.md)
+- [ShellDisplayPatch](docs/ShellDisplayPatch.md)
 - [ShellEvent](docs/ShellEvent.md)
 - [ShellEventConnectivity](docs/ShellEventConnectivity.md)
 - [ShellEventHello](docs/ShellEventHello.md)

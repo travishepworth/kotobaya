@@ -8,7 +8,8 @@
     "No seed op at all: only the built-in rows (note types, Default preset) exist.",
     "Step 0: the queue is empty, counts are zero, nothing more is available.",
     "Step 1: answering an unknown card is 404; step 2: undoing an unknown review is 404.",
-    "Step 3: keep going on the empty replica is still empty."
+    "Step 3: keep going on the empty replica is still empty.",
+    "ADR-037: loop.phase is empty in steps 0 and 3."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -44,7 +45,8 @@
           "/more_available": false,
           "/to_materialize": 0,
           "/study_day": "2026-11-20",
-          "/day_ends_at": "2026-11-21T04:00:00.000Z"
+          "/day_ends_at": "2026-11-21T04:00:00.000Z",
+          "/loop/phase": "empty"
         },
         "absent": [
           "/next_learning_due_at"
@@ -98,7 +100,8 @@
         "status": 200,
         "body": {
           "/items": [],
-          "/more_available": false
+          "/more_available": false,
+          "/loop/phase": "empty"
         }
       }
     }

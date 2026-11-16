@@ -211,6 +211,19 @@ The local values may differ from what the server would send while ops are pendin
 - Card media serving: the web API route and the Android `WebViewAssetLoader` path behind
   `RenderOptions.mediaUrlTemplate` (T213 / the media ticket).
 
+**ADR-037 — review loop** (`core/src/commonTest/kotlin/kotobaya/queue/ReviewLoopTest.kt`, jvm and js;
+ticket LOOP-CORE; write the tests first, from the worked examples): A1, B3, B4, A3 of the `ReviewLoop`
+KDoc and A2, A4, B1, B2, B5-B8, E1-E6 of `docs/REVIEW-LOOP.md` 10; the rule-5 mix examples of the
+`QueueBuilder` KDoc (`R1 N1 R2 R3 N2 R4`; 200 ready / goal 40; 9 ready with 12 of 40 introduced) and
+"the order of one build equals the order of rebuilding after each answer"; rule-4 budget (day
+remaining + batch, atomic against the day, 39/40 with a 3-card group); `newPerSession` /
+`newShownThisSession` change nothing. Properties (extend `QueuePropertyTest`): counts invariant under
+`keepGoing`; `backlog >= readyReviews`; `REVIEWING` iff the served queue is non-empty;
+`GOAL_REACHED` / `DONE_FOR_TODAY` imply K non-empty; no LEARNING item with `dueAt > now`; the result
+is independent of the order of candidates, decks and `today`; the mix is independent of the batch.
+Tests of the old rule 5 stride and of the session cap in `QueueBuilderTest` / `QueueKeepGoingTest` are
+replaced, not kept.
+
 **C-26 — keep going** (`core/src/commonTest/kotlin/kotobaya/queue/QueueKeepGoingTest.kt`): the rule-6
 KDoc example (normal empty with `moreAvailable`, keep-going `R4 N1 N2 N3`, batch 2); default false is
 identical to before; daily/session/per-deck new caps ignored with deck tiers kept; global and per-deck
@@ -218,22 +231,32 @@ review caps lifted; siblings and exclusions kept; nothing not yet due; disabled 
 the normal queue non-empty; reviews before new; add_kanji overshoot; pending entries bounded by the
 batch and counted for `moreAvailable`; batch < 1 = 1; `isNew` exactly for NEW items.
 
-## C-26: keep going on a device (Android)
+## C-26 / ADR-037: the review loop on a device (Android)
 
-The device builds with `QueueLimits(keepGoing = true)` (leave `keepGoingNewBatch` at its default)
-while the user keeps going, on every rebuild, and with `keepGoing = false` otherwise. "Out" =
-`items` and `toMaterialize` empty: show Keep going iff `moreAvailable` (say "done for now": it is
-also true when only the session cap is reached), else "done" (plus `nextLearningDueAt` if set).
-Materialize `toMaterialize` exactly as in a normal build. Keep incrementing `newShownThisSession`
-for new cards shown while keeping going. Show the "New" badge from `QueueItem.isNew`.
+Superseded text: before ADR-037 this section told a device to call `QueueBuilder.build`, to keep
+going for "one visit" and to count `newShownThisSession`. All of that is gone.
 
-**Scope (normative).** Keep going is UI state scoped to one visit to the review screen. It is
-cleared when the user leaves the review screen, when the study day (the local date of `StudyDay`
-on a device; `study_day` in the API) differs from the one it was started in, and on app restart.
-The normal Review entry point and the Today counts always use `keepGoing = false` /
-`keep_going=false`. Never persist it (no saved state, no preference). A device checks the day on
-every rebuild: if `day.startMs` differs from the day keep going started, it drops the flag and
-builds normally.
+- **One entry point.** Every native caller - the local API's `getReviewQueue`, the widget, the due
+  notification, the nudge threshold - calls `ReviewLoop.evaluate(input)` (contract
+  `kotobaya.contracts.queue.ReviewLoop`, implementation `kotobaya.queue.DefaultReviewLoop`) and
+  renders `LoopResult`. Nobody calls `QueueBuilder.build` for something shown, counts cards with
+  SQL, or derives an end state from `moreAvailable` / `nextLearningDueAt`.
+- **Input.** `QueueLimits.learnAheadMs = 0`; `newPerSession = 0`, `newShownThisSession = 0` (both
+  ignored); `keepGoingNewBatch`: the local API passes the request's `limit` (as the server, so
+  parity holds); native count-only callers leave the default 10. `keepGoing`: the local API passes
+  the request's `keep_going`; native count-only callers pass `false`.
+- **What to show.** Items: `LoopResult.queue.items`. Phase: `LoopState.phase`. Ready-now count
+  (widget, notification): `readyLearning + readyReviews`; these do not depend on keep going, so the
+  widget needs no keep-going state. New bar: `newToday / newGoal`. The "New" badge: `QueueItem.isNew`.
+- **Materialization (C-27).** Materialize exactly `LoopResult.queue.toMaterialize` (the served
+  build) and re-evaluate; never the other build's entries. A count-only caller (widget) does not
+  materialize.
+- **Keep going scope (normative; `QueueBuilder` rule 6 "Scope").** Per client, per study day: the
+  client that started it stores the study day and sends `keepGoing = true` on every build while the
+  current study day equals the stored one; it survives leaving the review screen and a restart; a
+  day mismatch drops it. In the shell the client is the SPA (its `localStorage`, openapi
+  `getReviewQueue` rule C2); native code stores nothing. Never an op, never a synced setting.
+- **Waiting.** Only `LoopPhase.WAITING` waits; resume at `LoopState.nextDueAt`.
 
 ## ADR-035: reading cards retired by a setting (C-28)
 
@@ -319,10 +342,16 @@ that would not fit once materialized is never drawn, so nothing is created that 
 would not show, and the counts are the same before and after the rebuild.
 
 A loader may pass only the first `2 × B + 16` such entries per deck in `(position, item_key)` order,
-`B` = `max(1, keepGoingNewBatch)` when keeping going, else `max(max(1, keepGoingNewBatch),
-min(newPerDay, newPerSession))` (the larger bound, because `moreAvailable` probes with the
-keep-going batch even when a normal limit is 0). An entry beyond the window is reached by a later
-build.
+`B = max(1, keepGoingNewBatch)` in both modes (ADR-037: the batch bounds the normal build as well
+as the keep-going one, and `ReviewLoop.evaluate` runs both builds from the one loaded input, so one
+window serves both). An entry beyond the window is reached by a later build.
+
+**Which build is materialized (ADR-037).** `ReviewLoop.evaluate` returns the build to serve
+(`LoopResult.queue`). Only its `toMaterialize` is materialized: the normal build's for a normal
+request, the keep-going build's for a keep-going request. The other build exists only for the
+counts and the phase; materializing its entries would create notes past the day's goal on a
+request that merely asked for the state. The new-card budget of the normal build is the day's
+remaining goal and the batch (QueueBuilder rule 4), not `min(day, session)`.
 
 **Rebuild rounds (server).** After materializing, the server rebuilds; it materializes again (at
 most 3 rounds) only if the previous round's notes appear in `items` (a safety net: a mismatch can

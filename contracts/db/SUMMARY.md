@@ -252,3 +252,11 @@
 - Worth a second look: (1) shadowing — N4 excludes words also listed in N5 (jisho-style), so
   the five decks are disjoint; (2) JLPT decks ordered by global frequency, not the list's
   alphabetical order; (3) the source repo's CC BY-SA 4.0 licence (upstream CC BY), personal use.
+
+## LOOP-C changes (settings keys; no DDL): ADR-037
+- `scheduler.new_per_session` is deprecated and ignored (SCHEMA.md 6): no builder reads it; it is
+  still accepted, stored, returned and synced so old clients keep working; no migration, rows stay.
+- `scheduler.new_per_day` is the day's new goal (`loop.new.goal`); `scheduler.reviews_unlimited`
+  also selects the end state (`goal_reached` vs `done_for_today`), SCHEMA.md 6.3.
+- No table, column or op changed. Rejected: deleting the key's rows (an old client would write it
+  back; a tombstone op for a setting does not exist).

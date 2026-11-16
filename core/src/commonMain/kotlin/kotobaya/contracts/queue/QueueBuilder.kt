@@ -162,15 +162,23 @@ public data class PendingEntry(
     public val newKanjiCards: Int = 0,
 )
 
-/** Daily and session limits (settings `scheduler.*`, SCHEMA.md 6). */
+/** Daily limits and per-build flags (settings `scheduler.*`, SCHEMA.md 6). */
 public data class QueueLimits(
     /** `scheduler.new_per_day` (default 20). */
     public val newPerDay: Int,
     /** `scheduler.reviews_per_day` (default 200). Ignored when [reviewsUnlimited] (ADR-034). */
     public val reviewsPerDay: Int,
-    /** `scheduler.new_per_session` (default 10). */
+    /**
+     * **Deprecated (ADR-037): ignored by the builder.** Was `scheduler.new_per_session` (default
+     * 10), the per-session new cap. Kept so existing callers compile; any value gives the same
+     * build. New callers pass 0. Not annotated `@Deprecated` so that no caller gets a warning.
+     */
     public val newPerSession: Int,
-    /** New cards already introduced in the current session (the UI's counter; 0 at session start). */
+    /**
+     * **Deprecated (ADR-037): ignored by the builder.** Was the UI's count of new cards shown in
+     * the current session. Kept so existing callers compile; any value gives the same build. New
+     * callers pass 0 and keep no such counter.
+     */
     public val newShownThisSession: Int,
     /** `scheduler.bury_siblings` (default true). */
     public val burySiblings: Boolean,
@@ -182,20 +190,23 @@ public data class QueueLimits(
     public val learnAheadMs: Long,
     /**
      * C-26 (additive, ADR-031) **Keep going**: a stateless per-build override, never stored (not a
-     * setting, not an op). When true the builder lifts every daily and session cap ([reviewsPerDay],
-     * [newPerDay], [newPerSession] / [newShownThisSession], `QueueDeck.reviewsPerDay`,
-     * `QueueDeck.newPerDay`), bounds new cards per build by [keepGoingNewBatch] instead and puts
-     * reviews before new cards; every other rule is unchanged ([QueueBuilder] rule 6). Default
-     * false = the behaviour before C-26, bit for bit. Scope: one visit to the review screen,
-     * cleared on leaving it, on a study-day change and on app restart (rule 6 "Scope").
+     * setting, not an op). When true the builder lifts every daily cap ([reviewsPerDay],
+     * [newPerDay], `QueueDeck.reviewsPerDay`, `QueueDeck.newPerDay`), bounds new cards per build
+     * by [keepGoingNewBatch] alone and puts reviews before new cards; every other rule is unchanged
+     * ([QueueBuilder] rule 6). Default false = the normal build. Scope (ADR-037): per client,
+     * persisted by that client for the study day it was started in (rule 6 "Scope").
      */
     public val keepGoing: Boolean = false,
     /**
-     * C-26: the new-card budget of one build when [keepGoing] is true (rule 6); ignored otherwise.
-     * Values `< 1` count as 1. It bounds `items` and `toMaterialize` of one build only: the UI
-     * rebuilds after every answer, so keep going yields new cards until the user stops or the pool
-     * is empty. The server passes the request's `limit`; a device leaves the default, which keeps
-     * note creation for pending entries to a handful per build.
+     * The **batch**: how many new cards one build draws at most, in **both** modes (ADR-037; before
+     * it, only when [keepGoing]). Values `< 1` count as 1. Normal build: new groups are drawn while
+     * fewer than the batch are drawn and the group fits the day's remaining goal (rule 4). Keep
+     * going: the batch is the whole budget (rule 6). An add_kanji group may overshoot it. It bounds
+     * `items` and `toMaterialize` of one build only: callers rebuild after every answer, so the
+     * stream continues until the goal (normal) or the pool (keep going) is exhausted. The server
+     * passes the request's `limit` (`getStatsSummary`: 20, the default `limit`); a device leaves the
+     * default, which keeps note creation for pending entries to a handful per build.
+     * Example: goal 40, 12 introduced, batch 10 → a normal build holds 10 NEW, not 28.
      */
     public val keepGoingNewBatch: Int = DEFAULT_KEEP_GOING_NEW_BATCH,
     /**
@@ -204,7 +215,8 @@ public data class QueueLimits(
      * `QueueDeck.reviewsPerDay` cap: every eligible REVIEW card with `dueAt < day.endMs` is taken
      * (still at most one NEW/REVIEW item per note if [burySiblings]; never a card due at or after
      * `day.endMs`). Nothing else changes: new-card limits (rule 4), learning and learn-ahead
-     * (rule 2), the interleaving of rule 5 and [ReviewQueue.moreAvailable] are as for false, and
+     * (rule 2), the proportional mix of rule 5 (its review side is then every ready review) and
+     * [ReviewQueue.moreAvailable] are as for false, and
      * [keepGoing] behaves as before (it already lifts the review caps). Unlike [keepGoing] this is
      * a persisted, synced setting and applies to every build, including the Today counts, so all
      * clients show the same counts. Default false = the behaviour before ADR-034, bit for bit.
@@ -215,7 +227,7 @@ public data class QueueLimits(
 ) {
     /** Constants. */
     public companion object {
-        /** Default [keepGoingNewBatch]: 10 (the default of `scheduler.new_per_session`). */
+        /** Default [keepGoingNewBatch]: 10 (what a device uses for every build). */
         public const val DEFAULT_KEEP_GOING_NEW_BATCH: Int = 10
     }
 }
@@ -309,19 +321,17 @@ public data class ReviewQueue(
     /** Earliest `dueAt` of a learning card due later today but outside learn-ahead; null if none. */
     public val nextLearningDueAt: InstantMs?,
     /**
-     * C-26 (additive): "done for today, but keep going has more". True iff **all** of: the input's
-     * `limits.keepGoing` is false; [items] and [toMaterialize] are both empty; and building the
-     * same input with `keepGoing = true` (same [QueueLimits.keepGoingNewBatch]) returns a non-empty
-     * `items` or `toMaterialize`. False in every other case: always for a keep-going build, and
-     * whenever the normal queue is non-empty (a learn-ahead item counts). Independent of
-     * [nextLearningDueAt]; both may be set (the UI may offer keep going while a learning card waits).
+     * C-26 (additive): "done under the limits, but keep going has more". True iff **all** of: the
+     * input's `limits.keepGoing` is false; [items] and [toMaterialize] are both empty; and building
+     * the same input with `keepGoing = true` (same [QueueLimits.keepGoingNewBatch]) returns a
+     * non-empty `items` or `toMaterialize`. False in every other case: always for a keep-going
+     * build, and whenever the normal queue is non-empty (a learn-ahead item counts). Independent of
+     * [nextLearningDueAt]; both may be set.
      *
-     * It is also true when only the session cap is exhausted (rule 6), so the UI says "done for
-     * now", not "done for today".
-     *
-     * For an empty normal queue: `moreAvailable` → "done for now" plus a Keep going action;
-     * `!moreAvailable` → nothing is left today (apart from [nextLearningDueAt]). For a keep-going
-     * build, empty `items` and `toMaterialize` mean truly out of cards.
+     * **Deprecated as a UI signal (ADR-037)**: still computed with exactly this meaning (it feeds
+     * [LegacyCounts.moreAvailable] and the API's deprecated `more_available`), but callers decide
+     * end states from [LoopState.phase] ([ReviewLoop]), never from this. There is no session cap any
+     * more, so it no longer means "done for now".
      */
     public val moreAvailable: Boolean = false,
 )
@@ -329,6 +339,8 @@ public data class ReviewQueue(
 /**
  * Builds the review queue (SPEC "Queue building"). Pure and deterministic; the UI calls it again
  * after every answer (it is cheap to rebuild and that keeps sibling burying and limits exact).
+ * Since ADR-037 callers do not call [build] directly for anything they show: they call
+ * [ReviewLoop.evaluate], which runs the normal and the keep-going build and decides the phase.
  *
  * Rules, in order:
  * 0. **Retired cards** (ADR-035): the set `X` = ids of candidates with
@@ -368,8 +380,17 @@ public data class ReviewQueue(
  *    REVIEW card with `dueAt < day.endMs` is taken; rules 1, 2, 4 and 5 are unchanged.
  *    Example: 300 eligible reviews due today, `reviewsPerDay` 200, nothing reviewed today →
  *    200 REVIEW items when false, 300 when true.
- * 4. **New**: budget = `min(newPerDay − today's introducedNew, newPerSession − newShownThisSession)`
- *    (`>= 0`). Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
+ * 4. **New**: **budget** (ADR-037; normal build): `dayRemaining = max(0, newPerDay − today's
+ *    introducedNew)` and `batch = max(1, keepGoingNewBatch)`. `drawn` counts what this build has
+ *    drawn against the budget (each card 1, each pending entry its whole group, below). A turn's
+ *    group of size `g` is drawn iff `drawn < batch` **and** `drawn + g <= dayRemaining` (it fits
+ *    the **day**; the batch may be overshot by `g − 1`, as in rule 6) and the per-deck test below
+ *    holds; a group that does not fit the day is skipped for this build and the turn passes on (a
+ *    smaller group later in the order may still be drawn). Once `drawn >= batch` rule 4 stops.
+ *    `newPerSession` and `newShownThisSession` are ignored (no session cap, no "done for now").
+ *    Wherever the text below says "the budget" it means this test. Example: goal 40, 12 introduced,
+ *    batch 10, 100 single cards → 10 NEW; 39 introduced and only a 3-card group left → none.
+ *    Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
  *    holding the NEW cards with **no deck membership at all** (`memberships` empty), ordered by
  *    `(noteCreatedAt, kindOrder, cardId)`, with priority [QueueInput.decklessPriority] and no deck
  *    limit. A NEW card's **home new-source** is the first **enabled** deck of its memberships in
@@ -410,10 +431,10 @@ public data class ReviewQueue(
  *      queue: BEFORE = K then V; ALONGSIDE = V then K.
  *    - **Atomic.** The group is drawn iff V fits the drawing source's per-deck remaining (`>= 1`;
  *      the deckless source has no limit) **and** the whole group (`1 + |K|`) fits the budget (the
- *      global new remaining and the session remaining). Otherwise **none** of the group is drawn;
+ *      day's remaining goal, with fewer than the batch drawn so far). Otherwise **none** of the group is drawn;
  *      V is skipped for this build (not taken) and the turn passes on as for an empty turn.
  *    - **Attribution.** V counts against the drawing source's limit. Each K card counts against
- *      the budget (global and session) and against **its own home new-source's** daily count, never
+ *      the budget (the day's goal and the batch) and against **its own home new-source's** daily count, never
  *      the drawing source's. Its home deck's remaining may therefore go below zero (clamped to 0
  *      for that deck's own later turns): a kanji card is **never skipped** because its home deck's
  *      limit is used up, so a kanji deck with `newPerDay = 0` still feeds kanji through add_kanji.
@@ -423,32 +444,52 @@ public data class ReviewQueue(
  *    - **Breaking (C-8 attempt 2)** against T205's tests (`QueueBuilderTest.kt` add_kanji cases):
  *      add_kanji cards no longer count against the drawing deck, and a group that does not fit is
  *      not drawn in part.
- * 5. **Order**: due learning items first; then reviews `R` and new `N` interleaved: if either is
- *    empty the other follows alone; else `k = max(1, (|R| + |N|) / |N|)` (integer division) and
- *    position `i` (0-based within the interleaved part) holds a new card iff `(i + 1) % k == 0` and
- *    new cards remain, or reviews are exhausted; then the learn-ahead items last. Because the UI
- *    rebuilds after every answer, a learn-ahead card is shown only once no due learning card, no
- *    review within the limits and no new card within the budget is left; it moves to the front by
- *    itself once its `dueAt <= now` on a later build (Anki-like; C-22 — before C-22 every learning
- *    card within learn-ahead came first, so a relearning card answered Hard, due in ~15 min,
- *    reappeared at once ahead of every due review).
- *    Example (`now` = N, learn-ahead 20 min): L1 due N+15 min, L2 due N−1 min, R3 due today, new
- *    N4 → `L2 R3 N4 L1`. With only L1 → `L1` (served ahead of time).
+ * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
+ *    `R` (rule 3 order, most overdue first) and the new cards `N` (rule 4 draw order) in the
+ *    **proportional mix**; then the learn-ahead items last (only when `learnAheadMs > 0`, which
+ *    Kotobaya never passes; [ReviewLoop] forces 0).
+ *    **Proportional mix**: new cards are spread over the reviews so that today's review pool and
+ *    today's new goal are used up at about the same time, in both modes (`reviewsUnlimited` or
+ *    not). Integers only, so every platform gives the same order:
+ *    - `a` = today's `countsAsReview` reviews, `b` = today's `introducedNew` reviews (both from
+ *      [QueueInput.today] after rule 0); `Rt = a + |R|` (the day's review pool: done + ready, where
+ *      ready is already bounded by the review caps, i.e. `min(due, remaining cap)` in capped mode
+ *      and every due review in unlimited mode); `Gt = max(1, newPerDay)` (the day's new goal).
+ *    - Repeat while both `R` and `N` have cards left: the next item is the next **new** card iff
+ *      `b * Rt < a * Gt` (new-card progress `b / Gt` is behind review progress `a / Rt`; compute
+ *      in 64-bit), else the next **review**; then `b += 1` or `a += 1` respectively. A tie is a
+ *      review, so with nothing done today the first card is the most overdue review.
+ *    - When one of the two runs out, the rest of the other follows.
+ *    The counters advance exactly as [QueueInput.today] does when the items are answered in
+ *    order, so the order of one build equals the order produced by rebuilding after every answer
+ *    (recomputed each time; no session state). The mix reads only `today`, `|R|` and `newPerDay`:
+ *    it does not depend on the batch, on input order or on the caller. Cards of an add_kanji group
+ *    stay in rule 4 order but reviews may fall between them. `toMaterialize` entries are not items
+ *    and take no slot; they join `N` after materialization and rebuild.
+ *    Example (nothing done today, `newPerDay` 2, reviews R1 R2 R3 R4 due, new N1 N2): `Rt = 4`,
+ *    `Gt = 2` → `R1 N1 R2 R3 N2 R4`. Example (200 ready, goal 40, nothing done): a new card after
+ *    the 1st review, then one after every 5 more; the 40th new card follows the 196th review.
+ *    Example (9 ready, 12 of 40 introduced, 0 reviewed): `R R R N N R N N N N R …`.
+ *    Example with learning (`now` = T, learn-ahead 20 min): L1 due T+15 min, L2 due T−1 min, R3 due
+ *    today, new N4 → `L2 R3 N4 L1`; with learn-ahead 0 (always, in Kotobaya) → `L2 R3 N4`.
+ *    Before ADR-037 this was a fixed-stride interleave (`k = max(1, (|R| + |N|) / |N|)`).
  * 6. **Keep going** (C-26, ADR-031), only when `limits.keepGoing` is true; otherwise rules 1–5
  *    apply exactly as written. These changes and nothing else:
  *    - Rule 3: the global and per-deck review remaining are unlimited, so every eligible REVIEW
  *      card with `dueAt < day.endMs` is taken (still one NEW/REVIEW item per note if burying).
  *      Cards with `dueAt >= day.endMs` are **never** taken: no study-ahead.
- *    - Rule 4: budget = `max(1, keepGoingNewBatch)`; `newPerDay`, today's `introducedNew` count,
- *      `newPerSession` and `newShownThisSession` are ignored, and no source has a per-deck limit
+ *    - Rule 4: budget = `max(1, keepGoingNewBatch)` alone; `newPerDay` and today's
+ *      `introducedNew` count are ignored (no day test), and no source has a per-deck limit
  *      (`QueueDeck.newPerDay` ignored). Sources, home new-source (a disabled deck still supplies
  *      nothing), tiers, round-robin, in-deck order, pending entries (each still counts 1 against
  *      the budget), KNOWN handling and add_kanji grouping and group order are unchanged.
  *      **Atomic** becomes: a group is drawn iff the budget is `>= 1`; it may overshoot the batch
  *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
- *    - Rule 5: the interleaved part is all of `R` (rule 3 order) followed by all of `N` (rule 4
- *      order): due learning, reviews, new, learn-ahead. Reviews left over past the caps are
- *      backlog and are cleared before more new cards.
+ *    - Rule 5: **no mix**. The order is due learning, then all of `R` (rule 3 order, most overdue
+ *      first), then all of `N` (rule 4 order), then learn-ahead. Reviews left over past the caps
+ *      are backlog and are cleared before more new cards; with `reviewsUnlimited` (no backlog) a
+ *      review that becomes due is simply next, then the new cards continue. The proportional mix
+ *      belongs to the normal build only (user decision 2026-11-17).
  *    - Rules 1 and 2: unchanged (eligibility, sibling burying, learning, learn-ahead).
  *    - [ReviewQueue.moreAvailable] is false.
  *    Accounting does not change: cards studied through keep going are answered with ordinary
@@ -456,17 +497,16 @@ public data class ReviewQueue(
  *    today's normal limits; they never raise tomorrow's allowance (limits are per study day).
  *    **moreAvailable** (`keepGoing` false): after rules 1–5, only when `items` and
  *    `toMaterialize` are both empty, the builder runs the same input under rule 6 and sets it to
- *    whether that result is non-empty. It is also true when only the session cap
- *    (`newPerSession − newShownThisSession`) is exhausted, so the UI says "done for now", not
- *    "done for today".
- *    **Session counter.** `newShownThisSession` keeps incrementing for every new card shown in
- *    keep-going mode (the UI counts as always); rule 6 just ignores it. After keep going ends the
- *    session cap is therefore usually exhausted for the rest of that session.
- *    **Scope (normative).** Keep going is UI state scoped to one visit to the review screen. It
- *    is cleared when the user leaves the review screen, when the study day (the local date of
- *    [StudyDay] on a device; `study_day` in the API) differs from the one it was started in, and
- *    on app restart. The normal Review entry point and the Today counts always build with
- *    `keepGoing = false`. It is never persisted.
+ *    whether that result is non-empty. Deprecated as a UI signal: end states come from
+ *    [ReviewLoop] (ADR-037), which always runs both builds.
+ *    **Scope (normative, ADR-037; replaces ADR-031's "one visit").** Keep going is per client and
+ *    per study day. A client that starts it stores the study day it was started in (the API's
+ *    `study_day`; on a device the local date of [StudyDay]) in its own persistent state and passes
+ *    `keepGoing = true` on every build (review, home, counts) while the current study day equals
+ *    the stored one, also after leaving the review screen and after a restart. When the study day
+ *    differs it drops the stored value and builds with `keepGoing = false`. It is never an op and
+ *    never a synced setting: another device keeps its own state (off until started there). Counts
+ *    do not depend on it ([LoopState]).
  *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
  *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
  *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`

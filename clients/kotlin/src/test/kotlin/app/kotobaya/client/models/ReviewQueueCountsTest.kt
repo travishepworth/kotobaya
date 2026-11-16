@@ -33,19 +33,19 @@ class ReviewQueueCountsTest : ShouldSpec() {
         // uncomment below to create an instance of ReviewQueueCounts
         //val modelInstance = ReviewQueueCounts()
 
-        // to test the property `learning` - Cards in learning or relearning due before the day ends.
+        // to test the property `learning` - Deprecated. Cards in learning or relearning due before the day ends, **ready or not**: `loop.ready.learning + loop.later_today.count`. This is the over-count ADR-037 replaces (26 here could mean 0 cards to show now); kept unchanged so old clients see what they always saw. 
         should("test learning") {
             // uncomment below to test the property
             //modelInstance.learning shouldBe ("TODO")
         }
 
-        // to test the property `new` - New cards still to introduce today, including drawn deck entries not yet materialized (`to_materialize`, C-27).
+        // to test the property `new` - Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at most about `limit` new cards, so this is bounded by `limit` as well as by the day's remaining goal. 
         should("test new") {
             // uncomment below to test the property
             //modelInstance.new shouldBe ("TODO")
         }
 
-        // to test the property `review` - Review cards due today (including overdue).
+        // to test the property `review` - Deprecated. Review cards due today within the limits (including overdue). Equals `loop.ready.review`.
         should("test review") {
             // uncomment below to test the property
             //modelInstance.review shouldBe ("TODO")

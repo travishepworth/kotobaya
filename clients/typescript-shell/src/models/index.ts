@@ -9,6 +9,8 @@ export * from './ShellDictInstall';
 export * from './ShellDictInstallGapFill';
 export * from './ShellDictInstallInstalled';
 export * from './ShellDictInstallRequest';
+export * from './ShellDisplay';
+export * from './ShellDisplayPatch';
 export * from './ShellEvent';
 export * from './ShellEventConnectivity';
 export * from './ShellEventHello';

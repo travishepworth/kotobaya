@@ -133,6 +133,7 @@ Sibling cards from one note are buried until the next day so one doesn't give aw
 - New cards come from decks in priority order. Inside a deck they follow the deck's order: frequency within the media by default, like jpdb.
 - Optional: when a vocab card is added, add cards for kanji you haven't learned yet. Kanji cards can come before or alongside the word.
 - Interleave new and review cards, with a cap on new cards per session.
+  - *Note (ADR-037, 2026-11-17):* the interleave is a proportional mix (new cards spread over the day's reviews so both run out together, with or without a review limit); the per-session cap is gone (`scheduler.new_per_session` is ignored). One loop in the core decides order, counts and end states: `docs/REVIEW-LOOP.md`.
 - Word status updates automatically. Mark a word never-forget (known, no reviews) or blacklisted (ignored everywhere) at any time.
 
 **Leeches and hot words**

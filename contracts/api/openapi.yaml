@@ -2155,33 +2155,116 @@ paths:
       description: |
         For online clients (web, scripts). The server runs the same queue builder the phone runs
         locally, at request time, over the server's replica: daily limits (global and per deck),
-        deck priority order, sibling burying, interleaving and the per-session new-card cap all
-        come from the core. The response is a prefix of today's queue: the first `limit` cards
-        in the order they should be shown. It is **not** a reservation: fetch again after
-        answering (each answer can change what comes next - learning steps, sibling burying).
-        Suspended, buried, deleted and merged-away cards never appear. An empty `items` is one of
-        the end states listed under "Keep going" below; tell them apart with `more_available`
-        and `counts.learning`.
+        deck priority order, sibling burying and the proportional mix of reviews and new cards
+        all come from the core (`ReviewLoop.evaluate`, ADR-037). The response is a prefix of
+        today's queue: the first `limit` cards in the order they should be shown. It is **not** a
+        reservation: fetch again after answering (each answer can change what comes next -
+        learning steps, sibling burying, the mix). Suspended, buried, deleted and merged-away
+        cards never appear. `loop` (ADR-037) carries the phase and every number a client shows;
+        with an empty `items`, `loop.phase` alone says which end state this is (see "Review loop"
+        below). `counts`, `more_available` and `next_learning_due_at` are deprecated and kept
+        with their old meaning for old clients.
+
+        **Review loop (ADR-037).** One rule, in the core (`ReviewLoop`), the same on the server
+        and in the phone's local API. Vocabulary (the same numbers on every client at the same
+        instant):
+        - *ready learning*: learning/relearning cards whose step has elapsed (`due_at` <= now).
+          Never capped, never served early.
+        - *ready reviews*: review cards due before `day_ends_at` (overdue included) within the
+          remaining review budget (`scheduler.reviews_per_day`, deck `reviews_per_day`; no
+          budget when `scheduler.reviews_unlimited`).
+        - *ready now* = ready learning + ready reviews. New cards are not part of it.
+        - *later today*: learning/relearning cards due later, before `day_ends_at`. A hint only.
+        - *backlog*: every due review an uncapped build would take; *beyond limit* = backlog -
+          ready reviews.
+        - *new today / new goal*: cards introduced today / `scheduler.new_per_day`.
+
+        Order of a normal request (`keep_going=false`), always: ready learning first (a card
+        that came due is the next card); then ready reviews (most overdue first) and new cards
+        in the **proportional mix** (core `QueueBuilder` rule 5): new cards are spread over the
+        reviews so that the day's review pool and the day's new goal run out at about the same
+        time, recomputed on every request from today's reviews; the first card of a fresh day is
+        the most overdue review. Both modes mix: with `scheduler.reviews_unlimited` the review
+        side is every ready review, otherwise the reviews left under the cap. New cards per
+        response are bounded by the day's remaining goal and by `limit` (the batch; an
+        add_kanji group may overshoot `limit`, never the goal).
+        Example: 4 reviews ready, goal 2, nothing done today: `R1 N1 R2 R3 N2 R4`.
+
+        Phases (`loop.phase`; first match wins):
+        1. `reviewing`: the served queue has a card (or a deck entry to materialize, C-27).
+        2. `goal_reached` (only with `scheduler.reviews_unlimited` = true) / `done_for_today`
+           (only with it false): only for `keep_going=false`; nothing is ready under the limits
+           and `keep_going=true` would return at least one card. Offer Keep going; it never
+           leads to a dead end. Which of the two is chosen by the setting, not by which limit
+           was hit.
+        3. `waiting`: nothing ready, keep going would return nothing (or is on and returned
+           nothing), and at least one card falls due later today:
+           `loop.later_today.next_due_at`. Happens only when no new card is left anywhere.
+        4. `empty`: nothing now, nothing with keep going, nothing later today.
+        A learning card that falls due during 2-4 makes the next response `reviewing` again.
+
+        Client rules (normative for web, the shell SPA and the CLI):
+        - **C1 Due first.** A client may hold a page of `items`, but before showing each next
+          card it MUST fetch again if `now >= T`, T = the smallest of
+          `loop.later_today.next_due_at` of the last response (when not null) and `card.due_at`
+          of every `answerReview` response since then whose `card.state` is `learning` or
+          `relearning`. So a card that came due is the very next card. An undo
+          (`undoReview`) is followed by a fetch.
+        - **C2 Keep going is persisted per client for the study day.** When the user starts it,
+          the client stores the `study_day` of the response it was started on (web and shell
+          SPA: `localStorage["kotobaya.keepGoingDay"]`, value = that `study_day` string; CLI
+          daemon: its state file; a count-only surface such as a widget needs none) and from
+          then on sends `keep_going=true` on **every** `getReviewQueue` it makes (home, review,
+          status), also after leaving the review screen and after a restart. It is active iff
+          the stored value equals the `study_day` of the latest response; on a mismatch the
+          client deletes it and fetches again with `keep_going=false`, discarding the
+          mismatching response. Per client, never synced: another browser or the phone keeps
+          its own state (off until started there). Not an op, not a setting. (Replaces
+          ADR-031's "one visit" scope.)
+        - **C3 Display.** Ready-now number = `loop.ready.total` when not keeping going;
+          `loop.ready.learning + loop.backlog.reviews` when keeping going. Show a backlog line
+          only when `loop.backlog.beyond_limit > 0`; a "later today" hint only when
+          `loop.later_today.count > 0`; the new bar as `loop.new.today` / `loop.new.goal` (it
+          may exceed the goal after keep going: clamp the bar, show the number).
+        - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
+          fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
+          timer-driven fetch (the client's clock may differ from the server's; if the card is
+          still not served, the new response reschedules). New clients never read `counts`,
+          `more_available` or `next_learning_due_at`. An unknown `phase` value is treated as
+          `reviewing` when `items` is non-empty and as `empty` otherwise.
+        - **C5 Materialization retries** (C-27): `reviewing` with empty `items` and
+          `to_materialize > 0` (the three rounds ran out, or the caller is read-only): a caller
+          with `review` or `write` fetches again (at most 3 times in a row); a read-only caller
+          shows that new cards exist but cannot be created by it.
+        - A client that sends `kinds` may get `reviewing` with empty `items` (the ready cards
+          are of a kind it excluded): for that filter there is nothing to show; `loop` still
+          describes the whole queue.
 
         **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with
         `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule
-        6): the daily and session limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`,
-        `scheduler.new_per_session`, deck `new_cards_per_day` / `reviews_per_day`) are lifted, at
-        most about `limit` new cards are drawn per request (an add_kanji group may overshoot),
-        reviews due today come before new cards, and everything else (eligibility, sibling
-        burying, deck priority and order, disabled decks, learning) is unchanged.
+        6): the daily limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, deck
+        `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are
+        drawn per request (an add_kanji group may overshoot), and the order is ready learning,
+        then **all** due reviews (most overdue first), then new cards - no mix: with a review cap
+        the backlog is cleared first, then new cards follow without end; with
+        `scheduler.reviews_unlimited` new cards follow without end and a review that becomes due
+        is slotted in next. Everything else (eligibility, sibling burying, deck priority and
+        order, disabled decks, learning) is unchanged.
         Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
         per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
         on every fetch while the user keeps going. Cards answered this way are ordinary reviews
-        and count against today's limits as usual. `counts` are the same with or without keep
-        going (ADR-033): what remains today under the limits, so every client shows the same
-        numbers at the same moment whatever mode it is in.
+        and count against today's limits as usual. Everything in `loop` except `phase` and
+        `keep_going` is the same with or without keep going (ADR-033 principle), so every client
+        shows the same numbers at the same moment whatever mode it is in; so are the deprecated
+        `counts`.
 
         **No review limit (ADR-034).** If the setting `scheduler.reviews_unlimited` is `true`
         (SCHEMA.md 6.3; default `false`), every build (keep going or not) ignores
         `scheduler.reviews_per_day` and deck `reviews_per_day`: every review due before
-        `day_ends_at` is returned and counted in `counts.review`. New-card limits, ordering and
-        interleaving are unchanged. It is an ordinary setting written with `updateSettings`.
+        `day_ends_at` is returned and counted in `loop.ready.review` (`loop.reviews.limit` is
+        null, `loop.backlog.beyond_limit` 0). The new goal and the proportional mix apply as
+        usual; at the goal the phase is `goal_reached`. It is an ordinary setting written with
+        `updateSettings`.
 
         **Reading cards retired (ADR-035).** While the setting `cards.reading_enabled` is not
         `true` (default `false`; SCHEMA.md 6.4), vocab `reading` cards are never returned, never
@@ -2191,41 +2274,28 @@ paths:
 
         **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
         `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).
-        When nothing else is left but learning cards due later today, `items` is empty and
-        `next_learning_due_at` says when the next one falls due: show a waiting state ("next
-        card in m:ss") and fetch again at that instant. A card is never shown again before its
+        Cards due later today are counted in `loop.later_today` and are only a hint while
+        anything else can be shown (reviews, new cards, Keep going). Only in phase `waiting`
+        does the client show a waiting state ("next card in m:ss") and fetch again at
+        `loop.later_today.next_due_at` (rule C4). A card is never shown again before its
         learning step has passed.
 
-        **Keep-going scope (normative).** Keep going is UI state scoped to one visit to the
-        review screen. It is cleared when the user leaves the review screen, when the study day
-        (`study_day` of the responses; the local date of `StudyDay` on a device) differs from
-        the one it was started in, and on app restart. The normal Review entry point and the
-        Today counts always use `keep_going=false`. A client therefore never persists the flag
-        (no app-lifetime store, no local storage) and compares each keep-going response's
-        `study_day` with the day keep going started; on a mismatch it drops the flag and
-        re-fetches with `keep_going=false`.
+        **Keep-going scope (normative).** Rule C2 above: per client, persisted for the study
+        day it was started in, sent on every fetch of that client, dropped when `study_day`
+        changes.
 
-        The three end states for a client:
-        - `items` non-empty: show them.
-        - `items` empty, `more_available` true (only possible with `keep_going=false`): done
-          under the limits; offer Keep going (re-fetch with `keep_going=true`). This includes
-          the case where only the per-session new-card cap (`scheduler.new_per_session`) is
-          reached, so the UI says "done for now", not "done for today".
-        - `items` empty, `more_available` false: nothing left to show now for this `kinds`,
-          with or without keep going. If `next_learning_due_at` is set, a learning card falls
-          due then (wait and fetch again at that instant); otherwise the day is done.
-        - `items` empty and `to_materialize` > 0 (C-27; only for a caller without the `review`
-          and `write` scopes): new cards exist but are deck entries without notes yet; a
-          caller that may review gets them materialized by its own fetch.
-        A keep-going client ends the session only on a keep-going response with empty `items`
-        and `to_materialize` 0; anything else is followed by another fetch once the local
-        queue empties.
+        **Old clients.** A client written before ADR-037 keeps working: `counts`,
+        `more_available` and `next_learning_due_at` are still sent with their old meaning (see
+        the schema). What it sees differently: the order (the proportional mix instead of the
+        fixed-stride interleave), `counts.new` bounded by `limit`, and no per-session "done for
+        now" (`scheduler.new_per_session` is ignored).
 
         **Deck entries become cards here (C-27, ADR-032).** Deck items `e:<seq>` with no note
         are new cards too (core `PendingEntry`; which entries qualify: contracts/core README
         "C-27"). The server passes them to the core builder, and when its build draws some
-        (`ReviewQueue.toMaterialize`, bounded by the same new-card budget as the cards: the
-        daily and session limits, or the keep-going batch; each entry counted as the whole
+        (`toMaterialize` of the build that is **served** - `LoopResult.queue`; never the other
+        build's - bounded by the same new-card budget as the cards: the day's remaining goal and
+        the batch `limit`, or with keep going the batch alone; each entry counted as the whole
         add_kanji group its card will be, so an entry that would not fit is not drawn) and the
         caller holds `review` or `write`, the server creates them before answering, in one op
         transaction as the **server device**, exactly as contracts/core README "C-27" defines:
@@ -2246,7 +2316,8 @@ paths:
           SYNC.md 8.1 (the note that held the entry first survives; the other's cards and
           reviews are merged into it).
         - **Read-only callers** (`read` only) get the queue without materializing: drawn
-          entries are counted in `counts.new` and `to_materialize`, not in `items`.
+          entries are counted in `to_materialize` (and the deprecated `counts.new`), not in
+          `items`; `loop.phase` is `reviewing` (rule C5).
         - `Kotobaya-Seq` is set when ops were emitted.
 
         Each item carries everything needed to render and grade the card: the card with its note
@@ -2286,19 +2357,19 @@ paths:
           description: |
             C-26 (additive). `true` = keep going past today's limits (see the description; core
             `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the
-            normal queue, exactly as before C-26. Keep going is UI state scoped to one visit to
-            the review screen: it is cleared when the user leaves the review screen, when
-            `study_day` differs from the day it was started in, and on app restart; the normal
-            Review entry point and the Today counts always send `false` (see "Keep-going scope"
-            in the description). Only the literal values `true` and `false` are
-            accepted; anything else is `422 validation_failed` with `errors[0].pointer =
-            /keep_going` and `code = invalid_value`. Older servers ignore the parameter (they
-            return the normal queue and no `more_available`).
+            normal queue. Scope (ADR-037, rule C2 in the description): a client that started
+            keep going stores the `study_day` it was started in and sends `true` on every
+            fetch while the latest response's `study_day` equals it; on a mismatch it drops
+            the stored value and sends `false`. Per client, never synced. Only the literal
+            values `true` and `false` are accepted; anything else is `422 validation_failed`
+            with `errors[0].pointer = /keep_going` and `code = invalid_value`. Echoed as
+            `loop.keep_going`. Older servers ignore the parameter (they return the normal
+            queue and no `more_available`).
           schema: {type: boolean, default: false}
           example: true
       responses:
         '200':
-          description: The queue prefix and today's remaining counts.
+          description: The queue prefix and the review loop's state (`loop`).
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ReviewQueue'}
@@ -9431,11 +9502,21 @@ components:
           items:
             $ref: '#/components/schemas/QueueItem'
           description: Cards in the order to show them.
+        loop:
+          $ref: '#/components/schemas/ReviewLoop'
+          description: |
+            ADR-037 (additive). The review loop's phase and numbers, from the core's
+            `ReviewLoop.evaluate` (`LoopState`). Sent by every server and local API that
+            implements ADR-037, on every `200`; **absent = server older than ADR-037** (the only
+            reason it is not in `required`). A client built for ADR-037 treats a missing `loop` as
+            "server too old" and does not fall back to the deprecated fields.
         counts:
           type: object
-          description: Cards remaining today under the current limits (whole queue, not only `items`; unaffected by
-            `kinds`). The same with `keep_going=true` (ADR-033, replacing the C-26 batch counts) - they always
-            describe the normal queue, so all clients agree; keep going only lifts the limits on what is served.
+          deprecated: true
+          description: |
+            **Deprecated (ADR-037): use `loop`.** Still sent, with the frozen pre-ADR-037 meaning,
+            for old clients (core `LoopState.legacy`): the normal queue's remaining cards (whole
+            queue, not only `items`; unaffected by `kinds` and by `keep_going`).
           required:
           - new
           - learning
@@ -9444,20 +9525,27 @@ components:
             new:
               type: integer
               minimum: 0
-              description: New cards still to introduce today, including drawn deck entries not yet materialized
-                (`to_materialize`, C-27).
+              description: |
+                Deprecated. New cards the normal build drew: its NEW items plus drawn deck entries
+                not yet materialized (`to_materialize`, C-27). Since ADR-037 one build draws at
+                most about `limit` new cards, so this is bounded by `limit` as well as by the
+                day's remaining goal.
               examples:
               - 8
             learning:
               type: integer
               minimum: 0
-              description: Cards in learning or relearning due before the day ends.
+              description: |
+                Deprecated. Cards in learning or relearning due before the day ends, **ready or
+                not**: `loop.ready.learning + loop.later_today.count`. This is the over-count
+                ADR-037 replaces (26 here could mean 0 cards to show now); kept unchanged so old
+                clients see what they always saw.
               examples:
               - 3
             review:
               type: integer
               minimum: 0
-              description: Review cards due today (including overdue).
+              description: Deprecated. Review cards due today within the limits (including overdue). Equals `loop.ready.review`.
               examples:
               - 57
         study_day:
@@ -9471,7 +9559,10 @@ components:
           description: When the queue was built.
         next_learning_due_at:
           $ref: '#/components/schemas/Timestamp'
+          deprecated: true
           description: |
+            **Deprecated (ADR-037): use `loop.later_today.next_due_at`** (the same instant; this
+            member is absent where that one is null). Frozen meaning:
             ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that
             is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with
             learn-ahead 0); absent when there is none. With empty `items` the client waits until this
@@ -9479,7 +9570,13 @@ components:
             `keep_going`.
         more_available:
           type: boolean
+          deprecated: true
           description: |
+            **Deprecated (ADR-037): use `loop.phase`** (`goal_reached` / `done_for_today`). Still
+            sent with the frozen meaning below (for a request without `kinds`: the core's
+            `LoopState.legacy.moreAvailable`, forced to false when `keep_going=true`). There is no
+            per-session cap any more, so the "done for now" case below no longer occurs. Since
+            ADR-037 the second build always runs.
             C-26 (additive). "Done for today, but Keep going has more." True iff **all** of:
             the request had `keep_going=false` (or omitted it); `items` is empty; and the same
             request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a
@@ -9507,6 +9604,164 @@ components:
             Absent (older server) is treated as 0.
           examples:
           - 0
+    ReviewLoop:
+      type: object
+      description: |
+        ADR-037. The review loop's state for one `getReviewQueue` request: the wire form of the
+        core's `LoopState` (`ReviewLoop.evaluate`), which is the only place a phase or a count
+        is decided. Scope: computed for the request's `deck_id` (as `items`); **unaffected by
+        `kinds` and `limit`**, and - except `phase` and `keep_going` - **by `keep_going`**. When
+        the request materialized deck entries (C-27) it describes the state after the last
+        rebuild. All members are required. Invariants: `ready.total = ready.learning +
+        ready.review`; `backlog.reviews >= ready.review`; `backlog.beyond_limit =
+        backlog.reviews - ready.review`, 0 when `reviews.limit` is null;
+        `later_today.next_due_at` is null iff `later_today.count` is 0, else after
+        `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is
+        non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`.
+      required:
+      - phase
+      - keep_going
+      - ready
+      - later_today
+      - backlog
+      - reviews
+      - new
+      properties:
+        phase:
+          type: string
+          enum:
+          - reviewing
+          - goal_reached
+          - done_for_today
+          - waiting
+          - empty
+          description: |
+            Where the loop stands (rule under `getReviewQueue` "Review loop"; core `LoopPhase`).
+            `reviewing`: a card is served (or a deck entry awaits materialization).
+            `goal_reached` (reviews unlimited) / `done_for_today` (review cap on): nothing ready
+            under the limits, Keep going would serve a card. `waiting`: nothing ready, nothing
+            more with keep going, a learning card falls due at `later_today.next_due_at`.
+            `empty`: nothing left today. The set is open for readers: an unknown value is
+            treated as `reviewing` when `items` is non-empty, else as `empty`.
+          examples:
+          - reviewing
+        keep_going:
+          type: boolean
+          description: Echo of the request's `keep_going` (false when omitted).
+          examples:
+          - false
+        ready:
+          type: object
+          description: Cards that can be shown now, new cards excluded ("ready now").
+          required:
+          - learning
+          - review
+          - total
+          properties:
+            learning:
+              type: integer
+              minimum: 0
+              description: Learning/relearning cards whose step has elapsed (`due_at` <= now). Never capped.
+              examples:
+              - 1
+            review:
+              type: integer
+              minimum: 0
+              description: |
+                Review cards due before `day_ends_at` (overdue included) within the remaining
+                review budget; every such card when `scheduler.reviews_unlimited`. At most one
+                per note while siblings are buried.
+              examples:
+              - 200
+            total:
+              type: integer
+              minimum: 0
+              description: '`learning + review`.'
+              examples:
+              - 201
+        later_today:
+          type: object
+          description: Learning/relearning cards not ready yet that fall due before `day_ends_at`. A hint, never a reason to wait while anything else can be shown.
+          required:
+          - count
+          - next_due_at
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              description: How many.
+              examples:
+              - 26
+            next_due_at:
+              oneOf:
+              - $ref: '#/components/schemas/Timestamp'
+              - type: 'null'
+              description: The earliest `due_at` among them; null iff `count` is 0.
+        backlog:
+          type: object
+          description: Due reviews regardless of the review limits.
+          required:
+          - reviews
+          - beyond_limit
+          properties:
+            reviews:
+              type: integer
+              minimum: 0
+              description: Every review due before `day_ends_at` that an uncapped (keep-going) build would serve. `>= ready.review`.
+              examples:
+              - 335
+            beyond_limit:
+              type: integer
+              minimum: 0
+              description: '`reviews - ready.review`: due reviews held back by the limits today. 0 when `scheduler.reviews_unlimited`.'
+              examples:
+              - 135
+        reviews:
+          type: object
+          description: Today's review count against the global limit.
+          required:
+          - today
+          - limit
+          properties:
+            today:
+              type: integer
+              minimum: 0
+              description: Reviews of review-state cards answered in the current study day (undone ones excluded; keep-going ones included).
+              examples:
+              - 0
+            limit:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+              description: '`scheduler.reviews_per_day`; null = `scheduler.reviews_unlimited` is true (no limit).'
+              examples:
+              - 200
+        new:
+          type: object
+          description: Today's new cards against the goal.
+          required:
+          - today
+          - goal
+          - available
+          properties:
+            today:
+              type: integer
+              minimum: 0
+              description: Cards introduced in the current study day (first review of a new card; undone ones excluded). May exceed `goal` after keep going.
+              examples:
+              - 12
+            goal:
+              type: integer
+              minimum: 0
+              description: '`scheduler.new_per_day`.'
+              examples:
+              - 40
+            available:
+              type: boolean
+              description: A new card (or a deck entry that would become one) exists that keep going could introduce, ignoring the goal and per-deck new limits.
+              examples:
+              - true
     ReviewAnswerRequest:
       type: object
       description: An answer to a card.
@@ -11456,7 +11711,13 @@ components:
           description: Instant the study day rolls over.
         due:
           type: object
-          description: Remaining today under the current limits (same as `ReviewQueue.counts`).
+          deprecated: true
+          description: |
+            **Deprecated (ADR-037): use `getReviewQueue?limit=1` and its `loop`.** Still sent with
+            the frozen meaning of the deprecated `ReviewQueue.counts` (core `LoopState.legacy`,
+            computed through `ReviewLoop` for an unfiltered normal request with the default
+            `limit` 20): the over-counting `learning` and the batch-bounded `new` documented
+            there. No `loop` is added here.
           required:
           - new
           - learning
@@ -11540,7 +11801,11 @@ components:
           description: Earliest `due_at` in the future among live unsuspended cards; null if none.
         more_available:
           type: boolean
+          deprecated: true
           description: |
+            **Deprecated (ADR-037): use `loop.phase` of `getReviewQueue?limit=1`.** Still sent
+            with the frozen meaning below (core `LoopState.legacy.moreAvailable`); the
+            per-session cap no longer exists.
             C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered
             normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the
             normal queue is empty and a keep-going queue would not be (the core's
@@ -14402,13 +14667,34 @@ components:
             back: "【行かざるを得ない】。\n〜ざるを得ない\ncannot help but; have no choice but to"
             reading: null
             sentence: null
+        loop:
+          phase: reviewing
+          keep_going: false
+          ready:
+            learning: 1
+            review: 200
+            total: 201
+          later_today:
+            count: 26
+            next_due_at: '2026-11-12T09:36:00.000Z'
+          backlog:
+            reviews: 335
+            beyond_limit: 135
+          reviews:
+            today: 0
+            limit: 200
+          new:
+            today: 12
+            goal: 40
+            available: true
         counts:
-          new: 8
-          learning: 3
-          review: 57
+          new: 20
+          learning: 27
+          review: 200
         study_day: '2026-11-12'
         day_ends_at: '2026-11-12T19:00:00.000Z'
         generated_at: '2026-11-12T09:30:00.000Z'
+        next_learning_due_at: '2026-11-12T09:36:00.000Z'
         more_available: false
         to_materialize: 0
     ReviewResult:

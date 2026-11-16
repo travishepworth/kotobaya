@@ -246,6 +246,12 @@ from kotobaya_client.models.review_answer_request import ReviewAnswerRequest
 from kotobaya_client.models.review_button import ReviewButton
 from kotobaya_client.models.review_log import ReviewLog
 from kotobaya_client.models.review_logged_schema import ReviewLoggedSchema
+from kotobaya_client.models.review_loop import ReviewLoop
+from kotobaya_client.models.review_loop_backlog import ReviewLoopBacklog
+from kotobaya_client.models.review_loop_later_today import ReviewLoopLaterToday
+from kotobaya_client.models.review_loop_new import ReviewLoopNew
+from kotobaya_client.models.review_loop_ready import ReviewLoopReady
+from kotobaya_client.models.review_loop_reviews import ReviewLoopReviews
 from kotobaya_client.models.review_page import ReviewPage
 from kotobaya_client.models.review_queue import ReviewQueue
 from kotobaya_client.models.review_queue_counts import ReviewQueueCounts

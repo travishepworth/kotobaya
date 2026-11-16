@@ -28,6 +28,7 @@ import io.kotlintest.specs.ShouldSpec
 
 import app.kotobaya.client.models.ReviewQueue
 import app.kotobaya.client.models.QueueItem
+import app.kotobaya.client.models.ReviewLoop
 import app.kotobaya.client.models.ReviewQueueCounts
 
 class ReviewQueueTest : ShouldSpec() {
@@ -65,13 +66,19 @@ class ReviewQueueTest : ShouldSpec() {
             //modelInstance.studyDay shouldBe ("TODO")
         }
 
-        // to test the property `moreAvailable` - C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. 
+        // to test the property `loop` - ADR-037 (additive). The review loop's phase and numbers, from the core's `ReviewLoop.evaluate` (`LoopState`). Sent by every server and local API that implements ADR-037, on every `200`; **absent = server older than ADR-037** (the only reason it is not in `required`). A client built for ADR-037 treats a missing `loop` as \"server too old\" and does not fall back to the deprecated fields. 
+        should("test loop") {
+            // uncomment below to test the property
+            //modelInstance.loop shouldBe ("TODO")
+        }
+
+        // to test the property `moreAvailable` - **Deprecated (ADR-037): use `loop.phase`** (`goal_reached` / `done_for_today`). Still sent with the frozen meaning below (for a request without `kinds`: the core's `LoopState.legacy.moreAvailable`, forced to false when `keep_going=true`). There is no per-session cap any more, so the \"done for now\" case below no longer occurs. Since ADR-037 the second build always runs. C-26 (additive). \"Done for today, but Keep going has more.\" True iff **all** of: the request had `keep_going=false` (or omitted it); `items` is empty; and the same request (same `limit`, `deck_id`, `kinds`) with `keep_going=true` would return a non-empty `items`. False otherwise - always with `keep_going=true`, and whenever `items` is non-empty. Independent of `counts.learning`. True also when only the per-session new-card cap (`scheduler.new_per_session`) is reached: the UI says \"done for now\", not \"done for today\". Computed only in the empty case, so it costs a second queue build only then. For a request without `kinds` it equals the core's `ReviewQueue.moreAvailable`, which counts drawn deck entries (`toMaterialize`) as non-empty (C-27); with `kinds` including `new`, so does the server's keep-going test. Servers implementing C-26 always send it; absent (older server) is treated as false. 
         should("test moreAvailable") {
             // uncomment below to test the property
             //modelInstance.moreAvailable shouldBe ("TODO")
         }
 
-        // to test the property `nextLearningDueAt` - ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. 
+        // to test the property `nextLearningDueAt` - **Deprecated (ADR-037): use `loop.later_today.next_due_at`** (the same instant; this member is absent where that one is null). Frozen meaning: ADR-033 (additive). The earliest `due_at` of an eligible learning or relearning card that is not due yet but falls due before `day_ends_at` (core `ReviewQueue.nextLearningDueAt` with learn-ahead 0); absent when there is none. With empty `items` the client waits until this instant and fetches again (the card is not shown early). Unaffected by `kinds` and `keep_going`. 
         should("test nextLearningDueAt") {
             // uncomment below to test the property
             //modelInstance.nextLearningDueAt shouldBe ("TODO")

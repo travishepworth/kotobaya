@@ -1,7 +1,7 @@
 
 # ReviewQueueCounts
 
-Cards remaining today under the current limits (whole queue, not only `items`; unaffected by `kinds`). The same with `keep_going=true` (ADR-033, replacing the C-26 batch counts) - they always describe the normal queue, so all clients agree; keep going only lifts the limits on what is served.
+**Deprecated (ADR-037): use `loop`.** Still sent, with the frozen pre-ADR-037 meaning, for old clients (core `LoopState.legacy`): the normal queue\'s remaining cards (whole queue, not only `items`; unaffected by `kinds` and by `keep_going`). 
 
 ## Properties
 

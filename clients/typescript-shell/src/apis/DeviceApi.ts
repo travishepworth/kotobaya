@@ -2,7 +2,7 @@
 /* eslint-disable */
 /**
  * Kotobaya shell API
- * The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says. Requests whose path starts with `/shell/v1/` are the 16 operations of this file: device state that has no server equivalent (pairing, sync status, dictionary install, storage, notifications, push, AnkiConnect).  These operations never travel over HTTP. There is no socket: `servers[0].url` is only the path prefix the generated client puts in the bridge `req.path`. `SHELL.md` is normative for everything this file does not say (transport, limits, readiness, events).  ## Conventions  The conventions of `../openapi.yaml` section 1 apply unchanged: JSON, `snake_case`, unknown request properties and unknown query parameters are `422 validation_failed` (`errors[].code = unknown_field`), clients ignore unknown response properties and treat unknown enum values as \"other\", instants are RFC 3339 UTC with milliseconds, `PATCH` semantics for absent properties (\"leave unchanged\").  ## Who may call  Only the SPA in the shell\'s WebView (the bridge is origin-restricted, `SHELL.md` 2.1), so no credential is sent and every operation has `security: []`. What matters instead is whether the device is **paired** (a device token is stored):  - `getShellInfo` and `pairShell` work unpaired. - Every other operation answers `401 unauthenticated` while unpaired, before anything else.  The device token is never part of any request or response of this API.  ## Errors  Every non-2xx answer is `application/problem+json` with the `Problem` schema of `../openapi.yaml` (referenced, not copied). Besides the codes of that file\'s error table, the shell uses the codes of `SHELL.md` section 5:  | Status | `code` | When | |---|---|---| | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). | | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. | | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. | | 503 | `shell_dict_missing` | Dictionary data that is neither in the installed package nor in the sidecar cache is needed and the server cannot be asked. | | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |  Shell operations never mint sync ops and never change learning data.  ## Events  Shell state changes are announced by bridge `event` messages (`SHELL.md` 2.6); their payloads are the `ShellEvent*` schemas below, `ShellSyncStatus` (`shell.sync`) and `ShellDictInstall` (`shell.dict`). 
+ * The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says. Requests whose path starts with `/shell/v1/` are the 18 operations of this file: device state that has no server equivalent (pairing, sync status, dictionary install, storage, notifications, push, AnkiConnect).  These operations never travel over HTTP. There is no socket: `servers[0].url` is only the path prefix the generated client puts in the bridge `req.path`. `SHELL.md` is normative for everything this file does not say (transport, limits, readiness, events).  ## Conventions  The conventions of `../openapi.yaml` section 1 apply unchanged: JSON, `snake_case`, unknown request properties and unknown query parameters are `422 validation_failed` (`errors[].code = unknown_field`), clients ignore unknown response properties and treat unknown enum values as \"other\", instants are RFC 3339 UTC with milliseconds, `PATCH` semantics for absent properties (\"leave unchanged\").  ## Who may call  Only the SPA in the shell\'s WebView (the bridge is origin-restricted, `SHELL.md` 2.1), so no credential is sent and every operation has `security: []`. What matters instead is whether the device is **paired** (a device token is stored):  - `getShellInfo` and `pairShell` work unpaired. - Every other operation answers `401 unauthenticated` while unpaired, before anything else.  The device token is never part of any request or response of this API.  ## Errors  Every non-2xx answer is `application/problem+json` with the `Problem` schema of `../openapi.yaml` (referenced, not copied). Besides the codes of that file\'s error table, the shell uses the codes of `SHELL.md` section 5:  | Status | `code` | When | |---|---|---| | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). | | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. | | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. | | 503 | `shell_dict_missing` | Dictionary data that is neither in the installed package nor in the sidecar cache is needed and the server cannot be asked. | | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |  Shell operations never mint sync ops and never change learning data.  ## Events  Shell state changes are announced by bridge `event` messages (`SHELL.md` 2.6); their payloads are the `ShellEvent*` schemas below, `ShellSyncStatus` (`shell.sync`) and `ShellDictInstall` (`shell.dict`). 
  *
  * The version of the OpenAPI document: 1.0.0
  * 
@@ -38,6 +38,16 @@ import {
     ShellDictInstallRequestFromJSON,
     ShellDictInstallRequestToJSON,
 } from '../models/ShellDictInstallRequest';
+import {
+    type ShellDisplay,
+    ShellDisplayFromJSON,
+    ShellDisplayToJSON,
+} from '../models/ShellDisplay';
+import {
+    type ShellDisplayPatch,
+    ShellDisplayPatchFromJSON,
+    ShellDisplayPatchToJSON,
+} from '../models/ShellDisplayPatch';
 import {
     type ShellNotificationPrefsPatch,
     ShellNotificationPrefsPatchFromJSON,
@@ -81,6 +91,13 @@ export interface UpdateAnkiConnectStateRequest {
      * 
      */
     shellAnkiConnectPatch: ShellAnkiConnectPatch;
+}
+
+export interface UpdateDisplayPrefsRequest {
+    /**
+     * 
+     */
+    shellDisplayPatch: ShellDisplayPatch;
 }
 
 export interface UpdateNotificationPrefsRequest {
@@ -184,6 +201,45 @@ export class DeviceApi extends runtime.BaseAPI {
      */
     async getDictInstall(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ShellDictInstall> {
         const response = await this.getDictInstallRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDisplayPrefs without sending the request
+     */
+    async getDisplayPrefsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/display`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Device-local preferences (not synced, no op, no learning data). Offered only when `ShellInfo.capabilities` contains `display`; the SPA hides the settings row without it. Unpaired: `401 unauthenticated`; during a rebuild: `503 shell_rebuilding` (as the other preference operations, SHELL.md section 12). 
+     * Display preferences of this device (lock to portrait).
+     */
+    async getDisplayPrefsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ShellDisplay>> {
+        const requestOptions = await this.getDisplayPrefsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ShellDisplayFromJSON(jsonValue));
+    }
+
+    /**
+     * Device-local preferences (not synced, no op, no learning data). Offered only when `ShellInfo.capabilities` contains `display`; the SPA hides the settings row without it. Unpaired: `401 unauthenticated`; during a rebuild: `503 shell_rebuilding` (as the other preference operations, SHELL.md section 12). 
+     * Display preferences of this device (lock to portrait).
+     */
+    async getDisplayPrefs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ShellDisplay> {
+        const response = await this.getDisplayPrefsRaw(initOverrides);
         return await response.value();
     }
 
@@ -425,6 +481,55 @@ export class DeviceApi extends runtime.BaseAPI {
      */
     async updateAnkiConnectState(requestParameters: UpdateAnkiConnectStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ShellAnkiConnectState> {
         const response = await this.updateAnkiConnectStateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDisplayPrefs without sending the request
+     */
+    async updateDisplayPrefsRequestOpts(requestParameters: UpdateDisplayPrefsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['shellDisplayPatch'] == null) {
+            throw new runtime.RequiredError(
+                'shellDisplayPatch',
+                'Required parameter "shellDisplayPatch" was null or undefined when calling updateDisplayPrefs().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/display`;
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ShellDisplayPatchToJSON(requestParameters['shellDisplayPatch']),
+        };
+    }
+
+    /**
+     * Device-local preferences (not synced, no op). Absent properties are left unchanged; an empty object, an unknown property or a non-boolean value is `422 validation_failed` (pointer `/lock_portrait` for a wrong type, `\"\"` for an empty object) and changes nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores the value in device preferences, so it survives a restart. Repeating the same request is a no-op with the same answer. Answers with the state after the change. 
+     * Change the display preferences.
+     */
+    async updateDisplayPrefsRaw(requestParameters: UpdateDisplayPrefsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ShellDisplay>> {
+        const requestOptions = await this.updateDisplayPrefsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ShellDisplayFromJSON(jsonValue));
+    }
+
+    /**
+     * Device-local preferences (not synced, no op). Absent properties are left unchanged; an empty object, an unknown property or a non-boolean value is `422 validation_failed` (pointer `/lock_portrait` for a wrong type, `\"\"` for an empty object) and changes nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores the value in device preferences, so it survives a restart. Repeating the same request is a no-op with the same answer. Answers with the state after the change. 
+     * Change the display preferences.
+     */
+    async updateDisplayPrefs(requestParameters: UpdateDisplayPrefsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ShellDisplay> {
+        const response = await this.updateDisplayPrefsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

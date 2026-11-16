@@ -557,10 +557,10 @@ one exception to `foreign_keys = ON` above.
 |---|---|---|---|
 | `scheduler.timezone` | string (IANA) | `"UTC"` | Zone for day boundaries. |
 | `scheduler.day_rollover_hour` | int 0–23 | `4` | Local hour at which a new study day starts. |
-| `scheduler.new_per_day` | int | `20` | Global new-card limit. |
+| `scheduler.new_per_day` | int | `20` | Global new-card limit: the day's new **goal** (ADR-037; `loop.new.goal`). Keep going may pass it. |
 | `scheduler.reviews_per_day` | int | `200` | Global review limit. Ignored while `scheduler.reviews_unlimited` is `true`. |
 | `scheduler.reviews_unlimited` | bool | `false` | ADR-034: when `true`, no daily review cap at all (global and per-deck `reviews_per_day` ignored); every review due today is served. See 6.3. |
-| `scheduler.new_per_session` | int | `10` | Cap on new cards per session. |
+| `scheduler.new_per_session` | int | `10` | **Deprecated, ignored (ADR-037).** Was the cap on new cards per session. No builder reads it; `updateSettings` still accepts and stores it (old clients write it), `listSettings` still returns it, it still syncs by `settings.set`. New clients neither show nor write it. No migration: existing rows stay. |
 | `scheduler.grading_buttons` | `4` \| `5` | `4` | Five = jpdb-style. |
 | `scheduler.leech_threshold` | int | `8` | Lapses at which a card is a leech. |
 | `scheduler.bury_siblings` | bool | `true` | |
@@ -641,7 +641,7 @@ that name is not used.) Meaning, on the same scale as `deck.priority` (QueueBuil
 - Below every enabled deck's priority (e.g. `-1` with all decks at `0`) → mined cards are
   introduced before any deck's; above all (e.g. `1`) → only once every deck tier is exhausted or at
   its limit for the day.
-- No per-source limit: only the global `scheduler.new_per_day` / `scheduler.new_per_session` bound it.
+- No per-source limit: only the global `scheduler.new_per_day` bounds it (`scheduler.new_per_session` is ignored since ADR-037).
 - Range: the int4 range of `deck.priority` (op schema `deck.created`), −2147483648…2147483647
   inclusive. Outside it, `updateSettings` returns `422` and loaders use the default (6.1).
 
@@ -690,11 +690,13 @@ Opt-in "no daily review limit" (jpdb-style), bool, default `false`, validated an
 means `false`). Each platform loader (Android, web via the API, server) passes it as
 `QueueLimits.reviewsUnlimited`; QueueBuilder rule 3 then ignores `scheduler.reviews_per_day` and
 every `deck.reviews_per_day`, so every eligible review with `due_at` before the end of the study
-day is served. Unchanged: new-card limits (`scheduler.new_per_day`, `scheduler.new_per_session`,
-`deck.new_cards_per_day`), no learn-ahead (ADR-033), no study-ahead, interleaving, keep going.
-Queue counts (`getReviewQueue` `counts`, the device's Today counts) come from
-the same build, so with the key `true` they include every review due today, identically on every
-client. No new op: it syncs as an ordinary `settings.set` (Replay: none). Example: 300 reviews due,
+day is served. Unchanged: new-card limits (`scheduler.new_per_day`, `deck.new_cards_per_day`), no
+learn-ahead (ADR-033), no study-ahead, the proportional mix of reviews and new cards (QueueBuilder
+rule 5; its review side is then every ready review), keep going. ADR-037: the key also selects the
+end state when nothing is ready under the limits and keep going has more - `goal_reached` when
+`true`, `done_for_today` when `false` (`ReviewLoop`). Queue numbers (`getReviewQueue` `loop`, the
+deprecated `counts`, the device's Today counts) come from the same evaluation, so with the key
+`true` they include every review due today, identically on every client. No new op: it syncs as an ordinary `settings.set` (Replay: none). Example: 300 reviews due,
 `reviews_per_day` 200 → `false`: 200 served, `counts.review` 200; `true`: 300 and 300.
 `reviews_per_day` keeps its stored value while the key is `true` (UIs grey the field out) and
 applies again when it is set back to `false` or `null`.

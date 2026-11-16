@@ -68,6 +68,26 @@ class TestReviewQueue(unittest.TestCase):
                         sentence = null, 
                         text = null, )
                     ],
+                loop = kotobaya_client.models.review_loop.ReviewLoop(
+                    backlog = kotobaya_client.models.review_loop_backlog.ReviewLoopBacklog(
+                        beyond_limit = 0, 
+                        reviews = 0, ), 
+                    keep_going = True, 
+                    later_today = kotobaya_client.models.review_loop_later_today.ReviewLoopLaterToday(
+                        count = 0, 
+                        next_due_at = null, ), 
+                    new = kotobaya_client.models.review_loop_new.ReviewLoopNew(
+                        available = True, 
+                        goal = 0, 
+                        today = 0, ), 
+                    phase = 'reviewing', 
+                    ready = kotobaya_client.models.review_loop_ready.ReviewLoopReady(
+                        learning = 0, 
+                        review = 0, 
+                        total = 0, ), 
+                    reviews = kotobaya_client.models.review_loop_reviews.ReviewLoopReviews(
+                        limit = 0, 
+                        today = 0, ), ),
                 more_available = True,
                 next_learning_due_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),

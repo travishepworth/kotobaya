@@ -51,9 +51,13 @@ export interface StatsSummary {
     doneToday: StatsSummaryDoneToday;
     /**
      * 
+     * @deprecated
      */
     due: StatsSummaryDue;
     /**
+     * **Deprecated (ADR-037): use `loop.phase` of `getReviewQueue?limit=1`.** Still sent
+     * with the frozen meaning below (core `LoopState.legacy.moreAvailable`); the
+     * per-session cap no longer exists.
      * C-26 (additive). The same signal as `ReviewQueue.more_available` for an unfiltered
      * normal `getReviewQueue` (no `deck_id`, no `kinds`, `keep_going=false`): true iff the
      * normal queue is empty and a keep-going queue would not be (the core's
@@ -62,6 +66,7 @@ export interface StatsSummary {
      * new-card cap is reached ("done for now", not necessarily "done for today"). Servers
      * implementing C-26 always send it; absent (older server) is treated as false.
      * 
+     * @deprecated
      */
     moreAvailable?: boolean;
     /**

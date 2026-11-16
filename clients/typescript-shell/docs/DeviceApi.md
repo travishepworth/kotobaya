@@ -6,12 +6,14 @@ All URIs are relative to */shell/v1*
 |------------- | ------------- | -------------|
 | [**getAnkiConnectState**](DeviceApi.md#getankiconnectstate) | **GET** /ankiconnect | On-device AnkiConnect server settings and status. |
 | [**getDictInstall**](DeviceApi.md#getdictinstall) | **GET** /dict | State of the on-device dictionary package. |
+| [**getDisplayPrefs**](DeviceApi.md#getdisplayprefs) | **GET** /display | Display preferences of this device (lock to portrait). |
 | [**getNotificationState**](DeviceApi.md#getnotificationstate) | **GET** /notifications | Notification permission and reminder preferences. |
 | [**getPushState**](DeviceApi.md#getpushstate) | **GET** /push | UnifiedPush registration state. |
 | [**getStorage**](DeviceApi.md#getstorage) | **GET** /storage | Offline storage use and audio prefetch settings. |
 | [**requestNotificationPermission**](DeviceApi.md#requestnotificationpermission) | **POST** /notifications/permission | Show the system notification permission dialog. |
 | [**startDictInstall**](DeviceApi.md#startdictinstall) | **POST** /dict/install | Download and install (or update) the dictionary package. |
 | [**updateAnkiConnectState**](DeviceApi.md#updateankiconnectstate) | **PATCH** /ankiconnect | Change the on-device AnkiConnect server settings. |
+| [**updateDisplayPrefs**](DeviceApi.md#updatedisplayprefs) | **PATCH** /display | Change the display preferences. |
 | [**updateNotificationPrefs**](DeviceApi.md#updatenotificationprefs) | **PATCH** /notifications | Change reminder preferences. |
 | [**updatePushState**](DeviceApi.md#updatepushstate) | **PATCH** /push | Enable, retry or disable push. |
 | [**updateStorage**](DeviceApi.md#updatestorage) | **PATCH** /storage | Change prefetch settings or clear the blob cache. |
@@ -133,6 +135,66 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Dictionary install state. |  -  |
+| **0** | Any error. &#x60;Problem&#x60; of &#x60;../openapi.yaml&#x60;; codes in that file\&#39;s error table plus the shell codes of SHELL.md section 5. &#x60;503 shell_rebuilding&#x60; carries &#x60;Retry-After: 2&#x60;.  |  * Retry-After - Seconds to wait before repeating; sent with &#x60;shell_rebuilding&#x60; (always &#x60;2&#x60;) and passed through from the server (&#x60;429&#x60;). <br>  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDisplayPrefs
+
+> ShellDisplay getDisplayPrefs()
+
+Display preferences of this device (lock to portrait).
+
+Device-local preferences (not synced, no op, no learning data). Offered only when &#x60;ShellInfo.capabilities&#x60; contains &#x60;display&#x60;; the SPA hides the settings row without it. Unpaired: &#x60;401 unauthenticated&#x60;; during a rebuild: &#x60;503 shell_rebuilding&#x60; (as the other preference operations, SHELL.md section 12). 
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DeviceApi,
+} from '@kotobaya/shell-client';
+import type { GetDisplayPrefsRequest } from '@kotobaya/shell-client';
+
+async function example() {
+  console.log("🚀 Testing @kotobaya/shell-client SDK...");
+  const api = new DeviceApi();
+
+  try {
+    const data = await api.getDisplayPrefs();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ShellDisplay**](ShellDisplay.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Display preferences. |  -  |
 | **0** | Any error. &#x60;Problem&#x60; of &#x60;../openapi.yaml&#x60;; codes in that file\&#39;s error table plus the shell codes of SHELL.md section 5. &#x60;503 shell_rebuilding&#x60; carries &#x60;Retry-After: 2&#x60;.  |  * Retry-After - Seconds to wait before repeating; sent with &#x60;shell_rebuilding&#x60; (always &#x60;2&#x60;) and passed through from the server (&#x60;429&#x60;). <br>  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -503,6 +565,74 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | AnkiConnect state after the change. |  -  |
+| **0** | Any error. &#x60;Problem&#x60; of &#x60;../openapi.yaml&#x60;; codes in that file\&#39;s error table plus the shell codes of SHELL.md section 5. &#x60;503 shell_rebuilding&#x60; carries &#x60;Retry-After: 2&#x60;.  |  * Retry-After - Seconds to wait before repeating; sent with &#x60;shell_rebuilding&#x60; (always &#x60;2&#x60;) and passed through from the server (&#x60;429&#x60;). <br>  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateDisplayPrefs
+
+> ShellDisplay updateDisplayPrefs(shellDisplayPatch)
+
+Change the display preferences.
+
+Device-local preferences (not synced, no op). Absent properties are left unchanged; an empty object, an unknown property or a non-boolean value is &#x60;422 validation_failed&#x60; (pointer &#x60;/lock_portrait&#x60; for a wrong type, &#x60;\&quot;\&quot;&#x60; for an empty object) and changes nothing. The host applies the orientation **before** answering (SHELL.md 6.3) and stores the value in device preferences, so it survives a restart. Repeating the same request is a no-op with the same answer. Answers with the state after the change. 
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DeviceApi,
+} from '@kotobaya/shell-client';
+import type { UpdateDisplayPrefsRequest } from '@kotobaya/shell-client';
+
+async function example() {
+  console.log("🚀 Testing @kotobaya/shell-client SDK...");
+  const api = new DeviceApi();
+
+  const body = {
+    // ShellDisplayPatch
+    shellDisplayPatch: {"lock_portrait":true},
+  } satisfies UpdateDisplayPrefsRequest;
+
+  try {
+    const data = await api.updateDisplayPrefs(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **shellDisplayPatch** | [ShellDisplayPatch](ShellDisplayPatch.md) |  | |
+
+### Return type
+
+[**ShellDisplay**](ShellDisplay.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Display preferences after the change. |  -  |
 | **0** | Any error. &#x60;Problem&#x60; of &#x60;../openapi.yaml&#x60;; codes in that file\&#39;s error table plus the shell codes of SHELL.md section 5. &#x60;503 shell_rebuilding&#x60; carries &#x60;Retry-After: 2&#x60;.  |  * Retry-After - Seconds to wait before repeating; sent with &#x60;shell_rebuilding&#x60; (always &#x60;2&#x60;) and passed through from the server (&#x60;429&#x60;). <br>  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
