@@ -1306,3 +1306,4 @@
 2026-11-16T19:26:22Z SHELL-L8 CHECK_GREEN + MERGE: RouteTableTest PENDING empty -> every local op answered on the phone
 2026-11-16T19:27:45Z RELEASE APK 0.1.33 BUILT (pin 41433ef4: loop + portrait + all offline ops L4-L8; cert ok) supersedes 0.1.32 (not installed)
 2026-11-16T19:27:45Z SHELL-L5b DISPATCH writer [gradle lane]
+2026-11-16T19:36:26Z SHELL-L5b CHECK_GREEN + MERGE (search index over gap cache; forwarded header). SHELL-Z1 DISPATCH writer [gradle lane]

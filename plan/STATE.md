@@ -5,7 +5,6 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
-| SHELL-L5b | writer | 1 | t/SHELL-L5b (gradle lane) |
 Gradle lane after L5b: CORE-WS-UPDATED, AND-FLAKY-DUPCHECK, LOOP-C2, Z1, Z2.
 PENDING RELEASE (pin 91140ed8): api 0.1.24 + web 0.1.27 pushed, values bumped, helm upgrade BLOCKED on kube OIDC login (user). After deploy: reinstall CLI daemon + kby (uv tool) from pin. APK 0.1.33 built (pin 41433ef4, ~/kotobaya-apk/kotobaya-0.1.33-release.apk; supersedes 0.1.32), install when phone plugged in.
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
