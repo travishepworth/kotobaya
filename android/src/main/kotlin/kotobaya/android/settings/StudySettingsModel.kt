@@ -1,6 +1,7 @@
 package kotobaya.android.settings
 
 import kotobaya.android.queue.QueueSettings
+import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -42,14 +43,27 @@ class StudySettingsModel(
         }
     }
 
-    /** An out-of-range [value] mints nothing; an unchanged one too. */
-    fun set(key: StudyKey, value: Long): StudyResult {
-        if (value < key.min || value > key.max) return StudyResult.OutOfRange
-        if (valueOf(key).toLong() == value) return StudyResult.Unchanged
-        val payload = JsonObject(linkedMapOf<String, JsonValue>("key" to JsonString(key.key), "value" to JsonNumber(value.toDouble())))
+    /** `scheduler.reviews_unlimited` (ADR-034): true = no daily review limit; the reviews-per-day field is then inert. */
+    fun reviewsUnlimited(): Boolean = current().reviewsUnlimited
+
+    /** Sets `scheduler.reviews_unlimited`; an unchanged value mints nothing. */
+    fun setReviewsUnlimited(value: Boolean): StudyResult {
+        if (reviewsUnlimited() == value) return StudyResult.Unchanged
+        return mintSetting("scheduler.reviews_unlimited", JsonBool(value))
+    }
+
+    private fun mintSetting(key: String, value: JsonValue): StudyResult {
+        val payload = JsonObject(linkedMapOf("key" to JsonString(key), "value" to value))
         return when (val r = mint(OpType.SETTINGS_SET, payload)) {
             is MintResult.Minted -> { onMinted(); StudyResult.Saved }
             is MintResult.Refused -> StudyResult.Refused(r.reason)
         }
+    }
+
+    /** An out-of-range [value] mints nothing; an unchanged one too. */
+    fun set(key: StudyKey, value: Long): StudyResult {
+        if (value < key.min || value > key.max) return StudyResult.OutOfRange
+        if (valueOf(key).toLong() == value) return StudyResult.Unchanged
+        return mintSetting(key.key, JsonNumber(value.toDouble()))
     }
 }

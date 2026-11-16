@@ -216,6 +216,7 @@ class LocalQueueLoader(
                 burySiblings = settings.burySiblings,
                 learnAheadMs = LEARN_AHEAD_MS,
                 keepGoing = keepGoing,
+                reviewsUnlimited = settings.reviewsUnlimited,
             ),
             decks = decks,
             candidates = candidates,

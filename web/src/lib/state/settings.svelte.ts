@@ -67,6 +67,8 @@ export class StudySettingsState {
 		const values: Record<string, unknown> = {};
 		try {
 			for (const def of STUDY_SETTINGS) {
+				// ADR-034: the greyed-out review cap keeps its stored value; not validated or sent while unlimited.
+				if (def.key === 'scheduler.reviews_per_day' && this.draft['scheduler.reviews_unlimited'] === true) continue;
 				const v = this.toValue(def);
 				const before = this.stored[def.key] ?? def.default;
 				if (v !== before) values[def.key] = v;

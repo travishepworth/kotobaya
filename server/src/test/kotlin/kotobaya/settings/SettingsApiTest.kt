@@ -85,6 +85,7 @@ class SettingsApiTest : SyncFixture() {
         val cases = mapOf(
             "scheduler.kanji_before_vocab" to listOf("\"yes\"", "1", "0", "\"true\""),
             "scheduler.bury_siblings" to listOf("\"false\"", "1"),
+            "scheduler.reviews_unlimited" to listOf("\"true\"", "1", "0"),
             "scheduler.timezone" to listOf("5", "true"),
             "scheduler.day_rollover_hour" to listOf("24", "-1", "3.5"),
             "scheduler.grading_buttons" to listOf("3", "6", "\"4\""),

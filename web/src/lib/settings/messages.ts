@@ -12,6 +12,7 @@ const en = {
 	'settings.dayRollover': 'New day starts at (local hour, 0–23)',
 	'settings.newPerDay': 'New cards per day',
 	'settings.reviewsPerDay': 'Reviews per day',
+	'settings.reviewsUnlimited': 'No daily review limit',
 	'settings.newPerSession': 'New cards per session',
 	'settings.gradingButtons': 'Grading buttons',
 	'settings.buttons4': '4 buttons (Again, Hard, Good, Easy)',

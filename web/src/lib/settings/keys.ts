@@ -12,6 +12,8 @@ export const STUDY_SETTINGS: SettingDef[] = [
 	{ key: 'scheduler.day_rollover_hour', label: 'settings.dayRollover', type: 'int', default: 4, min: 0, max: 23 },
 	{ key: 'scheduler.new_per_day', label: 'settings.newPerDay', type: 'int', default: 20, min: 0 },
 	{ key: 'scheduler.reviews_per_day', label: 'settings.reviewsPerDay', type: 'int', default: 200, min: 0 },
+	// ADR-034: when true, reviews_per_day (and deck review caps) are ignored by the queue builder.
+	{ key: 'scheduler.reviews_unlimited', label: 'settings.reviewsUnlimited', type: 'bool', default: false },
 	{ key: 'scheduler.new_per_session', label: 'settings.newPerSession', type: 'int', default: 10, min: 0 },
 	{ key: 'scheduler.grading_buttons', label: 'settings.gradingButtons', type: 'buttons', default: 4 },
 	{ key: 'scheduler.leech_threshold', label: 'settings.leechThreshold', type: 'int', default: 8, min: 1 },

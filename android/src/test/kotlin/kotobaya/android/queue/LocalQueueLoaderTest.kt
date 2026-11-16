@@ -251,6 +251,12 @@ class LocalQueueLoaderTest {
         assertEquals(20, newPerDay("99999999999"))
         assertEquals(20, newPerDay(null))
         assertEquals(4, QueueSettings.from(mapOf("scheduler.day_rollover_hour" to "24")).dayRolloverHour)
+        // ADR-034: bool test of SCHEMA.md 6.1; anything but JSON true means false.
+        assertEquals(true, QueueSettings.from(mapOf("scheduler.reviews_unlimited" to "true")).reviewsUnlimited)
+        for (bad in listOf("1", "\"true\"", "null", "false")) {
+            assertEquals(false, QueueSettings.from(mapOf("scheduler.reviews_unlimited" to bad)).reviewsUnlimited, bad)
+        }
+        assertEquals(false, QueueSettings.from(emptyMap()).reviewsUnlimited)
     }
 
     @Test

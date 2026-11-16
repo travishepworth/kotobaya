@@ -21,6 +21,8 @@ internal data class ReviewSettings(
     val dayRolloverHour: Int = 4,
     val newPerDay: Int = 20,
     val reviewsPerDay: Int = 200,
+    /** `scheduler.reviews_unlimited` (ADR-034, SCHEMA.md 6.3): no daily review cap. */
+    val reviewsUnlimited: Boolean = false,
     val newPerSession: Int = 10,
     val burySiblings: Boolean = true,
     val kanjiBeforeVocab: Boolean = false,
@@ -32,7 +34,7 @@ internal data class ReviewSettings(
 
     companion object {
         private val KEYS = listOf(
-            "timezone", "day_rollover_hour", "new_per_day", "reviews_per_day", "new_per_session", "bury_siblings",
+            "timezone", "day_rollover_hour", "new_per_day", "reviews_per_day", "reviews_unlimited", "new_per_session", "bury_siblings",
             "kanji_before_vocab", "mined_priority", "leech_threshold",
         ).map { "scheduler.$it" }
         private val bigDecimals = json.readerFor(JsonNode::class.java).with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
@@ -49,6 +51,7 @@ internal data class ReviewSettings(
                 dayRolloverHour = int("day_rollover_hour", d.dayRolloverHour, 0, 23),
                 newPerDay = int("new_per_day", d.newPerDay),
                 reviewsPerDay = int("reviews_per_day", d.reviewsPerDay),
+                reviewsUnlimited = bool("reviews_unlimited", d.reviewsUnlimited),
                 newPerSession = int("new_per_session", d.newPerSession),
                 burySiblings = bool("bury_siblings", d.burySiblings),
                 kanjiBeforeVocab = bool("kanji_before_vocab", d.kanjiBeforeVocab),

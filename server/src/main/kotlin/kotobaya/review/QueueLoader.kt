@@ -114,6 +114,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 learnAheadMs = LEARN_AHEAD_MS, // 0: ADR-033, no learn-ahead
                 keepGoing = keepGoing,
                 keepGoingNewBatch = keepGoingNewBatch,
+                reviewsUnlimited = settings.reviewsUnlimited,
             ),
             decks = decks,
             candidates = candidates,

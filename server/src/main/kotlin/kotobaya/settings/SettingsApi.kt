@@ -36,6 +36,7 @@ private val WELL_KNOWN: Map<String, KeyType> = mapOf(
     "scheduler.day_rollover_hour" to KeyType.Int(0.0, 23.0),
     "scheduler.new_per_day" to KeyType.Int(),
     "scheduler.reviews_per_day" to KeyType.Int(),
+    "scheduler.reviews_unlimited" to KeyType.Bool,
     "scheduler.new_per_session" to KeyType.Int(),
     "scheduler.grading_buttons" to KeyType.OneOf(setOf(4.0, 5.0)),
     "scheduler.leech_threshold" to KeyType.Int(),

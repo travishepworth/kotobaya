@@ -3,6 +3,8 @@
     <string name="study_title">Study</string>
     <string name="study_new_per_day">New cards per day</string>
     <string name="study_reviews_per_day">Reviews per day</string>
+    <string name="study_reviews_unlimited">No daily review limit</string>
+    <string name="study_reviews_unlimited_hint">Show every review that is due today. Reviews per day is ignored while this is on.</string>
     <string name="study_rollover_hour">Day starts at (hour, 0 to 23)</string>
     <string name="study_save">Save</string>
     <string name="study_saved">Saved.</string>

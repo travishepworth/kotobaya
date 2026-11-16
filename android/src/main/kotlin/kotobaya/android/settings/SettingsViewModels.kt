@@ -6,14 +6,17 @@ import kotlinx.coroutines.Dispatchers
 import kotobaya.android.R
 import kotobaya.android.vm.StateViewModel
 
-/** Settings > Study: the three study settings as typed text, and the last save's result. */
+/** Settings > Study: the three study settings as typed text, the no-review-limit toggle, and the last save's result. */
 data class StudySettingsUiState(
     val fields: Map<StudyKey, String> = StudyKey.entries.associateWith { "" },
+    /** `scheduler.reviews_unlimited` (ADR-034) as toggled, saved with the fields; true greys out reviews per day. */
+    val reviewsUnlimited: Boolean = false,
     @StringRes val message: Int? = null,
 )
 
 interface StudySettingsIntents {
     fun setField(key: StudyKey, text: String) {}
+    fun setReviewsUnlimited(value: Boolean) {}
     fun save() {}
 }
 
@@ -25,24 +28,30 @@ class StudySettingsViewModel(
     init {
         launchIo {
             val loaded = StudyKey.entries.associateWith { model.valueOf(it).toString() }
-            update { it.copy(fields = loaded) }
+            val unlimited = model.reviewsUnlimited()
+            update { it.copy(fields = loaded, reviewsUnlimited = unlimited) }
         }
     }
 
     override fun setField(key: StudyKey, text: String) = update { it.copy(fields = it.fields + (key to text)) }
 
+    override fun setReviewsUnlimited(value: Boolean) = update { it.copy(reviewsUnlimited = value) }
+
     override fun save() {
         val fields = current.fields
+        val unlimited = current.reviewsUnlimited
         launchIo {
-            val res = save(fields)
+            val res = save(fields, unlimited)
             update { it.copy(message = res) }
         }
     }
 
     @StringRes
-    private fun save(fields: Map<StudyKey, String>): Int {
+    private fun save(fields: Map<StudyKey, String>, unlimited: Boolean): Int {
         var out: Int = R.string.study_unchanged
         for (k in StudyKey.entries) {
+            // The greyed-out field keeps its stored value; it is not validated or saved while unlimited.
+            if (unlimited && k == StudyKey.REVIEWS_PER_DAY) continue
             val n = fields[k].orEmpty().trim().toLongOrNull()
             when (if (n == null) StudyResult.OutOfRange else model.set(k, n)) {
                 StudyResult.OutOfRange -> return R.string.study_invalid
@@ -50,6 +59,11 @@ class StudySettingsViewModel(
                 StudyResult.Saved -> out = R.string.study_saved
                 StudyResult.Unchanged -> Unit
             }
+        }
+        when (model.setReviewsUnlimited(unlimited)) {
+            is StudyResult.Refused -> return R.string.study_refused
+            StudyResult.Saved -> out = R.string.study_saved
+            StudyResult.OutOfRange, StudyResult.Unchanged -> Unit
         }
         return out
     }

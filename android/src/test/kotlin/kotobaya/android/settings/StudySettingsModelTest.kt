@@ -1,5 +1,6 @@
 package kotobaya.android.settings
 
+import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -55,6 +56,16 @@ class StudySettingsModelTest {
         assertEquals(StudyResult.OutOfRange, model.set(StudyKey.NEW_PER_DAY, 2147483648L))
         assertEquals(StudyResult.OutOfRange, model.set(StudyKey.NEW_PER_DAY, -5))
         assertEquals(0, pending())
+    }
+
+    /** ADR-034: the toggle mints one `settings.set` with a JSON bool; an unchanged value mints nothing. */
+    @Test
+    fun reviewsUnlimitedMintsABoolSettingsOp() {
+        assertEquals(StudyResult.Unchanged, model.setReviewsUnlimited(false), "default is false")
+        assertEquals(StudyResult.Saved, model.setReviewsUnlimited(true))
+        assertEquals(1, pending())
+        assertEquals(JsonString("scheduler.reviews_unlimited"), minted[0].members["key"])
+        assertEquals(JsonBool(true), minted[0].members["value"])
     }
 
     @Test

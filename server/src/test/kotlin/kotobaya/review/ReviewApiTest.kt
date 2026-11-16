@@ -28,8 +28,10 @@ class ReviewApiTest : SyncFixture() {
 
     private val stats by lazy { kotobaya.stats.StatsModule(db, clock = { syncNow.get() }) }
 
+    private val settingsModule by lazy { kotobaya.settings.SettingsModule(db, sync.opApply) }
+
     private fun reviewApp(block: suspend ApplicationTestBuilder.() -> Unit) =
-        app(extraHandlers = notes.handlers + review.handlers + stats.handlers, block = block)
+        app(extraHandlers = notes.handlers + review.handlers + stats.handlers + settingsModule.handlers, block = block)
 
     private fun token() = mint(TokenKind.PERSONAL, listOf("read", "write", "review")).second
 
@@ -272,6 +274,42 @@ class ReviewApiTest : SyncFixture() {
         assertEquals(normal["counts"], kg["counts"])
         assertEquals(0, kg["counts"]["new"].asInt())
         assertEquals(normal["counts"]["new"].asInt(), fetchSummaryNew(t))
+    }
+
+    /** ADR-034: `scheduler.reviews_unlimited` round-trips via `updateSettings` (a `settings.set` op) and lifts the review caps. */
+    @Test
+    fun reviewsUnlimitedRoundTripsAndLiftsTheReviewCap() = reviewApp {
+        val t = token()
+        val cards = listOf("a", "b", "c").map { cardOf(note(t, it), "meaning") }
+        for (c in cards) assertEquals(200, answer(t, c, 4).status.value)
+        advance(60L * 24 * 300)
+        assertTrue(cards.all { cache(it)["state"] == "review" })
+        suspend fun patch(body: String) = client.call(HttpMethod.Patch, "/settings", bearer = t, body = body)
+        assertEquals(200, patch("""{"values":{"scheduler.reviews_per_day":1,"scheduler.new_per_day":0}}""").status.value)
+
+        val capped = fetchQueue(t)
+        assertEquals(1, capped["counts"]["review"].asInt())
+        assertEquals(1, capped["items"].size())
+
+        val on = patch("""{"values":{"scheduler.reviews_unlimited":true}}""")
+        assertEquals(200, on.status.value, on.json().toString())
+        val listed = client.call(HttpMethod.Get, "/settings", bearer = t).json()["items"]
+        assertEquals(true, listed.first { it["key"].asText() == "scheduler.reviews_unlimited" }["value"].asBoolean())
+        val opType = db.txBlocking { it.fetchOne("select op_type from app.change order by seq desc limit 1")!!.get(0, String::class.java) }
+        assertEquals("settings.set", opType)
+
+        val unlimited = fetchQueue(t)
+        assertEquals(3, unlimited["counts"]["review"].asInt())
+        assertEquals(cards.toSet(), unlimited["items"].map { it["card"]["id"].asText() }.toSet())
+        assertEquals(0, unlimited["counts"]["new"].asInt(), "new-card limit still applies")
+
+        val bad = patch("""{"values":{"scheduler.reviews_unlimited":"yes"}}""")
+        assertEquals(422, bad.status.value)
+        assertEquals("/values/scheduler.reviews_unlimited", bad.json()["errors"][0]["pointer"].asText())
+        assertEquals(3, fetchQueue(t)["counts"]["review"].asInt(), "the invalid write changed nothing")
+
+        assertEquals(200, patch("""{"values":{"scheduler.reviews_unlimited":null}}""").status.value)
+        assertEquals(1, fetchQueue(t)["counts"]["review"].asInt(), "reset to default: capped again")
     }
 
     private suspend fun ApplicationTestBuilder.fetchSummaryNew(t: String): Int =

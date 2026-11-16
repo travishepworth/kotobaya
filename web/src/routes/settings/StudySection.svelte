@@ -16,12 +16,21 @@
 
 	const GROUPS: { title: SettingsViewKey; keys: string[] }[] = [
 		{ title: 'sx.day', keys: ['scheduler.timezone', 'scheduler.day_rollover_hour'] },
-		{ title: 'sx.limits', keys: ['scheduler.new_per_day', 'scheduler.reviews_per_day', 'scheduler.new_per_session'] },
+		{ title: 'sx.limits', keys: ['scheduler.new_per_day', 'scheduler.reviews_unlimited', 'scheduler.reviews_per_day', 'scheduler.new_per_session'] },
 		{ title: 'sx.grading', keys: ['scheduler.grading_buttons', 'scheduler.leech_threshold'] },
 		{ title: 'sx.queue', keys: ['scheduler.bury_siblings', 'scheduler.kanji_before_vocab', 'scheduler.mined_priority'] },
 		{ title: 'sx.other', keys: ['audio.prefetch_days'] }
 	];
 	const defs = (keys: string[]): SettingDef[] => keys.map((k) => STUDY_SETTINGS.find((d) => d.key === k)).filter((d): d is SettingDef => !!d);
+
+	// ADR-034: the review cap is inert while the no-limit toggle is on.
+	const unlimited = $derived(vm.draft['scheduler.reviews_unlimited'] === true);
+	const inert = (key: string): boolean => key === 'scheduler.reviews_per_day' && unlimited;
+	function hintOf(key: string): string | undefined {
+		if (key === 'scheduler.mined_priority') return sx('sx.minedPriorityHint');
+		if (inert(key)) return sx('sx.reviewsUnlimitedHint');
+		return undefined;
+	}
 
 	function save(e: Event): void {
 		e.preventDefault();
@@ -56,7 +65,8 @@
 								<TextField
 									label={ts(def.label)}
 									inputmode={def.type === 'int' ? 'numeric' : undefined}
-									hint={def.key === 'scheduler.mined_priority' ? sx('sx.minedPriorityHint') : undefined}
+									hint={hintOf(def.key)}
+									disabled={inert(def.key)}
 									value={String(vm.draft[def.key] ?? '')}
 									oninput={(e) => (vm.draft[def.key] = (e.currentTarget as HTMLInputElement).value)}
 								/>

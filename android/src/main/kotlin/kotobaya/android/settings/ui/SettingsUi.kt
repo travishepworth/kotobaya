@@ -48,6 +48,7 @@ import kotobaya.android.ui.components.KbNavRow
 import kotobaya.android.ui.components.KbOverline
 import kotobaya.android.ui.components.KbPanel
 import kotobaya.android.ui.components.KbSegmented
+import kotobaya.android.ui.components.KbSwitchRow
 import kotobaya.android.ui.components.KbTextField
 import kotobaya.android.ui.components.KbTopBar
 import kotobaya.android.ui.theme.KbFeedback
@@ -199,8 +200,17 @@ fun StudySection(state: StudySettingsUiState, intents: StudySettingsIntents) {
                         state.fields[k].orEmpty(),
                         { intents.setField(k, it) },
                         label = T(label),
+                        enabled = !(k == StudyKey.REVIEWS_PER_DAY && state.reviewsUnlimited),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
+                    if (k == StudyKey.REVIEWS_PER_DAY) {
+                        KbSwitchRow(
+                            T(R.string.study_reviews_unlimited),
+                            state.reviewsUnlimited,
+                            intents::setReviewsUnlimited,
+                            supporting = T(R.string.study_reviews_unlimited_hint),
+                        )
+                    }
                 }
                 KbButton(T(R.string.study_save), intents::save, Modifier.align(Alignment.End))
             }
