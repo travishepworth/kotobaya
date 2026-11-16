@@ -1251,3 +1251,4 @@
 2026-11-16T15:08:27Z SHELL-A3 HANDOFF + CHECK_GREEN; reviewer dispatched. New dep androidx.webkit 1.12.1
 2026-11-16T15:08:27Z SHELL-A5 DISPATCH writer-senior from t/SHELL-A3 (chain) [gradle lane]; plan: first-test APK after A3 approve (A5 if close)
 2026-11-16T15:11:02Z SHELL-A3 REVIEW_APPROVE (6 minors -> SHELL-A4 notes) + MERGE
+2026-11-16T15:21:42Z SHELL-A5 CHECK_GREEN + MERGE (local ops w/o handler forwarded online until L4-L8; L-1 temporarily relaxed)
