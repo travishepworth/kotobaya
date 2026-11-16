@@ -1183,3 +1183,4 @@
 2026-11-16T03:53:55Z CLI-KEEPGOING CHECK_GREEN + MERGE (110 tests)
 2026-11-16T03:59:38Z RC-FOLLOW-SERVER CHECK_GREEN + MERGE (summary exempt from stats gate; guard regex widened; 4x stats burst not reproduced)
 2026-11-16T04:00:30Z CARD-KIND-BADGE ticket (user); WEB + CLI DISPATCH writer(sonnet); AND queued behind AND-FLAKY/REVIEW-UNLIMITED
+2026-11-16T04:01:41Z CARD-KIND-BADGE-WEB CHECK_GREEN + MERGE (field card.note.type; labels Vocab/Kanji/Phrase/Grammar/Sentence/Custom)
