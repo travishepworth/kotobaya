@@ -1275,3 +1275,4 @@
 2026-11-16T16:24:24Z USER: confirmed Anki-style cap (learning/relearning steps don't consume reviews_per_day); all loop side effects accepted
 2026-11-16T16:29:31Z USER: approved SHELL-Z1 (delete Compose UI) without a further phone-check gate
 2026-11-16T16:33:21Z SHELL-A7 CHECK_GREEN + MERGE (device settings ops + ShellEvents wired)
+2026-11-16T16:36:27Z SHELL-A7 NOTE: orchestrator merged after a RED re-check (1/647 failed; merge not gated on exit code). Re-ran make check on main post-merge: GREEN -> unidentified flake. Merge commands now gated on check exit code.

@@ -50,6 +50,8 @@ FOLLOWUPS
 (none). B2 gate closed 2026-11-14 (approved).
 
 ## Notes
+- MERGE ONLY IF the re-check exit code is 0 (gate the merge command on it; A7 slipped through red once — main re-check was green).
+- 1 unidentified flaky android test seen after A7 (1/647); if it recurs, capture android/build/test-results before removing the worktree.
 - /tmp is a usrquota tmpfs: android parity tests leak /tmp/parity* (~500/run, fix in SHELL-L2b). `rm -rf /tmp/parity*` (also parity-dictstore*, ~3000/run) after each android check; remove release worktrees after deploy.
 - Phone gets RELEASE builds from run 27 (user request): env ANDROID_KEYSTORE_PATH=~/.config/.android/debug.keystore, password/alias android/androiddebugkey; assembleAnkidroidRelease. run-as unavailable on release.
 - Gradle builds are serialized via flock /tmp/kotobaya-gradle.lock. Never run two Gradle make checks at once.
