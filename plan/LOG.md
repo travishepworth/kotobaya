@@ -1181,3 +1181,4 @@
 2026-11-16T03:51:45Z RC-FOLLOW-WEB CHECK_GREEN + MERGE
 2026-11-16T03:51:59Z CLI-KEEPGOING DISPATCH writer(sonnet) (user: keep going in CLI + simple kby)
 2026-11-16T03:53:55Z CLI-KEEPGOING CHECK_GREEN + MERGE (110 tests)
+2026-11-16T03:59:38Z RC-FOLLOW-SERVER CHECK_GREEN + MERGE (summary exempt from stats gate; guard regex widened; 4x stats burst not reproduced)
