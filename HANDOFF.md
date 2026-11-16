@@ -1,21 +1,22 @@
-# HANDOFF SHELL-L1
+# HANDOFF SHELL-L2
 
 STATUS: DONE
-BRANCH: t/SHELL-L1-local-identity
+BRANCH: t/SHELL-L2-local-queue
 CHECK: `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- `shell/api/identity/`: Routes (9 ops), Views (replica rows → Preset/NoteType/Setting JSON), ShellIdentity (+ `AppShellIdentity`), ClientErrorIntake (server-identical validation, 12 req / 120 items per 60 s, 413/422/429)
-- `updateSettings` = one `settings.set` per key via `LocalWrites`; reading_enabled re-derivation is the applier's own path
-- Outside owned paths (additive): `ShellModule.kt` registers ShellIdentity + ClientErrorIntake; RouteTableTest PENDING lines; ParityDevice services
+- `shell/api/review/QueueRoute.kt`: `getReviewQueue` = validation + `LocalQueueLoader.load(0, deck, keepGoing)` + the server's shaping (ADR-033 counts from the normal build, `more_available`, `to_materialize`).
+- `shell/api/review/QueueViews.kt`: `QueueItem` view (card+note, entry/kanji via `InstalledDictionary` L-7 steps 1-2 with overlay, decks, kanji_examples, grammar_sentence, text, preview); `Routes.kt` registers it.
+- C-27: `ShellEntryMaterializer` wraps the app's `NoteCreator`; materializes only if `materializeAllowed` and `new` in kinds, else entries stay counted in `counts.new`/`to_materialize`.
+- Parity: `ParityDevice` registers AppDatabase, InstalledDictionary, NoteCreator, idle SyncCoordinator, sets `last_sync_at` per pull; `LocalParityTest` on Robolectric (6 queue scenarios now match); PENDING line removed.
 
 ## Acceptance → tests
-- Parity read scenarios → no scenario covers only my ops; the two touching `updateSettings` (queue-reviews-unlimited, reading-retired-reenabled) stay pending on getReviewQueue/createNote (L2/L5). Reads covered by `IdentityReadsTest`
-- UpdateSettingsOpTest, ReadingEnabledTest, PrincipalTest → as named
+- Parity scenarios → `LocalParityTest`, `QueueParityTest` (whole runs; golden prefixes of pending ones; Tokyo rollover; reading re-enabled)
+- Idempotent → `QueueMaterializeIdempotentTest`; converge → `QueueMaterializeConvergeTest`; validation → `QueueValidationTest` (Queue* prefix = owned path)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- `token_id`, device name and `server_version` are read from `sync_state` keys `pairing.token_id`, `pairing.device_name`, `meta.server_version`, which nothing writes yet (PairingRepository / MetaLimitsStore are not mine). Fallbacks: token_id = device id, name = Build.MODEL, "unknown". FOLLOWUP: write them at pair / after `/meta`.
-- Presets/note types honor `include_deleted` per the contract (server ignores it for presets). Queued web reports flush as `client: android`; the request's `dropped` is ignored (queue has no API for it).
+- Keep-going batch stays core default 10 (loader has no param; contracts/core README C-26 says so); server uses `limit`. FOLLOWUP: loader param.
+- Full scenarios with answer/createNote run when L3/L5 register; kanji_examples does 3 replica lookups per candidate word.

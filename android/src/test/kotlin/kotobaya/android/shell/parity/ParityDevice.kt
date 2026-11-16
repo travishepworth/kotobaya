@@ -25,6 +25,19 @@ import kotobaya.android.report.ClientErrorItem
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlLearningTables
 import kotobaya.android.sync.SyncClient
+import kotobaya.android.sync.FailureCounter
+import kotobaya.android.sync.SyncCoordinator
+import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.notes.EntryMatcher
+import kotobaya.android.notes.InstalledCandidateSource
+import kotobaya.android.notes.NoteCreator
+import kotobaya.android.queue.EntryMaterializer
+import kotobaya.android.review.InstalledRenderData
+import kotobaya.contracts.render.KanjiData
+import kotobaya.sync.client.store.UuidV7Source
+import kotlin.random.Random
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotobaya.contracts.sync.JsonArray
 import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonNull
@@ -105,7 +118,13 @@ class SeedLog(private val clock: Clock) : SyncTransport {
  *
  * Handlers get their dependencies from [services] by type, like `KoinShellServices` in production. Registered:
  * [SqlDelightDeviceStore], [SyncClient], `LocalWrites<SqlLearningTables>`, [Clock], [DictStore],
- * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9). An L ticket whose handler needs something else registers it here.
+ * [ParityDictionary], [DictGapCache], [DictLookup] (SHELL-L9); [AppDatabase], [InstalledDictionary] (steps 1-2 over the
+ * fixture and the cache), [EntryMaterializer] (`NoteCreator`), [SyncCoordinator] (idle, never runs) (SHELL-L2). An L
+ * ticket whose handler needs something else registers it here.
+ *
+ * SHELL-L2: reading dictionary details needs Android's `SQLiteDatabase` and real `org.json`, so a test whose scenario
+ * reads entries runs under Robolectric. After every successful pull `last_sync_at` is set (the seed log is one complete
+ * pull, `has_more` false), so `materializeAllowed` holds as on a synced phone.
  */
 class ParityDevice(
     val deviceId: String,
@@ -129,6 +148,38 @@ class ParityDevice(
 
     /** SHELL-L9: the one L-7 lookup over the installed fixture (JDBC) and [gapCache]; never online here. */
     val dictLookup = DictLookup(JdbcPackageSource(dictStore.installed), gapCache, remote = null)
+
+    /** SHELL-L2: the app database the queue loader reads (the same in-memory driver as [store]). */
+    val database = AppDatabase(driver)
+
+    /** SHELL-L2: L-7 steps 1-2 as production wires it (installed package, then the sidecar cache). */
+    val installedDictionary = InstalledDictionary(dictStore, null, gapCache)
+
+    /** SHELL-L2: C-27 materialization as production wires it (`NoteCreator` over the device's minter). */
+    val noteCreator: NoteCreator<SqlLearningTables> = NoteCreator(
+        store = store,
+        minter = client.minter,
+        matcher = EntryMatcher(InstalledCandidateSource(installedDictionary)),
+        ids = UuidV7Source(Random(7)),
+        clock = clock,
+        kanjiData = { literal -> installedDictionary.kanji(literal)?.let { KanjiData(it.literal, it.meanings, it.onReadings, it.kunReadings, it.strokeCount) } },
+        afterCreate = { localChanges++ },
+        dictionary = InstalledRenderData(installedDictionary).let { data -> { seq: Long -> data.lookup(seq) } },
+        dictionaryAvailable = { installedDictionary.isAvailable() },
+    )
+
+    /** SHELL-L2: never runs a cycle (a scenario is offline); `running` false and no failures unless a test says so. */
+    val failures = object : FailureCounter {
+        override var failures: Int = 0
+    }
+    val coordinator = SyncCoordinator(
+        scope = CoroutineScope(Dispatchers.Unconfined),
+        runCycle = { error("parity: the device under test never syncs") },
+        isPaired = { true },
+        isOnline = { false },
+        probe = { error("parity: the device under test is offline") },
+        counter = failures,
+    )
 
     /** Requests [LocalApi] forwarded upstream (a scenario never goes online: each one is a finding). */
     val forwarded = ArrayList<String>()
@@ -160,6 +211,10 @@ class ParityDevice(
             DictLookup::class to dictLookup,
             ShellIdentity::class to identity,
             ClientErrorIntake::class to clientErrors,
+            AppDatabase::class to database,
+            InstalledDictionary::class to installedDictionary,
+            EntryMaterializer::class to noteCreator,
+            SyncCoordinator::class to coordinator,
         ),
     )
 
@@ -196,6 +251,8 @@ class ParityDevice(
         log.append(ops)
         val r = runBlocking { client.engine.pullAll() }
         if (r !is CycleResult.Completed || r.pulledOps != ops.size) throw SeedNotApplied("$what: pull of ${ops.size} ops ended with $r")
+        // a complete pull, as a finished sync cycle records it (C-27 materializeAllowed)
+        store.transaction { it.bookkeeping.lastSyncAt = clock.nowMs() }
     }
 
     /** One request step through [LocalApi.handle], as the bridge would send it. */

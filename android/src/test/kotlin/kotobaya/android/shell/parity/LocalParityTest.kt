@@ -6,12 +6,20 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotobaya.android.shell.api.LocalRoute
 import kotobaya.android.shell.api.LocalRoutes
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * SHELL-P2: the shell's [kotobaya.android.shell.api.LocalApi] must reproduce the server's goldens (SHELL.md 8). Every
  * scenario whose operations all have a registered route runs; the others are `pending` and listed (the L tickets turn
  * scenarios on by registering routes).
+ *
+ * Robolectric (SHELL-L2): queue scenarios read dictionary entries through the production `InstalledDictionary`
+ * (Android `SQLiteDatabase`, real `org.json`).
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(application = android.app.Application::class, sdk = [34])
 class LocalParityTest {
     @Test
     fun everyScenarioWithAllOperationsRegisteredMatchesItsGolden() {
