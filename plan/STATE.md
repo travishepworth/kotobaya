@@ -5,6 +5,9 @@ Updated: run 32 (2026-11-16)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 32)
+| SHELL-A7 | writer | 1 | t/SHELL-A7-device-ops2 (gradle lane) |
+| LOOP-C | architect | 1 | t/LOOP-C-review-loop-contract |
+LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7.
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
 CONFIRMED by user 2026-11-17 (design in progress, architect): REVIEW-LOOP rework (+unlimited keeps new-goal stop w/ Keep going) (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.
 Gradle lane next: L9 -> L1 -> L2 -> L3 -> A3.
