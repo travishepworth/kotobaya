@@ -10,6 +10,9 @@ WORKDIR /src
 COPY --from=core /src/core/build/npm/core core/build/npm/core
 COPY assets assets
 COPY clients/typescript clients/typescript
+# Shell mode (ADR-036): the generated shell client and ops.json (web/src/lib/api/shell/ imports both by relative path).
+COPY clients/typescript-shell clients/typescript-shell
+COPY contracts/api/shell/ops.json contracts/api/shell/ops.json
 # vite.config.ts imports mock/demo-api.ts, which reads fixtures/demo at config load (build stage only).
 COPY fixtures/demo fixtures/demo
 COPY web web

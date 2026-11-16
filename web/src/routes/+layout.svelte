@@ -8,18 +8,22 @@
 	import { page } from '$app/state';
 	import AppShell from '../lib/ui/AppShell.svelte';
 	import IconButton from '../lib/ui/IconButton.svelte';
+	import NeedsConnection from '../lib/ui/NeedsConnection.svelte';
+	import SyncChip from '../lib/ui/SyncChip.svelte';
+	import { needsConnection, visibleNav } from '../lib/ui/access';
 	import ToastHost from '../lib/ui/ToastHost.svelte';
 	import type { NavItem } from '../lib/ui/kinds';
 	import { ut } from '../lib/ui/messages';
 	import { initTheme } from '../lib/ui/theme.svelte';
-	import { logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
+	import { canLogout, logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
+	import { shell } from '../lib/state/shell.svelte';
 
 	let { children } = $props();
 
 	// Before the first render of any screen: the stored light/dark choice.
 	initTheme();
 
-	const nav: NavItem[] = [
+	const allNav: NavItem[] = [
 		{ href: '/', label: ut('app.nav.home'), icon: 'home' },
 		{ href: '/review', label: ut('app.nav.review'), icon: 'review' },
 		{ href: '/search', label: ut('app.nav.search'), icon: 'search' },
@@ -34,8 +38,15 @@
 		{ href: '/settings', label: ut('app.nav.settings'), icon: 'settings', secondary: true }
 	];
 
+	// Scope rule (SHELL.md 9.4): destinations the principal's scopes do not cover are not offered, on the web too.
+	const nav = $derived(visibleNav(allNav, session.principal?.scopes ?? []));
+
 	const path = $derived(page.url.pathname);
 	const onLogin = $derived(path.startsWith('/login'));
+	// The server revoked this phone's token: local use continues, and /login is the Pair screen with a way back.
+	const repairing = $derived(shell.present && shell.info?.authRequired === true && onLogin);
+	// Mode rule: a route that only the server can answer, while the phone is offline.
+	const offlineGate = $derived(shell.present && needsConnection(path, shell.online));
 	// The styleguide frames its own shells; it renders bare.
 	const bare = $derived(path.startsWith('/styleguide'));
 	const immersive = $derived(path === '/review' || path.startsWith('/review/'));
@@ -54,7 +65,7 @@
 			void goto(back === '/' ? '/login' : `/login?next=${encodeURIComponent(back)}`, {
 				replaceState: true
 			});
-		} else if (session.status === 'in' && onLogin) {
+		} else if (session.status === 'in' && onLogin && !repairing) {
 			void goto('/', { replaceState: true });
 		}
 	});
@@ -67,14 +78,21 @@
 </script>
 
 {#snippet shellActions()}
-	<IconButton icon="logout" label={ut('app.logout')} onclick={() => void logout()} />
+	<SyncChip />
+	{#if canLogout}
+		<IconButton icon="logout" label={ut('app.logout')} onclick={() => void logout()} />
+	{/if}
 {/snippet}
 
-{#if session.status === 'in' && bare}
+{#if repairing}
+	<main id="main">{@render children()}</main>
+{:else if session.status === 'in' && bare}
 	{@render children()}
 {:else if session.status === 'in'}
 	<AppShell items={nav} {current} brand={ut('app.name')} {immersive} actions={shellActions}>
-		<main id="main">{@render children()}</main>
+		<main id="main">
+			{#if offlineGate}<NeedsConnection />{:else}{@render children()}{/if}
+		</main>
 	</AppShell>
 {:else if onLogin}
 	<main id="main">{@render children()}</main>

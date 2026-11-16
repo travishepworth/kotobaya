@@ -9,6 +9,11 @@
 	import { setTheme, theme, type ThemePreference } from '../../lib/ui/theme.svelte';
 	import { ts } from '../../lib/settings/messages';
 	import { ServerStatusState } from '../../lib/state/settings.svelte';
+	import { visibleSections } from '../../lib/ui/access';
+	import { sh } from '../../lib/ui/shellMessages';
+	import { session } from '../../lib/state/session.svelte';
+	import { shell } from '../../lib/state/shell.svelte';
+	import DeviceSection from './DeviceSection.svelte';
 	import DevicesSection from './DevicesSection.svelte';
 	import PresetsSection from './PresetsSection.svelte';
 	import StudySection from './StudySection.svelte';
@@ -20,15 +25,25 @@
 		server.load();
 	});
 
-	const SECTIONS: { id: string; title: SettingsViewKey; icon: IconName }[] = [
+	const ALL_SECTIONS: { id: string; title: string; icon: IconName }[] = [
 		{ id: 'appearance', title: 'sx.appearance', icon: 'sun' },
 		{ id: 'study', title: 'sx.study', icon: 'review' },
 		{ id: 'scheduling', title: 'sx.presets', icon: 'clock' },
+		{ id: 'this-device', title: 'dev.title', icon: 'sync' },
 		{ id: 'devices', title: 'sx.devices', icon: 'sync' },
 		{ id: 'tokens', title: 'sx.tokens', icon: 'settings' },
 		{ id: 'server', title: 'sx.server', icon: 'system' },
 		{ id: 'about', title: 'sx.about', icon: 'info' }
 	];
+	// Scope rule (SHELL.md 9.4): Devices and Tokens need `admin`; "This device" exists only in the Android shell.
+	const SECTIONS = $derived(
+		visibleSections(
+			ALL_SECTIONS.filter((s) => s.id !== 'this-device' || shell.present),
+			session.principal?.scopes ?? []
+		)
+	);
+	const shown = (id: string): boolean => SECTIONS.some((s) => s.id === id);
+	const label = (title: string): string => (title.startsWith('dev.') ? sh(title as Parameters<typeof sh>[0]) : sx(title as SettingsViewKey));
 	let pref = $state<ThemePreference>(theme.preference);
 </script>
 
@@ -40,7 +55,7 @@
 		<nav class="index" aria-label={sx('sx.sections')}>
 			<ul>
 				{#each SECTIONS as s (s.id)}
-					<li><a href="#{s.id}"><Icon name={s.icon} size={18} />{sx(s.title)}</a></li>
+					<li><a href="#{s.id}"><Icon name={s.icon} size={18} />{label(s.title)}</a></li>
 				{/each}
 			</ul>
 		</nav>
@@ -61,8 +76,15 @@
 			</section>
 			<section id="study"><Panel title={sx('sx.study')} subtitle={sx('sx.studyLead')}><StudySection /></Panel></section>
 			<section id="scheduling"><Panel title={sx('sx.presets')} subtitle={sx('sx.presetsLead')}><PresetsSection /></Panel></section>
-			<section id="devices"><Panel title={sx('sx.devices')} subtitle={sx('sx.devicesLead')}><DevicesSection /></Panel></section>
-			<section id="tokens"><Panel title={sx('sx.tokens')} subtitle={sx('sx.tokensLead')}><TokensSection /></Panel></section>
+			{#if shown('this-device')}
+				<section id="this-device"><Panel title={sh('dev.title')} subtitle={sh('dev.lead')}><DeviceSection /></Panel></section>
+			{/if}
+			{#if shown('devices')}
+				<section id="devices"><Panel title={sx('sx.devices')} subtitle={sx('sx.devicesLead')}><DevicesSection /></Panel></section>
+			{/if}
+			{#if shown('tokens')}
+				<section id="tokens"><Panel title={sx('sx.tokens')} subtitle={sx('sx.tokensLead')}><TokensSection /></Panel></section>
+			{/if}
 			<section id="server">
 				<Panel title={ts('status.title')}>
 					{#if server.meta}

@@ -9,7 +9,10 @@
 	import { ts } from '../../lib/settings/messages';
 	import { DAYS, DEFAULT_PRESET_ID, PresetsState, type Preset } from '../../lib/state/settings.svelte';
 	import { sx } from './messages';
+	import { session } from '../../lib/state/session.svelte';
 
+	// Optimising starts a job: it needs the `import` scope (SHELL.md 9.4); a token without it does not see the button.
+	const canOptimize = $derived(session.principal?.scopes.includes('import') ?? false);
 	const vm = new PresetsState();
 	let loaded = $state(false);
 	$effect(() => {
@@ -61,7 +64,7 @@
 								<Button variant="quiet" icon="trash" onclick={() => (deleting = p)}>{ts('presets.delete')}</Button>
 							{/if}
 							<span class="spacer"></span>
-							<Button variant="outline" icon="sparkle" onclick={() => vm.optimize(p)}>{ts('presets.optimize')}</Button>
+							{#if canOptimize}<Button variant="outline" icon="sparkle" onclick={() => vm.optimize(p)}>{ts('presets.optimize')}</Button>{/if}
 							<Button variant="primary" type="submit" loading={vm.busy}>{ut('app.save')}</Button>
 						</div>
 					</form>

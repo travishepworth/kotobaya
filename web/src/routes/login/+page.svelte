@@ -6,6 +6,8 @@
 	import TextField from '../../lib/ui/TextField.svelte';
 	import { t } from '../../lib/i18n';
 	import { login } from '../../lib/state/session.svelte';
+	import { shell } from '../../lib/state/shell.svelte';
+	import PairScreen from './PairScreen.svelte';
 
 	let password = $state('');
 	let totp = $state('');
@@ -53,6 +55,9 @@
 
 <svelte:head><title>{t('login.title')} · {t('app.name')}</title></svelte:head>
 
+{#if shell.present}
+	<PairScreen />
+{:else}
 <div class="screen">
 	<form class="panel" onsubmit={submit}>
 		<div class="brand">
@@ -84,6 +89,7 @@
 		<Button variant="primary" size="lg" type="submit" full loading={busy} disabled={retryLeft > 0}>{t('login.submit')}</Button>
 	</form>
 </div>
+{/if}
 
 <style>
 	.screen {
