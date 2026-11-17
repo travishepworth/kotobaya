@@ -5,8 +5,8 @@ Updated: run 33 (2026-11-17)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 33)
-| LOOP-C2 | architect | 1 | t/LOOP-C2 (gradle lane; re-dispatched run 33) |
-PAUSE AFTER C2 (user 2026-11-17): merge LOOP-C2, then dispatch NOTHING (no C2b, no Z2) until user resumes.
+(none — PAUSED by user after LOOP-C2 merged 2026-11-17)
+PAUSED (user 2026-11-17): LOOP-C2 MERGED; dispatch NOTHING (no C2b, no Z2) until user resumes.
 Gradle lane after: Z2 (last).
 LIVE (2026-11-17, helm rev 38, pin 91140ed8): api 0.1.24 + web 0.1.27, worker 0.1.19. CLI daemon + kby reinstalled from pin (daemon active, loop fields OK). APK 0.1.34 INSTALLED (users 0+10, launches clean, no crashes).
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).

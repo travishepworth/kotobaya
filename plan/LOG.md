@@ -1318,3 +1318,4 @@
 2026-11-17T00:31:00Z RELEASE APK 0.1.34 INSTALLED (code 134, user 10 launch clean, no crash buffer entries)
 2026-11-17T00:33:00Z LOOP-C2 DISPATCH architect (re-dispatch, run 33; previous session ended before start). Stale worktrees for merged branches removed
 2026-11-17T00:40:00Z RUN DECIDE user: pause after LOOP-C2 merges; C2b and Z2 held
+2026-11-17T01:20:00Z LOOP-C2 CHECK_GREEN (contracts/server/android after rebase) + MERGE; 24 parity match, no allowlist; 2 questions -> FOLLOWUPS. RUN PAUSED per user

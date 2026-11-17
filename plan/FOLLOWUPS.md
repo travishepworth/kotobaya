@@ -502,3 +502,8 @@
 - LOOP-CORE minors: unbounded new draw per fetch with huge new_per_day (cap draw at max(batch,|R|+1) if profiling shows cost); QueueBuilderTest.kt:77 comment 's 0' should be 's 1'; laterToday dedups ids (contract says no dedup; harmless).
 - LOOP-WEB2: goal_reached shows 'New-card goal reached' as heading and quota suffix (repetitive; drop suffix?)
 - LOOP-AND: widget 'later today' text not added (count only); QueueCounts kept for legacy Compose (Z1 deletes).
+
+## From LOOP-C2 (run 33)
+- [ ] DECIDE: server `updateNote` accepts an `entry_seq` not in any dictionary (200), but SHELL.md §4.3 says the shell validates it like `createNote` (422). Pick one; then add to parity.
+- [ ] Server returns `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Phone agrees; confirm intended.
+- [ ] New parity coverage tags (bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews) not listed in SHELL.md §8.4.
