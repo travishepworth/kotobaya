@@ -1314,3 +1314,6 @@
 2026-11-16T20:19:17Z CORE-WS-UPDATED DECIDE close: contract (SYNC.md 7.5, 11.4) defines updated_at as local/non-comparable; CCR would be breaking with no user-visible gain. ActionOpsTest exclusion is correct. AND-FLAKY-DUPCHECK DISPATCH writer [gradle lane]
 2026-11-16T20:26:18Z AND-FLAKY-DUPCHECK CHECK_GREEN + MERGE (JDBC driver classloader registration); LOOP-C2 DISPATCH architect
 2026-11-16T20:26:40Z LOOP-C2 SPLIT -> C2 (fix expect + createNote doc + L4 scenarios) and C2b (decks/listCards/struggle)
+2026-11-17T00:30:00Z RELEASE api 0.1.24 + web 0.1.27 DEPLOYED helm rev 38 (pin 91140ed8); CLI daemon + kby reinstalled from pin, daemon active
+2026-11-17T00:31:00Z RELEASE APK 0.1.34 INSTALLED (code 134, user 10 launch clean, no crash buffer entries)
+2026-11-17T00:33:00Z LOOP-C2 DISPATCH architect (re-dispatch, run 33; previous session ended before start). Stale worktrees for merged branches removed
