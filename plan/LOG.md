@@ -1317,3 +1317,4 @@
 2026-11-17T00:30:00Z RELEASE api 0.1.24 + web 0.1.27 DEPLOYED helm rev 38 (pin 91140ed8); CLI daemon + kby reinstalled from pin, daemon active
 2026-11-17T00:31:00Z RELEASE APK 0.1.34 INSTALLED (code 134, user 10 launch clean, no crash buffer entries)
 2026-11-17T00:33:00Z LOOP-C2 DISPATCH architect (re-dispatch, run 33; previous session ended before start). Stale worktrees for merged branches removed
+2026-11-17T00:40:00Z RUN DECIDE user: pause after LOOP-C2 merges; C2b and Z2 held
