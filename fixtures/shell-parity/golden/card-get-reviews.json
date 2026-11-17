@@ -1,0 +1,619 @@
+{
+  "id" : "card-get-reviews",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.001Z",
+      "deleted_at" : null,
+      "difficulty" : 1,
+      "due_at" : "2026-10-01T10:00:00.001Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : 10,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-09-21T10:00:00.001Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000220,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 1,
+      "stability" : 8.2956,
+      "state" : "review",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-09-20T10:00:00.001Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.002Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000020",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000440,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000002",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-09-20T10:00:00.002Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a0c3687d01-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-09-21T10:00:00.001Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-09-20T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2027-03-06T10:00:05.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : 106,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:05.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000220,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 2,
+        "stability" : 101.30395589443371,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-09-20T10:00:00.001Z"
+      },
+      "review" : {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "scheduled",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-09-20T10:00:00.002Z",
+        "deleted_at" : null,
+        "difficulty" : 6.4133,
+        "due_at" : "2026-11-20T10:01:06.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000020",
+        "interval_days" : 0,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:06.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000440,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 0.212,
+        "state" : "learning",
+        "step" : 0,
+        "suspended" : false,
+        "updated_at" : "2026-09-20T10:00:00.002Z"
+      },
+      "review" : {
+        "button" : "again",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000020",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc2>",
+        "id" : "0193b000-0003-7000-8000-000000000002",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 1,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:06.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "scheduled",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }, {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a0c3687d01-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-09-21T10:00:00.001Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "scheduled",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ]
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.001Z",
+      "deleted_at" : null,
+      "difficulty" : 1,
+      "due_at" : "2027-03-06T10:00:05.000Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : 106,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-11-20T10:00:05.000Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000220,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 2,
+      "stability" : 101.30395589443371,
+      "state" : "review",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-09-20T10:00:00.001Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.002Z",
+      "deleted_at" : null,
+      "difficulty" : 6.4133,
+      "due_at" : "2026-11-20T10:01:06.000Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000020",
+      "interval_days" : 0,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-11-20T10:00:06.000Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000440,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000002",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 1,
+      "stability" : 0.212,
+      "state" : "learning",
+      "step" : 0,
+      "suspended" : false,
+      "updated_at" : "2026-09-20T10:00:00.002Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-09-20T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-10-01T10:00:00.001Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : 10,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-09-21T10:00:00.001Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000220,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-09-20T10:00:00.001Z"
+      },
+      "review" : {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "scheduled",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : "2026-11-20T10:00:11.000Z",
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "scheduled",
+        "reviewed_at" : "2026-11-20T10:00:05.000Z",
+        "sentence_id" : null,
+        "undone_at" : "2026-11-20T10:00:11.000Z",
+        "utc_offset_min" : 0
+      }, {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a0c3687d01-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-09-21T10:00:00.001Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.001Z",
+      "deleted_at" : null,
+      "difficulty" : 1,
+      "due_at" : "2026-10-01T10:00:00.001Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : 10,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-09-21T10:00:00.001Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000220,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 1,
+      "stability" : 8.2956,
+      "state" : "review",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-09-20T10:00:00.001Z"
+    }
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-000000000030",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-09-20T10:00:00.003Z",
+      "deleted_at" : "2026-11-19T10:00:00.000Z",
+      "difficulty" : 1,
+      "due_at" : "2026-09-28T10:00:00.003Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000030",
+      "interval_days" : 7,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-09-21T10:00:00.003Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000450,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000003",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 1,
+      "stability" : 8.2956,
+      "state" : "review",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-19T10:00:00.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000030",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a0c3687d03-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000003",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-09-21T10:00:00.003Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 404,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "not_found",
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-0000000000ff",
+      "status" : 404,
+      "type" : "urn:kotobaya:problem:not_found"
+    }
+  }, {
+    "status" : 404,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "not_found",
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-0000000000ff/reviews",
+      "status" : 404,
+      "type" : "urn:kotobaya:problem:not_found"
+    }
+  } ]
+}

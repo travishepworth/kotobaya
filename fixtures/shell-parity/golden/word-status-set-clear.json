@@ -1,0 +1,363 @@
+{
+  "id" : "word-status-set-clear",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : null,
+      "override_status" : null,
+      "status" : "new",
+      "updated_at" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : "manual",
+      "override_status" : "never_forget",
+      "status" : "never_forget",
+      "updated_at" : "2026-11-20T10:00:02.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : "manual",
+      "override_status" : "never_forget",
+      "status" : "never_forget",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : "manual",
+      "override_status" : "blacklisted",
+      "status" : "blacklisted",
+      "updated_at" : "2026-11-20T10:00:04.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "empty",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : null,
+      "override_status" : null,
+      "status" : "new",
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000220,
+      "override_origin" : null,
+      "override_status" : null,
+      "status" : "new",
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 1,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-19T10:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000220,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-19T10:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "明白",
+          "headword_reading" : "めいはく",
+          "is_common" : true,
+          "kanji" : [ "明", "白" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "明白"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "adj-na" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "めいはく"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "obvious"
+            }, {
+              "lang" : "eng",
+              "text" : "clear"
+            }, {
+              "lang" : "eng",
+              "text" : "plain"
+            }, {
+              "lang" : "eng",
+              "text" : "evident"
+            }, {
+              "lang" : "eng",
+              "text" : "apparent"
+            }, {
+              "lang" : "eng",
+              "text" : "explicit"
+            }, {
+              "lang" : "eng",
+              "text" : "overt"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "adj-na" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000220,
+          "status" : "new"
+        },
+        "is_new" : true,
+        "kanji" : null,
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:08.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:08.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:08.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:38.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
+          "front" : "明白",
+          "reading" : "めいはく",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/status"
+      } ],
+      "instance" : "/api/v1/words/1000220/status",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "required",
+        "pointer" : "/status"
+      } ],
+      "instance" : "/api/v1/words/1000220/status",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000440,
+      "override_origin" : "manual",
+      "override_status" : "known",
+      "status" : "known",
+      "updated_at" : "2026-11-20T10:00:11.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 9999997,
+      "override_origin" : "manual",
+      "override_status" : "ignored",
+      "status" : "ignored",
+      "updated_at" : "2026-11-20T10:00:12.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "auto_status" : null,
+      "entry_seq" : 1000450,
+      "override_origin" : null,
+      "override_status" : null,
+      "status" : "new",
+      "updated_at" : null
+    }
+  } ]
+}

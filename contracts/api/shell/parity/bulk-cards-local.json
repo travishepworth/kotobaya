@@ -1,0 +1,623 @@
+{
+  "id": "bulk-cards-local",
+  "title": "bulkCards suspend, unsuspend, bury, unbury and flag by card_ids and by query, dry_run, skipped ids, and what is refused (SHELL.md 4.3)",
+  "covers": [
+    "cards.bulk_local_actions",
+    "cards.bulk_dry_run",
+    "cards.bulk_skipped_ids",
+    "cards.bulk_validation"
+  ],
+  "narrative": [
+    "Three new cards (...10, ...20, ...30), one per note. Only the five actions SHELL.md 4.3 makes local are used; set_preset, add_tags, remove_tags, move and delete are forwarded by the shell and so are not parity-tested (section 8.2: scenarios never go online).",
+    "Step 0 suspends cards 10 and 20 by card_ids: one op per card. Step 1 reads card 10 back.",
+    "Step 2 is a dry run of unsuspend over all three: ops_emitted 0 and dry_run true; step 3 shows card 10 is still suspended.",
+    "Step 4 unsuspends card 10 together with an id that exists nowhere: the unknown id is skipped and counted, not an error. Step 5 reads card 10 back.",
+    "Step 6 flags by query is:suspended (only card 20 is suspended now); step 7 reads it. Step 8 clears the flag by query flag:3 (flags 0 clears); step 9 reads it.",
+    "Step 10 buries card 30 without until (the default is the start of the next study day; the golden holds the instant). Step 12 buries card 10 until an explicit instant; step 13 reads it back.",
+    "Step 14: card 10 and 30 are buried and card 20 is suspended, so the queue is empty. Step 15 unburies both; step 17: the queue serves cards 10 and 30 (20 stays suspended).",
+    "Step 18: a query matching no card is a successful no-op.",
+    "Steps 19-22 are refused with 422 validation_failed and mint nothing: flag without flags, both selectors, no selector, bury until an instant in the past. Step 23 shows card 10 untouched by them."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220,
+    1000440,
+    1000450
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000440
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000450
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "bulkCards",
+    "getCard",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "suspend"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 2,
+          "/skipped": 0,
+          "/ops_emitted": 2,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": true,
+          "/flags": 0,
+          "/buried_until": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020",
+            "0193a1b2-0002-7000-8000-000000000030"
+          ],
+          "action": {
+            "type": "unsuspend"
+          },
+          "dry_run": true
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 3,
+          "/ops_emitted": 0,
+          "/dry_run": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-0000000000ff"
+          ],
+          "action": {
+            "type": "unsuspend"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 1,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "query": "is:suspended",
+          "action": {
+            "type": "flag",
+            "flags": 3
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000020",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": true,
+          "/flags": 3
+        }
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "query": "flag:3",
+          "action": {
+            "type": "flag",
+            "flags": 0
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000020",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/flags": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000030"
+          ],
+          "action": {
+            "type": "bury"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000030",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168813000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "bury",
+            "until": "2026-11-25T00:00:00.000Z"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168814000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/buried_until": "2026-11-25T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168815000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=10",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795168816000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000030"
+          ],
+          "action": {
+            "type": "unbury"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 2,
+          "/skipped": 0,
+          "/ops_emitted": 2,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168817000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000030",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/buried_until": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168818000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=10",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168819000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "query": "flag:7",
+          "action": {
+            "type": "suspend"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 0,
+          "/changed": 0,
+          "/skipped": 0,
+          "/ops_emitted": 0,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168820000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "flag"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168821000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "query": "is:suspended",
+          "action": {
+            "type": "suspend"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168822000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "action": {
+            "type": "suspend"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168823000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "bury",
+            "until": "2026-11-19T00:00:00.000Z"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168824000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": false,
+          "/flags": 0,
+          "/buried_until": null
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 3,
+          "pointer": "/updated_at"
+        },
+        {
+          "step": 1,
+          "pointer": "/updated_at"
+        }
+      ]
+    }
+  ]
+}

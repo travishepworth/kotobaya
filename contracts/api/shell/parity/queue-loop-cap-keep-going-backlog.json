@@ -6,6 +6,7 @@
   ],
   "narrative": [
     "reviews_per_day is 2 and new_per_day is 1 (reviews_unlimited absent = false). Five review cards are overdue (card ...10 the most overdue, then ...20, ...30, ...40, ...50); three cards are new (...60, ...70, ...80).",
+    "Seed: the five review cards graduated with Easy 100, 90, 80, 70 and 60 days before clock_ms. \"Most overdue first\" is by due_at, and the interval of an Easy graduation is fuzzed (6 to 10 days in the recorded golden), so reviews answered milliseconds apart would be ordered by the fuzz, not by the card number; ten days apart, the due_at order is the card order for every interval the fuzz can pick.",
     "Step 0 (B1): ready reviews 2 of a backlog of 5 (3 beyond the limit), new 0/1. Proportional mix, rule 5 (2 ready reviews, 1 new card left in the goal, no review answered yet): most overdue review, the new card, the second review.",
     "Step 1 answers the first review Good. Step 2: the queue is exactly the rest of step 0's order (new card, then the review): the mix is recomputed from what remains and from the reviews answered since the last new card, not from a session.",
     "Step 3 introduces the new card (Easy). Step 4: one review left under the cap, new 1/1. Step 5 answers it.",
@@ -40,7 +41,7 @@
         "entity_type": "note",
         "entity_id": "0193a1b2-0001-7000-8000-000000000001",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c101-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000001",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
@@ -54,7 +55,7 @@
         "entity_type": "card",
         "entity_id": "0193a1b2-0002-7000-8000-000000000010",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c101-0001-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0002-7000-8000-000000000010",
           "note_id": "0193a1b2-0001-7000-8000-000000000001",
@@ -68,7 +69,7 @@
         "entity_type": "note",
         "entity_id": "0193a1b2-0001-7000-8000-000000000002",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422102-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c102-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000002",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
@@ -82,7 +83,7 @@
         "entity_type": "card",
         "entity_id": "0193a1b2-0002-7000-8000-000000000020",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422102-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c102-0001-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0002-7000-8000-000000000020",
           "note_id": "0193a1b2-0001-7000-8000-000000000002",
@@ -96,7 +97,7 @@
         "entity_type": "note",
         "entity_id": "0193a1b2-0001-7000-8000-000000000003",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422103-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c103-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000003",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
@@ -110,7 +111,7 @@
         "entity_type": "card",
         "entity_id": "0193a1b2-0002-7000-8000-000000000030",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422103-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c103-0001-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0002-7000-8000-000000000030",
           "note_id": "0193a1b2-0001-7000-8000-000000000003",
@@ -124,7 +125,7 @@
         "entity_type": "note",
         "entity_id": "0193a1b2-0001-7000-8000-000000000004",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422104-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c104-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000004",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
@@ -138,7 +139,7 @@
         "entity_type": "card",
         "entity_id": "0193a1b2-0002-7000-8000-000000000040",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422104-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c104-0001-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0002-7000-8000-000000000040",
           "note_id": "0193a1b2-0001-7000-8000-000000000004",
@@ -152,7 +153,7 @@
         "entity_type": "note",
         "entity_id": "0193a1b2-0001-7000-8000-000000000005",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422105-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c105-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000005",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
@@ -166,7 +167,7 @@
         "entity_type": "card",
         "entity_id": "0193a1b2-0002-7000-8000-000000000050",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0be422105-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff043c105-0001-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0002-7000-8000-000000000050",
           "note_id": "0193a1b2-0001-7000-8000-000000000005",
@@ -180,11 +181,11 @@
         "entity_type": "review_log",
         "entity_id": "0193a1b2-0003-7000-8000-000000000001",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0c3687d01-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "019ff56a1d01-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0003-7000-8000-000000000001",
           "card_id": "0193a1b2-0002-7000-8000-000000000010",
-          "reviewed_at": 1789984800001,
+          "reviewed_at": 1786528800001,
           "utc_offset_min": 0,
           "review_type": "learning",
           "rating": 4,
@@ -199,11 +200,11 @@
         "entity_type": "review_log",
         "entity_id": "0193a1b2-0003-7000-8000-000000000002",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0c3687d02-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a028e9b502-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0003-7000-8000-000000000002",
           "card_id": "0193a1b2-0002-7000-8000-000000000020",
-          "reviewed_at": 1789984800002,
+          "reviewed_at": 1787392800002,
           "utc_offset_min": 0,
           "review_type": "learning",
           "rating": 4,
@@ -218,11 +219,11 @@
         "entity_type": "review_log",
         "entity_id": "0193a1b2-0003-7000-8000-000000000003",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0c3687d03-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a05c694d03-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0003-7000-8000-000000000003",
           "card_id": "0193a1b2-0002-7000-8000-000000000030",
-          "reviewed_at": 1789984800003,
+          "reviewed_at": 1788256800003,
           "utc_offset_min": 0,
           "review_type": "learning",
           "rating": 4,
@@ -237,11 +238,11 @@
         "entity_type": "review_log",
         "entity_id": "0193a1b2-0003-7000-8000-000000000004",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
-        "hlc": "01a0c3687d04-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a08fe8e504-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "id": "0193a1b2-0003-7000-8000-000000000004",
           "card_id": "0193a1b2-0002-7000-8000-000000000040",
-          "reviewed_at": 1789984800004,
+          "reviewed_at": 1789120800004,
           "utc_offset_min": 0,
           "review_type": "learning",
           "rating": 4,

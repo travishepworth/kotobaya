@@ -1,6 +1,23 @@
-# HANDOFF AND-FLAKY-DUPCHECK — DONE
-- Root cause: `DriverManager.getConnection` offers a driver only to a caller whose classloader can load that exact driver class. After Robolectric sandbox classes (own loader) run in the same JVM, the service-loaded `org.sqlite.JDBC` registration can belong to another loader, so a later plain-JVM `JdbcSqliteDriver` gets "No suitable driver" (order-dependent, hence rare).
-- Fix (test-side only): `ensureSqliteJdbc()` in `android/src/test/kotlin/kotobaya/android/sync/SyncTestSupport.kt` registers an `org.sqlite.JDBC` of the current loader if none of that exact class is registered (reflection; org.sqlite is not on the compile classpath). Called from `DbFile.open()` and `memoryDriver()`, which cover SqlDevice (DuplicateCheckExpressionTest).
-- Not changed: other tests that call `JdbcSqliteDriver(...)`/`DriverManager` directly (DeckRepositoryTest etc.); call `ensureSqliteJdbc()` there if any flakes.
-- Verified: DuplicateCheckExpressionTest 20x in a loop (`--rerun`): 20/20 ok. `make check MODULE=android` green (full suite).
-- No new deps. Root cause is inferred from DriverManager semantics; the flake was not reproduced pre-fix.
+# HANDOFF LOOP-C2
+
+STATUS: DONE
+BRANCH: t/LOOP-C2
+CHECK: `make check MODULE=contracts` → green · `MODULE=server` → green · `MODULE=android` → green (shell parity: 24 match, 0 differ, 0 pending)
+
+## Changed (≤ 6 lines)
+- `parity/queue-loop-cap-keep-going-backlog.json`: seed reviews now 10 days apart (100…60 d before clock), so due_at order = card order whatever the fuzz; `expect` unchanged; golden re-recorded.
+- `ParityGoldenTest.kt`: `EXPECT_DISAGREES` removed (Android had no equivalent).
+- New scenarios + server goldens: `bulk-cards-local`, `word-status-set-clear`, `note-update-delete`, `card-get-reviews`.
+- `SHELL.md` §4.3 `createNote` row: mints only `note.created`, `card.created`, `deck.item_put`; kanji notes come from C-27 only.
+
+## Acceptance → tests
+- No allowlist, green → `ParityGoldenTest`, `LocalParityTest`
+- Four scenarios recorded, run on Android → same tests
+
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- Server `updateNote` accepts an `entry_seq` that is in no dictionary (200); SHELL.md §4.3 says the shell checks it like `createNote` (422). Left out of parity; needs a decision.
+- Server answers `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Recorded as is; Android agrees.
+- `/next_cursor` ignored in `card-get-reviews` step 7 (opaque cursor); new coverage tags are not in §8.4 (outside owned paths).

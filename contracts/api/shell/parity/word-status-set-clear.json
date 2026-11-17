@@ -1,0 +1,353 @@
+{
+  "id": "word-status-set-clear",
+  "title": "setWordStatus and clearWordStatus: override set, set again, replaced, cleared, cleared again; derived statuses refused; entries without a note or a dictionary entry",
+  "covers": [
+    "words.status_set",
+    "words.status_cleared",
+    "words.status_clear_noop",
+    "words.status_derived_refused",
+    "words.status_no_note"
+  ],
+  "narrative": [
+    "Entry 1000220 has one note with a new meaning card; no override exists.",
+    "Step 0: clearing when there is no override is 200 with the current status and mints nothing.",
+    "Step 1 sets never_forget (override_origin manual). Step 2 sets the same status again: still 200 (the server emits again; the answer is the same status). Step 3 replaces it with blacklisted.",
+    "Step 4: while the entry is blacklisted its card is not served (the queue is empty). Step 5 clears the override: the status is the derived one again. Step 6 clears again: the same status and updated_at, nothing minted. Step 7: the card is served again.",
+    "Steps 8-9: new and learning are derived and cannot be set; an empty body is refused: 422 validation_failed.",
+    "Step 10: an entry of the dictionary that has no note (1000440) takes an override; auto_status is null.",
+    "Step 11: an entry that is in no dictionary (9999997) takes one too: the entry need not exist. The seq is in the path only, so it is listed in neither dict_entries nor dict_missing (those index entry_seq members and e:<seq> keys).",
+    "Step 12: clearing an entry that has no row at all (1000450): 200, updated_at null."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000220
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7032-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000220
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7032-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "clearWordStatus",
+    "getReviewQueue",
+    "setWordStatus"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000220,
+          "/override_status": null,
+          "/override_origin": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": {
+          "status": "never_forget"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000220,
+          "/status": "never_forget",
+          "/override_status": "never_forget",
+          "/override_origin": "manual"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": {
+          "status": "never_forget"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/status": "never_forget",
+          "/override_status": "never_forget"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": {
+          "status": "blacklisted"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/status": "blacklisted",
+          "/override_status": "blacklisted",
+          "/override_origin": "manual"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=10",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000220,
+          "/override_status": null,
+          "/override_origin": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000220,
+          "/override_status": null,
+          "/override_origin": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=10",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010"
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": {
+          "status": "learning"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000220/status",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/1000440/status",
+        "query": "",
+        "body": {
+          "status": "known"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000440,
+          "/status": "known",
+          "/auto_status": null,
+          "/override_status": "known",
+          "/override_origin": "manual"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/words/9999997/status",
+        "query": "",
+        "body": {
+          "status": "ignored"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 9999997,
+          "/status": "ignored",
+          "/auto_status": null,
+          "/override_status": "ignored"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168813000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/words/1000450/status",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/entry_seq": 1000450,
+          "/auto_status": null,
+          "/override_status": null,
+          "/updated_at": null
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 5,
+          "pointer": "/status"
+        },
+        {
+          "step": 6,
+          "pointer": "/status"
+        },
+        {
+          "step": 0,
+          "pointer": "/status"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 5,
+          "pointer": "/auto_status"
+        },
+        {
+          "step": 6,
+          "pointer": "/auto_status"
+        },
+        {
+          "step": 0,
+          "pointer": "/auto_status"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 5,
+          "pointer": "/updated_at"
+        },
+        {
+          "step": 6,
+          "pointer": "/updated_at"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 1,
+          "pointer": "/auto_status"
+        },
+        {
+          "step": 3,
+          "pointer": "/auto_status"
+        }
+      ]
+    }
+  ]
+}
