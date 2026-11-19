@@ -1323,3 +1323,4 @@
 2026-11-19T03:13:55Z WEB-REVIEW-FLOW CHECK_GREEN + MERGE (seamless splice fetch, keep going per visit in-memory, example rows one line)
 2026-11-19T03:14:07Z CLI-KG-SCOPE DISPATCH writer-light
 2026-11-19T03:16:00Z CLI-KG-SCOPE REVIEW_CHANGES attempt 2: daemon-run scope still leaks over quota; add 10-min idle reset. DECIDE ADR-039 amended (idle 10 min); WEB-KG-IDLE filed
+2026-11-19T03:17:34Z CLI-KG-SCOPE attempt 2 CHECK_GREEN + MERGE (in-memory keep going, 10-min idle reset)
