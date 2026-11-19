@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import Dialog from './Dialog.svelte';
 	import Icon from './Icon.svelte';
 	import ListRow from './ListRow.svelte';
@@ -36,6 +37,16 @@
 	);
 	const overflowActive = $derived(overflow.some((i) => i.href === active));
 	let moreOpen = $state(false);
+
+	// Any completed navigation (a sheet link, Back, a programmatic goto) closes the sheet.
+	afterNavigate(() => {
+		moreOpen = false;
+	});
+
+	// Choosing a page link closes the sheet, including the page that is already current.
+	function closeOnLinkClick(e: MouseEvent): void {
+		if ((e.target as Element | null)?.closest('a')) moreOpen = false;
+	}
 </script>
 
 {#snippet seal()}
@@ -90,7 +101,7 @@
 </div>
 
 <Dialog bind:open={moreOpen} title={ut('ui.more')} sheet>
-	<div class="more">
+	<div class="more" role="presentation" onclick={closeOnLinkClick}>
 		{#each overflow as item (item.href)}
 			<ListRow title={item.label} href={item.href} selected={item.href === active}>
 				{#snippet leading()}<Icon name={item.icon} />{/snippet}
