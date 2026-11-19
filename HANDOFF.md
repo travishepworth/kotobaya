@@ -1,21 +1,22 @@
-# HANDOFF WEB-30
+# HANDOFF CLI-30
 
-STATUS: DONE
-BRANCH: t/WEB-30 (from t/C30-int)
-CHECK: `make check MODULE=web` green; `playwright test review-loop --workers=1` 37/37 (CHROMIUM_PATH=/usr/bin/chromium, core/build/npm copied from main checkout, untracked)
+STATUS: BLOCKED
+BRANCH: t/CLI-30
+CHECK: `cd cli && uv run pytest` → green (124 passed, no code changed)
 
 ## Changed (≤ 6 lines)
-- `lib/review/loop.ts`: `loopParts` (until_stop_parts, fallback ready.learning/later.count/ready.review) and `keepGoingAvailable` (fallback: phase goal_reached/done_for_today).
-- Review header shows learning / later / review / new from the parts (later/new hidden at 0); sums to the bar total. Home hero breakdown uses the same parts; waiting Home lists later/review/new plus Keep going.
-- `today.svelte.ts` C6: refetch at `later_today.next_due_at` in every phase. Review session already refetches/splices at it (wakeTarget, scheduleDueFetch), unchanged.
-- `LoopEnd.svelte`: waiting screen shows Keep going iff `keep_going_available`. i18n keys `loop.part.*`. ADR-048 and word audio untouched.
+- HANDOFF.md only. No code change yet.
 
 ## Acceptance → tests
-- Reported case, Home=header, parts sum, C6 on Home while reviewing, no-button wait: `playwright/review-loop.spec.ts` (WEB-30 describe). Fixtures updated to ADR-049 (stop screen has later 0).
+- cli tests green → `uv run pytest` (124 passed on the unchanged branch)
 
-## Screenshots (viewed)
-web/screenshots/shell/web30-review-waiting-keepgoing-desktop.png, web30-review-header-desktop.png, web30-review-waiting-nobutton-desktop.png, web30-review-waiting-412x915.png, web30-home-waiting-desktop.png (loop-* baselines re-rendered too)
+## New dependencies
+- none
 
-## For the reviewer
-- Header counts are hidden below 34rem container width (existing design), so phones see only "n of total".
-- No day_ends_at refetch added (SHOULD in C6).
+## For the reviewer (≤ 3 lines)
+- The CLI does show loop phase and loop numbers (`kby` text/tooltip, `daemon/session.py` `_loop_fields`), so the ticket's condition holds.
+- `kby` tooltip "N learning later" already equals `until_stop_parts.later` (= `later_today.count`), so the display would not change.
+- `watch` / waybar / `{new} {learning} {review}` read the deprecated `counts`; switching them changes visible numbers.
+
+## If BLOCKED
+QUESTION: Should `watch`, waybar and the `{new} {learning} {review}` template move off the deprecated `counts` onto `until_stop_parts`? If yes, which mapping: (a) learning = parts.learning + parts.later (legacy "learning includes later") and new = parts.new, review = parts.review; or (b) learning = parts.learning, with `later` added as a new template field. Options for the rest: (1) also pass `until_stop_parts` through the daemon state line and `state.v1.json` (additive), with `kby` reading `.until_stop_parts.later // .later_today` (no visible change); or (2) no-op, leave `counts` as is and say so. Recommendation: (1) plus (2) for the watch counts until the mapping is decided.
