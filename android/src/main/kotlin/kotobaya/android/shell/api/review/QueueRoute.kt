@@ -1,6 +1,8 @@
 package kotobaya.android.shell.api.review
 
 import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.media.AudioPrefetchTrigger
+import kotobaya.android.media.WordAudioLookup
 import kotobaya.android.queue.EntryMaterializer
 import kotobaya.android.queue.EntryPlan
 import kotobaya.android.queue.EntryRef
@@ -110,8 +112,10 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
         kanji = kanji,
     )
     val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
+    // ADR-047 / SCHEMA.md 6.6 "Device": 30 s after a build that may have materialized, one prefetch pass (never a call here)
+    if ("new" in r.kinds) runCatching { services.get<AudioPrefetchTrigger>().afterQueueLoad() }
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
-    return ShellResponse.json(render(r, now, loaded, settings, store, dict, kanji))
+    return ShellResponse.json(render(r, now, loaded, settings, store, dict, kanji, runCatching { services.get<WordAudioLookup>() }.getOrNull()))
 }
 
 private fun render(
@@ -122,6 +126,7 @@ private fun render(
     store: SqlDelightDeviceStore,
     dict: InstalledDictionary,
     kanji: KanjiSource,
+    wordAudio: WordAudioLookup?,
 ): JsonObject {
     val queue = loaded.queue
     val input = loaded.input
@@ -140,7 +145,7 @@ private fun render(
     }
     val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour)
     val items = store.read { tx ->
-        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold, kanji)
+        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold, kanji, wordAudio)
             .items(wanted.map { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" }, now)
     }
     val out = LinkedHashMap<String, JsonValue>()

@@ -3,6 +3,7 @@ package kotobaya.android.shell.api.struggle
 import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.media.WordAudioLookup
 import kotobaya.android.review.CardRows
 import kotobaya.android.shell.api.Fallthrough
 import kotobaya.android.shell.api.FieldErrors
@@ -115,7 +116,7 @@ internal fun createDrillSession(call: LocalCall): ShellResponse {
             // `-lapses` order, ties by id
             else -> sources.live(checkNotNull(queryIds)).sortedWith(compareByDescending<String> { sources.lapses(it) }.thenBy { it }).take(limit)
         }
-        QueueViews(t, dict, FsrsScheduler, threshold).items(ids.map { it to mode }, now)
+        QueueViews(t, dict, FsrsScheduler, threshold, wordAudio = runCatching { services.get<WordAudioLookup>() }.getOrNull()).items(ids.map { it to mode }, now)
     }
     return ShellResponse.json(obj("id" to JsonString(sessionId), "mode" to JsonString(mode), "items" to JsonArray(items)))
 }
