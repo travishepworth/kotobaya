@@ -859,7 +859,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LOOP-C2b — parity scenarios: decks, listCards, struggle/drill · model: opus · risk: low · deps: LOOP-C2 · status: TODO (ticket: plan/tickets/LOOP-C2b.md)
 
 ### User feedback round (2026-11-19, human-confirmed, ADR-038..041)
-- WEB-REVIEW-FLOW — seamless due-card slot-in (no loading screen), keep going per visit (ADR-039), kanji example rows one line · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/WEB-REVIEW-FLOW.md)
+- WEB-REVIEW-FLOW — seamless due-card slot-in (no loading screen), keep going per visit (ADR-039), kanji example rows one line · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/WEB-REVIEW-FLOW.md)
 - CLI-KG-SCOPE — CLI keep going per session (ADR-039) · model: haiku · risk: low · deps: — · status: TODO (ticket: plan/tickets/CLI-KG-SCOPE.md)
 - C-28 — Contracts: until_stop, kanji-first, Deck.progress, kanji_parts · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-28.md)
 - CORE-28 — Core impl of C-28 · model: opus · risk: high · deps: C-28 · status: TODO (ticket: plan/tickets/CORE-28.md)

@@ -6,7 +6,6 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## Running (run 34, 2026-11-19) — user feedback round (ADR-038..041)
 | C-28 | architect | 1 | t/C-28-contracts | 2026-11-19 |
-| WEB-REVIEW-FLOW | writer | 1 | t/WEB-REVIEW-FLOW-web | 2026-11-19 |
 | BUG-ADD2DECK-500 | writer-senior | 1 | t/BUG-ADD2DECK-500-android | 2026-11-19 |
 Queued: CLI-KG-SCOPE (next free slot); CORE-28 after C-28; SRV-28 + AND-28 after CORE-28; WEB-28 after C-28 + WEB-REVIEW-FLOW.
 Still HELD from pause: LOOP-C2b, SHELL-Z2.
