@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RESUME HERE (run 35, 2026-11-19) — ADR-046 + SCROLL-TOP
 User present. MERGED: SCROLL-TOP c87974a3 (visual verify PASS), C-28f dbedbbf7 + CORE-28d e41c2636 (reviewed APPROVE; checks core/worker/server/android/contracts green).
-Next: RELEASE run 35 from one pinned SHA: api, web, worker images (worker carries ADR-046 headword rule) -> helm -> trigger dict-refresh (forced new release, headword_rule ADR-046) -> APK next after 0.1.35 (phone: say "ready"; the phone then needs the new dict package).
+LIVE run 35: helm rev 40 (pin 17eb3969) api 0.1.26, web 0.1.29, worker 0.1.20. APK 0.1.36 built (rel35 worktree in scratchpad), NOT installed yet. dict-refresh NOT yet run (user must POST /api/v1/dict/refresh; import scope).
 Live: 嘉 auto_kanji note 01a1f310-d484-7986-b7c4-cac32d9d6656 stays (no auto-delete per C-28f); user to delete/suspend by hand.
 
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044

@@ -1382,3 +1382,7 @@
 2026-11-19T10:16:39Z CORE-28d REVIEW_APPROVE (4 minors → FOLLOWUPS); orchestrator checks running
 2026-11-19T10:18:27Z SCROLL-TOP visual verify PASS (playwright 412x915 + 1280x800: scrollTop 0 after Show and next card; screenshot viewed by orchestrator)
 2026-11-19T10:20:54Z C-28f + CORE-28d CHECK_GREEN (core,worker,server,android,contracts) + MERGE e41c2636; release run 35 next
+2026-11-19T10:21:15Z RELEASE prep run 35: pin 17eb3969; building api 0.1.26, web 0.1.29, worker 0.1.20, APK 0.1.36
+2026-11-19T10:21:54Z NOTE last dict-refresh succeeded 2026-11-15 (WRK-DICT-LISTSEQ refresh never ran); run 35 needs user to POST /api/v1/dict/refresh (import scope)
+2026-11-19T10:22:16Z RELEASE APK 0.1.36 built (pin 17eb3969, code 136, cert ec6b7f45 ok)
+2026-11-19T10:36:40Z RELEASE run 35 DEPLOYED helm rev 40 (pin 17eb3969): api 0.1.26, web 0.1.29, worker 0.1.20; awaiting user dict-refresh + phone for APK 0.1.36
