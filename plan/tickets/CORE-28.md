@@ -1,7 +1,7 @@
 # CORE-28 — Core: until_stop, kanji-first ordering, DeckProgress, KanjiParts
 
 - Phase: P10 · Model: opus (writer-senior) · Risk: high
-- Deps: C-28
+- Deps: C-28, C-28b
 - Branch: t/CORE-28-core
 - Owned paths: core/** (not core/src/commonMain/kotlin/kotobaya/contracts/**)
 - Module(s) for CI: core (Gradle lock)

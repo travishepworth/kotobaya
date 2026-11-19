@@ -508,5 +508,3 @@
 - [ ] Server returns `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Phone agrees; confirm intended.
 - [ ] New parity coverage tags (bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews) not listed in SHELL.md §8.4.
 - (2026-11-19, CLI) cli/pyproject.toml sources kotobaya_client editable; a uv tool install from a temp worktree breaks when it is deleted (daemon crash-looped). Make the source non-editable or document `uv tool install --no-sources --with ./clients/python ./cli` in docs/CLI-DAEMON.md.
-- (C-28 r2 minor) QueueBuilder rule 4 "Fits or leads": a single kanji part > newPerDay (burySiblings off, ≥2 kanji kinds, new_per_day 1) leads with zero parts and stops its source forever. Fix: allow a part when drawn == 0 even if it overshoots.
-- (C-28 r2 minor) Backfill runs before every source up to the goal: ~1000 missing kanji at goal 40 → ~25 days with no new words, no UI explanation. Asked user 2026-11-19 (cap backfill share?).
