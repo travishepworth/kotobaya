@@ -1399,3 +1399,6 @@
 2026-11-19T12:58:47Z C-29 attempt 2 HANDOFF; contracts+core green after rebase; server/worker/android check running before merge; CORE-29 (writer-senior) + WRK-29 (writer) DISPATCH from t/C-29-audio
 2026-11-19T13:00:21Z WEB-REVIEW-BACK HANDOFF (green); screenshots looked faded -> writer asked to verify settled opacity + enabled grade buttons + grading restored card
 2026-11-19T13:02:08Z WEB-REVIEW-BACK CHECK_GREEN (web) + MERGE (settled screenshots viewed; opacity/enabled asserted)
+2026-11-19T13:03:22Z RELEASE APK 0.1.37 built (pin ffb37e0d, code 137, cert ok) — install when user plugs in
+2026-11-19T13:03:36Z WRK-29 HANDOFF + green (worker 908); held on t/WRK-29 until C-29 merge
+2026-11-19T13:06:39Z RELEASE web 0.1.31 DEPLOYED helm rev 41 (pin ffb37e0d: WEB-DICT-DESKTOP + WEB-REVIEW-BACK); api 0.1.26/worker 0.1.20 unchanged

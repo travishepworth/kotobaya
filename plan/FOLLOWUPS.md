@@ -522,3 +522,4 @@
 - CORE-28d review: worker test_refresh_resume — assert a 4th run after forced rebuild returns release_id None.
 - CORE-28d review: KanjiRequirementTest.singaporeEntryShape also passes on old predicate; optionally add 新嘉坡 field-form case.
 - WEB-REVIEW-BACK: contracts/api/shell/SHELL.md 6.2 step 2 still describes the ADR-030 3 s back rule; update for ADR-048 (architect, next C-ticket).
+- WRK-29: no test runs the real PgCache SQL against V4 (fake store only); add a Postgres-backed test.
