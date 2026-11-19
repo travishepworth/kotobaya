@@ -528,3 +528,4 @@
 - SRV-29: back-off lookup scans app.job by dedupe_key across all statuses without an index — add index via contract migration.
 - SRV-29: sweep does not skip buried cards (spec silent).
 - SRV-29: back-off window 1 day — a retry chain created >1 day ago that failed recently isn't seen as backing off (edge).
+- C-30: ship WEB-30/AND-30 together with SRV-30 — old clients get 'waiting' with no Keep going button while new cards remain (nothing breaks).

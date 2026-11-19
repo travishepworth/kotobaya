@@ -1411,3 +1411,4 @@
 2026-11-19T13:33:35Z SRV-29 REVIEW_CHANGES (1 major: unindexed back-off scan on review path; 3 minors) -> writer attempt 2
 2026-11-19T13:38:54Z SRV-29 attempt 2 HANDOFF green (major fixed as prescribed, tests added) -> accepted; AND-29 DISPATCH writer from t/SRV-29
 2026-11-19T13:43:00Z C-30 HANDOFF + green; reviewer; CORE-30/SRV-30/WEB-30/AND-30/CLI-30 filed
+2026-11-19T13:44:43Z C-30 REVIEW_APPROVE (4 minors: day-boundary parity + A3 text -> architect quick fix; KG-on-backlog noted in ADR-049; ship web/android with server)
