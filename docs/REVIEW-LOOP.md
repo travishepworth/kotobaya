@@ -255,7 +255,8 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   kanji introduced today whose word was already introduced), the sources get the rest, and backfill takes
   what the sources cannot use (remainder step). A deckless new card of a backfill kanji has no turn of its own
   (the minted notes are deckless and would otherwise bypass the share); one whose home is an enabled deck is
-  no backfill card: it keeps its deck's turns and is not counted in the share. Keep going: backfill is at most half of the new cards
+  a backfill card too (never starved by its deck's priority or limit) and also keeps its deck's own turn;
+  whichever draws it first takes it, and it counts in the share either way. Keep going: backfill is at most half of the new cards
   introduced today, checked before every source turn (a word and a kanji in turn). A kanji part may be drawn
   as the first new card of a day even if it is larger than the goal, so a lead never takes zero parts on a
   fresh day. The loop numbers are computed as before (`availableToday`, `until_stop`); goal 4, three backfill

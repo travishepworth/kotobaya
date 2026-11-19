@@ -422,8 +422,8 @@ of the day's new goal (`floor(scheduler.new_per_day / 2)`, at least 1; ADR-044);
 goes to new words with their own kanji, and when no new word can be drawn the kanji may
 use the remainder. Such a kanji card that is in no deck (every automatically
 created one) is drawn only through this share, never as an ordinary deckless new card;
-one that belongs to an enabled deck is studied on that deck's turns instead and does
-not use the share. With `keep_going=true` they are at most half of the new cards
+one that belongs to a deck is drawn through this share too (whatever the deck's
+priority or limit) and may also come up earlier as an ordinary card of its enabled deck. With `keep_going=true` they are at most half of the new cards
 introduced in the study day. Example: goal 4, three such kanji and two new words →
 `日 本 うっかり Ｔシャツ` today, `語` on the next study day. Core `QueueBuilder` rule 4 "Kanji first" is normative.
 Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →

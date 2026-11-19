@@ -592,11 +592,11 @@ public data class ReviewQueue(
  *      L is a **backfill kanji** iff it is not started and is a required kanji of an
  *      **introduced** word: a vocab note W with `L in req(W)`, at least one candidate of W (after
  *      rule 0) in a state other than NEW, and `wordOverride` neither BLACKLISTED nor IGNORED.
- *      Its part is, when a candidate kanji note of L exists, the cards of `kc(L)` whose home
- *      new-source is **not a deck** (deckless cards, e.g. every auto-minted kanji note, and cards
- *      whose decks are all disabled; a card whose home new-source is a deck is left to that
- *      deck's turns, "Own turn" below, and is no backfill card). The part is possibly empty
- *      (suspended, buried or deck-homed cards only): an empty part is passed over. Else the `newCards`
+ *      Its part is `kc(L)` when a candidate kanji note of L exists, **whatever the cards' home
+ *      new-source** (deckless, a deck, or none because its decks are all disabled), so a kanji
+ *      that sits in a low-priority or capped deck is not starved. The part is possibly empty
+ *      (suspended or buried cards are simply not drawn; cards already taken in this build are
+ *      not in `kc`): an empty part is passed over. Else the `newCards`
  *      cards to mint for the element of
  *      `W.missingKanji` with that literal (ADR-043: backfill **also mints** the missing required
  *      kanji of words already studied; a literal in no `missingKanji`, e.g. one whose note the
@@ -611,9 +611,8 @@ public data class ReviewQueue(
  *      most half of the new cards of a study day; the rest belongs to the sources. Terms:
  *      - `iToday` = the number of `introducedNew` reviews in [QueueInput.today] (after rule 0).
  *      - `bToday` = how many of those are **backfill introductions**: a review `r` whose card is
- *        a candidate of a kanji note with literal L, has a home new-source that is **not a deck**
- *        (from [TodayReview.deckIds] and the decks now, as for the per-deck limit; a kanji
- *        answered from its own deck never counts), and such that some vocab note W has `L in req(W)`,
+ *        a candidate of a kanji note with literal L (whatever its home new-source and whichever
+ *        way it was drawn: the build cannot tell and does not need to) such that some vocab note W has `L in req(W)`,
  *        `wordOverride` neither BLACKLISTED nor IGNORED, and a candidate `c` of W (after rule 0)
  *        in a state other than NEW that has **no** `introducedNew` review in `today` with
  *        `reviewedAt >= r.reviewedAt` (W was already introduced when the kanji was; a word of
@@ -621,7 +620,11 @@ public data class ReviewQueue(
  *        lead is therefore not counted (its word is introduced later or not yet); a backfill
  *        kanji that a new word's unit happened to take is counted. Stateless: derived from the
  *        candidates and `today` only, so it is the same on every client and after every rebuild.
- *      - `b` = the cards of the backfill parts drawn so far in this build by the share step.
+ *      - `b` = the NEW cards of backfill kanji drawn so far in this build, **by whatever path**:
+ *        the share step, a deck's own turn ("Own turn" below) or `K` of a new word's unit, plus
+ *        the cards to mint of claimed backfill parts. (The same cards are in `bToday` once
+ *        answered, so `bToday + b` does not change when the head is answered.) Only the share
+ *        step is ever refused by the share test; the other paths count but are not limited by it.
  *      - **Share test** for the next part, of `size` cards. Normal build:
  *        `share = max(1, newPerDay / 2)` (integer division; `newPerDay` is
  *        `limits.newPerDay`, the whole goal, not `dayRemaining`), and the test is
@@ -663,10 +666,13 @@ public data class ReviewQueue(
  *      this the half share would be void: auto-minted kanji notes are deckless, so the deckless
  *      source would draw them on its own turns, next to the share (same tier) or ahead of every
  *      deck (lower `decklessPriority`).
- *      **A deck-homed kanji card keeps its deck's turn**, backfill kanji or not: the user chose
- *      to study that deck, so it is drawn there at the deck's pace (position, per-deck limit,
- *      tier), is not a backfill card (not in a part, not in `b` or `bToday`, never throttled by
- *      the share) and, once answered, its literal is started, which satisfies the backfill kanji.
+ *      **A deck-homed backfill kanji card has both ways**: it is in its literal's backfill part
+ *      (share and remainder steps, never skipped for its deck's priority, position or per-deck
+ *      limit; it counts against its home deck's daily count by "Attribution") **and** it keeps
+ *      its deck's own turn (the user chose to study that deck; subject to that deck's tier,
+ *      position and per-deck limit as any card). Whichever reaches it first takes it; a taken
+ *      card is in neither afterwards. Either way it counts in `b` / `bToday`; an own-turn draw
+ *      is not refused by the share test, so a kanji deck may carry backfill kanji past the share.
  *    Edge cases: two words sharing a new kanji → the first drawn takes it, the second unit is the
  *    word alone (or with its other kanji); the same kanji twice in a word counts once; a word with
  *    one started, one new and one missing kanji → `[new kanji, word]` withheld until the missing
@@ -707,11 +713,14 @@ public data class ReviewQueue(
  *    after the sources).
  *    Example (deck-homed backfill kanji; the same data, `newPerDay` 4, but the note of 日 is an
  *    item of a second enabled deck "Kanji", same priority, greater id than the word deck): the
- *    part of 日 is empty and passed over; the share step draws 本, 語 (2 of 2); turns: うっかり
- *    (word deck), 日 (deck "Kanji", its own turn; `drawn = 4`) → N = `[本, 語, うっかり, 日]`: three
- *    kanji of 日本語 in one day, because 日 is the kanji deck's card and not counted in the share
- *    (after all four are answered `bToday = 2`). The next day: `[Ｔシャツ]`. With the deck "Kanji"
- *    disabled instead, 日 has no deck home: it is a backfill card again and the first example applies.
+ *    share step draws 日, 本 as before (日 counts against the daily count of "Kanji"); turns:
+ *    うっかり (word deck), nothing ("Kanji": 日 is taken), Ｔシャツ → N = `[日, 本, うっかり, Ｔシャツ]`, the
+ *    same as with 日 deckless. The same if "Kanji" has priority 10, `newPerDay` 0 or is
+ *    disabled: backfill does not depend on the deck. With 語 in "Kanji" instead of 日: the share
+ *    step draws 日, 本 and stops at 語; turns: うっかり, then 語 on the own turn of "Kanji"
+ *    (`drawn = 4`) → N = `[日, 本, うっかり, 語]` (`b = 3`: the kanji deck carried one backfill kanji
+ *    past the share); the next day `[Ｔシャツ]`. With "Kanji" at priority 10 in that variant: its
+ *    tier is not reached, N = `[日, 本, うっかり, Ｔシャツ]`, 語 the next day by the share step.
  *    Example (keep going; the same data plus a third new word あれ after Ｔシャツ; goal 2, met with 日
  *    and 本 introduced today: `iToday = 2`, `bToday = 2`; batch 10): before the first turn 語 fails
  *    (`2 * 3 > 2 + 0 + 1`); うっかり (`drawn = 1`); 語 fails (`6 > 4`); Ｔシャツ (`drawn = 2`); 語

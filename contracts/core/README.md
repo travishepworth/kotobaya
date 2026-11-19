@@ -472,9 +472,12 @@ KDoc examples):
   and lead), not when `reviewedAt` ties; a source stopped by a lead or at its per-deck limit
   hands the remainder to backfill; a deckless NEW card of a backfill kanji is never drawn on a
   deckless-source turn (same tier as the deck, and with a lower `decklessPriority`): the
-  half-share example gives the same N in both; the deck-homed example (`[本, 語, うっかり, 日]`,
-  `bToday = 2` afterwards; kanji deck disabled → the first example; kanji deck at its per-deck
-  limit → 日 is not drawn, not even by the remainder step); the batch cuts a prefix of the unbounded draw
+  half-share example gives the same N in both; the deck-homed examples (日 in an enabled kanji deck →
+  `[日, 本, うっかり, Ｔシャツ]`, drawn by the share step and counted against that deck's daily
+  count; the same with the kanji deck at priority 10, at its per-deck limit, with `newPerDay` 0
+  or disabled: 日 is still drawn via backfill; 語 in the kanji deck → `[日, 本, うっかり, 語]` on the
+  deck's own turn, `bToday = 3` afterwards; a card taken by the share step is not drawn again
+  on its deck's turn); the batch cuts a prefix of the unbounded draw
   (`availableToday` unchanged); a part of 2 cards with `newPerDay` 1 is drawn when nothing was
   introduced today and not again after its first card is answered, as a lead part and as a
   backfill part; `newPerDay` 0 draws nothing. Property (normal and keep going, random inputs
