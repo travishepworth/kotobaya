@@ -6,6 +6,35 @@ import { expect, test, type Page } from '@playwright/test';
 
 const OUT = 'screenshots/add-to-deck';
 
+/**
+ * Waits for the sheet's open animation (rise/fade from opacity 0; reduced motion keeps the fade) to finish, then
+ * checks the sheet is really drawn: opaque, inside the viewport, and its bottom button is the topmost element
+ * (not covered by the tab bar). A screenshot taken mid-fade shows the page through the sheet.
+ */
+async function sheetSettled(page: Page, buttonName: string | null): Promise<void> {
+	await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+	const dialog = page.locator('dialog[open]');
+	const style = await dialog.evaluate((d) => {
+		const cs = getComputedStyle(d);
+		const r = d.getBoundingClientRect();
+		return { opacity: cs.opacity, bg: cs.backgroundColor, bottom: r.bottom, top: r.top };
+	});
+	expect(style.opacity).toBe('1');
+	expect(style.bg).not.toBe('rgba(0, 0, 0, 0)');
+	expect(style.bg).not.toMatch(/rgba\(.*, 0\)$/);
+	expect(style.top).toBeGreaterThanOrEqual(0);
+	expect(style.bottom).toBeLessThanOrEqual(800);
+	if (buttonName !== null) {
+		const btn = dialog.getByRole('button', { name: buttonName });
+		const onTop = await btn.evaluate((b) => {
+			const r = b.getBoundingClientRect();
+			const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+			return hit !== null && b.contains(hit);
+		});
+		expect(onTop).toBe(true);
+	}
+}
+
 async function openEntry(page: Page): Promise<string[]> {
 	const errors: string[] = [];
 	page.on('pageerror', (e) => errors.push(String(e)));
@@ -34,6 +63,7 @@ test('dictionary entry: Add to deck opens a deck picker and toggles without an e
 	const chips = await page.locator('ul.in li').first().locator('xpath=..').locator('li').count();
 	const ticked = page.locator('dialog[open] button[role="checkbox"][aria-checked="true"]');
 	expect(await ticked.count()).toBe(chips);
+	await sheetSettled(page, 'Done');
 	await page.screenshot({ path: `${OUT}/picker-open-360x800.png` });
 
 	const row = page.locator('dialog[open] button[role="checkbox"][aria-checked="false"]').first();
@@ -51,11 +81,9 @@ test('dictionary entry: Add to deck opens a deck picker and toggles without an e
 
 test('note view (/notes?note=...) at phone width opens without an effect loop', async ({ page }) => {
 	const errors = await openEntry(page);
-	const openNote = page.getByRole('link', { name: 'Open note' });
-	if ((await openNote.count()) > 0) await openNote.first().click();
-	else await page.goto('/notes?note=00000000-0000-7000-8000-000000000001');
-	await page.locator('main').waitFor();
-	await page.waitForTimeout(500);
+	await page.getByRole('link', { name: 'Open note' }).first().click();
+	await page.locator('dialog[open]').waitFor();
+	await sheetSettled(page, null);
 	await page.screenshot({ path: `${OUT}/note-view-360x800.png` });
 	await expect(page.getByText('Something went wrong')).toHaveCount(0);
 	expect(errors.filter((e) => e.includes('effect_update_depth_exceeded'))).toEqual([]);

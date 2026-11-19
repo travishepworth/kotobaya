@@ -18,5 +18,6 @@ CHECK: `make check MODULE=web` → green (40 files, 302 tests)
 - none
 
 ## For the reviewer (≤ 3 lines)
-- "Add to deck" already opens a picker: a bottom-sheet checklist, one checkbox per deck. It adds nothing until you tick a deck. I kept the sheet rather than turning it into a dropdown.
+- "Add to deck" already opens a picker: a bottom-sheet checklist, one checkbox per deck. It adds nothing until you tick a deck. I kept the sheet.
+- The see-through sheet in the first screenshot was a timing artefact: it was taken mid-way through the sheet's opening fade. Reduced motion still runs that fade. The spec now waits for animations to end and checks the sheet is opaque, inside the viewport, and that Done is not covered by the tab bar. Retaken shots look right.
 - I could not run prettier (not installed); the files are hand-formatted.
