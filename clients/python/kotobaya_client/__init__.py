@@ -310,6 +310,10 @@ __all__ = [
     "SettingsPatch",
     "SettingsSetSchema",
     "SpanOrigin",
+    "SpeechResolution",
+    "SpeechResolveItem",
+    "SpeechResolveRequest",
+    "SpeechResolveResult",
     "StatsCalibration",
     "StatsCalibrationBinsInner",
     "StatsForecast",
@@ -334,6 +338,7 @@ __all__ = [
     "TokenList",
     "TtsRequest",
     "VocabListReport",
+    "WordAudio",
     "WordStatus",
     "WordStatusClearedSchema",
     "WordStatusSet",
@@ -638,6 +643,10 @@ from kotobaya_client.models.setting_list import SettingList as SettingList
 from kotobaya_client.models.settings_patch import SettingsPatch as SettingsPatch
 from kotobaya_client.models.settings_set_schema import SettingsSetSchema as SettingsSetSchema
 from kotobaya_client.models.span_origin import SpanOrigin as SpanOrigin
+from kotobaya_client.models.speech_resolution import SpeechResolution as SpeechResolution
+from kotobaya_client.models.speech_resolve_item import SpeechResolveItem as SpeechResolveItem
+from kotobaya_client.models.speech_resolve_request import SpeechResolveRequest as SpeechResolveRequest
+from kotobaya_client.models.speech_resolve_result import SpeechResolveResult as SpeechResolveResult
 from kotobaya_client.models.stats_calibration import StatsCalibration as StatsCalibration
 from kotobaya_client.models.stats_calibration_bins_inner import StatsCalibrationBinsInner as StatsCalibrationBinsInner
 from kotobaya_client.models.stats_forecast import StatsForecast as StatsForecast
@@ -662,6 +671,7 @@ from kotobaya_client.models.token_kind import TokenKind as TokenKind
 from kotobaya_client.models.token_list import TokenList as TokenList
 from kotobaya_client.models.tts_request import TtsRequest as TtsRequest
 from kotobaya_client.models.vocab_list_report import VocabListReport as VocabListReport
+from kotobaya_client.models.word_audio import WordAudio as WordAudio
 from kotobaya_client.models.word_status import WordStatus as WordStatus
 from kotobaya_client.models.word_status_cleared_schema import WordStatusClearedSchema as WordStatusClearedSchema
 from kotobaya_client.models.word_status_set import WordStatusSet as WordStatusSet

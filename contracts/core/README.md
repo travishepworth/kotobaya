@@ -55,6 +55,7 @@ Package prefix `kotobaya.contracts`.
 | `CardGenerator` (`cards/CardGenerator.kt`) | SYNC.md 4 (default cards, `card_kinds`, no knowing duplicates); SPEC card kinds table; kanji notes for a word (ADR-040; `add_kanji` deprecated) | T205 (or the note-creation ticket) |
 | `KanjiRequirement` (`cards/KanjiRequirement.kt`) | ADR-042, ADR-045: learnable kanji (always required), word-level tags (furigana only), furigana front; SCHEMA.md 6.5 | CORE-28 |
 | `DeckProgress` (`decks/DeckProgress.kt`) | ADR-041: "N of M words learned"; API `Deck.progress` | CORE-28 |
+| `WordAudioResolver`, `WordAudioRules` (`render/WordAudio.kt`) | ADR-047: which sound a vocab note has, speech text, effective voice; SCHEMA.md 6.6; API `QueueItem.word_audio` | CORE-29 |
 | `KanjiParts` (`dict/KanjiParts.kt`) | ADR-041: kanji breakdown of a vocab back, used reading; API `QueueItem.kanji_parts` | CORE-28 |
 | `HotScorer` (`hot/HotScorer.kt`) | SPEC Leeches and hot words | hot-words ticket |
 | `SearchQueryParser`, AST (`search/Search.kt`) + `search.ebnf` | SPEC Public API › Card search language | T108 |

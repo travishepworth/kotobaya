@@ -1,6 +1,9 @@
 package kotobaya.android.shell.api.review
 
+import kotobaya.android.media.WordAudioLookup
+import kotobaya.android.media.WordAudios
 import kotobaya.android.queue.WordText
+import kotobaya.contracts.render.WordAudio
 import kotobaya.render.FieldPlainText
 import kotobaya.render.PlainTextMode
 import kotobaya.android.dict.DictEntryDetail
@@ -62,7 +65,10 @@ internal class QueueViews(
     private val leechThreshold: Int,
     /** ADR-042: the dictionary facts of `KanjiRequirement` (a shared cache in the app). */
     private val kanjiSource: KanjiSource = KanjiSource(dict),
+    /** ADR-047: the device table of generated speech; null = nothing generated (a `tts` item reports `blob_hash: null`). */
+    private val wordAudio: WordAudioLookup? = null,
 ) {
+    private val voice: String by lazy { WordAudios.voice(t) }
     private val renderData = InstalledRenderData(dict)
     private val exemptions: Boolean by lazy {
         KanjiRequirement.exemptionsEnabled(t.get(LearningTable.SETTINGS, listOf(JsonString(KanjiRequirement.SETTING_KANJI_EXEMPTIONS)))?.get("value"))
@@ -113,6 +119,7 @@ internal class QueueViews(
         if (word != null) out["kanji_parts"] = guarded { kanjiParts(word.first, word.second) } ?: JsonArray(emptyList())
         // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client
         textOf(note, kind, entryForText, kanjiDetail.takeIf { kanji != JsonNull }, picked?.third, furigana)?.let { out["text"] = it }
+        out["word_audio"] = wordAudioOf(note, entryForText)
         out["preview"] = if (reviewType == "drill" || reviewType == "cram") JsonNull else preview(card, nowMs)
         return JsonObject(out)
     }
@@ -377,10 +384,7 @@ internal class QueueViews(
      * type is unknown (no row, not a built-in base type).
      */
     private fun textOf(note: Row, kind: String, entry: DictEntryDetail?, kanji: KanjiDetail?, cloze: ClozeSentence?, furigana: Boolean): JsonObject? {
-        val typeId = CardRows.str(note["note_type_id"])
-        val info = typeId?.let { id -> noteTypes.getOrPut(id) { CardRows.get(t, LearningTable.NOTE_TYPE, id)?.let(CardRows::noteTypeInfo) } }
-            ?: BuiltInNoteTypes.ALL.firstOrNull { it.info.baseType.wire == CardRows.str(note["type"]) }?.info
-            ?: return null
+        val info = noteInfo(note) ?: return null
         val out = DefaultCardTextRenderer.renderText(
             TextRenderInput(
                 noteType = info,
@@ -398,6 +402,30 @@ internal class QueueViews(
             "reading" to (out.reading?.let(::JsonString) ?: JsonNull),
             "sentence" to (out.sentence?.let(::JsonString) ?: JsonNull),
         )
+    }
+
+    private fun noteInfo(note: Row): NoteTypeInfo? {
+        val typeId = CardRows.str(note["note_type_id"])
+        return typeId?.let { id -> noteTypes.getOrPut(id) { CardRows.get(t, LearningTable.NOTE_TYPE, id)?.let(CardRows::noteTypeInfo) } }
+            ?: BuiltInNoteTypes.ALL.firstOrNull { it.info.baseType.wire == CardRows.str(note["type"]) }?.info
+    }
+
+    /**
+     * `QueueItem.word_audio` (ADR-047, SCHEMA.md 6.6 "Server" rule 1 on the device): the core resolver over the note and
+     * the L-7 dictionary data; a `tts` item's hash comes from the device table via [wordAudio]. Enqueues nothing.
+     */
+    private fun wordAudioOf(note: Row, entry: DictEntryDetail?): JsonValue {
+        val info = noteInfo(note) ?: return JsonNull
+        return when (val a = WordAudios.resolve(info, CardRows.fieldsOf(note), entry?.let(WordAudios::dictionary))) {
+            null -> JsonNull
+            is WordAudio.Note -> obj("source" to JsonString("note"), "blob_hash" to JsonString(a.blobHash), "text" to JsonNull, "voice" to JsonNull)
+            is WordAudio.Tts -> obj(
+                "source" to JsonString("tts"),
+                "blob_hash" to (guarded { wordAudio?.blobHash(voice, a.text) }?.let(::JsonString) ?: JsonNull),
+                "text" to JsonString(a.text),
+                "voice" to JsonString(voice),
+            )
+        }
     }
 
     /** The server's `QueueText.dictionaryData`: every gloss of every sense, furigana over the whole headword. */

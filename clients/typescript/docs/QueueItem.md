@@ -21,6 +21,7 @@ Name | Type
 `reviewType` | string
 `sentence` | [Sentence](Sentence.md)
 `text` | [CardText](CardText.md)
+`wordAudio` | [WordAudio](WordAudio.md)
 
 ## Example
 
@@ -43,6 +44,7 @@ const example = {
   "reviewType": null,
   "sentence": null,
   "text": null,
+  "wordAudio": null,
 } satisfies QueueItem
 
 console.log(example)

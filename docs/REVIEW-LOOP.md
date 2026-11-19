@@ -302,3 +302,39 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   skipping a unit that does not fit (starves words whose unit exceeds the goal; reversed by ADR-043); persisted "open group" session
   state (the rebuild must stay a pure function of the data); counting a new card as two answers in
   `until_stop`.
+
+## 14. Word audio on the review screen (ADR-047, ticket C-29)
+
+Design only; nothing in sections 1-13 changes (audio never affects the queue, counts or phases).
+Normative sources: SCHEMA.md 6.6, openapi `QueueItem.word_audio` / `resolveSpeech`, core
+`render/WordAudio.kt` and "Word audio" on `CardRenderer`. The review screen is the SPA on both
+web and phone, so these rules are written once.
+
+| Rule | What the screen does |
+|---|---|
+| A1 Render | Pass `item.word_audio?.blob_hash ?? null` as `wordAudio` to `renderCard` for both sides. Never build the speaker button in TypeScript. |
+| A2 Autoplay | When a side becomes visible (front shown, answer revealed) and `review.autoplay_audio` is not `false` and that side's `autoplayAudio` is non-null: play it once. A new showing of the same card (after undo, or when it comes back) plays again. |
+| A3 Replay | `P`, or a tap on any `button.kb-audio`: `P` plays the visible side's `wordAudio`, or, when that is null, the first entry of its `audio`; a tap plays that button's `data-kb-audio`. Starting a sound stops the one playing. Works with autoplay off. |
+| A4 Missing | `word_audio.source == "tts"` with `blob_hash == null`: when the card is first shown call `resolveSpeech` (`urgent: true`, the item's `text` and `voice`) and follow its client rule (ask again after `retry_after_ms`, doubling, at most 5 calls; `403` for a session without `write`, like any error, ends it for this showing). On `ready`: render again with the hash; if the side now visible has a non-null `autoplayAudio` and nothing was autoplayed for this showing, play it. If the user has moved on, drop the answer. |
+| A5 Failure | A sound that cannot load or play (offline `404`, blocked autoplay, decode error) is ignored: no dialog, no retry loop, grading is never blocked. |
+| A6 Setting | Settings has one switch, "Play audio automatically", bound to `review.autoplay_audio` (written through `updateSettings`; absent = on). |
+
+Sources of sound URLs are unchanged: `/api/v1/blobs/{sha256}` on the web, the blob intercept on
+the phone (SHELL.md 2.7), which serves from the cache offline. The phone's native prefetch pass
+(SCHEMA.md 6.6 "Device") fills the cache; the SPA takes no part in it.
+
+Worked examples:
+- **Deck-materialized note** (食べる, all fields empty), `meaning` card, audio generated:
+  `word_audio = {source: "tts", blob_hash: "b5bb…944c", text: "たべる", voice: "3"}`. Front: no
+  button, silence. Reveal: the button sits in the expression line and `b5bb…944c` plays once.
+  `P` plays it again.
+- **The same note seconds after it was created** (not generated yet): `blob_hash: null`. Front: A4
+  asks; the answer is `pending`, then `ready` one second later, before the reveal. Reveal: plays.
+  If the user reveals first, the sound plays when the hash arrives (A4), unless they already graded.
+- **Note with its own audio** (`audio = "[sound:9f86…0a08]"`): `word_audio = {source: "note",
+  blob_hash: "9f86…0a08", text: null, voice: null}`. Same behaviour, the note's file; no
+  `resolveSpeech`, no generation, whatever `tts.voice` is.
+- **Listening card**: the sound is the question: it plays when the front is shown; the reveal is
+  silent (`autoplayAudio` null on the back); `P` replays on both sides.
+- **Phone offline, pair never resolved**: `blob_hash: null`, `resolveSpeech` answers
+  `503 shell_offline`: no button, no sound, reviewing goes on.

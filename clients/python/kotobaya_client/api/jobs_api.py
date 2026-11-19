@@ -22,6 +22,8 @@ from kotobaya_client.models.job import Job
 from kotobaya_client.models.job_kind import JobKind
 from kotobaya_client.models.job_page import JobPage
 from kotobaya_client.models.job_status import JobStatus
+from kotobaya_client.models.speech_resolve_request import SpeechResolveRequest
+from kotobaya_client.models.speech_resolve_result import SpeechResolveResult
 from kotobaya_client.models.tts_request import TtsRequest
 
 from kotobaya_client.api_client import ApiClient, RequestSerialized
@@ -904,6 +906,288 @@ class JobsApi:
 
 
     @validate_call
+    def resolve_speech(
+        self,
+        speech_resolve_request: SpeechResolveRequest,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> SpeechResolveResult:
+        """Look up generated speech for texts or notes, generating what is missing.
+
+        ADR-047 (C-29). The one way a client turns \"this word should have audio\" into a blob hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is queued as a `tts` job and reported `pending`, and the caller asks again. It changes no learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).  **Items.** 1 to 200, each **exactly one** of: - `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice   (setting `tts.voice` when valid, else `\"3\"`). - `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the   note's own `[sound:]` first, else the pair of its speech text and the effective voice).   For clients that show a card outside a review queue.  An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer `/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items are allowed and answered alike.  **Result.** `items` has one `SpeechResolution` per request item, in request order:  | `status` | Meaning | `blob_hash` | Enqueues | |---|---|---|---| | `ready` | Generated, or the note's own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no | | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see \"Backlog\"). Ask again after `retry_after_ms`. | null | yes, unless one exists | | `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note's audio still wins, so no speech is generated in its place. | null | no | | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |  **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs this call needs run before every non-urgent job (SCHEMA.md 6.6 \"Urgent\"). The review screen uses it for the card on screen; prefetch never does.  **Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent call enqueues only while it is below 300; an urgent call only while it is below 340 (a reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a call enqueues nothing more: the remaining missing pairs are still `pending`, with `retry_after_ms` 60000, and are enqueued by a later call. (The server's sweep also enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text` is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in request order, so a call that hits the limit has enqueued a prefix of its missing pairs.  **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair at once, never produces two jobs for one pair (job dedupe key `tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`, except after a re-synthesis, which answers the newer blob; the older blob stays valid.  **Client rules.** - Review screen: for the item on screen whose `word_audio` has `source: tts` and   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double   the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`   (a credential without `write`) or `5xx` stop for this showing. A card never waits   for audio. - Prefetch (Android): SCHEMA.md 6.6 \"Device\". - Never write the answer into a note.  **Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes the server run VOICEVOX and store a blob for a text the caller chose. A credential without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a request of `note_id` items only (one rule, no per-item scope). A read-only client still gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come from the user's own notes) and reports the hash on a later fetch. 
+
+        :param speech_resolve_request: (required)
+        :type speech_resolve_request: SpeechResolveRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._resolve_speech_serialize(
+            speech_resolve_request=speech_resolve_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "SpeechResolveResult",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def resolve_speech_with_http_info(
+        self,
+        speech_resolve_request: SpeechResolveRequest,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> ApiResponse[SpeechResolveResult]:
+        """Look up generated speech for texts or notes, generating what is missing.
+
+        ADR-047 (C-29). The one way a client turns \"this word should have audio\" into a blob hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is queued as a `tts` job and reported `pending`, and the caller asks again. It changes no learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).  **Items.** 1 to 200, each **exactly one** of: - `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice   (setting `tts.voice` when valid, else `\"3\"`). - `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the   note's own `[sound:]` first, else the pair of its speech text and the effective voice).   For clients that show a card outside a review queue.  An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer `/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items are allowed and answered alike.  **Result.** `items` has one `SpeechResolution` per request item, in request order:  | `status` | Meaning | `blob_hash` | Enqueues | |---|---|---|---| | `ready` | Generated, or the note's own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no | | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see \"Backlog\"). Ask again after `retry_after_ms`. | null | yes, unless one exists | | `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note's audio still wins, so no speech is generated in its place. | null | no | | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |  **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs this call needs run before every non-urgent job (SCHEMA.md 6.6 \"Urgent\"). The review screen uses it for the card on screen; prefetch never does.  **Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent call enqueues only while it is below 300; an urgent call only while it is below 340 (a reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a call enqueues nothing more: the remaining missing pairs are still `pending`, with `retry_after_ms` 60000, and are enqueued by a later call. (The server's sweep also enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text` is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in request order, so a call that hits the limit has enqueued a prefix of its missing pairs.  **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair at once, never produces two jobs for one pair (job dedupe key `tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`, except after a re-synthesis, which answers the newer blob; the older blob stays valid.  **Client rules.** - Review screen: for the item on screen whose `word_audio` has `source: tts` and   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double   the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`   (a credential without `write`) or `5xx` stop for this showing. A card never waits   for audio. - Prefetch (Android): SCHEMA.md 6.6 \"Device\". - Never write the answer into a note.  **Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes the server run VOICEVOX and store a blob for a text the caller chose. A credential without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a request of `note_id` items only (one rule, no per-item scope). A read-only client still gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come from the user's own notes) and reports the hash on a later fetch. 
+
+        :param speech_resolve_request: (required)
+        :type speech_resolve_request: SpeechResolveRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._resolve_speech_serialize(
+            speech_resolve_request=speech_resolve_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "SpeechResolveResult",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def resolve_speech_without_preload_content(
+        self,
+        speech_resolve_request: SpeechResolveRequest,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
+    ) -> RESTResponseType:
+        """Look up generated speech for texts or notes, generating what is missing.
+
+        ADR-047 (C-29). The one way a client turns \"this word should have audio\" into a blob hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is queued as a `tts` job and reported `pending`, and the caller asks again. It changes no learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).  **Items.** 1 to 200, each **exactly one** of: - `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice   (setting `tts.voice` when valid, else `\"3\"`). - `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the   note's own `[sound:]` first, else the pair of its speech text and the effective voice).   For clients that show a card outside a review queue.  An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer `/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items are allowed and answered alike.  **Result.** `items` has one `SpeechResolution` per request item, in request order:  | `status` | Meaning | `blob_hash` | Enqueues | |---|---|---|---| | `ready` | Generated, or the note's own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no | | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see \"Backlog\"). Ask again after `retry_after_ms`. | null | yes, unless one exists | | `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note's audio still wins, so no speech is generated in its place. | null | no | | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |  **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs this call needs run before every non-urgent job (SCHEMA.md 6.6 \"Urgent\"). The review screen uses it for the card on screen; prefetch never does.  **Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent call enqueues only while it is below 300; an urgent call only while it is below 340 (a reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a call enqueues nothing more: the remaining missing pairs are still `pending`, with `retry_after_ms` 60000, and are enqueued by a later call. (The server's sweep also enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text` is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in request order, so a call that hits the limit has enqueued a prefix of its missing pairs.  **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair at once, never produces two jobs for one pair (job dedupe key `tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`, except after a re-synthesis, which answers the newer blob; the older blob stays valid.  **Client rules.** - Review screen: for the item on screen whose `word_audio` has `source: tts` and   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double   the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`   (a credential without `write`) or `5xx` stop for this showing. A card never waits   for audio. - Prefetch (Android): SCHEMA.md 6.6 \"Device\". - Never write the answer into a note.  **Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes the server run VOICEVOX and store a blob for a text the caller chose. A credential without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a request of `note_id` items only (one rule, no per-item scope). A read-only client still gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come from the user's own notes) and reports the hash on a later fetch. 
+
+        :param speech_resolve_request: (required)
+        :type speech_resolve_request: SpeechResolveRequest
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._resolve_speech_serialize(
+            speech_resolve_request=speech_resolve_request,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "SpeechResolveResult",
+            '422': "Problem",
+            'default': "Problem",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _resolve_speech_serialize(
+        self,
+        speech_resolve_request,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _host = None
+
+        _collection_formats: Dict[str, str] = {
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Any] = self.api_client._merge_headers(_headers)
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+        if speech_resolve_request is not None:
+            _body_params = speech_resolve_request
+
+
+        # set the HTTP header `Accept`
+        if not any(key.lower() == 'accept' for key in _header_params):
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'application/problem+json'
+                ]
+            )
+
+        # set the HTTP header `Content-Type`
+        if _content_type:
+            self.api_client._set_header(_header_params, 'Content-Type', _content_type)
+        else:
+            _default_content_type = (
+                self.api_client.select_header_content_type(
+                    [
+                        'application/json'
+                    ]
+                )
+            )
+            if _default_content_type is not None:
+                self.api_client._set_header(_header_params, 'Content-Type', _default_content_type)
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'sessionCookie', 
+            'bearerAuth'
+        ]
+
+        return self.api_client.param_serialize(
+            method='POST',
+            resource_path='/tts/resolve',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
     def synthesize_speech(
         self,
         tts_request: TtsRequest,
@@ -922,7 +1206,7 @@ class JobsApi:
     ) -> Job:
         """Synthesize Japanese speech (VOICEVOX) into an audio blob.
 
-        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no note. 
+        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see `QueueItem.word_audio` and `resolveSpeech`).  `voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9 decimal digits, else `\"3\"`; SCHEMA.md 6.6); the server writes the resolved voice into the job payload. The worker records every success in the system table `tts_audio` (`(voice, text)` to blob), so a later request for the same pair, by this operation or by `resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is accepted here for compatibility and fails the job. 
 
         :param tts_request: (required)
         :type tts_request: TtsRequest
@@ -992,7 +1276,7 @@ class JobsApi:
     ) -> ApiResponse[Job]:
         """Synthesize Japanese speech (VOICEVOX) into an audio blob.
 
-        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no note. 
+        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see `QueueItem.word_audio` and `resolveSpeech`).  `voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9 decimal digits, else `\"3\"`; SCHEMA.md 6.6); the server writes the resolved voice into the job payload. The worker records every success in the system table `tts_audio` (`(voice, text)` to blob), so a later request for the same pair, by this operation or by `resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is accepted here for compatibility and fails the job. 
 
         :param tts_request: (required)
         :type tts_request: TtsRequest
@@ -1062,7 +1346,7 @@ class JobsApi:
     ) -> RESTResponseType:
         """Synthesize Japanese speech (VOICEVOX) into an audio blob.
 
-        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no note. 
+        Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see `QueueItem.word_audio` and `resolveSpeech`).  `voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9 decimal digits, else `\"3\"`; SCHEMA.md 6.6); the server writes the resolved voice into the job payload. The worker records every success in the system table `tts_audio` (`(voice, text)` to blob), so a later request for the same pair, by this operation or by `resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is accepted here for compatibility and fails the job. 
 
         :param tts_request: (required)
         :type tts_request: TtsRequest

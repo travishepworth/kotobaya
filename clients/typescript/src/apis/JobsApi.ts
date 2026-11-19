@@ -39,6 +39,16 @@ import {
     ProblemToJSON,
 } from '../models/Problem';
 import {
+    type SpeechResolveRequest,
+    SpeechResolveRequestFromJSON,
+    SpeechResolveRequestToJSON,
+} from '../models/SpeechResolveRequest';
+import {
+    type SpeechResolveResult,
+    SpeechResolveResultFromJSON,
+    SpeechResolveResultToJSON,
+} from '../models/SpeechResolveResult';
+import {
     type TtsRequest,
     TtsRequestFromJSON,
     TtsRequestToJSON,
@@ -75,6 +85,13 @@ export interface ListJobsRequest {
      * Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
      */
     cursor?: string;
+}
+
+export interface ResolveSpeechRequest {
+    /**
+     * 
+     */
+    speechResolveRequest: SpeechResolveRequest;
 }
 
 export interface SynthesizeSpeechRequest {
@@ -263,6 +280,63 @@ export class JobsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for resolveSpeech without sending the request
+     */
+    async resolveSpeechRequestOpts(requestParameters: ResolveSpeechRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['speechResolveRequest'] == null) {
+            throw new runtime.RequiredError(
+                'speechResolveRequest',
+                'Required parameter "speechResolveRequest" was null or undefined when calling resolveSpeech().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", ["write"]);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/tts/resolve`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SpeechResolveRequestToJSON(requestParameters['speechResolveRequest']),
+        };
+    }
+
+    /**
+     * ADR-047 (C-29). The one way a client turns \"this word should have audio\" into a blob hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is queued as a `tts` job and reported `pending`, and the caller asks again. It changes no learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).  **Items.** 1 to 200, each **exactly one** of: - `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice   (setting `tts.voice` when valid, else `\"3\"`). - `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the   note\'s own `[sound:]` first, else the pair of its speech text and the effective voice).   For clients that show a card outside a review queue.  An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer `/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items are allowed and answered alike.  **Result.** `items` has one `SpeechResolution` per request item, in request order:  | `status` | Meaning | `blob_hash` | Enqueues | |---|---|---|---| | `ready` | Generated, or the note\'s own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no | | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see \"Backlog\"). Ask again after `retry_after_ms`. | null | yes, unless one exists | | `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note\'s audio still wins, so no speech is generated in its place. | null | no | | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |  **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs this call needs run before every non-urgent job (SCHEMA.md 6.6 \"Urgent\"). The review screen uses it for the card on screen; prefetch never does.  **Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent call enqueues only while it is below 300; an urgent call only while it is below 340 (a reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a call enqueues nothing more: the remaining missing pairs are still `pending`, with `retry_after_ms` 60000, and are enqueued by a later call. (The server\'s sweep also enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text` is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in request order, so a call that hits the limit has enqueued a prefix of its missing pairs.  **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair at once, never produces two jobs for one pair (job dedupe key `tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`, except after a re-synthesis, which answers the newer blob; the older blob stays valid.  **Client rules.** - Review screen: for the item on screen whose `word_audio` has `source: tts` and   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double   the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`   (a credential without `write`) or `5xx` stop for this showing. A card never waits   for audio. - Prefetch (Android): SCHEMA.md 6.6 \"Device\". - Never write the answer into a note.  **Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes the server run VOICEVOX and store a blob for a text the caller chose. A credential without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a request of `note_id` items only (one rule, no per-item scope). A read-only client still gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come from the user\'s own notes) and reports the hash on a later fetch. 
+     * Look up generated speech for texts or notes, generating what is missing.
+     */
+    async resolveSpeechRaw(requestParameters: ResolveSpeechRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpeechResolveResult>> {
+        const requestOptions = await this.resolveSpeechRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpeechResolveResultFromJSON(jsonValue));
+    }
+
+    /**
+     * ADR-047 (C-29). The one way a client turns \"this word should have audio\" into a blob hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is queued as a `tts` job and reported `pending`, and the caller asks again. It changes no learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).  **Items.** 1 to 200, each **exactly one** of: - `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice   (setting `tts.voice` when valid, else `\"3\"`). - `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the   note\'s own `[sound:]` first, else the pair of its speech text and the effective voice).   For clients that show a card outside a review queue.  An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer `/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items are allowed and answered alike.  **Result.** `items` has one `SpeechResolution` per request item, in request order:  | `status` | Meaning | `blob_hash` | Enqueues | |---|---|---|---| | `ready` | Generated, or the note\'s own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no | | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see \"Backlog\"). Ask again after `retry_after_ms`. | null | yes, unless one exists | | `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note\'s audio still wins, so no speech is generated in its place. | null | no | | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |  **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs this call needs run before every non-urgent job (SCHEMA.md 6.6 \"Urgent\"). The review screen uses it for the card on screen; prefetch never does.  **Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent call enqueues only while it is below 300; an urgent call only while it is below 340 (a reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a call enqueues nothing more: the remaining missing pairs are still `pending`, with `retry_after_ms` 60000, and are enqueued by a later call. (The server\'s sweep also enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text` is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in request order, so a call that hits the limit has enqueued a prefix of its missing pairs.  **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair at once, never produces two jobs for one pair (job dedupe key `tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`, except after a re-synthesis, which answers the newer blob; the older blob stays valid.  **Client rules.** - Review screen: for the item on screen whose `word_audio` has `source: tts` and   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double   the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`   (a credential without `write`) or `5xx` stop for this showing. A card never waits   for audio. - Prefetch (Android): SCHEMA.md 6.6 \"Device\". - Never write the answer into a note.  **Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes the server run VOICEVOX and store a blob for a text the caller chose. A credential without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a request of `note_id` items only (one rule, no per-item scope). A read-only client still gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come from the user\'s own notes) and reports the hash on a later fetch. 
+     * Look up generated speech for texts or notes, generating what is missing.
+     */
+    async resolveSpeech(requestParameters: ResolveSpeechRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpeechResolveResult> {
+        const response = await this.resolveSpeechRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for synthesizeSpeech without sending the request
      */
     async synthesizeSpeechRequestOpts(requestParameters: SynthesizeSpeechRequest): Promise<runtime.RequestOpts> {
@@ -300,7 +374,7 @@ export class JobsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no note. 
+     * Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see `QueueItem.word_audio` and `resolveSpeech`).  `voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9 decimal digits, else `\"3\"`; SCHEMA.md 6.6); the server writes the resolved voice into the job payload. The worker records every success in the system table `tts_audio` (`(voice, text)` to blob), so a later request for the same pair, by this operation or by `resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is accepted here for compatibility and fails the job. 
      * Synthesize Japanese speech (VOICEVOX) into an audio blob.
      */
     async synthesizeSpeechRaw(requestParameters: SynthesizeSpeechRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Job>> {
@@ -311,7 +385,7 @@ export class JobsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no note. 
+     * Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an equivalent queued or running job is returned with `200`. On success `job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see `QueueItem.word_audio` and `resolveSpeech`).  `voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9 decimal digits, else `\"3\"`; SCHEMA.md 6.6); the server writes the resolved voice into the job payload. The worker records every success in the system table `tts_audio` (`(voice, text)` to blob), so a later request for the same pair, by this operation or by `resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is accepted here for compatibility and fails the job. 
      * Synthesize Japanese speech (VOICEVOX) into an audio blob.
      */
     async synthesizeSpeech(requestParameters: SynthesizeSpeechRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Job> {

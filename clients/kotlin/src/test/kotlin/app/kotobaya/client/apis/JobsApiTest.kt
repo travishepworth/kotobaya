@@ -32,6 +32,8 @@ import app.kotobaya.client.models.JobKind
 import app.kotobaya.client.models.JobPage
 import app.kotobaya.client.models.JobStatus
 import app.kotobaya.client.models.Problem
+import app.kotobaya.client.models.SpeechResolveRequest
+import app.kotobaya.client.models.SpeechResolveResult
 import app.kotobaya.client.models.TtsRequest
 
 class JobsApiTest : ShouldSpec() {
@@ -63,6 +65,14 @@ class JobsApiTest : ShouldSpec() {
             //val limit : kotlin.Int = 50 // kotlin.Int | Page size.
             //val cursor : kotlin.String = eyJrIjpbIjIwMjYtMTEtMTJUMDk6MzA6MDAuMDAwWiIsIjAxOTMxZjQwIl19 // kotlin.String | Opaque `next_cursor` from the previous page. Absent = first page. A malformed or foreign cursor is `422`.
             //val result : JobPage = apiInstance.listJobs(kind, status, limit, cursor)
+            //result shouldBe ("TODO")
+        }
+
+        // to test resolveSpeech
+        should("test resolveSpeech") {
+            // uncomment below to test resolveSpeech
+            //val speechResolveRequest : SpeechResolveRequest = {"items":[{"note_id":"01931f40-1a2b-7c3d-8e4f-000000000a01"},{"note_id":"01931f40-1a2b-7c3d-8e4f-000000000a02"}]} // SpeechResolveRequest | 
+            //val result : SpeechResolveResult = apiInstance.resolveSpeech(speechResolveRequest)
             //result shouldBe ("TODO")
         }
 

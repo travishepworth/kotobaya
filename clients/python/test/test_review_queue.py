@@ -82,7 +82,8 @@ class TestReviewQueue(unittest.TestCase):
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 
-                        text = null, )
+                        text = null, 
+                        word_audio = null, )
                     ],
                 loop = kotobaya_client.models.review_loop.ReviewLoop(
                     backlog = kotobaya_client.models.review_loop_backlog.ReviewLoopBacklog(
@@ -159,7 +160,8 @@ class TestReviewQueue(unittest.TestCase):
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 
-                        text = null, )
+                        text = null, 
+                        word_audio = null, )
                     ],
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),
         )

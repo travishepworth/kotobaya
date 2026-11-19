@@ -128,6 +128,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -435,6 +441,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       } ],
       "loop" : {

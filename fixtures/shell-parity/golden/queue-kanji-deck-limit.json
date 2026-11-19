@@ -109,7 +109,8 @@
           "front" : "本",
           "reading" : "ホン、もと",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       } ],
       "loop" : {
         "backlog" : {
@@ -518,6 +519,12 @@
           "front" : "本",
           "reading" : "ほん",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ほん",
+          "voice" : "3"
         }
       } ],
       "loop" : {

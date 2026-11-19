@@ -7,6 +7,7 @@ Method | HTTP request | Description
 [**cancel_job**](JobsApi.md#cancel_job) | **POST** /jobs/{job_id}/cancel | Cancel a queued or running job.
 [**get_job**](JobsApi.md#get_job) | **GET** /jobs/{job_id} | One job with progress, result or error.
 [**list_jobs**](JobsApi.md#list_jobs) | **GET** /jobs | List background jobs (imports, parses, optimizer runs, ...).
+[**resolve_speech**](JobsApi.md#resolve_speech) | **POST** /tts/resolve | Look up generated speech for texts or notes, generating what is missing.
 [**synthesize_speech**](JobsApi.md#synthesize_speech) | **POST** /tts | Synthesize Japanese speech (VOICEVOX) into an audio blob.
 
 
@@ -284,6 +285,153 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **resolve_speech**
+> SpeechResolveResult resolve_speech(speech_resolve_request)
+
+Look up generated speech for texts or notes, generating what is missing.
+
+ADR-047 (C-29). The one way a client turns "this word should have audio" into a blob
+hash. Answers at once from the system table `tts_audio`; whatever is not generated yet is
+queued as a `tts` job and reported `pending`, and the caller asks again. It changes no
+learning data and emits no op: generated audio is derived data (SCHEMA.md 6.6).
+
+**Items.** 1 to 200, each **exactly one** of:
+- `text` (with optional `voice`): a pair. `voice` absent or null = the effective voice
+  (setting `tts.voice` when valid, else `"3"`).
+- `note_id`: the word audio of that note as the core `WordAudioResolver` decides it (the
+  note's own `[sound:]` first, else the pair of its speech text and the effective voice).
+  For clients that show a card outside a review queue.
+
+An item with both, or neither, or `voice` together with `note_id`, is `422` (pointer
+`/items/<i>`); nothing is enqueued for any item of a rejected request. Duplicate items
+are allowed and answered alike.
+
+**Result.** `items` has one `SpeechResolution` per request item, in request order:
+
+| `status` | Meaning | `blob_hash` | Enqueues |
+|---|---|---|---|
+| `ready` | Generated, or the note's own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no |
+| `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see "Backlog"). Ask again after `retry_after_ms`. | null | yes, unless one exists |
+| `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note's audio still wins, so no speech is generated in its place. | null | no |
+| `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |
+
+**Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs
+this call needs run before every non-urgent job (SCHEMA.md 6.6 "Urgent"). The review screen
+uses it for the card on screen; prefetch never does.
+
+**Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent
+call enqueues only while it is below 300; an urgent call only while it is below 340 (a
+reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a
+call enqueues nothing more: the remaining missing pairs are still `pending`, with
+`retry_after_ms` 60000, and are enqueued by a later call. (The server's sweep also
+enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text`
+is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in
+request order, so a call that hits the limit has enqueued a prefix of its missing pairs.
+
+**Idempotent and order-free.** Repeating a call, or two callers asking for the same pair
+at once, never produces two jobs for one pair (job dedupe key
+`tts:<sha256 of voice + NUL + text>`) and never two different answers once it is `ready`,
+except after a re-synthesis, which answers the newer blob; the older blob stays valid.
+
+**Client rules.**
+- Review screen: for the item on screen whose `word_audio` has `source: tts` and
+  `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is
+  first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double
+  the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`
+  (a credential without `write`) or `5xx` stop for this showing. A card never waits
+  for audio.
+- Prefetch (Android): SCHEMA.md 6.6 "Device".
+- Never write the answer into a note.
+
+**Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes
+the server run VOICEVOX and store a blob for a text the caller chose. A credential
+without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a
+request of `note_id` items only (one rule, no per-item scope). A read-only client still
+gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come
+from the user's own notes) and reports the hash on a later fetch.
+
+
+### Example
+
+* Api Key Authentication (sessionCookie):
+* Bearer Authentication (bearerAuth):
+
+```python
+import kotobaya_client
+from kotobaya_client.models.speech_resolve_request import SpeechResolveRequest
+from kotobaya_client.models.speech_resolve_result import SpeechResolveResult
+from kotobaya_client.rest import ApiException
+from pprint import pprint
+
+# Defining the host is optional and defaults to /api/v1
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kotobaya_client.Configuration(
+    host = "/api/v1"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: sessionCookie
+configuration.api_key['sessionCookie'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['sessionCookie'] = 'Bearer'
+
+# Configure Bearer authorization: bearerAuth
+configuration = kotobaya_client.Configuration(
+    access_token = os.environ["BEARER_TOKEN"]
+)
+
+# Enter a context with an instance of the API client
+with kotobaya_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kotobaya_client.JobsApi(api_client)
+    speech_resolve_request = {"items":[{"note_id":"01931f40-1a2b-7c3d-8e4f-000000000a01"},{"note_id":"01931f40-1a2b-7c3d-8e4f-000000000a02"}]} # SpeechResolveRequest | 
+
+    try:
+        # Look up generated speech for texts or notes, generating what is missing.
+        api_response = api_instance.resolve_speech(speech_resolve_request)
+        print("The response of JobsApi->resolve_speech:\n")
+        pprint(api_response)
+    except Exception as e:
+        print("Exception when calling JobsApi->resolve_speech: %s\n" % e)
+```
+
+
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **speech_resolve_request** | [**SpeechResolveRequest**](SpeechResolveRequest.md)|  | 
+
+### Return type
+
+[**SpeechResolveResult**](SpeechResolveResult.md)
+
+### Authorization
+
+[sessionCookie](../README.md#sessionCookie), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json, application/problem+json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | One resolution per item, in request order. |  -  |
+**422** | The request is well-formed but invalid. &#x60;errors&#x60; lists every problem found. |  -  |
+**0** | Any other error. See the error table in the API description. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **synthesize_speech**
 > Job synthesize_speech(tts_request)
 
@@ -291,9 +439,17 @@ Synthesize Japanese speech (VOICEVOX) into an audio blob.
 
 Enqueues a job of kind `tts` (dedupe key `tts:<sha256 of voice + NUL + text>`); an
 equivalent queued or running job is returned with `200`. On success
-`job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). The caller then
-puts `[sound:<hash>]` into a note field with `PATCH /notes/{id}`; this call changes no
-note.
+`job.result.blob_hash` names an audio blob (kind `audio`, origin `tts`). This call changes
+no note. A caller that wants the sound stored **in** a note puts `[sound:<hash>]` into a
+field with `PATCH /notes/{id}`; word audio of vocab cards needs none of that (ADR-047: see
+`QueueItem.word_audio` and `resolveSpeech`).
+
+`voice` defaults to the effective voice (setting `tts.voice` when it is a string of 1-9
+decimal digits, else `"3"`; SCHEMA.md 6.6); the server writes the resolved voice into the
+job payload. The worker records every success in the system table `tts_audio`
+(`(voice, text)` to blob), so a later request for the same pair, by this operation or by
+`resolveSpeech`, does not call VOICEVOX again. A `voice` that is not decimal digits is
+accepted here for compatibility and fails the job.
 
 
 ### Example

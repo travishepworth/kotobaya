@@ -67,6 +67,14 @@ class BlobStore(private val driver: SqlDriver, private val root: File) {
         0,
     ).value
 
+    /** True when [hash] has a `blob_cache` row in state `cached`. */
+    fun isCached(hash: String): Boolean = driver.executeQuery(
+        null,
+        "SELECT 1 FROM blob_cache WHERE hash = ? AND state = 'cached'",
+        { c -> QueryResult.Value(c.next().value) },
+        1,
+    ) { bindString(0, hash) }.value
+
     /** Records interest in [hash]; an already cached blob stays cached. */
     fun want(hash: String, reason: BlobReason, nowMs: Long) = exec(
         "INSERT INTO blob_cache (hash, state, reason, requested_at) VALUES (?, 'wanted', ?, ?) " +

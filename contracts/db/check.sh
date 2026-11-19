@@ -10,8 +10,9 @@
 #      optimizer/validate.py: the fsrs-params-publish payload, its worked examples and
 #      negative cases (FSRS_PUBLISH.md, C-16).
 #                                                              (needs python3 + jsonschema, or uv)
-#   1. V1__init.sql, V2__jpdb_vocab.sql, V3__vocab_list.sql apply cleanly to a throwaway
-#      postgres:17 container and test/smoke.sql, smoke_v2.sql, smoke_v3.sql pass. (needs docker)
+#   1. V1__init.sql, V2__jpdb_vocab.sql, V3__vocab_list.sql, V4__tts_audio.sql apply cleanly to a
+#      throwaway postgres:17 container and test/smoke.sql, smoke_v2.sql, smoke_v3.sql,
+#      smoke_v4.sql pass.                                       (needs docker)
 #   2. The .sq files load into SQLite and the device schema matches the server
 #      schema (same tables/columns, identical seed rows).     (needs sqlite3, python3)
 #   3. The .sq files compile with the SQLDelight Gradle plugin. (needs JDK + network on first run)
@@ -78,6 +79,10 @@ echo "== postgres:17: apply V3__vocab_list.sql, test/smoke_v3.sql"
 psql_in <"$here/V3__vocab_list.sql"
 psql_in <"$here/test/smoke_v3.sql" >"$work/smoke_v3.out"
 grep -q '^smoke_v3.sql: ok$' "$work/smoke_v3.out"
+echo "== postgres:17: apply V4__tts_audio.sql, test/smoke_v4.sql"
+psql_in <"$here/V4__tts_audio.sql"
+psql_in <"$here/test/smoke_v4.sql" >"$work/smoke_v4.out"
+grep -q '^smoke_v4.sql: ok$' "$work/smoke_v4.out"
 
 echo "== postgres:17: migration refuses a C-ctype database"
 psql_in -c "CREATE DATABASE c_ctype TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'"
@@ -136,6 +141,8 @@ DIFF = {
     "dict_entry": ({"retired"}, {"added_release_id", "retired_release_id"}),
     "dict_entry_gloss": ({"gloss_lower"}, set()),
     "freq_list": (set(), {"entry_count", "source"}),
+    # C-29: the device keeps a copy of the pairs it resolved (SCHEMA.md 5.3).
+    "tts_audio": ({"checked_at"}, {"created_at"}),
 }
 
 errors = []

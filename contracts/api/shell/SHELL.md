@@ -237,7 +237,7 @@ premise).
 |---|---|---|
 | `local` | 38 | By the shell from the replica, online or not (rules L-1 … L-8). |
 | `local_or_proxy` | 7 | Dictionary reads: from the installed package or the sidecar cache, else forwarded, else `404 not_found` / `503 shell_dict_missing` (rule L-7). |
-| `proxy` | 53 | By the server, through the shell, with the device token (rules P-1 … P-3). |
+| `proxy` | 54 | By the server, through the shell, with the device token (rules P-1 … P-3). |
 | `hidden` | 25 | Never: `403 insufficient_scope` without touching the network (rule P-4). |
 
 **`local`:** `getPrincipal`, `getMeta`, `reportClientErrors`, `listSettings`, `updateSettings`,
@@ -260,7 +260,7 @@ premise).
 `deleteGrammarPoint`, `testGrammarRules`, `listGrammarExamples`, `putGrammarSpan`,
 `removeGrammarSpan`, `getStatsSummary`, `getStatsHeatmap`, `getStatsRetention`, `getStatsForecast`,
 `getStatsKnownWords`, `getStatsCalibration`, `parseText`, `listParseOverrides`, `putParseOverride`,
-`deleteParseOverride`, `listJobs`, `getJob`, `synthesizeSpeech`, `queryBlobs`, `putBlob`
+`deleteParseOverride`, `listJobs`, `getJob`, `synthesizeSpeech`, `resolveSpeech`, `queryBlobs`, `putBlob`
 (unreachable: 2.4 rule 2), `exportAll`, `exportAnki` (unreachable in practice: 2.4 rule 3).
 
 **`hidden`:** needing `admin` or `import`, which a device token never has — `listDevices`,
@@ -475,8 +475,10 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `listDecks`, `getDeck`, `createDeck`, `updateDeck` (answers) | ADR-041: every `Deck` carries `progress`, computed by core `DeckProgress.count` over the replica (deck items, notes, cards, `word_status`, setting `cards.reading_enabled`) exactly as the server computes it; `null` for smart and tombstoned decks. It needs no dictionary data, so it is always available offline. |
 | `getDeckCoverage` | **Stays `proxy`** (ADR-041 decision, C-28). The deck page's "N of M words learned" line is `Deck.progress` and works offline; the raw coverage and words bar of media decks need the server (`segments`, `curve`, `difficulty`, per-token counts and the `hide` classes come from media tables and analysis that are not replicated). Offline the SPA shows the progress line and hides the coverage block; `503 shell_offline` from this operation is not an error state. |
 | `createDeck` | `type: user` and `type: smart`: local (one `deck.created` minted by the device). `type: list`: `deck.created` for a list deck is server-only (OPS.md `deck.created`: a pushed one is rejected `server_only`) and needs the server's `deck-build` job, so the handler forwards the request by rules P-1 … P-3 — `503 shell_offline` offline; the deck arrives by pull (P-3). `type: media` is `422` locally, as on the server. The request is validated locally first in every case. |
-| `updateSettings` | One `settings.set` per present key. Applying `cards.reading_enabled` re-derives vocab word statuses through the same code as the pull path. `cards.kanji_exemptions` (ADR-042) is validated as `bool` and needs no re-derivation: the next `getReviewQueue` reads it. It never changes a kana word (ADR-046: the displayed form is the package's `dict_entry.headword`, which the shell reads as stored and does not recompute from `kanji_forms`). |
-| `createDrillSession` | No op (as the server). |
+| `updateSettings` | One `settings.set` per present key. Applying `cards.reading_enabled` re-derives vocab word statuses through the same code as the pull path. `cards.kanji_exemptions` (ADR-042) is validated as `bool` and needs no re-derivation: the next `getReviewQueue` reads it. C-29: `review.autoplay_audio` is validated as `bool`, `tts.voice` as `string (voice)`, `audio.prefetch_days` as `int` 0–365 (SCHEMA.md 6.1), all as the server; none re-derives anything (`tts.voice` and `audio.prefetch_days` are read by the next queue build and prefetch pass). It never changes a kana word (ADR-046: the displayed form is the package's `dict_entry.headword`, which the shell reads as stored and does not recompute from `kanji_forms`). |
+| `createDrillSession` | No op (as the server). Items carry `word_audio` as `getReviewQueue`'s (next row). |
+| `getReviewQueue`, `createDrillSession`: `word_audio` (ADR-047, C-29) | Every item's `word_audio` is built as the server builds it (SCHEMA.md 6.6 "Server" rule 1): core `WordAudioResolver.resolve` over the note's fields and the dictionary data of the L-7 lookup; `voice` = `effectiveVoice` of the replica's `tts.voice`; `blob_hash` = the device table `tts_audio` row of the pair when its bytes are cached (`blob_cache.state = 'cached'`) or the device is online, else `null` (SCHEMA.md 6.6 "Device" rule 6; a `note` hash is reported as is). The handler enqueues nothing, calls no server and never blocks on audio. With an empty `tts_audio` table the answer equals the answer of a server that has generated nothing, which is the parity setup (no worker runs there): `blob_hash: null` for every `tts` item on both sides, the note's hash for every `note` item. Filling the table is the native prefetch pass (SCHEMA.md 6.6 "Device"), which calls `resolveSpeech` itself with the device token, outside the bridge. |
+| `resolveSpeech` | `proxy` (needs `write`, which a device token has). The SPA calls it for the card on screen exactly as in a browser (`openapi.yaml` `resolveSpeech`, client rules); offline it is `503 shell_offline`, which the SPA treats as "no audio for this showing". The shell does not record proxied answers in `tts_audio` (rule P-3 has nothing to mark stale: no replica row changes); the next prefetch pass learns the pair. The blob itself then comes through the intercept (2.7), which downloads and caches it. |
 | `getBlob` | Section 2.7. |
 
 ## 5. Problems
@@ -611,6 +613,8 @@ An integer constant of the shell, **`2`** for this contract, reported as
   incompatibly; **or a field a new SPA requires is added** to a local operation's answer (the
   bump is what lets that SPA's `min_local_api` demand it; an older SPA on the newer shell keeps
   working, here through the deprecated legacy fields).
+- C-29 (ADR-047) does **not** bump it: `QueueItem.word_audio` is optional for the SPA (absent =
+  null = no speaker button), and `resolveSpeech` is proxied.
 - **Do not bump it** for additive changes: a new bridge message type or optional field, a new
   shell operation, capability, event type or problem code, an operation moving *into* `local`.
   The SPA detects those by capability (`ShellInfo.capabilities`) or by ignoring what it does not
@@ -879,7 +883,7 @@ visible to the user as the "needs connection" state (9.4).
 
 Not learning data, listed for completeness — `proxy`: `getHealth`, `getOwnDevice`,
 `updateOwnDevice`, the six `getStats*` operations, `parseText`, `testGrammarRules`, `listJobs`,
-`getJob`, `synthesizeSpeech`, `queryBlobs`, `putBlob`, `listJpdbVocab`, `exportAll`, `exportAnki`.
+`getJob`, `synthesizeSpeech`, `resolveSpeech`, `queryBlobs`, `putBlob`, `listJpdbVocab`, `exportAll`, `exportAnki`.
 
 ## 12. Shell operations (`shell.yaml`)
 

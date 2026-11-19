@@ -352,6 +352,15 @@ Client rules (normative for web, the shell SPA and the CLI):
   are of a kind it excluded): for that filter there is nothing to show; `loop` still
   describes the whole queue.
 
+**Word audio (ADR-047, C-29).** Every item carries `word_audio`: for a `vocab` note the
+note's own audio when its `audio` field holds a `[sound:]`, else the generated speech of
+its reading in the effective voice, else null. For the first 20 served items whose speech
+is not generated yet the server queues it (urgent `tts` jobs within the urgent limit of
+`resolveSpeech` "Backlog"; a system-table write, no op; whatever the caller's scopes,
+since the texts come from the user's own notes), so the hash is usually there by the next
+fetch; a client with `write` that wants it sooner calls `resolveSpeech`. Nothing here reads or writes a note field, and no part of the queue
+(order, counts, `loop`) depends on audio.
+
 **Keep going (C-26, ADR-031).** With `keep_going=true` the builder runs with
 `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule
 6): the daily limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, deck

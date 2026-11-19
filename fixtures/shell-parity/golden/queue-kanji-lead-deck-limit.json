@@ -103,7 +103,8 @@
           "front" : "学",
           "reading" : "ガク、まな.ぶ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       } ],
       "loop" : {
         "backlog" : {
@@ -342,7 +343,8 @@
           "front" : "校",
           "reading" : "コウ、キョウ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -482,6 +484,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       } ],
       "loop" : {

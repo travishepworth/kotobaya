@@ -24,14 +24,20 @@ internal object BuiltInTemplates {
 
     private fun back(vararg parts: String) = "{{FrontSide}}$HR" + parts.joinToString("")
 
+    // ADR-047 block W (see "Word audio" on CardRenderer): inside the expression line on the answer side; the
+    // listening front is W. The note's own audio lives in W, so these backs have no separate {{audio}}.
+    private const val EXPRESSION_W_ON_BACK = "<div class=\"kb-expression\">{{kanji:expression}}{{wordaudio:back}}</div>"
+    private const val EXPRESSION_W = "<div class=\"kb-expression\">{{kanji:expression}}{{audio:word}}</div>"
+    private const val WORD_AUDIO = "{{audio:word}}"
+
     private val vocab = mapOf(
-        "meaning" to Template(EXPRESSION, back(READING, MEANING, AUDIO, VOCAB_TAIL)),
-        "reading" to Template(EXPRESSION, back(READING, MEANING, AUDIO, VOCAB_TAIL)),
-        "listening" to Template(AUDIO, back(EXPRESSION, READING, MEANING, VOCAB_TAIL)),
-        "production" to Template(MEANING, back(EXPRESSION, READING, AUDIO, VOCAB_TAIL)),
+        "meaning" to Template(EXPRESSION_W_ON_BACK, back(READING, MEANING, VOCAB_TAIL)),
+        "reading" to Template(EXPRESSION_W_ON_BACK, back(READING, MEANING, VOCAB_TAIL)),
+        "listening" to Template(WORD_AUDIO, back(EXPRESSION, READING, MEANING, VOCAB_TAIL)),
+        "production" to Template(MEANING, back(EXPRESSION_W, READING, VOCAB_TAIL)),
         "pitch" to Template(
-            EXPRESSION + "{{#reading}}<div class=\"kb-reading\">{{kana:reading}}</div>{{/reading}}",
-            back("{{pitch:reading}}", AUDIO, VOCAB_TAIL),
+            EXPRESSION_W_ON_BACK + "{{#reading}}<div class=\"kb-reading\">{{kana:reading}}</div>{{/reading}}",
+            back("{{pitch:reading}}", VOCAB_TAIL),
         ),
     )
 

@@ -99,7 +99,8 @@
           "front" : "寿",
           "reading" : "ジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -187,7 +188,8 @@
           "front" : "司",
           "reading" : "シ、つかさど.る",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -342,6 +344,12 @@
           "front" : "寿司（すし）",
           "reading" : "すし",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "すし",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -430,7 +438,8 @@
           "front" : "昨",
           "reading" : "サク",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -530,7 +539,8 @@
           "front" : "日",
           "reading" : "ニチ、ジツ、ひ、-び、-か",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -659,6 +669,12 @@
           "front" : "昨日",
           "reading" : "きのう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "きのう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -806,6 +822,12 @@
           "front" : "鱈（たら）",
           "reading" : "たら",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "たら",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -906,7 +928,8 @@
           "front" : "子",
           "reading" : "シ、ス、ツ、こ、-こ、ね",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1001,6 +1024,12 @@
           "front" : "鱈子",
           "reading" : "たらこ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "たらこ",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -1145,7 +1174,8 @@
           "front" : "寿",
           "reading" : "ジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1233,7 +1263,8 @@
           "front" : "司",
           "reading" : "シ、つかさど.る",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1388,6 +1419,12 @@
           "front" : "寿司",
           "reading" : "すし",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "すし",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1476,7 +1513,8 @@
           "front" : "昨",
           "reading" : "サク",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1576,7 +1614,8 @@
           "front" : "日",
           "reading" : "ニチ、ジツ、ひ、-び、-か",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1705,6 +1744,12 @@
           "front" : "昨日",
           "reading" : "きのう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "きのう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1793,7 +1838,8 @@
           "front" : "鱈",
           "reading" : "セツ、たら",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1940,6 +1986,12 @@
           "front" : "鱈",
           "reading" : "たら",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "たら",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2040,7 +2092,8 @@
           "front" : "子",
           "reading" : "シ、ス、ツ、こ、-こ、ね",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -2135,6 +2188,12 @@
           "front" : "鱈子",
           "reading" : "たらこ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "たらこ",
+          "voice" : "3"
         }
       } ],
       "loop" : {

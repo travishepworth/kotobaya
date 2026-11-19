@@ -121,7 +121,7 @@ object JobRepo {
         repeat(5) {
             val inserted = dsl.fetch(
                 "insert into app.job (id, kind, payload, dedupe_key, max_attempts, created_by_token_id, run_after) " +
-                    "values (?, ?, ?::jsonb, ?, ?, ?, coalesce(?, now())) on conflict do nothing returning $COLUMNS",
+                    "values (?, ?, ?::jsonb, ?, ?, ?, coalesce(?::timestamptz, now())) on conflict do nothing returning $COLUMNS",
                 newId, kind, json.writeValueAsString(payload), dedupeKey, maxAttempts, createdByTokenId,
                 runAfter?.atOffset(ZoneOffset.UTC),
             )

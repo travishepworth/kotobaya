@@ -29,7 +29,7 @@ class TtsRequest(BaseModel):
     Text to synthesize. Also the payload of `tts` jobs.
     """ # noqa: E501
     text: Annotated[str, Field(min_length=1, strict=True, max_length=500)] = Field(description="Japanese text (plain, no HTML).")
-    voice: Optional[Annotated[str, Field(strict=True, max_length=100)]] = Field(default=None, description="VOICEVOX speaker id or name. Default - the setting `tts.voice`, else the server default.")
+    voice: Optional[Annotated[str, Field(strict=True, max_length=100)]] = Field(default=None, description="VOICEVOX style id in decimal digits (a name is not supported and fails the job). Default - the effective voice (setting `tts.voice` when valid, else `\"3\"`; SCHEMA.md 6.6).")
     __properties: ClassVar[List[str]] = ["text", "voice"]
 
     model_config = ConfigDict(

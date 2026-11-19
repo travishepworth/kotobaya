@@ -6,11 +6,11 @@ import kotobaya.cards.BuiltInNoteTypes
 import kotobaya.contracts.cards.NoteTypeInfo
 import kotobaya.contracts.render.ClozeSentence
 import kotobaya.contracts.render.DictionaryData
-import kotobaya.contracts.render.FuriganaSegment
 import kotobaya.contracts.render.KanjiData
 import kotobaya.contracts.render.TextRenderInput
 import kotobaya.render.DefaultCardTextRenderer
 import kotobaya.server.json
+import kotobaya.tts.WordAudioStore
 
 /**
  * ARCH-CARD-TEXT: `QueueItem.text`, the core's plain-text render of an item, from the same JSON the item carries
@@ -54,10 +54,9 @@ internal object QueueText {
         val headword = e["headword"].asText()
         val reading = e["headword_reading"].asText()
         val pitch = e["pitch"]?.let { p -> p.firstOrNull { it["reading"]?.asText() == reading } }
-        return DictionaryData(
-            expression = headword,
+        return WordAudioStore.dictionaryData(
+            headword = headword,
             reading = reading,
-            furigana = listOf(FuriganaSegment(headword, reading.takeUnless { it == headword })),
             glosses = e["senses"]?.flatMap { s -> s["gloss"]?.mapNotNull { g -> g["text"]?.takeIf(JsonNode::isTextual)?.asText() }.orEmpty() }.orEmpty(),
             pitchDrops = pitch?.get("positions")?.map(JsonNode::asInt).orEmpty(),
         )

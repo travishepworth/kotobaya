@@ -103,7 +103,8 @@
           "front" : "学",
           "reading" : "ガク、まな.ぶ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -239,6 +240,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -339,7 +346,8 @@
           "front" : "生",
           "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -519,6 +527,12 @@
           "front" : "先生",
           "reading" : "せんせい",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "せんせい",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -758,6 +772,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -858,7 +878,8 @@
           "front" : "生",
           "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1038,6 +1059,12 @@
           "front" : "先生",
           "reading" : "せんせい",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "せんせい",
+          "voice" : "3"
         }
       } ],
       "loop" : {

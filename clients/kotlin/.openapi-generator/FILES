@@ -280,6 +280,10 @@ docs/SettingsApi.md
 docs/SettingsPatch.md
 docs/SettingsSetSchema.md
 docs/SpanOrigin.md
+docs/SpeechResolution.md
+docs/SpeechResolveItem.md
+docs/SpeechResolveRequest.md
+docs/SpeechResolveResult.md
 docs/StatsApi.md
 docs/StatsCalibration.md
 docs/StatsCalibrationBinsInner.md
@@ -307,6 +311,7 @@ docs/TokenList.md
 docs/TokensApi.md
 docs/TtsRequest.md
 docs/VocabListReport.md
+docs/WordAudio.md
 docs/WordStatus.md
 docs/WordStatusClearedSchema.md
 docs/WordStatusSet.md
@@ -611,6 +616,10 @@ src/main/kotlin/app/kotobaya/client/models/SettingList.kt
 src/main/kotlin/app/kotobaya/client/models/SettingsPatch.kt
 src/main/kotlin/app/kotobaya/client/models/Settingssetschema.kt
 src/main/kotlin/app/kotobaya/client/models/SpanOrigin.kt
+src/main/kotlin/app/kotobaya/client/models/SpeechResolution.kt
+src/main/kotlin/app/kotobaya/client/models/SpeechResolveItem.kt
+src/main/kotlin/app/kotobaya/client/models/SpeechResolveRequest.kt
+src/main/kotlin/app/kotobaya/client/models/SpeechResolveResult.kt
 src/main/kotlin/app/kotobaya/client/models/StatsCalibration.kt
 src/main/kotlin/app/kotobaya/client/models/StatsCalibrationBinsInner.kt
 src/main/kotlin/app/kotobaya/client/models/StatsForecast.kt
@@ -635,6 +644,7 @@ src/main/kotlin/app/kotobaya/client/models/TokenKind.kt
 src/main/kotlin/app/kotobaya/client/models/TokenList.kt
 src/main/kotlin/app/kotobaya/client/models/TtsRequest.kt
 src/main/kotlin/app/kotobaya/client/models/VocabListReport.kt
+src/main/kotlin/app/kotobaya/client/models/WordAudio.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatus.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatusSet.kt
 src/main/kotlin/app/kotobaya/client/models/WordStatusValue.kt
@@ -923,6 +933,10 @@ src/test/kotlin/app/kotobaya/client/models/SettingTest.kt
 src/test/kotlin/app/kotobaya/client/models/SettingsPatchTest.kt
 src/test/kotlin/app/kotobaya/client/models/SettingsSetSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/SpanOriginTest.kt
+src/test/kotlin/app/kotobaya/client/models/SpeechResolutionTest.kt
+src/test/kotlin/app/kotobaya/client/models/SpeechResolveItemTest.kt
+src/test/kotlin/app/kotobaya/client/models/SpeechResolveRequestTest.kt
+src/test/kotlin/app/kotobaya/client/models/SpeechResolveResultTest.kt
 src/test/kotlin/app/kotobaya/client/models/StatsCalibrationBinsInnerTest.kt
 src/test/kotlin/app/kotobaya/client/models/StatsCalibrationTest.kt
 src/test/kotlin/app/kotobaya/client/models/StatsForecastDaysInnerTest.kt
@@ -947,6 +961,7 @@ src/test/kotlin/app/kotobaya/client/models/TokenListTest.kt
 src/test/kotlin/app/kotobaya/client/models/TokenTest.kt
 src/test/kotlin/app/kotobaya/client/models/TtsRequestTest.kt
 src/test/kotlin/app/kotobaya/client/models/VocabListReportTest.kt
+src/test/kotlin/app/kotobaya/client/models/WordAudioTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusClearedSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusSetSchemaTest.kt
 src/test/kotlin/app/kotobaya/client/models/WordStatusSetTest.kt

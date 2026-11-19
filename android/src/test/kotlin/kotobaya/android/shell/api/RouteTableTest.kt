@@ -98,7 +98,7 @@ class RouteTableTest {
     fun operationPathsEqualTheOpenApiFiles() {
         val expected = yamlOperations(File(contracts, "openapi.yaml"), "/api/v1") +
             yamlOperations(File(contracts, "shell/shell.yaml"), "/shell/v1")
-        assertEquals(123 + 18, expected.size)
+        assertEquals(124 + 18, expected.size)
         val actual = ApiOperations.all.associate { it.operationId to "${it.method} ${it.pathTemplate}" }
         assertEquals(expected, actual)
         assertEquals(18, ApiOperations.all.count { it.opClass == OpClass.SHELL })

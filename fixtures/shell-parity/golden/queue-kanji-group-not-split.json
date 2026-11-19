@@ -130,6 +130,12 @@
           "front" : "ＣＤプレーヤー",
           "reading" : "シーディープレーヤー",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "シーディープレーヤー",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -218,7 +224,8 @@
           "front" : "学",
           "reading" : "ガク、まな.ぶ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -306,7 +313,8 @@
           "front" : "校",
           "reading" : "コウ、キョウ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -442,6 +450,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -555,6 +569,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -668,6 +688,12 @@
           "front" : "Ｔバック",
           "reading" : "ティーバック",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーバック",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -785,6 +811,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -924,6 +956,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -1174,7 +1212,8 @@
           "front" : "校",
           "reading" : "コウ、キョウ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1310,6 +1349,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1423,6 +1468,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1536,6 +1587,12 @@
           "front" : "Ｔバック",
           "reading" : "ティーバック",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーバック",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1653,6 +1710,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1792,6 +1855,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -2031,6 +2100,12 @@
           "front" : "学校",
           "reading" : "がっこう",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "がっこう",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2144,6 +2219,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2257,6 +2338,12 @@
           "front" : "Ｔバック",
           "reading" : "ティーバック",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーバック",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2374,6 +2461,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2513,6 +2606,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       } ],
       "loop" : {

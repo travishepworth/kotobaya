@@ -130,6 +130,12 @@
           "front" : "ＣＤプレーヤー",
           "reading" : "シーディープレーヤー",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "シーディープレーヤー",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -390,6 +396,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -503,6 +515,12 @@
           "front" : "Ｔバック",
           "reading" : "ティーバック",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーバック",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -719,6 +737,12 @@
           "front" : "Ｔバック",
           "reading" : "ティーバック",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーバック",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -836,6 +860,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       } ],
       "loop" : {

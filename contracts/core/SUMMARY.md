@@ -375,3 +375,21 @@ Most worth a second look:
 3. **Common words become kana.** いる (居る), する (為る), それ (其れ), この (此の), あれ (彼) lose their
    kanji spelling and their kanji cards-to-be (居, 為 are jōyō and were required under ADR-045).
    This is what ADR-046 (a) says; notes whose own text field holds the kanji are not affected.
+
+## C-29: word audio (ADR-047)
+
+- New `render/WordAudio.kt`: `WordAudioResolver` decides a note's word audio (the note's own
+  `[sound:]`, else a speech text for TTS, else nothing) and the effective voice. One pure rule
+  for server, phone and prefetch; it needs no hashing and reads no settings.
+- `CardRenderer`: new section "Word audio". `RenderInput.wordAudio` (the generated audio's hash,
+  default null), `RenderedCard.wordAudio` and `autoplayAudio`, placeholder
+  `{{audio:word}}` for custom templates. Additive: old calls compile, and a note without audio
+  renders byte for byte as before. The built-in vocab backs lose their separate `{{audio}}`
+  (the note's audio moved next to the expression). No new CSS class: `CardClasses.ALL` is unchanged.
+- `CoreJs`: `JsRenderInput.wordAudio`, `JsRenderedCard.wordAudio` / `autoplayAudio` (defaults, so
+  the facade still compiles before CORE-29 maps them). No new facade method: the web gets
+  `word_audio` from the API.
+- Tests CORE-29 must write: every row of the table in `WordAudio.kt` (jvm and js); the four
+  worked render examples in "Word audio"; "no audio and `wordAudio = null` gives the pre-C-29
+  output" for all five vocab kinds; `autoplayAudio` null on a listening back.
+- Decisions and the choices worth a second look: `contracts/api/SUMMARY.md` "C-29 changes".

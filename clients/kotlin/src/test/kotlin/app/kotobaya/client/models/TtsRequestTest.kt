@@ -39,7 +39,7 @@ class TtsRequestTest : ShouldSpec() {
             //modelInstance.text shouldBe ("TODO")
         }
 
-        // to test the property `voice` - VOICEVOX speaker id or name. Default - the setting `tts.voice`, else the server default.
+        // to test the property `voice` - VOICEVOX style id in decimal digits (a name is not supported and fails the job). Default - the effective voice (setting `tts.voice` when valid, else `\"3\"`; SCHEMA.md 6.6).
         should("test voice") {
             // uncomment below to test the property
             //modelInstance.voice shouldBe ("TODO")

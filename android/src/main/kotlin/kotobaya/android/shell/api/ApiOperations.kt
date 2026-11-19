@@ -148,6 +148,7 @@ object ApiOperations {
         op("getJob", "GET", "/api/v1/jobs/{job_id}", PROXY),
         op("cancelJob", "POST", "/api/v1/jobs/{job_id}/cancel", HIDDEN, "import"),
         op("synthesizeSpeech", "POST", "/api/v1/tts", PROXY),
+        op("resolveSpeech", "POST", "/api/v1/tts/resolve", PROXY),
         op("queryBlobs", "POST", "/api/v1/blobs/query", PROXY),
         op("getBlob", "GET", "/api/v1/blobs/{hash}", LOCAL),
         op("putBlob", "PUT", "/api/v1/blobs/{hash}", PROXY),

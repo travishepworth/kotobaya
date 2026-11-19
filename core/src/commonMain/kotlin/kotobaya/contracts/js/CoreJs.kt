@@ -240,6 +240,8 @@ public class JsRenderInput(
     public val fieldRegions: Boolean = false,
     /** `RenderInput.frontFurigana` (ADR-042); the web passes `QueueItem.front_furigana` (absent = false). */
     public val frontFurigana: Boolean = false,
+    /** `RenderInput.wordAudio` (ADR-047); the web passes `QueueItem.word_audio.blob_hash` (absent or null = null). */
+    public val wordAudio: String? = null,
 )
 
 /** `RenderedField` (C-19). */
@@ -266,6 +268,10 @@ public class JsRenderedCard(
     public val warnings: Array<String>,
     /** `RenderedCard.fields` (C-19); empty unless `JsRenderInput.fieldRegions`. */
     public val fields: Array<JsRenderedField> = emptyArray(),
+    /** `RenderedCard.wordAudio` (ADR-047): the hash `P` / the speaker replays, or null. */
+    public val wordAudio: String? = null,
+    /** `RenderedCard.autoplayAudio` (ADR-047): the hash to play once when this side is shown and `review.autoplay_audio` is on, or null. */
+    public val autoplayAudio: String? = null,
 )
 
 /** `CardSchedule` (the card's cache columns as the API returns them). */

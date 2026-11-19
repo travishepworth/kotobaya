@@ -16,6 +16,9 @@ import kotobaya.notes.NoteViews
 import kotobaya.notes.toNoteTypeInfo
 import kotobaya.server.formatInstant
 import kotobaya.server.json
+import kotobaya.contracts.render.WordAudio
+import kotobaya.tts.SpeechPair
+import kotobaya.tts.WordAudioStore
 import org.jooq.DSLContext
 import java.time.Instant
 
@@ -104,7 +107,10 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             literals = pageNotes.mapNotNull { n -> n["kanji_literal"].takeUnless { it.isNull }?.asText() },
             partLiterals = words.values.flatMap { it.expressionKanji.take(KanjiParts.MAX_PARTS) },
         )
-        return cards.mapNotNull { id ->
+        // ADR-047: word audio of every item, one tts_audio lookup for the page (SCHEMA.md 6.6 "Server" rule 1).
+        val voice = WordAudioStore.effectiveVoice(dsl)
+        val audioOf = HashMap<String, WordAudio?>()
+        val out = cards.mapNotNull { id ->
             val v = views[id] ?: return@mapNotNull null
             val type = reviewTypes[id] ?: "learning"
             val note = v.json["note"]
@@ -129,6 +135,10 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             item.put("front_furigana", word?.frontFurigana ?: false)
             if (word != null) item.set<JsonNode>("kanji_parts", extras.kanjiParts(word.expression, word.reading))
             QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"], word?.frontFurigana ?: false)?.let { item.set<JsonNode>("text", it) }
+            audioOf[id] = WordAudioStore.resolve(
+                info, note["type"]?.asText(), note["fields"],
+                item["entry"]?.takeUnless { it.isNull }?.let(QueueText::dictionaryData),
+            )
             if (type == "drill" || type == "cram") {
                 item.putNull("preview")
             } else {
@@ -145,6 +155,12 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             }
             item
         }
+        val pairs = audioOf.values.mapNotNull { (it as? WordAudio.Tts)?.let { t -> SpeechPair(voice, t.text) } }
+        val generated = WordAudioStore.generated(dsl, pairs)
+        for (item in out) {
+            item.set<JsonNode>("word_audio", WordAudioStore.wordAudioJson(audioOf[item["card"]["id"].asText()], voice, generated))
+        }
+        return out
     }
 
     // ---------------------------------------------------------------- dictionary (same shapes as GET /dict/entries/{seq}, /kanji/{literal})

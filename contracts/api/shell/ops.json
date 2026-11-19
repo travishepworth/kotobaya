@@ -113,6 +113,7 @@
   "getJob": "proxy",
   "cancelJob": "hidden",
   "synthesizeSpeech": "proxy",
+  "resolveSpeech": "proxy",
   "queryBlobs": "proxy",
   "getBlob": "local",
   "putBlob": "proxy",

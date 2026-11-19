@@ -108,6 +108,7 @@ All URIs are relative to */api/v1*
 *JobsApi* | [**cancelJob**](docs/JobsApi.md#canceljob) | **POST** /jobs/{job_id}/cancel | Cancel a queued or running job.
 *JobsApi* | [**getJob**](docs/JobsApi.md#getjob) | **GET** /jobs/{job_id} | One job with progress, result or error.
 *JobsApi* | [**listJobs**](docs/JobsApi.md#listjobs) | **GET** /jobs | List background jobs (imports, parses, optimizer runs, ...).
+*JobsApi* | [**resolveSpeech**](docs/JobsApi.md#resolvespeech) | **POST** /tts/resolve | Look up generated speech for texts or notes, generating what is missing.
 *JobsApi* | [**synthesizeSpeech**](docs/JobsApi.md#synthesizespeech) | **POST** /tts | Synthesize Japanese speech (VOICEVOX) into an audio blob.
 *MediaApi* | [**clearJpdbVocabResolution**](docs/MediaApi.md#clearjpdbvocabresolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue.
 *MediaApi* | [**deleteMedia**](docs/MediaApi.md#deletemedia) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content.
@@ -438,6 +439,10 @@ All URIs are relative to */api/v1*
 - [SettingsPatch](docs/SettingsPatch.md)
 - [SettingsSetSchema](docs/SettingsSetSchema.md)
 - [SpanOrigin](docs/SpanOrigin.md)
+- [SpeechResolution](docs/SpeechResolution.md)
+- [SpeechResolveItem](docs/SpeechResolveItem.md)
+- [SpeechResolveRequest](docs/SpeechResolveRequest.md)
+- [SpeechResolveResult](docs/SpeechResolveResult.md)
 - [StatsCalibration](docs/StatsCalibration.md)
 - [StatsCalibrationBinsInner](docs/StatsCalibrationBinsInner.md)
 - [StatsForecast](docs/StatsForecast.md)
@@ -462,6 +467,7 @@ All URIs are relative to */api/v1*
 - [TokenList](docs/TokenList.md)
 - [TtsRequest](docs/TtsRequest.md)
 - [VocabListReport](docs/VocabListReport.md)
+- [WordAudio](docs/WordAudio.md)
 - [WordStatus](docs/WordStatus.md)
 - [WordStatusClearedSchema](docs/WordStatusClearedSchema.md)
 - [WordStatusSet](docs/WordStatusSet.md)

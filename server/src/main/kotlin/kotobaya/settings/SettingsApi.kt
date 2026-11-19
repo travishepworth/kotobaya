@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import kotobaya.contracts.render.WordAudioRules
 import kotobaya.contracts.sync.OpType
 import kotobaya.notes.Errors
 import kotobaya.notes.Reply
@@ -20,6 +21,7 @@ import kotobaya.sync.OpApply
 import org.jooq.DSLContext
 
 private val SETTING_KEY_RE = Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$")
+private val VOICE_RE = Regex(WordAudioRules.VOICE_PATTERN)
 private const val INT4_MIN = -2147483648.0
 private const val INT4_MAX = 2147483647.0
 
@@ -29,6 +31,9 @@ private sealed interface KeyType {
     data class OneOf(val values: Set<Double>) : KeyType
     data object Bool : KeyType
     data object Text : KeyType
+
+    /** `string (voice)` (C-29): a JSON string of 1-9 decimal digits, used as written. */
+    data object Voice : KeyType
 }
 
 private val WELL_KNOWN: Map<String, KeyType> = mapOf(
@@ -43,7 +48,9 @@ private val WELL_KNOWN: Map<String, KeyType> = mapOf(
     "scheduler.bury_siblings" to KeyType.Bool,
     "scheduler.kanji_before_vocab" to KeyType.Bool,
     "scheduler.mined_priority" to KeyType.Int(),
-    "audio.prefetch_days" to KeyType.Int(),
+    "audio.prefetch_days" to KeyType.Int(0.0, 365.0), // C-29, SCHEMA.md 6.6
+    "review.autoplay_audio" to KeyType.Bool, // ADR-047
+    "tts.voice" to KeyType.Voice, // ADR-047
     "cards.reading_enabled" to KeyType.Bool, // ADR-035, SCHEMA.md 6.4
 )
 
@@ -59,6 +66,7 @@ private fun KeyType.accepts(v: JsonNode): Boolean = when (this) {
     is KeyType.OneOf -> v.isNumber && v.doubleValue() in values
     KeyType.Bool -> v.isBoolean
     KeyType.Text -> v.isTextual
+    KeyType.Voice -> v.isTextual && VOICE_RE.matches(v.asText())
 }
 
 /** `listSettings`, `updateSettings`. */

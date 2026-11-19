@@ -348,6 +348,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       } ],
       "loop" : {

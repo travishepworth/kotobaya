@@ -39,5 +39,7 @@ open class KotobayaApp : Application() {
         // T305c: eagerly, so a Takoboto call during a cold start finds the store (resolved on first use)
         koin.get<ClientErrorFlusher>().flushAsync()
         AnkiStoreHolder.set(DeferredAnkiStore { koin.get<AnkiStore>() })
+        // ADR-047: a prefetch pass on app open (the work needs a network; an unpaired device does nothing)
+        runCatching { kotobaya.android.media.AudioPrefetchWork.enqueue(this, koin.get<kotobaya.android.media.MediaPrefs>().allowMetered) }
     }
 }
