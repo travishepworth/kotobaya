@@ -503,9 +503,11 @@ def loop_line($c):
   if (.phase // null) == null then "new \($c.new // 0) · learning \($c.learning // 0) · review \($c.review // 0)"
   else [ "new \(.new_today // 0)/\(.new_goal // 0)",
          (if (.backlog_beyond_limit // 0) > 0 then "backlog \(.backlog) (\(.backlog_beyond_limit) beyond the limit)" else empty end),
-         (if (.later_today // 0) > 0
-          then "\(.later_today) learning later" + (later_in(.later_next_due_at) as $m | if $m == null then "" else " · next in \($m) min" end)
-          else empty end) ] | join(" · ")
+         # ADR-049: until_stop_parts.later; older daemons send none, so later_today.
+         ((.until_stop_parts.later // .later_today // 0) as $later
+          | if $later > 0
+            then "\($later) learning later" + (later_in(.later_next_due_at) as $m | if $m == null then "" else " · next in \($m) min" end)
+            else empty end) ] | join(" · ")
   end;
 def flat($s):
   (.counts // {}) as $c | (.card // {}) as $k | ($k.previews // {}) as $p | (.last // {}) as $l

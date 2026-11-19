@@ -67,6 +67,16 @@ PHASES = ("reviewing", "goal_reached", "done_for_today", "waiting", "empty")
 
 
 @dataclass(frozen=True)
+class UntilStopParts:
+    """ADR-049 `until_stop_parts`: until_stop split into learning, later, review and new."""
+
+    learning: int
+    later: int
+    review: int
+    new: int
+
+
+@dataclass(frozen=True)
 class Loop:
     """ADR-037 `ReviewLoop` as sent by getReviewQueue; the only source of phase and numbers."""
 
@@ -84,6 +94,8 @@ class Loop:
     new_today: int
     new_goal: int
     new_available: bool
+    # ADR-049: None when the server is older (no until_stop_parts sent); consumers fall back.
+    until_stop_parts: UntilStopParts | None = None
 
 
 @dataclass(frozen=True)
@@ -313,6 +325,15 @@ class Session:
             # The next learning card's instant (a hint) for the widget's "N later" line; the
             # top-level next_due_at below is the waiting timer only.
             "later_next_due_at": None if loop is None else loop.next_due_at,
+            # ADR-049: the four parts of until_stop (null from an older server or while not ok).
+            "until_stop_parts": None
+            if loop is None or loop.until_stop_parts is None
+            else {
+                "learning": loop.until_stop_parts.learning,
+                "later": loop.until_stop_parts.later,
+                "review": loop.until_stop_parts.review,
+                "new": loop.until_stop_parts.new,
+            },
         }
 
     def state(self) -> dict[str, object]:

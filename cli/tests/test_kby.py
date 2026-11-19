@@ -445,3 +445,14 @@ def test_server_too_old(kenv: Env) -> None:
     out = json.loads(kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()[-1])
     assert out["state"] == "server_too_old" and out["class"] == "server_too_old"
     assert "server too old" in out["text"] and "upgrade" in out["tooltip"]
+
+
+def test_tooltip_later_reads_until_stop_parts_then_later_today(kenv: Env) -> None:
+    """ADR-049: the 'learning later' number is until_stop_parts.later; an older daemon has none."""
+    parts = {"learning": 9, "later": 14, "review": 0, "new": 0}
+    kenv.append(loop_raw(phase="waiting", ready=0, later_today=26, until_stop_parts=parts))
+    out = json.loads(kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()[-1])
+    assert "14 learning later" in out["tooltip"] and "26 learning later" not in out["tooltip"]
+    kenv.append(loop_raw(phase="waiting", ready=0, later_today=26))
+    out = json.loads(kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()[-1])
+    assert "26 learning later" in out["tooltip"]
