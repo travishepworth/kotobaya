@@ -1357,3 +1357,4 @@
 2026-11-19T06:09:59Z AND-28 HANDOFF (green except 4 golden tests pending SRV-28 goldens); waiting for SRV-28 merge
 2026-11-19T06:14:28Z C-28d HANDOFF (claims-based pick, 40k-seed prototype 0 failures) + green; reviewer
 2026-11-19T06:15:34Z C-28d REVIEW_APPROVE (+1-line lastNew clarification requested before merge)
+2026-11-19T06:15:56Z SRV-28 attempt 2 CHECK_GREEN + MERGE (N+1 fixed, bounded-statement test)
