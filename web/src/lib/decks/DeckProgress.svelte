@@ -17,6 +17,7 @@
 	let { deck, coverage = false, large = false }: Props = $props();
 
 	const progress = $derived(deck.progress ?? null);
+	const share = (n: number, total: number): number => (total > 0 ? Math.round((100 * n) / total) : 0);
 	const covState = new DeckCoverageState();
 	const cov = $derived(covState.coverage);
 	$effect(() => {
@@ -36,9 +37,16 @@
 		{#if cov}
 			<div class="cov">
 				<p class="line">
-					<span class="words kb-num">{td('decks.coverage.raw', { pct: cov.tokens.knownPct })}</span>
+					<span class="words kb-num">{large ? td('decks.coverage.raw', { pct: cov.tokens.knownPct }) : td('decks.coverage.rawLearning', { pct: cov.tokens.knownPct, learning: share(cov.tokens.learning, cov.tokens.total) })}</span>
 				</p>
 				<CoverageBar known={cov.tokens.known} learning={cov.tokens.learning} unknown={cov.tokens.unknown} total={cov.tokens.total} height={8} />
+				{#if large}
+					<ul class="legend">
+						<li><i class="k"></i>{td('decks.coverage.known', { pct: share(cov.tokens.known, cov.tokens.total) })}</li>
+						<li><i class="l"></i>{td('decks.coverage.learning', { pct: share(cov.tokens.learning, cov.tokens.total) })}</li>
+						<li><i class="u"></i>{td('decks.coverage.unknown', { pct: share(cov.tokens.unknown, cov.tokens.total) })}</li>
+					</ul>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -74,6 +82,35 @@
 		flex-direction: column;
 		gap: var(--kb-space-1);
 		margin-top: var(--kb-space-2);
+	}
+	.legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--kb-space-1) var(--kb-space-4);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font: var(--kb-type-caption);
+		color: var(--kb-color-text-muted);
+	}
+	.legend li {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--kb-space-1);
+	}
+	.legend i {
+		width: 0.625rem;
+		height: 0.625rem;
+		border-radius: 2px;
+	}
+	.k {
+		background: var(--kb-color-state-review);
+	}
+	.l {
+		background: var(--kb-color-state-learning);
+	}
+	.u {
+		background: var(--kb-color-state-new);
 	}
 	.large .line {
 		font: var(--kb-type-body);

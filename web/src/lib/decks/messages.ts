@@ -103,6 +103,10 @@ const en = {
 	'decks.progress.label': 'Words learned in {name}',
 	'decks.progress.empty': 'No words to learn yet',
 	'decks.coverage.raw': '{pct}% of the text covered',
+	'decks.coverage.rawLearning': '{pct}% of the text covered · {learning}% learning',
+	'decks.coverage.known': 'known {pct}%',
+	'decks.coverage.learning': 'learning {pct}%',
+	'decks.coverage.unknown': 'unknown {pct}%',
 	'decks.coverage.rawHint': 'Share of all words in the text that you know',
 	'decks.itemsFilteredEmpty': 'No items with this status.',
 } as const;
