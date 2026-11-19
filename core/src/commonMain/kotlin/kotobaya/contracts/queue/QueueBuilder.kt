@@ -536,7 +536,11 @@ public data class ReviewQueue(
  *      card, or the last literal claimed for minting); when nothing is drawn yet, the card of
  *      today's `introducedNew` review with the greatest `(reviewedAt, cardId)` (rule 5's
  *      `last`); else none. `lastLiteral` = its kanji literal when it is a card of a kanji note
- *      or a claimed literal, else none.
+ *      or a claimed literal, else none. A drawn pending entry (`e:<seq>`, put in
+ *      `toMaterialize`) is the last thing its unit draws, after the unit's kanji cards and
+ *      claimed literals, exactly like the vocab card of a whole unit (withheld or not):
+ *      `lastNew` is then the entry, which has no literal, so `lastLiteral` is none after
+ *      `[先, 生, 先生(entry)]`.
  *    - **Claims (C-28d).** A source S **claims** a literal L iff S can take a turn and the
  *      item its next turn would draw is the unit of a word W (card or entry, not held) with
  *      `L in req(W)`, or a NEW kanji card with `kanjiLiteral == L` (drawn alone, "Own turn"
