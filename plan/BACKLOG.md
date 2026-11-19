@@ -866,5 +866,5 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SRV-28 — Server impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/SRV-28.md)
 - AND-28 — Android local API impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/AND-28.md)
 - WEB-28 — progress bar on until_stop, deck progress UI, kanji parts tiles · model: sonnet · risk: low-med · deps: C-28, WEB-REVIEW-FLOW · status: TODO (ticket: plan/tickets/WEB-28.md)
-- BUG-ADD2DECK-500 — add search word to deck → 500 on Android local API · model: opus · risk: med · deps: — · status: TODO (ticket: plan/tickets/BUG-ADD2DECK-500.md)
+- BUG-ADD2DECK-500 — add search word to deck → 500 on Android local API · model: opus · risk: med · deps: — · status: BLOCKED_HUMAN (needs phone logcat) (ticket: plan/tickets/BUG-ADD2DECK-500.md)
 - WEB-KG-IDLE — keep going ends after 10 min idle (ADR-039 amendment) · model: haiku · risk: low · deps: WEB-REVIEW-FLOW · status: MERGED (ticket: plan/tickets/WEB-KG-IDLE.md)
