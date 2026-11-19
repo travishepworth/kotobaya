@@ -9,19 +9,19 @@
     "words.status_no_note"
   ],
   "narrative": [
-    "Entry 1000220 has one note with a new meaning card; no override exists.",
+    "Entry 1001010 has one note with a new meaning card; no override exists.",
     "Step 0: clearing when there is no override is 200 with the current status and mints nothing.",
     "Step 1 sets never_forget (override_origin manual). Step 2 sets the same status again: still 200 (the server emits again; the answer is the same status). Step 3 replaces it with blacklisted.",
     "Step 4: while the entry is blacklisted its card is not served (the queue is empty). Step 5 clears the override: the status is the derived one again. Step 6 clears again: the same status and updated_at, nothing minted. Step 7: the card is served again.",
     "Steps 8-9: new and learning are derived and cannot be set; an empty body is refused: 422 validation_failed.",
-    "Step 10: an entry of the dictionary that has no note (1000440) takes an override; auto_status is null.",
+    "Step 10: an entry of the dictionary that has no note (1001150) takes an override; auto_status is null.",
     "Step 11: an entry that is in no dictionary (9999997) takes one too: the entry need not exist. The seq is in the path only, so it is listed in neither dict_entries nor dict_missing (those index entry_seq members and e:<seq> keys).",
-    "Step 12: clearing an entry that has no row at all (1000450): 200, updated_at null."
+    "Step 12: clearing an entry that has no row at all (1001580): 200, updated_at null."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
   "dict_entries": [
-    1000220
+    1001010
   ],
   "settings": {},
   "seed": {
@@ -38,7 +38,7 @@
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000001",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
-          "entry_seq": 1000220
+          "entry_seq": 1001010
         }
       },
       {
@@ -67,14 +67,14 @@
       "at_ms": 1795168801000,
       "request": {
         "method": "DELETE",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": null
       },
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/override_status": null,
           "/override_origin": null
         }
@@ -84,7 +84,7 @@
       "at_ms": 1795168802000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": {
           "status": "never_forget"
@@ -93,7 +93,7 @@
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/status": "never_forget",
           "/override_status": "never_forget",
           "/override_origin": "manual"
@@ -104,7 +104,7 @@
       "at_ms": 1795168803000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": {
           "status": "never_forget"
@@ -122,7 +122,7 @@
       "at_ms": 1795168804000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": {
           "status": "blacklisted"
@@ -156,14 +156,14 @@
       "at_ms": 1795168806000,
       "request": {
         "method": "DELETE",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": null
       },
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/override_status": null,
           "/override_origin": null
         }
@@ -173,14 +173,14 @@
       "at_ms": 1795168807000,
       "request": {
         "method": "DELETE",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": null
       },
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/override_status": null,
           "/override_origin": null
         }
@@ -208,7 +208,7 @@
       "at_ms": 1795168809000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": {
           "status": "learning"
@@ -223,7 +223,7 @@
       "at_ms": 1795168810000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000220/status",
+        "path": "/api/v1/words/1001010/status",
         "query": "",
         "body": {}
       },
@@ -236,7 +236,7 @@
       "at_ms": 1795168811000,
       "request": {
         "method": "PUT",
-        "path": "/api/v1/words/1000440/status",
+        "path": "/api/v1/words/1001150/status",
         "query": "",
         "body": {
           "status": "known"
@@ -245,7 +245,7 @@
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000440,
+          "/entry_seq": 1001150,
           "/status": "known",
           "/auto_status": null,
           "/override_status": "known",
@@ -277,14 +277,14 @@
       "at_ms": 1795168813000,
       "request": {
         "method": "DELETE",
-        "path": "/api/v1/words/1000450/status",
+        "path": "/api/v1/words/1001580/status",
         "query": "",
         "body": null
       },
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000450,
+          "/entry_seq": 1001580,
           "/auto_status": null,
           "/override_status": null,
           "/updated_at": null

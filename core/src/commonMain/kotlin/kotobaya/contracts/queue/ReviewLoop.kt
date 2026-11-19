@@ -15,8 +15,9 @@ public enum class LoopPhase(
     public val wire: String,
 ) {
     /**
-     * The served queue ([LoopResult.queue]) is non-empty (`items` or `toMaterialize`): there is a
-     * card to show now, or one will exist after materialization (C-27). Example: A1 below.
+     * The served queue ([LoopResult.queue]) is non-empty (`items`, `toMaterialize` or
+     * `kanjiToMaterialize`): there is a card to show now, or one will exist after materialization
+     * (C-27, ADR-040). Example: A1 below.
      */
     REVIEWING("reviewing"),
 
@@ -58,6 +59,9 @@ public data class LegacyCounts(
      * New cards still to introduce today under the day goal and the per-deck caps, **not** bounded
      * by the batch (frozen: old clients show it as "new left today"): the NEW items plus
      * `toMaterialize.size` of the unbounded normal build N∞ ([ReviewLoop] "Evaluation"). `>= 0`.
+     * Kanji cards served ahead of their word are NEW items and count; a unit withheld for a
+     * missing kanji (ADR-040) is not counted until it is materialized. New clients use
+     * [LoopState.untilStop] instead.
      * Example: goal 40, 12 introduced, batch 10, 100 new cards → 28 (not 10); 3 new cards exist → 3.
      */
     public val new: Int,
@@ -70,8 +74,8 @@ public data class LegacyCounts(
     /** Equal to [LoopState.readyReviews]. `>= 0`. Example: 335 due, cap 200, none done → 200. */
     public val review: Int,
     /**
-     * `ReviewQueue.moreAvailable` of the normal build N: N is empty (`items` and `toMaterialize`)
-     * and the keep-going build K is not. Independent of `input.limits.keepGoing`, so
+     * `ReviewQueue.moreAvailable` of the normal build N: N is empty (`items`, `toMaterialize` and
+     * `kanjiToMaterialize`) and the keep-going build K is not. Independent of `input.limits.keepGoing`, so
      * it can be true in a keep-going evaluation (the API still sends `more_available: false` for a
      * keep-going request; that is the server's mapping, see openapi). Example: B3 → true.
      */
@@ -79,10 +83,11 @@ public data class LegacyCounts(
 )
 
 /**
- * The loop's numbers for one [QueueInput] (ADR-037). Every field except [phase] and [keepGoing] is
- * computed from the normal build N, the keep-going build K, N∞ (legacy only) and `input.today`, so it is
- * **identical with and without keep going** (same input otherwise): every client shows the same
- * numbers at the same instant whatever mode it is in.
+ * The loop's numbers for one [QueueInput] (ADR-037). Every field except [phase], [keepGoing] and
+ * [untilStop] is computed from the normal build N, the keep-going build K, N∞ (legacy only) and
+ * `input.today`, so it is **identical with and without keep going** (same input otherwise): every
+ * client shows the same numbers at the same instant whatever mode it is in. [untilStop] is the
+ * progress bar of the visit and follows the mode (ADR-038).
  *
  * Invariants (property-tested by LOOP-CORE):
  * - `readyLearning, readyReviews, laterToday, backlog, backlogBeyondLimit, reviewsToday, newToday, newGoal >= 0`;
@@ -91,11 +96,14 @@ public data class LegacyCounts(
  * - `nextDueAt == null` iff `laterToday == 0`; otherwise `now < nextDueAt < day.endMs`;
  * - `phase == REVIEWING` iff the served queue is non-empty;
  * - `phase` in {`GOAL_REACHED`, `DONE_FOR_TODAY`} implies `!keepGoing` and K non-empty;
- * - retired cards (rule 0) are in no count.
+ * - retired cards (rule 0) are in no count;
+ * - `untilStop >= 0`; without keep going `untilStop == readyLearning + laterToday + readyReviews +
+ *   availableToday(N)`; `phase == REVIEWING` implies `untilStop >= 1`; `untilStop == 0` implies
+ *   `phase` is not `REVIEWING` and not `WAITING`.
  *
  * Example (B3 below): `phase = DONE_FOR_TODAY, keepGoing = false, readyLearning = 0, readyReviews = 0,
  * laterToday = 0, nextDueAt = null, backlog = 135, backlogBeyondLimit = 135, reviewsToday = 200,
- * reviewsLimit = 200, newToday = 40, newGoal = 40, newAvailable = true`.
+ * reviewsLimit = 200, newToday = 40, newGoal = 40, newAvailable = true, untilStop = 0`.
  */
 public data class LoopState(
     /** The phase (rule in [ReviewLoop]). */
@@ -146,13 +154,43 @@ public data class LoopState(
     /** `max(0, limits.newPerDay)` (`scheduler.new_per_day`). Example: 40. */
     public val newGoal: Int,
     /**
-     * True iff K contains at least one NEW item or one `toMaterialize` entry: a new card exists that
+     * True iff K contains at least one NEW item, one `toMaterialize` entry or one
+     * `kanjiToMaterialize` literal: a new card exists that
      * keep going could introduce, ignoring the day goal and per-deck new caps (disabled decks,
      * KNOWN/excluded words and sibling burying still apply). Example: A3 → true; B6 → false.
      */
     public val newAvailable: Boolean,
     /** The frozen pre-ADR-037 counts for old clients. */
     public val legacy: LegacyCounts,
+    /**
+     * ADR-038 (additive): **answers left until the stop screen**. The review progress bar's total
+     * is `done + untilStop`, `done` = the answers the client has sent in this visit. Each card
+     * counts once, whatever number of steps it still has, so the total grows when a card comes
+     * back: Again on a review moves it from [readyReviews] to [laterToday] (`untilStop` unchanged,
+     * `done + 1`), and introducing a new card moves it from the new part to [laterToday].
+     *
+     * **Without keep going** (`keepGoing == false`): `readyLearning + laterToday + readyReviews +
+     * newLeft`, with `newLeft` = rule 4's `availableToday` of the normal build N: the new cards
+     * that can still be introduced today under the day goal and the per-deck caps, not bounded by
+     * the batch, kanji cards of the units included (drawn, withheld and to be minted alike).
+     * These are the answers before N is empty, i.e. before `GOAL_REACHED` / `DONE_FOR_TODAY`
+     * (or `WAITING` / `EMPTY` when keep going has nothing). Learning cards due later today are
+     * included because they come back before the day is done; so at a stop screen it equals
+     * [laterToday] (often 0).
+     *
+     * **With keep going** (`keepGoing == true`): the stream has no end, so it is what is in sight:
+     * `readyLearning + laterToday + backlog + newBatch`, with `newBatch` = what rule 4 of the
+     * keep-going build K drew (`drawn`: at most about `keepGoingNewBatch`, units whole). It
+     * therefore depends on the batch (the API's `limit`) in this mode, and only in this mode.
+     *
+     * The default `0` exists only so that existing callers compile; `ReviewLoop.evaluate` MUST set
+     * it. `>= 0`.
+     * Example (A1): 0 ready, 26 later, goal 40, 0 introduced, 100 new → `0 + 26 + 0 + 40 = 66`.
+     * Example (B3): `0`; (B4, B3 with keep going, batch 10): `0 + 0 + 135 + 10 = 145`.
+     * Example (goal 40, 10 introduced, 30 reviews due, 5 learning cards on a timer, plenty of new
+     * cards): `0 + 5 + 30 + 30 = 65`; with only 12 new cards left in the decks: `47`.
+     */
+    public val untilStop: Int = 0,
 )
 
 /**
@@ -192,7 +230,8 @@ public data class LoopResult(
  * - `queue` = K if `input.limits.keepGoing` else N;
  * - counts as documented on [LoopState] and [LegacyCounts].
  *
- * **Phase.** S = `queue`; "non-empty" = `items` or `toMaterialize` non-empty. First match wins:
+ * **Phase.** S = `queue`; "non-empty" = `items`, `toMaterialize` or `kanjiToMaterialize` non-empty.
+ * First match wins:
  * 1. S non-empty → [LoopPhase.REVIEWING].
  * 2. else if `!keepGoing` and K non-empty → [LoopPhase.GOAL_REACHED] if `limits.reviewsUnlimited`
  *    else [LoopPhase.DONE_FOR_TODAY].
@@ -208,8 +247,12 @@ public data class LoopResult(
  * due is therefore always at the front of the next evaluation.
  *
  * **Edge cases** (each is a LOOP-CORE test):
- * - Goal 39/40 and only a 3-card add_kanji group left: the group does not fit the day (rule 4,
- *   atomic), N has no new → phase 2 at 39/40; `newToday = 39`, `newGoal = 40` (UIs show the real numbers).
+ * - Goal 39/40 and only a 3-card kanji unit left (two kanji and their word, ADR-040): the unit
+ *   does not fit the day (rule 4, atomic), N has no new → phase 2 at 39/40; `newToday = 39`,
+ *   `newGoal = 40`, `untilStop` without the unit (UIs show the real numbers).
+ * - The served build draws only withheld units (existing words whose kanji notes are missing):
+ *   `items` empty, `kanjiToMaterialize` non-empty → `REVIEWING`; the caller materializes and
+ *   re-evaluates (C-27); `untilStop` is the same before and after.
  * - Per-deck new caps bind before the goal: same rule (N has no new, K has → phase 2).
  * - New pool empty before the goal and backlog beyond the cap → `DONE_FOR_TODAY` (K non-empty through its reviews).
  * - `new_per_day = 0` with new cards: phase 2 as soon as the ready reviews are done.
@@ -217,10 +260,12 @@ public data class LoopResult(
  * - A learning card falls due during `GOAL_REACHED` / `DONE_FOR_TODAY`: `REVIEWING` with
  *   `readyLearning = 1`; after it is answered the phase is as before.
  * - Day rollover: everything is recomputed from the new `input.day` and `input.today` (empty at
- *   the start of the day); nothing carries over, including a caller's keep-going flag (rule 6 Scope).
+ *   the start of the day); nothing carries over, including a caller's keep-going flag (rule 6
+ *   Scope: one review visit, ADR-039) and an open kanji group (rule 5).
  * - Retired cards (rule 0, ADR-035) are in no count and no item.
  * - A read-only caller that cannot materialize: `toMaterialize` non-empty still counts as
  *   non-empty → `REVIEWING` (C-27; the API then reports `to_materialize > 0` with possibly empty `items`).
+ *   The same holds for `kanjiToMaterialize`.
  * - Empty input (no candidates, no pending entries): all counts 0, `nextDueAt = null`, `EMPTY`.
  * - Duplicate candidates or `today` rows are the loader's bug; the loop does not deduplicate.
  * - Candidate order, deck order and `today` order do not change the result.
@@ -230,17 +275,24 @@ public data class LoopResult(
  * - **A1** (A; 0 ready, 26 learning cards due later today, 100 new cards, 0 introduced today):
  *   N = 10 NEW → `REVIEWING`; `readyLearning 0, readyReviews 0, laterToday 26, nextDueAt` = their
  *   earliest due, `backlog 0/0, reviewsToday 0, reviewsLimit null, newToday 0, newGoal 40,
- *   newAvailable true`; `legacy = (new 40, learning 26, review 0, moreAvailable false)`. Never `WAITING`.
+ *   newAvailable true, untilStop 66`; `legacy = (new 40, learning 26, review 0, moreAvailable false)`.
+ *   Never `WAITING`.
  * - **B3** (B; 200 reviews done today, 40 introduced, 135 due reviews left, new cards remain):
  *   N empty, K non-empty → `DONE_FOR_TODAY`; `readyReviews 0, backlog 135, backlogBeyondLimit 135,
- *   reviewsToday 200, reviewsLimit 200, newToday 40, newGoal 40, newAvailable true`;
+ *   reviewsToday 200, reviewsLimit 200, newToday 40, newGoal 40, newAvailable true, untilStop 0`;
  *   `legacy = (0, 0, 0, moreAvailable true)`.
  * - **B4** (B3 with `keepGoing = true`): `queue` = K = due learning, then the 135 backlog reviews by
  *   `(dueAt, cardId)`, then up to 10 NEW (no NEW before the last backlog review) → `REVIEWING`,
- *   `keepGoing true`; every other [LoopState] field equals B3's.
+ *   `keepGoing true`, `untilStop 145` (135 backlog + the batch of 10); every other [LoopState]
+ *   field equals B3's.
  * - **A3** (A; 40/40 introduced, no due reviews, new cards remain): N empty, K = 10 NEW →
  *   `GOAL_REACHED`. With `keepGoing = true` → `REVIEWING`, items NEW; after 60 more introductions
  *   still `REVIEWING` with `newToday 100, newGoal 40` (no end while new cards exist).
+ * - **U1** (ADR-038; B; goal 40, 10 introduced, 30 reviews due under the cap, 5 learning cards
+ *   due later today, 0 ready, 200 new cards): `REVIEWING`, `untilStop = 0 + 5 + 30 + 30 = 65`.
+ *   After one review answered Again: `readyReviews 29, laterToday 6` → still 65 (the bar's total
+ *   grew by one with `done`). After a new card answered Good: new part 29, `laterToday` + 1 → 65.
+ *   After a review answered Good: 64.
  */
 public interface ReviewLoop {
     /**

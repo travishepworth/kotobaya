@@ -564,9 +564,10 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.grading_buttons` | `4` \| `5` | `4` | Five = jpdb-style. |
 | `scheduler.leech_threshold` | int | `8` | Lapses at which a card is a leech. |
 | `scheduler.bury_siblings` | bool | `true` | |
-| `scheduler.kanji_before_vocab` | bool | `false` | Queue order only (C-7): default for the `add_kanji` ordering where no deck sets one. See 6.2. |
+| `scheduler.kanji_before_vocab` | bool | `false` | **Deprecated, ignored (ADR-040).** Was the default for the `add_kanji` ordering. Kanji cards now always come before their first word. Still accepted, stored and synced like `scheduler.new_per_session`. See 6.2. |
 | `scheduler.mined_priority` | int (int4, see 6.1) | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
 | `audio.prefetch_days` | int | `7` | Audio prefetch horizon. |
+| `cards.kanji_exemptions` | bool | `true` | ADR-042: while not `false`, a word JMdict tags as usually-kana / ateji / rare, out-dated, irregular or search-only kanji form requires no kanji cards, only learnable kanji (jōyō or KANJIDIC frequency top 2500) are required, and a word that requires none shows furigana on its front. See 6.5. |
 | `cards.reading_enabled` | bool | `false` | ADR-035 "Also create reading cards": while not `true`, vocab `reading` cards are **retired** (never created, never in a queue, ignored by `auto_status`; kept with their history). See 6.4. |
 
 ### 6.1 Storage and validation
@@ -624,7 +625,11 @@ one exception to `foreign_keys = ON` above.
 
 ### 6.2 The two queue keys (C-7)
 
-Both are used by the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205). Each
+**ADR-040:** `scheduler.kanji_before_vocab` and the deck setting `add_kanji` are deprecated and no
+longer read; the end of this section says what replaced them. `scheduler.mined_priority` is
+unchanged.
+
+Both were introduced for the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205). Each
 platform loader (Android, web, server) reads them from `settings` by the 6.1 rules and passes typed
 values in. Neither changes card creation, a card's
 schedule, or replay (OPS.md `settings.set`: "Replay: None").
@@ -645,43 +650,29 @@ that name is not used.) Meaning, on the same scale as `deck.priority` (QueueBuil
 - Range: the int4 range of `deck.priority` (op schema `deck.created`), −2147483648…2147483647
   inclusive. Outside it, `updateSettings` returns `422` and loaders use the default (6.1).
 
-**`scheduler.kanji_before_vocab`** (bool) sets the `add_kanji` **ordering** where nothing more
-specific does. Effective ordering mode of a new-card source (the `AddKanjiMode` QueueBuilder rule 4
-uses):
-- an enabled deck whose `settings.add_kanji` is **present** → that value; the deck's explicit
-  choice always wins, including an explicit `off`;
-- a deck whose `add_kanji` is absent, and the deckless source → `before` if
-  `scheduler.kanji_before_vocab` is valid `true` (6.1), else `off`.
+**`scheduler.kanji_before_vocab`** (bool) and **`deck.settings.add_kanji`** (`"off"`, `"before"`,
+`"alongside"`) — **deprecated by ADR-040, kept readable.**
 
-**Present** means the value is exactly one of the JSON strings `"off"`, `"before"` or
-`"alongside"` (lowercase, no surrounding space). `deck.created` and `deck.updated` do not
-type-check deck settings, so other values can arrive by sync. A missing key, JSON `null`, any
-other string (`"Before"`, `"yes"`, `""`) and any non-string (`1`, `true`) all count as **absent**.
-The same test decides whether adding a vocab card creates kanji cards, so an invalid value
-creates none.
+Before ADR-040 the deck key decided whether materializing a deck word created kanji notes and
+where a word's kanji cards were ordered, and the settings key was the ordering default for decks
+without the key and for the deckless source. Since ADR-040 neither is read by anything:
 
-Worked example, with `scheduler.kanji_before_vocab` = `true`:
+| | Before | Since ADR-040 |
+|---|---|---|
+| Order | kanji before (or after) the word only where the effective mode said so | **Always** kanji first, for every deck and the deckless source (QueueBuilder rule 4 "Kanji first"); the group is atomic and the review mix never splits it. |
+| Kanji notes | minted at materialization only for a deck with a present `add_kanji` other than `off` | Minted in the queue's materialize path for **every** drawn word that requires a kanji without a kanji note (contracts/core README "C-27", step A), deck or no deck. |
+| Explicit `off` | opted the deck out | No effect. The ways to opt out are: delete the kanji note (never re-created), suspend its card, or `cards.kanji_exemptions` (6.5) for the words it covers. |
+| Loaders | resolved `QueueDeck.addKanji` / `QueueInput.decklessAddKanji` | Pass anything (new loaders: `OFF`); the builder ignores both. |
 
-| Deck `settings.add_kanji` | Effective mode |
-|---|---|
-| `"off"` | `OFF` (explicit wins) |
-| `"alongside"` | `ALONGSIDE` |
-| key missing | `BEFORE` (fallback) |
-| `"Before"` | `BEFORE` (invalid → absent → fallback) |
-| `1` | `BEFORE` (invalid → absent → fallback) |
-| deckless source | `BEFORE` |
+Storage is unchanged, so nothing is migrated and old clients keep working: `updateSettings` still
+validates `scheduler.kanji_before_vocab` as `bool` (`422` at `/values/scheduler.kanji_before_vocab`
+for `"yes"`) and stores it; `listSettings` returns it; `deck.created` / `deck.updated` still carry
+`settings.add_kanji` as an untyped register, and `Deck.settings.add_kanji` is returned as stored.
+New clients neither show nor write either key. Reversing ADR-040 means reading them again.
 
-With `scheduler.kanji_before_vocab` = `false`, the absent or invalid cases and the deckless
-source are `OFF`.
-
-The platform resolves these modes before calling the core: decks go into `QueueDeck.addKanji`, and
-the deckless source goes into `QueueInput.decklessAddKanji` (default `OFF`).
-`before` means (rule 4): right before drawing a vocab card, the source draws the eligible, not yet
-taken NEW cards of kanji notes whose literal appears in the word's expression and that have a
-home new-source (ADR-006: a kanji card whose decks are all disabled is never introduced, not even
-this way). They count against that source and the budget. The key only orders cards that already exist; whether adding a
-vocab card *creates* kanji cards stays governed by the deck's present `add_kanji` alone (absent =
-none created). With the default `false` every source behaves exactly as before C-7.
+Example: a deck with `settings.add_kanji = "off"` holding 学校, no kanji notes → the queue serves
+`学 校 学校` (two `auto_kanji` notes are minted when the word is drawn), exactly as for a deck
+without the key and for a mined, deckless 学校.
 
 ### 6.3 `scheduler.reviews_unlimited` (ADR-034)
 
@@ -735,6 +726,50 @@ no reading card (ADR-011, no backfill). Worked example: `contracts/sync/examples
 reading-retired-offline-review.json`. Example: vocab note with meaning M (REVIEW, 30 d) and reading
 R (LEARNING): key absent → queue shows M when due, never R; `auto_status` = `known` (from M); key
 `true` → R is served when due and `auto_status` = `learning`.
+
+### 6.5 `cards.kanji_exemptions` (ADR-042)
+
+Which kanji a word makes the user learn. Bool, default **`true`**, read by the 6.1 `bool` test
+with that default: only JSON `false` is false; a missing row, JSON `null`, `true` and every
+invalid value (`0`, `"false"`, …) mean `true`. `updateSettings` validates it as `bool` (`422` at
+`/values/cards.kanji_exemptions`). It syncs as an ordinary `settings.set` (Replay: none); no new
+op, column or migration. The core helper is `KanjiRequirement.exemptionsEnabled(value)`; the one
+rule is `kotobaya.contracts.cards.KanjiRequirement.evaluate`:
+
+> While on: a vocab word whose displayed form is tagged in JMdict `uk` on the sense used, or whose
+> kanji form is tagged `ateji`, `rK`, `oK`, `iK` or `sK`, **requires no kanji**. Any other word
+> requires exactly its **learnable** kanji: `ref.kanji.grade` in 1–6 or 8 (jōyō), or
+> `ref.kanji.freq_rank` in 1–2500. A word that contains kanji and requires none has a
+> **furigana front**. While off: every kanji is required and no front has furigana.
+
+| Where | Effect |
+|---|---|
+| Queue (`QueueCandidate.requiredKanji`, `PendingEntry.requiredKanji`; rule 4 "Kanji first") | Only required kanji join a word's group, block it, and are backfilled because of it. |
+| Materialization (README "C-27" step A; `missingKanji`) | Kanji notes are minted only for required kanji. |
+| Card front (`RenderInput.frontFurigana`, `TextRenderInput.frontFurigana`, API `QueueItem.front_furigana`) | The reading as one ruby over the whole word on built-in vocab `meaning` / `pitch` fronts. |
+| Existing kanji notes and cards | Untouched. Turning the key on never deletes, suspends or hides a kanji card that exists; such a card is simply no longer pulled by an exempt word and is studied on its own turn like any card. Turning it off makes the missing kanji required again; they are minted when their word is next drawn. No backfill minting for words already introduced (ADR-040). |
+
+**Data the rule needs, and where it is** (all present; nothing has to be added to a table or to
+the dictionary package):
+
+| Datum | Server | Device (dictionary package `Dict.sq`) | API |
+|---|---|---|---|
+| JMdict `ke_inf` codes of a kanji form (`ateji`, `rK`, `oK`, `iK`, `sK`) | `ref.dict_entry.kanji_forms[].tags` | `dict_entry.kanji_forms` (JSON) | `DictEntry.kanji_forms[].tags` |
+| JMdict misc `uk` **per sense** | `ref.dict_entry.senses[].misc` (not the entry-level union `misc`) with `senses[].applies_to_kanji` | `dict_entry.senses` (JSON) | `DictEntry.senses[].misc` |
+| KANJIDIC grade | `ref.kanji.grade` | `kanji.grade` | `Kanji.grade` |
+| KANJIDIC frequency rank | `ref.kanji.freq_rank` | `kanji.freq_rank` | `Kanji.freq_rank` |
+
+Codes are the JMdict entity names, case-sensitive, as the importer stores them (`iK`, not the
+expanded text). A device answers from the installed package or the sidecar cache only (SHELL.md
+L-7 steps 1–2). While it lacks an entry or a kanji row the rule sees no tags and no facts: no
+exemption, no learnable kanji, so nothing is minted for that word and its front has furigana
+until gap fill delivers the data; the result may then differ from the server's for that word
+(SHELL.md 10.7; the same lag as `counts.new`). `top60k` packages carry every kanji row.
+
+Worked example, key absent (= on): 寿司 (`ateji`) → no kanji cards, front `寿司` with `すし` above;
+昨日 → kanji cards 昨 and 日 first, plain front; 鱈 (no grade, no rank) → no kanji card, furigana
+front; a note 鱈子 without an entry → kanji card 子 only, plain front. Key `false` → 寿 司 寿司, 昨 日
+昨日, 鱈 鱈, and for 鱈子 the cards 子 (and 鱈 unless another word took it first), all with plain fronts.
 
 ## 7. Cross-check: table ↔ op ↔ API
 

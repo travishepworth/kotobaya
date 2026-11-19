@@ -1,0 +1,231 @@
+{
+  "id": "queue-kanji-exemptions",
+  "title": "cards.kanji_exemptions: which kanji a word requires and which fronts carry furigana, on (default) and off (ADR-042)",
+  "covers": [
+    "queue.kanji_exemptions_on",
+    "queue.kanji_exemptions_off"
+  ],
+  "narrative": [
+    "Stand-ins from the fixture dictionary for the cases of ADR-042 (海老, 今日, 薔薇 and 林檎 are not in fixtures/dict): 寿司 (kanji form tagged ateji: word-level exempt, like 海老), 昨日 (both kanji jōyō, irregular reading, no tag: like 今日), 鱈 (no grade, no frequency rank, no tag: no learnable kanji, the rule 薔薇 was meant to show) and a note 鱈子 without a dictionary entry (子 learnable, 鱈 not: the mixed case of 林檎). Four deckless new cards in that order (...10, ...20, ...30, ...40); no kanji note exists; the key is absent (= on).",
+    "Step 0 (on): 寿司 alone with front_furigana true (text front 寿司（すし）); 昨, 日, 昨日 with a plain front (kanji_parts: neither reading aligns, used_reading null); 鱈 alone with front_furigana true; 子, 鱈子 with a plain front and no card for 鱈. The fetch mints three kanji notes (昨, 日, 子). until_stop is 7.",
+    "Step 1 switches cards.kanji_exemptions off (the shell mints settings.set as the device, the server as the server device).",
+    "Step 2 (off): every kanji is required and no front has furigana: 寿, 司, 寿司; 昨, 日, 昨日; 鱈, 鱈 (the word); 子, 鱈子 (its 鱈 was taken by the word 鱈, drawn first). The fetch mints 寿, 司 and 鱈. until_stop is 10."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1416790,
+    1579260,
+    1595650
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1595650
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1579260
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1416790
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000007",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000004",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "fields": {
+            "expression": "鱈子",
+            "reading": "たらこ",
+            "meaning": "cod roe"
+          }
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7036-8000-000000000008",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000040",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000040",
+          "note_id": "0193a1b2-0001-7000-8000-000000000004",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getReviewQueue",
+    "updateSettings"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/front_furigana": true,
+          "/items/0/text/front": "寿司（すし）",
+          "/items/1/card/note/kanji_literal": "昨",
+          "/items/2/card/note/kanji_literal": "日",
+          "/items/3/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/3/front_furigana": false,
+          "/items/3/text/front": "昨日",
+          "/items/3/kanji_parts/0/used_reading": null,
+          "/items/3/kanji_parts/1/used_reading": null,
+          "/items/4/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/4/front_furigana": true,
+          "/items/5/card/note/kanji_literal": "子",
+          "/items/6/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/6/front_furigana": false,
+          "/to_materialize": 0,
+          "/loop/until_stop": 7
+        },
+        "lengths": {
+          "/items": 7
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/settings",
+        "query": "",
+        "body": {
+          "values": {
+            "cards.kanji_exemptions": false
+          }
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/note/kanji_literal": "寿",
+          "/items/1/card/note/kanji_literal": "司",
+          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/2/front_furigana": false,
+          "/items/2/text/front": "寿司",
+          "/items/3/card/note/kanji_literal": "昨",
+          "/items/4/card/note/kanji_literal": "日",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/6/card/note/kanji_literal": "鱈",
+          "/items/7/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/7/front_furigana": false,
+          "/items/8/card/note/kanji_literal": "子",
+          "/items/9/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/to_materialize": 0,
+          "/loop/until_stop": 10
+        },
+        "lengths": {
+          "/items": 10
+        }
+      }
+    }
+  ]
+}

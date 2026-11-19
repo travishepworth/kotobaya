@@ -76,6 +76,9 @@ MANDATORY = [
     "answer.reviewed_at_before_card", "answer.button_rating_mismatch", "undo.twice", "undo.unknown_review",
     "notes.create_duplicate", "notes.create_retry_same_id", "replica.empty", "sync.parent_deleted_by_pull",
     "dict.entry_missing",
+    # C-28: ADR-038 (until_stop), ADR-040 (kanji first), ADR-042 (kanji exemptions)
+    "queue.until_stop", "queue.kanji_first_deckless", "queue.kanji_disabled_home_deck",
+    "queue.kanji_group_not_split", "queue.kanji_backfill", "queue.kanji_exemptions_on", "queue.kanji_exemptions_off",
 ]
 RETIRED = ["queue.session_cap_more_available"]  # ADR-037: no session cap
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.

@@ -21,6 +21,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
+from kotobaya_client.models.deck_progress import DeckProgress
 from kotobaya_client.models.deck_settings import DeckSettings
 from kotobaya_client.models.deck_type import DeckType
 from typing import Optional, Set
@@ -44,12 +45,13 @@ class Deck(BaseModel):
     name: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Display name (not unique).")
     new_cards_per_day: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(description="Per-deck daily new-card limit; null = only the global limit.")
     priority: StrictInt = Field(description="New cards are drawn from enabled decks in ascending `(priority, id)`.")
+    progress: Optional[DeckProgress] = Field(default=None, description="ADR-041 (additive). \"N of M words learned (P%)\", computed at request time by the shared core `DeckProgress.count` (contract: `core/.../contracts/decks/DeckProgress.kt`) so the server and the phone's local API agree. Null for smart decks (no items) and for a tombstoned deck (`deleted_at` non-null). Sent on every `Deck` (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted. ")
     query: Optional[StrictStr] = Field(description="Set iff `type` is `smart` - the saved card search string.")
     reviews_per_day: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(description="Per-deck daily review limit; null = only the global limit.")
     settings: DeckSettings
     type: DeckType
     updated_at: datetime = Field(description="Last change.")
-    __properties: ClassVar[List[str]] = ["content_blob_hash", "content_version", "created_at", "deleted_at", "enabled", "id", "item_count", "language", "list_key", "media_id", "name", "new_cards_per_day", "priority", "query", "reviews_per_day", "settings", "type", "updated_at"]
+    __properties: ClassVar[List[str]] = ["content_blob_hash", "content_version", "created_at", "deleted_at", "enabled", "id", "item_count", "language", "list_key", "media_id", "name", "new_cards_per_day", "priority", "progress", "query", "reviews_per_day", "settings", "type", "updated_at"]
 
     @field_validator('content_blob_hash', mode="before")
     def content_blob_hash_validate_regular_expression(cls, value):
@@ -117,6 +119,9 @@ class Deck(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of progress
+        if self.progress:
+            _dict['progress'] = self.progress.to_dict()
         # override the default output from pydantic by calling `to_dict()` of settings
         if self.settings:
             _dict['settings'] = self.settings.to_dict()
@@ -144,6 +149,11 @@ class Deck(BaseModel):
         # and model_fields_set contains the field
         if self.new_cards_per_day is None and "new_cards_per_day" in self.model_fields_set:
             _dict['new_cards_per_day'] = None
+
+        # set to None if progress (nullable) is None
+        # and model_fields_set contains the field
+        if self.progress is None and "progress" in self.model_fields_set:
+            _dict['progress'] = None
 
         # set to None if query (nullable) is None
         # and model_fields_set contains the field
@@ -180,6 +190,7 @@ class Deck(BaseModel):
             "name": obj.get("name"),
             "new_cards_per_day": obj.get("new_cards_per_day"),
             "priority": obj.get("priority"),
+            "progress": DeckProgress.from_dict(obj["progress"]) if obj.get("progress") is not None else None,
             "query": obj.get("query"),
             "reviews_per_day": obj.get("reviews_per_day"),
             "settings": DeckSettings.from_dict(obj["settings"]) if obj.get("settings") is not None else None,

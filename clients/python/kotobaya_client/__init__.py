@@ -111,6 +111,7 @@ __all__ = [
     "DeckListCatalogue",
     "DeckListCatalogueEntry",
     "DeckPatch",
+    "DeckProgress",
     "DeckSettings",
     "DeckType",
     "DeckUpdatedSchema",
@@ -208,6 +209,8 @@ __all__ = [
     "JpdbVocabResolutionResult",
     "Kanji",
     "KanjiExample",
+    "KanjiPart",
+    "KanjiPartReading",
     "KanjiWord",
     "KanjiWordDeck",
     "KanjiWordPage",
@@ -436,6 +439,7 @@ from kotobaya_client.models.deck_list import DeckList as DeckList
 from kotobaya_client.models.deck_list_catalogue import DeckListCatalogue as DeckListCatalogue
 from kotobaya_client.models.deck_list_catalogue_entry import DeckListCatalogueEntry as DeckListCatalogueEntry
 from kotobaya_client.models.deck_patch import DeckPatch as DeckPatch
+from kotobaya_client.models.deck_progress import DeckProgress as DeckProgress
 from kotobaya_client.models.deck_settings import DeckSettings as DeckSettings
 from kotobaya_client.models.deck_type import DeckType as DeckType
 from kotobaya_client.models.deck_updated_schema import DeckUpdatedSchema as DeckUpdatedSchema
@@ -533,6 +537,8 @@ from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolution
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult as JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji as Kanji
 from kotobaya_client.models.kanji_example import KanjiExample as KanjiExample
+from kotobaya_client.models.kanji_part import KanjiPart as KanjiPart
+from kotobaya_client.models.kanji_part_reading import KanjiPartReading as KanjiPartReading
 from kotobaya_client.models.kanji_word import KanjiWord as KanjiWord
 from kotobaya_client.models.kanji_word_deck import KanjiWordDeck as KanjiWordDeck
 from kotobaya_client.models.kanji_word_page import KanjiWordPage as KanjiWordPage

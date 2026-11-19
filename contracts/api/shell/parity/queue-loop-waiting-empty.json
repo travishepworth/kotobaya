@@ -157,7 +157,8 @@
               "today": 2,
               "goal": 20,
               "available": false
-            }
+            },
+            "until_stop": 2
           },
           "/items": [],
           "/more_available": false,
@@ -200,7 +201,8 @@
               "today": 2,
               "goal": 20,
               "available": false
-            }
+            },
+            "until_stop": 2
           },
           "/items": [],
           "/counts": {
@@ -247,7 +249,8 @@
               "today": 2,
               "goal": 20,
               "available": false
-            }
+            },
+            "until_stop": 2
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010"
         },
@@ -329,7 +332,8 @@
               "today": 2,
               "goal": 20,
               "available": false
-            }
+            },
+            "until_stop": 0
           },
           "/items": [],
           "/counts": {
@@ -379,7 +383,8 @@
               "today": 2,
               "goal": 20,
               "available": false
-            }
+            },
+            "until_stop": 0
           },
           "/items": []
         }

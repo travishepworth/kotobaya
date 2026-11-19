@@ -41,7 +41,8 @@ public data class NoteTypeInfo(
 /**
  * Decides which cards a note gets (SYNC.md 4 "A new note's cards are separate `card.created` ops …
  * one per template with `default = true`, unless the deck setting `card_kinds` says otherwise") and
- * which kanji notes to add for a word (deck setting `add_kanji`). Pure; the caller mints the ops
+ * which kanji notes to add for a word (since ADR-040 for every word drawn by the queue, whatever
+ * the deck setting `add_kanji` says; contracts/core README "C-27"). Pure; the caller mints the ops
  * (`note.created`, then one `card.created` per returned kind, in the returned order).
  */
 public interface CardGenerator {
@@ -92,11 +93,22 @@ public interface CardGenerator {
     public fun kanjiOf(expression: String): List<String>
 
     /**
-     * Kanji notes to create for a new vocab note when the deck's `add_kanji` is not `off`:
-     * `kanjiOf(expression)` minus [existingKanji] (literals that already have a live kanji note),
-     * in the same order. The caller creates each as a kanji note (`origin = auto_kanji`,
-     * `kanji_literal` = the literal) with [kindsForNewNote] of the kanji note type, **before** the
-     * vocab note's ops. Empty when [mode] is `off`.
+     * Kanji notes to create for a word: `kanjiOf(expression)` minus [existingKanji], in the same
+     * order. Empty when [mode] is `off`.
+     *
+     * **ADR-040 / ADR-042 use** (the queue's materialization, README "C-27" step A): the caller
+     * passes [AddKanjiMode.BEFORE] always (the deck's stored `add_kanji` is no longer consulted)
+     * and puts into [existingKanji] every literal that must **not** be created: those with a live
+     * kanji note, those with a user-deleted kanji note (never re-created), and every kanji of the
+     * expression that the word does not require (`KanjiRequirement.evaluate(...).learnableKanji`
+     * does not contain it). The result is then exactly the literals of
+     * `QueueCandidate.missingKanji` / `PendingEntry.missingKanji` before the "would get a card"
+     * filter. The caller creates each as a kanji note (`origin = auto_kanji`, `kanji_literal` =
+     * the literal) with [kindsForNewNote] of the kanji note type, **before** the vocab note's ops.
+     * `createNote` (API and local) still creates no kanji notes: they are minted when the queue
+     * draws the word.
+     *
+     * Example: `kanjiToAdd("学校", setOf("学"), BEFORE)` → `["校"]`; `kanjiToAdd("学校", emptySet(), OFF)` → `[]`.
      */
     public fun kanjiToAdd(
         expression: String,

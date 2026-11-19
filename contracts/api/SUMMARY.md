@@ -770,3 +770,40 @@ checks listed at the top of that file, including negative self-tests).
 
 Known follow-ups outside this ticket's paths: `fixtures/shell-parity/golden/queue-session-cap-more-available.json`
 is orphaned (LOOP-SRV deletes it when re-recording); `web` reads `counts` / `more_available` until LOOP-WEB.
+
+## C-28 changes (ADR-038..042; all additive)
+
+What was decided:
+- `ReviewQueue.loop.until_stop` (integer): answers left until the stop screen; the review progress
+  bar is `done / (done + until_stop)`. Not in `required` only so that old servers stay valid;
+  clients fall back to `ready.total` when it is absent.
+- Keep going lasts one review visit (client rule C2 rewritten): held in memory, never stored;
+  a new visit, a restart, a day change or 10 idle minutes end it.
+- Kanji first: `getReviewQueue` now also creates the missing kanji notes of the words it draws
+  (same op types as before, `note.created` with origin `auto_kanji` and `card.created`), for every
+  deck and for words in no deck. `to_materialize` counts them too. `DeckSettings.add_kanji` is
+  deprecated: stored and returned, not read.
+- `QueueItem.front_furigana` (boolean) and `QueueItem.kanji_parts[]` (`KanjiPart`: literal,
+  keyword, meanings, on, kun, `used_reading` = `{type, reading, kana}` or null).
+- `Deck.progress` = `{learned, total, percent}` or null (smart and deleted decks).
+- `getDeckCoverage` **stays proxied** in the Android shell. The "N of M learned" line comes from
+  `Deck.progress` and works offline; the raw coverage of media decks needs the server.
+- No new operation, table or op type; the table, op and operation cross-check is unchanged.
+
+Alternatives rejected:
+- `used_reading` as a plain string. An object also carries the kana the word really uses (がっ for
+  ガク), which the tile shows, and says whether it is an on or a kun reading.
+- Making `getDeckCoverage` local. It needs per-segment data, the difficulty curve and the token
+  classes, none of which is on the phone; it would be a second coverage implementation.
+- A new endpoint for progress. It belongs to the deck and is needed wherever a deck is listed.
+- Bumping the shell's `LOCAL_API_VERSION`. Every new field has a fallback, so an older shell with
+  a newer web bundle still works (no bar change, no tiles, no progress line).
+
+Three choices most worth a second look:
+1. `until_stop` includes learning cards that are due later today, so at the "done for today"
+   screen it can be above zero (those cards will come back). It follows ADR-038's formula.
+2. With keep going, `until_stop` depends on the request's `limit` (the batch). It is the only
+   loop number that does.
+3. The older parity scenarios were moved to kana-only words so that kanji-first does not change
+   what they test. Kanji behaviour is tested only by the six new scenarios. The ADR-042 scenario
+   uses 寿司, 昨日, 鱈 and 鱈子 because 海老, 林檎, 薔薇 and 今日 are not in the fixture dictionary.

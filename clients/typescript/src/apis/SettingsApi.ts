@@ -126,7 +126,7 @@ export class SettingsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Server emits one `settings.set` op per key in `values`, in ascending key order, all in one transaction. A JSON `null` value resets the key to its default (the row is kept with value `null` so the reset wins against older writes). Keys must match `^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$`. Values of well-known keys are validated against the types in SCHEMA.md section 6 (`422` with `pointer` `/values/<key>`); values of unknown keys are accepted as any JSON. An empty `values` object is `422`. The response is the full list as `GET /settings` returns it after the change. 
+     * Server emits one `settings.set` op per key in `values`, in ascending key order, all in one transaction. A JSON `null` value resets the key to its default (the row is kept with value `null` so the reset wins against older writes). Keys must match `^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$`. Values of well-known keys are validated against the types in SCHEMA.md section 6 (`422` with `pointer` `/values/<key>`; e.g. `cards.kanji_exemptions`, bool, ADR-042); values of unknown keys are accepted as any JSON. An empty `values` object is `422`. The response is the full list as `GET /settings` returns it after the change. 
      * Set one or more settings.
      */
     async updateSettingsRaw(requestParameters: UpdateSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SettingList>> {
@@ -137,7 +137,7 @@ export class SettingsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Server emits one `settings.set` op per key in `values`, in ascending key order, all in one transaction. A JSON `null` value resets the key to its default (the row is kept with value `null` so the reset wins against older writes). Keys must match `^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$`. Values of well-known keys are validated against the types in SCHEMA.md section 6 (`422` with `pointer` `/values/<key>`); values of unknown keys are accepted as any JSON. An empty `values` object is `422`. The response is the full list as `GET /settings` returns it after the change. 
+     * Server emits one `settings.set` op per key in `values`, in ascending key order, all in one transaction. A JSON `null` value resets the key to its default (the row is kept with value `null` so the reset wins against older writes). Keys must match `^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$`. Values of well-known keys are validated against the types in SCHEMA.md section 6 (`422` with `pointer` `/values/<key>`; e.g. `cards.kanji_exemptions`, bool, ADR-042); values of unknown keys are accepted as any JSON. An empty `values` object is `422`. The response is the full list as `GET /settings` returns it after the change. 
      * Set one or more settings.
      */
     async updateSettings(requestParameters: UpdateSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SettingList> {

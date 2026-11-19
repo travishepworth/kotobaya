@@ -238,6 +238,8 @@ public class JsRenderInput(
     public val kanji: JsKanji? = null,
     /** `RenderOptions.fieldRegions` (C-19); default off = pre-C-19 output. */
     public val fieldRegions: Boolean = false,
+    /** `RenderInput.frontFurigana` (ADR-042); the web passes `QueueItem.front_furigana` (absent = false). */
+    public val frontFurigana: Boolean = false,
 )
 
 /** `RenderedField` (C-19). */

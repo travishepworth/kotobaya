@@ -150,6 +150,7 @@ class TestQueueItem(unittest.TestCase):
                         ], 
                     seq = 1, 
                     status = null, ),
+                front_furigana = True,
                 grammar_sentence = kotobaya_client.models.grammar_card_sentence.GrammarCardSentence(
                     end_offset = 1, 
                     last_shown_sentence_id = null, 
@@ -197,6 +198,21 @@ class TestQueueItem(unittest.TestCase):
                         reading = '0', 
                         reading_type = 'on', 
                         seq = 1, )
+                    ],
+                kanji_parts = [
+                    kotobaya_client.models.kanji_part.KanjiPart(
+                        keyword = '', 
+                        kun = [
+                            ''
+                            ], 
+                        literal = '0', 
+                        meanings = [
+                            ''
+                            ], 
+                        on = [
+                            ''
+                            ], 
+                        used_reading = null, )
                     ],
                 preview = kotobaya_client.models.schedule_preview.SchedulePreview(
                     again = kotobaya_client.models.schedule_preview_option.SchedulePreviewOption(

@@ -29,7 +29,7 @@ import com.google.gson.annotations.SerializedName
 /**
  * Open settings object of a deck; each key is its own last-writer-wins register. Unknown keys are preserved.
  *
- * @param addKanji Whether adding a vocab card also adds cards for its unlearned kanji.
+ * @param addKanji **Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` \"Kanji first\"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working.
  * @param cardKinds Card kinds to create for notes added from this deck, overriding note-type defaults.
  * @param order New-card order inside the deck. Default `deck_frequency` for media decks, `position` otherwise.
  */
@@ -37,8 +37,9 @@ import com.google.gson.annotations.SerializedName
 
 data class DeckSettings (
 
-    /* Whether adding a vocab card also adds cards for its unlearned kanji. */
+    /* **Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` \"Kanji first\"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working. */
     @SerializedName("add_kanji")
+    @Deprecated(message = "This property is deprecated.")
     val addKanji: DeckSettings.AddKanji? = null,
 
     /* Card kinds to create for notes added from this deck, overriding note-type defaults. */
@@ -52,7 +53,7 @@ data class DeckSettings (
 ) : kotlin.collections.HashMap<String, kotlin.Any>() {
 
     /**
-     * Whether adding a vocab card also adds cards for its unlearned kanji.
+     * **Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` \"Kanji first\"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working.
      *
      * Values: OFF,BEFORE,ALONGSIDE
      */

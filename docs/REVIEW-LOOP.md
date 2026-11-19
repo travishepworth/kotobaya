@@ -23,7 +23,9 @@ confirmed. (3) Keep going per device, not synced, is confirmed. The normative te
 | ready now | ready learning + ready reviews. New cards are NOT part of it (they have the bar). |
 | later today | eligible LEARNING/RELEARNING with `now < dueAt < day.endMs`; `nextDueAt` = their min dueAt. Hint only. |
 | new today / new goal | today's `introducedNew` count / `scheduler.new_per_day`. |
-| keep going | per-request flag (as C-26). Lifts review caps and the new goal; nothing else. |
+| keep going | per-request flag (as C-26). Lifts review caps and the new goal; nothing else. Lasts one review visit (ADR-039, C2). |
+| until stop | ADR-038. Answers left until the stop screen: ready learning + later today + ready reviews + new cards left to the goal (rule 4 `availableToday`, kanji cards included). Each card once. With keep going: ready learning + later today + backlog + the new batch drawn. |
+| kanji unit | ADR-040. A new word together with the new kanji cards of the kanji it requires, kanji first; one atomic new-card unit of the mix. Required kanji per ADR-042 (`KanjiRequirement`). |
 
 ## 2. Core (contract Kotlin in `core/.../contracts/queue/`, impl `kotobaya.queue.DefaultReviewLoop`)
 ```kotlin
@@ -88,16 +90,20 @@ read-only caller counts as REVIEWING (as C-27).
 - C1 Due first: a client may hold a page, but before showing each next card it MUST refetch if
   `now >= T`, T = min(`loop.later_today.next_due_at` of the last response, `due_at` of every card it answered
   since that left the card in learning/relearning). So a card that came due is the very next card.
-- C2 Keep going is persisted per client for the study day: store the `study_day` it was started in
-  (web/shell SPA: `localStorage["kotobaya.keepGoingDay"]`; CLI daemon: its state file; native widget needs
-  none, it shows mode-independent counts). Active iff it equals the latest response's `study_day`; on mismatch
-  drop it and refetch with `keep_going=false`. Home, review and widget all send the persisted value. This
-  replaces ADR-031's "one visit" scope. Not an op, not a setting.
+- C2 Keep going lasts **one review visit** (ADR-039; replaces "persisted for the study day"). A visit starts
+  when the user enters the review screen (CLI: starts a review session) and ends when they leave it, on an app,
+  tab or daemon restart, when `study_day` changes, or after 10 minutes without an answer. The flag lives in the
+  client's memory only: `keep_going=true` on the fetches of the visit after Keep going was pressed; every new
+  visit starts with `false`; Home, status lines, widget and notifications always send `false`. Nothing is
+  persisted (`localStorage["kotobaya.keepGoingDay"]` is deleted where found). So with 40/40 new done and 20
+  reviews due later, coming back serves the 20 reviews and then the `goal_reached` / `done_for_today` screen
+  again before any card over the quota. Not an op, not a setting.
 - C3 Display: the headline ready-now number is always `ready.total`, with or without keep going (same number
   on every client and the widget). The backlog appears only in the backlog line (`backlog.reviews`), shown iff
   `backlog.beyond_limit > 0`, in both modes. Later hint when
   `later_today.count > 0`. New bar `new.today/new.goal` (may exceed the goal after keep going: clamp the
-  bar, show the number).
+  bar, show the number). Review progress bar (ADR-038): `done / (done + loop.until_stop)`, `done` = answers
+  sent in this visit (undo takes one off); the total may grow. `until_stop` absent (older server) -> `ready.total`.
 - C4 Empty `items` -> render by `loop.phase` only; `waiting` schedules one refetch at `next_due_at`
   (existing slack/min-gap rules). New clients never read `counts`, `more_available`, `next_learning_due_at`.
 - C5 Materialization retries (C-27) unchanged: `reviewing` with empty `items` and `to_materialize > 0` -> refetch.
@@ -220,3 +226,39 @@ into reviews-first); a mix for capped keep going (user: backlog first).
    with more new cards than reviews it alternates and the surplus new cards come last.
 2. Keep going is per client (pressing it on the phone does not switch the widget); counts stay identical.
 3. `done_for_today` vs `goal_reached` chosen by the setting, not by which cap bound (B7).
+
+## 13. Amendments 2026-11-19 (ADR-038..042, ticket C-28)
+The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`, `KanjiRequirement.kt`, openapi
+`getReviewQueue`); this section lists what changed against sections 1-12.
+
+- **ADR-038 `until_stop`.** New `LoopState.untilStop` / `loop.until_stop` (vocabulary above). It is the third
+  field, with `phase` and `keep_going`, that depends on keep going (and then on `limit`); everything else stays
+  mode-independent. A1 -> 66; B3 -> 0; B4 (batch 10) -> 145; goal 40 with 10 introduced, 30 due, 5 learning on a
+  timer -> 65. At a stop screen it equals `later_today.count`.
+- **ADR-039 keep going per visit.** C2 above. Section 2's "persisted for the study day", section 7's C2 note and
+  section 12 item 2 are superseded: there is no persisted state at all.
+- **ADR-040 kanji first.** Rule 4: every drawing source draws a new word as a unit `[kanji..., word]`; the
+  add_kanji modes and `scheduler.kanji_before_vocab` are deprecated and ignored; kanji cards join whatever their
+  home source; started / suspended / buried / user-deleted kanji do not block; missing kanji notes are minted in
+  the materialize path (`ReviewQueue.kanjiToMaterialize`, step A of README "C-27") and the word is withheld
+  until they exist; backfill cards (new kanji of words already studied) are drawn before every source turn.
+  Rule 5: the mix works on units and never splits one; "open group first" continues a started unit after a
+  rebuild (stateless: the last card introduced today is a kanji a waiting word requires and no review was
+  answered since). Section 2's edge case "39/40 and only a 3-card add_kanji group" now applies to every word
+  with two new kanji. Known limit: a unit larger than `new_per_day` is only reachable through Keep going.
+- **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
+  `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
+  none has a furigana front (`QueueItem.front_furigana`).
+- **ADR-041** is outside the loop: `Deck.progress`, `QueueItem.kanji_parts`.
+- **Parity (section 9).** New scenarios `queue-until-stop`, `queue-kanji-first-deckless`,
+  `queue-kanji-disabled-home-deck`, `queue-kanji-group-not-split`, `queue-kanji-backfill`,
+  `queue-kanji-exemptions`. The older queue scenarios now use kana-only entries so that ADR-040 does not change
+  them; whole-`/loop` expectations gained `until_stop`. Every golden with `getReviewQueue`, `listDecks` or
+  `getDeck` is re-recorded by SRV-28.
+- **Tests (section 10).** contracts/core README "ADR-038..042" lists them; the web C2 tests become "keep going
+  ends with the visit / on re-entry / after 10 idle minutes / on a day change" and the `keepGoingDay`
+  persistence tests are replaced.
+- **Rejected.** A hold that keeps a word back until its kanji are learned (user chose "same session");
+  splitting a unit at the goal's edge (the user sees a kanji without its word); persisted "open group" session
+  state (the rebuild must stay a pure function of the data); counting a new card as two answers in
+  `until_stop`; minting kanji notes for every word already studied (thousands of new cards at once).

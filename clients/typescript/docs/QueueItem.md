@@ -11,10 +11,12 @@ Name | Type
 `deckCount` | number
 `decks` | [Array&lt;QueueItemDeck&gt;](QueueItemDeck.md)
 `entry` | [DictEntry](DictEntry.md)
+`frontFurigana` | boolean
 `grammarSentence` | [GrammarCardSentence](GrammarCardSentence.md)
 `isNew` | boolean
 `kanji` | [Kanji](Kanji.md)
 `kanjiExamples` | [Array&lt;KanjiExample&gt;](KanjiExample.md)
+`kanjiParts` | [Array&lt;KanjiPart&gt;](KanjiPart.md)
 `preview` | [SchedulePreview](SchedulePreview.md)
 `reviewType` | string
 `sentence` | [Sentence](Sentence.md)
@@ -31,10 +33,12 @@ const example = {
   "deckCount": null,
   "decks": null,
   "entry": null,
+  "frontFurigana": null,
   "grammarSentence": null,
   "isNew": null,
   "kanji": null,
   "kanjiExamples": null,
+  "kanjiParts": null,
   "preview": null,
   "reviewType": null,
   "sentence": null,

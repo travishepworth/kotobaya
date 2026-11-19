@@ -6,16 +6,16 @@
   ],
   "narrative": [
     "Entries 9999997-9999999 are in no dictionary (server: no ref.dict_entry row; shell: not in the installed scope-all package, sidecar cache empty, offline).",
-    "Note 1 references the missing entry 9999999 and has a new meaning card; note 2 references an existing entry. A user deck holds the existing entry 1000220 and the missing entry 9999998, both without notes.",
-    "Step 0: the fetch materializes 1000220 only; 9999998 is skipped and not counted (to_materialize 0). Every live card is answered, the missing-entry one with entry null; nothing is an error.",
+    "Note 1 references the missing entry 9999999 and has a new meaning card; note 2 references an existing entry. A user deck holds the existing entry 1001010 and the missing entry 9999998, both without notes.",
+    "Step 0: the fetch materializes 1001010 only; 9999998 is skipped and not counted (to_materialize 0). Every live card is answered, the missing-entry one with entry null; nothing is an error.",
     "Step 1: createNote for the missing entry 9999997 is 422 at /entry_seq (not_found); nothing is minted.",
     "Step 2: the same fetch again: same counts, nothing more materialized."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
   "dict_entries": [
-    1000220,
-    1000440
+    1001010,
+    1001150
   ],
   "settings": {},
   "seed": {
@@ -60,7 +60,7 @@
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000002",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
-          "entry_seq": 1000440
+          "entry_seq": 1001150
         }
       },
       {
@@ -96,12 +96,12 @@
         "op_type": "deck.item_put",
         "op_version": 1,
         "entity_type": "deck_item",
-        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000220",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1001010",
         "device_id": "01931f3e-0000-7000-8000-0000000000a1",
         "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
         "payload": {
           "deck_id": "0193a1b2-0004-7000-8000-000000000001",
-          "item_key": "e:1000220",
+          "item_key": "e:1001010",
           "position": 1024
         }
       },

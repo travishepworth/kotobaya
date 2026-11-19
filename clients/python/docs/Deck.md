@@ -19,6 +19,7 @@ Name | Type | Description | Notes
 **name** | **str** | Display name (not unique). | 
 **new_cards_per_day** | **int** | Per-deck daily new-card limit; null &#x3D; only the global limit. | 
 **priority** | **int** | New cards are drawn from enabled decks in ascending &#x60;(priority, id)&#x60;. | 
+**progress** | [**DeckProgress**](DeckProgress.md) | ADR-041 (additive). \&quot;N of M words learned (P%)\&quot;, computed at request time by the shared core &#x60;DeckProgress.count&#x60; (contract: &#x60;core/.../contracts/decks/DeckProgress.kt&#x60;) so the server and the phone&#39;s local API agree. Null for smart decks (no items) and for a tombstoned deck (&#x60;deleted_at&#x60; non-null). Sent on every &#x60;Deck&#x60; (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted.  | [optional] 
 **query** | **str** | Set iff &#x60;type&#x60; is &#x60;smart&#x60; - the saved card search string. | 
 **reviews_per_day** | **int** | Per-deck daily review limit; null &#x3D; only the global limit. | 
 **settings** | [**DeckSettings**](DeckSettings.md) |  | 

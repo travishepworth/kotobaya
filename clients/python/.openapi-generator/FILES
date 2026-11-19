@@ -69,6 +69,7 @@ docs/DeckList.md
 docs/DeckListCatalogue.md
 docs/DeckListCatalogueEntry.md
 docs/DeckPatch.md
+docs/DeckProgress.md
 docs/DeckSettings.md
 docs/DeckType.md
 docs/DeckUpdatedSchema.md
@@ -173,6 +174,8 @@ docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
 docs/KanjiExample.md
+docs/KanjiPart.md
+docs/KanjiPartReading.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -405,6 +408,7 @@ kotobaya_client/models/deck_list.py
 kotobaya_client/models/deck_list_catalogue.py
 kotobaya_client/models/deck_list_catalogue_entry.py
 kotobaya_client/models/deck_patch.py
+kotobaya_client/models/deck_progress.py
 kotobaya_client/models/deck_settings.py
 kotobaya_client/models/deck_type.py
 kotobaya_client/models/deck_updated_schema.py
@@ -502,6 +506,8 @@ kotobaya_client/models/jpdb_vocab_resolution_put.py
 kotobaya_client/models/jpdb_vocab_resolution_result.py
 kotobaya_client/models/kanji.py
 kotobaya_client/models/kanji_example.py
+kotobaya_client/models/kanji_part.py
+kotobaya_client/models/kanji_part_reading.py
 kotobaya_client/models/kanji_word.py
 kotobaya_client/models/kanji_word_deck.py
 kotobaya_client/models/kanji_word_page.py
@@ -703,6 +709,7 @@ test/test_deck_list.py
 test/test_deck_list_catalogue.py
 test/test_deck_list_catalogue_entry.py
 test/test_deck_patch.py
+test/test_deck_progress.py
 test/test_deck_settings.py
 test/test_deck_type.py
 test/test_deck_updated_schema.py
@@ -807,6 +814,8 @@ test/test_jpdb_vocab_resolution_put.py
 test/test_jpdb_vocab_resolution_result.py
 test/test_kanji.py
 test/test_kanji_example.py
+test/test_kanji_part.py
+test/test_kanji_part_reading.py
 test/test_kanji_word.py
 test/test_kanji_word_deck.py
 test/test_kanji_word_page.py

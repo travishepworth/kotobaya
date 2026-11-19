@@ -27,22 +27,25 @@ public data class StudyDay(
     public val endMs: InstantMs,
 )
 
-/** Deck setting `add_kanji` (`deck.settings`, SCHEMA comment on `deck.settings`). */
+/**
+ * Deck setting `add_kanji` (`deck.settings`, SCHEMA comment on `deck.settings`).
+ *
+ * **Deprecated (ADR-040): no longer read by [QueueBuilder].** Kanji cards come before their first
+ * word for every drawing source (rule 4 "Kanji first"), whatever a deck stores here, and kanji
+ * notes are minted for every drawn word (contracts/core README "C-27"). The enum stays so stored
+ * values remain readable and existing callers compile; `off` and `alongside` no longer opt out.
+ */
 public enum class AddKanjiMode(
     /** Wire value. */
     public val wire: String,
 ) {
-    /**
-     * No automatic kanji cards / no ordering constraint. For ordering, a deck without the key
-     * resolves to [BEFORE] if setting `scheduler.kanji_before_vocab` is `true`, else to this
-     * (SCHEMA.md 6.2; C-7); card creation treats an absent key as this.
-     */
+    /** Stored value `off`. Before ADR-040: no automatic kanji cards, no ordering constraint. Now without effect. */
     OFF("off"),
 
-    /** New kanji cards for a word's unknown kanji are introduced immediately **before** the word's new cards. */
+    /** Stored value `before`. What every source now does: new kanji cards immediately before the word's new card. */
     BEFORE("before"),
 
-    /** New kanji cards are introduced immediately **after** the word's new cards. */
+    /** Stored value `alongside`. Before ADR-040: kanji cards after the word's. Now without effect (kanji come first). */
     ALONGSIDE("alongside"),
 }
 
@@ -59,11 +62,9 @@ public data class QueueDeck(
     /** `deck.reviews_per_day`; null = only the global limit. Ignored when `QueueLimits.reviewsUnlimited` (ADR-034). */
     public val reviewsPerDay: Int?,
     /**
-     * Effective `add_kanji` ordering: `deck.settings.add_kanji` if **present**, i.e. exactly the JSON
-     * string `"off"`, `"before"` or `"alongside"` (an explicit value, including `off`, always wins).
-     * Anything else (missing, null, other strings such as `"Before"`, non-strings) is absent and is
-     * resolved from `scheduler.kanji_before_vocab` as [AddKanjiMode.OFF] documents. The platform
-     * loader resolves it before [QueueBuilder.build] (SCHEMA.md 6.2).
+     * **Deprecated (ADR-040): ignored by the builder.** Was the deck's effective `add_kanji`
+     * ordering. Kept so existing callers compile; any value gives the same build. New loaders pass
+     * [AddKanjiMode.OFF] and do not resolve `scheduler.kanji_before_vocab`.
      */
     public val addKanji: AddKanjiMode,
 )
@@ -115,6 +116,59 @@ public data class QueueCandidate(
     public val kanjiLiteral: String?,
     /** For a vocab note: the distinct kanji of its expression in order of first appearance; else empty. */
     public val expressionKanji: List<String>,
+    /**
+     * ADR-042 (additive): for a vocab note, the kanji this word **requires**:
+     * `KanjiRequirement.evaluate(...).learnableKanji` for the note's displayed form (a sub-list of
+     * [expressionKanji], same order; empty for a word-level exempt word and for a word without a
+     * learnable kanji). Only these kanji join the word's group, block it, are minted for it and are
+     * backfilled because of it (rule 4 "Kanji first"). `null` = the loader does not know (a loader
+     * older than ADR-042): the builder then uses [expressionKanji], which is the behaviour with
+     * `cards.kanji_exemptions` off. Loaders implementing ADR-042 always pass a list, for every card
+     * of the note, in every state. Ignored for non-vocab notes. Example (setting on): 昨日 → `["昨",
+     * "日"]`; 寿司 → `[]`; 鱈子 → `["子"]`.
+     */
+    public val requiredKanji: List<String>? = null,
+    /**
+     * ADR-040 (additive): for a vocab note, the required kanji that have **no kanji note yet** and
+     * that materialization would create, in required order (contracts/core README "C-27", step
+     * A): a literal of the required kanji such that no live kanji note has that `kanji_literal`,
+     * no user-deleted kanji note has it (`deleted_at` set and `merged_into_id` null: a kanji note
+     * the user deleted is never re-created) and minting would give it at least one card. The same
+     * value on every card of the note. The builder reads it only on NEW vocab cards it draws.
+     * Empty = nothing to mint. Example: 学校 with a live note for 学 only → `[MissingKanji("校", 1)]`.
+     */
+    public val missingKanji: List<MissingKanji> = emptyList(),
+    /**
+     * ADR-040 (additive): **companion** of a scoped build. A loader that restricts candidates to a
+     * scope (the API's `deck_id`) MUST also pass every live card of every live kanji note whose
+     * `kanji_literal` is a required kanji of a passed vocab candidate or pending entry and that is
+     * not itself in scope, with `companion = true` (real memberships, real state). Otherwise the
+     * words of that deck would be served without their kanji. A companion: its NEW cards are drawn
+     * only through a group or backfill (rule 4), never on a turn of their own; its
+     * LEARNING/RELEARNING cards are served and counted like any other (rule 2: a kanji introduced
+     * in this session comes back for its steps); its REVIEW cards are never taken or counted
+     * (rule 3: out of scope). An unscoped loader passes false for every card. Default false.
+     */
+    public val companion: Boolean = false,
+)
+
+/**
+ * ADR-040: one kanji that materializing a word would create a kanji note for
+ * ([QueueCandidate.missingKanji], [PendingEntry.missingKanji]).
+ *
+ * Example: `MissingKanji(literal = "校", newCards = 1)`.
+ */
+public data class MissingKanji(
+    /** The kanji, one code point (`CardGenerator.kanjiOf` element). */
+    public val literal: String,
+    /**
+     * How many NEW cards of the minted note join the word's group: the number of card kinds step A
+     * of the materialization creates for it (`kindsForNewNote(kanji type, null)` minus kinds whose
+     * front would render empty), counting at most 1 when `scheduler.bury_siblings` (rule 1: one
+     * NEW card per note in a build). `>= 1` (a literal that would get no card is not listed);
+     * values `< 1` count as 1. With the built-in kanji type: 1.
+     */
+    public val newCards: Int,
 )
 
 /** One review answered earlier in the current study day (not undone). */
@@ -157,17 +211,24 @@ public data class PendingEntry(
      * C-27 (additive): the distinct kanji of the entry's headword in order of first appearance
      * (`CardGenerator.kanjiOf`), i.e. the `QueueCandidate.expressionKanji` its vocab card will have
      * once materialized. Empty = none or unknown (then no existing kanji card joins its group).
+     * Since ADR-042 the group uses [requiredKanji] when that is non-null.
      */
     public val expressionKanji: List<String> = emptyList(),
     /**
-     * C-27 (additive): how many NEW kanji cards materializing this entry creates and that therefore
-     * join its add_kanji group although they do not exist yet: over the kanji notes the
-     * materialization creates (`CardGenerator.kanjiToAdd`, only when the deck's `add_kanji` is
-     * **present** and not `off`, SCHEMA.md 6.2; contracts/core README "C-27"), the number of card
-     * kinds each gets, counting at most 1 per note when `burySiblings`. 0 otherwise. Values `< 0`
-     * count as 0.
+     * **Deprecated (ADR-040): ignored by the builder**, replaced by [missingKanji] (which names
+     * the kanji, so two words that share a missing kanji count it once). Was the number of NEW
+     * kanji cards materializing this entry creates. Kept so existing callers compile; any value
+     * gives the same build. New loaders pass 0.
      */
     public val newKanjiCards: Int = 0,
+    /** ADR-042 (additive): as [QueueCandidate.requiredKanji], for the entry's headword. `null` = use [expressionKanji]. */
+    public val requiredKanji: List<String>? = null,
+    /**
+     * ADR-040 (additive): as [QueueCandidate.missingKanji], for the entry's headword: the required
+     * kanji without a kanji note that materializing this entry mints first. Loaders always pass
+     * it, whatever the deck's `add_kanji` says.
+     */
+    public val missingKanji: List<MissingKanji> = emptyList(),
 )
 
 /** Daily limits and per-build flags (settings `scheduler.*`, SCHEMA.md 6). */
@@ -201,15 +262,15 @@ public data class QueueLimits(
      * setting, not an op). When true the builder lifts every daily cap ([reviewsPerDay],
      * [newPerDay], `QueueDeck.reviewsPerDay`, `QueueDeck.newPerDay`), bounds new cards per build
      * by [keepGoingNewBatch] alone and puts reviews before new cards; every other rule is unchanged
-     * ([QueueBuilder] rule 6). Default false = the normal build. Scope (ADR-037): per client,
-     * persisted by that client for the study day it was started in (rule 6 "Scope").
+     * ([QueueBuilder] rule 6). Default false = the normal build. Scope (ADR-039): one review
+     * visit of one client; never persisted (rule 6 "Scope").
      */
     public val keepGoing: Boolean = false,
     /**
      * The **batch**: how many new cards one build draws at most, in **both** modes (ADR-037; before
      * it, only when [keepGoing]). Values `< 1` count as 1. Normal build: new groups are drawn while
      * fewer than the batch are drawn and the group fits the day's remaining goal (rule 4). Keep
-     * going: the batch is the whole budget (rule 6). An add_kanji group may overshoot it. It bounds
+     * going: the batch is the whole budget (rule 6). A kanji group may overshoot it. It bounds
      * `items` and `toMaterialize` of one build only: callers rebuild after every answer, so the
      * stream continues until the goal (normal) or the pool (keep going) is exhausted. The server
      * passes the request's `limit` (`getStatsSummary`: 20, the default `limit`); a device leaves the
@@ -268,11 +329,9 @@ public data class QueueInput(
      */
     public val decklessPriority: Int = 0,
     /**
-     * `add_kanji` ordering of the **deckless source** (rule 4), which has no deck settings: BEFORE
-     * if setting `scheduler.kanji_before_vocab` is `true`, else OFF (SCHEMA.md 6.2; C-7). The
-     * platform loader resolves it; a missing, null or invalid setting (anything but JSON
-     * `true`/`false`, SCHEMA.md 6.1) means OFF. ALONGSIDE is allowed
-     * and behaves as for a deck.
+     * **Deprecated (ADR-040): ignored by the builder.** Was the `add_kanji` ordering of the
+     * deckless source, from `scheduler.kanji_before_vocab`. Kept so existing callers compile; any
+     * value gives the same build (the deckless source puts kanji first like every source).
      */
     public val decklessAddKanji: AddKanjiMode = AddKanjiMode.OFF,
     /**
@@ -323,16 +382,17 @@ public data class ReviewQueue(
     public val items: List<QueueItem>,
     /**
      * Entries the client should create notes and cards for (origin `deck`; contracts/core README
-     * "C-27"), then rebuild. Bounded by the new limits, each counted as its whole add_kanji group.
+     * "C-27"), then rebuild. Bounded by the new limits, each counted as its whole kanji group.
      */
     public val toMaterialize: List<PendingEntry>,
     /** Earliest `dueAt` of a learning card due later today but outside learn-ahead; null if none. */
     public val nextLearningDueAt: InstantMs?,
     /**
      * C-26 (additive): "done under the limits, but keep going has more". True iff **all** of: the
-     * input's `limits.keepGoing` is false; [items] and [toMaterialize] are both empty; and building
+     * input's `limits.keepGoing` is false; the queue is empty ([items], [toMaterialize] and
+     * [kanjiToMaterialize] all empty); and building
      * the same input with `keepGoing = true` (same [QueueLimits.keepGoingNewBatch]) returns a
-     * non-empty `items` or `toMaterialize`. False in every other case: always for a keep-going
+     * non-empty queue. False in every other case: always for a keep-going
      * build, and whenever the normal queue is non-empty (a learn-ahead item counts). Independent of
      * [nextLearningDueAt]; both may be set.
      *
@@ -342,6 +402,22 @@ public data class ReviewQueue(
      * more, so it no longer means "done for now".
      */
     public val moreAvailable: Boolean = false,
+    /**
+     * ADR-040 (additive): kanji the client should create kanji notes for (origin `auto_kanji`;
+     * contracts/core README "C-27", step A) **before** it materializes [toMaterialize], then
+     * rebuild: the literals of the `missingKanji` of every group this build drew (existing vocab
+     * cards and pending entries alike), distinct, in draw order and inside a group in required
+     * order. A vocab card with a missing kanji is **withheld**: it and the existing kanji cards
+     * of its group are taken and counted but are not in [items] until the kanji exist, so no
+     * client ever shows a word before its kanji. Empty when nothing is missing.
+     *
+     * **Pending materialization** = `toMaterialize.size + kanjiToMaterialize.size` (the API's
+     * `to_materialize`). Wherever this contract says a queue is **non-empty** it means: [items],
+     * [toMaterialize] or `kanjiToMaterialize` is non-empty.
+     * Example: deckless NEW card 学校, no kanji notes → `items = []`, `kanjiToMaterialize = ["学",
+     * "校"]`; after minting, the rebuild gives `items = [学, 校, 学校]`.
+     */
+    public val kanjiToMaterialize: List<String> = emptyList(),
 )
 
 /**
@@ -357,7 +433,8 @@ public data class ReviewQueue(
  *    other rule runs. So a retired card is never served, counted, drawn (new or add_kanji), never
  *    sibling-buries another card (not even through a review answered today, e.g. an offline
  *    review synced later) and does not use up any daily limit; [ReviewQueue.nextLearningDueAt]
- *    and [ReviewQueue.moreAvailable] ignore it. A today review of a card that is not among the
+ *    and [ReviewQueue.moreAvailable] ignore it; it is never a word that makes a kanji "introduced"
+ *    or "started" (rule 4). A today review of a card that is not among the
  *    candidates is kept as before (it cannot be identified as retired; loaders never omit a live
  *    retired card). Pending entries are unaffected: the kinds their materialization creates come
  *    from `CardGenerator.kindsForNewNote`, which never returns a retired kind, and an entry counts
@@ -375,10 +452,12 @@ public data class ReviewQueue(
  *    not buried.
  * 2. **Learning**: eligible LEARNING/RELEARNING cards with `dueAt <= now + learnAheadMs`, ordered
  *    by `(dueAt, cardId)`. Not limited. Those due later but before `day.endMs` set `nextLearningDueAt`.
+ *    Companions ([QueueCandidate.companion]) are included like any other card.
  *    They split into **due learning** (`dueAt <= now`) and **learn-ahead** (`now < dueAt <= now +
  *    learnAheadMs`); rule 5 places the two parts differently (C-22, ADR-023). A null `dueAt` (should
  *    not occur) counts as due learning, sorted first.
- * 3. **Reviews**: eligible REVIEW cards with `dueAt < day.endMs`, ordered by `(dueAt, cardId)`.
+ * 3. **Reviews**: eligible REVIEW cards with `dueAt < day.endMs` that are not companions
+ *    ([QueueCandidate.companion]: out of scope, never taken or counted), ordered by `(dueAt, cardId)`.
  *    The **home deck** of a card is the first of its membership decks in `(priority, id)` order
  *    (enabled or not); null without memberships. A card is taken iff the global remaining
  *    (`reviewsPerDay` − today's `countsAsReview` reviews) and its home deck's remaining
@@ -405,62 +484,112 @@ public data class ReviewQueue(
  *    the same unbounded draw. Example: 12 of 40 introduced, 100 new cards → 28; only 3 new cards
  *    exist → 3; a deck capped at 5 with 2 introduced from it and no other source → 3.
  *    Sources are the **enabled** decks plus one virtual **deckless source** (ADR-006)
- *    holding the NEW cards with **no deck membership at all** (`memberships` empty), ordered by
- *    `(noteCreatedAt, kindOrder, cardId)`, with priority [QueueInput.decklessPriority] and no deck
+ *    holding the NEW cards with **no deck membership at all** (`memberships` empty) that are not
+ *    companions, ordered by `(noteCreatedAt, kanjiLiteral or "", kindOrder, cardId)` (the literal,
+ *    compared by code point, only breaks ties between kanji notes minted in the same millisecond,
+ *    so server and device order them alike), with priority [QueueInput.decklessPriority] and no deck
  *    limit. A NEW card's **home new-source** is the first **enabled** deck of its memberships in
  *    `(priority, id)` order; with no memberships, the deckless source; if it has memberships but all
  *    of their decks are disabled, it has none and **is not introduced** ("a disabled deck supplies no
  *    new cards"). A NEW card is drawn only from its home new-source.
  *    Sources are grouped into **tiers** by priority, ascending; a tier is exhausted (every source
  *    empty or at its limit) before the next starts. Inside a tier, sources take turns round-robin —
- *    decks in ascending `id`, the deckless source last in each round — one **turn** being one card
- *    (together with its add_kanji cards, below) or one pending entry; an exhausted source is skipped.
+ *    decks in ascending `id`, the deckless source last in each round — one **turn** being one
+ *    **unit**: one card together with its kanji group (below), or one pending entry with its
+ *    group; an exhausted source is skipped. A companion NEW card has no turn of its own.
  *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    unless their `wordOverride` is KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED. Cards whose
  *    `wordOverride` is KNOWN are not introduced.
- *    **Pending entries are drawn as the group their card will be** (C-27): an entry E reached by a
- *    source whose add_kanji is BEFORE or ALONGSIDE has the group `1 + |K| + newKanjiCards`, K being
- *    the kanji cards `kanjiGroup` (below) gives for `E.expressionKanji` (as for a vocab card of a
- *    note not yet in the queue) and `newKanjiCards` the cards its materialization creates; with
- *    OFF the group is 1. **Atomic** as for a card: E is drawn iff the group fits the budget (keep
- *    going: budget `>= 1`), else it is skipped for this build and the turn passes. Drawing E
- *    counts 1 against the drawing source's per-deck limit, the whole group against the budget, and
- *    takes the K cards (not shown in this build, each charged to its own home new-source like an
- *    add_kanji card), so the counts are the same before and after E is materialized and rebuilt.
- *    Without this an entry of a two-kanji word with one new card left would be drawn, created and
- *    then never fit (C-27 review).
  *    Per-deck limit (remaining, clamped to `>= 0`): `deck.newPerDay` − today's `introducedNew`
  *    reviews whose card's home new-source is that deck (from [TodayReview.deckIds] and the decks
- *    now) − the cards taken in this build whose home new-source is that deck, **including add_kanji
- *    cards whose home new-source is that deck, whichever source drew them; excluding K cards this
- *    deck drew whose home is elsewhere** (C-8 attempt 3: the same count before and after a rebuild).
- *    **add_kanji** of the drawing source ([QueueDeck.addKanji]; for the deckless source
- *    [QueueInput.decklessAddKanji]; C-8 attempt 2):
- *    - **Group.** With BEFORE or ALONGSIDE, drawing a vocab card V means drawing the **group** of V
- *      and its kanji cards K: the eligible NEW cards of kanji notes whose `kanjiLiteral` is in V's
- *      `expressionKanji` (expression order, then `kindOrder`) that are not yet taken **and have a
- *      home new-source** (any source, not necessarily the drawing one; per ADR-006 a kanji card
- *      whose decks are all disabled is never introduced, not even this way). Group order in the
- *      queue: BEFORE = K then V; ALONGSIDE = V then K.
- *    - **Atomic.** The group is drawn iff V fits the drawing source's per-deck remaining (`>= 1`;
- *      the deckless source has no limit) **and** the whole group (`1 + |K|`) fits the budget (the
- *      day's remaining goal, with fewer than the batch drawn so far). Otherwise **none** of the group is drawn;
- *      V is skipped for this build (not taken) and the turn passes on as for an empty turn.
- *    - **Attribution.** V counts against the drawing source's limit. Each K card counts against
- *      the budget (the day's goal and the batch) and against **its own home new-source's** daily count, never
- *      the drawing source's. Its home deck's remaining may therefore go below zero (clamped to 0
- *      for that deck's own later turns): a kanji card is **never skipped** because its home deck's
- *      limit is used up, so a kanji deck with `newPerDay = 0` still feeds kanji through add_kanji.
- *    - **Same attribution after answering.** [QueueInput.today] counts an answered kanji card
- *      against its home new-source (the per-deck rule above), exactly as in the build that drew it,
- *      so a rebuild neither frees the drawing deck's limit nor double-counts anything.
- *    - **Breaking (C-8 attempt 2)** against T205's tests (`QueueBuilderTest.kt` add_kanji cases):
- *      add_kanji cards no longer count against the drawing deck, and a group that does not fit is
- *      not drawn in part.
+ *    now) − the cards taken in this build whose home new-source is that deck, **including kanji
+ *    cards whose home new-source is that deck, whichever unit took them; excluding kanji cards
+ *    this deck's units took whose home is elsewhere** (C-8 attempt 3: the same count before and
+ *    after a rebuild).
+ *    **Kanji first (ADR-040, ADR-042; replaces the add_kanji modes).** A new vocab card is never
+ *    served before the new kanji cards of the kanji it requires. This holds for **every** drawing
+ *    source: decks whatever their `add_kanji` says, and the deckless source. [QueueDeck.addKanji],
+ *    [QueueInput.decklessAddKanji] and `scheduler.kanji_before_vocab` are not read.
+ *    - **Required kanji** `req(X)` of a vocab card or pending entry X: `X.requiredKanji`, or
+ *      `X.expressionKanji` when that is null (ADR-042: the loader applies `KanjiRequirement`;
+ *      a word-level exempt word and a word without learnable kanji require none). Cards of other
+ *      base types require none.
+ *    - **Started.** A literal L is **started** iff some candidate (after rule 0; eligible or not,
+ *      suspended or not, companion or not) of a kanji note with `kanjiLiteral == L` is in a state
+ *      other than NEW. A started kanji never blocks a word, joins no group and is not backfilled
+ *      ("kanji that already have a learning or review card do not block").
+ *    - **Kanji cards of L**, `kc(L)`: empty if L is started; else the eligible (rule 1) NEW
+ *      candidates of kanji notes with `kanjiLiteral == L` that are not yet taken in this build,
+ *      in `(noteCreatedAt, noteId, kindOrder, cardId)` order, at most one per note if
+ *      `burySiblings`. **Whatever their home new-source**: a kanji card whose decks are all
+ *      disabled, a deckless one and a companion all join (this amends ADR-006 for kanji cards
+ *      pulled by a word; such a card still has no turn of its own). A suspended or manually
+ *      buried kanji card is not eligible, so it neither joins nor blocks.
+ *    - **Unit of a vocab card V** (NEW, eligible, reached on a turn of its home new-source):
+ *      `K` = `kc(L)` for each L of `req(V)` in order; `M` = the elements of `V.missingKanji` whose
+ *      literal is in `req(V)`, has no candidate kanji note in the input (a loader inconsistency
+ *      is ignored) and was not **claimed** by an earlier unit of this build. Size `g = 1 + |K| +
+ *      Σ newCards(M)`. Queue order of the unit: `K` (required order, then `kc` order), then V.
+ *      Kanji always come first; there is no "alongside".
+ *    - **Unit of a pending entry E** (C-27): the same with E in place of V (`req(E)`,
+ *      `E.missingKanji`); the 1 stands for the vocab card its materialization creates. E goes to
+ *      `toMaterialize`, never to `items`.
+ *    - **Atomic.** A unit is drawn iff its vocab card or entry fits the drawing source's per-deck
+ *      remaining (`>= 1`; the deckless source has no limit) **and** the whole unit fits the
+ *      budget (`drawn < batch` and `drawn + g <= dayRemaining`; keep going: `drawn < batch`).
+ *      Otherwise **none** of it is drawn; it is skipped for this build and the turn passes on as
+ *      for an empty turn. Drawing takes V and `K`, claims the literals of `M` (appended to
+ *      [ReviewQueue.kanjiToMaterialize]) and adds `g` to `drawn`.
+ *    - **Withheld.** If V has any element of `missingKanji` in `req(V)` without a candidate
+ *      kanji note (claimed by this unit or by an earlier one), the unit is drawn and counted but
+ *      **none of its cards is an item** of this build (as for an entry): the word must not be
+ *      shown before its kanji exist. After materialization the rebuild shows the unit, with the
+ *      same counts (the minted cards are then in `K`).
+ *    - **Attribution.** V (or E) counts 1 against the drawing source's per-deck limit. Each card
+ *      of `K` and each card to be minted counts against the budget only and, when the kanji card
+ *      has a home new-source that is a deck, against **that** deck's daily count, never the
+ *      drawing source's; a kanji card is never skipped because its home deck's limit is used up
+ *      (that deck's remaining is clamped to 0 for its own later turns). [QueueInput.today] counts
+ *      an answered kanji card the same way, so a rebuild neither frees the drawing deck's limit
+ *      nor double-counts.
+ *    - **Backfill.** Before the first source turn, in both builds: the **backfill cards** are the
+ *      eligible NEW candidates of kanji notes whose literal L is not started and is a required
+ *      kanji of an **introduced** word: a vocab note W with `L in req(W)`, at least one candidate
+ *      of W (after rule 0) in a state other than NEW, and `wordOverride` neither BLACKLISTED nor
+ *      IGNORED. Order `(noteCreatedAt, kanjiLiteral, noteId, kindOrder, cardId)`, at most one per
+ *      note if `burySiblings`. Each is a unit of size 1, drawn while it fits the budget, whatever
+ *      its home new-source and outside tiers, turns and per-deck tests; attribution as for a `K`
+ *      card. So kanji whose words the user already studies come ahead of every other new card.
+ *      Backfill never mints: a missing kanji note is created only for a word that is being drawn.
+ *    - **Own turn.** A NEW kanji card that is neither backfilled nor taken by a unit is an
+ *      ordinary card of its home new-source and is drawn alone on that source's turn (a kanji
+ *      deck studied for itself). That keeps it before any word that requires it.
+ *    Edge cases: two words sharing a new kanji → the first drawn takes it, the second unit is the
+ *    word alone (or with its other kanji); the same kanji twice in a word counts once; a word with
+ *    one started, one new and one missing kanji → `[new kanji, word]` withheld until the missing
+ *    one is minted, then `[new, minted, word]` in required order; `burySiblings` false and a kanji
+ *    note with two NEW kinds → both in `K`; a kanji note the user deleted → not in `missingKanji`,
+ *    the word is drawn without it; a word whose own decks are all disabled is not introduced (as
+ *    before), so it pulls nothing; KNOWN-override words are not introduced and pull nothing; a
+ *    unit larger than `newPerDay` never fits a normal build (keep going draws it: rule 6) —
+ *    a known limit, visible as `goal_reached` / `done_for_today` below the goal.
+ *    Example (goal 20, deckless NEW cards in creation order: たべる (no kanji), 学校, 先生; kanji
+ *    notes: 学 NEW, 先 REVIEW; none for 校, 生): units `[たべる]`, `[学, (校), 学校]` withheld (g = 3,
+ *    claims 校), `[(生), 先生]` withheld (g = 2, claims 生; 先 is started) → `items = [たべる]`,
+ *    `kanjiToMaterialize = [校, 生]`, `drawn = 6`; after minting: `items = [たべる, 学, 校, 学校, 生,
+ *    先生]`, `drawn = 6`.
+ *    Example (39 of 40 introduced, the next unit is `[学, 校, 学校]`): it does not fit the day →
+ *    not drawn; a later single card is drawn instead.
+ *    Example (backfill): 先生 is in REVIEW, kanji notes 先 and 生 are NEW, a new word たべる waits →
+ *    N = `[先, 生, たべる]`.
+ *    **Breaking** against the C-8 / C-27 text: the modes are gone (every source groups, kanji
+ *    first); kanji cards without a home new-source join groups; `PendingEntry.newKanjiCards` is
+ *    replaced by `missingKanji`; existing vocab cards can be withheld.
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
- *    `R` (rule 3 order, most overdue first) and the new cards `N` (rule 4 draw order) in the
- *    **proportional mix**; then the learn-ahead items last (only when `learnAheadMs > 0`, which
+ *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
+ *    is a kanji group or a single card; withheld units and entries have no items and are left
+ *    out) in the **proportional mix**; then the learn-ahead items last (only when `learnAheadMs > 0`, which
  *    Kotobaya never passes; [ReviewLoop] forces 0).
  *    **Proportional mix** (a stride on what **remains**; both modes, `reviewsUnlimited` or not):
  *    new cards are spread evenly over the ready reviews, so both run out at about the same time,
@@ -474,11 +603,26 @@ public data class ReviewQueue(
  *      `T` = the largest `reviewedAt` among today's `introducedNew` reviews (all of today's
  *      `countsAsReview` reviews when nothing was introduced today). All from [QueueInput.today]
  *      after rule 0. `s` = "reviews answered since the last new card".
- *    - Repeat while both `R` and `N` have cards left: the next item is the next **new** card iff
- *      `s * gRem >= rRem` (64-bit), then `s = 0`, `gRem -= 1`; else the next **review**, then
+ *      `last` = the card of today's `introducedNew` review with the greatest `(reviewedAt,
+ *      cardId)`, or none (ADR-040).
+ *    - **Open group first (ADR-040).** Whenever `s == 0` and `last` is a card of a kanji note
+ *      with literal L and some unit left in `N` contains a vocab card V with `L in req(V)`: the
+ *      first such unit in draw order is emitted **now**, all its cards in a row, before any
+ *      review; then `gRem -= its size` and `last` = its last card (`s` stays 0). This is what
+ *      keeps a group together across rebuilds: after the first kanji of `[学, 校, 学校]` is
+ *      answered, the rebuild sees `last = 学` and emits `[校, 学校]` next instead of a review. It
+ *      applies inside one build too (a kanji card emitted alone, by backfill or on its own turn,
+ *      is followed at once by the first waiting word that requires it), so one build and a
+ *      rebuild after every answer agree.
+ *    - Otherwise, while both `R` and `N` have something left: the next item is the next **unit**
+ *      of `N`, all its cards in a row, iff `s * gRem >= rRem` (64-bit), then `s = 0`,
+ *      `gRem -= its size`, `last` = its last card; else the next **review**, then
  *      `s += 1`, `rRem -= 1`.
  *    - When one of the two runs out, the rest of the other follows. (`N` may run out before
  *      `gRem` reaches 0: the batch; the rebuild after the next answer continues the same stride.)
+ *    A unit is **never split by the mix**: no review falls between a kanji card and its word.
+ *    Only a learning card that falls due can come between them (due learning is always first);
+ *    the open-group rule then continues the group right after it.
  *    Properties: a fresh day starts with a review (`s = 0`, `rRem > 0`); right after a new card
  *    the next card is a review if one is left; between two new cards there are at most
  *    `ceil(rRem / gRem)` reviews. The counters advance exactly as the input changes when the
@@ -486,13 +630,18 @@ public data class ReviewQueue(
  *    ready review; a new answer adds a later `introducedNew` row and uses one of
  *    `availableToday`; a learning answer changes none of the three), so the order of one build
  *    equals the order produced by rebuilding after every answer; there is no session state. The
- *    mix does not depend on the batch, on input order or on the caller. Cards of an add_kanji group
- *    stay in rule 4 order but reviews may fall between them. `toMaterialize` entries are not items
+ *    mix does not depend on the batch, on input order or on the caller. Between two new units there
+ *    are at most `ceil(rRem / gRem)` reviews and never two units in a row while a review is left,
+ *    except through the open-group rule. `toMaterialize` entries and withheld units are not items
  *    and take no slot (they are part of `availableToday`); they join `N` after materialization.
  *    Example (nothing done today, R1 R2 R3 R4 ready, `availableToday` 2, new N1 N2):
  *    `R1 R2 N1 R3 N2 R4`. Example (200 ready, 40 available, nothing done): five reviews, a new
  *    card, repeated (`RRRRRN…`); the last four gaps are four reviews and four reviews follow the
- *    40th new card. Example (9 ready, 28 available): `R N R N … R N` nine times, then the
+ *    40th new card. Example (ADR-040; nothing done, R1..R4 ready, `availableToday` 4, units
+ *    `[学, 校, 学校]`, `[たべる]`): `R1 学 校 学校 R2 R3 たべる R4` (`0*4 >= 4` no → R1; `1*4 >= 3` → the
+ *    unit, `s = 0`, `gRem = 1`; `0*1 >= 3` no → R2; `1*1 >= 2` no → R3; `2*1 >= 1` → たべる; R4).
+ *    After R1 and 学 are answered the rebuild gives `校 学校 R2 R3 たべる R4` (open group first:
+ *    `last = 学`, `s = 0`; `availableToday` 3 → `gRem = 1` after the group). Example (9 ready, 28 available): `R N R N … R N` nine times, then the
  *    remaining 19 new cards. Example (cap 2, goal 1, 5 due, 3 new): `R1 N1 R2`.
  *    Loader note: with pending entries, `availableToday` is computed over the entries the loader
  *    passed (the C-27 window), so it can be a lower bound when a deck has more entries than the
@@ -509,12 +658,13 @@ public data class ReviewQueue(
  *    - Rule 4: budget = `max(1, keepGoingNewBatch)` alone; `newPerDay` and today's
  *      `introducedNew` count are ignored (no day test), and no source has a per-deck limit
  *      (`QueueDeck.newPerDay` ignored). Sources, home new-source (a disabled deck still supplies
- *      nothing), tiers, round-robin, in-deck order, pending entries (each still counts 1 against
- *      the budget), KNOWN handling and add_kanji grouping and group order are unchanged.
- *      **Atomic** becomes: a group is drawn iff the budget is `>= 1`; it may overshoot the batch
+ *      nothing on its own turns), tiers, round-robin, in-deck order, pending entries, KNOWN
+ *      handling, backfill, kanji units, withholding and unit order are unchanged.
+ *      **Atomic** becomes: a unit is drawn iff `drawn < batch`; it may overshoot the batch
  *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
- *    - Rule 5: **no mix**. The order is due learning, then all of `R` (rule 3 order, most overdue
- *      first), then all of `N` (rule 4 order), then learn-ahead. Reviews left over past the caps
+ *    - Rule 5: **no mix**. The order is due learning, then the open group if there is one (rule
+ *      5 "Open group first", with the same `s == 0` test: only right after a new card), then all of `R` (rule 3 order,
+ *      most overdue first), then the rest of `N` (rule 4 order), then learn-ahead. Reviews left over past the caps
  *      are backlog and are cleared before more new cards; with `reviewsUnlimited` (no backlog) a
  *      review that becomes due is simply next, then the new cards continue. The proportional mix
  *      belongs to the normal build only (user decision 2026-11-17).
@@ -523,18 +673,21 @@ public data class ReviewQueue(
  *    Accounting does not change: cards studied through keep going are answered with ordinary
  *    reviews, so they appear in [QueueInput.today] as `introducedNew`/`countsAsReview` and use up
  *    today's normal limits; they never raise tomorrow's allowance (limits are per study day).
- *    **moreAvailable** (`keepGoing` false): after rules 1–5, only when `items` and
- *    `toMaterialize` are both empty, the builder runs the same input under rule 6 and sets it to
+ *    **moreAvailable** (`keepGoing` false): after rules 1–5, only when the queue is empty
+ *    (`items`, `toMaterialize`, `kanjiToMaterialize`), the builder runs the same input under rule 6 and sets it to
  *    whether that result is non-empty. Deprecated as a UI signal: end states come from
  *    [ReviewLoop] (ADR-037), which always runs both builds.
- *    **Scope (normative, ADR-037; replaces ADR-031's "one visit").** Keep going is per client and
- *    per study day. A client that starts it stores the study day it was started in (the API's
- *    `study_day`; on a device the local date of [StudyDay]) in its own persistent state and passes
- *    `keepGoing = true` on every build (review, home, counts) while the current study day equals
- *    the stored one, also after leaving the review screen and after a restart. When the study day
- *    differs it drops the stored value and builds with `keepGoing = false`. It is never an op and
- *    never a synced setting: another device keeps its own state (off until started there). Counts
- *    do not depend on it ([LoopState]).
+ *    **Scope (normative, ADR-039; replaces ADR-037's "persisted for the study day").** Keep
+ *    going lasts **one review visit** of one client. A visit starts when the user enters the
+ *    review screen (or starts the CLI's review session) and ends when they leave it, when the
+ *    app or daemon restarts, when the study day changes, or after 10 minutes without an answer.
+ *    The client holds the flag in memory only: it passes `keepGoing = true` on the builds of that
+ *    visit after the user pressed Keep going, and `false` everywhere else — every new visit, the
+ *    home screen, widgets, notifications and status lines always build with `false`. So a user
+ *    who met the goal, kept going, left and comes back to newly due reviews gets those reviews
+ *    and then the `goal_reached` / `done_for_today` screen again before any card over the quota.
+ *    It is never stored, never an op and never a synced setting; counts do not depend on it
+ *    ([LoopState], except `untilStop`).
  *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
  *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
  *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`

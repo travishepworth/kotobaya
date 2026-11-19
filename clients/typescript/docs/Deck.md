@@ -20,6 +20,7 @@ Name | Type
 `name` | string
 `newCardsPerDay` | number
 `priority` | number
+`progress` | [DeckProgress](DeckProgress.md)
 `query` | string
 `reviewsPerDay` | number
 `settings` | [DeckSettings](DeckSettings.md)
@@ -46,6 +47,7 @@ const example = {
   "name": null,
   "newCardsPerDay": null,
   "priority": null,
+  "progress": null,
   "query": null,
   "reviewsPerDay": null,
   "settings": null,

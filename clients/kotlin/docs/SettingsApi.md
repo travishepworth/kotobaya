@@ -64,7 +64,7 @@ ApiClient.accessToken = ""
 
 Set one or more settings.
 
-Server emits one &#x60;settings.set&#x60; op per key in &#x60;values&#x60;, in ascending key order, all in one transaction. A JSON &#x60;null&#x60; value resets the key to its default (the row is kept with value &#x60;null&#x60; so the reset wins against older writes). Keys must match &#x60;^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$&#x60;. Values of well-known keys are validated against the types in SCHEMA.md section 6 (&#x60;422&#x60; with &#x60;pointer&#x60; &#x60;/values/&lt;key&gt;&#x60;); values of unknown keys are accepted as any JSON. An empty &#x60;values&#x60; object is &#x60;422&#x60;. The response is the full list as &#x60;GET /settings&#x60; returns it after the change. 
+Server emits one &#x60;settings.set&#x60; op per key in &#x60;values&#x60;, in ascending key order, all in one transaction. A JSON &#x60;null&#x60; value resets the key to its default (the row is kept with value &#x60;null&#x60; so the reset wins against older writes). Keys must match &#x60;^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$&#x60;. Values of well-known keys are validated against the types in SCHEMA.md section 6 (&#x60;422&#x60; with &#x60;pointer&#x60; &#x60;/values/&lt;key&gt;&#x60;; e.g. &#x60;cards.kanji_exemptions&#x60;, bool, ADR-042); values of unknown keys are accepted as any JSON. An empty &#x60;values&#x60; object is &#x60;422&#x60;. The response is the full list as &#x60;GET /settings&#x60; returns it after the change. 
 
 ### Example
 ```kotlin

@@ -23,6 +23,7 @@
 
 package app.kotobaya.client.models
 
+import app.kotobaya.client.models.DeckProgress
 import app.kotobaya.client.models.DeckSettings
 import app.kotobaya.client.models.DeckType
 
@@ -49,6 +50,7 @@ import com.google.gson.annotations.SerializedName
  * @param settings
  * @param type
  * @param updatedAt Last change.
+ * @param progress ADR-041 (additive). \"N of M words learned (P%)\", computed at request time by the shared core `DeckProgress.count` (contract: `core/.../contracts/decks/DeckProgress.kt`) so the server and the phone's local API agree. Null for smart decks (no items) and for a tombstoned deck (`deleted_at` non-null). Sent on every `Deck` (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted. 
  */
 
 
@@ -122,7 +124,11 @@ data class Deck (
 
     /* Last change. */
     @SerializedName("updated_at")
-    val updatedAt: java.time.OffsetDateTime
+    val updatedAt: java.time.OffsetDateTime,
+
+    /* ADR-041 (additive). \"N of M words learned (P%)\", computed at request time by the shared core `DeckProgress.count` (contract: `core/.../contracts/decks/DeckProgress.kt`) so the server and the phone's local API agree. Null for smart decks (no items) and for a tombstoned deck (`deleted_at` non-null). Sent on every `Deck` (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted.  */
+    @SerializedName("progress")
+    val progress: DeckProgress? = null
 
 ) {
 

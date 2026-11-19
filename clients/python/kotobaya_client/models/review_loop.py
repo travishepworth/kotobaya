@@ -18,7 +18,8 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
+from typing_extensions import Annotated
 from kotobaya_client.models.review_loop_backlog import ReviewLoopBacklog
 from kotobaya_client.models.review_loop_later_today import ReviewLoopLaterToday
 from kotobaya_client.models.review_loop_new import ReviewLoopNew
@@ -30,7 +31,7 @@ from pydantic_core import to_jsonable_python
 
 class ReviewLoop(BaseModel):
     """
-    ADR-037. The review loop's state for one `getReviewQueue` request: the wire form of the core's `LoopState` (`ReviewLoop.evaluate`), which is the only place a phase or a count is decided. Scope: computed for the request's `deck_id` (as `items`); **unaffected by `kinds` and `limit`**, and - except `phase` and `keep_going` - **by `keep_going`**. When the request materialized deck entries (C-27) it describes the state after the last rebuild. All members are required. Invariants: `ready.total = ready.learning + ready.review`; `backlog.reviews >= ready.review`; `backlog.beyond_limit = backlog.reviews - ready.review`, 0 when `reviews.limit` is null; `later_today.next_due_at` is null iff `later_today.count` is 0, else after `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`. 
+    ADR-037. The review loop's state for one `getReviewQueue` request: the wire form of the core's `LoopState` (`ReviewLoop.evaluate`), which is the only place a phase or a count is decided. Scope: computed for the request's `deck_id` (as `items`); **unaffected by `kinds` and `limit`**, and - except `phase` and `keep_going` - **by `keep_going`**. When the request materialized deck entries (C-27) it describes the state after the last rebuild. All members are required. Invariants: `ready.total = ready.learning + ready.review`; `backlog.reviews >= ready.review`; `backlog.beyond_limit = backlog.reviews - ready.review`, 0 when `reviews.limit` is null; `later_today.next_due_at` is null iff `later_today.count` is 0, else after `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`. `until_stop` (ADR-038) is the one number besides `phase` and `keep_going` that depends on `keep_going`, and with `keep_going=true` on `limit`; it is not in `required` only because servers older than ADR-038 do not send it. 
     """ # noqa: E501
     backlog: ReviewLoopBacklog
     keep_going: StrictBool = Field(description="Echo of the request's `keep_going` (false when omitted).")
@@ -39,7 +40,8 @@ class ReviewLoop(BaseModel):
     phase: StrictStr = Field(description="Where the loop stands (rule under `getReviewQueue` \"Review loop\"; core `LoopPhase`). `reviewing`: a card is served (or a deck entry awaits materialization). `goal_reached` (reviews unlimited) / `done_for_today` (review cap on): nothing ready under the limits, Keep going would serve a card. `waiting`: nothing ready, nothing more with keep going, a learning card falls due at `later_today.next_due_at`. `empty`: nothing left today. The set is open for readers: an unknown value is treated as `reviewing` when `items` is non-empty, else as `empty`. ")
     ready: ReviewLoopReady
     reviews: ReviewLoopReviews
-    __properties: ClassVar[List[str]] = ["backlog", "keep_going", "later_today", "new", "phase", "ready", "reviews"]
+    until_stop: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(default=None, description="ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`); the review progress bar's total is `done + until_stop` (client rule C3). Each card counts once, so the total grows when a card comes back (Again) or a new card enters its learning steps. - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new   cards that can still be introduced today (the smaller of the goal's remainder and   what the decks can supply under their limits; kanji cards served ahead of their   word and deck entries not yet materialized included; **not** bounded by `limit`).   These are the answers before `goal_reached` / `done_for_today` (or `waiting` /   `empty`). At such a stop screen it equals `later_today.count`. - `keep_going = true`: the stream is endless, so it is what is in sight:   `ready.learning + later_today.count + backlog.reviews` + the new cards this   response drew (about `limit`; a kanji group may overshoot). Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every server and local API implementing ADR-038; absent (older) → clients use `ready.total`. Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40 with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145. ")
+    __properties: ClassVar[List[str]] = ["backlog", "keep_going", "later_today", "new", "phase", "ready", "reviews", "until_stop"]
 
     @field_validator('phase')
     def phase_validate_enum(cls, value):
@@ -120,7 +122,8 @@ class ReviewLoop(BaseModel):
             "new": ReviewLoopNew.from_dict(obj["new"]) if obj.get("new") is not None else None,
             "phase": obj.get("phase"),
             "ready": ReviewLoopReady.from_dict(obj["ready"]) if obj.get("ready") is not None else None,
-            "reviews": ReviewLoopReviews.from_dict(obj["reviews"]) if obj.get("reviews") is not None else None
+            "reviews": ReviewLoopReviews.from_dict(obj["reviews"]) if obj.get("reviews") is not None else None,
+            "until_stop": obj.get("until_stop")
         })
         return _obj
 

@@ -21,7 +21,8 @@ import { mapValues } from '../runtime';
 export interface DeckSettings {
     [key: string]: any | any;
     /**
-     * Whether adding a vocab card also adds cards for its unlearned kanji.
+     * **Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` "Kanji first"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working.
+     * @deprecated
      */
     addKanji?: DeckSettingsAddKanjiEnum;
     /**

@@ -19,6 +19,15 @@ public data class TextRenderInput(
     public val cloze: ClozeSentence?,
     /** Kanji data for a kanji note, else null; fills empty fields exactly as for [CardRenderer]. Ignored for other base types. */
     public val kanji: KanjiData? = null,
+    /**
+     * ADR-042 (additive): furigana front, as `RenderInput.frontFurigana`. When true, for the rows
+     * vocab / meaning and vocab / pitch of the table (built-in templates only), the front line
+     * `expression[kanji]` becomes `expression[kanji]（reading[kana]）` (fullwidth parentheses U+FF08,
+     * U+FF09, no space), unless the reading text is empty or equals the expression text. Pitch: the
+     * separate `reading[kana]` front line stays. Nothing else changes. Default false = the text
+     * before ADR-042. Example: 寿司 → front `"寿司（すし）"`.
+     */
+    public val frontFurigana: Boolean = false,
 )
 
 /**

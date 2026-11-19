@@ -260,3 +260,16 @@
   also selects the end state (`goal_reached` vs `done_for_today`), SCHEMA.md 6.3.
 - No table, column or op changed. Rejected: deleting the key's rows (an old client would write it
   back; a tombstone op for a setting does not exist).
+
+## C-28 changes (ADR-040, ADR-042)
+- `scheduler.kanji_before_vocab` and the deck setting `add_kanji` are **deprecated and no longer
+  read** (SCHEMA.md 6.2). They are still stored, validated and synced, so nothing is migrated and
+  old clients keep working. Kanji now always come before their first word.
+- New well-known setting `cards.kanji_exemptions` (bool, default **true**; SCHEMA.md 6.5). It is
+  on unless the stored value is exactly `false`. No table, column, op or migration.
+- The data the new rule needs is already in the schema on both sides: JMdict form tags and
+  per-sense `uk` in `dict_entry.kanji_forms` / `senses`, KANJIDIC grade and frequency rank in
+  `kanji`. Nothing has to be added to the dictionary package.
+- Worth a second look: the rule reads `uk` from the **sense used** (the first sense that applies
+  to the displayed form), not from the entry-wide `misc` column. A word whose second meaning is
+  usually written in kana is therefore not exempt.

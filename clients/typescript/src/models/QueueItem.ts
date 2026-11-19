@@ -20,6 +20,13 @@ import {
     CardTextToJSON,
     CardTextToJSONTyped,
 } from './CardText';
+import type { KanjiPart } from './KanjiPart';
+import {
+    KanjiPartFromJSON,
+    KanjiPartFromJSONTyped,
+    KanjiPartToJSON,
+    KanjiPartToJSONTyped,
+} from './KanjiPart';
 import type { KanjiExample } from './KanjiExample';
 import {
     KanjiExampleFromJSON,
@@ -109,6 +116,18 @@ export interface QueueItem {
      */
     entry: DictEntry | null;
     /**
+     * ADR-042 (additive). True iff the card's front shows the reading as furigana over the
+     * whole word: the note's base type is `vocab`, the setting `cards.kanji_exemptions`
+     * is on, the displayed form contains a kanji and requires none (core
+     * `KanjiRequirement.evaluate(...).frontFurigana`). Clients pass it to the core renderer
+     * unchanged as `RenderInput.frontFurigana` / `JsRenderInput.frontFurigana`; they do not
+     * decide it themselves. `text.front` already reflects it (`寿司（すし）`). Sent on every
+     * item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-042
+     * (false for non-vocab notes); absent (older server) is treated as false.
+     * 
+     */
+    frontFurigana?: boolean;
+    /**
      * C-15 (additive). The example sentence and span to show for a card of a grammar note
      * (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at
      * queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0
@@ -168,6 +187,22 @@ export interface QueueItem {
      * 
      */
     kanjiExamples?: Array<KanjiExample>;
+    /**
+     * ADR-041 (additive). The kanji breakdown for the back of a vocab card: one element per
+     * distinct kanji of the word in order of first appearance (at most 8), built by the
+     * shared core `KanjiParts.build` (contract: `core/.../contracts/dict/KanjiParts.kt`)
+     * from the texts of the note's `expression` and `reading` (as `text` resolves them:
+     * note field, else the entry's headword / reading), `ref.kanji` and your kanji notes.
+     * Servers MUST call that core function. Present (possibly empty: a kana-only word) iff
+     * the note's base type is `vocab` (`card.note.type`), on `getReviewQueue` and
+     * `createDrillSession`; absent for every other item and on older servers. Clients
+     * treat absent as empty, show the tiles only on the answer side, highlight
+     * `used_reading` and dim the other readings. Every kanji gets a tile, learnable or
+     * not (ADR-042 does not filter it). Offline the phone runs the same function over the
+     * local dictionary (L-7 steps 1-2; a kanji it lacks gives a tile with the literal alone).
+     * 
+     */
+    kanjiParts?: Array<KanjiPart>;
     /**
      * Null for drill and cram items.
      */
@@ -236,10 +271,12 @@ export function QueueItemFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'deckCount': json['deck_count'] == null ? undefined : json['deck_count'],
         'decks': json['decks'] == null ? undefined : ((json['decks'] as Array<any>).map(QueueItemDeckFromJSON)),
         'entry': DictEntryFromJSON(json['entry']),
+        'frontFurigana': json['front_furigana'] == null ? undefined : json['front_furigana'],
         'grammarSentence': json['grammar_sentence'] === undefined ? undefined : json['grammar_sentence'] === null ? null : GrammarCardSentenceFromJSON(json['grammar_sentence']),
         'isNew': json['is_new'] == null ? undefined : json['is_new'],
         'kanji': json['kanji'] === undefined ? undefined : json['kanji'] === null ? null : KanjiFromJSON(json['kanji']),
         'kanjiExamples': json['kanji_examples'] == null ? undefined : ((json['kanji_examples'] as Array<any>).map(KanjiExampleFromJSON)),
+        'kanjiParts': json['kanji_parts'] == null ? undefined : ((json['kanji_parts'] as Array<any>).map(KanjiPartFromJSON)),
         'preview': SchedulePreviewFromJSON(json['preview']),
         'reviewType': json['review_type'],
         'sentence': SentenceFromJSON(json['sentence']),
@@ -262,10 +299,12 @@ export function QueueItemToJSONTyped(value?: QueueItem | null, ignoreDiscriminat
         'deck_count': value['deckCount'],
         'decks': value['decks'] == null ? undefined : ((value['decks'] as Array<any>).map(QueueItemDeckToJSON)),
         'entry': DictEntryToJSON(value['entry']),
+        'front_furigana': value['frontFurigana'],
         'grammar_sentence': GrammarCardSentenceToJSON(value['grammarSentence']),
         'is_new': value['isNew'],
         'kanji': KanjiToJSON(value['kanji']),
         'kanji_examples': value['kanjiExamples'] == null ? undefined : ((value['kanjiExamples'] as Array<any>).map(KanjiExampleToJSON)),
+        'kanji_parts': value['kanjiParts'] == null ? undefined : ((value['kanjiParts'] as Array<any>).map(KanjiPartToJSON)),
         'preview': SchedulePreviewToJSON(value['preview']),
         'review_type': value['reviewType'],
         'sentence': SentenceToJSON(value['sentence']),

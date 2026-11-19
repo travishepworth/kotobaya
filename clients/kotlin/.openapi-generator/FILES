@@ -66,6 +66,7 @@ docs/DeckList.md
 docs/DeckListCatalogue.md
 docs/DeckListCatalogueEntry.md
 docs/DeckPatch.md
+docs/DeckProgress.md
 docs/DeckSettings.md
 docs/DeckType.md
 docs/DeckUpdatedSchema.md
@@ -170,6 +171,8 @@ docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
 docs/KanjiExample.md
+docs/KanjiPart.md
+docs/KanjiPartReading.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -404,6 +407,7 @@ src/main/kotlin/app/kotobaya/client/models/DeckList.kt
 src/main/kotlin/app/kotobaya/client/models/DeckListCatalogue.kt
 src/main/kotlin/app/kotobaya/client/models/DeckListCatalogueEntry.kt
 src/main/kotlin/app/kotobaya/client/models/DeckPatch.kt
+src/main/kotlin/app/kotobaya/client/models/DeckProgress.kt
 src/main/kotlin/app/kotobaya/client/models/DeckSettings.kt
 src/main/kotlin/app/kotobaya/client/models/DeckType.kt
 src/main/kotlin/app/kotobaya/client/models/DeckUpdatedSchemaSet.kt
@@ -506,6 +510,8 @@ src/main/kotlin/app/kotobaya/client/models/JpdbVocabResolutionPut.kt
 src/main/kotlin/app/kotobaya/client/models/JpdbVocabResolutionResult.kt
 src/main/kotlin/app/kotobaya/client/models/Kanji.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiExample.kt
+src/main/kotlin/app/kotobaya/client/models/KanjiPart.kt
+src/main/kotlin/app/kotobaya/client/models/KanjiPartReading.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWord.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWordDeck.kt
 src/main/kotlin/app/kotobaya/client/models/KanjiWordPage.kt
@@ -717,6 +723,7 @@ src/test/kotlin/app/kotobaya/client/models/DeckListCatalogueEntryTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckListCatalogueTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckListTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckPatchTest.kt
+src/test/kotlin/app/kotobaya/client/models/DeckProgressTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckSettingsTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckTest.kt
 src/test/kotlin/app/kotobaya/client/models/DeckTypeTest.kt
@@ -814,6 +821,8 @@ src/test/kotlin/app/kotobaya/client/models/JpdbVocabResolutionResultTest.kt
 src/test/kotlin/app/kotobaya/client/models/JpdbVocabResolutionTest.kt
 src/test/kotlin/app/kotobaya/client/models/JpdbVocabTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiExampleTest.kt
+src/test/kotlin/app/kotobaya/client/models/KanjiPartReadingTest.kt
+src/test/kotlin/app/kotobaya/client/models/KanjiPartTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiWordDeckTest.kt
 src/test/kotlin/app/kotobaya/client/models/KanjiWordPageTest.kt

@@ -80,5 +80,11 @@ class ReviewLoopTest : ShouldSpec() {
             //modelInstance.reviews shouldBe ("TODO")
         }
 
+        // to test the property `untilStop` - ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`); the review progress bar's total is `done + until_stop` (client rule C3). Each card counts once, so the total grows when a card comes back (Again) or a new card enters its learning steps. - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new   cards that can still be introduced today (the smaller of the goal's remainder and   what the decks can supply under their limits; kanji cards served ahead of their   word and deck entries not yet materialized included; **not** bounded by `limit`).   These are the answers before `goal_reached` / `done_for_today` (or `waiting` /   `empty`). At such a stop screen it equals `later_today.count`. - `keep_going = true`: the stream is endless, so it is what is in sight:   `ready.learning + later_today.count + backlog.reviews` + the new cards this   response drew (about `limit`; a kanji group may overshoot). Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every server and local API implementing ADR-038; absent (older) → clients use `ready.total`. Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40 with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145. 
+        should("test untilStop") {
+            // uncomment below to test the property
+            //modelInstance.untilStop shouldBe ("TODO")
+        }
+
     }
 }

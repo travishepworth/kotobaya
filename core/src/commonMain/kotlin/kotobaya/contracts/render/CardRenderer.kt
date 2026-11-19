@@ -123,6 +123,13 @@ public data class RenderInput(
      * (C-2). Ignored for other base types.
      */
     public val kanji: KanjiData? = null,
+    /**
+     * ADR-042 (additive): **furigana front**. The host passes
+     * `KanjiRequirement.evaluate(...).frontFurigana` of the note's displayed form (API
+     * `QueueItem.front_furigana`); false for non-vocab notes. Default false = the output before
+     * ADR-042, byte for byte. See "Furigana front" on [CardRenderer].
+     */
+    public val frontFurigana: Boolean = false,
 )
 
 /** Where the value of a field came from when a side was rendered (C-19). */
@@ -203,6 +210,22 @@ public data class RenderedCard(
  * spot: sentence → highlighted span, pattern · production: meaning → pattern · sentence
  * comprehension: sentence → translation · listening: audio → sentence, translation ·
  * custom basic: front → back. Every side also shows `sentence` / `image` when present.
+ *
+ * **Furigana front** (ADR-042; only with [RenderInput.frontFurigana], otherwise nothing here
+ * applies). For a note of base type vocab and the **built-in** templates of the kinds whose front
+ * shows the expression as the question, `meaning` and `pitch`: the expression on the front is
+ * rendered as one ruby over the **whole word**, `<ruby>E<rt>R</rt></ruby>`, with E = the text of
+ * `expression` in `kanji` mode and R = the text of `reading` in `kana` mode (both as
+ * [CardTextRenderer] resolves them, HTML-escaped), inside the wrapper the front already uses for
+ * the expression. It does **not** depend on [RenderOptions.furigana] (that option is the user's
+ * general furigana switch; this is part of the question) and it ignores per-kanji alignment
+ * ([DictionaryData.furigana], bracket furigana in the field): always one `rt` for the word. The
+ * back repeats the front unchanged (`{{FrontSide}}`), so it carries the same ruby. Not applied:
+ * kind `reading` (the reading is the answer), `listening` and `production` (the expression is not
+ * on the front), a custom template on that side (custom templates are rendered as written; a
+ * follow-up may add a placeholder), an empty R or an R equal to E (nothing to show), and every
+ * other base type. With field regions on, the region span wraps the ruby as it wraps the plain
+ * value. Example (寿司, すし): `<ruby>寿司<rt>すし</rt></ruby>`; (珈琲, コーヒー): `<ruby>珈琲<rt>コーヒー</rt></ruby>`.
  *
  * **Sanitising** (applied to field values and to custom templates; the output contains nothing else):
  * allowed elements `div span p br hr b i u em strong small sub sup ruby rb rt rp ul ol li img button`;

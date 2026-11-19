@@ -27,6 +27,13 @@ import {
     DeckSettingsToJSON,
     DeckSettingsToJSONTyped,
 } from './DeckSettings';
+import type { DeckProgress } from './DeckProgress';
+import {
+    DeckProgressFromJSON,
+    DeckProgressFromJSONTyped,
+    DeckProgressToJSON,
+    DeckProgressToJSONTyped,
+} from './DeckProgress';
 
 /**
  * A deck (`app.deck`).
@@ -86,6 +93,16 @@ export interface Deck {
      * New cards are drawn from enabled decks in ascending `(priority, id)`.
      */
     priority: number;
+    /**
+     * ADR-041 (additive). "N of M words learned (P%)", computed at request time by the
+     * shared core `DeckProgress.count` (contract: `core/.../contracts/decks/DeckProgress.kt`)
+     * so the server and the phone's local API agree. Null for smart decks (no items) and
+     * for a tombstoned deck (`deleted_at` non-null). Sent on every `Deck` (list, get,
+     * create, update) by servers implementing ADR-041; absent (older server): clients show
+     * no progress line. Not learning data: nothing is stored and no op is emitted.
+     * 
+     */
+    progress?: DeckProgress | null;
     /**
      * Set iff `type` is `smart` - the saved card search string.
      */
@@ -158,6 +175,7 @@ export function DeckFromJSONTyped(json: any, ignoreDiscriminator: boolean): Deck
         'name': json['name'],
         'newCardsPerDay': json['new_cards_per_day'],
         'priority': json['priority'],
+        'progress': json['progress'] === undefined ? undefined : json['progress'] === null ? null : DeckProgressFromJSON(json['progress']),
         'query': json['query'],
         'reviewsPerDay': json['reviews_per_day'],
         'settings': DeckSettingsFromJSON(json['settings']),
@@ -190,6 +208,7 @@ export function DeckToJSONTyped(value?: Deck | null, ignoreDiscriminator: boolea
         'name': value['name'],
         'new_cards_per_day': value['newCardsPerDay'],
         'priority': value['priority'],
+        'progress': DeckProgressToJSON(value['progress']),
         'query': value['query'],
         'reviews_per_day': value['reviewsPerDay'],
         'settings': DeckSettingsToJSON(value['settings']),

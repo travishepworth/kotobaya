@@ -10,13 +10,13 @@
     "notes.deleted_410"
   ],
   "narrative": [
-    "Two vocab notes, each with a new meaning card: note ...01 (entry 1000220) and note ...02 (entry 1000440).",
+    "Two vocab notes, each with a new meaning card: note ...01 (entry 1001010) and note ...02 (entry 1001150).",
     "Step 0 sets two fields. Step 1 clears one with the empty string; the other keeps its value (a partial map: only the keys present are written).",
     "Step 2 adds two tags (the answer's tags are sorted ascending). Step 3 removes one; a tag that is not on the note is ignored. Step 4 replaces the whole set (duplicates collapse). Step 5 sets the mnemonic; the tags are untouched.",
     "Step 6 sets source_sentence alone: the one register covers all three members, so the ids not sent are null. Step 7 reads the note back: every edit is there and the note still has its card.",
     "Steps 8-10 are 422 validation_failed and mint nothing: tags together with add_tags, an empty body, an immutable property.",
     "Step 11: the note is unchanged by the refused requests (same updated_at as step 7).",
-    "Step 12 re-matches note ...02 to an entry no other live note holds (1000450): no collision, so no merge (the collision is a documented difference, SHELL.md 4.3, and is not parity-tested; neither is a re-match to an entry that is in no dictionary: the server accepts it with 200 while SHELL.md 4.3 has the shell check it like createNote, an open contract question).",
+    "Step 12 re-matches note ...02 to an entry no other live note holds (1001580): no collision, so no merge (the collision is a documented difference, SHELL.md 4.3, and is not parity-tested; neither is a re-match to an entry that is in no dictionary: the server accepts it with 200 while SHELL.md 4.3 has the shell check it like createNote, an open contract question).",
     "Steps 13-14: an id that exists nowhere is 404 for update and for delete.",
     "Step 15 deletes note ...01: 204. Step 16 deletes it again: 204, nothing minted.",
     "Step 17: reading it is 410 gone; step 18: with include_deleted=true it is 200 with its last content. Step 19: updating it is 410 gone.",
@@ -26,9 +26,9 @@
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
   "dict_entries": [
-    1000220,
-    1000440,
-    1000450
+    1001010,
+    1001150,
+    1001580
   ],
   "settings": {},
   "seed": {
@@ -45,7 +45,7 @@
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000001",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
-          "entry_seq": 1000220
+          "entry_seq": 1001010
         }
       },
       {
@@ -73,7 +73,7 @@
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000002",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
-          "entry_seq": 1000440
+          "entry_seq": 1001150
         }
       },
       {
@@ -263,7 +263,7 @@
         "status": 200,
         "body": {
           "/id": "0193a1b2-0001-7000-8000-000000000001",
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/fields/meaning": "to eat",
           "/tags": [
             "a",
@@ -337,7 +337,7 @@
       "expect": {
         "status": 200,
         "body": {
-          "/entry_seq": 1000220,
+          "/entry_seq": 1001010,
           "/tags": [
             "a",
             "b"
@@ -352,14 +352,14 @@
         "path": "/api/v1/notes/0193a1b2-0001-7000-8000-000000000002",
         "query": "",
         "body": {
-          "entry_seq": 1000450
+          "entry_seq": 1001580
         }
       },
       "expect": {
         "status": 200,
         "body": {
           "/id": "0193a1b2-0001-7000-8000-000000000002",
-          "/entry_seq": 1000450
+          "/entry_seq": 1001580
         }
       }
     },

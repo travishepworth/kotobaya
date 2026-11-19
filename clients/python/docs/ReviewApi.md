@@ -287,8 +287,9 @@ starts with a review, there are never two new cards in a row while a review is l
 and the order of one response equals what fetching after every answer gives. Both modes
 mix: with `scheduler.reviews_unlimited` `rRem` is every ready review, otherwise the
 reviews left under the cap. New cards per response are bounded by the day's remaining
-goal and by `limit` (the batch; an add_kanji group may overshoot `limit`, never the
-goal); `limit` does not change the order.
+goal and by `limit` (the batch; a kanji group may overshoot `limit`, never the
+goal); `limit` does not change the order. A kanji group (below) takes one new-card slot
+of the mix and is never split by it.
 Example: 4 reviews ready, 2 new cards left in the goal, nothing done today:
 `R1 R2 N1 R3 N2 R4`. Example: 200 ready, 40 left: a new card after every 5th review.
 
@@ -312,17 +313,19 @@ Client rules (normative for web, the shell SPA and the CLI):
   of every `answerReview` response since then whose `card.state` is `learning` or
   `relearning`. So a card that came due is the very next card. An undo
   (`undoReview`) is followed by a fetch.
-- **C2 Keep going is persisted per client for the study day.** When the user starts it,
-  the client stores the `study_day` of the response it was started on (web and shell
-  SPA: `localStorage["kotobaya.keepGoingDay"]`, value = that `study_day` string; CLI
-  daemon: its state file; a count-only surface such as a widget needs none) and from
-  then on sends `keep_going=true` on **every** `getReviewQueue` it makes (home, review,
-  status), also after leaving the review screen and after a restart. It is active iff
-  the stored value equals the `study_day` of the latest response; on a mismatch the
-  client deletes it and fetches again with `keep_going=false`, discarding the
-  mismatching response. Per client, never synced: another browser or the phone keeps
-  its own state (off until started there). Not an op, not a setting. (Replaces
-  ADR-031's "one visit" scope.)
+- **C2 Keep going lasts one review visit (ADR-039).** A *visit* starts when the user
+  enters the review screen (CLI: starts a review session) and ends when they leave it,
+  when the app, tab or daemon restarts, when the response's `study_day` differs from
+  the one the visit started in, or after 10 minutes without an answer. The client keeps
+  the flag **in memory only**: after the user presses Keep going it sends
+  `keep_going=true` on the fetches of that visit; every new visit starts with
+  `keep_going=false`, and home screens, status lines, widgets and notifications always
+  send `false`. Nothing is persisted (`localStorage["kotobaya.keepGoingDay"]` of
+  ADR-037 is no longer read or written; a client that finds it deletes it). So after the
+  goal is met and the user comes back later to newly due reviews, the loop ends at
+  `goal_reached` / `done_for_today` again before any card over the quota is served.
+  Per client, never synced, not an op, not a setting. (Replaces ADR-037's "persisted for
+  the study day".)
 - **C3 Display.** The headline "ready now" number is **always** `loop.ready.total`,
   with or without keep going, so every client and surface (web, phone, widget, CLI)
   shows the same number at the same instant. The backlog is shown only in a separate
@@ -331,7 +334,10 @@ Client rules (normative for web, the shell SPA and the CLI):
   `ready.learning` and the backlog line carries the reviews being cleared). A "later
   today" hint only when `loop.later_today.count > 0`; the new bar as `loop.new.today` /
   `loop.new.goal` (it may exceed the goal after keep going: clamp the bar, show the
-  number).
+  number). The **review progress bar** (ADR-038) is `done / (done + loop.until_stop)`
+  with `done` = the answers this client sent in the current visit (an undo takes one
+  off); the total may grow (Again, a new card entering its learning steps). When
+  `until_stop` is absent (older server) the client uses `loop.ready.total` instead.
 - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
   fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
   timer-driven fetch (the client's clock may differ from the server's; if the card is
@@ -350,7 +356,7 @@ Client rules (normative for web, the shell SPA and the CLI):
 `QueueLimits.keepGoing = true` and `keepGoingNewBatch = limit` (core `QueueBuilder` rule
 6): the daily limits (`scheduler.new_per_day`, `scheduler.reviews_per_day`, deck
 `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are
-drawn per request (an add_kanji group may overshoot), and the order is ready learning,
+drawn per request (a kanji group may overshoot), and the order is ready learning,
 then **all** due reviews (most overdue first), then new cards - no mix: with a review cap
 the backlog is cleared first, then new cards follow without end; with
 `scheduler.reviews_unlimited` new cards follow without end and a review that becomes due
@@ -359,8 +365,8 @@ order, disabled decks, learning) is unchanged.
 Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
 per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
 on every fetch while the user keeps going. Cards answered this way are ordinary reviews
-and count against today's limits as usual. Everything in `loop` except `phase` and
-`keep_going` is the same with or without keep going (ADR-033 principle), so every client
+and count against today's limits as usual. Everything in `loop` except `phase`,
+`keep_going` and `until_stop` is the same with or without keep going (ADR-033 principle), so every client
 shows the same numbers at the same moment whatever mode it is in; so are the deprecated
 `counts`.
 
@@ -386,9 +392,40 @@ does the client show a waiting state ("next card in m:ss") and fetch again at
 `loop.later_today.next_due_at` (rule C4). A card is never shown again before its
 learning step has passed.
 
-**Keep-going scope (normative).** Rule C2 above: per client, persisted for the study
-day it was started in, sent on every fetch of that client, dropped when `study_day`
-changes.
+**Keep-going scope (normative).** Rule C2 above: one review visit of one client, held
+in memory, never persisted.
+
+**Kanji first (ADR-040).** A new vocab card is never served before the new kanji cards
+of the kanji it requires. Those kanji cards come immediately before it, in the order of
+the word's kanji, as one **group**: the proportional mix never puts a review between
+them (only a learning card that falls due can come between; the group then continues
+right after it), the whole group counts against the new-card goal and is drawn only if
+it fits today's remainder (a group may overshoot `limit`, never the goal). This holds
+for every word, whatever deck it comes from and for words in no deck; the deck setting
+`add_kanji` and the setting `scheduler.kanji_before_vocab` are no longer read. A kanji
+that already has a card in learning or review does not block and is not shown again; a
+suspended or buried kanji card and a kanji note the user deleted are respected (the word
+comes without it). A kanji card joins its word's group even when its own decks are all
+disabled. **Missing kanji notes are created here**, like deck entries (C-27): when the
+served build draws a word whose required kanji has no kanji note, the server creates
+the kanji note (`note.created` `origin` `auto_kanji`, built-in kanji type, and its
+default `card.created`s) in the same op transaction, before any vocab note of that
+fetch, and rebuilds; the word is withheld from `items` until its kanji exist. **Backfill:**
+kanji cards that are still new although a word requiring them is already being studied
+come first among the new cards. Core `QueueBuilder` rule 4 "Kanji first" is normative.
+Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →
+`R1 学 校 学校 R2 R3`.
+
+**Which kanji a word requires (ADR-042).** Decided by the core predicate
+`KanjiRequirement` from the setting `cards.kanji_exemptions` (bool, default `true`;
+SCHEMA.md 6.5). While it is on: a word whose displayed form JMdict tags as usually
+written in kana (`uk` on the sense used) or whose kanji form is tagged `ateji`, `rK`,
+`oK`, `iK` or `sK` requires **no** kanji; otherwise it requires its **learnable** kanji
+only (jōyō, i.e. KANJIDIC grade 1-6 or 8, or KANJIDIC frequency rank 1-2500). A word
+that requires no kanji although it is written with some shows its reading as furigana
+over the whole word on the front: `QueueItem.front_furigana`. With the setting `false`
+every kanji is required and no front has furigana. Examples: 寿司 (ateji) → no kanji
+cards, furigana front; 昨日 → 昨, 日 first, no furigana; 鱈 → no kanji card, furigana.
 
 **Old clients.** A client written before ADR-037 keeps working: `counts`,
 `more_available` and `next_learning_due_at` are still sent with their old meaning (see
@@ -402,12 +439,13 @@ are new cards too (core `PendingEntry`; which entries qualify: contracts/core RE
 (`toMaterialize` of the build that is **served** - `LoopResult.queue`; never the other
 build's - bounded by the same new-card budget as the cards: the day's remaining goal and
 the batch `limit`, or with keep going the batch alone; each entry counted as the whole
-add_kanji group its card will be, so an entry that would not fit is not drawn) and the
+kanji group its card will be, so an entry that would not fit is not drawn) and the
 caller holds `review` or `write`, the server creates them before answering, in one op
 transaction as the **server device**, exactly as contracts/core README "C-27" defines:
-per drawn entry, in the builder's order, the kanji notes the drawing deck's present
-`add_kanji` asks for (`note.created` `origin` `auto_kanji` + their `card.created`s;
-never a kanji the user deleted), then `note.created` {built-in vocab type, `entry_seq`,
+first the kanji notes of the build's `kanjiToMaterialize` (ADR-040: the missing required
+kanji of every drawn word, whatever the deck's `add_kanji`; `note.created` `origin`
+`auto_kanji` + their `card.created`s; never a kanji the user deleted), then per drawn
+entry, in the builder's order, `note.created` {built-in vocab type, `entry_seq`,
 `fields` `{}`, `origin` `deck`} and one `card.created` per kind of the drawing deck's
 `card_kinds` (the vocab type's default kinds when that is absent, empty or invalid),
 minus kinds whose front would render empty. It then rebuilds and returns that queue; it
@@ -474,7 +512,7 @@ with kotobaya_client.ApiClient(configuration) as api_client:
     limit = 20 # int | Maximum number of cards to return. (optional) (default to 20)
     deck_id = '01931f40-2000-7000-8000-000000000d01' # str | Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise). (optional)
     kinds = ["new","learning","review"] # List[str] | Which queue sections to include, comma-separated. Default all three. (optional) (default to ["new","learning","review"])
-    keep_going = False # bool | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue. Scope (ADR-037, rule C2 in the description): a client that started keep going stores the `study_day` it was started in and sends `true` on every fetch while the latest response's `study_day` equals it; on a mismatch it drops the stored value and sends `false`. Per client, never synced. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Echoed as `loop.keep_going`. Older servers ignore the parameter (they return the normal queue and no `more_available`).  (optional) (default to False)
+    keep_going = False # bool | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue. Scope (ADR-039, rule C2 in the description): one review visit of one client, held in memory; every new visit, home screen and status fetch sends `false`. Per client, never synced. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Echoed as `loop.keep_going`. Older servers ignore the parameter (they return the normal queue and no `more_available`).  (optional) (default to False)
 
     try:
         # The next cards to review, built by the shared core's queue builder.
@@ -495,7 +533,7 @@ Name | Type | Description  | Notes
  **limit** | **int**| Maximum number of cards to return. | [optional] [default to 20]
  **deck_id** | **str**| Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (&#x60;404&#x60; otherwise). | [optional] 
  **kinds** | [**List[str]**](str.md)| Which queue sections to include, comma-separated. Default all three. | [optional] [default to [&quot;new&quot;,&quot;learning&quot;,&quot;review&quot;]]
- **keep_going** | **bool**| C-26 (additive). &#x60;true&#x60; &#x3D; keep going past today&#39;s limits (see the description; core &#x60;QueueBuilder&#x60; rule 6, with &#x60;keepGoingNewBatch &#x3D; limit&#x60;). Default &#x60;false&#x60; &#x3D; the normal queue. Scope (ADR-037, rule C2 in the description): a client that started keep going stores the &#x60;study_day&#x60; it was started in and sends &#x60;true&#x60; on every fetch while the latest response&#39;s &#x60;study_day&#x60; equals it; on a mismatch it drops the stored value and sends &#x60;false&#x60;. Per client, never synced. Only the literal values &#x60;true&#x60; and &#x60;false&#x60; are accepted; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going&#x60; and &#x60;code &#x3D; invalid_value&#x60;. Echoed as &#x60;loop.keep_going&#x60;. Older servers ignore the parameter (they return the normal queue and no &#x60;more_available&#x60;).  | [optional] [default to False]
+ **keep_going** | **bool**| C-26 (additive). &#x60;true&#x60; &#x3D; keep going past today&#39;s limits (see the description; core &#x60;QueueBuilder&#x60; rule 6, with &#x60;keepGoingNewBatch &#x3D; limit&#x60;). Default &#x60;false&#x60; &#x3D; the normal queue. Scope (ADR-039, rule C2 in the description): one review visit of one client, held in memory; every new visit, home screen and status fetch sends &#x60;false&#x60;. Per client, never synced. Only the literal values &#x60;true&#x60; and &#x60;false&#x60; are accepted; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going&#x60; and &#x60;code &#x3D; invalid_value&#x60;. Echoed as &#x60;loop.keep_going&#x60;. Older servers ignore the parameter (they return the normal queue and no &#x60;more_available&#x60;).  | [optional] [default to False]
 
 ### Return type
 

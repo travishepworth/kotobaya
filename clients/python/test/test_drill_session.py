@@ -47,6 +47,7 @@ class TestDrillSession(unittest.TestCase):
                                 priority = 56, )
                             ], 
                         entry = null, 
+                        front_furigana = True, 
                         grammar_sentence = null, 
                         is_new = True, 
                         kanji = null, 
@@ -57,6 +58,21 @@ class TestDrillSession(unittest.TestCase):
                                 reading = '0', 
                                 reading_type = 'on', 
                                 seq = 1, )
+                            ], 
+                        kanji_parts = [
+                            kotobaya_client.models.kanji_part.KanjiPart(
+                                keyword = '', 
+                                kun = [
+                                    ''
+                                    ], 
+                                literal = '0', 
+                                meanings = [
+                                    ''
+                                    ], 
+                                on = [
+                                    ''
+                                    ], 
+                                used_reading = null, )
                             ], 
                         preview = null, 
                         review_type = 'scheduled', 
@@ -79,6 +95,7 @@ class TestDrillSession(unittest.TestCase):
                                 priority = 56, )
                             ], 
                         entry = null, 
+                        front_furigana = True, 
                         grammar_sentence = null, 
                         is_new = True, 
                         kanji = null, 
@@ -89,6 +106,21 @@ class TestDrillSession(unittest.TestCase):
                                 reading = '0', 
                                 reading_type = 'on', 
                                 seq = 1, )
+                            ], 
+                        kanji_parts = [
+                            kotobaya_client.models.kanji_part.KanjiPart(
+                                keyword = '', 
+                                kun = [
+                                    ''
+                                    ], 
+                                literal = '0', 
+                                meanings = [
+                                    ''
+                                    ], 
+                                on = [
+                                    ''
+                                    ], 
+                                used_reading = null, )
                             ], 
                         preview = null, 
                         review_type = 'scheduled', 

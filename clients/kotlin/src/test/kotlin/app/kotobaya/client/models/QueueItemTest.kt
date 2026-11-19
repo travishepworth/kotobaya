@@ -33,6 +33,7 @@ import app.kotobaya.client.models.DictEntry
 import app.kotobaya.client.models.GrammarCardSentence
 import app.kotobaya.client.models.Kanji
 import app.kotobaya.client.models.KanjiExample
+import app.kotobaya.client.models.KanjiPart
 import app.kotobaya.client.models.QueueItemDeck
 import app.kotobaya.client.models.SchedulePreview
 import app.kotobaya.client.models.Sentence
@@ -84,6 +85,12 @@ class QueueItemTest : ShouldSpec() {
             //modelInstance.decks shouldBe ("TODO")
         }
 
+        // to test the property `frontFurigana` - ADR-042 (additive). True iff the card's front shows the reading as furigana over the whole word: the note's base type is `vocab`, the setting `cards.kanji_exemptions` is on, the displayed form contains a kanji and requires none (core `KanjiRequirement.evaluate(...).frontFurigana`). Clients pass it to the core renderer unchanged as `RenderInput.frontFurigana` / `JsRenderInput.frontFurigana`; they do not decide it themselves. `text.front` already reflects it (`寿司（すし）`). Sent on every item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-042 (false for non-vocab notes); absent (older server) is treated as false. 
+        should("test frontFurigana") {
+            // uncomment below to test the property
+            //modelInstance.frontFurigana shouldBe ("TODO")
+        }
+
         // to test the property `grammarSentence` - C-15 (additive). The example sentence and span to show for a card of a grammar note (`card.note.grammar_point_id` non-null) of any kind except `production`, chosen at queue-build time by the shared core picker `GrammarCardSentences.pick` (rotation, i+0 first). Null for all other cards, and for grammar cards with no usable candidate. Absent (older server) is treated as null. The rules are on `GrammarCardSentence`.  Clients pass it to the core renderer unchanged as `RenderInput.cloze` / `JsRenderInput.cloze` (`sentence_id` → `sentenceId`, `text`, `start_offset` → `start`, `end_offset` → `end`, `translation`), keep showing it for the whole showing of this item (front, back, undo of a later card, redisplay), and send `sentence_id` back as `ReviewAnswerRequest.sentence_id`. When it is null for a grammar card, they render with `cloze = null` (the renderer emits the `missing_cloze` warning) and SHOULD show an i18n \"no example sentence yet\" notice with the point's pattern. 
         should("test grammarSentence") {
             // uncomment below to test the property
@@ -106,6 +113,12 @@ class QueueItemTest : ShouldSpec() {
         should("test kanjiExamples") {
             // uncomment below to test the property
             //modelInstance.kanjiExamples shouldBe ("TODO")
+        }
+
+        // to test the property `kanjiParts` - ADR-041 (additive). The kanji breakdown for the back of a vocab card: one element per distinct kanji of the word in order of first appearance (at most 8), built by the shared core `KanjiParts.build` (contract: `core/.../contracts/dict/KanjiParts.kt`) from the texts of the note's `expression` and `reading` (as `text` resolves them: note field, else the entry's headword / reading), `ref.kanji` and your kanji notes. Servers MUST call that core function. Present (possibly empty: a kana-only word) iff the note's base type is `vocab` (`card.note.type`), on `getReviewQueue` and `createDrillSession`; absent for every other item and on older servers. Clients treat absent as empty, show the tiles only on the answer side, highlight `used_reading` and dim the other readings. Every kanji gets a tile, learnable or not (ADR-042 does not filter it). Offline the phone runs the same function over the local dictionary (L-7 steps 1-2; a kanji it lacks gives a tile with the literal alone). 
+        should("test kanjiParts") {
+            // uncomment below to test the property
+            //modelInstance.kanjiParts shouldBe ("TODO")
         }
 
         // to test the property `text` - ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Servers that implement it send it on every item (both `getReviewQueue` and `createDrillSession`) whose note type they can render. Absent when the item's note type is unknown to the server (its note-type row is missing and `card.note.type` is not a built-in base type; the item is still returned, never an error) and on every item from older servers. Clients treat an absent `text` as \"no text\" for that item (show counts only) and must not infer the server's version from it. 

@@ -67,6 +67,7 @@ docs/DeckList.md
 docs/DeckListCatalogue.md
 docs/DeckListCatalogueEntry.md
 docs/DeckPatch.md
+docs/DeckProgress.md
 docs/DeckSettings.md
 docs/DeckType.md
 docs/DeckUpdatedSchema.md
@@ -171,6 +172,8 @@ docs/JpdbVocabResolutionPut.md
 docs/JpdbVocabResolutionResult.md
 docs/Kanji.md
 docs/KanjiExample.md
+docs/KanjiPart.md
+docs/KanjiPartReading.md
 docs/KanjiWord.md
 docs/KanjiWordDeck.md
 docs/KanjiWordPage.md
@@ -398,6 +401,7 @@ src/models/DeckList.ts
 src/models/DeckListCatalogue.ts
 src/models/DeckListCatalogueEntry.ts
 src/models/DeckPatch.ts
+src/models/DeckProgress.ts
 src/models/DeckSettings.ts
 src/models/DeckType.ts
 src/models/DeckUpdatedSchema.ts
@@ -495,6 +499,8 @@ src/models/JpdbVocabResolutionPut.ts
 src/models/JpdbVocabResolutionResult.ts
 src/models/Kanji.ts
 src/models/KanjiExample.ts
+src/models/KanjiPart.ts
+src/models/KanjiPartReading.ts
 src/models/KanjiWord.ts
 src/models/KanjiWordDeck.ts
 src/models/KanjiWordPage.ts

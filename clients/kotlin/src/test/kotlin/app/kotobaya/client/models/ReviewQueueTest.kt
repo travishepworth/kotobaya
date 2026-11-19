@@ -84,7 +84,7 @@ class ReviewQueueTest : ShouldSpec() {
             //modelInstance.nextLearningDueAt shouldBe ("TODO")
         }
 
-        // to test the property `toMaterialize` - C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes: the length of the core's `ReviewQueue.toMaterialize` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. 
+        // to test the property `toMaterialize` - C-27 (additive, ADR-032). Deck entries (`e:<seq>` without a note) this build drew as new cards that are still not notes, plus (ADR-040) the kanji notes it still has to create for drawn words: the core's `ReviewQueue.toMaterialize.size + kanjiToMaterialize.size` after the server's materialization, 0 when `kinds` excludes `new`. Always 0 for a caller holding `review` or `write` unless the 3 materialization rounds ran out (then the next fetch continues). For a `read`-only caller it is the entries it cannot materialize; they are included in `counts.new`. Absent (older server) is treated as 0. 
         should("test toMaterialize") {
             // uncomment below to test the property
             //modelInstance.toMaterialize shouldBe ("TODO")

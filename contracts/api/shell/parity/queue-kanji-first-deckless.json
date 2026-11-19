@@ -1,0 +1,311 @@
+{
+  "id": "queue-kanji-first-deckless",
+  "title": "Kanji before their first word for a deckless note and for a deck entry, whatever add_kanji says (ADR-040)",
+  "covers": [
+    "queue.kanji_first_deckless"
+  ],
+  "narrative": [
+    "new_per_day is 6. Note 1 is the deckless vocab note 学校 (card ...10, new). The user deck \"Words\" has add_kanji \"off\" (deprecated, not read) and holds the entries 先生 and うっかり without notes. No kanji note exists.",
+    "Step 0: the deck and the deckless source take turns (deck first). The deck draws the entry 先生 as the unit 先, 生, 先生 (3 of the 6); the deckless source draws 学校 as the unit 学, 校, 学校 (6 of 6); the entry うっかり no longer fits the goal: the kanji count against it. The fetch mints the four kanji notes (origin auto_kanji) and the note of 先生 and serves kanji immediately before their word: 先 生 先生 学 校 学校. until_stop is 6.",
+    "kanji_parts of 学校 (ADR-041): 学 uses its on reading ガク as がっ, 校 uses コウ as こう. front_furigana is false (both kanji are learnable).",
+    "Step 1: the same fetch again mints nothing: the same six cards (the minted ids differ between the sides and are renamed by the normalisation).",
+    "Step 2: getDeck carries progress (ADR-041): two deck words (先生 has a new card, うっかり has no note), none learned."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1001010,
+    1206730,
+    1387990
+  ],
+  "settings": {
+    "scheduler.new_per_day": 6
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000001",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 6
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000002",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1206730
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000003",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000004",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000001",
+          "name": "Words",
+          "type": "user",
+          "settings": {
+            "add_kanji": "off"
+          }
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000005",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1387990",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1387990",
+          "position": 1024
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7031-8000-000000000006",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1001010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1001010",
+          "position": 2048
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getDeck",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/note/kanji_literal": "先",
+          "/items/1/card/note/kanji_literal": "生",
+          "/items/2/card/note/entry_seq": 1387990,
+          "/items/3/card/note/kanji_literal": "学",
+          "/items/4/card/note/kanji_literal": "校",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/is_new": true,
+          "/items/5/is_new": true,
+          "/items/5/front_furigana": false,
+          "/items/5/kanji_parts/0/literal": "学",
+          "/items/5/kanji_parts/0/used_reading": {
+            "type": "on",
+            "reading": "ガク",
+            "kana": "がっ"
+          },
+          "/items/5/kanji_parts/1/literal": "校",
+          "/items/5/kanji_parts/1/used_reading": {
+            "type": "on",
+            "reading": "コウ",
+            "kana": "こう"
+          },
+          "/to_materialize": 0,
+          "/counts/new": 6,
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 6,
+          "/loop/new": {
+            "today": 0,
+            "goal": 6,
+            "available": true
+          }
+        },
+        "lengths": {
+          "/items": 6,
+          "/items/5/kanji_parts": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/note/kanji_literal": "先",
+          "/items/1/card/note/kanji_literal": "生",
+          "/items/2/card/note/entry_seq": 1387990,
+          "/items/3/card/note/kanji_literal": "学",
+          "/items/4/card/note/kanji_literal": "校",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/is_new": true,
+          "/items/5/is_new": true,
+          "/items/5/front_furigana": false,
+          "/items/5/kanji_parts/0/literal": "学",
+          "/items/5/kanji_parts/0/used_reading": {
+            "type": "on",
+            "reading": "ガク",
+            "kana": "がっ"
+          },
+          "/items/5/kanji_parts/1/literal": "校",
+          "/items/5/kanji_parts/1/used_reading": {
+            "type": "on",
+            "reading": "コウ",
+            "kana": "こう"
+          },
+          "/to_materialize": 0,
+          "/counts/new": 6,
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 6,
+          "/loop/new": {
+            "today": 0,
+            "goal": 6,
+            "available": true
+          }
+        },
+        "lengths": {
+          "/items": 6,
+          "/items/5/kanji_parts": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/decks/0193a1b2-0004-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/progress": {
+            "learned": 0,
+            "total": 2,
+            "percent": 0
+          },
+          "/settings/add_kanji": "off"
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/0/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/0/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/1/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/1/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/2/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/2/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/3/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/3/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/4/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/4/card/id"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 0,
+          "pointer": "/items/5/card/id"
+        },
+        {
+          "step": 1,
+          "pointer": "/items/5/card/id"
+        }
+      ]
+    }
+  ]
+}

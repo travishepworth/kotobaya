@@ -408,6 +408,12 @@ Computed at request time from live `deck_item` rows that have an `entry_seq` and
 decks token numbers count each item once (`occurrence_count` is 0, treated as 1),
 `segments` is empty and `difficulty` is null. Smart decks: `409 not_applicable`.
 
+ADR-041: the "N of M words learned" line of a deck comes from `Deck.progress`, not from
+this operation. This operation supplies the raw coverage and the words bar of media
+(reading) decks and stays server-only: in the Android shell it is proxied
+(`contracts/api/shell/ops.json`), so offline the SPA shows `Deck.progress` and hides the
+coverage block (`503 shell_offline` is not an error state there).
+
 
 ### Example
 

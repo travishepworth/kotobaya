@@ -236,7 +236,7 @@ ApiClient.accessToken = ""
 
 Coverage of a deck&#39;s items by your word statuses.
 
-Computed at request time from live &#x60;deck_item&#x60; rows that have an &#x60;entry_seq&#x60; and &#x60;word_status&#x60;. For &#x60;media&#x60; decks the result equals &#x60;GET /media/{id}/coverage&#x60; without &#x60;segment_id&#x60; (including &#x60;segments&#x60;, &#x60;curve&#x60; and token numbers). For &#x60;user&#x60; and &#x60;list&#x60; decks token numbers count each item once (&#x60;occurrence_count&#x60; is 0, treated as 1), &#x60;segments&#x60; is empty and &#x60;difficulty&#x60; is null. Smart decks: &#x60;409 not_applicable&#x60;. 
+Computed at request time from live &#x60;deck_item&#x60; rows that have an &#x60;entry_seq&#x60; and &#x60;word_status&#x60;. For &#x60;media&#x60; decks the result equals &#x60;GET /media/{id}/coverage&#x60; without &#x60;segment_id&#x60; (including &#x60;segments&#x60;, &#x60;curve&#x60; and token numbers). For &#x60;user&#x60; and &#x60;list&#x60; decks token numbers count each item once (&#x60;occurrence_count&#x60; is 0, treated as 1), &#x60;segments&#x60; is empty and &#x60;difficulty&#x60; is null. Smart decks: &#x60;409 not_applicable&#x60;.  ADR-041: the \&quot;N of M words learned\&quot; line of a deck comes from &#x60;Deck.progress&#x60;, not from this operation. This operation supplies the raw coverage and the words bar of media (reading) decks and stays server-only: in the Android shell it is proxied (&#x60;contracts/api/shell/ops.json&#x60;), so offline the SPA shows &#x60;Deck.progress&#x60; and hides the coverage block (&#x60;503 shell_offline&#x60; is not an error state there). 
 
 ### Example
 ```kotlin

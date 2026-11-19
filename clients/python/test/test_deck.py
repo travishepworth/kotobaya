@@ -48,6 +48,10 @@ class TestDeck(unittest.TestCase):
                 name = '0',
                 new_cards_per_day = 0,
                 priority = 56,
+                progress = kotobaya_client.models.deck_progress.DeckProgress(
+                    learned = 0, 
+                    percent = 0, 
+                    total = 0, ),
                 query = '',
                 reviews_per_day = 0,
                 settings = { },

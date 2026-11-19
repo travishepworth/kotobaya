@@ -22,6 +22,7 @@
 | **settings** | [**DeckSettings**](DeckSettings.md) |  |  |
 | **type** | [**DeckType**](DeckType.md) |  |  |
 | **updatedAt** | [**java.time.OffsetDateTime**](java.time.OffsetDateTime.md) | Last change. |  |
+| **progress** | [**DeckProgress**](DeckProgress.md) | ADR-041 (additive). \&quot;N of M words learned (P%)\&quot;, computed at request time by the shared core &#x60;DeckProgress.count&#x60; (contract: &#x60;core/.../contracts/decks/DeckProgress.kt&#x60;) so the server and the phone&#39;s local API agree. Null for smart decks (no items) and for a tombstoned deck (&#x60;deleted_at&#x60; non-null). Sent on every &#x60;Deck&#x60; (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted.  |  [optional] |
 
 
 

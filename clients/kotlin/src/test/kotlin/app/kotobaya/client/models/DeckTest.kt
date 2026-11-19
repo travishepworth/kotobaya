@@ -27,6 +27,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import app.kotobaya.client.models.Deck
+import app.kotobaya.client.models.DeckProgress
 import app.kotobaya.client.models.DeckSettings
 import app.kotobaya.client.models.DeckType
 
@@ -141,6 +142,12 @@ class DeckTest : ShouldSpec() {
         should("test updatedAt") {
             // uncomment below to test the property
             //modelInstance.updatedAt shouldBe ("TODO")
+        }
+
+        // to test the property `progress` - ADR-041 (additive). \"N of M words learned (P%)\", computed at request time by the shared core `DeckProgress.count` (contract: `core/.../contracts/decks/DeckProgress.kt`) so the server and the phone's local API agree. Null for smart decks (no items) and for a tombstoned deck (`deleted_at` non-null). Sent on every `Deck` (list, get, create, update) by servers implementing ADR-041; absent (older server): clients show no progress line. Not learning data: nothing is stored and no op is emitted. 
+        should("test progress") {
+            // uncomment below to test the property
+            //modelInstance.progress shouldBe ("TODO")
         }
 
     }

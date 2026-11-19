@@ -52,6 +52,7 @@ class TestReviewQueue(unittest.TestCase):
                                 priority = 56, )
                             ], 
                         entry = null, 
+                        front_furigana = True, 
                         grammar_sentence = null, 
                         is_new = True, 
                         kanji = null, 
@@ -62,6 +63,21 @@ class TestReviewQueue(unittest.TestCase):
                                 reading = '0', 
                                 reading_type = 'on', 
                                 seq = 1, )
+                            ], 
+                        kanji_parts = [
+                            kotobaya_client.models.kanji_part.KanjiPart(
+                                keyword = '', 
+                                kun = [
+                                    ''
+                                    ], 
+                                literal = '0', 
+                                meanings = [
+                                    ''
+                                    ], 
+                                on = [
+                                    ''
+                                    ], 
+                                used_reading = null, )
                             ], 
                         preview = null, 
                         review_type = 'scheduled', 
@@ -87,7 +103,8 @@ class TestReviewQueue(unittest.TestCase):
                         total = 0, ), 
                     reviews = kotobaya_client.models.review_loop_reviews.ReviewLoopReviews(
                         limit = 0, 
-                        today = 0, ), ),
+                        today = 0, ), 
+                    until_stop = 0, ),
                 more_available = True,
                 next_learning_due_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),
@@ -112,6 +129,7 @@ class TestReviewQueue(unittest.TestCase):
                                 priority = 56, )
                             ], 
                         entry = null, 
+                        front_furigana = True, 
                         grammar_sentence = null, 
                         is_new = True, 
                         kanji = null, 
@@ -122,6 +140,21 @@ class TestReviewQueue(unittest.TestCase):
                                 reading = '0', 
                                 reading_type = 'on', 
                                 seq = 1, )
+                            ], 
+                        kanji_parts = [
+                            kotobaya_client.models.kanji_part.KanjiPart(
+                                keyword = '', 
+                                kun = [
+                                    ''
+                                    ], 
+                                literal = '0', 
+                                meanings = [
+                                    ''
+                                    ], 
+                                on = [
+                                    ''
+                                    ], 
+                                used_reading = null, )
                             ], 
                         preview = null, 
                         review_type = 'scheduled', 

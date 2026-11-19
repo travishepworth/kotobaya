@@ -204,3 +204,62 @@ Worth a second look:
   entries than the loader's window `gRem` is a lower bound (new cards slightly sparser). (2) **Keep going is per client**: pressing it on the phone does not
   switch web or the widget; numbers stay identical everywhere. (3) **`done_for_today` vs
   `goal_reached` is chosen by `reviews_unlimited`**, not by which cap bound (B7).
+
+## C-28 changes: progress bar, kanji first, deck progress, kanji tiles, exemptions (ADR-038..042)
+
+What was decided:
+- **Progress bar total (ADR-038).** The loop now also returns "answers left until the stop screen"
+  (`untilStop`): learning cards ready or due later today, reviews within today's limit, and the new
+  cards still left in today's goal. Each card counts once, so the total grows when you press Again
+  or when a new card starts its learning steps. While you keep going, the stream has no end, so
+  the number is what is in sight: the backlog plus the current batch of new cards.
+- **Keep going lasts one visit (ADR-039).** Wording only: nothing is stored any more.
+- **Kanji always come before their first word (ADR-040).** A new word and the new kanji cards it
+  needs are one block: kanji first, then the word, never with a review in between, and the whole
+  block counts against the daily new-card goal. This is now the rule for every deck and for words
+  in no deck. The old per-deck switch (`add_kanji`) and the old setting are no longer read. If a
+  kanji has no card yet, it is created at the moment its word is drawn, and the word waits until
+  it exists. Kanji that are still new although you already study a word with them come first of
+  all new cards.
+- **Which kanji count (ADR-042).** One rule (`KanjiRequirement`) decides, per word, which kanji it
+  makes you learn and whether its front shows the reading above the word. Words that Japanese
+  normally writes in kana, or whose kanji are ateji / rare / out-dated / irregular, need no kanji.
+  Otherwise only jōyō kanji and the 2,500 most frequent count. A word that needs none shows furigana.
+- **Deck progress and kanji tiles (ADR-041).** Two small calculators: "N of M words learned" for a
+  deck, and the per-kanji breakdown of a word with the reading that word uses.
+
+Alternatives rejected:
+- **Splitting a block when it does not fit the rest of today's goal** (show the kanji today, the
+  word tomorrow). Rejected: you asked for "same session". The block waits for a day it fits.
+- **Remembering "a block is in progress" in session state.** Rejected: the queue is rebuilt from
+  the data after every answer and must give the same result on every device. Instead the builder
+  recognises a started block from the data: the last card introduced today is a kanji that a
+  waiting word needs, and no review was answered since.
+- **Creating kanji cards for every word you already know.** Rejected: an imported history would
+  turn into thousands of new kanji cards. Only kanji cards that already exist are pulled forward.
+- **A per-kanji "learnable" list shipped with the app.** Rejected: KANJIDIC grade and frequency
+  are already in the dictionary on the server and on the phone.
+
+Three choices most worth a second look:
+1. **A deck's explicit `add_kanji: off` no longer opts out.** ADR-040 says "always". The ways out
+   are deleting or suspending the kanji card, or the ADR-042 exemptions. If you want a per-deck
+   opt-out back, it should be a new, clearly named deck setting.
+2. **A block bigger than the daily goal never fits a normal day.** With a goal of 2 and a word
+   with two new kanji (3 cards) the word only comes through Keep going. With the default goal of
+   20 (and your 40) this does not happen. The alternative is to let such a block fill the rest of
+   a day with its kanji and continue the next day.
+3. **Real dictionary data may disagree with two examples in ADR-042.** To my knowledge JMdict tags
+   林檎 and 薔薇 "usually kana" (neither word is in the test dictionary, so this is unverified here).
+   If so, the word-level rule exempts both (furigana, no kanji cards) and 林檎 gets no card for 林.
+   Verified in the test KANJIDIC: 薔 has a frequency rank (2356), so without that tag 薔薇 would get
+   a card for 薔 and no furigana. The contract follows the rule as written, not the examples.
+
+Also decided, smaller:
+- A kanji card whose own decks are all disabled is still pulled in by its word.
+- Review-scoped to one deck: the kanji of that deck's words are passed along as "companions" so
+  they still come first.
+- `PendingEntry.newKanjiCards` is replaced by a list of the kanji to create, so two words that
+  share a missing kanji count it once.
+- Deck progress counts a word as learned when one of its cards is in review, or its status is
+  known. Blacklisted and ignored words are left out of both numbers. Smart decks have no progress.
+- The percent is rounded down, so 100% means every word.

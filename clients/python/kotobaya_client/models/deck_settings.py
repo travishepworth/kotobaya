@@ -27,7 +27,7 @@ class DeckSettings(BaseModel):
     """
     Open settings object of a deck; each key is its own last-writer-wins register. Unknown keys are preserved.
     """ # noqa: E501
-    add_kanji: Optional[StrictStr] = Field(default=None, description="Whether adding a vocab card also adds cards for its unlearned kanji.")
+    add_kanji: Optional[StrictStr] = Field(default=None, description="**Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` \"Kanji first\"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working.")
     card_kinds: Optional[List[StrictStr]] = Field(default=None, description="Card kinds to create for notes added from this deck, overriding note-type defaults.")
     order: Optional[StrictStr] = Field(default=None, description="New-card order inside the deck. Default `deck_frequency` for media decks, `position` otherwise.")
     additional_properties: Dict[str, Any] = {}

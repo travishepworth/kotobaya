@@ -18,7 +18,7 @@
     1000110,
     1000160,
     1000170,
-    1000220
+    1001010
   ],
   "settings": {
     "scheduler.reviews_unlimited": true,
@@ -122,7 +122,7 @@
         "payload": {
           "id": "0193a1b2-0001-7000-8000-000000000004",
           "note_type_id": "00000000-0000-7000-8000-000000000101",
-          "entry_seq": 1000220
+          "entry_seq": 1001010
         }
       },
       {
@@ -207,7 +207,8 @@
               "today": 0,
               "goal": 1,
               "available": true
-            }
+            },
+            "until_stop": 1
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
           "/items/0/is_new": true
@@ -271,7 +272,8 @@
               "today": 1,
               "goal": 1,
               "available": true
-            }
+            },
+            "until_stop": 0
           },
           "/items": [],
           "/counts": {
@@ -321,7 +323,8 @@
               "today": 1,
               "goal": 1,
               "available": true
-            }
+            },
+            "until_stop": 2
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020",
           "/items/0/is_new": true,
@@ -387,7 +390,8 @@
               "today": 2,
               "goal": 1,
               "available": true
-            }
+            },
+            "until_stop": 2
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000030",
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000040"
@@ -432,7 +436,8 @@
               "today": 2,
               "goal": 1,
               "available": true
-            }
+            },
+            "until_stop": 0
           },
           "/items": []
         }

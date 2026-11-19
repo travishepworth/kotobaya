@@ -53,7 +53,8 @@ class TestReviewLoop(unittest.TestCase):
                     total = 0, ),
                 reviews = kotobaya_client.models.review_loop_reviews.ReviewLoopReviews(
                     limit = 0, 
-                    today = 0, )
+                    today = 0, ),
+                until_stop = 0
             )
         else:
             return ReviewLoop(

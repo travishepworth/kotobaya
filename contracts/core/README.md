@@ -52,7 +52,10 @@ Package prefix `kotobaya.contracts`.
 | `ReplayEngine` (`replay/ReplayEngine.kt`) | SYNC.md 9.1–9.3 (replay set, fold condition, full replay, merged sets), 8.2 step 4 | T203 |
 | `ReviewLogRules` (`replay/ReplayEngine.kt`) | SYNC.md 7.9 (append-only, earliest undo wins) | T203 (device apply path) |
 | `QueueBuilder`, `StudyDay`, `WordStatusRules` (`queue/QueueBuilder.kt`) | SPEC Scheduling › Queue building, sibling burying; ADR-006 (deckless source); SCHEMA 6 settings; `deck` columns and `deck.settings` keys; `word_status.auto_status` | T205 |
-| `CardGenerator` (`cards/CardGenerator.kt`) | SYNC.md 4 (default cards, `card_kinds`, no knowing duplicates); SPEC card kinds table; `add_kanji` | T205 (or the note-creation ticket) |
+| `CardGenerator` (`cards/CardGenerator.kt`) | SYNC.md 4 (default cards, `card_kinds`, no knowing duplicates); SPEC card kinds table; kanji notes for a word (ADR-040; `add_kanji` deprecated) | T205 (or the note-creation ticket) |
+| `KanjiRequirement` (`cards/KanjiRequirement.kt`) | ADR-042: word-level exemption, learnable kanji, furigana front; SCHEMA.md 6.5 | CORE-28 |
+| `DeckProgress` (`decks/DeckProgress.kt`) | ADR-041: "N of M words learned"; API `Deck.progress` | CORE-28 |
+| `KanjiParts` (`dict/KanjiParts.kt`) | ADR-041: kanji breakdown of a vocab back, used reading; API `QueueItem.kanji_parts` | CORE-28 |
 | `HotScorer` (`hot/HotScorer.kt`) | SPEC Leeches and hot words | hot-words ticket |
 | `SearchQueryParser`, AST (`search/Search.kt`) + `search.ebnf` | SPEC Public API › Card search language | T108 |
 | `CardRenderer`, `CardClasses` (`render/CardRenderer.kt`) | ADR-002; `note_type.templates`/`css`, `note.fields` comments | T213 |
@@ -206,7 +209,8 @@ The local values may differ from what the server would send while ops are pendin
 - `assets/card/card.css` lacks most classes of `CardClasses.ALL` (T213 adds them).
 - `make check MODULE=contracts` should run `contracts/core/check.sh` (FOLLOWUPS: Makefile wiring).
 - Done in C-7: SCHEMA.md 6 lists `scheduler.mined_priority` (→ `QueueInput.decklessPriority`) and
-  `scheduler.kanji_before_vocab` (→ `QueueDeck.addKanji` fallback, `QueueInput.decklessAddKanji`).
+  `scheduler.kanji_before_vocab` (deprecated and ignored since ADR-040, with `QueueDeck.addKanji`
+  and `QueueInput.decklessAddKanji`).
 - `make check MODULE=core` should run `:core:jsTest` (T107, with `nodejs()` on the js target).
 - Card media serving: the web API route and the Android `WebViewAssetLoader` path behind
   `RenderOptions.mediaUrlTemplate` (T213 / the media ticket).
@@ -233,7 +237,7 @@ replaced, not kept.
 KDoc example (normal empty with `moreAvailable`, keep-going `R4 N1 N2 N3`, batch 2); default false is
 identical to before; daily/session/per-deck new caps ignored with deck tiers kept; global and per-deck
 review caps lifted; siblings and exclusions kept; nothing not yet due; disabled decks; learn-ahead keeps
-the normal queue non-empty; reviews before new; add_kanji overshoot; pending entries bounded by the
+the normal queue non-empty; reviews before new; kanji-unit overshoot; pending entries bounded by the
 batch and counted for `moreAvailable`; batch < 1 = 1; `isNew` exactly for NEW items.
 
 ## C-26 / ADR-037: the review loop on a device (Android)
@@ -258,11 +262,14 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
 - **Materialization (C-27).** Materialize exactly `LoopResult.queue.toMaterialize` (the served
   build) and re-evaluate; never the other build's entries. A count-only caller (widget) does not
   materialize.
-- **Keep going scope (normative; `QueueBuilder` rule 6 "Scope").** Per client, per study day: the
-  client that started it stores the study day and sends `keepGoing = true` on every build while the
-  current study day equals the stored one; it survives leaving the review screen and a restart; a
-  day mismatch drops it. In the shell the client is the SPA (its `localStorage`, openapi
-  `getReviewQueue` rule C2); native code stores nothing. Never an op, never a synced setting.
+- **Keep going scope (normative; `QueueBuilder` rule 6 "Scope", ADR-039).** One review visit of
+  one client, held in memory: `keepGoing = true` only on the builds of the visit in which the
+  user pressed Keep going; every new visit, restart, study-day change and 10 minutes without an
+  answer end it. In the shell the client is the SPA (openapi `getReviewQueue` rule C2); native
+  code stores nothing and always builds with `false`. Never an op, never a synced setting, never
+  persisted (the ADR-037 `kotobaya.keepGoingDay` storage key is gone).
+- **Progress bar (ADR-038).** `LoopState.untilStop`; the bar is `done / (done + untilStop)`.
+  Native surfaces show no bar.
 - **Waiting.** Only `LoopPhase.WAITING` waits; resume at `LoopState.nextDueAt`.
 
 ## ADR-035: reading cards retired by a setting (C-28)
@@ -304,32 +311,58 @@ vocab, same result with or without retired candidates, pending entries unchanged
 `sync/client/apply/ReadingRetiredApplyTest.kt` (scenario `reading-retired-offline-review`, setting
 flips re-derive op by op and in a batch); `BatchApplyEquivalenceTest` logs flip the setting.
 
-## C-27: pending entries and materialization (ADR-032)
+## C-27: pending entries and materialization (ADR-032, ADR-040, ADR-042)
 
 Materialization is defined once, here, and every platform does exactly this: the server inside
 `GET /review/queue` (openapi `getReviewQueue`, as the server device), a device locally through its
-op path. Clients of the API never create these notes.
+op path. Clients of the API never create these notes. Since ADR-040 it creates **two** things:
+kanji notes for the words a build draws (existing notes and deck entries alike, whatever a deck's
+`add_kanji` says) and, as before, the notes of drawn deck entries.
 
-**What materializing entry `e:<seq>` drawn by deck D creates** (normative):
-1. Skip the entry if a live note now holds `entry_seq = seq` (idempotent) or the dictionary entry
-   is missing.
-2. **Vocab card kinds** `V` = `CardGenerator.kindsForNewNote(vocab type, D.card_kinds, readingEnabled)`;
-   if that is empty (`card_kinds` is `[]` or names no kind of the type, or only retired kinds,
-   e.g. `["reading"]` while reading cards are off — ADR-035), the type's default kinds
-   (`kindsForNewNote(vocab type, null, readingEnabled)`, i.e. `["meaning"]`). `readingEnabled` =
-   setting `cards.reading_enabled` (SCHEMA.md 6.4, `CardKinds.readingEnabled`). Then drop every kind whose front would render empty:
-   `DefaultCardRenderer.frontIsEmpty(vocab type, kind, {}, dictionary = the entry's data)` (e.g.
-   `listening` without audio; the same rule devices apply when adding a note). If `V` is empty the
-   entry is not materialized, and loaders never pass it (below), so it is never drawn.
-3. **Kanji notes**, only when D's `add_kanji` is **present** and not `off` (SCHEMA.md 6.2):
-   `CardGenerator.kanjiToAdd(headword, blocked, mode)` where `blocked` = the headword's kanji that
-   have a live kanji note **or a user-deleted one** (a kanji note with `deleted_at` set and no
-   `merged_into_id`): a kanji note the user deleted is never re-created. Each, in order:
-   `note.created` {built-in kanji type, `kanji_literal`, `origin` `auto_kanji`} and one
-   `card.created` per default kind of the kanji type whose front is not empty (with the kanji's
-   `ref.kanji` data, or the literal alone).
-4. `note.created` {built-in vocab type `…0101`, `entry_seq`, `fields` `{}`, `origin` `deck`}, then
-   one `card.created` per kind of `V`. Then rebuild.
+**What materializing a served build `Q` creates** (normative; one op transaction, in this order):
+
+A. **Kanji notes**: for each literal of `Q.kanjiToMaterialize`, in order: skip it if a live kanji
+   note now holds that `kanji_literal` (idempotent) or a **user-deleted** one does (a kanji note
+   with `deleted_at` set and no `merged_into_id`: never re-created). Otherwise
+   `note.created` {built-in kanji type `…0102`, `kanji_literal`, `fields` `{}`, `origin`
+   `auto_kanji`} and one `card.created` per default kind of the kanji type whose front is not
+   empty (with the kanji's `ref.kanji` data, or the literal alone when the dictionary lacks it).
+B. **Entries**: for each entry `e:<seq>` of `Q.toMaterialize`, in order, drawn by deck D:
+   1. Skip the entry if a live note now holds `entry_seq = seq` (idempotent) or the dictionary entry
+      is missing.
+   2. **Vocab card kinds** `V` = `CardGenerator.kindsForNewNote(vocab type, D.card_kinds, readingEnabled)`;
+      if that is empty (`card_kinds` is `[]` or names no kind of the type, or only retired kinds,
+      e.g. `["reading"]` while reading cards are off — ADR-035), the type's default kinds
+      (`kindsForNewNote(vocab type, null, readingEnabled)`, i.e. `["meaning"]`). `readingEnabled` =
+      setting `cards.reading_enabled` (SCHEMA.md 6.4, `CardKinds.readingEnabled`). Then drop every kind whose front would render empty:
+      `DefaultCardRenderer.frontIsEmpty(vocab type, kind, {}, dictionary = the entry's data)` (e.g.
+      `listening` without audio; the same rule devices apply when adding a note). If `V` is empty the
+      entry is not materialized, and loaders never pass it (below), so it is never drawn.
+   3. `note.created` {built-in vocab type `…0101`, `entry_seq`, `fields` `{}`, `origin` `deck`}, then
+      one `card.created` per kind of `V`.
+Then rebuild. There is no per-entry kanji step any more: the kanji of an entry are in
+`kanjiToMaterialize` like those of an existing note, so two words that share a missing kanji mint
+it once.
+
+**What a loader computes per vocab note and per pending entry** (normative; the same on every
+platform, from the same rows):
+- `form` = `WordForm(expression, formTags, usuallyKana)` as `KanjiRequirement.kt` defines
+  (expression = the note's `expression` text, else the entry's `headword`; for an entry: its
+  `headword`), `facts` = `ref.kanji.grade` / `freq_rank` of its kanji, `enabled` =
+  `KanjiRequirement.exemptionsEnabled(settings["cards.kanji_exemptions"])`.
+- `expressionKanji` = `CardGenerator.kanjiOf(expression)` (as before).
+- `requiredKanji` = `KanjiRequirement.evaluate(form, facts, enabled).learnableKanji`.
+- `missingKanji` = for each literal of `requiredKanji`, in order, with no live kanji note and no
+  user-deleted kanji note for it: `MissingKanji(literal, newCards)`, `newCards` = the number of
+  kinds step A would create for it, at most 1 when `scheduler.bury_siblings`; a literal that
+  would get no card is left out.
+- The item's `front_furigana` / `RenderInput.frontFurigana` is the same evaluation's
+  `frontFurigana` (computed where the item is rendered; not part of `QueueInput`).
+- **Scoped builds** (`deck_id`): besides the cards in scope, pass every live card of every live
+  kanji note whose literal is a required kanji of a passed vocab candidate or pending entry and
+  that is not in scope, with `QueueCandidate.companion = true`.
+- `QueueDeck.addKanji` = `OFF`, `decklessAddKanji` = `OFF`, `PendingEntry.newKanjiCards` = 0 (all
+  ignored).
 
 **Which entries a loader passes as `QueueInput.pendingEntries`** (normative): deck items `e:<seq>`
 (`deck_item.deleted_at IS NULL`) of live, **enabled**, non-smart decks, such that
@@ -339,19 +372,31 @@ op path. Clients of the API never create these notes.
   `merged_into_id IS NULL` (merge losers do not count). Deleting the note of a deck word drops it
   for good; it is never re-created by the queue (adding a note by hand still works);
 - `word_status.override_status` is not KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED;
-- step 2 leaves at least one vocab kind.
+- step B.2 leaves at least one vocab kind.
 
-Each entry carries `expressionKanji` = the headword's distinct kanji (what the loader will pass as
-the card's `QueueCandidate.expressionKanji`) and `newKanjiCards` = over the kanji notes of step 3,
-the number of their card kinds, at most 1 per note when `scheduler.bury_siblings`. The builder
-then draws the entry as the add_kanji group its vocab card will be (QueueBuilder rule 4): an entry
-that would not fit once materialized is never drawn, so nothing is created that the same build
-would not show, and the counts are the same before and after the rebuild.
+The builder draws a word as the **unit** it will be once everything exists (QueueBuilder rule 4
+"Kanji first"): its vocab card, the existing new kanji cards of its required kanji and the cards
+of the kanji still to mint. A unit that would not fit is never drawn, so nothing is created that
+the same build would not show, and the counts (`drawn`, `availableToday`, `untilStop`) are the
+same before and after the rebuild. An existing vocab card with a missing kanji is **withheld**
+from `items` until step A has run.
 
 A loader may pass only the first `2 × B + 16` such entries per deck in `(position, item_key)` order,
 `B = max(1, keepGoingNewBatch)` in both modes (ADR-037: the batch bounds the normal build as well
 as the keep-going one, and `ReviewLoop.evaluate` runs both builds from the one loaded input, so one
 window serves both). An entry beyond the window is reached by a later build.
+
+**Read-only callers** cannot run step A either: `kanjiToMaterialize` counts into the API's
+`to_materialize`, the withheld word is not in `items`, and the phase is `REVIEWING`.
+
+**Edge cases** (each is a test): a kanji minted by step A and its word deleted before the rebuild
+→ the kanji card stays, a deckless new card drawn on its own turn; the same literal claimed by a
+device offline and by the server → two kanji notes for one literal converge by SYNC.md 8.1 (one
+live note per `kanji_literal`; the loser's card and reviews merge into the survivor); a literal
+whose note the user deleted → never in `missingKanji`, never minted; a kanji absent from the
+dictionary → minted with the literal alone; `kanjiToMaterialize` non-empty but every literal
+skipped by step A (the replica changed between load and transaction) → the rebuild sees the
+existing notes, nothing is created twice; the rounds limit below still applies.
 
 **Which build is materialized (ADR-037).** `ReviewLoop.evaluate` returns the build to serve
 (`LoopResult.queue`). Only its `toMaterialize` is materialized: the normal build's for a normal
@@ -360,15 +405,77 @@ counts and the phase; materializing its entries would create notes past the day'
 request that merely asked for the state. The new-card budget of the normal build is the day's
 remaining goal and the batch (QueueBuilder rule 4), not `min(day, session)`.
 
-**Rebuild rounds (server).** After materializing, the server rebuilds; it materializes again (at
+**Rebuild rounds (server and device).** After materializing, rebuild; materialize again (at
 most 3 rounds) only if the previous round's notes appear in `items` (a safety net: a mismatch can
-never create notes that are not shown).
+never create notes that are not shown). A kanji note of step A appears as the kanji card at the
+head of its word's unit.
 
 **Convergence.** A device and the server creating a note for the same entry converge by SYNC.md 8.1
 (the note that held the entry first on the server survives; the other's cards and their reviews are
 merged into it; the arrival-order trade-offs of SYNC.md 8.4 apply).
 
 **Tests** (`core/src/commonTest/kotlin/kotobaya/queue/QueuePendingGroupTest.kt`, jvm and js): an
-entry whose group does not fit is not drawn (and `moreAvailable` is true); existing new kanji cards
-join and are taken; OFF = 1 card; the same count before and after materializing; negative
-`newKanjiCards` = 0.
+entry whose unit does not fit is not drawn (and `moreAvailable` is true); existing new kanji cards
+join and are taken; the same count before and after materializing; `newKanjiCards` and every
+`AddKanjiMode` value change nothing; two entries sharing a missing kanji claim it once. The old
+"OFF = 1 card" and "negative `newKanjiCards`" cases are replaced, not kept.
+
+## ADR-038..042: until_stop, kanji first, deck progress, kanji parts, exemptions (C-28)
+
+Contract files: `queue/QueueBuilder.kt` (rule 4 "Kanji first", rule 5 units and "Open group
+first", rule 6 Scope), `queue/ReviewLoop.kt` (`LoopState.untilStop`), `cards/KanjiRequirement.kt`,
+`decks/DeckProgress.kt`, `dict/KanjiParts.kt`, `render/CardRenderer.kt` and `CardTextRenderer.kt`
+("Furigana front"), `js/CoreJs.kt` (`JsRenderInput.frontFurigana`). Everything is additive on the
+types: old calls compile and give the pre-C-28 result except where a rule itself changed (the
+kanji modes, `newKanjiCards`).
+
+| Core API | Caller passes | Notes |
+|---|---|---|
+| `QueueCandidate.requiredKanji`, `.missingKanji`, `.companion`; `PendingEntry.requiredKanji`, `.missingKanji` | the loader, as "C-27" above | `requiredKanji = null` = every kanji (ADR-042 off) |
+| `ReviewQueue.kanjiToMaterialize` | — (output) | materialize step A, then rebuild |
+| `LoopState.untilStop` | — (output) | API `loop.until_stop` |
+| `KanjiRequirement.evaluate(form, facts, enabled)` | loader (queue), renderer host (front), materializer | one predicate; never restated |
+| `RenderInput.frontFurigana`, `TextRenderInput.frontFurigana`, `JsRenderInput.frontFurigana` | `evaluate(...).frontFurigana` / `QueueItem.front_furigana` | default false = old output |
+| `DeckProgress.count(words, readingEnabled)` | `listDecks` / `getDeck` handlers (server, local API) | API `Deck.progress` |
+| `KanjiParts.build(expression, reading, sources)` | queue item builders (server, local API) | API `QueueItem.kanji_parts` |
+
+**Not exported to JS.** The web takes `kanji_parts`, `front_furigana` and `progress` from the API
+(server or the shell's local API) and only renders them; `CoreJs` gains nothing but
+`JsRenderInput.frontFurigana`.
+
+**Android / local API (AND-28).** `getReviewQueue`: loader as "C-27" above, materialize steps A
+and B through the device's op path, `kanji_parts` by `KanjiParts.build` and `front_furigana` by
+`KanjiRequirement` over the local dictionary (SHELL.md L-7 steps 1–2 only). `listDecks` /
+`getDeck`: `progress` by `DeckProgress.count` over the replica. `getDeckCoverage` stays proxied.
+
+**Tests implementers must write** (`core/src/commonTest`, jvm and js; write them first, from the
+KDoc examples):
+- `queue/QueueKanjiFirstTest.kt`: the three rule-4 examples (withheld and after minting; 39/40;
+  backfill); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
+  same; the 40-card budget includes kanji; a kanji card whose decks are all disabled joins its
+  word's unit; a started, a suspended and a manually buried kanji do not block; two words
+  sharing a kanji; `burySiblings` false; companions (new only through a unit, learning served,
+  review never); `requiredKanji` empty = no unit, null = `expressionKanji`; the deckless
+  tie-break by literal; counts equal before and after materialization.
+- `queue/QueueMixUnitsTest.kt`: the rule-5 unit example (`R1 学 校 学校 R2 R3 たべる R4`) and its
+  rebuild; for random inputs with units, answering the head and rebuilding yields the previous
+  build's tail (extends M4); no review between the cards of a unit; a due learning card may come
+  between and the group continues after it; the open group is not pulled after a review was
+  answered (`s > 0`), after a day rollover, or when the last introduced card is a vocab card;
+  keep going: open group, then reviews, then the rest.
+- `queue/ReviewLoopTest.kt`: `untilStop` for A1 (66), B3 (0), B4 (145), U1 (65, 47 with 12 new
+  cards) and its three follow-ups (Again on a review keeps it, Good lowers it, a new card
+  answered Good keeps it); equal before and after materialization; `REVIEWING` implies `>= 1`.
+- `cards/KanjiRequirementTest.kt`: every worked example of the KDoc, on and off; each exempt tag
+  alone; `uk` on a later sense only → not exempt; `uk` on the first sense that applies to the
+  form; grade 8 / 9 / 10; rank 2500 / 2501; a kanji without facts; kana-only; `exemptionsEnabled`
+  for null, `true`, `false`, `0`, `"false"`.
+- `decks/DeckProgressTest.kt`: the KDoc example; every edge case listed there; `percent` for
+  0/0, 1/3, 2/3, 3/3, 199/200.
+- `dict/KanjiPartsTest.kt`: every `usedReading` example of the KDoc (大学, 学校, 食べる, 誕生日, 今日 →
+  null, 日本 → null); `usedReading == null` iff `classify == OTHER` over the 15 kanji of the C-25
+  goldens; `build`: order, de-duplication, `MAX_PARTS`, keyword from the note before the first
+  meaning, a kanji without data.
+- `render/`: furigana-front goldens (HTML and text) for 寿司 and 珈琲; off = byte-identical to the
+  existing goldens; not applied to `reading`, `production`, `listening`, custom templates, an
+  empty reading.

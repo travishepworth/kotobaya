@@ -74,6 +74,7 @@ from kotobaya_client.models.deck_list import DeckList
 from kotobaya_client.models.deck_list_catalogue import DeckListCatalogue
 from kotobaya_client.models.deck_list_catalogue_entry import DeckListCatalogueEntry
 from kotobaya_client.models.deck_patch import DeckPatch
+from kotobaya_client.models.deck_progress import DeckProgress
 from kotobaya_client.models.deck_settings import DeckSettings
 from kotobaya_client.models.deck_type import DeckType
 from kotobaya_client.models.deck_updated_schema import DeckUpdatedSchema
@@ -171,6 +172,8 @@ from kotobaya_client.models.jpdb_vocab_resolution_put import JpdbVocabResolution
 from kotobaya_client.models.jpdb_vocab_resolution_result import JpdbVocabResolutionResult
 from kotobaya_client.models.kanji import Kanji
 from kotobaya_client.models.kanji_example import KanjiExample
+from kotobaya_client.models.kanji_part import KanjiPart
+from kotobaya_client.models.kanji_part_reading import KanjiPartReading
 from kotobaya_client.models.kanji_word import KanjiWord
 from kotobaya_client.models.kanji_word_deck import KanjiWordDeck
 from kotobaya_client.models.kanji_word_page import KanjiWordPage

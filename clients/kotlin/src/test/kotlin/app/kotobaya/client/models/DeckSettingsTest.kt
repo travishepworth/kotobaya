@@ -33,7 +33,7 @@ class DeckSettingsTest : ShouldSpec() {
         // uncomment below to create an instance of DeckSettings
         //val modelInstance = DeckSettings()
 
-        // to test the property `addKanji` - Whether adding a vocab card also adds cards for its unlearned kanji.
+        // to test the property `addKanji` - **Deprecated (ADR-040): stored and returned, no longer read.** Was: whether adding a vocab card also adds cards for its unlearned kanji. Kanji cards now come before their first word for every deck and are created when the queue draws the word (`getReviewQueue` \"Kanji first\"); `off` no longer opts out. Still accepted by `createDeck` / `updateDeck` and synced, so old clients keep working.
         should("test addKanji") {
             // uncomment below to test the property
             //modelInstance.addKanji shouldBe ("TODO")

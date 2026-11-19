@@ -61,6 +61,9 @@ import {
  * `later_today.next_due_at` is null iff `later_today.count` is 0, else after
  * `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is
  * non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`.
+ * `until_stop` (ADR-038) is the one number besides `phase` and `keep_going` that depends on
+ * `keep_going`, and with `keep_going=true` on `limit`; it is not in `required` only because
+ * servers older than ADR-038 do not send it.
  * 
  * @export
  * @interface ReviewLoop
@@ -101,6 +104,28 @@ export interface ReviewLoop {
      * 
      */
     reviews: ReviewLoopReviews;
+    /**
+     * ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`);
+     * the review progress bar's total is `done + until_stop` (client rule C3). Each card
+     * counts once, so the total grows when a card comes back (Again) or a new card enters
+     * its learning steps.
+     * - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new
+     *   cards that can still be introduced today (the smaller of the goal's remainder and
+     *   what the decks can supply under their limits; kanji cards served ahead of their
+     *   word and deck entries not yet materialized included; **not** bounded by `limit`).
+     *   These are the answers before `goal_reached` / `done_for_today` (or `waiting` /
+     *   `empty`). At such a stop screen it equals `later_today.count`.
+     * - `keep_going = true`: the stream is endless, so it is what is in sight:
+     *   `ready.learning + later_today.count + backlog.reviews` + the new cards this
+     *   response drew (about `limit`; a kanji group may overshoot).
+     * Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every
+     * server and local API implementing ADR-038; absent (older) → clients use `ready.total`.
+     * Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40
+     * with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits
+     * reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145.
+     * 
+     */
+    untilStop?: number;
 }
 
 
@@ -148,6 +173,7 @@ export function ReviewLoopFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'phase': json['phase'],
         'ready': ReviewLoopReadyFromJSON(json['ready']),
         'reviews': ReviewLoopReviewsFromJSON(json['reviews']),
+        'untilStop': json['until_stop'] == null ? undefined : json['until_stop'],
     };
 }
 
@@ -169,6 +195,7 @@ export function ReviewLoopToJSONTyped(value?: ReviewLoop | null, ignoreDiscrimin
         'phase': value['phase'],
         'ready': ReviewLoopReadyToJSON(value['ready']),
         'reviews': ReviewLoopReviewsToJSON(value['reviews']),
+        'until_stop': value['untilStop'],
     };
 }
 
