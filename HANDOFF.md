@@ -1,24 +1,22 @@
 # HANDOFF C-28b
 
-STATUS: DONE
+STATUS: DONE (attempt 2, reviewer major applied)
 BRANCH: t/C-28b-contracts (from main at 1617bcdb)
 CHECK: `make check MODULE=contracts` → green, no drift; core compiles (jvm + js)
 
 ## Changed (≤ 6 lines)
-- `QueueBuilder.kt` rule 4 "Half share": `share = max(1, newPerDay / 2)`; share step before every source turn, remainder step after the sources; `bToday` derived statelessly from `today`
-- Rule 4 "fits the day": a kanji part may be the day's first new card even if it overshoots (lead and backfill parts)
-- Rule 6: keep-going form of the share test
-- README (new `QueueBackfillShareTest` list), SUMMARY, openapi, SHELL.md 8.4, REVIEW-LOOP §13; clients regenerated
-- parity: new `queue-kanji-backfill-share` + mandatory tag `queue.kanji_backfill_share`; `queue-kanji-backfill` unchanged (goal 20 → share 10)
+- Attempt 2: `QueueBuilder.kt` rule 4 "Own turn": a NEW card of a backfill kanji has no turn of its own in any source (deck or deckless, both builds); drawn only by the share step, the remainder step or a new word's unit
+- Rule 4 half-share example, README `QueueBackfillShareTest` list, openapi, REVIEW-LOOP §13 and the scenario narrative say so; clients regenerated
+- Attempt 1 (unchanged): half share `max(1, newPerDay / 2)`, remainder step, stateless `bToday`, first-part-of-the-day overshoot, keep-going share test, parity `queue-kanji-backfill-share` + mandatory tag
 
 ## Acceptance → tests
 - contracts green → `make check MODULE=contracts`
-- expects hand-evaluated → `queue-kanji-backfill-share` (no golden until the server implements it)
+- expects hand-evaluated → `queue-kanji-backfill-share` steps 0, 3, 6, 7 re-evaluated under the new rule: unchanged
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Keep going: I made it "backfill ≤ half of today's introductions" (word, kanji in turn), not a share per batch: a per-batch share is not stable when rebuilding after every answer.
-- Overshoot needs "nothing introduced today AND drawn == 0", not `drawn == 0` alone (that would overshoot on every rebuild).
-- `newPerDay` 1 → backfill takes the whole goal until done (ADR-044 "at least 1").
+- Side effect: a kanji deck studied for itself gets the kanji of already studied words at the backfill pace, not on its own turns.
+- Keep going is "backfill ≤ half of today's introductions", not a share per batch (unchanged from attempt 1).
+- The two minors (newPerDay 1; scoped `deck_id` builds and `bToday`) are untouched, for FOLLOWUPS.

@@ -420,7 +420,8 @@ cards, the oldest word's first: kanji cards that are still new, and (ADR-043) ka
 that have no note yet, which are created in the same way. These kanji use at most half
 of the day's new goal (`floor(scheduler.new_per_day / 2)`, at least 1; ADR-044); the rest
 goes to new words with their own kanji, and when no new word can be drawn the kanji may
-use the remainder. With `keep_going=true` they are at most half of the new cards
+use the remainder. Such a kanji card is never drawn as an ordinary new card of its own
+deck or of the deckless cards, only through this share. With `keep_going=true` they are at most half of the new cards
 introduced in the study day. Example: goal 4, three such kanji and two new words →
 `日 本 うっかり Ｔシャツ` today, `語` on the next study day. Core `QueueBuilder` rule 4 "Kanji first" is normative.
 Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →

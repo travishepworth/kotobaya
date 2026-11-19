@@ -646,9 +646,20 @@ public data class ReviewQueue(
  *      usual. The share is per study day, not per build: answering a backfill kanji moves it from
  *      `b` to `bToday`, so a rebuild draws the same cards (`drawn + iToday`, `availableToday +
  *      iToday` and the queue order are the same before and after an answer).
- *    - **Own turn.** A NEW kanji card that is neither backfilled nor taken by a unit is an
- *      ordinary card of its home new-source and is drawn alone on that source's turn (a kanji
- *      deck studied for itself). That keeps it before any word that requires it.
+ *    - **Own turn.** A NEW card of a kanji note whose literal is **not a backfill kanji** and
+ *      that is not taken by a unit is an ordinary card of its home new-source and is drawn alone
+ *      on that source's turn (a kanji deck studied for itself). That keeps it before any word
+ *      that requires it.
+ *      **No own turn for backfill kanji (ADR-044).** A NEW card of a kanji note whose literal is
+ *      a backfill kanji (definition above; evaluated once per build, before the first draw) has
+ *      **no turn of its own** in any source, deck or deckless, in both builds: on a source's
+ *      turn it is passed over as if it were not there (not taken, not counted, and a source
+ *      holding only such cards is empty). It is drawn only by the share step, by the remainder
+ *      step, or as part of `K` of a new word's unit. Without this the half share would be void:
+ *      auto-minted kanji notes are deckless, so the deckless source would draw them on its own
+ *      turns, next to the share (same tier) or ahead of every deck (lower `decklessPriority`).
+ *      A kanji deck the user studies for itself therefore gets the kanji of already studied
+ *      words through backfill, at the backfill pace, and its other kanji on its own turns.
  *    Edge cases: two words sharing a new kanji → the first drawn takes it, the second unit is the
  *    word alone (or with its other kanji); the same kanji twice in a word counts once; a word with
  *    one started, one new and one missing kanji → `[new kanji, word]` withheld until the missing
@@ -680,7 +691,9 @@ public data class ReviewQueue(
  *    Example (half share, ADR-044; `newPerDay` 4, nothing introduced today): 日本語 is in REVIEW,
  *    kanji notes 日, 本, 語 are NEW, a deck holds the new words うっかり then Ｔシャツ → share 2: the
  *    share step draws 日, 本 and stops at 語 (`0 + 2 + 1 > 2`); the deck draws うっかり, Ｔシャツ
- *    (`drawn = 4`); the remainder step has no room → N = `[日, 本, うっかり, Ｔシャツ]`. After 日 and 本
+ *    (`drawn = 4`); the remainder step has no room → N = `[日, 本, うっかり, Ｔシャツ]`. The deckless
+ *    source, which holds the cards of 日, 本 and 語 (all backfill kanji), has no turn to take:
+ *    語 is not drawn on it, whatever `decklessPriority` is. After 日 and 本
  *    are answered: `bToday = 2`, the share step draws nothing, N = `[うっかり, Ｔシャツ]`. The next
  *    day: `[語]`. Without the two words: day 1 → `[日, 本, 語]` (語 by the remainder step).
  *    With `newPerDay` 5: share 2, N = `[日, 本, うっかり, Ｔシャツ, 語]` (語 by the remainder step,

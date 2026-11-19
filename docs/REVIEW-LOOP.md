@@ -253,7 +253,8 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
 - **ADR-044 backfill half share (ticket C-28b).** Rule 4 "Half share": backfill uses at most
   `max(1, floor(new_per_day / 2))` new cards of a study day (counted statelessly from today's reviews: a
   kanji introduced today whose word was already introduced), the sources get the rest, and backfill takes
-  what the sources cannot use (remainder step). Keep going: backfill is at most half of the new cards
+  what the sources cannot use (remainder step). A new card of a backfill kanji has no turn of its own in any
+  source (the minted notes are deckless and would otherwise bypass the share). Keep going: backfill is at most half of the new cards
   introduced today, checked before every source turn (a word and a kanji in turn). A kanji part may be drawn
   as the first new card of a day even if it is larger than the goal, so a lead never takes zero parts on a
   fresh day. The loop numbers are computed as before (`availableToday`, `until_stop`); goal 4, three backfill
