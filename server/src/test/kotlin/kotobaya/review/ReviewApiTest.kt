@@ -457,7 +457,7 @@ class ReviewApiTest : SyncFixture() {
     private fun ids(r: JsonNode) = r["items"].map { it["card"]["id"].asText() }
 
     /** `loop` minus the two members that depend on the caller's keep-going flag. */
-    private fun loopSame(r: JsonNode): JsonNode = (r["loop"].deepCopy<JsonNode>() as com.fasterxml.jackson.databind.node.ObjectNode).apply { remove("phase"); remove("keep_going"); remove("until_stop") }
+    private fun loopSame(r: JsonNode): JsonNode = (r["loop"].deepCopy<JsonNode>() as com.fasterxml.jackson.databind.node.ObjectNode).apply { remove("phase"); remove("keep_going"); remove("until_stop"); remove("until_stop_parts"); remove("keep_going_available") }
 
     /** [reviews] notes graduated by Easy and due 60 days later, so they are due reviews now. */
     private suspend fun ApplicationTestBuilder.dueReviews(t: String, reviews: Int): List<String> {

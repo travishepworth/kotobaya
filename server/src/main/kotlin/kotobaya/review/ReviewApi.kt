@@ -191,7 +191,14 @@ internal class ReviewApi(
         "ready" to linkedMapOf("learning" to s.readyLearning, "review" to s.readyReviews, "total" to s.readyLearning + s.readyReviews),
         "later_today" to linkedMapOf("count" to s.laterToday, "next_due_at" to s.nextDueAt?.let { formatInstant(Instant.ofEpochMilli(it)) }),
         "backlog" to linkedMapOf("reviews" to s.backlog, "beyond_limit" to s.backlogBeyondLimit),
+        "keep_going_available" to s.keepGoingAvailable,
         "until_stop" to s.untilStop,
+        "until_stop_parts" to linkedMapOf(
+            "learning" to s.untilStopParts.learning,
+            "later" to s.untilStopParts.later,
+            "review" to s.untilStopParts.review,
+            "new" to s.untilStopParts.new,
+        ),
         "reviews" to linkedMapOf("today" to s.reviewsToday, "limit" to s.reviewsLimit),
         "new" to linkedMapOf("today" to s.newToday, "goal" to s.newGoal, "available" to s.newAvailable),
     )

@@ -1423,6 +1423,7 @@
           "reviews" : 0
         },
         "keep_going" : false,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 3,
           "next_due_at" : "2026-11-20T10:00:55.000Z"
@@ -1442,7 +1443,13 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 15
+        "until_stop" : 15,
+        "until_stop_parts" : {
+          "later" : 3,
+          "learning" : 0,
+          "new" : 12,
+          "review" : 0
+        }
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:55.000Z",
@@ -2864,6 +2871,7 @@
           "reviews" : 0
         },
         "keep_going" : false,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 2,
           "next_due_at" : "2026-11-20T10:00:56.000Z"
@@ -2883,7 +2891,13 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 15
+        "until_stop" : 15,
+        "until_stop_parts" : {
+          "later" : 2,
+          "learning" : 1,
+          "new" : 12,
+          "review" : 0
+        }
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:56.000Z",
@@ -4300,6 +4314,7 @@
           "reviews" : 0
         },
         "keep_going" : true,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 1,
           "next_due_at" : "2026-11-20T10:00:57.000Z"
@@ -4319,7 +4334,13 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 13
+        "until_stop" : 13,
+        "until_stop_parts" : {
+          "later" : 1,
+          "learning" : 2,
+          "new" : 10,
+          "review" : 0
+        }
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:57.000Z",

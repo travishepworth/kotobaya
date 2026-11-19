@@ -970,6 +970,7 @@
           "reviews" : 4
         },
         "keep_going" : false,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 0,
           "next_due_at" : null
@@ -989,7 +990,13 @@
           "limit" : 200,
           "today" : 0
         },
-        "until_stop" : 8
+        "until_stop" : 8,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 4,
+          "review" : 4
+        }
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -1869,6 +1876,7 @@
           "reviews" : 3
         },
         "keep_going" : false,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 0,
           "next_due_at" : null
@@ -1888,7 +1896,13 @@
           "limit" : 200,
           "today" : 1
         },
-        "until_stop" : 6
+        "until_stop" : 6,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 3,
+          "review" : 3
+        }
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -2620,6 +2634,7 @@
           "reviews" : 3
         },
         "keep_going" : false,
+        "keep_going_available" : false,
         "later_today" : {
           "count" : 0,
           "next_due_at" : null
@@ -2639,7 +2654,13 @@
           "limit" : 200,
           "today" : 1
         },
-        "until_stop" : 5
+        "until_stop" : 5,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 3
+        }
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

@@ -1,24 +1,20 @@
-# HANDOFF CORE-30
+# HANDOFF SRV-30
 
 STATUS: DONE
-BRANCH: t/CORE-30 (from t/C-30-loop-wait)
-CHECK: `make check MODULE=core` → green (jvm + js)
+BRANCH: t/SRV-30
+CHECK: `make check MODULE=server` → green
 
 ## Changed (≤ 6 lines)
-- `core/.../queue/DefaultReviewLoop.kt`: phase rule 2 `laterToday > 0 → WAITING` now runs before the stop screens (both modes). Sets `untilStopParts` (untilStop = their sum) and `keepGoingAvailable = !keepGoing && legacy.moreAvailable`. Learn-ahead is still forced to 0.
-- New `ReviewLoopWaitTest.kt`. `QueuePropertyTest` gains the ADR-049 properties. `QueueParityScenarioTest` gains the two C-30 scenarios. Old tests that expected a stop phase with `laterToday > 0` now expect WAITING.
+- `server/.../review/ReviewApi.kt` `loopJson`: adds `keep_going_available` and `until_stop_parts {learning, later, review, new}` from `LoopState`.
+- `ReviewApiTest.loopSame` also ignores the two new mode-dependent keys.
+- Goldens re-recorded (`RECORD=1`): 32 updated, 2 new (`queue-loop-wait-before-stop`, `queue-loop-day-end-learning`); `queue-until-stop` step 8 is now `waiting`. word_audio untouched.
 
 ## Acceptance → tests
-- W1 steps 1-4 + capped twin → `w1Step1…`, `w1Step2…`, `w1PlayedThrough…`
-- Reported case (9 ready / 14 later / 707 new) → `reportedCaseAfterTheNineAreAnsweredWaitsForTheFourteen`
-- W2 → `w2WaitsForRelearningBeforeDoneForToday`
-- Day-end boundary → `learningDueAtDayEndDoesNotHoldTheDayOpen`, `queueLoopDayEndLearning`
-- README edge cases and properties → remaining `ReviewLoopWaitTest` tests, `loopInvariantsHoldOnRandomInputs`
-- Parity → `queueLoopWaitBeforeStop`, `queueUntilStop` (step 8 now WAITING)
+- server green, parity incl. queue-loop-wait-before-stop → `ParityGoldenTest` (re-run without RECORD passes)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- `GOLDEN_FINGERPRINT` was re-recorded because `LoopState.toString()` has new fields and some phases changed. The queue builder is untouched.
-- The parity scenarios were replayed from their narratives, not from the JSON steps (core has no parity runner).
+- The only non-additive golden diff is the phase change `done_for_today` -> `waiting` (queue-until-stop step 8).
+- Goldens were recorded from the server, not hand-checked line by line against the contracts parity narratives.
