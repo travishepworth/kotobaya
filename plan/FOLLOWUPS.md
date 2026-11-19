@@ -511,3 +511,4 @@
 - (C-28b minor) newPerDay 1 → backfill share 1 = whole goal until backfill done (no new words for N days). Consider alternate days; ask user if it bites.
 - (C-28b minor) Scoped builds (deck_id): backfill literals/bToday differ from unscoped build (introduced out-of-scope words missing) → counts disagree between deck review and global; same on server+device. Pass introduced words requiring backfill literals to scoped loaders, or state scoped builds do no backfill.
 - (C-28b minor) A large enabled kanji deck in tier 0 can take backfill kanji past the half share, up to the whole goal (intended); release note / UI hint.
+- (C-28c minors) t(S) "required" deckless kanji counts NEW words in disabled/later-tier decks (count only introduced words or drawn units); req over scoped/deleted candidates shifts turn order (ordering only); keep core tail-property exclusion (3) as narrow as README.
