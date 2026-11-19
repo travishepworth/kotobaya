@@ -1373,3 +1373,4 @@
 2026-11-19T07:05:30Z C-28e + CORE-28c REVIEW_APPROVE + CHECK_GREEN (core, server, android, contracts) + MERGE. Round code complete -> release prep
 2026-11-19T07:06:06Z RELEASE prep: pin f108574d; building api 0.1.25, web 0.1.28, APK 0.1.35
 2026-11-19T07:22:40Z RELEASE BLOCK: helm upgrade failed (OIDC token expired, needs browser login); images pushed, APK built; nothing applied to cluster
+- 2026-11-19 run 34 release: helm rev 39 api 0.1.25/web 0.1.28 rolled out; CLI reinstalled; APK 0.1.35 on user 10.

@@ -7,7 +7,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
-RELEASE run 34 BLOCKED_HUMAN (kube OIDC login expired; browser auth needed): pin f108574d (worktree scratchpad/rel34). PUSHED api 0.1.25 + web 0.1.28 to Harbor. values.yaml tags bumped (api 0.1.25, web 0.1.28) but NOT applied — helm upgrade failed before touching the cluster. APK 0.1.35 BUILT+verified (~/kotobaya-apk/kotobaya-0.1.35-release.apk, code 135, cert ec6b7f45 ok). When user has logged in (`kubectl get pods -n kotobaya`): cd rel34 && helm upgrade --install kotobaya deploy/helm/kotobaya -n kotobaya -f ~/repos/kubernetes/kotobaya/values.yaml; rollout status api/web; verify; then CLI reinstall from rel34; count backfill; adb install -r APK (user 10) when phone plugged.
+RELEASE run 34 DONE (2026-11-19). Live backfill-size count not run (needs DB access; SQL in plan/handoffs/SRV-28.md).
 Then CORE-28b (after C-28d), then KANJI-TEXT-SHARED (before release) -> SRV/AND re-run checks if core behaviour changed (no API change expected).
 If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> validate/check/review; else re-dispatch CORE-28 attempt 1 (prompt: ticket plan/tickets/CORE-28.md, owned core/** except core/src/commonMain/kotlin/kotobaya/contracts/**, read QueueBuilder rule 4-6, plan/handoffs/C-28.md + C-28b.md, ruby furigana note, Gradle flock).
 ### Next (in order)
@@ -20,7 +20,7 @@ WEB-REVIEW-FLOW, WEB-KG-IDLE, BUG-ADD2DECK-500 (Dialog effect loop), WEB-MORE-CL
 Still HELD from pause: LOOP-C2b, SHELL-Z2 (do not dispatch).
 CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
-LIVE (2026-11-17, helm rev 38, pin 91140ed8): api 0.1.24 + web 0.1.27, worker 0.1.19. CLI daemon + kby reinstalled from pin (daemon active, loop fields OK). APK 0.1.34 INSTALLED (users 0+10, launches clean, no crashes).
+LIVE (2026-11-19, helm rev 39, pin f108574d): api 0.1.25 + web 0.1.28, worker 0.1.19. CLI daemon reinstalled from pin (active). APK 0.1.35 INSTALLED (user 10, versionCode 135).
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
 APK 0.1.31 INSTALLED 2026-11-17 (pin e065f743: +SHELL-DARK; dark mode verified live). User: 'looks pretty good'.
 CONFIRMED by user 2026-11-17 (design in progress, architect): REVIEW-LOOP rework (+unlimited keeps new-goal stop w/ Keep going) (ready-now counts, no dead-end waiting, Done-for-today + Keep going backlog-first) + Lock-portrait setting.
