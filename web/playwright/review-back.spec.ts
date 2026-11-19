@@ -22,6 +22,30 @@ async function open(page: Page, context: BrowserContext): Promise<{ undos: () =>
 	return { undos: () => undos };
 }
 
+/** The revealed card is settled and usable: card opacity 1 (animations done), grade buttons enabled. */
+async function expectUsable(page: Page): Promise<void> {
+	await expect.poll(() => page.locator('article.card').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+	await expect.poll(() => page.locator('footer.actions').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+	const grades = page.locator('.grade');
+	for (let i = 0; i < (await grades.count()); i++) await expect(grades.nth(i)).toBeEnabled();
+	await expect(page.locator('article.card.held')).toHaveCount(0);
+	await page.waitForTimeout(800);
+}
+
+/** Grading the restored card sends exactly one answer request. */
+async function gradeOnce(page: Page): Promise<void> {
+	let n = 0;
+	const on = (r: import('@playwright/test').Request) => {
+		if (r.method() === 'POST' && r.url().includes('/review/answer')) n++;
+	};
+	page.on('request', on);
+	await grade(page).click();
+	await showAnswer(page).waitFor();
+	await page.waitForTimeout(300);
+	page.off('request', on);
+	expect(n).toBe(1);
+}
+
 /** Reveal, remember the revealed text, grade. */
 async function answer(page: Page): Promise<string> {
 	await showAnswer(page).click();
@@ -45,6 +69,7 @@ test('history back steps through answers, card revealed; nothing left leaves', a
 	await expect(page).toHaveURL(/\/review/);
 	expect(`${two.split('|')[0]}|${await headword(page)}`).toBe(two);
 	expect(c.undos()).toBe(1);
+	await expectUsable(page);
 	await page.screenshot({ path: `${SHOTS}/revealed-after-back.png` });
 
 	await page.goBack();
@@ -56,6 +81,15 @@ test('history back steps through answers, card revealed; nothing left leaves', a
 	await page.goBack();
 	await expect(page).not.toHaveURL(/\/review/);
 	expect(c.undos()).toBe(2);
+});
+
+test('grading the card restored by back sends one answer', async ({ page, context }) => {
+	await open(page, context);
+	await answer(page);
+	await page.goBack();
+	await grade(page).waitFor();
+	await expectUsable(page);
+	await gradeOnce(page);
 });
 
 test('undo button and U key also show the card revealed', async ({ page, context }) => {
@@ -87,7 +121,11 @@ test('dictionary link from the revealed card: back restores it revealed', async 
 	await expect(page).toHaveURL(/\/review/);
 	await grade(page).waitFor();
 	expect(await headword(page)).toBe(before);
+	await expectUsable(page);
 	await page.screenshot({ path: `${SHOTS}/review-after-dictionary.png` });
+	await gradeOnce(page);
+	await page.goBack();
+	await grade(page).waitFor();
 	// the session history survived too: back now undoes the earlier answer
 	await page.goBack();
 	await grade(page).waitFor();
