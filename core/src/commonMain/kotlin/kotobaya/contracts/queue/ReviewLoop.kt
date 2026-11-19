@@ -424,8 +424,9 @@ public data class LoopResult(
  *   `(dueAt, cardId)`, then up to 10 NEW (no NEW before the last backlog review) → `REVIEWING`,
  *   `keepGoing true`, `untilStop 145` (135 backlog + the batch of 10); every other [LoopState]
  *   field equals B3's.
- * - **A3** (A; 40/40 introduced, no due reviews, new cards remain): N empty, K = 10 NEW →
- *   `GOAL_REACHED`. With `keepGoing = true` → `REVIEWING`, items NEW; after 60 more introductions
+ * - **A3** (A; 40/40 introduced, no due reviews, no learning card due later today
+ *   (`laterToday = 0`; with `laterToday > 0` it is W1 step 2, `WAITING`), new cards remain):
+ *   N empty, K = 10 NEW → `GOAL_REACHED`, `untilStop 0`, `keepGoingAvailable true`. With `keepGoing = true` → `REVIEWING`, items NEW; after 60 more introductions
  *   still `REVIEWING` with `newToday 100, newGoal 40` (no end while new cards exist).
  * - **U1** (ADR-038; B; goal 40, 10 introduced, 30 reviews due under the cap, 5 learning cards
  *   due later today, 0 ready, 200 new cards): `REVIEWING`, `untilStop = 0 + 5 + 30 + 30 = 65`.

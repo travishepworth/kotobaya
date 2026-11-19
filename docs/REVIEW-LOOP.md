@@ -399,6 +399,8 @@ recomputed for the new day (the card is ready learning or later of the new day);
 **Parity (section 9).** New `queue-loop-wait-before-stop` (`queue.loop_waits_before_stop`, mandatory): W1 scaled
 to 1 ready / 2 later / 2 new with goal 3, through reviewing -> waiting -> keep going -> reviewing -> waiting ->
 reviewing -> `goal_reached`. `queue-until-stop` step 8: `waiting` (was `done_for_today` with 2 later).
+New `queue-loop-day-end-learning` (`queue.loop_learning_past_day_end`, mandatory): a learning card due exactly at
+`day_ends_at` -> `goal_reached` with later 0 and `until_stop` 0; one due 1 ms earlier -> `waiting`.
 `queue-learning-wait` and `queue-loop-waiting-empty`: `keep_going_available` false. Every whole-`/loop`
 expectation gained `keep_going_available` and `until_stop_parts`. Goldens are re-recorded by SRV-30.
 
