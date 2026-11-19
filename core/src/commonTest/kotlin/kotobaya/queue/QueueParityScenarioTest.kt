@@ -9,13 +9,15 @@ import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.LoopPhase
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueLimits
+import kotobaya.contracts.queue.UntilStopParts
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
  * CORE-28: the core half of the C-28 / C-28b parity scenarios (`contracts/api/shell/parity/queue-kanji-*.json`,
- * `queue-until-stop.json`). Core has no parity runner, so each scenario's `expect` on the queue (items in
+ * `queue-until-stop.json`; C-30: `queue-loop-wait-before-stop.json`, `queue-loop-day-end-learning.json`). Core has no parity runner, so each scenario's `expect` on the queue (items in
  * order, `to_materialize`, `loop.phase`, `loop.until_stop`, ready / later / new counts) is replayed here
  * through [DefaultReviewLoop] with the input a loader builds from the scenario's seed. Kanji notes the
  * fetch mints are materialized by [QueueSim] (deckless, created at the fetch), as the server does.
@@ -507,7 +509,10 @@ class QueueParityScenarioTest {
         assertEquals(listOf(50), s6.queue.cards())
         sim.answer(50, Ans.EASY)
         val s8 = sim.eval()
-        assertEquals(LoopPhase.DONE_FOR_TODAY, s8.state.phase)
+        // C-30 / ADR-049: two learning cards are on their timers, so the loop waits (was done_for_today).
+        assertEquals(LoopPhase.WAITING, s8.state.phase)
+        assertTrue(s8.state.keepGoingAvailable)
+        assertEquals(UntilStopParts(0, 2, 0, 0), s8.state.untilStopParts)
         assertEquals(2, s8.state.untilStop)
         assertEquals(2, s8.state.laterToday)
         assertEquals(emptyList(), s8.queue.items)
@@ -517,6 +522,151 @@ class QueueParityScenarioTest {
         assertTrue(s9.state.keepGoing)
         assertEquals(3, s9.state.untilStop)
         assertEquals(listOf(60), s9.queue.cards())
-        assertEquals(s8.state.copy(phase = s9.state.phase, keepGoing = true, untilStop = 3), s9.state)
+        assertEquals(UntilStopParts(0, 2, 0, 1), s9.state.untilStopParts)
+        assertEquals(
+            s8.state.copy(phase = s9.state.phase, keepGoing = true, untilStop = 3, keepGoingAvailable = false, untilStopParts = s9.state.untilStopParts),
+            s9.state,
+        )
+    }
+
+    // ---- C-30 / ADR-049 ----
+
+    private fun loopLimits(newPerDay: Int): QueueLimits =
+        QueueLimits(newPerDay, 200, 0, 0, true, 0, keepGoing = false, keepGoingNewBatch = 20, reviewsUnlimited = true)
+
+    private fun kgEval(sim: QueueSim, batch: Int): kotobaya.contracts.queue.LoopResult =
+        DefaultReviewLoop.evaluate(sim.input.copy(limits = sim.input.limits.copy(keepGoing = true, keepGoingNewBatch = batch)))
+
+    private fun stripMode(st: kotobaya.contracts.queue.LoopState) =
+        st.copy(phase = LoopPhase.EMPTY, keepGoing = false, untilStop = 0, keepGoingAvailable = false, untilStopParts = UntilStopParts())
+
+    @Test
+    fun queueLoopWaitBeforeStop() {
+        // 10:00:00 = t0. Cards 10, 20, 30 introduced today and in their first learning step; 40, 50 new.
+        val t0 = NOW
+        val sim = QueueSim(
+            input(
+                listOf(
+                    card(10, state = CardState.LEARNING, due = t0),
+                    card(20, state = CardState.LEARNING, due = t0 + 55_000L),
+                    card(30, state = CardState.LEARNING, due = t0 + 58_000L),
+                    card(40, created = 1),
+                    card(50, created = 2),
+                ),
+                limits = loopLimits(newPerDay = 3),
+                today = listOf(10, 20, 30).map { today(it, type = ReviewType.LEARNING, introducedNew = true, at = t0 - 65_000L) },
+                now = t0 + 1_000L,
+            ),
+        )
+        // Step 0: reviewing, 1 + 2 later.
+        val s0 = sim.eval()
+        assertEquals(LoopPhase.REVIEWING, s0.state.phase)
+        assertEquals(listOf(10), s0.queue.cards())
+        assertEquals(3, s0.state.untilStop)
+        assertEquals(UntilStopParts(1, 2, 0, 0), s0.state.untilStopParts)
+        assertFalse(s0.state.keepGoingAvailable)
+        // Step 1-2: graduate 10, nothing ready -> waiting (was goal_reached).
+        sim.answer(10, Ans.EASY)
+        sim.input = sim.input.copy(now = t0 + 3_000L)
+        val s2 = sim.eval()
+        assertEquals(LoopPhase.WAITING, s2.state.phase)
+        assertTrue(s2.queue.items.isEmpty())
+        assertEquals(t0 + 55_000L, s2.state.nextDueAt)
+        assertEquals(t0 + 55_000L, s2.queue.nextLearningDueAt)
+        assertTrue(s2.state.keepGoingAvailable)
+        assertTrue(s2.state.legacy.moreAvailable)
+        assertEquals(2, s2.state.untilStop)
+        assertEquals(UntilStopParts(0, 2, 0, 0), s2.state.untilStopParts)
+        // Step 3: keep going, limit 1: the new card, no learning card early.
+        val s3 = kgEval(sim, 1)
+        assertEquals(LoopPhase.REVIEWING, s3.state.phase)
+        assertEquals(listOf(40), s3.queue.cards())
+        assertEquals(3, s3.state.untilStop)
+        assertEquals(UntilStopParts(0, 2, 0, 1), s3.state.untilStopParts)
+        assertFalse(s3.state.keepGoingAvailable)
+        assertEquals(stripMode(s2.state), stripMode(s3.state))
+        // Step 4: 20 came due.
+        sim.input = sim.input.copy(now = t0 + 55_000L)
+        val s4 = sim.eval()
+        assertEquals(LoopPhase.REVIEWING, s4.state.phase)
+        assertEquals(listOf(20), s4.queue.cards())
+        assertEquals(UntilStopParts(1, 1, 0, 0), s4.state.untilStopParts)
+        // Step 5-6: graduate 20, waiting for 30.
+        sim.answer(20, Ans.EASY)
+        sim.input = sim.input.copy(now = t0 + 57_000L)
+        val s6 = sim.eval()
+        assertEquals(LoopPhase.WAITING, s6.state.phase)
+        assertEquals(t0 + 58_000L, s6.state.nextDueAt)
+        assertEquals(1, s6.state.untilStop)
+        // Step 7-8.
+        sim.input = sim.input.copy(now = t0 + 58_000L)
+        assertEquals(listOf(30), sim.eval().queue.cards())
+        sim.answer(30, Ans.EASY)
+        // Step 9: only now goal_reached.
+        sim.input = sim.input.copy(now = t0 + 60_000L)
+        val s9 = sim.eval()
+        assertEquals(LoopPhase.GOAL_REACHED, s9.state.phase)
+        assertEquals(0, s9.state.untilStop)
+        assertEquals(UntilStopParts(0, 0, 0, 0), s9.state.untilStopParts)
+        assertTrue(s9.state.keepGoingAvailable)
+        assertEquals(0, s9.state.laterToday)
+        // Step 10: keep going, limit 1.
+        val s10 = kgEval(sim, 1)
+        assertEquals(LoopPhase.REVIEWING, s10.state.phase)
+        assertEquals(listOf(40), s10.queue.cards())
+        assertEquals(stripMode(s9.state), stripMode(s10.state))
+    }
+
+    @Test
+    fun queueLoopDayEndLearning() {
+        val end = TOKYO_DAY.endMs
+        val sim = QueueSim(
+            input(
+                listOf(card(10, created = 1), card(20, created = 2), card(30, created = 3)),
+                limits = loopLimits(newPerDay = 1),
+                now = end - 60_000L,
+            ),
+        )
+        // Step 0: 10 answered Again -> due at day_ends_at exactly.
+        sim.answer(10, Ans.AGAIN)
+        assertEquals(end, sim.input.candidates.first { it.cardId == cardId(10) }.dueAt)
+        // Step 1: not later today -> goal_reached.
+        sim.input = sim.input.copy(now = end - 59_000L)
+        val s1 = sim.eval()
+        assertEquals(LoopPhase.GOAL_REACHED, s1.state.phase)
+        assertEquals(0, s1.state.laterToday)
+        assertEquals(0, s1.state.untilStop)
+        assertEquals(null, s1.state.nextDueAt)
+        assertEquals(null, s1.queue.nextLearningDueAt)
+        assertEquals(0, s1.state.legacy.learning)
+        assertTrue(s1.state.keepGoingAvailable)
+        // Step 2: 20 answered Again at 03:58:59.999 -> due 1 ms before day_ends_at.
+        sim.input = sim.input.copy(now = end - 60_001L)
+        sim.answer(20, Ans.AGAIN)
+        assertEquals(end - 1, sim.input.candidates.first { it.cardId == cardId(20) }.dueAt)
+        // Step 3: waiting for it.
+        sim.input = sim.input.copy(now = end - 57_000L)
+        val s3 = sim.eval()
+        assertEquals(LoopPhase.WAITING, s3.state.phase)
+        assertEquals(1, s3.state.laterToday)
+        assertEquals(end - 1, s3.state.nextDueAt)
+        assertEquals(1, s3.state.untilStop)
+        assertEquals(UntilStopParts(0, 1, 0, 0), s3.state.untilStopParts)
+        assertTrue(s3.state.keepGoingAvailable)
+        assertEquals(2, s3.state.newToday)
+        assertEquals(1, s3.state.newGoal)
+        // Step 4: 20 is ready; 10 is neither ready nor later today.
+        sim.input = sim.input.copy(now = end - 1)
+        val s4 = sim.eval()
+        assertEquals(LoopPhase.REVIEWING, s4.state.phase)
+        assertEquals(listOf(20), s4.queue.cards())
+        assertEquals(1, s4.state.readyLearning)
+        assertEquals(0, s4.state.laterToday)
+        // Step 5: the next study day: both learning cards ready by (due_at, id), then the new card.
+        sim.nextDay()
+        val s5 = sim.eval()
+        assertEquals(listOf(20, 10, 30), s5.queue.cards())
+        assertEquals(3, s5.state.untilStop)
+        assertEquals(UntilStopParts(2, 0, 0, 1), s5.state.untilStopParts)
     }
 }

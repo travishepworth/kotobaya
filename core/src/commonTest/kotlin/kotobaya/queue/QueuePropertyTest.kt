@@ -12,6 +12,7 @@ import kotobaya.contracts.queue.ReviewQueue
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -214,7 +215,16 @@ class QueuePropertyTest {
             val i = randomLoopInput(seed)
             val off = DefaultReviewLoop.evaluate(i.copy(limits = i.limits.copy(keepGoing = false))).state
             val on = DefaultReviewLoop.evaluate(i.copy(limits = i.limits.copy(keepGoing = true))).state
-            assertEquals(off.copy(phase = on.phase, keepGoing = true, untilStop = on.untilStop), on, "seed $seed")
+            assertEquals(
+                off.copy(phase = on.phase, keepGoing = true, untilStop = on.untilStop, keepGoingAvailable = false, untilStopParts = on.untilStopParts),
+                on,
+                "seed $seed",
+            )
+            // ADR-049: untilStop == 0 iff a stop screen, in both modes.
+            for (st in listOf(off, on)) {
+                val stop = st.phase == LoopPhase.GOAL_REACHED || st.phase == LoopPhase.DONE_FOR_TODAY || st.phase == LoopPhase.EMPTY
+                assertEquals(stop, st.untilStop == 0, "untilStop 0 iff stop phase (${st.phase}), seed $seed")
+            }
             // ADR-038: without keep going untilStop is the ready and later learning, the ready reviews and availableToday.
             assertTrue(on.untilStop >= 0 && off.untilStop >= 0, "seed $seed")
             if (off.phase == LoopPhase.REVIEWING) assertTrue(off.untilStop >= 1, "reviewing with untilStop 0, seed $seed")
@@ -247,7 +257,27 @@ class QueuePropertyTest {
                 assertTrue(!st.keepGoing && k.nonEmpty(), "dead-end phase, seed $seed")
                 assertEquals(i.limits.reviewsUnlimited, st.phase == LoopPhase.GOAL_REACHED, "seed $seed")
             }
-            if (st.phase == LoopPhase.WAITING) assertTrue(!k.nonEmpty() && st.laterToday > 0, "seed $seed")
+            // ADR-049: WAITING iff the served queue is empty and a learning card falls due later today, in both modes.
+            assertEquals(!r.queue.nonEmpty() && st.laterToday > 0, st.phase == LoopPhase.WAITING, "waiting rule, seed $seed")
+            val n = DefaultQueueBuilder.build(i.copy(limits = i.limits.copy(keepGoing = false, learnAheadMs = 0)))
+            if (st.phase == LoopPhase.GOAL_REACHED || st.phase == LoopPhase.DONE_FOR_TODAY || st.phase == LoopPhase.EMPTY) {
+                assertTrue(st.laterToday == 0 && st.nextDueAt == null && st.readyLearning == 0 && st.readyReviews == 0 && st.untilStop == 0, "stop phase zeros, seed $seed")
+            }
+            if (st.phase == LoopPhase.EMPTY) assertFalse(k.nonEmpty(), "empty with K non-empty, seed $seed")
+            val parts = st.untilStopParts
+            assertEquals(st.untilStop, parts.learning + parts.later + parts.review + parts.new, "parts sum, seed $seed")
+            assertTrue(parts.learning >= 0 && parts.later >= 0 && parts.review >= 0 && parts.new >= 0, "seed $seed")
+            assertEquals(st.readyLearning, parts.learning, "seed $seed")
+            assertEquals(st.laterToday, parts.later, "seed $seed")
+            assertEquals(if (st.keepGoing) st.backlog else st.readyReviews, parts.review, "seed $seed")
+            assertEquals(!st.keepGoing && !n.nonEmpty() && k.nonEmpty(), st.keepGoingAvailable, "keepGoingAvailable, seed $seed")
+            assertEquals(!st.keepGoing && st.legacy.moreAvailable, st.keepGoingAvailable, "seed $seed")
+            // No learn-ahead in either build.
+            for (item in n.items + k.items) {
+                if (item.kind != QueueItemKind.LEARNING) continue
+                val due = byId.getValue(item.cardId).dueAt
+                assertTrue(due == null || due <= i.now, "learning ahead in a build, seed $seed")
+            }
             for (item in r.queue.items) {
                 if (item.kind != QueueItemKind.LEARNING) continue
                 val due = byId.getValue(item.cardId).dueAt

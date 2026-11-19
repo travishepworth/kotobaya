@@ -1,22 +1,24 @@
-# HANDOFF C-30
+# HANDOFF CORE-30
 
 STATUS: DONE
-BRANCH: t/C-30-loop-wait
-CHECK: `make check MODULE=contracts` → green; `:core:compileKotlinJvm :core:compileKotlinJs` → green
+BRANCH: t/CORE-30 (from t/C-30-loop-wait)
+CHECK: `make check MODULE=core` → green (jvm + js)
 
 ## Changed (≤ 6 lines)
-- `ReviewLoop.kt`: phase order `WAITING` (rule 2) before `GOAL_REACHED`/`DONE_FOR_TODAY` (rule 3); additive `LoopState.keepGoingAvailable`, `untilStopParts` (`UntilStopParts`), defaults so core compiles; W1/W2, edge cases, invariants.
-- openapi `ReviewLoop`: `keep_going_available`, `until_stop_parts {learning, later, review, new}` (optional); rules C3, C4, new C6 (refetch at `next_due_at` in every phase).
-- Parity: new `queue-loop-wait-before-stop` (`queue.loop_waits_before_stop`) and `queue-loop-day-end-learning` (`queue.loop_learning_past_day_end`: due at `day_ends_at` → `goal_reached`, later 0, `until_stop` 0; due 1 ms earlier → `waiting`), both mandatory; `queue-until-stop` step 8 → `waiting`; 19 whole-`/loop` expectations extended. A3 KDoc states `laterToday = 0`.
-- `docs/REVIEW-LOOP.md` §14, SHELL.md, SUMMARYs, core README; clients regenerated.
+- `core/.../queue/DefaultReviewLoop.kt`: phase rule 2 `laterToday > 0 → WAITING` now runs before the stop screens (both modes). Sets `untilStopParts` (untilStop = their sum) and `keepGoingAvailable = !keepGoing && legacy.moreAvailable`. Learn-ahead is still forced to 0.
+- New `ReviewLoopWaitTest.kt`. `QueuePropertyTest` gains the ADR-049 properties. `QueueParityScenarioTest` gains the two C-30 scenarios. Old tests that expected a stop phase with `laterToday > 0` now expect WAITING.
 
 ## Acceptance → tests
-- contracts green, scenarios hand-evaluated → `contracts/api/check.sh` parity checks; goldens not recorded (SRV-30).
+- W1 steps 1-4 + capped twin → `w1Step1…`, `w1Step2…`, `w1PlayedThrough…`
+- Reported case (9 ready / 14 later / 707 new) → `reportedCaseAfterTheNineAreAnsweredWaitsForTheFourteen`
+- W2 → `w2WaitsForRelearningBeforeDoneForToday`
+- Day-end boundary → `learningDueAtDayEndDoesNotHoldTheDayOpen`, `queueLoopDayEndLearning`
+- README edge cases and properties → remaining `ReviewLoopWaitTest` tests, `loopInvariantsHoldOnRandomInputs`
+- Parity → `queueLoopWaitBeforeStop`, `queueUntilStop` (step 8 now WAITING)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Tickets: CORE-30 (DefaultReviewLoop; tests in contracts/core/README "ADR-049"), then SRV-30 (map + re-record goldens), AND-30, WEB-30 (Home/header/C6/waiting screen), CLI-30.
-- My decisions: Keep going offered during `waiting` (backlog too, not only new); `until_stop_parts.review` = backlog with keep going; no `LOCAL_API_VERSION` bump.
-- Scenarios assume Easy on a learning card graduates past today and a 60 s first step; day-end scenario pins `reviewed_at` and asserts `/card/due_at`.
+- `GOLDEN_FINGERPRINT` was re-recorded because `LoopState.toString()` has new fields and some phases changed. The queue builder is untouched.
+- The parity scenarios were replayed from their narratives, not from the JSON steps (core has no parity runner).
