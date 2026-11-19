@@ -1341,3 +1341,4 @@
 2026-11-19T04:05:23Z WEB-28 attempt 3 CHECK_GREEN + MERGE (until_stop bar, DeckProgress + legend, KanjiParts; screenshots viewed)
 2026-11-19T04:07:29Z C-28b REVIEW_CHANGES 1 major (deckless own turn bypasses backfill share); attempt 2; 2 minors -> FOLLOWUPS
 2026-11-19T04:18:35Z C-28b REVIEW_APPROVE r3 + CHECK_GREEN + MERGE; CORE-28 DISPATCH writer-senior
+2026-11-19T04:30:28Z STATE resume section written (context limit approaching)
