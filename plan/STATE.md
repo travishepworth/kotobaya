@@ -4,6 +4,12 @@ Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
 Updated: run 34 (2026-11-19)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
+## RESUME HERE (run 35, 2026-11-19) — ADR-046 + SCROLL-TOP
+User present. Running: C-28f (architect, t/C-28f-contracts) and SCROLL-TOP (writer, t/SCROLL-TOP) in parallel.
+Next: C-28f green -> reviewer + architect pass -> dispatch CORE-28d (writer-senior from t/C-28f-contracts, merge together). SCROLL-TOP low risk -> check web+android -> merge.
+Then ONE release: api+web (+worker if dict rule changed; then dictionary rebuild + device package refresh) + APK (next after 0.1.35; phone: say "ready").
+Live cause: シンガポール (1063410, headword 新嘉坡 ateji/rK/uk) minted auto_kanji 嘉 (note 01a1f310-d484-7986-b7c4-cac32d9d6656, new, 0 reps).
+
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running

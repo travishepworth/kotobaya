@@ -876,3 +876,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - KANJI-TEXT-SHARED — server+android use core FieldPlainText + server goldens for C-28d scenarios · model: sonnet · risk: med · deps: CORE-28b, AND-28 · status: MERGED (ticket: plan/tickets/KANJI-TEXT-SHARED.md)
 - C-28e — ADR-045 learnable kanji always required (word tags → furigana only) · model: fable · risk: high · deps: C-28d · status: MERGED (ticket: plan/tickets/C-28e.md)
 - CORE-28c — implement C-28e + goldens · model: opus · risk: high · deps: C-28e, KANJI-TEXT-SHARED · status: MERGED (ticket: plan/tickets/CORE-28c.md)
+- C-28f — ADR-046 rare-form words display kana + tagged words require jōyō only · model: fable · risk: high · deps: CORE-28c · status: TODO (ticket: plan/tickets/C-28f.md)
+- CORE-28d — implement C-28f (+ server/android/worker follow-through per C-28f HANDOFF) · model: opus · risk: high · deps: C-28f · status: TODO (ticket: plan/tickets/CORE-28d.md)
+- SCROLL-TOP — review card scrolls to absolute top on show (web + android) · model: sonnet · risk: low · deps: — · status: TODO (ticket: plan/tickets/SCROLL-TOP.md)

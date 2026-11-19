@@ -1374,3 +1374,5 @@
 2026-11-19T07:06:06Z RELEASE prep: pin f108574d; building api 0.1.25, web 0.1.28, APK 0.1.35
 2026-11-19T07:22:40Z RELEASE BLOCK: helm upgrade failed (OIDC token expired, needs browser login); images pushed, APK built; nothing applied to cluster
 - 2026-11-19 run 34 release: helm rev 39 api 0.1.25/web 0.1.28 rolled out; CLI reinstalled; APK 0.1.35 on user 10.
+2026-11-19T09:47:29Z DECIDE ADR-046 (user: rK/sK-only words → kana; tagged words require jōyō only); C-28f, CORE-28d, SCROLL-TOP filed
+2026-11-19T09:47:42Z C-28f DISPATCH architect; SCROLL-TOP DISPATCH writer
