@@ -561,6 +561,17 @@ on('GET', '/review/queue', (s, _m, q) => {
 		day_ends_at: '2026-11-14T04:00:00Z',
 		generated_at: now(),
 		counts,
+		// ADR-037/038: the loop the clients render; until_stop = what is ready plus 6 new cards still to come.
+		loop: {
+			phase: total > 0 ? 'reviewing' : 'goal_reached',
+			keep_going: false,
+			ready: { learning: counts.learning, review: counts.review, total: counts.learning + counts.review },
+			later_today: { count: 0, next_due_at: null },
+			backlog: { reviews: counts.review, beyond_limit: 0 },
+			reviews: { today: s.answered.length, limit: null },
+			new: { today: 4, goal: 10, available: true },
+			until_stop: total + 6
+		},
 		items: due.slice(0, Math.min(limit, total)).map(({ card, note }) => queueItem(s, card, note))
 	};
 });
