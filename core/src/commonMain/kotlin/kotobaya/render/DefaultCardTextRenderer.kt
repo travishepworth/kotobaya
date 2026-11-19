@@ -4,6 +4,8 @@ import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.render.CardSide
 import kotobaya.contracts.render.CardText
 import kotobaya.contracts.render.CardTextRenderer
+import kotobaya.contracts.render.DictionaryData
+import kotobaya.contracts.render.KanjiData
 import kotobaya.contracts.render.RenderInput
 import kotobaya.contracts.render.RenderOptions
 import kotobaya.contracts.render.TextRenderInput
@@ -88,15 +90,45 @@ public object DefaultCardTextRenderer : CardTextRenderer {
         return lines(Sanitizer.stripSentinels(sb.toString()))
     }
 
+    /** Text lines of a field under [mode], resolved like the HTML renderer ("text of a field"). */
+    internal fun fieldLines(
+        fields: Map<String, String>,
+        dictionary: DictionaryData?,
+        kanji: KanjiData?,
+        baseType: NoteBaseType,
+        key: String,
+        mode: TextMode,
+        warnings: MutableSet<String> = LinkedHashSet(),
+    ): List<String> {
+        val raw = DefaultCardRenderer.resolveField(fields, dictionary, kanji, baseType, key).first
+        if (raw.isBlank()) return emptyList()
+        return htmlLines(Sanitizer(showRuby = false, mediaUrl = { it }, warnings = warnings).sanitize(Sanitizer.stripSentinels(raw), mode))
+    }
+
+    /** [fieldLines] joined by line breaks (the HTML furigana front's E and R, ADR-042). */
+    internal fun fieldText(
+        fields: Map<String, String>,
+        dictionary: DictionaryData?,
+        kanji: KanjiData?,
+        baseType: NoteBaseType,
+        key: String,
+        mode: TextMode,
+    ): String = fieldLines(fields, dictionary, kanji, baseType, key, mode).joinToString("\n")
+
     private class Ctx(val input: TextRenderInput) {
         val warnings = LinkedHashSet<String>()
-        private val sanitizer = Sanitizer(showRuby = false, mediaUrl = { it }, warnings = warnings)
 
         /** Text lines of a field under [mode] (resolved like the HTML renderer). */
-        fun field(key: String, mode: TextMode = TextMode.HTML): List<String> {
-            val raw = DefaultCardRenderer.resolveField(input.fields, input.dictionary, input.kanji, input.noteType.baseType, key).first
-            if (raw.isBlank()) return emptyList()
-            return htmlLines(sanitizer.sanitize(Sanitizer.stripSentinels(raw), mode))
+        fun field(key: String, mode: TextMode = TextMode.HTML): List<String> =
+            fieldLines(input.fields, input.dictionary, input.kanji, input.noteType.baseType, key, mode, warnings)
+
+        /** ADR-042: the expression line with `（reading）` when the front carries furigana, else [expression] unchanged. */
+        private fun frontExpression(): List<String> {
+            val e = expression()
+            if (!input.frontFurigana || input.noteType.baseType != NoteBaseType.VOCAB || e.isEmpty()) return e
+            val r = reading().joinToString("\n")
+            if (r.isEmpty() || r == e.joinToString("\n")) return e
+            return e.dropLast(1) + (e.last() + "（" + r + "）")
         }
 
         private fun expression() = field("expression", TextMode.KANJI)
@@ -106,12 +138,12 @@ public object DefaultCardTextRenderer : CardTextRenderer {
         /** The table of the [CardTextRenderer] contract: (front lines, back lines), or null when (base, kind) is not in it. */
         fun rule(base: NoteBaseType, kind: String): Pair<List<String>, List<String>>? = when (base) {
             NoteBaseType.VOCAB, NoteBaseType.PHRASE -> when (kind) {
-                "meaning" -> expression() to reading() + meaning()
+                "meaning" -> frontExpression() to reading() + meaning()
                 "reading" -> if (base == NoteBaseType.VOCAB) expression() to reading() + meaning() else null
                 "listening" -> emptyList<String>() to expression() + reading() + meaning()
                 "production" -> meaning() to expression() + reading()
                 // the HTML front is expression + {{kana:reading}}: the question is the pitch, not the reading
-                "pitch" -> if (base == NoteBaseType.VOCAB) expression() + reading() to pitch() else null
+                "pitch" -> if (base == NoteBaseType.VOCAB) frontExpression() + reading() to pitch() else null
                 else -> null
             }
             NoteBaseType.KANJI -> when (kind) {

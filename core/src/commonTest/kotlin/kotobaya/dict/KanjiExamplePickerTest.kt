@@ -47,7 +47,7 @@ class KanjiExamplePickerTest {
     private val ju = kanji("受", "ジュ", "う.ける -う.け う.かる")
 
     /** kanji → (headword, reading, expected type). */
-    private val goldens: List<Pair<KanjiReadings, List<Triple<String, String, KanjiReadingType>>>> = listOf(
+    internal val goldens: List<Pair<KanjiReadings, List<Triple<String, String, KanjiReadingType>>>> = listOf(
         shoku to listOf(
             Triple("食べる", "たべる", KUN), Triple("食べ物", "たべもの", KUN), Triple("食う", "くう", KUN),
             Triple("食事", "しょくじ", ON), Triple("食堂", "しょくどう", ON), Triple("食品", "しょくひん", ON),

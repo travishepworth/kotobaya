@@ -4,7 +4,6 @@ import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
-import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.LegacyCounts
 import kotobaya.contracts.queue.LoopPhase
 import kotobaya.contracts.queue.LoopResult
@@ -65,7 +64,8 @@ class ReviewLoopTest {
 
     private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty()
 
-    private fun LoopState.counts(): LoopState = copy(phase = LoopPhase.EMPTY, keepGoing = false)
+    /** The mode-independent numbers: everything but `phase`, `keepGoing` and `untilStop` (ADR-038). */
+    private fun LoopState.counts(): LoopState = copy(phase = LoopPhase.EMPTY, keepGoing = false, untilStop = 0)
 
     private fun kinds(q: ReviewQueue): String = q.items.joinToString("") { it.kind.name.take(1) }
 
@@ -121,6 +121,7 @@ class ReviewLoopTest {
                 laterToday = 26, nextDueAt = NOW + 5 * minute, backlog = 0, backlogBeyondLimit = 0,
                 reviewsToday = 0, reviewsLimit = null, newToday = 0, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 40, learning = 26, review = 0, moreAvailable = false),
+                untilStop = 66,
             ),
             r.state,
         )
@@ -252,6 +253,7 @@ class ReviewLoopTest {
                 laterToday = 0, nextDueAt = null, backlog = 135, backlogBeyondLimit = 135,
                 reviewsToday = 200, reviewsLimit = 200, newToday = 40, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 0, learning = 0, review = 0, moreAvailable = true),
+                untilStop = 0,
             ),
             b3.state,
         )
@@ -264,6 +266,8 @@ class ReviewLoopTest {
         assertTrue(b4.state.keepGoing)
         assertEquals((201..335).toList() + (1001..1010).toList(), b4.queue.cards())
         assertEquals(b3.state.counts(), b4.state.counts())
+        // ADR-038: 135 backlog + the batch of 10.
+        assertEquals(145, b4.state.untilStop)
 
         // A due learning card leads the keep-going queue.
         val withLearning = eval(kgInput.copy(candidates = kgInput.candidates + learning(2001, NOW - minute)))
@@ -406,27 +410,27 @@ class ReviewLoopTest {
 
     @Test
     fun goalThirtyNineOfFortyAndOnlyAThreeCardGroupLeft() {
-        // E1
-        // The kanji cards live in a deck with newPerDay 0: never drawn alone, but they join the group.
+        // E1 (ADR-043 replaces "goal_reached at 39/40"): the unit [食, 物, 食物] leads with its first kanji.
+        // The kanji cards live in a deck with newPerDay 0: never drawn alone, but they join the unit.
         val c = listOf(
             card(1001, exprKanji = listOf("食", "物")),
             card(1002, note = 3002, base = NoteBaseType.KANJI, kanji = "食", members = listOf(member(2, 1))),
             card(1003, note = 3003, base = NoteBaseType.KANJI, kanji = "物", members = listOf(member(2, 2))),
         )
-        val i = input(
-            c,
-            decks = listOf(deck(2, newPerDay = 0)),
-            limits = loopLimits(unlimited = true),
-            today = doneToday(0, 39),
-            decklessAddKanji = AddKanjiMode.BEFORE,
-        )
+        val i = input(c, decks = listOf(deck(2, newPerDay = 0)), limits = loopLimits(unlimited = true), today = doneToday(0, 39))
         val r = eval(i)
-        assertEquals(LoopPhase.GOAL_REACHED, r.state.phase)
-        assertEquals(39, r.state.newToday)
-        assertEquals(40, r.state.newGoal)
-        assertEquals(0, r.state.legacy.new)
-        assertEquals("N1002 N1003 N1001", eval(i.copy(limits = i.limits.copy(keepGoing = true))).queue.shape())
-        // A batch of 1 still draws the whole group when it fits the day.
+        assertEquals(LoopPhase.REVIEWING, r.state.phase)
+        assertEquals("N1002", r.queue.shape())
+        assertEquals(1, r.state.untilStop)
+        assertEquals(1, r.state.legacy.new)
+        // After it: 40/40, phase 2, never overshot.
+        val sim = Sim(i)
+        sim.answerHead()
+        val after = sim.eval()
+        assertEquals(LoopPhase.GOAL_REACHED, after.state.phase)
+        assertEquals(40, after.state.newToday)
+        assertEquals("N1003 N1001", eval(sim.input.copy(limits = sim.input.limits.copy(keepGoing = true))).queue.shape())
+        // A batch of 1 still draws the whole unit when it fits the day.
         val fits = eval(i.copy(today = doneToday(0, 30), limits = i.limits.copy(keepGoingNewBatch = 1)))
         assertEquals("N1002 N1003 N1001", fits.queue.shape())
     }
@@ -582,9 +586,52 @@ class ReviewLoopTest {
         assertEquals(GOLDEN_FINGERPRINT, h)
     }
 
+    // ---- ADR-038: untilStop ----
+
+    @Test
+    fun untilStopWorkedExamples() {
+        // A1 66, B3 0, B4 145 are asserted above; U1: goal 40, 10 introduced, 30 due under the cap, 5 later.
+        val u1 = input(dueReviews(30) + laterLearning(5) + newCards(200), limits = loopLimits(unlimited = false), today = doneToday(0, 10))
+        val r = eval(u1)
+        assertEquals(LoopPhase.REVIEWING, r.state.phase)
+        assertEquals(65, r.state.untilStop)
+        assertEquals(47, eval(u1.copy(candidates = dueReviews(30) + laterLearning(5) + newCards(12))).state.untilStop)
+        // Again on a review keeps it (moves from ready to later), Good on a new card keeps it, Good on a review lowers it.
+        val sim = QueueSim(u1)
+        sim.answer(1, Ans.AGAIN)
+        val again = sim.eval().state
+        assertEquals(29, again.readyReviews)
+        assertEquals(6, again.laterToday)
+        assertEquals(65, again.untilStop)
+        sim.answer(1001, Ans.GOOD)
+        assertEquals(65, sim.eval().state.untilStop)
+        sim.answer(2, Ans.GOOD)
+        assertEquals(64, sim.eval().state.untilStop)
+    }
+
+    @Test
+    fun untilStopIsEqualBeforeAndAfterMaterialization() {
+        val words = listOf(
+            card(1001, created = 1, exprKanji = listOf("学", "校"), missing = mks("学", "校")),
+            card(1002, created = 2),
+        )
+        val pending = listOf(entry(1, 77, 0, exprKanji = listOf("先"), missing = mks("先")))
+        val sim = QueueSim(input(words + dueReviews(3), decks = listOf(deck(1)), limits = loopLimits(unlimited = false), pending = pending))
+        val before = sim.eval()
+        assertEquals(LoopPhase.REVIEWING, before.state.phase)
+        assertEquals(listOf("先", "学", "校"), before.queue.kanjiToMaterialize)
+        sim.materialize(before.queue)
+        val after = sim.eval()
+        assertEquals(before.state.untilStop, after.state.untilStop)
+        assertEquals(3 + 2 + 3 + 1, after.state.untilStop)
+        assertEquals(after.state.untilStop, after.queue.items.size)
+    }
+
     private fun fail(msg: String): Nothing = throw AssertionError(msg)
 
     private companion object {
-        const val GOLDEN_FINGERPRINT: Long = 5076156702524499125L
+        // CORE-28: re-recorded only because `LoopState.toString()` now carries `untilStop` (ADR-038); with
+        // that field stripped the hash is still the pre-CORE-28 5076156702524499125 (queues unchanged).
+        const val GOLDEN_FINGERPRINT: Long = 398548625834242320L
     }
 }

@@ -8,6 +8,7 @@ import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.DeckMembership
+import kotobaya.contracts.queue.MissingKanji
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueDeck
@@ -58,6 +59,9 @@ internal fun card(
     members: List<DeckMembership> = emptyList(),
     kanji: String? = null,
     exprKanji: List<String> = emptyList(),
+    req: List<String>? = null,
+    missing: List<MissingKanji> = emptyList(),
+    companion: Boolean = false,
 ): QueueCandidate = QueueCandidate(
     cardId = cardId(n),
     noteId = noteId(note),
@@ -73,7 +77,16 @@ internal fun card(
     memberships = members,
     kanjiLiteral = kanji,
     expressionKanji = exprKanji,
+    requiredKanji = req,
+    missingKanji = missing,
+    companion = companion,
 )
+
+/** `MissingKanji(literal, newCards)`. */
+internal fun mk(literal: String, newCards: Int = 1): MissingKanji = MissingKanji(literal, newCards)
+
+/** The missing kanji of each literal (one card each). */
+internal fun mks(vararg literals: String): List<MissingKanji> = literals.map { mk(it) }
 
 internal fun review(n: Int, due: InstantMs, members: List<DeckMembership> = emptyList(), note: Int = n): QueueCandidate =
     card(n, note = note, state = CardState.REVIEW, due = due, members = members)
@@ -88,7 +101,8 @@ internal fun today(
     introducedNew: Boolean = false,
     countsAsReview: Boolean = false,
     decks: List<Int> = emptyList(),
-): TodayReview = TodayReview(cardId(card), noteId(note), type, introducedNew, countsAsReview, decks.map { deckId(it) })
+    at: InstantMs = 0,
+): TodayReview = TodayReview(cardId(card), noteId(note), type, introducedNew, countsAsReview, decks.map { deckId(it) }, at)
 
 internal fun entry(
     deck: Int,
@@ -97,7 +111,9 @@ internal fun entry(
     override: WordStatus? = null,
     exprKanji: List<String> = emptyList(),
     newKanjiCards: Int = 0,
-): PendingEntry = PendingEntry(deckId(deck), seq, position, "e:$seq", override, exprKanji, newKanjiCards)
+    req: List<String>? = null,
+    missing: List<MissingKanji> = emptyList(),
+): PendingEntry = PendingEntry(deckId(deck), seq, position, "e:$seq", override, exprKanji, newKanjiCards, req, missing)
 
 internal fun limits(
     newPerDay: Int = 20,

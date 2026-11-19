@@ -118,8 +118,12 @@ public object DefaultCardRenderer : CardRenderer {
             return sb.toString()
         }
 
+        /** True while the front side is being expanded (the furigana front applies there only). */
+        private var expandingFront = false
+
         /** The sanitised inner HTML of one side. */
         fun side(side: CardSide, front: String?, extras: Boolean): String {
+            expandingFront = side == CardSide.FRONT
             val template = input.noteType.templates.firstOrNull { it.kind == input.kind }
             val custom = if (side == CardSide.FRONT) template?.front else template?.back
             if (custom != null) return expand(custom, builtIn = false, front = front)
@@ -208,11 +212,25 @@ public object DefaultCardRenderer : CardRenderer {
                 else -> return unknown()
             }
             val (raw, source) = resolve(key)
+            if (builtIn && expandingFront && mode == TextMode.KANJI && key == "expression") furiganaFront(source)?.let { return it }
             val html = if (raw.isBlank()) "" else sanitizer.sanitize(Sanitizer.stripSentinels(raw), mode)
             if (html.isEmpty()) return ""
             // key is [a-z][a-z0-9_]* and source.wire a constant: nothing here needs escaping
             val region = if (options.fieldRegions) " data-field=\"$key\" data-field-source=\"${source.wire}\"" else ""
             return "<span class=\"kb-field-$key\"$region>$html</span>"
+        }
+
+        /**
+         * ADR-042 "Furigana front": the built-in front's `{{kanji:expression}}` of a vocab `meaning` / `pitch`
+         * card as one ruby over the whole word, or null when it does not apply (then the plain value is used).
+         */
+        private fun furiganaFront(source: FieldSource): String? {
+            if (!input.frontFurigana || input.noteType.baseType != NoteBaseType.VOCAB || input.kind !in FURIGANA_FRONT_KINDS) return null
+            val e = DefaultCardTextRenderer.fieldText(input.fields, input.dictionary, input.kanji, NoteBaseType.VOCAB, "expression", TextMode.KANJI)
+            val r = DefaultCardTextRenderer.fieldText(input.fields, input.dictionary, input.kanji, NoteBaseType.VOCAB, "reading", TextMode.KANA)
+            if (e.isEmpty() || r.isEmpty() || r == e) return null
+            val region = if (options.fieldRegions) " data-field=\"expression\" data-field-source=\"${source.wire}\"" else ""
+            return "<span class=\"kb-field-expression\"$region><ruby>" + escapeHtml(e) + "<rt>" + escapeHtml(r) + "</rt></ruby></span>"
         }
 
         private fun unknown(): String {
@@ -297,6 +315,9 @@ public object DefaultCardRenderer : CardRenderer {
     }
 
     private val SPAN_PARTS = setOf("blank", "answer", "spot")
+
+    /** Built-in vocab kinds whose front asks with the expression (ADR-042 furigana front). */
+    internal val FURIGANA_FRONT_KINDS: Set<String> = setOf("meaning", "pitch")
     private val VALUE_PREFIXES = setOf("furigana", "kana", "kanji", "text")
     private const val BLANK = "＿＿＿"
 }

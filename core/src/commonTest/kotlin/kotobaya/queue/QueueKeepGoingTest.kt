@@ -3,7 +3,6 @@ package kotobaya.queue
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
-import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.QueueLimits
 import kotlin.test.Test
@@ -143,8 +142,8 @@ class QueueKeepGoingTest {
     }
 
     @Test
-    fun addKanjiGroupMayOvershootTheBatchSoItNeverStarves() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE), deck(2, priority = 1))
+    fun kanjiUnitMayOvershootTheBatchSoItNeverStarves() {
+        val decks = listOf(deck(1), deck(2, priority = 1))
         val c = listOf(
             card(1, members = listOf(member(1, 1)), exprKanji = listOf("食", "物")),
             card(2, note = 20, base = NoteBaseType.KANJI, kanji = "食", members = listOf(member(2, 1))),
@@ -154,8 +153,9 @@ class QueueKeepGoingTest {
         val q = build(input(c, decks = decks, limits = limits(newPerDay = 0).keepGoing(1)))
         assertEquals("N2 N3 N1", q.shape())
         val normal = build(input(c, decks = decks, limits = limits(newPerDay = 1)))
-        // normal mode: the group of 3 does not fit a budget of 1; deck order moves on to card 4
-        assertEquals("N4", normal.shape())
+        // normal mode (ADR-043): the unit of 3 does not fit a goal of 1, it leads with 食 and deck 1 stops
+        // there (card 4 is not introduced before the word); 物's own turn in deck 2 does not fit either.
+        assertEquals("N2", normal.shape())
     }
 
     @Test

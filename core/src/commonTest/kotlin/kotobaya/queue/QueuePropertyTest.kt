@@ -57,7 +57,14 @@ class QueuePropertyTest {
                 members = decks.filter { r.nextInt(3) == 0 }.map { member(it.id.takeLast(12).toInt(), r.nextLong(0, 5)) },
                 kanji = if (isKanji) kanji[note % kanji.size] else null,
                 exprKanji = if (isKanji) emptyList() else kanji.shuffled(r).take(r.nextInt(0, 3)),
-            )
+            ).let { c ->
+                // ADR-040/042 inputs: required kanji (null = the expression's), kanji to mint, companions.
+                c.copy(
+                    requiredKanji = if (isKanji || r.nextBoolean()) null else c.expressionKanji.filter { r.nextBoolean() },
+                    missingKanji = if (isKanji) emptyList() else c.expressionKanji.filter { r.nextInt(3) == 0 }.map { mk(it) },
+                    companion = isKanji && r.nextInt(8) == 0,
+                )
+            }
         }
         val today = (1..r.nextInt(0, 6)).map {
             today(
@@ -70,7 +77,10 @@ class QueuePropertyTest {
             )
         }
         val pending = decks.flatMap { d ->
-            (0 until r.nextInt(0, 3)).map { entry(d.id.takeLast(12).toInt(), r.nextLong(1, 8), r.nextLong(0, 5)) }
+            (0 until r.nextInt(0, 3)).map {
+                val ek = kanji.shuffled(r).take(r.nextInt(0, 3))
+                entry(d.id.takeLast(12).toInt(), r.nextLong(1, 8), r.nextLong(0, 5), exprKanji = ek, missing = ek.filter { r.nextBoolean() }.map { mk(it) })
+            }.distinctBy { it.entrySeq } // one deck item per entry and deck (a loader never passes two)
         }
         return input(
             candidates,
@@ -128,8 +138,9 @@ class QueuePropertyTest {
             val introducedToday = i.today.count { it.introducedNew }
             val newCount = q.items.count { it.kind == QueueItemKind.NEW } + q.toMaterialize.size
             assertTrue(
-                // ADR-037: the day's remainder bounds the normal build; the session cap is gone.
-                newCount <= maxOf(0, i.limits.newPerDay - introducedToday),
+                // ADR-037: the day's remainder bounds the normal build; the session cap is gone. ADR-044: a kanji
+                // part may overshoot only as the day's first new cards.
+                newCount <= maxOf(0, i.limits.newPerDay - introducedToday) || (introducedToday == 0 && i.limits.newPerDay >= 1),
                 "new budget, seed $seed",
             )
             assertTrue(
@@ -155,10 +166,15 @@ class QueuePropertyTest {
                 assertTrue(!c.suspended, "suspended, seed $seed")
                 if (item.kind == QueueItemKind.NEW) {
                     assertEquals(CardState.NEW, c.state)
-                    assertTrue(c.wordOverride != WordStatus.KNOWN, "known introduced, seed $seed")
+                    // (kanji notes never carry an override; the generator gives them one anyway)
+                    assertTrue(c.noteBaseType == NoteBaseType.KANJI || c.wordOverride != WordStatus.KNOWN, "known introduced, seed $seed")
                     val ms = c.memberships
-                    // ADR-006: a card whose decks are all disabled is never introduced.
-                    assertTrue(ms.isEmpty() || ms.any { decksById[it.deckId]?.enabled == true }, "disabled-only, seed $seed")
+                    // ADR-006: a card whose decks are all disabled is never introduced; ADR-040: unless it is a
+                    // kanji card pulled by a word or by backfill.
+                    assertTrue(
+                        c.noteBaseType == NoteBaseType.KANJI || ms.isEmpty() || ms.any { decksById[it.deckId]?.enabled == true },
+                        "disabled-only, seed $seed",
+                    )
                 }
                 if (i.limits.burySiblings && item.kind != QueueItemKind.LEARNING) {
                     assertTrue(notes.add(c.noteId), "two NEW/REVIEW cards of one note, seed $seed: " + q.items.map { x -> x.kind.name + " " + byId.getValue(x.cardId).let { y -> y.cardId.takeLast(3) + "/" + y.noteId.takeLast(3) + "/" + y.state + "/" + y.noteBaseType + "/" + y.kanjiLiteral + "/" + y.expressionKanji } })
@@ -184,7 +200,13 @@ class QueuePropertyTest {
         )
     }
 
-    private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty()
+    private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty() || kanjiToMaterialize.isNotEmpty()
+
+    /** [i] without kanji units: words require no kanji, nothing to mint (the pre-ADR-040 card-by-card mix). */
+    private fun withoutUnits(i: QueueInput): QueueInput = i.copy(
+        candidates = i.candidates.map { it.copy(expressionKanji = emptyList(), requiredKanji = null, missingKanji = emptyList()) },
+        pendingEntries = i.pendingEntries.map { it.copy(expressionKanji = emptyList(), missingKanji = emptyList()) },
+    )
 
     @Test
     fun loopCountsAreInvariantUnderKeepGoing() {
@@ -192,7 +214,11 @@ class QueuePropertyTest {
             val i = randomLoopInput(seed)
             val off = DefaultReviewLoop.evaluate(i.copy(limits = i.limits.copy(keepGoing = false))).state
             val on = DefaultReviewLoop.evaluate(i.copy(limits = i.limits.copy(keepGoing = true))).state
-            assertEquals(off.copy(phase = on.phase, keepGoing = true), on, "seed $seed")
+            assertEquals(off.copy(phase = on.phase, keepGoing = true, untilStop = on.untilStop), on, "seed $seed")
+            // ADR-038: without keep going untilStop is the ready and later learning, the ready reviews and availableToday.
+            assertTrue(on.untilStop >= 0 && off.untilStop >= 0, "seed $seed")
+            if (off.phase == LoopPhase.REVIEWING) assertTrue(off.untilStop >= 1, "reviewing with untilStop 0, seed $seed")
+            if (off.untilStop == 0) assertTrue(off.phase != LoopPhase.REVIEWING && off.phase != LoopPhase.WAITING, "seed $seed")
         }
     }
 
@@ -244,8 +270,9 @@ class QueuePropertyTest {
 
     @Test
     fun mixNeverServesTwoNewCardsInARowWhileAReviewIsLeft() {
+        // Single cards only: a unit's cards come in a row by design (QueueMixUnitsTest covers units).
         for (seed in 0 until 500) {
-            val i = randomLoopInput(seed)
+            val i = withoutUnits(randomLoopInput(seed))
             val q = DefaultReviewLoop.evaluate(i.copy(limits = i.limits.copy(keepGoing = false))).queue
             val kinds = q.items.map { it.kind }
             for (x in 0 until kinds.size - 1) {
@@ -259,8 +286,9 @@ class QueuePropertyTest {
     @Test
     fun mixDoesNotDependOnTheBatch() {
         // A smaller batch draws a prefix of the new cards; the order is the unbounded one without the others.
+        // Without units: "open group first" may pull a later unit forward, and which units exist depends on the batch.
         for (seed in 0 until 300) {
-            val i = randomLoopInput(seed)
+            val i = withoutUnits(randomLoopInput(seed))
             val l = i.limits.copy(keepGoing = false)
             val all = DefaultReviewLoop.evaluate(i.copy(limits = l.copy(keepGoingNewBatch = Int.MAX_VALUE))).queue
             for (b in 1..4) {

@@ -17,6 +17,7 @@ public object DefaultKanjiExamplePicker : KanjiExamplePicker {
     private const val VOICED = "がぎぐげござじずぜぞだぢづでどばびぶべぼ"
     private const val H_ROW = "はひふへほ"
     private const val P_ROW = "ぱぴぷぺぽ"
+    private const val RENDAKU_RANK = 5
 
     /** The code points of [s], each as a string. */
     private fun tokens(s: String): List<String> {
@@ -60,32 +61,66 @@ public object DefaultKanjiExamplePicker : KanjiExamplePicker {
         return out
     }
 
-    private fun forms(kanji: KanjiReadings, first: Boolean, last: Boolean): List<Pair<String, KanjiReadingType>> {
-        val out = ArrayList<Pair<String, KanjiReadingType>>()
-        fun add(form: String, type: KanjiReadingType) {
+    /**
+     * A form of step 2 with where it comes from (CORE-28 `KanjiParts.usedReading`): the stored reading
+     * [source] (index [sourceIndex] in its list) and [rank], 0 for a plain form (the reading itself or a
+     * kun stem), else the position of the derivation in step 2's list (1 geminated, 2 `s + o`,
+     * 3 `s + masu(o)`, 4 `s + o` without `る`); the rendaku of a form ranks after every non-rendaku form.
+     */
+    internal class Form(
+        val text: String,
+        val type: KanjiReadingType,
+        val source: String,
+        val sourceIndex: Int,
+        val rank: Int,
+    )
+
+    private fun forms(kanji: KanjiReadings, first: Boolean, last: Boolean): List<Form> {
+        val out = ArrayList<Form>()
+        fun add(form: String, type: KanjiReadingType, source: String, index: Int, rank: Int) {
             if (form.isEmpty()) return
-            out += form to type
-            if (!first) for (r in rendaku(form)) out += r to type
+            out += Form(form, type, source, index, rank)
+            if (!first) for (r in rendaku(form)) out += Form(r, type, source, index, RENDAKU_RANK + rank)
         }
-        for (raw in kanji.onReadings) {
+        for ((i, raw) in kanji.onReadings.withIndex()) {
             val r = hira(raw).replace("-", "")
-            add(r, KanjiReadingType.ON)
-            if (!last && r.length >= 2 && r.last() in GEMINATING) add(r.dropLast(1) + "っ", KanjiReadingType.ON)
+            add(r, KanjiReadingType.ON, raw, i, 0)
+            if (!last && r.length >= 2 && r.last() in GEMINATING) add(r.dropLast(1) + "っ", KanjiReadingType.ON, raw, i, 1)
         }
-        for (raw in kanji.kunReadings) {
+        for ((i, raw) in kanji.kunReadings.withIndex()) {
             val r = hira(raw).replace("-", "")
             val dot = r.indexOf('.')
             val stem = if (dot < 0) r else r.substring(0, dot)
             val oku = if (dot < 0) "" else r.substring(dot + 1)
             if (stem.isEmpty()) continue
-            add(stem, KanjiReadingType.KUN)
+            add(stem, KanjiReadingType.KUN, raw, i, 0)
             if (oku.isEmpty()) continue
-            add(stem + oku, KanjiReadingType.KUN)
+            add(stem + oku, KanjiReadingType.KUN, raw, i, 2)
             val u = U_ROW.indexOf(oku.last())
-            if (u >= 0) add(stem + oku.dropLast(1) + I_ROW[u], KanjiReadingType.KUN)
-            if (oku.last() == 'る') add(stem + oku.dropLast(1), KanjiReadingType.KUN)
+            if (u >= 0) add(stem + oku.dropLast(1) + I_ROW[u], KanjiReadingType.KUN, raw, i, 3)
+            if (oku.last() == 'る') add(stem + oku.dropLast(1), KanjiReadingType.KUN, raw, i, 4)
         }
         return out
+    }
+
+    /** Every form of step 2 that fits (step 3), in step 2 order; empty when the kanji is not in [headword] or [reading] is empty. */
+    internal fun fittingForms(kanji: KanjiReadings, headword: String, reading: String): List<Form> {
+        val h = tokens(hira(headword))
+        val r = hira(reading)
+        val p = h.indexOf(kanji.literal)
+        if (p < 0 || r.isEmpty()) return emptyList()
+        val prefix = h.subList(0, p)
+        val suffix = h.subList(p + 1, h.size)
+        return forms(kanji, first = p == 0, last = suffix.isEmpty()).filter { f -> fits(f.text, r, prefix, suffix) }
+    }
+
+    private fun fits(form: String, r: String, prefix: List<String>, suffix: List<String>): Boolean {
+        var at = r.indexOf(form)
+        while (at >= 0) {
+            if (match(prefix, r.substring(0, at)) && match(suffix, r.substring(at + form.length))) return true
+            at = r.indexOf(form, at + 1)
+        }
+        return false
     }
 
     override fun classify(kanji: KanjiReadings, headword: String, reading: String): KanjiReadingType {
@@ -97,7 +132,9 @@ public object DefaultKanjiExamplePicker : KanjiExamplePicker {
         val suffix = h.subList(p + 1, h.size)
         var best: KanjiReadingType = KanjiReadingType.OTHER
         var bestLength = 0
-        for ((form, type) in forms(kanji, first = p == 0, last = suffix.isEmpty())) {
+        for (f in forms(kanji, first = p == 0, last = suffix.isEmpty())) {
+            val form = f.text
+            val type = f.type
             // Only a longer form, or an ON form as long as the best KUN form, can change the result.
             val better = form.length > bestLength || (form.length == bestLength && type == KanjiReadingType.ON && best == KanjiReadingType.KUN)
             if (!better) continue

@@ -3,7 +3,6 @@ package kotobaya.queue
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
-import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueInput
 import kotlin.test.Test
@@ -136,7 +135,7 @@ class QueueRetiredCardsTest {
     @Test
     fun pendingEntryIsDrawnAsBeforeAndRetiredKanjiGroupUnaffected() {
         // A materialized entry creates only meaning (CardGenerator); the builder still draws the entry as 1.
-        val d = listOf(deck(1, newPerDay = 1, addKanji = AddKanjiMode.OFF))
+        val d = listOf(deck(1, newPerDay = 1))
         val q = build(input(listOf(reading(9, note = 9, members = listOf(member(1, 0)))), decks = d, pending = listOf(entry(1, 100L, 1))))
         assertEquals(listOf(100L), q.toMaterialize.map { it.entrySeq })
         assertEquals("", q.shape())

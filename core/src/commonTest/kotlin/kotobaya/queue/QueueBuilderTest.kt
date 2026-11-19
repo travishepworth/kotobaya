@@ -339,7 +339,7 @@ class QueueBuilderTest {
         assertEquals(listOf(4L, 5L), q.toMaterialize.map { it.entrySeq })
     }
 
-    // ---- add_kanji ------------------------------------------------------------------------------
+    // ---- Kanji first (ADR-040; replaces the add_kanji modes) ------------------------------------
 
     private val kanjiCards = listOf(
         card(51, note = 51, base = NoteBaseType.KANJI, kanji = "語", created = 100),
@@ -352,8 +352,8 @@ class QueueBuilderTest {
         card(n, members = listOf(member(deck, pos)), exprKanji = listOf("日", "本", "語"))
 
     @Test
-    fun addKanjiBeforeDrawsUnknownKanjiInExpressionOrderBeforeTheWord() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE))
+    fun kanjiCardsComeInRequiredOrderBeforeTheWord() {
+        val decks = listOf(deck(1))
         val q = build(input(listOf(word(1, 1, 0)) + kanjiCards, decks = decks, limits = limits(burySiblings = false)))
         // Expression order 日 本 語; kanji 日 has two cards in kindOrder.
         assertEquals(listOf(52, 53, 54, 51, 1), q.cards())
@@ -362,61 +362,43 @@ class QueueBuilderTest {
     }
 
     @Test
-    fun addKanjiAlongsideDrawsKanjiRightAfterTheWord() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.ALONGSIDE), deck(2))
-        val c = listOf(word(1, 1, 0), card(2, members = listOf(member(1, 1))), card(3, members = listOf(member(2, 0)))) + kanjiCards
-        val q = build(input(c, decks = decks))
-        // Turn of deck 1 = word 1 + kanji 52 (sibling 53 buried), 54, 51; then deck 2; then deck 1 again.
-        assertEquals(listOf(1, 52, 54, 51, 3, 2), q.cards())
-    }
-
-    @Test
-    fun addKanjiOffDrawsNoKanjiWithTheWord() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.OFF))
-        val q = build(input(listOf(word(1, 1, 0)) + kanjiCards, decks = decks, decklessPriority = 1))
-        assertEquals(listOf(1, 51, 52, 54), q.cards())
-    }
-
-    @Test
-    fun addKanjiSkipsKanjiAlreadyTakenOrWithoutHomeNewSourceOrKnown() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE), deck(9, enabled = false))
+    fun kanjiWithoutHomeNewSourceJoinAndStartedKanjiDoNot() {
+        val decks = listOf(deck(1), deck(9, enabled = false))
         val c = listOf(
             word(1, 1, 0),
-            // 日: only in a disabled deck -> never introduced (ADR-006).
+            // 日: only in a disabled deck -> no turn of its own, but it joins its word's unit (ADR-040).
             card(52, note = 52, base = NoteBaseType.KANJI, kanji = "日", members = listOf(member(9, 0))),
             // 本: being reviewed already (not NEW).
             card(54, note = 54, base = NoteBaseType.KANJI, kanji = "本", state = CardState.REVIEW, due = NOW + DAY_LATER),
-            // 語: known override.
-            card(51, note = 51, base = NoteBaseType.KANJI, kanji = "語", override = WordStatus.KNOWN),
+            card(51, note = 51, base = NoteBaseType.KANJI, kanji = "語"),
         )
-        assertEquals(listOf(1), build(input(c, decks = decks)).cards())
+        assertEquals(listOf(52, 51, 1), build(input(c, decks = decks)).cards())
     }
 
-    // C-8 rewrite of T205's addKanjiCountsAgainstDrawingSourceAndBudgetAndStopsMidTurn: a group is
-    // drawn whole or not at all, and kanji cards are not charged to the drawing deck.
+    // ADR-043 rewrite of C-8's "atomic or nothing": a unit that does not fit leads with its kanji and its
+    // source stops at the word.
     @Test
-    fun addKanjiGroupThatDoesNotFitTheBudgetIsNotDrawnInPart() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE))
+    fun aUnitThatDoesNotFitLeadsWithItsKanjiAndStopsItsSource() {
+        val decks = listOf(deck(1))
         val c = listOf(word(1, 1, 0), card(2, members = listOf(member(1, 1)))) + kanjiCards
-        // Group 52 54 51 1 needs 4, budget 2: none of it. Deck 1's turn passes; deckless draws 51; then card 2.
-        assertEquals(listOf(51, 2), build(input(c, decks = decks, limits = limits(newPerDay = 2))).cards())
+        // Unit 52 54 51 1 needs 4, goal 2: 52 and 54 lead; deck 1 stops (card 2 waits); 51's own turn does not fit.
+        assertEquals(listOf(52, 54), build(input(c, decks = decks, limits = limits(newPerDay = 2))).cards())
         // Budget exactly 4: the whole group.
         assertEquals(listOf(52, 54, 51, 1), build(input(c, decks = decks, limits = limits(newPerDay = 4))).cards())
     }
 
     @Test
-    fun addKanjiGroupMayOvershootTheBatchButMustFitTheDay() {
-        // ADR-037 replaces addKanjiGroupMustFitTheSessionCapToo: the group is atomic against the day's
-        // remainder; the batch only stops drawing once reached, so batch 1 still draws a 4-card group.
-        for (mode in listOf(AddKanjiMode.BEFORE, AddKanjiMode.ALONGSIDE)) {
+    fun aUnitMayOvershootTheBatchButNotTheDay() {
+        // The unit is whole against the day's remainder; the batch only stops drawing once reached, so
+        // batch 1 still draws a 4-card unit. Every add_kanji value gives the same build (ADR-040).
+        for (mode in AddKanjiMode.entries) {
             val c = listOf(word(1, 1, 0)) + kanjiCards
             val d = listOf(deck(1, addKanji = mode))
-            val q = build(input(c, decks = d, limits = limits().copy(keepGoingNewBatch = 1)))
-            val group = if (mode == AddKanjiMode.BEFORE) listOf(52, 54, 51, 1) else listOf(1, 52, 54, 51)
-            assertEquals(group, q.cards(), "$mode")
-            // 3 left in the day: the group of 4 is skipped; the deckless source draws 51 and the batch is full.
+            val q = build(input(c, decks = d, limits = limits().copy(keepGoingNewBatch = 1), decklessAddKanji = mode))
+            assertEquals(listOf(52, 54, 51, 1), q.cards(), "$mode")
+            // 3 left in the day: the unit of 4 leads with its three kanji (the batch is tested per unit, not per part).
             val short = build(input(c, decks = d, limits = limits(newPerDay = 3).copy(keepGoingNewBatch = 1)))
-            assertEquals(listOf(51), short.cards(), "$mode")
+            assertEquals(listOf(52, 54, 51), short.cards(), "$mode")
         }
     }
 
@@ -424,11 +406,11 @@ class QueueBuilderTest {
     fun addKanjiCardsAreNotChargedToTheDrawingDeck() {
         val c = listOf(word(1, 1, 0), card(2, members = listOf(member(1, 1)))) + kanjiCards
         // Deck limit 1: V fits, its 3 deckless kanji are not charged to deck 1; card 2 then does not fit.
-        val q = build(input(c, decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE, newPerDay = 1))))
+        val q = build(input(c, decks = listOf(deck(1, newPerDay = 1))))
         assertEquals(listOf(52, 54, 51, 1), q.cards())
         assertEquals(listOf(null, null, null, deckId(1)), q.items.map { it.deckId })
         // Deck limit 2: card 2 fits too (the kanji used none of deck 1's limit).
-        val q2 = build(input(c, decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE, newPerDay = 2))))
+        val q2 = build(input(c, decks = listOf(deck(1, newPerDay = 2))))
         assertEquals(listOf(52, 54, 51, 1, 2), q2.cards())
     }
 
@@ -442,7 +424,7 @@ class QueueBuilderTest {
     fun addKanjiCardsAreChargedToTheirOwnHomeDeckAndNeverSkippedForIt() {
         val c = listOf(word(1, 1, 0), card(2, members = listOf(member(1, 1)))) + deck2Kanji
         fun run(deck2Limit: Int) = build(
-            input(c, decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE, newPerDay = 1), deck(2, newPerDay = deck2Limit))),
+            input(c, decks = listOf(deck(1, newPerDay = 1), deck(2, newPerDay = deck2Limit))),
         )
         // Kanji deck with newPerDay 0 still feeds kanji through add_kanji; its own turns draw nothing.
         val q0 = run(0)
@@ -467,7 +449,7 @@ class QueueBuilderTest {
 
     @Test
     fun rebuildAfterAnsweringKeepsTheSamePerDeckCount() {
-        val decks = listOf(deck(1, addKanji = AddKanjiMode.BEFORE, newPerDay = 2))
+        val decks = listOf(deck(1, newPerDay = 2))
         val c = listOf(word(1, 1, 0), card(3, members = listOf(member(1, 1))), card(4, members = listOf(member(1, 2)))) + kanjiCards
         val first = build(input(c, decks = decks))
         assertEquals(listOf(52, 54, 51, 1, 3), first.cards())
@@ -481,12 +463,10 @@ class QueueBuilderTest {
     }
 
     @Test
-    fun decklessSourceUsesDecklessAddKanji() {
+    fun decklessWordGetsItsKanjiFirstWhateverDecklessAddKanji() {
         val mined = card(1, created = 0, exprKanji = listOf("日", "本", "語"))
         val c = listOf(mined) + kanjiCards
-        assertEquals(listOf(52, 54, 51, 1), build(input(c, decklessAddKanji = AddKanjiMode.BEFORE)).cards())
-        assertEquals(listOf(1, 52, 54, 51), build(input(c, decklessAddKanji = AddKanjiMode.ALONGSIDE)).cards())
-        assertEquals(listOf(1, 51, 52, 54), build(input(c)).cards())
+        for (mode in AddKanjiMode.entries) assertEquals(listOf(52, 54, 51, 1), build(input(c, decklessAddKanji = mode)).cards(), "$mode")
     }
 
     // ---- Rule 5: proportional mix (ADR-037; replaces the interleave) ----------------------------------

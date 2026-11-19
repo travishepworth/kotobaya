@@ -53,6 +53,7 @@ internal fun JsRenderInput.toRenderInput(): RenderInput {
         side = cardSide,
         options = RenderOptions(furigana, pitch, showMnemonic, mediaUrlTemplate, fieldRegions),
         kanji = kanji?.let { KanjiData(it.literal, it.meanings.toList(), it.onyomi.toList(), it.kunyomi.toList(), it.strokeCount) },
+        frontFurigana = frontFurigana,
     )
 }
 

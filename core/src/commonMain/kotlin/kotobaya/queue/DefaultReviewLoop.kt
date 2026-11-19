@@ -49,16 +49,20 @@ public object DefaultReviewLoop : ReviewLoop {
             reviewsLimit = if (input.limits.reviewsUnlimited) null else maxOf(0, input.limits.reviewsPerDay),
             newToday = n.newToday,
             newGoal = maxOf(0, input.limits.newPerDay),
-            newAvailable = k.queue.items.any { it.kind == QueueItemKind.NEW } || k.queue.toMaterialize.isNotEmpty(),
+            newAvailable = k.queue.items.any { it.kind == QueueItemKind.NEW } || k.queue.toMaterialize.isNotEmpty() ||
+                k.queue.kanjiToMaterialize.isNotEmpty(),
             legacy = LegacyCounts(
                 new = n.unboundedNewCount,
                 learning = readyLearning + n.laterToday,
                 review = readyReviews,
                 moreAvailable = normal.moreAvailable,
             ),
+            // ADR-038: answers left until the stop screen; the only count besides the phase that follows the mode.
+            untilStop = readyLearning + n.laterToday +
+                if (keepGoing) backlog + k.availableToday else readyReviews + n.availableToday,
         )
         return LoopResult(served, state)
     }
 
-    private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty()
+    private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty() || kanjiToMaterialize.isNotEmpty()
 }
