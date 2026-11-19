@@ -857,3 +857,13 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-FLAKY-DUPCHECK — flaky DuplicateCheckExpressionTest (No suitable driver) · model: sonnet · risk: low · deps: — · status: MERGED (ticket: plan/tickets/AND-FLAKY-DUPCHECK.md)
 - AND-MATERIALIZE-RACE — possible duplicate note from concurrent materialize (flaky test seen in Z1 check) · model: opus · risk: high · deps: — · status: MERGED (ticket: plan/tickets/AND-MATERIALIZE-RACE.md)
 - LOOP-C2b — parity scenarios: decks, listCards, struggle/drill · model: opus · risk: low · deps: LOOP-C2 · status: TODO (ticket: plan/tickets/LOOP-C2b.md)
+
+### User feedback round (2026-11-19, human-confirmed, ADR-038..041)
+- WEB-REVIEW-FLOW — seamless due-card slot-in (no loading screen), keep going per visit (ADR-039), kanji example rows one line · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/WEB-REVIEW-FLOW.md)
+- CLI-KG-SCOPE — CLI keep going per session (ADR-039) · model: haiku · risk: low · deps: — · status: TODO (ticket: plan/tickets/CLI-KG-SCOPE.md)
+- C-28 — Contracts: until_stop, kanji-first, Deck.progress, kanji_parts · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-28.md)
+- CORE-28 — Core impl of C-28 · model: opus · risk: high · deps: C-28 · status: TODO (ticket: plan/tickets/CORE-28.md)
+- SRV-28 — Server impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/SRV-28.md)
+- AND-28 — Android local API impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/AND-28.md)
+- WEB-28 — progress bar on until_stop, deck progress UI, kanji parts tiles · model: sonnet · risk: low-med · deps: C-28, WEB-REVIEW-FLOW · status: TODO (ticket: plan/tickets/WEB-28.md)
+- BUG-ADD2DECK-500 — add search word to deck → 500 on Android local API · model: opus · risk: med · deps: — · status: TODO (ticket: plan/tickets/BUG-ADD2DECK-500.md)

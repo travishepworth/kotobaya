@@ -1,0 +1,18 @@
+# CORE-28 — Core: until_stop, kanji-first ordering, DeckProgress, KanjiParts
+
+- Phase: P10 · Model: opus (writer-senior) · Risk: high
+- Deps: C-28
+- Branch: t/CORE-28-core
+- Owned paths: core/** (not core/src/commonMain/kotlin/kotobaya/contracts/**)
+- Module(s) for CI: core (Gradle lock)
+
+## Read
+- Decisions: ADR-037..041. Contracts: everything C-28 changed (see its HANDOFF in plan/handoffs/C-28.md).
+
+## Do
+Implement C-28 in core: `ReviewLoop.untilStop`; kanji-first group rule in DefaultQueueBuilder (group for every source, atomic, mix never splits it, backfill order, missing kanji -> needs-materialize); DeckProgress calculator; KanjiParts builder (used reading alignment). Export to JS build for web.
+Known causes from scouting (DefaultQueueBuilder): group only when drawing source has add_kanji=BEFORE (turn() ~L421, kanjiGroup() ~L372); kanjiByLiteral skips Home.None (~L348); mix() (~L208) inserts reviews between group members; CardGenerator L95-105 only makes kanji notes at vocab creation.
+
+## Acceptance
+- [ ] All new parity scenarios pass; existing goldens/FSRS tests unchanged.
+- [ ] Tests: deckless vocab gets kanji first; 40-new budget includes kanji; mix never splits group; backfill; untilStop grows on Again; KanjiParts used reading for 3 real words (e.g. 大学, 今日 → null/irregular, 食べる).
