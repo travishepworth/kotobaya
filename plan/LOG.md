@@ -1322,3 +1322,4 @@
 2026-11-19T03:12:22Z CLI FIX daemon crash-loop (editable kotobaya_client in deleted scratchpad); reinstalled non-editable from main (cli unchanged since pin), daemon active
 2026-11-19T03:13:55Z WEB-REVIEW-FLOW CHECK_GREEN + MERGE (seamless splice fetch, keep going per visit in-memory, example rows one line)
 2026-11-19T03:14:07Z CLI-KG-SCOPE DISPATCH writer-light
+2026-11-19T03:16:00Z CLI-KG-SCOPE REVIEW_CHANGES attempt 2: daemon-run scope still leaks over quota; add 10-min idle reset. DECIDE ADR-039 amended (idle 10 min); WEB-KG-IDLE filed
