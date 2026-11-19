@@ -36,15 +36,18 @@ class FakeStore:
     def __init__(self) -> None:
         self.blobs: dict[str, int] = {}  # app.blob rows: hash -> size
         self.objects: dict[str, bytes] = {}  # S3
-        self.done: dict[str, dict[str, Any]] = {}  # dedupe key -> job result
+        self.rows: dict[tuple[str, str], dict[str, Any]] = {}  # app.tts_audio
 
     def store(self, path: Path, digest: str) -> None:
         self.objects[digest] = path.read_bytes()
         self.blobs.setdefault(digest, path.stat().st_size)
 
-    def lookup(self, key: str) -> dict[str, Any] | None:
-        r = self.done.get(key)
+    def lookup(self, voice: str, text: str) -> dict[str, Any] | None:
+        r = self.rows.get((voice, text))
         return r if r is not None and r["blob_hash"] in self.blobs else None
+
+    def record(self, voice: str, text: str, result: Any) -> None:
+        self.rows[(voice, text)] = dict(result)  # upsert
 
 
 class Ctx:
@@ -60,9 +63,7 @@ def _convert(wav: bytes, out: Path) -> None:
 
 
 def _run(store: FakeStore, vv: FakeVoicevox, payload: dict[str, Any]) -> dict[str, Any]:
-    result = dict(run_tts(Ctx(payload), synth=vv, convert=_convert, cache=store, sink=store))
-    store.done[dedupe_key(payload.get("voice") or "3", payload["text"])] = result
-    return result
+    return dict(run_tts(Ctx(payload), synth=vv, convert=_convert, cache=store, sink=store))
 
 
 def test_dedupe_key_matches_contract() -> None:
@@ -103,3 +104,36 @@ def test_missing_text_is_rejected() -> None:
             cache=FakeStore(),
             sink=FakeStore(),
         )
+
+
+def test_run_twice_leaves_one_row_and_one_synthesis() -> None:
+    store, vv = FakeStore(), FakeVoicevox()
+    first = _run(store, vv, {"text": "たべる", "voice": "3"})
+    second = _run(store, vv, {"text": "たべる", "voice": "3"})
+    assert first == second
+    assert len(vv.calls) == 1
+    assert list(store.rows) == [("3", "たべる")]
+    assert store.rows[("3", "たべる")]["blob_hash"] in store.blobs
+
+
+def test_same_text_other_voice_is_another_pair() -> None:
+    store, vv = FakeStore(), FakeVoicevox()
+    _run(store, vv, {"text": "たべる", "voice": "3"})
+    _run(store, vv, {"text": "たべる", "voice": "8"})
+    assert len(vv.calls) == 2
+    assert set(store.rows) == {("3", "たべる"), ("8", "たべる")}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"text": "猫", "voice": "zundamon"},
+        {"text": "猫", "voice": "1234567890"},
+        {"text": "あ" * 501, "voice": "3"},
+    ],
+)
+def test_invalid_voice_or_length_fails_without_voicevox(payload: dict[str, Any]) -> None:
+    store, vv = FakeStore(), FakeVoicevox()
+    with pytest.raises(ValueError):
+        _run(store, vv, payload)
+    assert vv.calls == [] and store.rows == {}

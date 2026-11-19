@@ -16,6 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 V1 = ROOT / "contracts" / "db" / "V1__init.sql"
 V3 = ROOT / "contracts" / "db" / "V3__vocab_list.sql"
+V4 = ROOT / "contracts" / "db" / "V4__tts_audio.sql"
 FIXTURES = ROOT / "fixtures" / "dict"
 PG_PASSWORD = "kotobaya"
 
@@ -89,6 +90,7 @@ def pg_server() -> Iterator[PgServer]:
         ) as c:
             c.execute(V1.read_text(encoding="utf-8"))
             c.execute(V3.read_text(encoding="utf-8"))
+            c.execute(V4.read_text(encoding="utf-8"))
         yield server
     finally:
         subprocess.run(["docker", "rm", "-f", "-v", name], check=False, capture_output=True)
