@@ -239,7 +239,7 @@ Alternatives rejected:
   waiting word needs, and no review was answered since.
 - **Leaving words you already study without their kanji.** First draft; reversed in review
   (ADR-043): kanji that have no card yet are now created for those words too, oldest word first,
-  never more than the daily goal per day.
+  never more than half the daily goal per day while there are new words to learn (ADR-044).
 - **A per-kanji "learnable" list shipped with the app.** Rejected: KANJIDIC grade and frequency
   are already in the dictionary on the server and on the phone.
 
@@ -247,9 +247,17 @@ Three choices most worth a second look:
 1. **A deck's explicit `add_kanji: off` no longer opts out.** ADR-040 says "always". The ways out
    are deleting or suspending the kanji card, or the ADR-042 exemptions. If you want a per-deck
    opt-out back, it should be a new, clearly named deck setting.
-2. **Backfill can take all new-card slots for a while.** With a large imported history, the
-   kanji of words you already study are created and come first, up to the daily goal each day, so
-   new words wait until that backlog of kanji is done (ADR-043 decided this).
+2. **Backfill takes half of the new-card slots (ADR-044, replacing "all of them").** With a
+   large imported history, the kanji of words you already study are created and come first, but
+   only up to half the daily goal each day (rounded down, at least one); the other half goes to
+   new words with their own kanji. When there are no new words to draw, the kanji use the whole
+   goal. With a goal of 1 the single slot goes to those kanji until they are done.
+   Under Keep going there is no daily goal to halve, so the rule there is "these kanji are never
+   more than half of the new cards introduced today": after the goal you get a word and a kanji
+   in turn. This is my reading of "keep-going batches: same half share"; a fixed share per batch
+   cannot be kept when the queue is rebuilt after every answer.
+   Also (ADR-044): a kanji with several new cards that is larger than the whole goal is shown as
+   the first new cards of a day and goes over the goal that once; it was never shown before.
 3. **Real dictionary data may disagree with two examples in ADR-042.** To my knowledge JMdict tags
    林檎 and 薔薇 "usually kana" (neither word is in the test dictionary, so this is unverified here).
    If so, the word-level rule exempts both (furigana, no kanji cards) and 林檎 gets no card for 林.

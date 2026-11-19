@@ -378,7 +378,9 @@ The builder draws a word as the **unit** it will be once everything exists (Queu
 "Kanji first"): its vocab card, the existing new kanji cards of its required kanji and the cards
 of the kanji still to mint. A unit that does not fit today's goal leads with the kanji that fit
 (ADR-043): only those are claimed and minted, the entry itself stays pending. Backfill claims the
-missing required kanji of words already studied. In every case nothing is created that the
+missing required kanji of words already studied, within its half share of the day (ADR-044;
+rule 4 "Half share"): at most `max(1, newPerDay / 2)` backfill cards a study day while a source
+has something to draw, the remainder of the goal when none has. In every case nothing is created that the
 rebuild would not show, and the counts (`drawn`, `availableToday`, `untilStop`) are the
 same before and after the rebuild. An existing vocab card with a missing kanji is **withheld**
 from `items` until step A has run.
@@ -456,12 +458,25 @@ KDoc examples):
   no starvation over three days with `newPerDay` 2; buried kanji holds the word and the source
   goes on; backfill with minting, order by oldest word, same order after minting); a lead stops
   its source but not the others; a lead of an entry leaves the entry out of `toMaterialize`; the
-  goal is never overshot by a normal build (property); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
+  goal is never overshot by a normal build whose kanji parts all have size 1 (property); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
   same; the 40-card budget includes kanji; a kanji card whose decks are all disabled joins its
   word's unit; a started, a suspended and a manually buried kanji do not block; two words
   sharing a kanji; `burySiblings` false; companions (new only through a unit, learning served,
   review never); `requiredKanji` empty = no unit, null = `expressionKanji`; the deckless
   tie-break by literal; counts equal before and after materialization.
+- `queue/QueueBackfillShareTest.kt` (ADR-044, C-28b): the three rule-4 "half share" examples
+  (`newPerDay` 4 → `[日, 本, うっかり, Ｔシャツ]`, after two answers `[うっかり, Ｔシャツ]`, next day `[語]`;
+  no words → `[日, 本, 語]`; `newPerDay` 5 → 語 last) and the keep-going example with its
+  alternating variant; `newPerDay` 1 and 3 → share 1; `bToday` counts a kanji of a word
+  introduced on an earlier day or earlier today, not a kanji answered ahead of its own word (unit
+  and lead), not when `reviewedAt` ties; a source stopped by a lead or at its per-deck limit
+  hands the remainder to backfill; the batch cuts a prefix of the unbounded draw
+  (`availableToday` unchanged); a part of 2 cards with `newPerDay` 1 is drawn when nothing was
+  introduced today and not again after its first card is answered, as a lead part and as a
+  backfill part; `newPerDay` 0 draws nothing. Property (normal and keep going, random inputs
+  with backfill, units and reviews): answering the head and rebuilding yields the previous
+  build's tail; in a normal build `bToday + b <= share` after the share steps unless a single
+  part is larger than the share.
 - `queue/QueueMixUnitsTest.kt`: the rule-5 unit example (`R1 学 校 学校 R2 R3 たべる R4`) and its
   rebuild; for random inputs with units, answering the head and rebuilding yields the previous
   build's tail (extends M4); no review between the cards of a unit; a due learning card may come

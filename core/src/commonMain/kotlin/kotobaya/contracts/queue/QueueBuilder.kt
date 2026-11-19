@@ -474,14 +474,24 @@ public data class ReviewQueue(
  *    unit of size `g` is drawn whole iff `drawn < batch` **and** `drawn + g <= dayRemaining` (it
  *    fits the **day**; the batch may be overshot by `g − 1`, as in rule 6) and the per-deck test
  *    below holds. A unit that does not fit the day **leads** with as many of its kanji as fit and
- *    its source stops there for this build (ADR-043, "Fits or leads" below): the goal is never
- *    overshot and no source skips ahead of a word. Once `drawn >= batch` rule 4 stops.
+ *    its source stops there for this build (ADR-043, "Fits or leads" below): the goal is not
+ *    overshot (one exception, next sentence) and no source skips ahead of a word. Once
+ *    `drawn >= batch` rule 4 stops.
+ *    **A kanji part fits the day** (ADR-044; used by "Lead" and "Backfill" below, never for a
+ *    whole unit or a single card) iff `drawn + size <= dayRemaining`, **or** it is the **first
+ *    new card of the day**: `newPerDay >= 1`, [QueueInput.today] (after rule 0) has no
+ *    `introducedNew` review and `drawn == 0`. So a part larger than the whole goal (possible only
+ *    with a kanji note type of several new kinds; the built-in type has 1) is drawn once, as the
+ *    day's first new cards, and overshoots the goal by `size − newPerDay`; without this it would
+ *    never be drawn and its word never follow. After its first card is answered `today` has an
+ *    `introducedNew` review, so the exception cannot repeat that day. `newPerDay <= 0` draws nothing.
  *    `newPerSession` and `newShownThisSession` are ignored (no session cap, no "done for now").
  *    Wherever the text below says "the budget" it means this test. Example: goal 40, 12 introduced,
  *    batch 10, 100 single cards → 10 NEW; 39 introduced and the next unit is `[学, 校, 学校]` → 学 alone.
  *    **`availableToday`** = what `drawn` would reach if the batch were unbounded (same input, same
  *    turn order, only the `drawn < batch` test removed): the new cards that can still be introduced
- *    today under the day goal and the per-deck caps, `<= dayRemaining`. The batch-bounded draw is a
+ *    today under the day goal and the per-deck caps, `<= dayRemaining` (except through the
+ *    first-of-the-day part above). The batch-bounded draw is a
  *    prefix of that unbounded draw. Rule 5 uses it; [ReviewLoop] derives the legacy new count from
  *    the same unbounded draw. Example: 12 of 40 introduced, 100 new cards → 28; only 3 new cards
  *    exist → 3; a deck capped at 5 with 2 introduced from it and no other source → 3.
@@ -552,13 +562,16 @@ public data class ReviewQueue(
  *      - **Whole**: if `drawn + g <= dayRemaining` (keep going: always), the unit is drawn:
  *        V and `K` are taken, the literals of `M` are claimed (appended to
  *        [ReviewQueue.kanjiToMaterialize]), `drawn += g`.
- *      - **Lead**: otherwise its kanji parts are taken in order while `drawn + size(part) <=
- *        dayRemaining`, stopping at the first part that does not fit (possibly none). The taken
+ *      - **Lead**: otherwise its kanji parts are taken in order while the part **fits the day**
+ *        (budget paragraph above: `drawn + size(part) <= dayRemaining`, or the first new card of
+ *        the day), stopping at the first part that does not fit (none only when something was
+ *        already introduced today or drawn in this build). The taken
  *        `kc` cards are items of this build, the taken missing literals are claimed; V is **not**
  *        taken (an entry is not put in `toMaterialize`) and does not count against the per-deck
  *        limit. The **source then stops** for this build: it takes no further turn, so nothing
  *        behind the word in that source is introduced before it. Other sources go on.
- *      So today's goal is filled exactly, never overshot, and a word whose unit is larger than
+ *      So today's goal is filled exactly, not overshot (but for a first part larger than the
+ *      goal), and a word whose unit is larger than
  *      what is left (or than `newPerDay` itself) is not starved: its kanji are introduced over
  *      as many days as needed and the word follows, with its last kanji, on the first day the
  *      rest fits. Kanji introduced on an earlier day are started and no longer part of the unit.
@@ -575,24 +588,64 @@ public data class ReviewQueue(
  *      (that deck's remaining is clamped to 0 for its own later turns). [QueueInput.today] counts
  *      an answered kanji card the same way, so a rebuild neither frees the drawing deck's limit
  *      nor double-counts.
- *    - **Backfill (ADR-040, ADR-043).** Before the first source turn, in both builds. A literal
+ *    - **Backfill (ADR-040, ADR-043, ADR-044).** In both builds. A literal
  *      L is a **backfill kanji** iff it is not started and is a required kanji of an
  *      **introduced** word: a vocab note W with `L in req(W)`, at least one candidate of W (after
  *      rule 0) in a state other than NEW, and `wordOverride` neither BLACKLISTED nor IGNORED.
  *      Its part is `kc(L)` when a candidate kanji note of L exists (possibly empty: suspended or
- *      buried cards are simply not drawn), else the `newCards` cards to mint for the element of
+ *      buried cards are simply not drawn; an empty part is passed over), else the `newCards`
+ *      cards to mint for the element of
  *      `W.missingKanji` with that literal (ADR-043: backfill **also mints** the missing required
  *      kanji of words already studied; a literal in no `missingKanji`, e.g. one whose note the
  *      user deleted, has no part). Order of the parts: by `(W.noteCreatedAt, W.noteId, index of
  *      L in req(W), L)` of the first introduced word W in `(noteCreatedAt, noteId)` order that
  *      requires L, so the kanji of the oldest words come first and the order is the same before
- *      and after minting. Each part is a unit of its own, drawn while it fits the budget
- *      (`drawn < batch` and `drawn + size <= dayRemaining`; keep going: `drawn < batch`); the
- *      first part that does not fit ends backfill for this build. Outside tiers, turns and
- *      per-deck tests, whatever the card's home new-source; attribution as for a `K` card. A part
- *      to mint claims its literal ([ReviewQueue.kanjiToMaterialize]) and has no item until the
- *      rebuild. So the kanji of words the user already studies come ahead of every other new
- *      card, at most the daily goal per day.
+ *      and after minting. Each part is a unit of its own (size = its number of cards), outside
+ *      tiers, turns and per-deck tests, whatever the card's home new-source; attribution as for a
+ *      `K` card. A part to mint claims its literal ([ReviewQueue.kanjiToMaterialize]) and has no
+ *      item until the rebuild.
+ *      **Half share (ADR-044; replaces "all backfill before every source").** Backfill may use at
+ *      most half of the new cards of a study day; the rest belongs to the sources. Terms:
+ *      - `iToday` = the number of `introducedNew` reviews in [QueueInput.today] (after rule 0).
+ *      - `bToday` = how many of those are **backfill introductions**: a review `r` whose card is
+ *        a candidate of a kanji note with literal L such that some vocab note W has `L in req(W)`,
+ *        `wordOverride` neither BLACKLISTED nor IGNORED, and a candidate `c` of W (after rule 0)
+ *        in a state other than NEW that has **no** `introducedNew` review in `today` with
+ *        `reviewedAt >= r.reviewedAt` (W was already introduced when the kanji was; a word of
+ *        an earlier day always qualifies). A kanji answered ahead of its own word in a unit or a
+ *        lead is therefore not counted (its word is introduced later or not yet); a backfill
+ *        kanji that a new word's unit happened to take is counted. Stateless: derived from the
+ *        candidates and `today` only, so it is the same on every client and after every rebuild.
+ *      - `b` = the cards of the backfill parts drawn so far in this build by the share step.
+ *      - **Share test** for the next part, of `size` cards. Normal build:
+ *        `share = max(1, newPerDay / 2)` (integer division; `newPerDay` is
+ *        `limits.newPerDay`, the whole goal, not `dayRemaining`), and the test is
+ *        `bToday + b + size <= share` **or** `bToday + b == 0` (a part larger than the share is
+ *        still the day's first backfill, so at least one part per day). Keep going (rule 6; no
+ *        day goal exists): `2 * (bToday + b + size) <= iToday + drawn + size` (64-bit), i.e.
+ *        with the part, backfill is still at most half of everything introduced today plus
+ *        everything this build has drawn.
+ *      - **Share step**: before **every** source turn (so also before the first): the not yet
+ *        drawn parts are drawn in order while `drawn < batch`, the part fits the day (budget
+ *        paragraph; keep going: always) and the share test holds. The first part that fails one
+ *        of the three ends the step (no skipping ahead to a smaller part); the next step starts
+ *        again at that same part. In a normal build the share test does not depend on `drawn`,
+ *        so everything the share allows is drawn before the first turn and the later steps draw
+ *        nothing; in a keep-going build the steps interleave backfill with the sources (about
+ *        one kanji per source card), which is what makes one build equal to rebuilding after
+ *        every answer.
+ *      - **Remainder step** ("with nothing else to draw, backfill may use the remainder"): after
+ *        the source turns have ended — every source is empty, at its per-deck limit or stopped by
+ *        a lead (also when there is no source at all) — the parts still not drawn are drawn in
+ *        order while `drawn < batch` and the part fits the day (keep going: `drawn < batch`),
+ *        **without** the share test; the first part that does not fit ends rule 4. These cards
+ *        count in `bToday` once answered, like any backfill introduction.
+ *      So on a normal day the kanji of words the user already studies come ahead of every other
+ *      new card, but only up to half the goal; the sources get the rest, and whatever they
+ *      cannot use goes back to backfill. A unit that does not fit after the share step leads as
+ *      usual. The share is per study day, not per build: answering a backfill kanji moves it from
+ *      `b` to `bToday`, so a rebuild draws the same cards (`drawn + iToday`, `availableToday +
+ *      iToday` and the queue order are the same before and after an answer).
  *    - **Own turn.** A NEW kanji card that is neither backfilled nor taken by a unit is an
  *      ordinary card of its home new-source and is drawn alone on that source's turn (a kanji
  *      deck studied for itself). That keeps it before any word that requires it.
@@ -603,8 +656,11 @@ public data class ReviewQueue(
  *    note with two NEW kinds → both in `K`; a kanji note the user deleted → not in `missingKanji`,
  *    the word is drawn without it; a word whose own decks are all disabled is not introduced (as
  *    before), so it pulls nothing; KNOWN-override words are not introduced and pull nothing; a
- *    lead of zero parts (no room at all, or the first part alone is too big) still stops its
- *    source; a held word does not stop its source; a kanji card buried by the user whose word is
+ *    lead of zero parts (no room is left for its first part: something was already introduced
+ *    today or drawn in this build) still stops its source; a first part larger than `newPerDay`
+ *    is drawn as the day's first new cards (ADR-044); `newPerDay` 1 → share 1: backfill takes
+ *    the whole goal until it is done (ADR-044 "at least 1"); `newPerDay` 3 → share 1;
+ *    a held word does not stop its source; a kanji card buried by the user whose word is
  *    then deleted is an ordinary card again when the bury ends.
  *    Example (goal 20, deckless NEW cards in creation order: たべる (no kanji), 学校, 先生; kanji
  *    notes: 学 NEW, 先 REVIEW; none for 校, 生): units `[たべる]`, `[学, (校), 学校]` withheld (g = 3,
@@ -618,13 +674,30 @@ public data class ReviewQueue(
  *    `[語, 日本語]`; day 3 → `[たべる]`.
  *    Example (buried; deckless 学校 then たべる, kanji 学 NEW and buried until tomorrow, 校 NEW) →
  *    N = `[たべる]`: 学校 is held, 校 is not drawn through it; tomorrow `[学, 校, 学校]`.
- *    Example (backfill): 先生 and 学校 are in REVIEW (先生 the older note), kanji notes 先 and 生 are
+ *    Example (backfill; goal 20, so share 10): 先生 and 学校 are in REVIEW (先生 the older note), kanji notes 先 and 生 are
  *    NEW, 学 and 校 have no note, a new word たべる waits → parts 先, 生, (学), (校): `items = [先, 生,
  *    たべる]`, `kanjiToMaterialize = [学, 校]`, `drawn = 5`; after minting N = `[先, 生, 学, 校, たべる]`.
+ *    Example (half share, ADR-044; `newPerDay` 4, nothing introduced today): 日本語 is in REVIEW,
+ *    kanji notes 日, 本, 語 are NEW, a deck holds the new words うっかり then Ｔシャツ → share 2: the
+ *    share step draws 日, 本 and stops at 語 (`0 + 2 + 1 > 2`); the deck draws うっかり, Ｔシャツ
+ *    (`drawn = 4`); the remainder step has no room → N = `[日, 本, うっかり, Ｔシャツ]`. After 日 and 本
+ *    are answered: `bToday = 2`, the share step draws nothing, N = `[うっかり, Ｔシャツ]`. The next
+ *    day: `[語]`. Without the two words: day 1 → `[日, 本, 語]` (語 by the remainder step).
+ *    With `newPerDay` 5: share 2, N = `[日, 本, うっかり, Ｔシャツ, 語]` (語 by the remainder step,
+ *    after the sources).
+ *    Example (keep going; the same data plus a third new word あれ after Ｔシャツ; goal 2, met with 日
+ *    and 本 introduced today: `iToday = 2`, `bToday = 2`; batch 10): before the first turn 語 fails
+ *    (`2 * 3 > 2 + 0 + 1`); うっかり (`drawn = 1`); 語 fails (`6 > 4`); Ｔシャツ (`drawn = 2`); 語
+ *    fails (`6 > 5`); あれ (`drawn = 3`); no turn is left, the remainder step draws 語 → N =
+ *    `[うっかり, Ｔシャツ, あれ, 語]`. With `iToday = 4`, `bToday = 2` instead (goal 4, two words also
+ *    done) and words left: 語 fails (`6 > 5`), one word (`drawn = 1`), then 語 passes (`6 <= 6`):
+ *    a word and a kanji in turn.
  *    **Breaking** against the C-8 / C-27 text: the modes are gone (every source groups, kanji
  *    first); kanji cards without a home new-source join groups; `PendingEntry.newKanjiCards` is
  *    replaced by `missingKanji`; existing vocab cards can be withheld; a unit that does not fit
- *    leads with its kanji and stops its source instead of being skipped (ADR-043).
+ *    leads with its kanji and stops its source instead of being skipped (ADR-043). ADR-044
+ *    (against the ADR-043 text): backfill no longer takes the whole goal ahead of the sources
+ *    (half share, remainder step), and a part may overshoot as the day's first new card.
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
  *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
  *    is a kanji group or a single card; withheld units and entries have no items and are left
@@ -699,7 +772,11 @@ public data class ReviewQueue(
  *      `introducedNew` count are ignored (no day test), and no source has a per-deck limit
  *      (`QueueDeck.newPerDay` ignored). Sources, home new-source (a disabled deck still supplies
  *      nothing on its own turns), tiers, round-robin, in-deck order, pending entries, KNOWN
- *      handling, backfill, kanji units, withholding and unit order are unchanged.
+ *      handling, backfill parts and their order, kanji units, withholding and unit order are
+ *      unchanged. Backfill keeps its half share (ADR-044) in the keep-going form of the share
+ *      test (rule 4 "Half share": at most half of today's introductions plus this build's
+ *      draw; `iToday` is read for this test only), checked before every source turn, and its
+ *      remainder step; every part "fits the day".
  *      **Atomic** becomes: a unit is drawn iff `drawn < batch`; it may overshoot the batch
  *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
  *    - Rule 5: **no mix**. The order is due learning, then the open group if there is one (rule
