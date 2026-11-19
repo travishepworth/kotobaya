@@ -1394,3 +1394,4 @@
 2026-11-19T12:49:50Z DECIDE ADR-048 (review back = undo shown revealed; dictionary round-trip keeps state); WEB-REVIEW-BACK DISPATCH writer; web 0.1.30 deploy HELD (user: bundle)
 2026-11-19T12:50:00Z web 0.1.30 image pushed (pin 6c484738) but NOT deployed; next web build will supersede
 2026-11-19T12:50:36Z C-29 HANDOFF + green; reviewer; CORE-29/WRK-29/SRV-29/WEB-29/AND-29 filed
+2026-11-19T12:51:01Z WEB-REVIEW-BACK scope += Undo hotkey/button show undone card revealed (ADR-048)

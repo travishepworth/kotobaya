@@ -22,3 +22,6 @@ User (2026-11-19): "Back button on the mouse needs to go back to the previous ca
 
 ## Out of scope
 Audio (C-29); dictionary layout.
+
+## Scope addition (user, 2026-11-19)
+Undo hotkey and Undo button/action follow suit: undo the last answer and show that card revealed. One shared path for back, hotkey and button; Playwright assertions for both.
