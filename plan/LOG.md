@@ -1326,3 +1326,4 @@
 2026-11-19T03:17:34Z CLI-KG-SCOPE attempt 2 CHECK_GREEN + MERGE (in-memory keep going, 10-min idle reset)
 2026-11-19T03:17:54Z CLI daemon reinstalled from main 0ccb8f01 (CLI-KG-SCOPE), active
 2026-11-19T03:18:29Z WEB-KG-IDLE CHECK_GREEN + MERGE (lazy 10-min idle expiry, resume check)
+2026-11-19T03:21:38Z C-28 DECIDE ADR-042 (kanji exemptions + furigana fronts, user); C-28/CORE-28 tickets amended, architect messaged
