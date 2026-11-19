@@ -1,5 +1,7 @@
 package kotobaya.android.queue
 
+import kotobaya.render.FieldPlainText
+import kotobaya.render.PlainTextMode
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.contracts.cards.KanjiFacts
 import kotobaya.contracts.cards.KanjiRequirement
@@ -120,4 +122,15 @@ class KanjiSource(private val dict: KanjiDictionary) {
         /** No dictionary: every word requires no kanji (core README "C-27", entry missing on the device). */
         val NONE: KanjiSource = KanjiSource(KanjiDictionary.NONE)
     }
+}
+
+/** The word texts the kanji requirement and kanji parts are judged on; the server's `KanjiNeeds` applies the same core calls. */
+internal object WordText {
+    /** A non-blank `expression` field in KANJI mode, else the entry's headword (plain text). */
+    fun expression(field: String?, headword: String?): String =
+        FieldPlainText.of(field, PlainTextMode.KANJI).ifEmpty { FieldPlainText.of(headword, PlainTextMode.KANJI) }
+
+    /** A non-blank `reading` field in KANA mode, else the entry's reading (as given). */
+    fun reading(field: String?, entryReading: String?): String =
+        FieldPlainText.of(field, PlainTextMode.KANA).ifEmpty { entryReading.orEmpty() }
 }

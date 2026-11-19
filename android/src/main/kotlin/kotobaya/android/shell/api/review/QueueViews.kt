@@ -1,5 +1,8 @@
 package kotobaya.android.shell.api.review
 
+import kotobaya.android.queue.WordText
+import kotobaya.render.FieldPlainText
+import kotobaya.render.PlainTextMode
 import kotobaya.android.dict.DictEntryDetail
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.dict.KanjiDetail
@@ -260,7 +263,9 @@ internal class QueueViews(
                 cloze = null,
             ),
         )
-        return out.front to out.reading.orEmpty()
+        val fields = CardRows.fieldsOf(note)
+        // the same core text calls as the server's KanjiNeeds: expression in KANJI mode, reading in KANA mode
+        return WordText.expression(fields["expression"], null).ifEmpty { out.front } to WordText.reading(fields["reading"], out.reading)
     }
 
     /** `KanjiRequirement.evaluate(...).frontFurigana` for the displayed [expression] of the note's entry. */
@@ -295,10 +300,7 @@ internal class QueueViews(
     private fun noteKeyword(literal: String): String? {
         val note = t.where(LearningTable.NOTE, "kanji_literal", JsonString(literal)).filter { CardRows.live(it) && CardRows.str(it["type"]) == "kanji" }
             .minWithOrNull(compareBy<Row>({ (it["created_at"] as? JsonNumber)?.value ?: 0.0 }, { CardRows.str(it["id"]).orEmpty() })) ?: return null
-        val html = CardRows.fieldsOf(note)["keyword"].orEmpty()
-        val text = html.replace(HTML_TAG, " ").replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">")
-            .replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&").replace(WHITESPACE, " ").trim()
-        return text.takeIf { it.isNotEmpty() }
+        return FieldPlainText.of(CardRows.fieldsOf(note)["keyword"], PlainTextMode.KANJI).takeIf { it.isNotEmpty() }
     }
 
     // ---- grammar sentence (C-15) ----------------------------------------------------------------------------------------

@@ -382,8 +382,8 @@ class LocalQueueLoader(
 
     /** The note's displayed `expression` as plain text: its `expression` field unless blank, else the entry's headword. */
     private fun expressionOf(fieldsJson: String, entrySeq: Long?): String {
-        val field = if (fieldsJson.length <= 2) null else (jsonObject(fieldsJson)["expression"] as? JsonString)?.value?.let { FieldPlainText.of(it, PlainTextMode.KANJI) }
-        return field?.takeIf { it.isNotBlank() } ?: entrySeq?.let(headwordOf)?.let { FieldPlainText.of(it, PlainTextMode.KANJI) }.orEmpty()
+        val field = if (fieldsJson.length <= 2) null else (jsonObject(fieldsJson)["expression"] as? JsonString)?.value
+        return WordText.expression(field, entrySeq?.let(headwordOf))
     }
 
     private fun jsonObject(text: String): Map<String, JsonValue> =
