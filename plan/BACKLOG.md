@@ -889,3 +889,8 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-29 — android word_audio + prefetch · model: sonnet · risk: med · deps: C-29, CORE-29, SRV-29 · status: TODO (ticket: plan/tickets/AND-29.md)
 - C-30 — ADR-049 loop waits for today's learning; counts add up; Home refresh · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-30.md)
 - WEB-PW-FLAKY — isolate Playwright mock state per worker · model: haiku · risk: low · deps: WEB-29 · status: TODO (ticket: plan/tickets/WEB-PW-FLAKY.md)
+- CORE-30 — DefaultReviewLoop ADR-049 · model: opus · risk: high · deps: C-30 · status: TODO (ticket: plan/tickets/CORE-30.md)
+- SRV-30 — server loop fields + goldens · model: sonnet · risk: med · deps: C-30, CORE-30 · status: TODO (ticket: plan/tickets/SRV-30.md)
+- WEB-30 — web counts/refresh/waiting · model: sonnet · risk: med · deps: C-30, CORE-30 · status: TODO (ticket: plan/tickets/WEB-30.md)
+- AND-30 — android loop fields + goldens · model: sonnet · risk: med · deps: SRV-30 · status: TODO (ticket: plan/tickets/AND-30.md)
+- CLI-30 — cli loop counts · model: haiku · risk: low · deps: SRV-30 · status: TODO (ticket: plan/tickets/CLI-30.md)

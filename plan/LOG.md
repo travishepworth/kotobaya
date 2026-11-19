@@ -1410,3 +1410,4 @@
 2026-11-19T13:30:43Z WEB-29 attempt 2: flake confirmed on main (review-back 3/4 parallel runs fail) -> accepted, WEB-PW-FLAKY filed. SRV-29 HANDOFF green -> reviewer. DECIDE ADR-049 (loop waits for today's learning; counts add up; Home refresh); C-30 DISPATCH architect
 2026-11-19T13:33:35Z SRV-29 REVIEW_CHANGES (1 major: unindexed back-off scan on review path; 3 minors) -> writer attempt 2
 2026-11-19T13:38:54Z SRV-29 attempt 2 HANDOFF green (major fixed as prescribed, tests added) -> accepted; AND-29 DISPATCH writer from t/SRV-29
+2026-11-19T13:43:00Z C-30 HANDOFF + green; reviewer; CORE-30/SRV-30/WEB-30/AND-30/CLI-30 filed
