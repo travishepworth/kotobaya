@@ -1319,3 +1319,4 @@
 2026-11-17T00:33:00Z LOOP-C2 DISPATCH architect (re-dispatch, run 33; previous session ended before start). Stale worktrees for merged branches removed
 2026-11-17T00:40:00Z RUN DECIDE user: pause after LOOP-C2 merges; C2b and Z2 held
 2026-11-17T01:20:00Z LOOP-C2 CHECK_GREEN (contracts/server/android after rebase) + MERGE; 24 parity match, no allowlist; 2 questions -> FOLLOWUPS. RUN PAUSED per user
+2026-11-19T03:12:22Z CLI FIX daemon crash-loop (editable kotobaya_client in deleted scratchpad); reinstalled non-editable from main (cli unchanged since pin), daemon active

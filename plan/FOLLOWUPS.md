@@ -507,3 +507,4 @@
 - [ ] DECIDE: server `updateNote` accepts an `entry_seq` not in any dictionary (200), but SHELL.md §4.3 says the shell validates it like `createNote` (422). Pick one; then add to parity.
 - [ ] Server returns `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Phone agrees; confirm intended.
 - [ ] New parity coverage tags (bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews) not listed in SHELL.md §8.4.
+- (2026-11-19, CLI) cli/pyproject.toml sources kotobaya_client editable; a uv tool install from a temp worktree breaks when it is deleted (daemon crash-looped). Make the source non-editable or document `uv tool install --no-sources --with ./clients/python ./cli` in docs/CLI-DAEMON.md.
