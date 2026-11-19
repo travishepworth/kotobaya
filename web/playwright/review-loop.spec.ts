@@ -25,7 +25,10 @@ const LOOPS: Record<string, { loop: Record<string, any>; items: boolean }> = {
 			later_today: { count: 8, next_due_at: at(6) },
 			backlog: { reviews: 335, beyond_limit: 135 },
 			reviews: { today: 0, limit: 200 },
-			new: { today: 12, goal: 40, available: true }
+			new: { today: 12, goal: 40, available: true },
+			until_stop: 209,
+			keep_going_available: false,
+			until_stop_parts: { learning: 1, later: 8, review: 200, new: 0 }
 		}
 	},
 	goal_reached: {
@@ -34,10 +37,13 @@ const LOOPS: Record<string, { loop: Record<string, any>; items: boolean }> = {
 			phase: 'goal_reached',
 			keep_going: false,
 			ready: { learning: 0, review: 0, total: 0 },
-			later_today: { count: 3, next_due_at: at(14) },
+			later_today: { count: 0, next_due_at: null },
 			backlog: { reviews: 0, beyond_limit: 0 },
 			reviews: { today: 212, limit: null },
-			new: { today: 40, goal: 40, available: true }
+			new: { today: 40, goal: 40, available: true },
+			until_stop: 0,
+			keep_going_available: true,
+			until_stop_parts: { learning: 0, later: 0, review: 0, new: 0 }
 		}
 	},
 	done_for_today: {
@@ -49,7 +55,10 @@ const LOOPS: Record<string, { loop: Record<string, any>; items: boolean }> = {
 			later_today: { count: 0, next_due_at: null },
 			backlog: { reviews: 135, beyond_limit: 135 },
 			reviews: { today: 200, limit: 200 },
-			new: { today: 40, goal: 40, available: true }
+			new: { today: 40, goal: 40, available: true },
+			until_stop: 0,
+			keep_going_available: true,
+			until_stop_parts: { learning: 0, later: 0, review: 0, new: 0 }
 		}
 	},
 	waiting: {
@@ -61,7 +70,10 @@ const LOOPS: Record<string, { loop: Record<string, any>; items: boolean }> = {
 			later_today: { count: 8, next_due_at: at(4.5) },
 			backlog: { reviews: 0, beyond_limit: 0 },
 			reviews: { today: 200, limit: 200 },
-			new: { today: 52, goal: 40, available: false }
+			new: { today: 52, goal: 40, available: false },
+			until_stop: 8,
+			keep_going_available: true,
+			until_stop_parts: { learning: 0, later: 8, review: 0, new: 0 }
 		}
 	},
 	empty: {
@@ -73,7 +85,10 @@ const LOOPS: Record<string, { loop: Record<string, any>; items: boolean }> = {
 			later_today: { count: 0, next_due_at: null },
 			backlog: { reviews: 0, beyond_limit: 0 },
 			reviews: { today: 180, limit: 200 },
-			new: { today: 40, goal: 40, available: false }
+			new: { today: 40, goal: 40, available: false },
+			until_stop: 0,
+			keep_going_available: false,
+			until_stop_parts: { learning: 0, later: 0, review: 0, new: 0 }
 		}
 	}
 };
@@ -270,3 +285,128 @@ for (const s of SIZES.filter((x) => x.mobile)) {
 		});
 	});
 }
+
+/* ---------- WEB-30 (ADR-049): the reported case, C3 parts, C4 waiting, C6 refetch in every phase ---------- */
+
+const REPORTED_BASE = {
+	keep_going: false,
+	backlog: { reviews: 0, beyond_limit: 0 },
+	reviews: { today: 0, limit: null },
+	new: { today: 40, goal: 40, available: true }
+};
+
+/** 9 learning cards ready and 14 on their timers: parts sum to 23 (the report's bar total). */
+const reportedReviewing = (): Record<string, any> => ({
+	...REPORTED_BASE,
+	phase: 'reviewing',
+	ready: { learning: 9, review: 0, total: 9 },
+	later_today: { count: 14, next_due_at: new Date(Date.now() + 600_000).toISOString() },
+	until_stop: 23,
+	keep_going_available: false,
+	until_stop_parts: { learning: 9, later: 14, review: 0, new: 0 }
+});
+
+/** The report: the 40th new card is answered and 23 learning cards are on their timers. */
+const reportedWaiting = (inMs: number): Record<string, any> => ({
+	...REPORTED_BASE,
+	phase: 'waiting',
+	ready: { learning: 0, review: 0, total: 0 },
+	later_today: { count: 23, next_due_at: new Date(Date.now() + inMs).toISOString() },
+	until_stop: 23,
+	keep_going_available: true,
+	until_stop_parts: { learning: 0, later: 23, review: 0, new: 0 }
+});
+
+/** Serve `loops[i]` for the i-th queue request (the last one repeats); `items` are the real mock items from `itemsFrom` on. */
+async function serveSequence(page: Page, loops: Array<() => Record<string, any>>, itemsFrom: number): Promise<{ calls: () => number }> {
+	let n = 0;
+	await page.route('**/api/v1/review/queue*', async (route: Route) => {
+		const real = await route.fetch();
+		const body = (await real.json()) as Record<string, any>;
+		const i = Math.min(n++, loops.length - 1);
+		await route.fulfill({ json: { ...body, study_day: '2026-11-17', loop: loops[i](), items: i >= itemsFrom ? body.items : [] } });
+	});
+	return { calls: () => n };
+}
+
+async function openLive(page: Page, context: BrowserContext, path: string): Promise<void> {
+	await context.addCookies([{ name: 'kb-mock-scenario', value: 'default', url: test.info().project.use.baseURL ?? 'http://localhost' }]);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.goto('/__mock/shell/off');
+	await page.goto(path);
+}
+
+test.describe('WEB-30 reported case', () => {
+	test.use({ viewport: { width: 1280, height: 800 } });
+
+	test('review: after the 40th new card the screen waits (not done), counts down, keeps going offered, resumes', async ({ page, context }) => {
+		await serveSequence(page, [() => reportedWaiting(3000), reportedReviewing], 1);
+		await openLive(page, context, '/review');
+		const fin = page.locator('.finished[data-phase="waiting"]');
+		await fin.waitFor();
+		await expect(fin.locator('.countdown')).toHaveText(/^0:0[1-3]$/);
+		await expect(fin).not.toContainText('goal reached');
+		await expect(fin).not.toContainText('All done');
+		await expect(fin.getByRole('button', { name: 'Keep going' })).toBeVisible();
+		await page.screenshot({ path: 'screenshots/shell/web30-review-waiting-keepgoing-desktop.png' });
+		// The scheduled refetch resumes by itself: the card appears, the header shows the four parts.
+		await page.locator('.card-body').waitFor({ timeout: 20_000 });
+		await expect(page.getByTestId('hdr-learning')).toHaveText('9 learning');
+		await expect(page.getByTestId('hdr-later')).toHaveText('14 later');
+		await expect(page.getByTestId('hdr-review')).toHaveText('0 to review');
+		await expect(page.locator('.of')).toHaveText('0 of 23'); // the parts sum to the bar total
+		await page.screenshot({ path: 'screenshots/shell/web30-review-header-desktop.png' });
+	});
+
+	test('review: waiting without keep_going_available shows no Keep going button', async ({ page, context }) => {
+		await serveSequence(page, [() => ({ ...reportedWaiting(60_000), keep_going_available: false })], 99);
+		await openLive(page, context, '/review');
+		await page.locator('.finished[data-phase="waiting"]').waitFor();
+		await expect(page.getByRole('button', { name: 'Keep going' })).toHaveCount(0);
+		await page.screenshot({ path: 'screenshots/shell/web30-review-waiting-nobutton-desktop.png' });
+	});
+
+	test('home: same numbers as the review header; waiting shows the countdown and Keep going', async ({ page, context }) => {
+		await serveSequence(page, [reportedReviewing], 0);
+		await openLive(page, context, '/');
+		await expect(page.getByTestId('loop-ready')).toHaveText('9');
+		await expect(page.getByTestId('loop-parts')).toContainText('9 learning');
+		await expect(page.getByTestId('loop-later')).toContainText('14 learning later today');
+		await page.unroute('**/api/v1/review/queue*');
+		await serveSequence(page, [() => reportedWaiting(60_000)], 99);
+		await page.reload();
+		await page.locator('.hero [data-phase="waiting"]').waitFor();
+		await expect(page.getByTestId('loop-countdown')).toContainText('Next card in');
+		await expect(page.getByTestId('loop-parts')).toContainText('23 later');
+		await expect(page.locator('.hero').getByRole('button', { name: 'Keep going' })).toBeVisible();
+		await page.screenshot({ path: 'screenshots/shell/web30-home-waiting-desktop.png' });
+	});
+
+	test('home: C6 refetches at next_due_at while reviewing (not only in waiting)', async ({ page, context }) => {
+		const soon = (): Record<string, any> => ({ ...reportedReviewing(), later_today: { count: 14, next_due_at: new Date(Date.now() + 1500).toISOString() } });
+		const next = (): Record<string, any> => ({
+			...reportedReviewing(),
+			ready: { learning: 10, review: 0, total: 10 },
+			until_stop_parts: { learning: 10, later: 13, review: 0, new: 0 }
+		});
+		const seq = await serveSequence(page, [soon, next], 0);
+		await openLive(page, context, '/');
+		await expect(page.getByTestId('loop-ready')).toHaveText('9');
+		await expect(page.getByTestId('loop-ready')).toHaveText('10', { timeout: 15_000 });
+		expect(seq.calls()).toBeGreaterThanOrEqual(2);
+	});
+});
+
+test.describe('WEB-30 screenshots 412x915', () => {
+	test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+
+	test('waiting screen on a phone', async ({ page, context }) => {
+		await serveSequence(page, [() => reportedWaiting(600_000)], 99);
+		await openLive(page, context, '/review');
+		await page.locator('.finished[data-phase="waiting"]').waitFor();
+		await assertNoOverflow(page);
+		await assertNoOverlap(page, '.finished');
+		await assertAboveBars(page, '.finished');
+		await page.screenshot({ path: 'screenshots/shell/web30-review-waiting-412x915.png' });
+	});
+});

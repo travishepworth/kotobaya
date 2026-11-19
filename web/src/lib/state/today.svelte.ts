@@ -7,7 +7,7 @@ import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
 
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
-export { countdown, minutesUntil } from '../review/loop';
+export { countdown, minutesUntil, loopParts, keepGoingAvailable } from '../review/loop';
 
 const api = new ReviewApi(quietApiConfig);
 
@@ -46,10 +46,10 @@ export class TodayQueue {
 		if (this.view) startKeepGoing(this.view.studyDay);
 	}
 
-	/** C4: in `waiting`, one refetch when the next learning card falls due. */
+	/** C6: one refetch when the next learning card falls due, in every phase (null: none). */
 	#schedule(): void {
 		this.#clear();
-		const at = this.view?.phase === 'waiting' ? this.view.loop.laterToday.nextDueAt : null;
+		const at = this.view?.loop.laterToday.nextDueAt ?? null;
 		if (!at) return;
 		const delay = Math.max(at.getTime() + WAKE_SLACK_MS - Date.now(), this.#lastWake + WAKE_MIN_MS - Date.now(), 0);
 		this.#timer = setTimeout(() => {

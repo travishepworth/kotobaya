@@ -4,7 +4,7 @@
 	// card; `empty`: all done. Under it the later-today hint, the new-card bar and the backlog line.
 	import Button from '../ui/Button.svelte';
 	import Icon from '../ui/Icon.svelte';
-	import { countdown, type LoopView } from '../state/today.svelte';
+	import { countdown, keepGoingAvailable, loopParts, type LoopView } from '../state/today.svelte';
 	import LoopMeta from './LoopMeta.svelte';
 	import { tr } from './messages';
 
@@ -27,6 +27,8 @@
 
 	const loop = $derived(view.loop);
 	const ready = $derived(loop.ready.total);
+	// ADR-049 C3: the same four numbers as the review header; `later` is in the hint line below while reviewing.
+	const parts = $derived(loopParts(loop));
 </script>
 
 {#if view.phase === 'reviewing'}
@@ -36,10 +38,11 @@
 			<span class="n kb-num" data-testid="loop-ready">{ready.toLocaleString()}</span>
 			<span class="unit">{ready === 1 ? tr('loop.card') : tr('loop.cards')}</span>
 		</p>
-		{#if ready > 0}
-			<ul class="breakdown">
-				<li><i class="learning"></i>{tr('loop.ready.learning', { n: loop.ready.learning })}</li>
-				<li><i class="review"></i>{tr('loop.ready.review', { n: loop.ready.review.toLocaleString() })}</li>
+		{#if ready > 0 || parts.new > 0}
+			<ul class="breakdown" data-testid="loop-parts">
+				<li><i class="learning"></i>{tr('loop.ready.learning', { n: parts.learning })}</li>
+				<li><i class="review"></i>{tr('loop.ready.review', { n: parts.review.toLocaleString() })}</li>
+				{#if parts.new > 0}<li><i class="new"></i>{tr('loop.part.new', { n: parts.new.toLocaleString() })}</li>{/if}
 			</ul>
 		{/if}
 		<LoopMeta {view} {now} />
@@ -71,6 +74,11 @@
 				<p class="countdown kb-num" data-testid="loop-countdown">
 					{tr('loop.waiting.title', { time: countdown(loop.laterToday.nextDueAt, now) })}
 				</p>
+				<ul class="breakdown" data-testid="loop-parts">
+					{#if parts.later > 0}<li><i class="learning"></i>{tr('loop.part.later', { n: parts.later })}</li>{/if}
+					{#if parts.review > 0}<li><i class="review"></i>{tr('loop.part.review', { n: parts.review.toLocaleString() })}</li>{/if}
+					{#if parts.new > 0}<li><i class="new"></i>{tr('loop.part.new', { n: parts.new.toLocaleString() })}</li>{/if}
+				</ul>
 			{:else}
 				<h2 id="due-title">{tr('loop.empty.title')}</h2>
 				<p class="muted">{view.loop.keepGoing ? tr('loop.empty.keepGoing') : tr('loop.empty.body')}</p>
@@ -78,7 +86,7 @@
 			<LoopMeta {view} {now} hint={view.phase !== 'waiting'} />
 		</div>
 	</div>
-	{#if view.phase === 'goal_reached' || view.phase === 'done_for_today'}
+	{#if keepGoingAvailable(view)}
 		<div class="go">
 			<Button variant="primary" size="lg" icon="review" full onclick={onkeepgoing}>{tr('loop.keepGoing')}</Button>
 		</div>
@@ -139,6 +147,9 @@
 	}
 	i.learning {
 		background: var(--kb-color-state-learning);
+	}
+	i.new {
+		background: var(--kb-color-state-new);
 	}
 	i.review {
 		background: var(--kb-color-state-review);
