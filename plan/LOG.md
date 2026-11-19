@@ -1397,3 +1397,5 @@
 2026-11-19T12:51:01Z WEB-REVIEW-BACK scope += Undo hotkey/button show undone card revealed (ADR-048)
 2026-11-19T12:52:15Z C-29 REVIEW_CHANGES (1 major: resolveSpeech text items under read scope; 5 minors) -> architect attempt 2
 2026-11-19T12:58:47Z C-29 attempt 2 HANDOFF; contracts+core green after rebase; server/worker/android check running before merge; CORE-29 (writer-senior) + WRK-29 (writer) DISPATCH from t/C-29-audio
+2026-11-19T13:00:21Z WEB-REVIEW-BACK HANDOFF (green); screenshots looked faded -> writer asked to verify settled opacity + enabled grade buttons + grading restored card
+2026-11-19T13:02:08Z WEB-REVIEW-BACK CHECK_GREEN (web) + MERGE (settled screenshots viewed; opacity/enabled asserted)
