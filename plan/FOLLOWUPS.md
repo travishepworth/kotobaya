@@ -527,3 +527,4 @@
 - ADR-047 follow-up: pitch-accented TTS — send dictionary pitch data (entry_pitch) to VOICEVOX accent phrases so homophones (橋/箸) differ; only changes the (voice, text) text.
 - SRV-29: back-off lookup scans app.job by dedupe_key across all statuses without an index — add index via contract migration.
 - SRV-29: sweep does not skip buried cards (spec silent).
+- SRV-29: back-off window 1 day — a retry chain created >1 day ago that failed recently isn't seen as backing off (edge).

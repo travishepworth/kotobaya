@@ -1408,3 +1408,5 @@
 2026-11-19T13:18:24Z WEB-29 HANDOFF; review-back U/undo test FAILS on branch but passes on main (verified) -> regression, attempt 2
 2026-11-19T13:22:28Z USER BUG: home 9 due vs review bar 23 (9 learning/0 review), done screen while reviews left after new limit, home then empty. Server 13:22: learning due 21, review due 5. Investigation DISPATCH
 2026-11-19T13:30:43Z WEB-29 attempt 2: flake confirmed on main (review-back 3/4 parallel runs fail) -> accepted, WEB-PW-FLAKY filed. SRV-29 HANDOFF green -> reviewer. DECIDE ADR-049 (loop waits for today's learning; counts add up; Home refresh); C-30 DISPATCH architect
+2026-11-19T13:33:35Z SRV-29 REVIEW_CHANGES (1 major: unindexed back-off scan on review path; 3 minors) -> writer attempt 2
+2026-11-19T13:38:54Z SRV-29 attempt 2 HANDOFF green (major fixed as prescribed, tests added) -> accepted; AND-29 DISPATCH writer from t/SRV-29
