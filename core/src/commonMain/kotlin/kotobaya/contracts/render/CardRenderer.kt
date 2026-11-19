@@ -296,7 +296,11 @@ public data class RenderedCard(
  *
  * **Custom templates** are rendered as written. They can place W with the placeholder
  * `{{audio:word}}` (either side, any number of times; `""` for non-vocab notes, no warning).
- * `{{audio}}` keeps its meaning (the field value).
+ * `{{audio}}` keeps its meaning (the field value). The prefix `audio:` is **reserved**: `word` is
+ * its only valid argument, exactly as written. Every other `{{audio:…}}` (`{{audio:Word}}`,
+ * `{{audio:sentence}}`, `{{audio:reading}}`, `{{audio:}}`) renders `""` with warning
+ * `unknown_placeholder`, for every base type; it is never read as a mode applied to a field,
+ * and it is not a referred field of [RenderedCard.fields].
  *
  * [RenderedCard.wordAudio] is the first `data-kb-audio` hash of the first non-empty W emitted on
  * this side, known by construction and not by scanning the HTML (null when no W was emitted,

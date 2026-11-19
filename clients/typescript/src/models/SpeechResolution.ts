@@ -28,11 +28,11 @@ export interface SpeechResolution {
      */
     durationMs: number | null;
     /**
-     * When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off; null for `ready` and `none`.
+     * When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off (600000 for a note whose own sound has no blob); null for `ready` and `none`.
      */
     retryAfterMs: number | null;
     /**
-     * `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`.
+     * `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`.
      */
     source: SpeechResolutionSourceEnum | null;
     /**

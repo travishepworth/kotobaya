@@ -840,6 +840,9 @@ What was decided, in plain words:
 - **`POST /tts/resolve` (`resolveSpeech`)** (new): ask for up to 200 pairs or notes; the answer
   says ready / pending / failed / none, and missing ones are queued. The review screen asks for
   the card on screen ("urgent": jumps the job queue); the phone asks for its prefetch window.
+  It needs the `write` scope, like `POST /tts`, because it makes the server generate and store
+  audio for a text the caller chose. At most 340 speech jobs can ever be waiting (300 ordinary
+  plus 40 reserved for urgent ones), whoever asks.
   `POST /tts` and the `tts` job are reused unchanged in shape; the worker additionally records
   each result in the index table.
 - **The server generates ahead**: for the cards it serves, and every 10 minutes for cards due
@@ -894,6 +897,6 @@ Implementation tickets (each reads SCHEMA.md 6.6 first):
 |---|---|---|---|
 | CORE-29 | core | `DefaultWordAudioResolver` (jvm + js tests from the table in `WordAudio.kt`); renderer: block W, `{{audio:word}}`, `RenderedCard.wordAudio` / `autoplayAudio`, `JsRenderInput.wordAudio` and the two `JsRenderedCard` members mapped; built-in vocab templates; update render goldens | C-29 |
 | WRK-29 | worker | `tts` job: cache lookup and upsert on `app.tts_audio` (replaces the job-history lookup), voice / length validation, tests for run-twice idempotency | C-29 (V4 migration) |
-| SRV-29 | server | V4 migration; `word_audio` on queue and drill items plus urgent enqueue; `resolveSpeech`; the sweep; settings validation of the three keys; `synthesizeSpeech` default voice via core; re-record parity goldens that call `getReviewQueue` / `createDrillSession`; scope test for `resolveSpeech` | C-29, CORE-29 |
+| SRV-29 | server | V4 migration; `word_audio` on queue and drill items plus urgent enqueue; `resolveSpeech`; the sweep; settings validation of the three keys; `synthesizeSpeech` default voice via core; re-record parity goldens that call `getReviewQueue` / `createDrillSession`; scope test for `resolveSpeech` covering both request shapes (a read-only token gets `403 insufficient_scope` for `text` items and for `note_id`-only requests, and no job row appears; a `write` token succeeds) and a test that 340 queued jobs stop urgent enqueues | C-29, CORE-29 |
 | WEB-29 | web + `assets/card/` | pass `word_audio.blob_hash` to the renderer; REVIEW-LOOP 14 rules (autoplay, P, tap, resolve-and-rerender); settings toggle (i18n); CSS for `.kb-expression .kb-audio`; layout test + screenshot | C-29, CORE-29 (SRV-29 to see it work) |
-| AND-29 | android | device table `tts_audio` (schema migration); local `word_audio`; the prefetch pass; local settings validation; parity goldens of SRV-29 | C-29, CORE-29, SRV-29 |
+| AND-29 | android | device table `tts_audio` (schema migration); local `word_audio` (no dead button offline: rule 6); the prefetch pass (today's new cards first); local settings validation; parity goldens of SRV-29 | C-29, CORE-29, SRV-29 |

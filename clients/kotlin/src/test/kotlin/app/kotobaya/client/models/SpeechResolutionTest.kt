@@ -45,13 +45,13 @@ class SpeechResolutionTest : ShouldSpec() {
             //modelInstance.durationMs shouldBe ("TODO")
         }
 
-        // to test the property `retryAfterMs` - When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off; null for `ready` and `none`.
+        // to test the property `retryAfterMs` - When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off (600000 for a note whose own sound has no blob); null for `ready` and `none`.
         should("test retryAfterMs") {
             // uncomment below to test the property
             //modelInstance.retryAfterMs shouldBe ("TODO")
         }
 
-        // to test the property `source` - `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`.
+        // to test the property `source` - `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`.
         should("test source") {
             // uncomment below to test the property
             //modelInstance.source shouldBe ("TODO")

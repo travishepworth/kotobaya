@@ -30,8 +30,8 @@ class SpeechResolution(BaseModel):
     """ # noqa: E501
     blob_hash: Optional[Annotated[str, Field(strict=True)]] = Field(description="The audio blob when `status` is `ready`, else null.")
     duration_ms: Optional[Annotated[int, Field(strict=True, ge=0)]] = Field(description="Length of the audio when `status` is `ready` and `source` is `tts`, else null.")
-    retry_after_ms: Optional[Annotated[int, Field(le=600000, strict=True, ge=1)]] = Field(description="When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off; null for `ready` and `none`.")
-    source: Optional[StrictStr] = Field(description="`tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`.")
+    retry_after_ms: Optional[Annotated[int, Field(le=600000, strict=True, ge=1)]] = Field(description="When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off (600000 for a note whose own sound has no blob); null for `ready` and `none`.")
+    source: Optional[StrictStr] = Field(description="`tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`.")
     status: StrictStr = Field(description="See `resolveSpeech`. Clients treat an unknown value as `failed`.")
     text: Optional[StrictStr] = Field(description="The text of the pair (the item's `text`, or the note's speech text); null when `source` is not `tts`.")
     voice: Optional[StrictStr] = Field(description="The voice of the pair after defaulting; null when `source` is not `tts`.")

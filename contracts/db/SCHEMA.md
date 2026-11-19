@@ -891,25 +891,32 @@ at any time, so there is no op, no clock and nothing to converge (CLAUDE.md rule
 | pair | `(voice, text)`: the identity of one piece of TTS audio. Exact strings, compared code unit by code unit; no hash, no folding. Server table `app.tts_audio`, device table `tts_audio`, API `TtsAudio`. |
 | generated | A pair is generated iff `app.tts_audio` has its row **and** `app.blob` has a row for that `blob_hash`. A row whose blob row is gone is deleted by the reader that notices and the pair counts as not generated. |
 | backing off | A pair is backing off iff the newest `job` row of kind `tts` with `dedupe_key = 'tts:' + sha256hex(voice + U+0000 + text)` (UTF-8; the key `synthesizeSpeech` has always used) has status `failed` or `cancelled` and `finished_at > now − 600 s`. No job is enqueued for it meanwhile. |
-| prefetch set `P(now)` | The word audio of (a) every live `vocab` note that has at least one card with `retired = false`, `suspended = false`, `state <> 'new'` and `due_at < now + audio.prefetch_days × 86 400 000 ms` (`audio.prefetch_days` by the 6.1 `int` test with range 0–365, default 7; plain instants, no day boundary), ordered by the smallest such `due_at`, then note id; then (b) every NEW item and every entry to materialize of the normal queue build (`ReviewLoop.evaluate` with `keepGoing = false`) at `now`, in queue order. Each pair or note blob once (first position wins). |
+| prefetch set `P(now)` | The word audio of (a) every live `vocab` note that has at least one card with `retired = false`, `suspended = false`, `state <> 'new'` and `due_at < now + audio.prefetch_days × 86 400 000 ms` (`audio.prefetch_days` by the 6.1 `int` test with range 0–365, default 7; plain instants, no day boundary), ordered by the smallest such `due_at`, then note id; and (b) every NEW item and every entry to materialize of the normal queue build (`ReviewLoop.evaluate` with `keepGoing = false`) at `now`, in queue order. **Order of `P`: part (b) first, then part (a)** (today's new cards have no audio anywhere yet and are needed soonest; they must not wait behind a long due list). Each pair or note blob once (first position wins). |
 
 **Server**
 
 1. `getReviewQueue` and `createDrillSession` put `word_audio` on every item (API
    `QueueItem.word_audio`): source, text and voice from the definitions above, `blob_hash` from
    `app.tts_audio` when the pair is generated, else `null`. For the first 20 served items whose
-   pair is not generated and not backing off the server enqueues a `tts` job, **urgent** (below).
-   A failure to enqueue never fails the request.
+   pair is not generated and not backing off the server enqueues a `tts` job, **urgent** (below,
+   within the urgent limit). This does not depend on the caller's scopes: the texts come from
+   the user's notes, not from the request. A failure to enqueue never fails the request.
 2. **Sweep.** 60 s after start and then every 600 s the server walks part (a) of `P(now)` in
    order and enqueues a `tts` job (payload `{text, voice}`, the usual dedupe key, not urgent) for
    every pair that is not generated, not backing off and has no queued or running job, stopping
    when `tts` jobs with status `queued` or `running` number 300. Part (b) is covered by rule 1 and
-   by devices (below). The sweep reads only; its one write is the enqueue.
-3. `resolveSpeech` (API) answers and enqueues for explicit pairs.
+   by devices (below). The sweep reads only; its one write is the enqueue. It never enqueues a
+   pair that is not in part (a).
+3. `resolveSpeech` (API, scope `write`) answers and enqueues for explicit pairs, non-urgent
+   while fewer than 300 `tts` jobs are queued or running.
 4. **Urgent** = the job's `run_after` is `now − 1 day`, so the dequeue order
    (`run_after, created_at`) serves it before every non-urgent job; if a queued job with the
-   dedupe key already exists its `run_after` is lowered to that value instead. Urgent enqueues
-   ignore the 300 cap.
+   dedupe key already exists its `run_after` is lowered to that value instead. Urgent is a
+   priority, not an exemption: an urgent enqueue (rule 1, or `resolveSpeech` with `urgent`)
+   happens only while fewer than **340** `tts` jobs are queued or running (the 300 of
+   non-urgent work plus a reserve of 40). At 340 nothing is enqueued and nothing is re-prioritised;
+   the pair stays not generated and a later request tries again. So no caller can queue more
+   than 340 jobs, whatever it sends.
 5. Changing `tts.voice` deletes nothing. Pairs of the old voice stay generated and are simply no
    longer asked for; no garbage collection in v1.
 
@@ -936,17 +943,24 @@ at any time, so there is no op, no clock and nothing to converge (CLAUDE.md rule
 3. **note** results: the blob hash becomes a `blob_cache` row (`state = 'wanted'`, `reason =
    'card'`) unless one exists.
 4. **tts** results: for every pair with no local `tts_audio` row, or whose `checked_at` is older
-   than 7 days, call `resolveSpeech` (not urgent) in chunks of at most 200, in `P` order. Status
+   than 7 days, call `resolveSpeech` (not urgent) in chunks of at most 200, in `P` order, which
+   puts part (b), today's new cards, in the first chunk(s). Status
    `ready` → upsert the local row (`checked_at = now`) and add the `blob_cache` row as in 3.
    `pending` and `failed` → nothing is stored; the next pass asks again. Stop the pass early
-   after a chunk in which fewer than half the items were `ready` (the server is still generating).
+   after a chunk in which fewer than half the items were `ready` (the server is still
+   generating), but **never before every pair of part (b) has been asked once in this pass**:
+   the early stop applies to chunks that hold part (a) pairs only.
 5. Download `wanted` blobs with the existing downloader. Eviction follows the existing
    `blob_cache` rules; a `tts_audio` row whose bytes were evicted stays (the hash is still right;
    the blob intercept downloads it again when online).
 6. The local `getReviewQueue` / `createDrillSession` fill `word_audio` exactly as the server does
    (rule 1 of "Server") with the local `tts_audio` table in place of `app.tts_audio`, and enqueue
-   nothing. "Generated" on the device means: the local row exists (whether or not the bytes are
-   cached). Offline with no row → `blob_hash: null` → no speaker button; nothing else changes.
+   nothing. "Generated" on the device means: the local row exists **and** the bytes can be had:
+   `blob_cache` holds the hash with `state = 'cached'`, or the device is online (the blob
+   intercept will download it). Offline with no row, or with a row whose bytes are not cached →
+   `blob_hash: null` → no speaker button (never a button that cannot play); nothing else
+   changes. This test is for `tts` results only: a **note** result always reports the note's
+   hash, cached or not, exactly as the server does.
 7. Offline creation: a note created or materialized offline gets its audio on the first pass
    after the device is online; resolving needs only the pair, never the note's id, so it works
    before the note is pushed.

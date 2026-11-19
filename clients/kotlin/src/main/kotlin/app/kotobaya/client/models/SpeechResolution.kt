@@ -31,8 +31,8 @@ import com.google.gson.annotations.SerializedName
  *
  * @param blobHash The audio blob when `status` is `ready`, else null.
  * @param durationMs Length of the audio when `status` is `ready` and `source` is `tts`, else null.
- * @param retryAfterMs When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off; null for `ready` and `none`.
- * @param source `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`.
+ * @param retryAfterMs When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off (600000 for a note whose own sound has no blob); null for `ready` and `none`.
+ * @param source `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`.
  * @param status See `resolveSpeech`. Clients treat an unknown value as `failed`.
  * @param text The text of the pair (the item's `text`, or the note's speech text); null when `source` is not `tts`.
  * @param voice The voice of the pair after defaulting; null when `source` is not `tts`.
@@ -49,11 +49,11 @@ data class SpeechResolution (
     @SerializedName("duration_ms")
     val durationMs: kotlin.Int?,
 
-    /* When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off; null for `ready` and `none`. */
+    /* When to ask again - `pending` 1000 (60000 when held back by the backlog rule); `failed` the time left of the 600 s back-off (600000 for a note whose own sound has no blob); null for `ready` and `none`. */
     @SerializedName("retry_after_ms")
     val retryAfterMs: kotlin.Int?,
 
-    /* `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`. */
+    /* `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`. */
     @SerializedName("source")
     val source: SpeechResolution.Source?,
 
@@ -72,7 +72,7 @@ data class SpeechResolution (
 ) {
 
     /**
-     * `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound; null when `status` is `none`.
+     * `tts` for a `text` item and for a note without its own audio; `note` for a note whose `audio` field holds a sound (also when that blob is missing - status `failed`); null when `status` is `none`.
      *
      * Values: NOTE,TTS
      */

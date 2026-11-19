@@ -310,18 +310,23 @@ are allowed and answered alike.
 
 | `status` | Meaning | `blob_hash` | Enqueues |
 |---|---|---|---|
-| `ready` | Generated (or the note's own audio): play `blob_hash` through `GET /blobs/{hash}`. | hash | no |
+| `ready` | Generated, or the note's own audio and `app.blob` has that hash: play `blob_hash` through `GET /blobs/{hash}`. | hash | no |
 | `pending` | Not generated yet. A `tts` job for the pair is queued or running, or will be queued by a later call (see "Backlog"). Ask again after `retry_after_ms`. | null | yes, unless one exists |
-| `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. | null | no |
+| `failed` | The last attempt failed less than 600 s ago (VOICEVOX down, unknown voice). No new job until then; ask again after `retry_after_ms`. Also - a `note_id` whose own `[sound:<hash>]` names a blob the server does not have (never uploaded, or lost) - `source` `note`, `blob_hash` null, `retry_after_ms` 600000; the note's audio still wins, so no speech is generated in its place. | null | no |
 | `none` | Only for `note_id`: no such live note (unknown, deleted, merged away), not a `vocab` note, or no speakable text. Final for this note content. | null | no |
 
 **Urgent.** With `urgent: true` (at most 20 items, else `422` pointer `/urgent`) the jobs
 this call needs run before every non-urgent job (SCHEMA.md 6.6 "Urgent"). The review screen
 uses it for the card on screen; prefetch never does.
 
-**Backlog.** A non-urgent call enqueues only while fewer than 300 `tts` jobs are queued or
-running; beyond that its missing pairs are still `pending`, with `retry_after_ms` 60000,
-and are enqueued by a later call or by the server's sweep.
+**Backlog.** The number of `tts` jobs that are queued or running is bounded. A non-urgent
+call enqueues only while it is below 300; an urgent call only while it is below 340 (a
+reserve of 40 for the cards on screen; urgent is not an exemption). Beyond its limit a
+call enqueues nothing more: the remaining missing pairs are still `pending`, with
+`retry_after_ms` 60000, and are enqueued by a later call. (The server's sweep also
+enqueues, but only pairs of cards due within the prefetch window; an arbitrary `text`
+is enqueued by `resolveSpeech` or `synthesizeSpeech` alone.) Items are considered in
+request order, so a call that hits the limit has enqueued a prefix of its missing pairs.
 
 **Idempotent and order-free.** Repeating a call, or two callers asking for the same pair
 at once, never produces two jobs for one pair (job dedupe key
@@ -332,10 +337,18 @@ except after a re-synthesis, which answers the newer blob; the older blob stays 
 - Review screen: for the item on screen whose `word_audio` has `source: tts` and
   `blob_hash: null`, call with that `text` and `voice`, `urgent: true`, when the card is
   first shown (not at reveal). On `pending` ask again after `retry_after_ms`, then double
-  the wait, at most 5 calls per showing; on `failed`, `none`, a network error or `5xx`
-  stop for this showing. A card never waits for audio.
+  the wait, at most 5 calls per showing; on `failed`, `none`, a network error, `403`
+  (a credential without `write`) or `5xx` stop for this showing. A card never waits
+  for audio.
 - Prefetch (Android): SCHEMA.md 6.6 "Device".
 - Never write the answer into a note.
+
+**Scope.** `write`, for every request shape, as `synthesizeSpeech`: a `text` item makes
+the server run VOICEVOX and store a blob for a text the caller chose. A credential
+without `write` gets `403 insufficient_scope` and nothing is enqueued, also for a
+request of `note_id` items only (one rule, no per-item scope). A read-only client still
+gets audio: `getReviewQueue` queues the speech of the cards it serves (texts that come
+from the user's own notes) and reports the hash on a later fetch.
 
 
 ### Example
