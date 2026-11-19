@@ -1,22 +1,24 @@
 # HANDOFF C-28b
 
-STATUS: DONE (attempt 2, reviewer major applied)
+STATUS: DONE (attempt 3, own-turn exclusion narrowed)
 BRANCH: t/C-28b-contracts (from main at 1617bcdb)
 CHECK: `make check MODULE=contracts` → green, no drift; core compiles (jvm + js)
 
 ## Changed (≤ 6 lines)
-- Attempt 2: `QueueBuilder.kt` rule 4 "Own turn": a NEW card of a backfill kanji has no turn of its own in any source (deck or deckless, both builds); drawn only by the share step, the remainder step or a new word's unit
-- Rule 4 half-share example, README `QueueBackfillShareTest` list, openapi, REVIEW-LOOP §13 and the scenario narrative say so; clients regenerated
-- Attempt 1 (unchanged): half share `max(1, newPerDay / 2)`, remainder step, stateless `bToday`, first-part-of-the-day overshoot, keep-going share test, parity `queue-kanji-backfill-share` + mandatory tag
+- `QueueBuilder.kt` rule 4 "Own turn": only a **deckless** NEW card of a backfill kanji loses its own turn; a deck-homed one keeps its deck's turn
+- Backfill part = the `kc(L)` cards whose home new-source is not a deck; `bToday` counts only those (stateless, from `TodayReview.deckIds`)
+- New rule 4 worked example (日 in an enabled kanji deck → `[本, 語, うっかり, 日]`, `bToday = 2`)
+- README test list, openapi, REVIEW-LOOP §13 wording; clients regenerated
+- Attempts 1–2 otherwise unchanged (half share, remainder step, first-part overshoot, keep-going test, parity scenario)
 
 ## Acceptance → tests
 - contracts green → `make check MODULE=contracts`
-- expects hand-evaluated → `queue-kanji-backfill-share` steps 0, 3, 6, 7 re-evaluated under the new rule: unchanged
+- expects hand-evaluated → `queue-kanji-backfill-share` (all kanji deckless) and `queue-kanji-backfill`: unchanged
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Side effect: a kanji deck studied for itself gets the kanji of already studied words at the backfill pace, not on its own turns.
-- Keep going is "backfill ≤ half of today's introductions", not a share per batch (unchanged from attempt 1).
-- The two minors (newPerDay 1; scoped `deck_id` builds and `bToday`) are untouched, for FOLLOWUPS.
+- A deck-homed backfill kanji is drawn **only** on its deck's turns (never by the share or remainder step); otherwise `bToday` could not tell the two paths apart. So it waits for its deck position and per-deck limit.
+- The deck-homed case has a KDoc example, no parity step.
+- Minors for FOLLOWUPS untouched.

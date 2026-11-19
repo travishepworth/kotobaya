@@ -470,9 +470,11 @@ KDoc examples):
   alternating variant; `newPerDay` 1 and 3 → share 1; `bToday` counts a kanji of a word
   introduced on an earlier day or earlier today, not a kanji answered ahead of its own word (unit
   and lead), not when `reviewedAt` ties; a source stopped by a lead or at its per-deck limit
-  hands the remainder to backfill; a NEW card of a backfill kanji is never drawn on a source
-  turn (deckless source in the same tier as the deck, and with a lower `decklessPriority`; a
-  kanji deck holding it): the half-share example gives the same N in all three; the batch cuts a prefix of the unbounded draw
+  hands the remainder to backfill; a deckless NEW card of a backfill kanji is never drawn on a
+  deckless-source turn (same tier as the deck, and with a lower `decklessPriority`): the
+  half-share example gives the same N in both; the deck-homed example (`[本, 語, うっかり, 日]`,
+  `bToday = 2` afterwards; kanji deck disabled → the first example; kanji deck at its per-deck
+  limit → 日 is not drawn, not even by the remainder step); the batch cuts a prefix of the unbounded draw
   (`availableToday` unchanged); a part of 2 cards with `newPerDay` 1 is drawn when nothing was
   introduced today and not again after its first card is answered, as a lead part and as a
   backfill part; `newPerDay` 0 draws nothing. Property (normal and keep going, random inputs
