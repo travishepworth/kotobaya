@@ -459,7 +459,10 @@ KDoc examples):
   goes on: `[たべる, 校]`, the next day `[学, 学校]` (C-28c); the three "deck limit" variants of
   the C-28c example (`newPerDay` 1 → the kanji alone, `[]` after its answer, the word the next
   day; `newPerDay` 2 → whole; kanji note deckless → whole) and a deck with `newPerDay` 1 whose
-  word has two kanji homed in it (one kanji today, one tomorrow, the word on day 3); backfill with minting, order by oldest word, same order after minting); a lead stops
+  word has two kanji homed in it (one kanji today, one tomorrow, the word on day 3); the C-28d
+  example "a lead ends at the deck's limit" (`[学]`, after its answer `[]`, the next day
+  `[校, 学校]`; with 校 deckless `[学, 校]`, after 学 `[校]`) and `untilStop` never dropping by more
+  than 1 for one answer in it; backfill with minting, order by oldest word, same order after minting); a lead stops
   its source but not the others; a lead of an entry leaves the entry out of `toMaterialize`; the
   goal is never overshot by a normal build whose kanji parts all have size 1 (property); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
   same; the 40-card budget includes kanji; a kanji card whose decks are all disabled joins its
@@ -470,7 +473,9 @@ KDoc examples):
 - `queue/QueueBackfillShareTest.kt` (ADR-044, C-28b): the three rule-4 "half share" examples
   (`newPerDay` 4 → `[日, 本, うっかり, Ｔシャツ]`, after two answers `[うっかり, Ｔシャツ]`, next day `[語]`;
   no words → `[日, 本, 語]`; `newPerDay` 5 → 語 last) and the keep-going example with its
-  alternating variant; `newPerDay` 1 and 3 → share 1; `bToday` counts a kanji of a word
+  alternating variant; the C-28d keep-going example with an open unit (`学 校 学校 日`, after 学
+  `校 学校 日`, after 校 `学校 日`) and a share step that ends right after a part whose kanji a
+  source claims (the claimed unit comes before the next part); `newPerDay` 1 and 3 → share 1; `bToday` counts a kanji of a word
   introduced on an earlier day or earlier today, not a kanji answered ahead of its own word (unit
   and lead), not when `reviewedAt` ties; a source stopped by a lead or at its per-deck limit
   hands the remainder to backfill; a deckless NEW card of a backfill kanji is never drawn on a
@@ -485,7 +490,8 @@ KDoc examples):
   introduced today and not again after its first card is answered, as a lead part and as a
   backfill part; `newPerDay` 0 draws nothing. Property (normal and keep going, random inputs
   with backfill, units and reviews): answering the head and rebuilding yields the previous
-  build's tail; in a normal build `bToday + b <= share` after the share steps unless a single
+  build's tail (C-28d: the keep-going half uses the same inputs as the normal half, NEW words
+  with kanji included; no `newWordKanji = false`); in a normal build `bToday + b <= share` after the share steps unless a single
   part is larger than the share.
 - `queue/QueueMixUnitsTest.kt`: the rule-5 unit example (`R1 学 校 学校 R2 R3 たべる R4`) and its
   rebuild; the two C-28c examples (`日 家 本 語 日本語` and its rebuilds; `校 学校` with 学 introduced
@@ -497,21 +503,31 @@ KDoc examples):
   no exclusion for backfill kanji that a new word also requires or for kanji homed in a capped
   deck (the two cases the CORE-28 attempt 1 properties left out); **several sources in one
   tier** (decks and the deckless source at the same priority, the default setup) are part of
-  the random inputs, the only exclusion being two sources whose next words require the same
-  not yet started **deck-homed** kanji (rule 5, exclusion 3); the "Turn order" example
+  the random inputs, and **no input is excluded** (C-28d: `QueueRandom.rebuildExcluded` is
+  deleted; the keep-going half keeps its studied words, so backfill and units meet; seeds 506
+  and 1471 of `QueueRandom.input(seed, keepGoing = false)` are named regression cases, run
+  besides the seed range); the "Turn order" example
   (`a 学 校 学校`, after a `学 校 学校`, after 学 `校 学校`, the next day b first); the
   "kanji no word requires" example: a deck of 30 kana words and 50 deckless NEW kanji notes
   that no word requires alternate (`w1 k1 w2 k2 …`, 10 items at batch 10, `availableToday`
   20, 10 words among them), also after each answer, and the deck is never starved; the same
   with one of the kanji required by a NEW word (that card is left out of `t`, in today's
   reviews and in the build alike); `t(S)` counts deck-homed kanji cards; two sources whose
-  next words both require a deckless kanji just introduced: rule (a) picks the one with the
-  smaller `t`, then source order; rule (a) inside one build (a kanji drawn on a kanji deck's own turn
+  next words both require a kanji just introduced (deckless, and homed in the later deck):
+  rule (a) picks the **first in source order whatever the counts** (C-28d; replaces "the
+  smaller `t`"); the C-28d example "a kanji that two sources need" (`a 日 本 語 日本語`, after a
+  `日 本 語 日本語`, after 日 and 本 `語 日本語`, the next day `語 日本語 本`); rule (c): a source
+  earlier in source order whose next card is the kanji card itself (own turn) takes the turn
+  before a later source's unit that contains that kanji; a source at its per-deck limit or
+  stopped by a lead claims nothing; rule (a) inside one build (a kanji drawn on a kanji deck's own turn
   is followed by the source whose next word requires it, whatever the counts); in every build no vocab item
   precedes a NEW kanji item of a kanji it requires; no review between the cards of a unit; a due learning card may come
   between and the group continues after it; the open group is not pulled after a review was
   answered (`s > 0`), after a day rollover, or when the last introduced card is a vocab card;
   keep going: open group, then reviews, then the rest.
+- `queue/QueueParityScenarioTest.kt`: mirrors of the three C-28d parity scenarios
+  (`queue-kanji-shared-kanji`, `queue-kanji-keep-going-open-unit`, `queue-kanji-lead-deck-limit`;
+  14 mirrors in all), every step's items and `until_stop`.
 - `queue/ReviewLoopTest.kt`: `untilStop` for A1 (66), B3 (0), B4 (145), U1 (65, 47 with 12 new
   cards) and its three follow-ups (Again on a review keeps it, Good lowers it, a new card
   answered Good keeps it); equal before and after materialization; `REVIEWING` implies `>= 1`.

@@ -272,6 +272,16 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   source goes first, so a rebuild continues where the build before was.
   "Rebuild = tail" is now normative (rule 5). Parity: `queue-kanji-order-stable`, `queue-kanji-deck-limit`,
   `queue-kanji-turn-order`.
+- **C-28d (CORE-28 review, three cases).** "Rebuild = tail" has no exception left besides pending minting and
+  multi-card kanji parts. (1) When the next words of several sources of one tier require the same new kanji, the
+  first of them in source order (decks by id, deckless last) draws it: a half-answered unit's source is found by
+  source order, not by the turn counts, and a source gives its turn to an earlier one that claims a kanji of its
+  unit. (2) Keep going: the backfill share step draws nothing while the last new card is a kanji that a source's
+  next word requires (`学 校 学校 日`, after 学 `校 学校 日`). (3) A capped deck's lead ends with the part that uses up
+  the deck's limit; a kanji homed elsewhere is not listed and then dropped (`until_stop` no longer jumps by 2).
+  ADR-040 (never before) and no starvation hold as before: units still take every kanji of their word, and a
+  kanji left out of a lead comes with the word on a later day. Parity: `queue-kanji-shared-kanji`,
+  `queue-kanji-keep-going-open-unit`, `queue-kanji-lead-deck-limit`.
 - **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
   `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
   none has a furigana front (`QueueItem.front_furigana`).

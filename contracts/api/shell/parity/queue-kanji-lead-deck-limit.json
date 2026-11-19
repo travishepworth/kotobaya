@@ -1,0 +1,268 @@
+{
+  "id": "queue-kanji-lead-deck-limit",
+  "title": "A capped deck's lead ends with the kanji that uses up its limit: a kanji homed elsewhere is not shown and then withdrawn (C-28d)",
+  "covers": [
+    "queue.kanji_lead_deck_limit"
+  ],
+  "narrative": [
+    "The deck 'Core' has new_cards_per_day 1 and holds, in position order, the new word 学校 (card ...10) and the new kanji note 学 (card ...20). The new kanji note 校 (card ...30) is an item of the disabled deck 'Kanji' only, so it has no turn of its own. The global goal is the default 20; nothing is due.",
+    "Step 0: the unit [学, 校, 学校] has deck cost 2 (the word and 学, homed in 'Core'), more than the deck's remaining 1, so it leads. 学 fits and uses up the limit, and the lead ends there (QueueBuilder rule 4 'Lead', 'The lead ends at the deck's limit'): 校 is not served although its deck cost is 0. Only 学 is served; until_stop is 1. Before C-28d the build was [学, 校] and 校 vanished after 学 was answered (until_stop 2, then 0).",
+    "Step 1 answers 学 Easy. Step 2: the deck's limit is used up: no item, until_stop 0. Nothing that step 0 showed has disappeared.",
+    "Step 3, the next study day (04:00:01Z): 学 is started, the unit is [校, 学校] with deck cost 1, drawn whole: 校, then 学校. until_stop is 2."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1206730
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1206730
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "学"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "keyword"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "校"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "keyword"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000007",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000001",
+          "name": "Core",
+          "type": "user",
+          "enabled": true,
+          "new_cards_per_day": 1
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000008",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|n:0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-000000000001",
+          "position": 1024
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-000000000009",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|n:0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e85-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "n:0193a1b2-0001-7000-8000-000000000002",
+          "position": 2048
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-00000000000a",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e86-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000002",
+          "name": "Kanji",
+          "type": "user",
+          "enabled": false
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703e-8000-00000000000b",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000002|n:0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e87-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000002",
+          "item_key": "n:0193a1b2-0001-7000-8000-000000000003",
+          "position": 1024
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/to_materialize": 0,
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 1,
+          "/loop/new/today": 0
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": [],
+          "/loop/until_stop": 0,
+          "/loop/new/today": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795233601000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/study_day": "2026-11-21",
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 2,
+          "/loop/new/today": 0
+        },
+        "lengths": {
+          "/items": 2
+        }
+      }
+    }
+  ]
+}

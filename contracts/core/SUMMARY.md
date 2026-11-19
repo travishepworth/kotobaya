@@ -303,3 +303,36 @@ Worth a second look:
    always drawn first after each answer, so it used up the goal before the others got a turn.
    A kanji card that belongs to no deck and is needed by one of your words does not count as a
    turn for anyone; one that no word needs counts like any other card.
+
+## C-28d changes: the last three cases where the queue changed after an answer
+
+After C-28c the rule "answer the first card, rebuild, get the rest of the same queue" still had
+three exceptions. All three are closed; the rule has no exception left for ordinary cards.
+
+Decided:
+- **A kanji that two decks' next words both need belongs to the first deck in a fixed order**
+  (decks by id, cards in no deck last), not to the deck with fewer new cards today. The count
+  changes while the kanji's group is being answered; the fixed order does not. If the deck whose
+  turn it is would show a kanji that an earlier deck's next word needs too, the earlier deck goes
+  first. Before, a word could be shown behind its kanji and then be replaced by another deck's
+  word once the kanji was answered.
+- **Keep going: a kanji of an already studied word is not put between a new word's kanji and the
+  word.** It comes right after the word instead.
+- **A deck that reaches its daily limit with a kanji stops there.** Further kanji of the same word
+  that live in other decks wait for the day the word comes. Before, they were listed and then
+  dropped once the first kanji was answered (the progress bar jumped by 2).
+
+Rejected: remembering which deck showed a kanji (the queue must be computable from stored data
+alone, on every device); letting a deck at its limit finish the kanji it had started (it needs a
+second kind of turn for a deck at its limit, and those kanji are not needed until the word comes);
+applying the keep-going rule to the normal queue too (not needed there, and it would change the
+order of an existing example).
+
+Worth a second look:
+1. With two decks of equal priority whose next words share a kanji, the deck with the smaller id
+   gets that kanji's word first, even if it has had more new cards today. The other deck catches
+   up on the following turns.
+2. A deck limited to 1 a day, word with one kanji in the deck and one elsewhere: day 1 the first
+   kanji, day 2 the second kanji and the word. Before it tried to show both kanji on day 1.
+3. The tests no longer skip any random input. If the core writer finds a failing seed, the
+   contract is wrong, not the test: it comes back as a change request.

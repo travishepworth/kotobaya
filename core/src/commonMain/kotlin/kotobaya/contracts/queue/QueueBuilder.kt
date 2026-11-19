@@ -508,7 +508,8 @@ public data class ReviewQueue(
  *    empty or at its limit) before the next starts. Inside a tier, sources take turns — one
  *    **turn** being one **unit**: one card together with its kanji group (below), or one pending
  *    entry with its group. A companion NEW card has no turn of its own.
- *    **Turn order (C-28c; replaces "round-robin, restarted at every build").** The **source
+ *    **Turn order (C-28c; replaces "round-robin, restarted at every build"; C-28d: rule (a)
+ *    by source order, rule (c)).** The **source
  *    order** of a tier is: decks in ascending `id`, the deckless source last. A source can take
  *    a turn while it is not empty, not at its per-deck limit and not stopped by a lead. Which
  *    of them takes the next turn is decided from data only, so that a rebuild continues where
@@ -536,21 +537,41 @@ public data class ReviewQueue(
  *      today's `introducedNew` review with the greatest `(reviewedAt, cardId)` (rule 5's
  *      `last`); else none. `lastLiteral` = its kanji literal when it is a card of a kanji note
  *      or a claimed literal, else none.
- *    - **Next turn** in the current tier: (a) **open unit**: if `lastLiteral` is L and some
- *      source of the tier that can take a turn has, as the unit its next turn would draw, the
- *      unit of a word W (card or entry, not held) with `L in req(W)`, then among those sources
- *      the one with the smallest `t(S)`, ties in source order, takes the turn (the order of
- *      rule (b), restricted to them). (b) Otherwise the source that can take a turn with the
- *      smallest `t(S)`, ties in source order.
+ *    - **Claims (C-28d).** A source S **claims** a literal L iff S can take a turn and the
+ *      item its next turn would draw is the unit of a word W (card or entry, not held) with
+ *      `L in req(W)`, or a NEW kanji card with `kanjiLiteral == L` (drawn alone, "Own turn"
+ *      below). A source that is empty, at its per-deck limit or stopped by a lead claims
+ *      nothing.
+ *    - **Next turn** in the current tier, three steps in this order (C-28d: (a) no longer
+ *      compares `t(S)`; (c) is new):
+ *      (a) **open unit**: if `lastLiteral` is L and some source of the tier claims L, the
+ *      **first of them in source order** is the candidate.
+ *      (b) Otherwise the candidate is the source that can take a turn with the smallest
+ *      `t(S)`, ties in source order.
+ *      (c) **earliest claimer**: while the candidate's next turn would draw the unit of a
+ *      word and some source of the tier **earlier in source order** than the candidate
+ *      claims the literal of one of that unit's kanji parts ("Kanji parts" below, as the
+ *      unit would be built at this moment: a literal of `req` whose `kc` is not empty or
+ *      that the unit would mint), the earliest such source becomes the candidate; repeat
+ *      (the candidate moves strictly earlier, so this ends). A candidate whose next turn
+ *      draws a single card is final.
+ *      The candidate takes the turn.
  *    With nothing introduced today and one-card units this is the old round-robin (decks by
  *    id, the deckless source last in each round). After an answer the counts are what they
  *    were in the previous build at the same point, so the rebuild picks the same source next:
- *    a whole unit adds to `t` at once what its cards add one by one when answered, and while a
- *    unit is half answered (its kanji 学 answered, `[校, 学校]` left) rule (a) gives the turn
- *    back to the unit's own source. Rule (a) applies inside a build as well (after a kanji
- *    drawn by the share step, on a deck's own turn or as a lead, a source whose next word
- *    requires it goes next), which is what makes build and rebuild agree; it reads nothing
- *    that rule (b) does not, and never moves a unit that is already drawn.
+ *    a whole unit adds to `t` at once what its cards add one by one when answered. While a
+ *    unit is half answered (its kanji 学 answered, `[校, 学校]` left) the counts differ from
+ *    the build's, and rules (a) and (c) are what gives the turn back to the unit's own
+ *    source: by (c) a unit is only ever drawn by a source that no earlier source disputes
+ *    any kanji part with, so for every kanji of the unit its source is the first claimer in
+ *    source order, and that is what (a) picks once that kanji is the last new card. Both
+ *    read the data only (which source drew a kanji is stored nowhere, and need not be).
+ *    Rule (a) applies inside a build as well (after a kanji drawn by the share step, on a
+ *    deck's own turn or as a lead, the first source that claims it goes next), which is
+ *    what makes build and rebuild agree; no rule ever moves a unit that is already drawn.
+ *    (a) deliberately does not look at `t`: a count changes when a kanji homed in a deck is
+ *    answered, source order does not. (c) costs no fairness: the earlier source's count
+ *    rises with the unit it draws, so (b) serves the others next.
  *    Example (goal 4; deck D holds the kana words a, b; the deckless source holds 学校 and,
  *    created after it, the NEW kanji notes 学, 校; one tier; nothing introduced today):
  *    `t(D) = t(deckless) = 0` → D: a (`t(D) = 1`); deckless: `[学, 校, 学校]` (`drawn = 4`,
@@ -566,6 +587,19 @@ public data class ReviewQueue(
  *    `availableToday = 20` (10 words, 10 kanji). After w1 and k1 are answered (`t = 1, 1`) →
  *    `w2 k2 …`. Were they left out of `t`, the deckless source would stay at 0, win every
  *    turn and D would introduce nothing until all 50 are done.
+ *    Example (C-28d, a kanji that two sources need; goal 5; deck D holds the kana word a,
+ *    then 日本語; the deckless source holds the word 本 and, created after it, the NEW kanji
+ *    notes 本, 日, 語; one tier; nothing introduced today): tie → D: a (`t(D) = 1`). (b) names
+ *    the deckless source (`0 < 1`), whose turn would draw the unit `[本, 本(word)]`; D is
+ *    earlier in source order and claims 本 (its next word 日本語 requires it) → (c): D takes
+ *    the turn, `[日, 本, 語, 日本語]` (`drawn = 5`, `t(D) = 2`). The deckless word no longer
+ *    fits and leads with nothing (本 is taken) → N = `a 日 本 語 日本語`, `availableToday = 5`.
+ *    After a: the same two steps → `日 本 語 日本語`. After 日: only D claims 日 → `本 語 日本語`.
+ *    After 本: `lastLiteral = 本`, D and the deckless source both claim it, D is first in
+ *    source order → `語 日本語`, the tail. (The smallest `t` would name the deckless source
+ *    here, `0 < 1`, although 本 was drawn in D's unit: the word 本 would be served, and
+ *    `[語, 日本語]` would no longer fit, lead with 語 and lose 日本語 until the next day.) The
+ *    next day, nothing else answered: `語 日本語 本(word)`.
  *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    unless their `wordOverride` is KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED. Cards whose
@@ -641,6 +675,15 @@ public data class ReviewQueue(
  *        taken (an entry is not put in `toMaterialize`) and does not count against the per-deck
  *        limit. The **source then stops** for this build: it takes no further turn, so nothing
  *        behind the word in that source is introduced before it. Other sources go on.
+ *        **The lead ends at the deck's limit (C-28d).** When D has a limit and, after a part
+ *        is taken, D's per-deck remaining (clamped) is 0, the lead ends there: no further
+ *        part is taken, **not even one of deck cost 0** (a kanji homed elsewhere). Once the
+ *        part that used up the limit is answered, D takes no turn any more that day, so the
+ *        rebuild could not draw a later part again: it would be shown and then withdrawn
+ *        (`untilStop` dropping by 2 for one answer). The part left out comes with the word
+ *        on a later day (its deck cost is 0, so it never keeps the word from fitting D), or
+ *        before that on a turn of its own home source or by backfill. A lead whose parts all
+ *        have deck cost 0 is not affected (D's remaining does not change).
  *      So today's goal is filled exactly, not overshot (but for a first part larger than the
  *      goal), and a word whose unit is larger than
  *      what is left (or than `newPerDay` itself) is not starved: its kanji are introduced over
@@ -720,6 +763,17 @@ public data class ReviewQueue(
  *        nothing; in a keep-going build the steps interleave backfill with the sources (about
  *        one kanji per source card), which is what makes one build equal to rebuilding after
  *        every answer.
+ *        **Not while a unit is open (C-28d; keep-going build only).** In a keep-going build
+ *        the share step draws no part while `lastLiteral` is L and some source, **of
+ *        whichever tier**, claims L ("Turn order" above). The test is made before every
+ *        part: a step is skipped whole when the last new card opened a unit, and a step
+ *        ends right after a part whose kanji a source claims. It is a third way for a step
+ *        to end, with the same effect as the others: the next step starts again at the same
+ *        part. Reason: the keep-going share test grows with `iToday + drawn`, so right after
+ *        the first kanji of a unit is answered it would admit a backfill part that the
+ *        build before had placed behind the whole unit. The normal build has no such rule
+ *        and needs none (its share test reads neither `drawn` nor `iToday`); the remainder
+ *        step is not affected, so backfill is only ever delayed by the open unit, not lost.
  *      - **Remainder step** ("with nothing else to draw, backfill may use the remainder"): after
  *        the source turns have ended — every source is empty, at its per-deck limit or stopped by
  *        a lead (also when there is no source at all) — the parts still not drawn are drawn in
@@ -771,7 +825,8 @@ public data class ReviewQueue(
  *    a held word does not stop its source, and a NEW kanji of a held word that is not itself
  *    buried keeps its own turn; a deck with remaining 1 whose next word has a kanji card homed
  *    in the same deck leads with that kanji (C-28c "Deck cost"); a deck with remaining 0 draws
- *    nothing, not even a lead; a kanji card buried by the user whose word is
+ *    nothing, not even a lead; a capped deck's lead stops after the part that uses up its
+ *    limit, whatever follows (C-28d); a kanji card buried by the user whose word is
  *    then deleted is an ordinary card again when the bury ends.
  *    Example (goal 20, deckless NEW cards in creation order: たべる (no kanji), 学校, 先生; kanji
  *    notes: 学 NEW, 先 REVIEW; none for 校, 生): units `[たべる]`, `[学, (校), 学校]` withheld (g = 3,
@@ -799,6 +854,15 @@ public data class ReviewQueue(
  *    本(word)]` whole (deck cost 2), and after the kanji is answered `[本(word)]`. With the kanji
  *    note deckless instead (limit 1): deck cost 1 → `[本(kanji), 本(word)]` whole, and after the
  *    kanji is answered (no review is attributed to "Core") `[本(word)]`.
+ *    Example (C-28d, a lead ends at the deck's limit; deck "Core" with `newPerDay` 1 holds
+ *    学校 and then the kanji note 学 (NEW); the kanji note 校 (NEW) is an item of a disabled
+ *    deck only; goal 20, nothing introduced today): deck cost 2 > 1 → lead: 学 (deck cost 1,
+ *    fits) is taken, "Core" has 0 left and the lead ends; 校 (deck cost 0) is **not** taken
+ *    → N = `[学]`, `availableToday = 1`. After 学: N = `[]`. The next day 学 is started:
+ *    `[校, 学校]` whole (deck cost 1). Before C-28d the lead was `[学, 校]` and 校 disappeared
+ *    with the answer of 学 (`untilStop` 2, then 0). With 校 deckless instead: the same lead
+ *    `[学]`, and 校 is an ordinary card of the deckless source, drawn on its own turn → N =
+ *    `[学, 校]`, after 学 `[校]`; the next day, both answered, `[学校]`.
  *    Example (backfill; goal 20, so share 10): 先生 and 学校 are in REVIEW (先生 the older note), kanji notes 先 and 生 are
  *    NEW, 学 and 校 have no note, a new word たべる waits → parts 先, 生, (学), (校): `items = [先, 生,
  *    たべる]`, `kanjiToMaterialize = [学, 校]`, `drawn = 5`; after minting N = `[先, 生, 学, 校, たべる]`.
@@ -829,6 +893,15 @@ public data class ReviewQueue(
  *    `[うっかり, Ｔシャツ, あれ, 語]`. With `iToday = 4`, `bToday = 2` instead (goal 4, two words also
  *    done) and words left: 語 fails (`6 > 5`), one word (`drawn = 1`), then 語 passes (`6 <= 6`):
  *    a word and a kanji in turn.
+ *    Example (C-28d, keep going with an open unit; the word 日 is in REVIEW; the deckless
+ *    NEW word 学校 was created before the kanji notes 学, 校, 日, all NEW and deckless; nothing
+ *    introduced today; batch 10): before the first turn 日 fails (`2 * 1 > 0 + 0 + 1`); the
+ *    deckless turn draws `[学, 校, 学校]` (`drawn = 3`); 日 passes (`2 <= 0 + 3 + 1`) → N =
+ *    `学 校 学校 日`. After 学 (`iToday = 1`, `bToday = 0`): `lastLiteral = 学` and the deckless
+ *    source claims it → no share step; `[校, 学校]` (`drawn = 2`); the last card drawn is a
+ *    word, so the step runs: 日 passes (`2 <= 1 + 2 + 1`) → `校 学校 日`, the tail. After 校:
+ *    `学校 日`. Without the rule 日 would pass at once after 学 (`2 <= 1 + 0 + 1`) and the
+ *    rebuild would be `日 校 学校`.
  *    **Breaking** against the C-8 / C-27 text: the modes are gone (every source groups, kanji
  *    first); kanji cards without a home new-source join groups; `PendingEntry.newKanjiCards` is
  *    replaced by `missingKanji`; existing vocab cards can be withheld; a unit that does not fit
@@ -840,6 +913,10 @@ public data class ReviewQueue(
  *    first" only promotes the **first** unit left in `N` and never reorders `N`; the buried
  *    example is `[たべる, 校]`; the sources of a tier no longer restart their round-robin at
  *    every build ("Turn order": turn counts from today's reviews, open unit first).
+ *    C-28d (against the C-28c text): "Turn order" rule (a) takes the first claimer in source
+ *    order instead of the smallest `t`, and rule (c) "earliest claimer" is new; a lead ends
+ *    when the drawing deck's limit is used up, even before a part of deck cost 0; a
+ *    keep-going share step draws nothing while a unit is open.
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
  *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
  *    is a kanji group or a single card; withheld units and entries have no items and are left
@@ -908,18 +985,15 @@ public data class ReviewQueue(
  *    the client has minted, so the item list grows by design. (2) A kanji part of several
  *    cards (a kanji note type with several NEW kinds and `burySiblings` false; never the
  *    built-in type): its first answer makes the literal started, which by ADR-040 dissolves
- *    the part ("kanji that already have a learning card do not block"). (3) Two sources of
- *    one tier whose next words both require the kanji L just introduced, L having been drawn
- *    inside the unit of one of them, **and** rule (a)'s tie-break (smallest `t`, then source
- *    order) not naming that one: only when L is homed in one of the two decks (its answer
- *    changed that deck's `t`) or the unit's source had itself been picked by rule (a) for an
- *    earlier kanji rather than by `t`. The stored data is then the same as if L had been
- *    drawn alone, so no stateless rule can tell which unit is open; the other word follows on
- *    its source's next turn (its kanji stay first; if the day has no room left it leads and
- *    comes the next day). With L deckless and both picks by `t`, the tie-break names the
- *    open unit's source and the guarantee holds. Tests of the property use one-card parts,
- *    no missing kanji, and exclude only inputs where two sources' next words share a not yet
- *    started kanji that is deck-homed. The
+ *    the part ("kanji that already have a learning card do not block"). **Nothing else
+ *    (C-28d).** The three cases that C-28c and CORE-28 still left out are inside the
+ *    guarantee now: two sources of one tier whose next words require the same new kanji,
+ *    wherever that kanji is homed and however its unit's source was picked (rule 4 "Turn
+ *    order", (a) by source order and (c): the kanji's unit belongs to the first claimer in
+ *    source order, before and after the answer); a keep-going build with backfill and a
+ *    half-answered unit (rule 4 "Share step", "Not while a unit is open"); a capped deck's
+ *    lead with a kanji homed elsewhere (rule 4 "Lead", "The lead ends at the deck's limit").
+ *    Tests of the property use one-card parts, mint first, and exclude **no** input. The
  *    mix does not depend on the batch, on input order or on the caller. Between two new units there
  *    are at most `ceil(rRem / gRem)` reviews and never two units in a row while a review is left,
  *    except through the open-group rule. `toMaterialize` entries and withheld units are not items
@@ -966,7 +1040,8 @@ public data class ReviewQueue(
  *      handling, backfill parts and their order, kanji units, withholding and unit order are
  *      unchanged. Backfill keeps its half share (ADR-044) in the keep-going form of the share
  *      test (rule 4 "Half share": at most half of today's introductions plus this build's
- *      draw; `iToday` is read for this test only), checked before every source turn, and its
+ *      draw; `iToday` is read for this test only), checked before every source turn but
+ *      not while a unit is open (rule 4 "Share step", C-28d), and its
  *      remainder step; every part "fits the day".
  *      **Atomic** becomes: a unit is drawn iff `drawn < batch`; it may overshoot the batch
  *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
