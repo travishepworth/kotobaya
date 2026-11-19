@@ -1377,3 +1377,4 @@
 2026-11-19T09:47:29Z DECIDE ADR-046 (user: rK/sK-only words → kana; tagged words require jōyō only); C-28f, CORE-28d, SCROLL-TOP filed
 2026-11-19T09:47:42Z C-28f DISPATCH architect; SCROLL-TOP DISPATCH writer
 2026-11-19T09:49:41Z SCROLL-TOP HANDOFF + CHECK_GREEN (web) + MERGE c87974a3 (web only)
+2026-11-19T09:59:17Z C-28f HANDOFF + green (contracts); reviewer; CORE-28d DISPATCH writer-senior from t/C-28f-contracts (parallel)
