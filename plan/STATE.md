@@ -5,8 +5,9 @@ Updated: run 34 (2026-11-19)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## Running (run 34, 2026-11-19) — user feedback round (ADR-038..041)
-| C-28 | architect | 1 | t/C-28-contracts | 2026-11-19 |
+| C-28 | reviewer | 1 (in review) | t/C-28-contracts | 2026-11-19 |
 Queued: CORE-28 after C-28; SRV-28 + AND-28 after CORE-28; WEB-28 after C-28 + WEB-REVIEW-FLOW.
+RELEASE PLAN (user 2026-11-19): no release until ALL round tickets merged (C-28, CORE-28, SRV-28, AND-28, WEB-28); then one api+web deploy + APK install. Merged Still HELD from pause: waiting: WEB-REVIEW-FLOW, WEB-KG-IDLE, BUG-ADD2DECK-500, WEB-MORE-CLOSE (CLI-KG-SCOPE already installed).
 Still HELD from pause: LOOP-C2b, SHELL-Z2.
 CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
