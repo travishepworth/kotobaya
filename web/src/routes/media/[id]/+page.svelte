@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import Banner from '../../../lib/ui/Banner.svelte';
 	import Button from '../../../lib/ui/Button.svelte';
+	import CoverageBar from '../../../lib/ui/CoverageBar.svelte';
 	import Chip from '../../../lib/ui/Chip.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
 	import LineChart from '../../../lib/ui/LineChart.svelte';
@@ -26,7 +27,6 @@
 		{ value: '', label: tc('cov.segment.all') },
 		...vm.segments.map((s) => ({ value: s.id, label: s.title || String(s.ordinal + 1) }))
 	]);
-	const pct = (n: number, d: number): number => (d > 0 ? (n / d) * 100 : 0);
 </script>
 
 <svelte:head><title>{vm.media?.title ?? tc('cov.tab.coverage')} · Kotobaya</title></svelte:head>
@@ -70,11 +70,7 @@
 						<p class="big kb-num">{c.tokens.knownPct}%</p>
 						<p class="muted">{tc('cov.tokenCoverage')} · {mx('mx.tokens', { n: c.tokens.total.toLocaleString() })}</p>
 					</div>
-					<div class="bar" aria-hidden="true">
-						<span class="known" style:width="{pct(c.tokens.known, c.tokens.total)}%"></span>
-						<span class="learning" style:width="{pct(c.tokens.learning, c.tokens.total)}%"></span>
-						<span class="unknown" style:width="{pct(c.tokens.unknown, c.tokens.total)}%"></span>
-					</div>
+					<div class="barwrap"><CoverageBar known={c.tokens.known} learning={c.tokens.learning} unknown={c.tokens.unknown} total={c.tokens.total} /></div>
 					<ul class="legend">
 						<li><i class="known"></i>{mx('mx.known')} <b class="kb-num">{c.tokens.known.toLocaleString()}</b></li>
 						<li><i class="learning"></i>{mx('mx.learning')} <b class="kb-num">{c.tokens.learning.toLocaleString()}</b></li>
@@ -180,16 +176,8 @@
 		color: var(--kb-color-text-muted);
 		font: var(--kb-type-body-sm);
 	}
-	.bar {
-		display: flex;
-		height: 12px;
+	.barwrap {
 		margin: var(--kb-space-4) 0 var(--kb-space-3);
-		border-radius: var(--kb-radius-full);
-		background: var(--kb-color-surface-sunken);
-		overflow: hidden;
-	}
-	.bar span {
-		height: 100%;
 	}
 	.known {
 		background: var(--kb-color-state-review);

@@ -11,6 +11,7 @@
 	import { ut, type UiMessageKey } from '../../../lib/ui/messages';
 	import { td } from '../../../lib/decks/messages';
 	import { DeckEditPage, type Deck } from '../../../lib/state/decks.svelte';
+	import DeckProgress from '../../../lib/decks/DeckProgress.svelte';
 	import DeckForm from '../DeckForm.svelte';
 	import DeckItems from './DeckItems.svelte';
 	import { dk } from '../messages';
@@ -45,6 +46,8 @@
 		{#snippet actions()}
 			<Button variant="primary" icon="review" href="/review">{ut('app.nav.review')}</Button>
 		{/snippet}
+
+		{#if deck.progress}<section class="progress"><DeckProgress {deck} coverage large /></section>{/if}
 
 		{#if deck.type === 'media'}<div class="note"><Banner>{td('decks.readOnly')}</Banner></div>{/if}
 
@@ -107,6 +110,13 @@
 {/snippet}
 
 <style>
+	.progress {
+		margin-bottom: var(--kb-space-5);
+		padding: var(--kb-space-4);
+		border: 1px solid var(--kb-color-border);
+		border-radius: var(--kb-radius-lg);
+		background: var(--kb-color-surface);
+	}
 	.note,
 	.tabs {
 		margin-bottom: var(--kb-space-5);

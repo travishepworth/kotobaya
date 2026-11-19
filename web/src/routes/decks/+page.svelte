@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Decks: grouped list rows (your decks, smart decks, lists, media) with sticky group headers and a filter once
 	// the list gets long.
+	import DeckProgress from '../../lib/decks/DeckProgress.svelte';
 	import Button from '../../lib/ui/Button.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../lib/ui/LoadError.svelte';
@@ -74,10 +75,13 @@
 				<h2 id="g-{g.type}"><span>{dk(g.title)}</span><span class="n">{g.decks.length}</span></h2>
 				<div class="rows">
 					{#each g.decks as d (d.id)}
-						<ListRow title={d.name} supporting={supporting(d)} href="/decks/{d.id}">
-							{#snippet leading()}<span class="disc" class:off={!d.enabled}><Icon name={g.icon} size={18} /></span>{/snippet}
-							{#snippet trailing()}{#if !d.enabled}<span class="paused">{dk('dk.off')}</span>{/if}{/snippet}
-						</ListRow>
+						<div class="deckrow">
+							<ListRow title={d.name} supporting={supporting(d)} href="/decks/{d.id}">
+								{#snippet leading()}<span class="disc" class:off={!d.enabled}><Icon name={g.icon} size={18} /></span>{/snippet}
+								{#snippet trailing()}{#if !d.enabled}<span class="paused">{dk('dk.off')}</span>{/if}{/snippet}
+							</ListRow>
+							{#if d.progress}<div class="prog"><DeckProgress deck={d} /></div>{/if}
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -86,6 +90,12 @@
 </Page>
 
 <style>
+	.deckrow + .deckrow {
+		border-top: 1px solid var(--kb-color-border);
+	}
+	.prog {
+		padding: 0 var(--kb-space-4) var(--kb-space-3);
+	}
 	.filter {
 		margin-bottom: var(--kb-space-4);
 		max-width: 24rem;

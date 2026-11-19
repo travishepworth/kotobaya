@@ -98,6 +98,12 @@ const en = {
 	'decks.bulkProgress': 'Updating {done} of {total}…',
 	'decks.bulkDone': 'Updated {n} words.',
 	'decks.bulkFailed': '{failed} of {total} words could not be updated; they stay selected.',
+	'decks.progress.words': '{learned} of {total} words learned',
+	'decks.progress.pct': '{pct}%',
+	'decks.progress.label': 'Words learned in {name}',
+	'decks.progress.empty': 'No words to learn yet',
+	'decks.coverage.raw': '{pct}% of the text covered',
+	'decks.coverage.rawHint': 'Share of all words in the text that you know',
 	'decks.itemsFilteredEmpty': 'No items with this status.',
 } as const;
 

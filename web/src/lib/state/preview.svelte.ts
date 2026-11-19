@@ -21,6 +21,8 @@ export interface PreviewInput {
 	cloze?: ClozeSentence | null;
 	/** Wrap each field in a `data-field` region (C-19), so an editor can make the card clickable. */
 	fieldRegions?: boolean;
+	/** `QueueItem.front_furigana` (ADR-042): the front shows the reading as furigana over the whole word. */
+	frontFurigana?: boolean;
 }
 
 /** Render one side of a card through the shared core; a renderer error becomes `{ ok: false }`. */
@@ -37,6 +39,7 @@ export function renderPreview(p: PreviewInput): Rendered {
 				kanji: toKanji(p.kanji),
 				...(p.cloze !== undefined ? { cloze: p.cloze } : {}),
 				side: p.side,
+				frontFurigana: p.frontFurigana ?? false,
 				// Furigana is switched with a CSS class in CardView, not by re-rendering.
 				options: {
 					furigana: true,

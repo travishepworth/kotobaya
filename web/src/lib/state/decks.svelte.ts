@@ -1,7 +1,7 @@
 // Deck screens (/decks, /decks/new, /decks/[id]): list, create/edit form, items of user/list decks.
 import { untrack } from 'svelte';
 import { goto } from '$app/navigation';
-import type { Deck, DeckItem, DeckListCatalogueEntry, WordStatusValue } from '../api/generated';
+import type { Coverage, Deck, DeckItem, DeckListCatalogueEntry, WordStatusValue } from '../api/generated';
 import { readProblem, ResponseError } from '../api/client';
 import { NoteTypesApi, NotesApi, WordsApi } from '../api/generated';
 import { apiConfig } from '../api/client';
@@ -24,7 +24,7 @@ import {
 	type WordStatusApi
 } from './deckInspect';
 
-export type { Deck, DeckItem, DeckListCatalogueEntry } from '../api/generated';
+export type { Coverage, Deck, DeckItem, DeckListCatalogueEntry } from '../api/generated';
 export type { DeckDraft } from '../decks/draft';
 export type { SearchVocabulary } from '../core/index';
 export { parseNumbers } from '../decks/draft';
@@ -50,6 +50,26 @@ export const DECK_TYPE_KEYS: Record<string, DeckMessageKey> = {
 /** Draw order of decks: lower priority first, then by name (equal priorities take turns). */
 export function compareDeckDrawOrder(a: Pick<Deck, 'priority' | 'name'>, b: Pick<Deck, 'priority' | 'name'>): number {
 	return a.priority - b.priority || a.name.localeCompare(b.name);
+}
+
+/**
+ * The raw coverage of a media (reading) deck for the progress block. Server-only: a failed or offline fetch leaves
+ * `coverage` null and the block is simply not shown. `load` only writes this object's state (safe in an $effect).
+ */
+export class DeckCoverageState {
+	coverage = $state<Coverage | null>(null);
+	private gen = 0;
+
+	load(deckId: string): void {
+		const mine = ++this.gen;
+		this.coverage = null;
+		void decksApi
+			.getDeckCoverage({ deckId })
+			.then((c) => {
+				if (mine === this.gen) this.coverage = c;
+			})
+			.catch(() => {});
+	}
 }
 
 /** /decks */

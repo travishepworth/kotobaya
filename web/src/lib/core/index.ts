@@ -126,6 +126,8 @@ export interface RenderInput {
 	kanji?: KanjiData | null;
 	side: CardSide;
 	options: RenderOptions;
+	/** `QueueItem.front_furigana` (ADR-042), passed through unchanged; absent = false. */
+	frontFurigana?: boolean;
 }
 
 export interface RenderedCard {
@@ -177,7 +179,8 @@ export function renderCard(input: RenderInput): RenderedCard {
 			input.options.showMnemonic,
 			input.options.mediaUrlTemplate,
 			k ? new JsKanji(k.literal, [...k.meanings], [...k.onyomi], [...k.kunyomi], k.strokeCount) : null,
-			input.options.fieldRegions ?? false
+			input.options.fieldRegions ?? false,
+			input.frontFurigana ?? false
 		)
 	);
 	return {

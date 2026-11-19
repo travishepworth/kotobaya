@@ -137,7 +137,9 @@
 	// own list. The bar is this visit's answers against those plus what is ready now.
 	const remaining = $derived(s.loop ? s.loop.ready.total : s.items.length);
 	const done = $derived(s.history.length);
-	const total = $derived(done + remaining);
+	// ADR-038 C3: total = done + `until_stop` (every answer left before the stop screen, so it grows on Again); a
+	// server older than ADR-038 sends none and the ready count stands in.
+	const total = $derived(done + (s.loop?.untilStop ?? remaining));
 	// A heavy day (e.g. after a break): a calm tip instead of a wall of numbers.
 	const bigDay = $derived(!s.isDrill && remaining >= 200);
 

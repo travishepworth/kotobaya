@@ -2,6 +2,7 @@
 	// Review back side extras (ADR-029): kanji example words, or the decks holding a vocab note.
 	import type { QueueItem } from '../../lib/state/review.svelte';
 	import { dictionaryHref } from '../../lib/state/dictionaryLink';
+	import KanjiParts from './KanjiParts.svelte';
 	import { rv } from './messages';
 
 	let { item }: { item: QueueItem } = $props();
@@ -9,8 +10,12 @@
 	const isKanji = $derived(item.card.note?.kanjiLiteral != null);
 	const examples = $derived(isKanji ? (item.kanjiExamples ?? []).slice(0, 3) : []);
 	const decks = $derived(isKanji ? [] : (item.decks ?? []).slice(0, 3));
+	// ADR-041: vocab cards only (absent for every other item and on older servers = none).
+	const parts = $derived(isKanji ? [] : (item.kanjiParts ?? []));
 	const more = $derived(Math.max(0, (item.deckCount ?? 0) - decks.length));
 </script>
+
+<KanjiParts {parts} />
 
 {#if examples.length > 0}
 	<ul class="examples" aria-label={rv('rv.examples')}>

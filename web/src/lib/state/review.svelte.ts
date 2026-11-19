@@ -39,7 +39,7 @@ import {
 import { loopView, type LoopView } from '../review/loop';
 import { renderPreview, type Rendered } from './preview.svelte';
 
-export type { Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
+export type { KanjiPart, Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
 export type { GradeButton, ReviewPhase } from '../review/model';
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
 export { countdown, minutesUntil } from '../review/loop';
@@ -375,6 +375,7 @@ export class ReviewPage {
 						translation: item.grammarSentence.translation ?? null
 					}
 				: null,
+			frontFurigana: item.frontFurigana ?? false,
 			// A held card was graded on its back and stays so.
 			side: this.flipped || !this.current ? 'back' : 'front'
 		});

@@ -17,6 +17,7 @@
 	import { DecksListPage } from '../lib/state/decks.svelte';
 	import { StatsPage, iso } from '../lib/state/stats.svelte';
 	import { StrugglePage } from '../lib/state/struggle.svelte';
+	import DeckProgress from '../lib/decks/DeckProgress.svelte';
 	import LoopHero from '../lib/review/LoopHero.svelte';
 	import { TodayQueue } from '../lib/state/today.svelte';
 	import { noteTitle } from '../lib/ui/cardState';
@@ -169,14 +170,17 @@
 					{:else}
 						<div class="rows">
 							{#each topDecks as d (d.id)}
-								<ListRow
-									title={d.name}
-									supporting={ut(`app.deckType.${d.type}` as UiMessageKey)}
-									meta={th('home.deckItems', { n: d.itemCount.toLocaleString() })}
-									href="/decks/{d.id}"
-								>
-									{#snippet leading()}<span class="disc"><Icon name={DECK_ICON[d.type] ?? 'decks'} size={18} /></span>{/snippet}
-								</ListRow>
+								<div class="deckrow">
+									<ListRow
+										title={d.name}
+										supporting={ut(`app.deckType.${d.type}` as UiMessageKey)}
+										meta={th('home.deckItems', { n: d.itemCount.toLocaleString() })}
+										href="/decks/{d.id}"
+									>
+										{#snippet leading()}<span class="disc"><Icon name={DECK_ICON[d.type] ?? 'decks'} size={18} /></span>{/snippet}
+									</ListRow>
+									{#if d.progress}<div class="prog"><DeckProgress deck={d} coverage /></div>{/if}
+								</div>
 							{/each}
 						</div>
 					{/if}
@@ -243,6 +247,12 @@
 </Page>
 
 <style>
+	.deckrow + .deckrow {
+		border-top: 1px solid var(--kb-color-border);
+	}
+	.prog {
+		padding: 0 var(--kb-space-4) var(--kb-space-3);
+	}
 	.inline-error {
 		display: flex;
 		flex-wrap: wrap;

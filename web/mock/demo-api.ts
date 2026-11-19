@@ -508,11 +508,34 @@ on('POST', '/cards/bulk', bulk);
 on('POST', '/cards/bulk/schedule', bulk);
 
 // review
+/** ADR-041 `kanji_parts` for a vocab note (the real ones come from the core's `KanjiParts.build`). */
+function kanjiPartsOf(s: State, note: WireNote): Obj[] | undefined {
+	if (note.type !== 'vocab') return undefined;
+	const text = String(entryOf(s, note.entry_seq)?.headword ?? '');
+	const seen: string[] = [];
+	for (const ch of text) if (/[\u4e00-\u9fff]/.test(ch) && !seen.includes(ch)) seen.push(ch);
+	return seen.slice(0, 8).map((literal, i) => {
+		const k = kanjiOf(s, literal);
+		const on = (k.on_readings as string[]) ?? [];
+		const kun = (k.kun_readings as string[]) ?? [];
+		const meanings = (k.meanings as string[]) ?? [];
+		return {
+			literal,
+			keyword: meanings[0] ?? null,
+			meanings,
+			on,
+			kun,
+			used_reading: on[0] ? { type: 'on', reading: on[0], kana: on[0] } : kun[0] && i === 0 ? { type: 'kun', reading: kun[0], kana: kun[0] } : null
+		};
+	});
+}
 function queueItem(s: State, card: WireCard, note: WireNote, reviewType = 'scheduled'): Obj {
 	return {
 		card: cardWithNote(card, note),
 		entry: entryOf(s, note.entry_seq),
 		kanji: note.kanji_literal ? kanjiOf(s, note.kanji_literal) : null,
+		kanji_parts: kanjiPartsOf(s, note),
+		front_furigana: false,
 		grammar_sentence: null,
 		sentence: null,
 		preview: null,
@@ -582,9 +605,18 @@ on('POST', '/drill/session', (s, _m, _q, b) => {
 
 // decks
 on('GET', '/deck-lists', (s) => ({ items: s.data.deck_lists }));
+// ADR-041: a plausible `Deck.progress` (the real one is computed by the core on the server).
+function withProgress(d: WireDeck): WireDeck {
+	const total = Number(d.item_count ?? 0);
+	if (d.type === 'smart' || total === 0) return { ...d, progress: null };
+	let h = 0;
+	for (const ch of String(d.id)) h = (h * 31 + ch.charCodeAt(0)) % 997;
+	const learned = Math.floor((total * (15 + (h % 70))) / 100);
+	return { ...d, progress: { learned, total, percent: Math.floor((100 * learned) / total) } };
+}
 on('GET', '/decks', (s, _m, q) => {
 	const type = q.get('type');
-	return { items: s.data.decks.filter((d) => !type || d.type === type) };
+	return { items: s.data.decks.filter((d) => !type || d.type === type).map(withProgress) };
 });
 on('POST', '/decks', (s, _m, _q, b) => {
 	const d: WireDeck = {
@@ -610,7 +642,11 @@ on('POST', '/decks', (s, _m, _q, b) => {
 	s.data.decks.push(d);
 	return d;
 });
-on('GET', '/decks/:id', (s, m) => s.data.decks.find((d) => d.id === m[1]) ?? notFoundThrow('deck'));
+on('GET', '/decks/:id', (s, m) => withProgress(s.data.decks.find((d) => d.id === m[1]) ?? notFoundThrow('deck')));
+on('GET', '/decks/:id/coverage', (s, m) => {
+	const d = s.data.decks.find((x) => x.id === m[1]) ?? notFoundThrow('deck');
+	return s.data.coverage[String(d.media_id ?? d.id)] ?? notFoundThrow('coverage');
+});
 on('PATCH', '/decks/:id', (s, m, _q, b) => {
 	const d = s.data.decks.find((x) => x.id === m[1]) ?? notFoundThrow('deck');
 	Object.assign(d, b, { updated_at: now() });
