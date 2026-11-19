@@ -9,4 +9,5 @@
 ## Do
 Wire C-28/CORE-28 into server: `loop.until_stop`; materialize path mints missing kanji notes (op transaction, as C-27 auto_kanji, idempotent, respects user-deleted kanji notes); `Deck.progress` on listDecks/getDeck (batched SQL, no N+1); `QueueItem.kanji_parts` batched with QueueExtras.
 ## Acceptance
+- [ ] Re-record goldens for the 13 parity scenarios C-28 re-pointed to kana-only entries; update server/android tests pinned to old seqs (1000220/1000440/1000450).
 - [ ] Parity goldens green; test: drawn deckless vocab mints kanji notes once (idempotent on re-fetch); Deck.progress counts on fixture (retired reading cards ignored, known words counted).

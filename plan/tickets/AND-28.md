@@ -9,4 +9,5 @@
 ## Do
 Same as SRV-28 on the device local API (LocalQueueLoader, materialize path, DeckViews/DeckRoutes, kanji_parts); getDeckCoverage local if C-28 chose so.
 ## Acceptance
+- [ ] Re-record goldens for the 13 parity scenarios C-28 re-pointed to kana-only entries; update server/android tests pinned to old seqs (1000220/1000440/1000450).
 - [ ] Shell parity scenarios match server; materialize race tests still green.

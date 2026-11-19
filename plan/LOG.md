@@ -1333,3 +1333,4 @@
 2026-11-19T03:40:07Z WEB-MORE-CLOSE CHECK_GREEN + MERGE
 2026-11-19T03:40:38Z BUG-ADD2DECK-500 attempt 2 CHECK_GREEN + MERGE (backStack registerOverlay push in untrack: every Dialog looped; +error page)
 2026-11-19T03:41:28Z C-28 HANDOFF + reviewer dispatched. RUN DECIDE user: single release after all round tickets
+2026-11-19T03:47:01Z C-28 REVIEW_CHANGES 2 major (backfill never mints; unit>budget starvation) + minors; DECIDE ADR-043 provisional; attempt 2 to architect

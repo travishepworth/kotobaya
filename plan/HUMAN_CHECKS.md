@@ -262,3 +262,8 @@ Human: "Ui is beautiful, you have my approvale - continue" (no changes). UI-WEB 
 - [ ] Takoboto add word still works (native, unchanged).
 - [ ] Back: closes dialogs, undoes last answer once in review, then navigates back. Widget/tile/notification taps land on the right screen.
 Known gaps: offline search/dictionary/decks/browse not yet local (L4-L8); pairing only via old launcher.
+
+## Round 2026-11-19 (ADR-038..043) — check after the next release
+- ADR-043 provisional: kanji units larger than today's remaining new budget introduce their kanji first and the word on a later day (limit never exceeded). OK?
+- ADR-042: words tagged usually-kana in JMdict (likely 林檎, 薔薇) are exempt by word: furigana front, no kanji cards (even for jōyō 林). 薔 is freq rank 2356, so it counts as learnable where it matters. Confirm that's what you want.
+- Release note: deck `add_kanji: off` no longer opts out of kanji cards; the rule is global (setting `cards.kanji_exemptions` controls exemptions only).
