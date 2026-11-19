@@ -301,4 +301,5 @@ Worth a second look:
 3. Decks of equal priority (and cards in no deck, by default) now share new cards evenly over
    the day: the one with the fewest new cards today goes next. Before, the first deck was
    always drawn first after each answer, so it used up the goal before the others got a turn.
-   Kanji cards created automatically do not count as a turn for anyone.
+   A kanji card that belongs to no deck and is needed by one of your words does not count as a
+   turn for anyone; one that no word needs counts like any other card.

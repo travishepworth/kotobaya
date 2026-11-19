@@ -498,9 +498,15 @@ KDoc examples):
   deck (the two cases the CORE-28 attempt 1 properties left out); **several sources in one
   tier** (decks and the deckless source at the same priority, the default setup) are part of
   the random inputs, the only exclusion being two sources whose next words require the same
-  not yet started kanji (rule 5, exclusion 3); the "Turn order" example (`a 学 校 学校`, after a
-  `学 校 学校`, after 学 `校 学校`, the next day b first); `t(S)` ignores deckless kanji cards and
-  counts deck-homed ones; rule (a) inside one build (a kanji drawn on a kanji deck's own turn
+  not yet started **deck-homed** kanji (rule 5, exclusion 3); the "Turn order" example
+  (`a 学 校 学校`, after a `学 校 学校`, after 学 `校 学校`, the next day b first); the
+  "kanji no word requires" example: a deck of 30 kana words and 50 deckless NEW kanji notes
+  that no word requires alternate (`w1 k1 w2 k2 …`, 10 items at batch 10, `availableToday`
+  20, 10 words among them), also after each answer, and the deck is never starved; the same
+  with one of the kanji required by a NEW word (that card is left out of `t`, in today's
+  reviews and in the build alike); `t(S)` counts deck-homed kanji cards; two sources whose
+  next words both require a deckless kanji just introduced: rule (a) picks the one with the
+  smaller `t`, then source order; rule (a) inside one build (a kanji drawn on a kanji deck's own turn
   is followed by the source whose next word requires it, whatever the counts); in every build no vocab item
   precedes a NEW kanji item of a kanji it requires; no review between the cards of a unit; a due learning card may come
   between and the group continues after it; the open group is not pulled after a review was

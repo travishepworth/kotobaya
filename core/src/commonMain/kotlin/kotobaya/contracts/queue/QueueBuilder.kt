@@ -517,11 +517,18 @@ public data class ReviewQueue(
  *      (after rule 0) whose card's home new-source is S (from [TodayReview.deckIds] and the
  *      decks now, exactly as for the per-deck limit; no deck ids = the deckless source; decks
  *      all disabled = no source) **plus** the cards taken so far in this build whose home
- *      new-source is S (a pending entry counts 1 for its deck when drawn), **not counting
- *      cards of kanji notes whose home is the deckless source** (auto-minted and backfill
- *      kanji: they are drawn for a word or by backfill, not as that source's choice; a today
- *      review is such a card iff its `cardId` is a candidate of a kanji note and its `deckIds`
- *      give the deckless source; a review whose card is not among the candidates counts). A kanji
+ *      new-source is S (a pending entry counts 1 for its deck when drawn), **not counting a
+ *      required deckless kanji card**: a card of a kanji note whose home is the deckless source
+ *      and whose `kanjiLiteral` is in `req(X)` of some vocab candidate (after rule 0, in any
+ *      state, eligible or not) or pending entry X of the input. Such a card is drawn for a
+ *      word or by backfill, not as the deckless source's own choice (auto-minted kanji). A
+ *      deckless kanji card that **no** word requires (kanji notes the user added by hand, or
+ *      minted ones whose word was deleted) is an ordinary card of the deckless source and
+ *      **counts**, so the deckless source cannot take every turn with them. The test is the
+ *      same for today's reviews and for this build's draws (a today review is such a card iff
+ *      its `cardId` is a candidate of a kanji note, its `deckIds` give the deckless source and
+ *      the literal is required as above; a review whose card is not among the candidates
+ *      counts), and it does not depend on how the card was drawn. A kanji
  *      card homed in a deck counts for that deck whichever unit or step took it. A lead's word
  *      is not taken and does not count.
  *    - **Last new card** `lastNew`: the last thing rule 4 has drawn so far in this build (a
@@ -531,8 +538,9 @@ public data class ReviewQueue(
  *      or a claimed literal, else none.
  *    - **Next turn** in the current tier: (a) **open unit**: if `lastLiteral` is L and some
  *      source of the tier that can take a turn has, as the unit its next turn would draw, the
- *      unit of a word W (card or entry, not held) with `L in req(W)`, the first such source in
- *      source order takes the turn. (b) Otherwise the source that can take a turn with the
+ *      unit of a word W (card or entry, not held) with `L in req(W)`, then among those sources
+ *      the one with the smallest `t(S)`, ties in source order, takes the turn (the order of
+ *      rule (b), restricted to them). (b) Otherwise the source that can take a turn with the
  *      smallest `t(S)`, ties in source order.
  *    With nothing introduced today and one-card units this is the old round-robin (decks by
  *    id, the deckless source last in each round). After an answer the counts are what they
@@ -551,6 +559,13 @@ public data class ReviewQueue(
  *    (a restart at D would draw b, and the unit would no longer fit and lead: the word
  *    withdrawn after its kanji). After 学: `lastLiteral = 学` and the deckless source's next
  *    word requires it → rule (a) → `校 学校`. The next day: a tie → D: b.
+ *    Example (kanji no word requires; goal 20, batch 10; deck D holds 30 new kana words w1,
+ *    w2, …; the deckless source holds 50 NEW kanji notes k1, k2, … the user added by hand, no
+ *    vocab candidate or entry requires any of them; one tier; nothing introduced today): each
+ *    kanji card counts for the deckless source → `w1 k1 w2 k2 w3 k3 w4 k4 w5 k5`,
+ *    `availableToday = 20` (10 words, 10 kanji). After w1 and k1 are answered (`t = 1, 1`) →
+ *    `w2 k2 …`. Were they left out of `t`, the deckless source would stay at 0, win every
+ *    turn and D would introduce nothing until all 50 are done.
  *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    unless their `wordOverride` is KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED. Cards whose
@@ -894,12 +909,17 @@ public data class ReviewQueue(
  *    cards (a kanji note type with several NEW kinds and `burySiblings` false; never the
  *    built-in type): its first answer makes the literal started, which by ADR-040 dissolves
  *    the part ("kanji that already have a learning card do not block"). (3) Two sources of
- *    one tier whose next words both require the kanji just introduced, when that kanji was
- *    drawn inside the unit of the later one: the stored data is the same as if the kanji had
- *    been drawn alone, so no stateless rule can tell which unit is open; rule (a) then picks
- *    the first in source order, and the other word follows on its source's next turn (its
- *    kanji stay first; if the day has no room left it leads and comes the next day). Tests of
- *    the property use one-card parts, no missing kanji, and exclude (3) only. The
+ *    one tier whose next words both require the kanji L just introduced, L having been drawn
+ *    inside the unit of one of them, **and** rule (a)'s tie-break (smallest `t`, then source
+ *    order) not naming that one: only when L is homed in one of the two decks (its answer
+ *    changed that deck's `t`) or the unit's source had itself been picked by rule (a) for an
+ *    earlier kanji rather than by `t`. The stored data is then the same as if L had been
+ *    drawn alone, so no stateless rule can tell which unit is open; the other word follows on
+ *    its source's next turn (its kanji stay first; if the day has no room left it leads and
+ *    comes the next day). With L deckless and both picks by `t`, the tie-break names the
+ *    open unit's source and the guarantee holds. Tests of the property use one-card parts,
+ *    no missing kanji, and exclude only inputs where two sources' next words share a not yet
+ *    started kanji that is deck-homed. The
  *    mix does not depend on the batch, on input order or on the caller. Between two new units there
  *    are at most `ceil(rRem / gRem)` reviews and never two units in a row while a review is left,
  *    except through the open-group rule. `toMaterialize` entries and withheld units are not items
