@@ -17,7 +17,6 @@ If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> vali
 ### Merged this round, awaiting release
 WEB-REVIEW-FLOW, WEB-KG-IDLE, BUG-ADD2DECK-500 (Dialog effect loop), WEB-MORE-CLOSE, C-28, C-28b, WEB-28. CLI-KG-SCOPE merged AND installed (daemon active).
 Still HELD from pause: LOOP-C2b, SHELL-Z2 (do not dispatch).
-Still HELD from pause: LOOP-C2b, SHELL-Z2.
 CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
 LIVE (2026-11-17, helm rev 38, pin 91140ed8): api 0.1.24 + web 0.1.27, worker 0.1.19. CLI daemon + kby reinstalled from pin (daemon active, loop fields OK). APK 0.1.34 INSTALLED (users 0+10, launches clean, no crashes).
