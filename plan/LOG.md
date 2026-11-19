@@ -1413,3 +1413,6 @@
 2026-11-19T13:43:00Z C-30 HANDOFF + green; reviewer; CORE-30/SRV-30/WEB-30/AND-30/CLI-30 filed
 2026-11-19T13:44:43Z C-30 REVIEW_APPROVE (4 minors: day-boundary parity + A3 text -> architect quick fix; KG-on-backlog noted in ADR-049; ship web/android with server)
 2026-11-19T13:48:13Z C-30 follow-up (day-end parity, A3) done 9eff7d03; CORE-30 dispatched from t/C-30-loop-wait
+2026-11-19T13:53:34Z AND-29 handed back 69fa51da; audio chain assembled on t/AUDIO-int, full make check running
+2026-11-19T13:58:13Z CORE-30 0f2f1b24 approved by reviewer; held for merge with SRV-30/WEB-30/AND-30/CLI-30 after audio chain
+2026-11-19T14:02:08Z audio chain (C-29,CORE-29,WRK-29,SRV-29,WEB-29,AND-29) merged ff via t/AUDIO-int 3f377a1b; all 6 module checks green
