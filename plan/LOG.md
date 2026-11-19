@@ -1328,3 +1328,4 @@
 2026-11-19T03:18:29Z WEB-KG-IDLE CHECK_GREEN + MERGE (lazy 10-min idle expiry, resume check)
 2026-11-19T03:21:38Z C-28 DECIDE ADR-042 (kanji exemptions + furigana fronts, user); C-28/CORE-28 tickets amended, architect messaged
 2026-11-19T03:23:16Z BUG-ADD2DECK-500 BLOCK not reproducible (10 scenarios); needs phone logcat; no adb device
+2026-11-19T03:29:40Z BUG-ADD2DECK-500 UNBLOCK: logcat+client_error reports = svelte effect_update_depth_exceeded on /dictionary (web+android), not HTTP; rescoped to web, DISPATCH writer-senior attempt 2

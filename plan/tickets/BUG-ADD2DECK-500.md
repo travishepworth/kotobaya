@@ -1,25 +1,22 @@
-# BUG-ADD2DECK-500 — adding a search word to a deck returns 500 (Android)
+# BUG-ADD2DECK-500 — Svelte effect loop (effect_update_depth_exceeded) shows a "500" page
 
-- Phase: P10 · Model: opus (writer-senior) · Risk: med · Gradle-heavy
+- Phase: P10 · Model: opus (writer-senior) · Risk: med
 - Deps: none
-- Branch: t/BUG-ADD2DECK-500-android
-- Owned paths: android/**, server/src/main/kotlin/kotobaya/decks/** + server tests (only if the same bug exists there)
-- Module(s) for CI: android (Gradle lock; `rm -rf /tmp/parity*` after), server if touched
+- Branch: t/BUG-ADD2DECK-500-web
+- Owned paths: web/** (no web/src/lib/core/** changes)
+- Module(s) for CI: web
 
-## Read
-- Contracts: openapi `addDeckItems` (POST /decks/{deck_id}/items, ~L2774), contracts/api/shell/ops.json (local), SHELL.md
-- Decisions: ADR-036
-
-## Facts (scout, 2026-11-19)
-- User: on Android, adding a word from search to a deck gives HTTP 500 (web untested).
-- Server logs (72h): zero 500s, no POST /decks/*/items → the 500 comes from the on-device local API.
-- Android answers it locally: android/.../shell/api/decks/DeckItemRoutes.kt:167. Suspect DeckItemRoutes.kt:225 `checkNotNull(DeckViews.visibleItem(...)) { "item $k missing" }` after minting → IllegalStateException → 500 (unverified).
-- Web caller: web/src/lib/ui/deckPicker.ts:77 (toggleMembership) from AddToDeck.svelte / dictionary state.
+## Facts (orchestrator, 2026-11-19, from live client-error reports + phone logcat)
+- User: adding a word from search/dictionary to a deck shows a 500. It is NOT an HTTP 500: the server's `kotobaya.client_error` log shows `Error: https://svelte.dev/e/effect_update_depth_exceeded` on route `/dictionary`, from Android (Pixel, shell WebView) at 2026-11-19T03:28:52Z and from the desktop web at 03:19:02Z. SvelteKit renders its error page (500).
+- Attempt 1 (android) proved the Android addDeckItems local route doesn't 500 (10 scenarios) — don't touch android.
+- Same error also reported on `/settings` (count 12, twice), `/stats`, `/notes`, `/` over 11-17..11-19 — likely the same pattern (a `$effect` that writes state it reads, e.g. deck membership / deck list state in web/src/lib/state/dictionary.svelte.ts, web/src/lib/ui/AddToDeck.svelte, web/src/lib/ui/deckPicker.ts, web/src/lib/state/decks.svelte.ts).
+- Stack is minified (#m recursion in a shared chunk); build with sourcemaps locally to resolve if needed.
 
 ## Do
-1. Reproduce with a failing test using the exact request the SPA sends from search/dictionary (check body shape in deckPicker.ts: entry_seq / note ids, list decks vs user decks, word already in deck, deck with items not yet installed by deck-content snapshot, kanji entry, etc.). Find the real cause; don't just remove the check.
-2. Fix; verify the server handler (DeckItemApi.kt) doesn't share the bug (add a server test if it does).
-3. Also make the local API log the exception (logcat tag) for any 500 so the next one is diagnosable.
+1. Reproduce in vitest/jsdom (TEST-1 set up bounded-effect tests, see web/tests) or a dev build: open /dictionary entry, toggle deck membership via AddToDeck → effect loop. Fix the cycle (untrack / derive instead of effect-write / compare-before-set).
+2. Audit the other reported routes (/settings, /stats, /notes, /) for the same pattern and fix what reproduces; list anything you couldn't reproduce in HANDOFF.
+3. Make SvelteKit's client error page for a non-HTTP exception not say "500" (show a friendly "Something went wrong" + reload), i18n.
 ## Acceptance
-- [ ] Failing-then-passing test reproducing the 500 with the SPA's request body; parity with server response shape.
-- [ ] make check MODULE=android green (and server if touched).
+- [ ] Bounded-effect test that fails on current code for the add-to-deck toggle on /dictionary; passes after fix.
+- [ ] Same for each other route you reproduce.
+- [ ] make check MODULE=web green.

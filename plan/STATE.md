@@ -7,7 +7,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## Running (run 34, 2026-11-19) — user feedback round (ADR-038..041)
 | C-28 | architect | 1 | t/C-28-contracts | 2026-11-19 |
 Queued: CORE-28 after C-28; SRV-28 + AND-28 after CORE-28; WEB-28 after C-28 + WEB-REVIEW-FLOW.
-BLOCKED_HUMAN: BUG-ADD2DECK-500 — not reproducible in ~10 scenarios; needs phone plugged in + reproduce + `adb logcat -d -s KotobayaShell:E KotobayaDb:W` (LocalApi already logs 500 stacks). Branch t/BUG-ADD2DECK-500-android kept (no code).
+| BUG-ADD2DECK-500 | writer-senior | 2 | t/BUG-ADD2DECK-500-web | 2026-11-19 |
 Still HELD from pause: LOOP-C2b, SHELL-Z2.
 CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
