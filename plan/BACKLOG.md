@@ -873,4 +873,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - C-28c — settle 4 CCR cases (rebuild=tail) from CORE-28 · model: fable · risk: high · deps: C-28b · status: MERGED (ticket: plan/tickets/C-28c.md)
 - C-28d — close remaining rebuild≠tail cases (rule (a) prefers unit source; open unit before share; capped lead finishes) · model: fable · risk: high · deps: CORE-28 · status: MERGED (ticket: plan/tickets/C-28d.md)
 - CORE-28b — apply C-28d + backfillPart perf + ruby escaping test · model: opus · risk: high · deps: C-28d · status: MERGED (ticket: plan/tickets/CORE-28b.md)
-- KANJI-TEXT-SHARED — server+android use core FieldPlainText + server goldens for C-28d scenarios · model: sonnet · risk: med · deps: CORE-28b, AND-28 · status: TODO (ticket: plan/tickets/KANJI-TEXT-SHARED.md)
+- KANJI-TEXT-SHARED — server+android use core FieldPlainText + server goldens for C-28d scenarios · model: sonnet · risk: med · deps: CORE-28b, AND-28 · status: RUNNING (ticket: plan/tickets/KANJI-TEXT-SHARED.md)
