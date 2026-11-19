@@ -1343,3 +1343,4 @@
 2026-11-19T04:18:35Z C-28b REVIEW_APPROVE r3 + CHECK_GREEN + MERGE; CORE-28 DISPATCH writer-senior
 2026-11-19T04:30:28Z STATE resume section written (context limit approaching)
 2026-11-19T04:53:32Z CORE-28 CONTRACT_CHANGE_REQUEST (4 rule-4/5 cases; rebuild!=tail in 2); code green; C-28c DISPATCH architect
+2026-11-19T05:10:14Z C-28c resumed after usage-limit reset (same architect agent)
