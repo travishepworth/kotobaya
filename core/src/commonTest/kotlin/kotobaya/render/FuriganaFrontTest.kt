@@ -60,6 +60,22 @@ class FuriganaFrontTest {
     }
 
     @Test
+    fun markupAndEntitiesInExpressionAndReadingAreEscaped() {
+        // CORE-28b: markup is dropped, entities decoded to text and the text escaped again inside the ruby.
+        val fields = mapOf("expression" to "<img src=x onerror=alert(1)>a&amp;b", "reading" to "<b>え</b>&lt;い&gt;&amp;")
+        val out = html(null, "meaning", CardSide.FRONT, on = true, fields = fields)
+        assertEquals(
+            """<div class="kb-card kb-vocab kb-kind-meaning kb-front"><div class="kb-expression"><span class="kb-field-expression"><ruby>a&amp;b<rt>え&lt;い&gt;&amp;</rt></ruby></span></div></div>""",
+            out,
+        )
+        HtmlChecker.assertSafe(out, RenderFixtures.MEDIA)
+        // A bare `&` and `<`-looking text in the values.
+        val bare = html(null, "meaning", CardSide.FRONT, on = true, fields = mapOf("expression" to "a&b", "reading" to "x<y"))
+        HtmlChecker.assertSafe(bare, RenderFixtures.MEDIA)
+        assertEquals("a&b（え<い>&）", text(null, "meaning", on = true, fields = fields).front)
+    }
+
+    @Test
     fun textGoldens() {
         assertEquals("寿司（すし）", text(sushi, "meaning", on = true).front)
         assertEquals("珈琲（コーヒー）", text(coffee, "meaning", on = true).front)

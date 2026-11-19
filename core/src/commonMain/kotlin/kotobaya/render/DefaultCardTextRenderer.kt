@@ -102,7 +102,7 @@ public object DefaultCardTextRenderer : CardTextRenderer {
     ): List<String> {
         val raw = DefaultCardRenderer.resolveField(fields, dictionary, kanji, baseType, key).first
         if (raw.isBlank()) return emptyList()
-        return htmlLines(Sanitizer(showRuby = false, mediaUrl = { it }, warnings = warnings).sanitize(Sanitizer.stripSentinels(raw), mode))
+        return FieldPlainText.lines(raw, mode, warnings)
     }
 
     /** [fieldLines] joined by line breaks (the HTML furigana front's E and R, ADR-042). */
