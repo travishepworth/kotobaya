@@ -152,9 +152,15 @@ class NoteCreator<L : LearningTables>(
         if (literals.isEmpty()) return emptyMap()
         return readTables { tables ->
             val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
-            literals.associateWith { plan.kanjiKinds(it) }
+            // the builder asks on every build: one dictionary read per literal per process, not per build. The key holds what
+            // the answer depends on (the kanji note type and the reading setting); built-in fronts do not depend on the
+            // kanji's dictionary data, so a later gap fill does not change it
+            val fingerprint = "${plan.kanjiType.hashCode()}|${plan.readingEnabled}|"
+            literals.associateWith { l -> kanjiKindsCache.getOrPut(fingerprint + l) { plan.kanjiKinds(l) } }
         }
     }
+
+    private val kanjiKindsCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
 
     /**
      * AND-KEEPGOING-FIX, C-27, ADR-040 (contracts/core/README.md "C-27: pending entries and materialization"; the same

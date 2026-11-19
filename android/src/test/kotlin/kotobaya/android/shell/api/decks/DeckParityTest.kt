@@ -14,6 +14,7 @@ import kotobaya.android.shell.api.decks.DecksTestSupport.call
 import kotobaya.android.shell.api.decks.DecksTestSupport.device
 import kotobaya.android.shell.api.decks.DecksTestSupport.items
 import kotobaya.android.shell.api.decks.DecksTestSupport.json
+import kotobaya.android.shell.api.decks.DecksTestSupport.rows
 import kotobaya.android.shell.api.decks.DecksTestSupport.problem
 import kotobaya.android.shell.parity.ParityJson
 import kotobaya.contracts.sync.JsonNull
@@ -70,6 +71,26 @@ class DeckParityTest {
         val smart = "01a1f82f-0000-7000-8000-00000000d002"
         assertEquals(201, d.call("POST", "/api/v1/decks", """{"id":"$smart","type":"smart","name":"S","query":"tag:a"}""", at = T0 + 3_000).status)
         assertEquals(kotobaya.contracts.sync.JsonNull, d.call("GET", "/api/v1/decks/$smart").json().members["progress"])
+    }
+
+    /** ADR-035 / ADR-041: a retired reading card in REVIEW does not make a word learned; a tombstoned deck has no progress. */
+    @Test
+    fun aRetiredReadingCardIsIgnoredAndATombstonedDeckHasNoProgress() {
+        val d = device()
+        fun progress() = d.call("GET", "/api/v1/decks/$D1").json().members["progress"]
+        assertEquals(200, d.call("PATCH", "/api/v1/settings", """{"values":{"cards.reading_enabled":true}}""", at = T0 + 1_000).status)
+        val note = "0193e000-0000-7000-8000-000000000001"
+        assertEquals(201, d.call("POST", "/api/v1/notes", """{"id":"$note","note_type_id":"00000000-0000-7000-8000-000000000101","entry_seq":1001010,"card_kinds":["reading"]}""", at = T0 + 2_000).status)
+        val card = ParityJson.str(d.rows(kotobaya.sync.client.apply.LearningTable.CARD).single { it["note_id"] == JsonString(note) }["id"])
+        listOf(3_000L, 73_000L, 700_000L).forEachIndexed { i, at ->
+            val id = "0193e000-0001-7000-8000-%012x".format(i + 1)
+            assertEquals(200, d.call("POST", "/api/v1/review/answer", """{"id":"$id","card_id":"$card","rating":3}""", at = T0 + at).status)
+        }
+        assertEquals(ParityJson.parse("""{"learned":1,"total":3,"percent":33}"""), progress(), "the reading card in review state counts while reading cards are on")
+        assertEquals(200, d.call("PATCH", "/api/v1/settings", """{"values":{"cards.reading_enabled":false}}""", at = T0 + 800_000).status)
+        assertEquals(ParityJson.parse("""{"learned":0,"total":3,"percent":0}"""), progress(), "retired reading card ignored")
+        assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1", at = T0 + 900_000).status)
+        assertEquals(JsonNull, d.call("GET", "/api/v1/decks/$D1", query = "include_deleted=true").json().members["progress"])
     }
 
     @Test

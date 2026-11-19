@@ -87,6 +87,41 @@ class InstalledDictionary(
     /** L-7 steps 1-2: the installed package, then the sidecar cache. Never the network. */
     fun entry(seq: Long): DictEntryDetail? = packageEntry(seq) ?: cache?.entry(seq)
 
+    /** Changes whenever the installed package or the sidecar cache changes (a cached lookup, hit or miss, is valid for one value). */
+    val generation: Long get() = store.generation.value * GENERATION_STEP + (cache?.generation ?: 0L)
+
+    /** The two JSON texts of an entry the kanji requirement reads (`kanji_forms`, `senses`). */
+    class FormJson(val kanjiForms: String, val senses: String)
+
+    /**
+     * L-7 steps 1-2 for many entries in chunked `IN` reads of just the two columns the kanji requirement needs (no
+     * freqs, pitch or parsing); entries the package lacks come from the sidecar cache. An absent key = a miss.
+     */
+    fun formJson(seqs: Collection<Long>): Map<Long, FormJson> {
+        val out = HashMap<Long, FormJson>()
+        for (chunk in seqs.distinct().chunked(PRESENT_CHUNK)) {
+            withDb { db ->
+                db.rawQuery("SELECT seq, kanji_forms, senses FROM dict_entry WHERE seq IN " + chunk.joinToString(",", "(", ")") { "?" }, chunk.map { it.toString() }.toTypedArray())
+                    .use { c -> while (c.moveToNext()) out[c.getLong(0)] = FormJson(c.getString(1).orEmpty(), c.getString(2).orEmpty()) }
+            }
+        }
+        for (seq in seqs) if (seq !in out) cache?.entry(seq)?.let { out[seq] = FormJson(it.kanjiForms.toString(), it.senses.toString()) }
+        return out
+    }
+
+    /** Grade and frequency rank of many kanji (package, then sidecar cache); an absent key = a miss. */
+    fun kanjiFacts(literals: Collection<String>): Map<String, Pair<Int?, Int?>> {
+        val out = HashMap<String, Pair<Int?, Int?>>()
+        for (chunk in literals.distinct().chunked(PRESENT_CHUNK)) {
+            withDb { db ->
+                db.rawQuery("SELECT literal, grade, freq_rank FROM kanji WHERE literal IN " + chunk.joinToString(",", "(", ")") { "?" }, chunk.toTypedArray())
+                    .use { c -> while (c.moveToNext()) out[c.getString(0)] = (if (c.isNull(1)) null else c.getInt(1)) to (if (c.isNull(2)) null else c.getInt(2)) }
+            }
+        }
+        for (l in literals) if (l !in out) cache?.kanji(l)?.let { out[l] = it.grade to it.freqRank }
+        return out
+    }
+
     /** L-7 steps 1-2 for a kanji. */
     fun kanji(literal: String): KanjiDetail? = packageKanji(literal) ?: cache?.kanji(literal)
 
@@ -276,6 +311,7 @@ class InstalledDictionary(
     private companion object {
         /** Bind variables per `IN (...)` (SQLite's default limit is 999). */
         const val PRESENT_CHUNK = 500
+        private const val GENERATION_STEP = 1_000_003L
         const val NO_RANK = Int.MAX_VALUE
         /** U+10FFFF: sorts after every other code point, so `[key, key + TOP)` is the prefix range. */
         const val TOP = "􏿿"

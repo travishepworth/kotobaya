@@ -23,6 +23,7 @@ import kotobaya.android.notes.NoteRequest
 import kotobaya.android.review.InstalledRenderData
 import kotobaya.android.shell.api.LocalRoutes
 import kotobaya.android.shell.api.review.QueueTestSupport.liveNotesOf
+import kotobaya.android.shell.api.review.QueueTestSupport.notes
 import kotobaya.android.shell.api.review.QueueTestSupport.queue
 import kotobaya.android.shell.parity.ParityDevice
 import kotobaya.android.shell.parity.ParityScenario
@@ -145,10 +146,10 @@ class MaterializeRaceTest {
     }
 
     /** A fresh device on the production driver (a new database file); [transactions] false = [NoTransactionDriver]. */
-    private fun device(transactions: Boolean = true): Run {
+    private fun device(transactions: Boolean = true, scenario: String = "queue-materialize-count"): Run {
         // without transactions a held writer holds no connection, so a pool wait is not ours: wait for the other writer
         val gate = WindowGate({ threads.toList() }, releaseOnWait = transactions)
-        val s = ParityScenario.load("queue-materialize-count")
+        val s = ParityScenario.load(scenario)
         val dictDir = ParityTemp.next("race-dict")
         app.deleteDatabase(APP_DB_FILE)
         val production = DurableDriver.open(app)
@@ -218,6 +219,26 @@ class MaterializeRaceTest {
         }
         // the window was really contested: a writer held it while the other one waited for the write connection
         assertTrue(contested > 0, "no iteration had the second fetch waiting on the write connection")
+    }
+
+    /** ADR-040 step A under the same race: two fetches that both need the missing kanji create one live kanji note per literal. */
+    @Test
+    fun twoConcurrentFetchesCreateOneLiveKanjiNotePerLiteral() {
+        repeat(20) { i ->
+            val run = device(scenario = "queue-kanji-first-deckless")
+            try {
+                val d = run.device
+                val (s1, s2) = race({ d.queue().status }, { d.queue().status })
+                assertEquals(200 to 200, s1 to s2, "iteration $i")
+                val live = d.notes().filter { (it["kanji_literal"] as? kotobaya.contracts.sync.JsonString)?.value != null && (it["deleted_at"] ?: kotobaya.contracts.sync.JsonNull) == kotobaya.contracts.sync.JsonNull }
+                    .map { (it["kanji_literal"] as kotobaya.contracts.sync.JsonString).value }
+                assertEquals(setOf("学", "校", "生", "先"), live.toSet(), "iteration $i")
+                assertEquals(live.size, live.toSet().size, "iteration $i: a literal has two live kanji notes: $live")
+                assertEquals(0, run.gate.met.get(), "iteration $i: two writers were inside check-then-mint at once")
+            } finally {
+                run.close()
+            }
+        }
     }
 
     @Test

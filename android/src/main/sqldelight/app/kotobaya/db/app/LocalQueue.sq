@@ -6,17 +6,19 @@ schedulerSettings:
 SELECT key, value FROM settings WHERE key LIKE 'scheduler.%' OR key = 'cards.reading_enabled' OR key = 'cards.kanji_exemptions';
 
 -- Live cards of live notes that can be queued today. A refused cache (SYNC.md 9.4) is never a candidate.
--- ADR-040 / ADR-043: every card of a vocab or kanji note is passed whatever its due date, because the builder reads
+-- ADR-040 / ADR-043: every started card (past NEW) of a vocab or kanji note is passed whatever its due date, and even
+-- when suspended (as the server loader), because the builder reads
 -- "introduced" (a vocab note with a card past NEW, for backfill) and "started" (a kanji with a card past NEW) from the
 -- candidates; a not-yet-due card is never served by the builder.
 queueCandidates:
 SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
-       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq, n.fields
+       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq,
+       CASE WHEN n.type = 'vocab' THEN n.fields ELSE '{}' END AS fields
 FROM card c
 JOIN note n ON n.id = c.note_id
 LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
-WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
-  AND (c.state = 'new' OR c.due_at < :dayEnd OR n.type IN ('vocab', 'kanji'))
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
+  AND ((c.suspended = 0 AND (c.state = 'new' OR c.due_at < :dayEnd)) OR (c.state <> 'new' AND n.type IN ('vocab', 'kanji')))
   AND c.last_review_id IS NOT :refusedId;
 
 -- ADR-040 (contracts/core README "C-27"): the literal of every kanji note that blocks minting: a live one, or one the

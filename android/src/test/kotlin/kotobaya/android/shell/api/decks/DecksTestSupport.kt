@@ -4,6 +4,8 @@ import kotobaya.android.shell.api.ShellResponse
 import kotobaya.android.shell.api.actions.ActionsTestSupport
 import kotobaya.android.shell.api.actions.routes as actionRoutes
 import kotobaya.android.shell.api.decks.routes as deckRoutes
+import kotobaya.android.shell.api.identity.routes as identityRoutes
+import kotobaya.android.shell.api.mining.routes as miningRoutes
 import kotobaya.android.shell.api.review.routes as reviewRoutes
 import kotobaya.android.shell.parity.ParityDevice
 import kotobaya.android.shell.parity.ParityJson
@@ -38,7 +40,7 @@ internal object DecksTestSupport {
 
     fun device(id: String = X, seed: List<JsonObject> = seed(), startMs: Long = T0): ParityDevice {
         Class.forName("org.sqlite.JDBC")
-        return ParityDevice(id, startMs, deckRoutes + reviewRoutes + actionRoutes).also { if (seed.isNotEmpty()) it.pull(seed, "seed") }
+        return ParityDevice(id, startMs, deckRoutes + reviewRoutes + actionRoutes + identityRoutes + miningRoutes).also { if (seed.isNotEmpty()) it.pull(seed, "seed") }
     }
 
     fun ParityDevice.call(method: String, path: String, body: String? = null, query: String = "", at: Long? = null): ShellResponse {

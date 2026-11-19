@@ -448,21 +448,33 @@ private class WordKanjiResolver(
 ) {
     class Kanji(val expressionKanji: List<String>, val required: List<String>, val missing: List<MissingKanji>)
 
-    private val required = LinkedHashMap<String, Pair<List<String>, List<String>>>()
+    private class Word(val seq: Long?, val expression: String)
+
+    private val words = LinkedHashMap<String, Word>()
     private val result = HashMap<String, Kanji>()
 
-    fun has(key: String): Boolean = key in required
+    fun has(key: String): Boolean = key in words
 
+    /** Records a word; nothing is read until [finish], which batches the dictionary reads of the whole build. */
     fun evaluate(key: String, seq: Long?, expression: String) {
-        if (key in required) return
-        val all = DefaultCardGenerator.kanjiOf(expression)
-        val req = if (all.isEmpty()) emptyList() else DefaultKanjiRequirement.evaluate(
-            source.form(seq, expression), all.map(source::facts), settings.kanjiExemptions,
-        ).learnableKanji
-        required[key] = all to req
+        words.putIfAbsent(key, Word(seq, expression))
     }
 
     fun finish() {
+        val exempt = settings.kanjiExemptions
+        val all = words.mapValues { (_, w) -> DefaultCardGenerator.kanjiOf(w.expression) }
+        // one pass over the dictionary for every entry and (only when exemptions are on) every kanji of the build
+        source.prefetch(words.values.mapNotNull { it.seq }, if (exempt) all.values.flatten() else emptyList())
+        val required = LinkedHashMap<String, Pair<List<String>, List<String>>>()
+        for ((key, w) in words) {
+            val kanji = all.getValue(key)
+            val req = when {
+                kanji.isEmpty() -> emptyList()
+                !exempt -> kanji // setting off: every kanji, no facts needed
+                else -> DefaultKanjiRequirement.evaluate(source.form(w.seq, w.expression), kanji.map(source::facts), true).learnableKanji
+            }
+            required[key] = kanji to req
+        }
         val lits = required.values.flatMapTo(LinkedHashSet()) { it.second }.filter { it !in blocked }
         val kinds = if (lits.isEmpty()) emptyMap() else runCatching { materializer?.kanjiKinds(lits) }.getOrNull() ?: lits.associateWith { listOf("meaning") }
         for ((key, p) in required) {
