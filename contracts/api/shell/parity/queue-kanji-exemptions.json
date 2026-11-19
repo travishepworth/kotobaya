@@ -1,15 +1,15 @@
 {
   "id": "queue-kanji-exemptions",
-  "title": "cards.kanji_exemptions: which kanji a word requires and which fronts carry furigana, on (default) and off (ADR-042)",
+  "title": "cards.kanji_exemptions: which kanji a word requires and which fronts carry furigana, on (default) and off (ADR-042, ADR-045)",
   "covers": [
     "queue.kanji_exemptions_on",
     "queue.kanji_exemptions_off"
   ],
   "narrative": [
-    "Stand-ins from the fixture dictionary for the cases of ADR-042 (海老, 今日, 薔薇 and 林檎 are not in fixtures/dict): 寿司 (kanji form tagged ateji: word-level exempt, like 海老), 昨日 (both kanji jōyō, irregular reading, no tag: like 今日), 鱈 (no grade, no frequency rank, no tag: no learnable kanji, the rule 薔薇 was meant to show) and a note 鱈子 without a dictionary entry (子 learnable, 鱈 not: the mixed case of 林檎). Four deckless new cards in that order (...10, ...20, ...30, ...40); no kanji note exists; the key is absent (= on).",
-    "Step 0 (on): 寿司 alone with front_furigana true (text front 寿司（すし）); 昨, 日, 昨日 with a plain front (kanji_parts: neither reading aligns, used_reading null); 鱈 alone with front_furigana true; 子, 鱈子 with a plain front and no card for 鱈. The fetch mints three kanji notes (昨, 日, 子). until_stop is 7.",
+    "Stand-ins from the fixture dictionary for the cases of ADR-042 (海老, 今日, 薔薇 and 林檎 are not in fixtures/dict): 寿司 (kanji form tagged ateji, both kanji jōyō: word-level tagged, so furigana and its kanji cards, like 海老; ADR-045), 昨日 (both kanji jōyō, irregular reading, no tag: like 今日), 鱈 (no grade, no frequency rank, no tag: no learnable kanji, the rule 薔薇 was meant to show) and a note 鱈子 without a dictionary entry (子 learnable, 鱈 not: the mixed case of 林檎). Four deckless new cards in that order (...10, ...20, ...30, ...40); no kanji note exists; the key is absent (= on).",
+    "Step 0 (on): 寿, 司, 寿司 with front_furigana true (text front 寿司（すし）): the tag gives the furigana and removes no kanji card; 昨, 日, 昨日 with a plain front (kanji_parts: neither reading aligns, used_reading null); 鱈 alone with front_furigana true; 子, 鱈子 with a plain front and no card for 鱈. The fetch mints five kanji notes (寿, 司, 昨, 日, 子). until_stop is 9.",
     "Step 1 switches cards.kanji_exemptions off (the shell mints settings.set as the device, the server as the server device).",
-    "Step 2 (off): every kanji is required and no front has furigana: 寿, 司, 寿司; 昨, 日, 昨日; 鱈, 鱈 (the word); 子, 鱈子 (its 鱈 was taken by the word 鱈, drawn first). The fetch mints 寿, 司 and 鱈. until_stop is 10."
+    "Step 2 (off): every kanji is required and no front has furigana: 寿, 司, 寿司 (the same cards as step 0, now with a plain front); 昨, 日, 昨日; 鱈, 鱈 (the word); 子, 鱈子 (its 鱈 was taken by the word 鱈, drawn first). The fetch mints 鱈 only. until_stop is 10."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -156,26 +156,28 @@
       "expect": {
         "status": 200,
         "body": {
-          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
-          "/items/0/front_furigana": true,
-          "/items/0/text/front": "寿司（すし）",
-          "/items/1/card/note/kanji_literal": "昨",
-          "/items/2/card/note/kanji_literal": "日",
-          "/items/3/card/id": "0193a1b2-0002-7000-8000-000000000020",
-          "/items/3/front_furigana": false,
-          "/items/3/text/front": "昨日",
-          "/items/3/kanji_parts/0/used_reading": null,
-          "/items/3/kanji_parts/1/used_reading": null,
-          "/items/4/card/id": "0193a1b2-0002-7000-8000-000000000030",
-          "/items/4/front_furigana": true,
-          "/items/5/card/note/kanji_literal": "子",
-          "/items/6/card/id": "0193a1b2-0002-7000-8000-000000000040",
-          "/items/6/front_furigana": false,
+          "/items/0/card/note/kanji_literal": "寿",
+          "/items/1/card/note/kanji_literal": "司",
+          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/2/front_furigana": true,
+          "/items/2/text/front": "寿司（すし）",
+          "/items/3/card/note/kanji_literal": "昨",
+          "/items/4/card/note/kanji_literal": "日",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/5/front_furigana": false,
+          "/items/5/text/front": "昨日",
+          "/items/5/kanji_parts/0/used_reading": null,
+          "/items/5/kanji_parts/1/used_reading": null,
+          "/items/6/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/6/front_furigana": true,
+          "/items/7/card/note/kanji_literal": "子",
+          "/items/8/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/8/front_furigana": false,
           "/to_materialize": 0,
-          "/loop/until_stop": 7
+          "/loop/until_stop": 9
         },
         "lengths": {
-          "/items": 7
+          "/items": 9
         }
       }
     },

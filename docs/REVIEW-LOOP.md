@@ -25,7 +25,7 @@ confirmed. (3) Keep going per device, not synced, is confirmed. The normative te
 | new today / new goal | today's `introducedNew` count / `scheduler.new_per_day`. |
 | keep going | per-request flag (as C-26). Lifts review caps and the new goal; nothing else. Lasts one review visit (ADR-039, C2). |
 | until stop | ADR-038. Answers left until the stop screen: ready learning + later today + ready reviews + new cards left to the goal (rule 4 `availableToday`, kanji cards included). Each card once. With keep going: ready learning + later today + backlog + the new batch drawn. |
-| kanji unit | ADR-040. A new word together with the new kanji cards of the kanji it requires, kanji first; one atomic new-card unit of the mix. Required kanji per ADR-042 (`KanjiRequirement`). |
+| kanji unit | ADR-040. A new word together with the new kanji cards of the kanji it requires, kanji first; one atomic new-card unit of the mix. Required kanji per ADR-042 / ADR-045 (`KanjiRequirement`): its learnable kanji, whatever its tags. |
 
 ## 2. Core (contract Kotlin in `core/.../contracts/queue/`, impl `kotobaya.queue.DefaultReviewLoop`)
 ```kotlin
@@ -282,9 +282,9 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   ADR-040 (never before) and no starvation hold as before: units still take every kanji of their word, and a
   kanji left out of a lead comes with the word on a later day. Parity: `queue-kanji-shared-kanji`,
   `queue-kanji-keep-going-open-unit`, `queue-kanji-lead-deck-limit`.
-- **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
-  `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
-  none has a furigana front (`QueueItem.front_furigana`).
+- **ADR-042 / ADR-045 required kanji.** `cards.kanji_exemptions` (default true): a word requires its learnable
+  kanji (jōyō or KANJIDIC top 2500), whatever its tags (C-28e). A word tagged `uk` / `ateji` / `rK` / `oK` /
+  `iK` / `sK`, or one that requires no kanji, has a furigana front (`QueueItem.front_furigana`).
 - **ADR-041** is outside the loop: `Deck.progress`, `QueueItem.kanji_parts`.
 - **Parity (section 9).** New scenarios `queue-until-stop`, `queue-kanji-first-deckless`,
   `queue-kanji-disabled-home-deck`, `queue-kanji-group-not-split`, `queue-kanji-backfill`,

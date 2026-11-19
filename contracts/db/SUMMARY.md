@@ -272,4 +272,8 @@
   `kanji`. Nothing has to be added to the dictionary package.
 - Worth a second look: the rule reads `uk` from the **sense used** (the first sense that applies
   to the displayed form), not from the entry-wide `misc` column. A word whose second meaning is
-  usually written in kana is therefore not exempt.
+  usually written in kana is therefore not tagged.
+- **C-28e (ADR-045).** The tags no longer remove kanji cards: a word always requires its learnable
+  kanji. Tags only decide whether the front shows furigana (tagged, or no learnable kanji).
+  SCHEMA.md 6.5 reworded; still no table, column, op or migration. Words that were tagged get
+  their kanji cards on the next draw or through backfill.

@@ -222,9 +222,10 @@ What was decided:
   it exists. Kanji that are still new although you already study a word with them come first of
   all new cards.
 - **Which kanji count (ADR-042).** One rule (`KanjiRequirement`) decides, per word, which kanji it
-  makes you learn and whether its front shows the reading above the word. Words that Japanese
-  normally writes in kana, or whose kanji are ateji / rare / out-dated / irregular, need no kanji.
-  Otherwise only jōyō kanji and the 2,500 most frequent count. A word that needs none shows furigana.
+  makes you learn and whether its front shows the reading above the word. Only jōyō kanji and the
+  2,500 most frequent count, and they always count (ADR-045, C-28e: also for words that Japanese
+  normally writes in kana, or whose kanji are ateji / rare / out-dated / irregular). Those tagged
+  words, and words that need no kanji, show furigana.
 - **Deck progress and kanji tiles (ADR-041).** Two small calculators: "N of M words learned" for a
   deck, and the per-kanji breakdown of a word with the reading that word uses.
 
@@ -245,7 +246,7 @@ Alternatives rejected:
 
 Three choices most worth a second look:
 1. **A deck's explicit `add_kanji: off` no longer opts out.** ADR-040 says "always". The ways out
-   are deleting or suspending the kanji card, or the ADR-042 exemptions. If you want a per-deck
+   are deleting or suspending the kanji card, or (for non-learnable kanji) the ADR-042 setting. If you want a per-deck
    opt-out back, it should be a new, clearly named deck setting.
 2. **Backfill takes half of the new-card slots (ADR-044, replacing "all of them").** With a
    large imported history, the kanji of words you already study are created and come first, but
@@ -260,9 +261,12 @@ Three choices most worth a second look:
    the first new cards of a day and goes over the goal that once; it was never shown before.
 3. **Real dictionary data may disagree with two examples in ADR-042.** To my knowledge JMdict tags
    林檎 and 薔薇 "usually kana" (neither word is in the test dictionary, so this is unverified here).
-   If so, the word-level rule exempts both (furigana, no kanji cards) and 林檎 gets no card for 林.
-   Verified in the test KANJIDIC: 薔 has a frequency rank (2356), so without that tag 薔薇 would get
-   a card for 薔 and no furigana. The contract follows the rule as written, not the examples.
+   If so, both show furigana. Since ADR-045 (C-28e) the tag no longer removes kanji cards: 林檎
+   gets a card for 林, and 薔薇 one for 薔 (verified in the test KANJIDIC: 薔 has a frequency rank,
+   2356). The contract follows the rule as written, not the examples.
+   C-28e also keeps the field name `KanjiRequirementResult.wordExempt` (and `EXEMPT_FORM_TAGS`)
+   although it now means "word-level tagged, furigana only": renaming would break every caller
+   for no change in behaviour. Rename later if the name misleads.
 
 Also decided, smaller:
 - A kanji card whose own decks are all disabled is still pulled in by its word.

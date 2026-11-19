@@ -119,13 +119,13 @@ public data class QueueCandidate(
     /**
      * ADR-042 (additive): for a vocab note, the kanji this word **requires**:
      * `KanjiRequirement.evaluate(...).learnableKanji` for the note's displayed form (a sub-list of
-     * [expressionKanji], same order; empty for a word-level exempt word and for a word without a
-     * learnable kanji). Only these kanji join the word's group, block it, are minted for it and are
+     * [expressionKanji], same order; empty only for a word without a learnable kanji; ADR-045: a
+     * word-level tagged word requires its learnable kanji like any other). Only these kanji join the word's group, block it, are minted for it and are
      * backfilled because of it (rule 4 "Kanji first"). `null` = the loader does not know (a loader
      * older than ADR-042): the builder then uses [expressionKanji], which is the behaviour with
      * `cards.kanji_exemptions` off. Loaders implementing ADR-042 always pass a list, for every card
      * of the note, in every state. Ignored for non-vocab notes. Example (setting on): 昨日 → `["昨",
-     * "日"]`; 寿司 → `[]`; 鱈子 → `["子"]`.
+     * "日"]`; 寿司 → `["寿", "司"]`; 鱈 → `[]`; 鱈子 → `["子"]`.
      */
     public val requiredKanji: List<String>? = null,
     /**
@@ -619,8 +619,8 @@ public data class ReviewQueue(
  *    source: decks whatever their `add_kanji` says, and the deckless source. [QueueDeck.addKanji],
  *    [QueueInput.decklessAddKanji] and `scheduler.kanji_before_vocab` are not read.
  *    - **Required kanji** `req(X)` of a vocab card or pending entry X: `X.requiredKanji`, or
- *      `X.expressionKanji` when that is null (ADR-042: the loader applies `KanjiRequirement`;
- *      a word-level exempt word and a word without learnable kanji require none). Cards of other
+ *      `X.expressionKanji` when that is null (ADR-042, ADR-045: the loader applies
+ *      `KanjiRequirement`; a word without learnable kanji requires none). Cards of other
  *      base types require none.
  *    - **Started.** A literal L is **started** iff some candidate (after rule 0; eligible or not,
  *      suspended or not, companion or not) of a kanji note with `kanjiLiteral == L` is in a state

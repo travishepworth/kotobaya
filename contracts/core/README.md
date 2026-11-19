@@ -53,7 +53,7 @@ Package prefix `kotobaya.contracts`.
 | `ReviewLogRules` (`replay/ReplayEngine.kt`) | SYNC.md 7.9 (append-only, earliest undo wins) | T203 (device apply path) |
 | `QueueBuilder`, `StudyDay`, `WordStatusRules` (`queue/QueueBuilder.kt`) | SPEC Scheduling › Queue building, sibling burying; ADR-006 (deckless source); SCHEMA 6 settings; `deck` columns and `deck.settings` keys; `word_status.auto_status` | T205 |
 | `CardGenerator` (`cards/CardGenerator.kt`) | SYNC.md 4 (default cards, `card_kinds`, no knowing duplicates); SPEC card kinds table; kanji notes for a word (ADR-040; `add_kanji` deprecated) | T205 (or the note-creation ticket) |
-| `KanjiRequirement` (`cards/KanjiRequirement.kt`) | ADR-042: word-level exemption, learnable kanji, furigana front; SCHEMA.md 6.5 | CORE-28 |
+| `KanjiRequirement` (`cards/KanjiRequirement.kt`) | ADR-042, ADR-045: learnable kanji (always required), word-level tags (furigana only), furigana front; SCHEMA.md 6.5 | CORE-28 |
 | `DeckProgress` (`decks/DeckProgress.kt`) | ADR-041: "N of M words learned"; API `Deck.progress` | CORE-28 |
 | `KanjiParts` (`dict/KanjiParts.kt`) | ADR-041: kanji breakdown of a vocab back, used reading; API `QueueItem.kanji_parts` | CORE-28 |
 | `HotScorer` (`hot/HotScorer.kt`) | SPEC Leeches and hot words | hot-words ticket |
@@ -531,10 +531,15 @@ KDoc examples):
 - `queue/ReviewLoopTest.kt`: `untilStop` for A1 (66), B3 (0), B4 (145), U1 (65, 47 with 12 new
   cards) and its three follow-ups (Again on a review keeps it, Good lowers it, a new card
   answered Good keeps it); equal before and after materialization; `REVIEWING` implies `>= 1`.
-- `cards/KanjiRequirementTest.kt`: every worked example of the KDoc, on and off; each exempt tag
-  alone; `uk` on a later sense only → not exempt; `uk` on the first sense that applies to the
-  form; grade 8 / 9 / 10; rank 2500 / 2501; a kanji without facts; kana-only; `exemptionsEnabled`
-  for null, `true`, `false`, `0`, `"false"`.
+- `cards/KanjiRequirementTest.kt` (ADR-045, C-28e): every worked example of the KDoc, on and off,
+  as the full triple (海老, 寿司, 珈琲, 林檎, お化け, 彼, 今日, 昨日, 鱈, 鱈子, 薔薇 tagged and
+  untagged); each word-level tag alone on a word with learnable kanji → `wordExempt`,
+  `frontFurigana` **and the learnable kanji still in `learnableKanji`**; `learnableKanji` equal
+  with and without tags for the same form and facts; a tagged word without learnable kanji →
+  `[]`, furigana; `uk` on a later sense only → not tagged; `uk` on the first sense that applies
+  to the form; a tag on a kana-only expression → `(false, [], false)`; wrong-case and unknown
+  tags ignored; grade 8 / 9 / 10; rank 2500 / 2501; a kanji without facts; kana-only;
+  `exemptionsEnabled` for null, `true`, `false`, `0`, `"false"`.
 - `decks/DeckProgressTest.kt`: the KDoc example; every edge case listed there; `percent` for
   0/0, 1/3, 2/3, 3/3, 199/200.
 - `dict/KanjiPartsTest.kt`: every `usedReading` example of the KDoc (大学, 学校, 食べる, 誕生日, 今日 →
