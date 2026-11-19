@@ -456,7 +456,10 @@ and B through the device's op path, `kanji_parts` by `KanjiParts.build` and `fro
 KDoc examples):
 - `queue/QueueKanjiFirstTest.kt`: every rule-4 example (withheld and after minting; lead at 39/40;
   no starvation over three days with `newPerDay` 2; buried kanji holds the word and the source
-  goes on; backfill with minting, order by oldest word, same order after minting); a lead stops
+  goes on: `[たべる, 校]`, the next day `[学, 学校]` (C-28c); the three "deck limit" variants of
+  the C-28c example (`newPerDay` 1 → the kanji alone, `[]` after its answer, the word the next
+  day; `newPerDay` 2 → whole; kanji note deckless → whole) and a deck with `newPerDay` 1 whose
+  word has two kanji homed in it (one kanji today, one tomorrow, the word on day 3); backfill with minting, order by oldest word, same order after minting); a lead stops
   its source but not the others; a lead of an entry leaves the entry out of `toMaterialize`; the
   goal is never overshot by a normal build whose kanji parts all have size 1 (property); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
   same; the 40-card budget includes kanji; a kanji card whose decks are all disabled joins its
@@ -485,8 +488,15 @@ KDoc examples):
   build's tail; in a normal build `bToday + b <= share` after the share steps unless a single
   part is larger than the share.
 - `queue/QueueMixUnitsTest.kt`: the rule-5 unit example (`R1 学 校 学校 R2 R3 たべる R4`) and its
-  rebuild; for random inputs with units, answering the head and rebuilding yields the previous
-  build's tail (extends M4); no review between the cards of a unit; a due learning card may come
+  rebuild; the two C-28c examples (`日 家 本 語 日本語` and its rebuilds; `校 学校` with 学 introduced
+  last: the word is never emitted before a kanji it requires); **rebuild = tail** (C-28c,
+  replaces the narrower M4 extension): for random inputs with reviews, deckless words, decks
+  with per-deck limits each in a tier of its own, deck-homed and deckless kanji cards shared
+  between words, introduced words (backfill) and answers already given today, in the normal
+  and the keep-going build, answering the head and rebuilding yields the previous build's tail;
+  no exclusion for backfill kanji that a new word also requires or for kanji homed in a capped
+  deck (the two cases the CORE-28 attempt 1 properties left out); in every build no vocab item
+  precedes a NEW kanji item of a kanji it requires; no review between the cards of a unit; a due learning card may come
   between and the group continues after it; the open group is not pulled after a review was
   answered (`s > 0`), after a day rollover, or when the last introduced card is a vocab card;
   keep going: open group, then reviews, then the rest.

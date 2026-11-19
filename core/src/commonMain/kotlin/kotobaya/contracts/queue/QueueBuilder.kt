@@ -558,14 +558,28 @@ public data class ReviewQueue(
  *      behind its kanji. Suspended kanji cards and retired cards never hold a word.
  *    - **Fits or leads (ADR-043; replaces "atomic or nothing").** A unit that is not held is
  *      considered iff its vocab card or entry fits the drawing source's per-deck remaining
- *      (`>= 1`; the deckless source has no limit) and `drawn < batch`. Then:
- *      - **Whole**: if `drawn + g <= dayRemaining` (keep going: always), the unit is drawn:
+ *      (`>= 1`; the deckless source has no limit) and `drawn < batch`.
+ *      **Deck cost (C-28c).** When the drawing source is a deck D with a limit (normal build,
+ *      `D.newPerDay != null`), the **deck cost** of a kanji part is the number of its cards
+ *      whose home new-source is D itself (0 for cards homed elsewhere, deckless or without a
+ *      home, and for cards to mint: minted notes are deckless), and the deck cost of the unit is
+ *      `dc = 1 + Σ deck cost(parts)`: the word plus the kanji that D itself supplies. A part
+ *      **fits the deck** iff its deck cost is 0, or `<=` D's per-deck remaining at that moment,
+ *      or it is **the deck's first new card of the day** (`D.newPerDay >= 1`, no
+ *      `introducedNew` review of today is attributed to D and nothing was taken from D in this
+ *      build; the per-deck mirror of ADR-044's first part of the day). The deckless source, a
+ *      deck without a limit and every source of a keep-going build have no deck test: `dc`
+ *      always fits. Then:
+ *      - **Whole**: if `drawn + g <= dayRemaining` (keep going: always) **and** `dc <=` D's
+ *        per-deck remaining, the unit is drawn:
  *        V and `K` are taken, the literals of `M` are claimed (appended to
- *        [ReviewQueue.kanjiToMaterialize]), `drawn += g`.
+ *        [ReviewQueue.kanjiToMaterialize]), `drawn += g`, D's remaining `-= dc`.
  *      - **Lead**: otherwise its kanji parts are taken in order while the part **fits the day**
  *        (budget paragraph above: `drawn + size(part) <= dayRemaining`, or the first new card of
- *        the day), stopping at the first part that does not fit (none only when something was
- *        already introduced today or drawn in this build). The taken
+ *        the day) **and fits the deck** (above; each taken part lowers D's remaining by its
+ *        deck cost), stopping at the first part that fails either test (none only when
+ *        something was already introduced today or drawn in this build, or the deck has no
+ *        room for its own first part). The taken
  *        `kc` cards are items of this build, the taken missing literals are claimed; V is **not**
  *        taken (an entry is not put in `toMaterialize`) and does not count against the per-deck
  *        limit. The **source then stops** for this build: it takes no further turn, so nothing
@@ -575,6 +589,11 @@ public data class ReviewQueue(
  *      what is left (or than `newPerDay` itself) is not starved: its kanji are introduced over
  *      as many days as needed and the word follows, with its last kanji, on the first day the
  *      rest fits. Kanji introduced on an earlier day are started and no longer part of the unit.
+ *      The same holds for a deck's own limit: **a word is drawn only when the deck's limit has
+ *      room for it and for every kanji card of its unit that is homed in that deck**, so a
+ *      build never shows `[学, word]` and then, 学 answered and the deck's limit used up by it,
+ *      withdraws the word (before C-28c the unit was drawn whenever the deck had room for the
+ *      word alone, and the rebuild after the kanji's answer dropped the word).
  *    - **Withheld.** If V has any element of `missingKanji` in `req(V)` without a candidate
  *      kanji note (claimed by this unit or by an earlier one), a whole unit is drawn and counted
  *      but **none of its cards is an item** of this build (as for an entry): the word must not be
@@ -584,7 +603,9 @@ public data class ReviewQueue(
  *    - **Attribution.** V (or E) counts 1 against the drawing source's per-deck limit. Each card
  *      of `K` and each card to be minted counts against the budget only and, when the kanji card
  *      has a home new-source that is a deck, against **that** deck's daily count, never the
- *      drawing source's; a kanji card is never skipped because its home deck's limit is used up
+ *      drawing source's (when that deck **is** the drawing deck the two coincide: this is the
+ *      "deck cost" above, tested before the draw); a kanji card homed in **another** deck is
+ *      never skipped because its home deck's limit is used up
  *      (that deck's remaining is clamped to 0 for its own later turns). [QueueInput.today] counts
  *      an answered kanji card the same way, so a rebuild neither frees the drawing deck's limit
  *      nor double-counts.
@@ -684,7 +705,10 @@ public data class ReviewQueue(
  *    today or drawn in this build) still stops its source; a first part larger than `newPerDay`
  *    is drawn as the day's first new cards (ADR-044); `newPerDay` 1 → share 1: backfill takes
  *    the whole goal until it is done (ADR-044 "at least 1"); `newPerDay` 3 → share 1;
- *    a held word does not stop its source; a kanji card buried by the user whose word is
+ *    a held word does not stop its source, and a NEW kanji of a held word that is not itself
+ *    buried keeps its own turn; a deck with remaining 1 whose next word has a kanji card homed
+ *    in the same deck leads with that kanji (C-28c "Deck cost"); a deck with remaining 0 draws
+ *    nothing, not even a lead; a kanji card buried by the user whose word is
  *    then deleted is an ordinary card again when the bury ends.
  *    Example (goal 20, deckless NEW cards in creation order: たべる (no kanji), 学校, 先生; kanji
  *    notes: 学 NEW, 先 REVIEW; none for 校, 生): units `[たべる]`, `[学, (校), 学校]` withheld (g = 3,
@@ -696,8 +720,22 @@ public data class ReviewQueue(
  *    Example (no starvation; `newPerDay` 2, deckless 日本語 then たべる, kanji notes 日, 本, 語 NEW):
  *    day 1 → `[日, 本]` (たべる is not drawn: the source stays at 日本語); day 2, 日 and 本 started →
  *    `[語, 日本語]`; day 3 → `[たべる]`.
- *    Example (buried; deckless 学校 then たべる, kanji 学 NEW and buried until tomorrow, 校 NEW) →
- *    N = `[たべる]`: 学校 is held, 校 is not drawn through it; tomorrow `[学, 校, 学校]`.
+ *    Example (buried; deckless 学校 then たべる, then the kanji notes 学 and 校 (created after the
+ *    words); 学 NEW and buried until tomorrow, 校 NEW) → N = `[たべる, 校]`: 学校 is held, so 校 is
+ *    not drawn through it (not as a part of its unit, not ahead of たべる); the source goes on to
+ *    たべる and then reaches 校, which is an ordinary deckless card with a turn of its own ("Own
+ *    turn": the hold reserves nothing). Tomorrow: `[学, 学校]` if 校 was answered today (it is
+ *    started), else `[学, 校, 学校]`. Either way the word comes after both kanji (C-28c: the
+ *    example said `[たべる]`, which contradicted "Own turn"; the rule stands).
+ *    Example (deck limit, C-28c; deck "Core" with `newPerDay` 1 holds, in position order, the
+ *    word 本, the kanji note 本 (NEW) and うっかり; goal 20, nothing introduced today): the unit
+ *    `[本(kanji), 本(word)]` has deck cost 2 > 1 → it leads with the kanji (deck cost 1, fits)
+ *    and the deck stops → N = `[本(kanji)]`, `availableToday = 1`. After it is answered the
+ *    deck's remaining is 0 → N = `[]`: nothing was promised and withdrawn. The next day the
+ *    kanji is started → `[本(word)]`; うっかり the day after. With `newPerDay` 2: `[本(kanji),
+ *    本(word)]` whole (deck cost 2), and after the kanji is answered `[本(word)]`. With the kanji
+ *    note deckless instead (limit 1): deck cost 1 → `[本(kanji), 本(word)]` whole, and after the
+ *    kanji is answered (no review is attributed to "Core") `[本(word)]`.
  *    Example (backfill; goal 20, so share 10): 先生 and 学校 are in REVIEW (先生 the older note), kanji notes 先 and 生 are
  *    NEW, 学 and 校 have no note, a new word たべる waits → parts 先, 生, (学), (校): `items = [先, 生,
  *    たべる]`, `kanjiToMaterialize = [学, 校]`, `drawn = 5`; after minting N = `[先, 生, 学, 校, たべる]`.
@@ -734,6 +772,10 @@ public data class ReviewQueue(
  *    leads with its kanji and stops its source instead of being skipped (ADR-043). ADR-044
  *    (against the ADR-043 text): backfill no longer takes the whole goal ahead of the sources
  *    (half share, remainder step), and a part may overshoot as the day's first new card.
+ *    C-28c (against the C-28b text): a unit's kanji cards homed in the drawing deck are tested
+ *    against that deck's limit before the draw ("Deck cost": whole or lead); rule 5 "Open group
+ *    first" only promotes the **first** unit left in `N` and never reorders `N`; the buried
+ *    example is `[たべる, 校]`.
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
  *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
  *    is a kanji group or a single card; withheld units and entries have no items and are left
@@ -753,16 +795,29 @@ public data class ReviewQueue(
  *      after rule 0. `s` = "reviews answered since the last new card".
  *      `last` = the card of today's `introducedNew` review with the greatest `(reviewedAt,
  *      cardId)`, or none (ADR-040).
- *    - **Open group first (ADR-040).** Whenever `s == 0` and `last` is a card of a kanji note
- *      with literal L and some unit left in `N` was built for a word W (the vocab card or entry
- *      of the unit, whether the unit is whole or a lead) with `L in req(W)`: the
- *      first such unit in draw order is emitted **now**, all its cards in a row, before any
+ *    - **Open group first (ADR-040; narrowed by C-28c).** Whenever `s == 0` and `last` is a
+ *      card of a kanji note with literal L and the **first unit left in `N`** (the next one in
+ *      draw order, nothing else) was built for a word W (the vocab card or entry
+ *      of the unit, whether the unit is whole or a lead) with `L in req(W)`: that unit
+ *      is emitted **now**, all its cards in a row, before any
  *      review; then `gRem -= its size` and `last` = its last card (`s` stays 0). This is what
  *      keeps a group together across rebuilds: after the first kanji of `[学, 校, 学校]` is
  *      answered, the rebuild sees `last = 学` and emits `[校, 学校]` next instead of a review. It
  *      applies inside one build too (a kanji card emitted alone, by backfill or on its own turn,
- *      is followed at once by the first waiting word that requires it), so one build and a
- *      rebuild after every answer agree.
+ *      is followed without a review in between by the next unit if that unit's word requires
+ *      it), so one build and a rebuild after every answer agree.
+ *      **`N` is never reordered (C-28c).** Rule 5 emits the units of `N` in rule 4 draw order,
+ *      always; the open group only decides that the next unit comes before the next review. A
+ *      unit further down `N` whose word requires L is **not** pulled forward over other units
+ *      (before C-28c "the first such unit in draw order" was). Two reasons, both data-order
+ *      bugs: (1) the pulled word could pass a kanji it requires that sits earlier in `N` as a
+ *      unit of its own (drawn by backfill or on a deck's own turn), i.e. be served before its
+ *      kanji; in draw order that cannot happen, because a unit takes every not yet taken
+ *      eligible kanji card of its word, so each required kanji is either inside the unit or in
+ *      an earlier one. (2) Serving in another order than the draw changes which backfill kanji
+ *      are answered first, so `bToday` after an answer no longer equals `b` at the same point
+ *      of the draw and the rebuild's share step refuses a part the previous build had served
+ *      next (example below).
  *    - Otherwise, while both `R` and `N` have something left: the next item is the next **unit**
  *      of `N`, all its cards in a row, iff `s * gRem >= rRem` (64-bit), then `s = 0`,
  *      `gRem -= its size`, `last` = its last card; else the next **review**, then
@@ -778,7 +833,18 @@ public data class ReviewQueue(
  *    items are answered in order (a review answer adds a later `countsAsReview` row and removes a
  *    ready review; a new answer adds a later `introducedNew` row and uses one of
  *    `availableToday`; a learning answer changes none of the three), so the order of one build
- *    equals the order produced by rebuilding after every answer; there is no session state. The
+ *    equals the order produced by rebuilding after every answer; there is no session state.
+ *    **Rebuild = tail (normative, C-28c).** With nothing but answers changing the data (no
+ *    learning step falling due, no sync, no day change), answering the first item of a build
+ *    and rebuilding gives exactly the remaining items of that build, in the same order, plus
+ *    whatever the batch had cut off: no item moves and none disappears, in the normal and in
+ *    the keep-going build, with units, leads, backfill and per-deck limits. (Outside this
+ *    guarantee, known and accepted: a build with pending materialization, whose withheld
+ *    units become items once minted; two or more sources in one tier, which restart their
+ *    round-robin at every build, as before ADR-040; and a kanji part of several cards, which
+ *    needs a kanji note type with several NEW kinds and `burySiblings` false and is dissolved
+ *    once its first card is answered. Tests of the property use at most one source per tier,
+ *    one-card parts and no missing kanji.) The
  *    mix does not depend on the batch, on input order or on the caller. Between two new units there
  *    are at most `ceil(rRem / gRem)` reviews and never two units in a row while a review is left,
  *    except through the open-group rule. `toMaterialize` entries and withheld units are not items
@@ -790,7 +856,21 @@ public data class ReviewQueue(
  *    `[学, 校, 学校]`, `[たべる]`): `R1 学 校 学校 R2 R3 たべる R4` (`0*4 >= 4` no → R1; `1*4 >= 3` → the
  *    unit, `s = 0`, `gRem = 1`; `0*1 >= 3` no → R2; `1*1 >= 2` no → R3; `2*1 >= 1` → たべる; R4).
  *    After R1 and 学 are answered the rebuild gives `校 学校 R2 R3 たべる R4` (open group first:
- *    `last = 学`, `s = 0`; `availableToday` 3 → `gRem = 1` after the group). Example (9 ready, 28 available): `R N R N … R N` nine times, then the
+ *    `last = 学`, `s = 0`; `availableToday` 3 → `gRem = 1` after the group).
+ *    Example (C-28c, `N` is not reordered; goal 5, so share 2; no review due; the words 日, 家
+ *    and 本 are in REVIEW, created in that order; kanji notes 日, 家, 本, 語 are NEW and deckless,
+ *    created after the deckless NEW word 日本語): backfill parts 日, 家, 本; the share step draws 日,
+ *    家 and stops at 本; the deckless turn draws the unit `[本, 語, 日本語]` (`drawn = 5`, `b = 3`)
+ *    → N = `[日], [家], [本, 語, 日本語]` and the queue is `日 家 本 語 日本語`: after 日, `last = 日`
+ *    and 日本語 requires 日, but its unit is not the first one left, so 家 comes next (before
+ *    C-28c: `日 本 語 日本語 家`; once 日 and 本 were answered, `bToday` was 2 and the rebuild's share
+ *    step refused 家, which the first build had admitted at `b = 1`: 家 fell to the remainder
+ *    step, behind every source card). After 日 and 家 are answered
+ *    (`bToday = 2`) the rebuild gives `本 語 日本語`; after 本 (`bToday = 3`) `語 日本語`: always the
+ *    tail. Example (C-28c, kanji first; "Kanji" deck at priority 0 holding 校, word deck at
+ *    priority 1 holding 学校, 学 was the last card introduced today, `s = 0`): N = `[校], [学校]`
+ *    → `校 学校` (after 校, `last = 校` and the first unit left is 学校's: no review between).
+ *    Example (9 ready, 28 available): `R N R N … R N` nine times, then the
  *    remaining 19 new cards. Example (cap 2, goal 1, 5 due, 3 new): `R1 N1 R2`.
  *    Loader note: with pending entries, `availableToday` is computed over the entries the loader
  *    passed (the C-27 window), so it can be a lower bound when a deck has more entries than the
@@ -816,8 +896,9 @@ public data class ReviewQueue(
  *      **Atomic** becomes: a unit is drawn iff `drawn < batch`; it may overshoot the batch
  *      (batch 1 and a word with two new kanji gives 3 cards), so a large group never starves.
  *    - Rule 5: **no mix**. The order is due learning, then the open group if there is one (rule
- *      5 "Open group first", with the same `s == 0` test: only right after a new card), then all of `R` (rule 3 order,
- *      most overdue first), then the rest of `N` (rule 4 order), then learn-ahead. Reviews left over past the caps
+ *      5 "Open group first", with the same `s == 0` test: only right after a new card; it is the first unit of `N`
+ *      or nothing, C-28c), then all of `R` (rule 3 order,
+ *      most overdue first), then the rest of `N` (rule 4 order, never reordered), then learn-ahead. Reviews left over past the caps
  *      are backlog and are cleared before more new cards; with `reviewsUnlimited` (no backlog) a
  *      review that becomes due is simply next, then the new cards continue. The proportional mix
  *      belongs to the normal build only (user decision 2026-11-17).

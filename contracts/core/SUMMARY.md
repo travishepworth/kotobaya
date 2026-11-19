@@ -274,3 +274,29 @@ Also decided, smaller:
 - Deck progress counts a word as learned when one of its cards is in review, or its status is
   known. Blacklisted and ignored words are left out of both numbers. Smart decks have no progress.
 - The percent is rounded down, so 100% means every word.
+
+## C-28c changes: four queue-order cases from the core implementation
+
+The implementer found four places where the kanji-first rules disagreed with each other.
+
+Decided:
+- **New cards are shown in the order they were picked.** A word is no longer moved up the queue
+  because one of its kanji was just shown. It still follows its own kanji without a review in
+  between when it is next in line. Moving it up could put a word ahead of one of its kanji, and
+  made the queue change order after an answer.
+- **A deck's daily limit counts the word and its kanji from that deck together.** With a limit of
+  1, the kanji is shown today and the word tomorrow. Before, the queue listed kanji and word,
+  then dropped the word once the kanji was answered.
+- **A buried kanji holds only its word.** The word's other kanji can still be shown that day.
+- Answering the first card and rebuilding always gives the rest of the same queue. This is now a
+  written rule with tests.
+
+Rejected: letting the word through over the deck limit after its kanji (one kanji could then
+carry many words past the limit); keeping the move-up and correcting the half-share count
+(cannot be told apart from stored data alone).
+
+Worth a second look:
+1. A backfill kanji and a new word that needs it can now be several new cards apart.
+2. A deck limited to 1 a day teaches a kanji one day and its word the next.
+3. Two decks of equal priority: the one with the smaller id is always drawn first after each
+   answer. This was already so and is unchanged.

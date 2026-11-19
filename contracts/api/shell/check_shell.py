@@ -81,6 +81,8 @@ MANDATORY = [
     "queue.kanji_group_not_split", "queue.kanji_backfill", "queue.kanji_partial_unit", "queue.kanji_exemptions_on", "queue.kanji_exemptions_off",
     # C-28b: ADR-044 (backfill half share)
     "queue.kanji_backfill_share",
+    # C-28c: draw order is serve order (rebuild = tail), per-deck limit of a unit
+    "queue.kanji_order_stable", "queue.kanji_deck_limit",
 ]
 RETIRED = ["queue.session_cap_more_available"]  # ADR-037: no session cap
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.

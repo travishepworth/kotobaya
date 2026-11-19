@@ -1,0 +1,465 @@
+{
+  "id": "queue-kanji-order-stable",
+  "title": "The new cards are served in draw order: a word's unit is not pulled forward over other new cards, and each rebuild after an answer is the tail of the build before (C-28c)",
+  "covers": [
+    "queue.kanji_order_stable"
+  ],
+  "narrative": [
+    "new_per_day is 5, so the backfill share is floor(5 / 2) = 2. Three single-kanji words were graduated two days ago with Easy (review state, not due), created in this order: 日 (card ...10), 家 (card ...20), 本 (card ...30). The new deckless word 日本語 (card ...40) was created before the kanji notes 日 (card ...50), 家 (card ...60), 本 (card ...70) and 語 (card ...80), all new and deckless. 日, 家 and 本 are backfill kanji (oldest word first); 語 is not.",
+    "Step 0: the share step draws 日 and 家 (2 of 2) and stops at 本. The deckless turn draws the unit of 日本語: 日 is already taken, so the unit is [本, 語, 日本語] (5 new cards = the goal). The order is the draw order: 日, 家, 本, 語, 日本語. After 日 the word 日本語 requires the card just introduced, but its unit is not the next one, so it is NOT pulled ahead of 家 (QueueBuilder rule 5, 'N is never reordered'). until_stop is 5.",
+    "Steps 1-2 answer 日 and 家 Easy. Step 3: both are today's backfill (their words were introduced on an earlier day), the share is used up, and the rebuild is the tail of step 0: 本, 語, 日本語. until_stop is 3.",
+    "Step 4 answers 本 Easy. Step 5: 語, 日本語 (the open group: the last card introduced is a kanji the next unit's word requires). until_stop is 2."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1191730,
+    1464530,
+    1522150,
+    2083110
+  ],
+  "settings": {
+    "scheduler.new_per_day": 5
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195500-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 2083110
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195500-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000003",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee1958e8-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1794996001000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000004",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195cd0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1191730
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000005",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195cd0-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000006",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee1960b8-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1794996003000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000007",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee1964a0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1522150
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000008",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee1964a0-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000009",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee196888-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000030",
+          "reviewed_at": 1794996005000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000a",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e80-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 5
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000b",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000004",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1464530
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000c",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000040",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000040",
+          "note_id": "0193a1b2-0001-7000-8000-000000000004",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000d",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000005",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000005",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "日"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000e",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000050",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000050",
+          "note_id": "0193a1b2-0001-7000-8000-000000000005",
+          "kind": "keyword"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-00000000000f",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000006",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000006",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "家"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000010",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000060",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000060",
+          "note_id": "0193a1b2-0001-7000-8000-000000000006",
+          "kind": "keyword"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000011",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000007",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000007",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "本"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000012",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000070",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000070",
+          "note_id": "0193a1b2-0001-7000-8000-000000000007",
+          "kind": "keyword"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000013",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000008",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e85-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000008",
+          "note_type_id": "00000000-0000-7000-8000-000000000102",
+          "kanji_literal": "語"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7039-8000-000000000014",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000080",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e85-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000080",
+          "note_id": "0193a1b2-0001-7000-8000-000000000008",
+          "kind": "keyword"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000050",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000060",
+          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000070",
+          "/items/3/card/id": "0193a1b2-0002-7000-8000-000000000080",
+          "/items/4/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/to_materialize": 0,
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 5,
+          "/loop/new": {
+            "today": 0,
+            "goal": 5,
+            "available": true
+          }
+        },
+        "lengths": {
+          "/items": 5
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000050",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000060",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000070",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000080",
+          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 3,
+          "/loop/new": {
+            "today": 2,
+            "goal": 5,
+            "available": true
+          }
+        },
+        "lengths": {
+          "/items": 3
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000070",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000080",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/loop/phase": "reviewing",
+          "/loop/until_stop": 2,
+          "/loop/new/today": 3
+        },
+        "lengths": {
+          "/items": 2
+        }
+      }
+    }
+  ]
+}

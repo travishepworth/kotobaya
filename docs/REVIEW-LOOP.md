@@ -261,6 +261,13 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   as the first new card of a day even if it is larger than the goal, so a lead never takes zero parts on a
   fresh day. The loop numbers are computed as before (`availableToday`, `until_stop`); goal 4, three backfill
   kanji, two new words -> `until_stop` 4, order `日 本 うっかり Ｔシャツ`, `語` the next day.
+- **C-28c (CORE-28 change request, four cases).** (1, 3) Rule 5 never reorders the new units: they are served
+  in rule 4 draw order, and "open group first" only puts the *next* unit before the next review; a word further
+  down is no longer pulled forward (it could pass a kanji it requires, and it made the half-share count differ
+  between a build and its rebuild). (2) A held word's other kanji keep their own turn: the buried example is
+  `[たべる, 校]`. (4) A deck's limit is tested for the word plus the unit's kanji cards homed in that deck; if
+  that does not fit, the kanji lead and the deck stops, so a word is never shown and then withdrawn.
+  "Rebuild = tail" is now normative (rule 5). Parity: `queue-kanji-order-stable`, `queue-kanji-deck-limit`.
 - **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
   `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
   none has a furigana front (`QueueItem.front_furigana`).
