@@ -588,6 +588,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -736,6 +742,12 @@
           "front" : "おろおろ",
           "reading" : "おろおろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おろおろ",
+          "voice" : "3"
         }
       } ],
       "loop" : {

@@ -111,7 +111,8 @@
           "front" : "先",
           "reading" : "セン、さき、ま.ず",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -211,7 +212,8 @@
           "front" : "生",
           "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -299,7 +301,8 @@
           "front" : "学",
           "reading" : "ガク、まな.ぶ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -387,7 +390,8 @@
           "front" : "校",
           "reading" : "コウ、キョウ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -504,6 +508,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -707,7 +717,8 @@
           "front" : "生",
           "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -795,7 +806,8 @@
           "front" : "学",
           "reading" : "ガク、まな.ぶ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -883,7 +895,8 @@
           "front" : "校",
           "reading" : "コウ、キョウ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1000,6 +1013,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       } ],
       "loop" : {

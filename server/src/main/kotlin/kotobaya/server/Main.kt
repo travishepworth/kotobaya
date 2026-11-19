@@ -79,6 +79,7 @@ fun main(args: Array<String>) {
     app.deckPublish?.start(scope)
     app.fsrsPublish.start(scope)
     app.confusables?.start(scope)
+    app.wordAudioSweep?.start(scope)
     kotobaya.push.startNtfySink(scope, app.jobs.hub, kotobaya.push.PushTopics.fromDb(db))
     Runtime.getRuntime().addShutdownHook(Thread { app.jobs.close(); scope.cancel() })
     embeddedServer(Netty, configure = { connector { port = config.port; host = "0.0.0.0" }; configureRequestLimits() }) { kotobayaModule(app.deps) }.start(wait = false)
@@ -106,6 +107,8 @@ class ComposedApp(
     val fsrsPublish: kotobaya.optimizer.FsrsParamsPublishRunner,
     /** The `deck-publish` runner (JLPT-1b, VOCAB_LISTS.md 5.2): installs list-deck archives; null without a blob store. */
     val deckPublish: kotobaya.decks.DeckPublishRunner? = null,
+    /** The word-audio sweep (ADR-047, SCHEMA.md 6.6 "Server" rule 2): pre-generates speech for cards due soon. */
+    val wordAudioSweep: kotobaya.tts.WordAudioSweep? = null,
 )
 
 /**
@@ -164,7 +167,8 @@ fun composeApp(
     return ComposedApp(deps, jobs, imports, blobStore?.let { MediaPublishRunner(db, sync.opApply, it) }, ConfusableSuggester(db, sync.opApply),
         seedGrammar = { kotobaya.grammar.GrammarSeeder.seed(sync.opApply) },
         fsrsPublish = kotobaya.optimizer.FsrsParamsPublishRunner(db, sync.opApply),
-        deckPublish = blobStore?.let { kotobaya.decks.DeckPublishRunner(db, sync.opApply, it) })
+        deckPublish = blobStore?.let { kotobaya.decks.DeckPublishRunner(db, sync.opApply, it) },
+        wordAudioSweep = kotobaya.tts.WordAudioSweep(db, sync.opApply.config.clock))
 }
 
 private fun s3Client(config: Config): io.minio.MinioClient = io.minio.MinioClient.builder()

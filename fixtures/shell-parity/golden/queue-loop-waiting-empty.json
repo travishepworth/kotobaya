@@ -220,6 +220,12 @@
           "front" : "ＣＤプレーヤー",
           "reading" : "シーディープレーヤー",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "シーディープレーヤー",
+          "voice" : "3"
         }
       } ],
       "loop" : {

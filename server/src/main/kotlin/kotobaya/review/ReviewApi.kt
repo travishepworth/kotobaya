@@ -1,6 +1,8 @@
 package kotobaya.review
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import kotobaya.tts.enqueueServedAudio
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import kotobaya.contracts.fsrs.CardState
@@ -88,6 +90,8 @@ internal class ReviewApi(
             if (mayMaterialize && built.queue.pendingMaterialization() > 0) null else render(dsl, req, built)
         }
         if (first != null) {
+            @Suppress("UNCHECKED_CAST")
+            enqueueServedAudio(db, first["items"] as List<JsonNode>)
             call.respondJson(first)
             return
         }
@@ -108,6 +112,7 @@ internal class ReviewApi(
             }
             Reply(HttpStatusCode.OK, json.valueToTree(render(tx.dsl, req, built)), tx.lastSeq)
         }
+        reply.body?.get("items")?.let { enqueueServedAudio(db, it) }
         call.send(reply)
     }
 

@@ -128,6 +128,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -260,6 +266,12 @@
           "front" : "うとうと",
           "reading" : "うとうと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うとうと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -399,6 +411,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -560,6 +578,12 @@
           "front" : "うろうろ",
           "reading" : "うろうろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うろうろ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -677,6 +701,12 @@
           "front" : "うんざり",
           "reading" : "うんざり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うんざり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -802,6 +832,12 @@
           "front" : "あの",
           "reading" : "あの",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あの",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -962,6 +998,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1110,6 +1152,12 @@
           "front" : "おろおろ",
           "reading" : "おろおろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おろおろ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1228,6 +1276,12 @@
           "front" : "あべこべ",
           "reading" : "あべこべ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あべこべ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1355,6 +1409,12 @@
           "front" : "あやふや",
           "reading" : "あやふや",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あやふや",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -1519,6 +1579,12 @@
           "front" : "ＣＤプレーヤー",
           "reading" : "シーディープレーヤー",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "シーディープレーヤー",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1636,6 +1702,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1768,6 +1840,12 @@
           "front" : "うとうと",
           "reading" : "うとうと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うとうと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1907,6 +1985,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2068,6 +2152,12 @@
           "front" : "うろうろ",
           "reading" : "うろうろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うろうろ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2185,6 +2275,12 @@
           "front" : "うんざり",
           "reading" : "うんざり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うんざり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2310,6 +2406,12 @@
           "front" : "あの",
           "reading" : "あの",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あの",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2470,6 +2572,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2618,6 +2726,12 @@
           "front" : "おろおろ",
           "reading" : "おろおろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おろおろ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -2736,6 +2850,12 @@
           "front" : "あべこべ",
           "reading" : "あべこべ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あべこべ",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -2900,6 +3020,12 @@
           "front" : "ＣＤプレーヤー",
           "reading" : "シーディープレーヤー",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "シーディープレーヤー",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3013,6 +3139,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3130,6 +3262,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3262,6 +3400,12 @@
           "front" : "うとうと",
           "reading" : "うとうと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うとうと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3401,6 +3545,12 @@
           "front" : "あっさり",
           "reading" : "あっさり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3562,6 +3712,12 @@
           "front" : "うろうろ",
           "reading" : "うろうろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うろうろ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3679,6 +3835,12 @@
           "front" : "うんざり",
           "reading" : "うんざり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うんざり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3804,6 +3966,12 @@
           "front" : "あの",
           "reading" : "あの",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あの",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -3964,6 +4132,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -4112,6 +4286,12 @@
           "front" : "おろおろ",
           "reading" : "おろおろ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おろおろ",
+          "voice" : "3"
         }
       } ],
       "loop" : {

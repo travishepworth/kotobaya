@@ -130,6 +130,12 @@
           "front" : "イタリア",
           "reading" : "イタリア",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "イタリア",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -247,6 +253,12 @@
           "front" : "おにぎり",
           "reading" : "おにぎり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おにぎり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -341,7 +353,8 @@
           "front" : "金",
           "reading" : "キン、コン、ゴン、かね、かな-、-がね",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -429,7 +442,8 @@
           "front" : "糸",
           "reading" : "シ、いと",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -569,6 +583,12 @@
           "front" : "金糸雀（カナリア）",
           "reading" : "カナリア",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "カナリア",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -698,6 +718,12 @@
           "front" : "鯛（タイ）",
           "reading" : "タイ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "タイ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -786,7 +812,8 @@
           "front" : "炒",
           "reading" : "ソウ、ショウ、い.る、いた.める",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -924,6 +951,12 @@
           "front" : "炒る",
           "reading" : "いる",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "いる",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -1099,6 +1132,12 @@
           "front" : "イタリア",
           "reading" : "イタリア",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "イタリア",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1216,6 +1255,12 @@
           "front" : "おにぎり",
           "reading" : "おにぎり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "おにぎり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1310,7 +1355,8 @@
           "front" : "金",
           "reading" : "キン、コン、ゴン、かね、かな-、-がね",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1398,7 +1444,8 @@
           "front" : "糸",
           "reading" : "シ、いと",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1486,7 +1533,8 @@
           "front" : "雀",
           "reading" : "ジャク、ジャン、サク、シャク、すずめ",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1626,6 +1674,12 @@
           "front" : "金糸雀",
           "reading" : "カナリア",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "カナリア",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1714,7 +1768,8 @@
           "front" : "鯛",
           "reading" : "チョウ、たい",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -1843,6 +1898,12 @@
           "front" : "鯛",
           "reading" : "タイ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "タイ",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -1931,7 +1992,8 @@
           "front" : "炒",
           "reading" : "ソウ、ショウ、い.る、いた.める",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -2069,6 +2131,12 @@
           "front" : "炒る",
           "reading" : "いる",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "いる",
+          "voice" : "3"
         }
       } ],
       "loop" : {

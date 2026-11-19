@@ -1,6 +1,8 @@
 package kotobaya.review
 
+import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.server.application.ApplicationCall
+import kotobaya.tts.enqueueServedAudio
 import kotobaya.contracts.fsrs.Scheduler
 import kotobaya.contracts.search.SearchNode
 import kotobaya.decks.SmartDecks
@@ -80,6 +82,8 @@ internal class DrillApi(private val db: Database, private val scheduler: Schedul
                 "items" to views.items(ids, ids.associateWith { mode }, nowMs, scheduler),
             )
         }
+        @Suppress("UNCHECKED_CAST")
+        enqueueServedAudio(db, out["items"] as List<JsonNode>)
         call.respondJson(out)
     }
 

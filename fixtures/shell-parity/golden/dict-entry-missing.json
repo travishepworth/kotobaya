@@ -132,6 +132,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -201,7 +207,8 @@
           "front" : "",
           "reading" : null,
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -361,6 +368,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -541,6 +554,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -610,7 +629,8 @@
           "front" : "",
           "reading" : null,
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -770,6 +790,12 @@
           "front" : "えっと",
           "reading" : "えっと",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "えっと",
+          "voice" : "3"
         }
       } ],
       "loop" : {

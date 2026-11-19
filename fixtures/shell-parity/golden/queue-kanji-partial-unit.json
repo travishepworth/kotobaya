@@ -111,7 +111,8 @@
           "front" : "日",
           "reading" : "ニチ、ジツ、ひ、-び、-か",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -205,7 +206,8 @@
           "front" : "本",
           "reading" : "ホン、もと",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       } ],
       "loop" : {
         "backlog" : {
@@ -499,7 +501,8 @@
           "front" : "語",
           "reading" : "ゴ、かた.る、かた.らう",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -643,6 +646,12 @@
           "front" : "日本語",
           "reading" : "にほんご",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "にほんご",
+          "voice" : "3"
         }
       } ],
       "loop" : {

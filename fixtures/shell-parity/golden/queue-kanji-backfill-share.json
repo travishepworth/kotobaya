@@ -111,7 +111,8 @@
           "front" : "日",
           "reading" : "ニチ、ジツ、ひ、-び、-か",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -205,7 +206,8 @@
           "front" : "本",
           "reading" : "ホン、もと",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       }, {
         "card" : {
           "buried_until" : null,
@@ -326,6 +328,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -443,6 +451,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -726,6 +740,12 @@
           "front" : "うっかり",
           "reading" : "うっかり",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
         }
       }, {
         "card" : {
@@ -843,6 +863,12 @@
           "front" : "Ｔシャツ",
           "reading" : "ティーシャツ",
           "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "ティーシャツ",
+          "voice" : "3"
         }
       } ],
       "loop" : {
@@ -1137,7 +1163,8 @@
           "front" : "語",
           "reading" : "ゴ、かた.る、かた.らう",
           "sentence" : null
-        }
+        },
+        "word_audio" : null
       } ],
       "loop" : {
         "backlog" : {

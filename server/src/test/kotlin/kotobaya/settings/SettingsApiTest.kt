@@ -58,7 +58,7 @@ class SettingsApiTest : SyncFixture() {
     @Test
     fun intKeysFollowTheBinary64ValidityTest() = settingsApp {
         val t = writer()
-        for (key in listOf("scheduler.mined_priority", "scheduler.new_per_day", "scheduler.leech_threshold", "audio.prefetch_days")) {
+        for (key in listOf("scheduler.mined_priority", "scheduler.new_per_day", "scheduler.leech_threshold")) {
             for (ok in listOf("-1", "1.0", "1e2", "-0", "2147483647", "-2147483648")) {
                 assertEquals(200, patch(t, """{"values":{"$key":$ok}}""").status.value, "$key=$ok")
             }
@@ -104,6 +104,37 @@ class SettingsApiTest : SyncFixture() {
         assertEquals("true", stored("scheduler.kanji_before_vocab"))
         assertEquals(200, patch(t, """{"values":{"cards.reading_enabled":true}}""").status.value)
         assertEquals("true", stored("cards.reading_enabled"))
+    }
+
+    @Test
+    fun wordAudioKeysAreValidatedAsTheirTypes() = settingsApp {
+        // C-29 (ADR-047, SCHEMA.md 6.1): review.autoplay_audio bool, tts.voice string (voice), audio.prefetch_days int 0-365.
+        val t = writer()
+        val bad = mapOf(
+            "review.autoplay_audio" to listOf("\"true\"", "1", "0", "\"false\""),
+            "tts.voice" to listOf("3", "\"\"", "\"ずんだもん\"", "\"3 \"", "\"1234567890\"", "\"-3\"", "true"),
+            "audio.prefetch_days" to listOf("-1", "366", "3.5", "\"7\"", "true", "2147483647"),
+        )
+        for ((key, values) in bad) {
+            for (v in values) {
+                val before = head()
+                val r = patch(t, """{"values":{"$key":$v,"ui.theme":"dark"}}""")
+                assertProblem(r, 422, "validation_failed")
+                assertEquals("/values/$key", ptr(r), "$key=$v")
+                assertEquals(before, head(), "nothing in the request is written")
+            }
+        }
+        val good = mapOf(
+            "review.autoplay_audio" to listOf("false", "true", "null"),
+            "tts.voice" to listOf("\"3\"", "\"08\"", "\"123456789\"", "null"),
+            "audio.prefetch_days" to listOf("0", "365", "1.0", "1e2", "-0", "null"),
+        )
+        for ((key, values) in good) {
+            for (v in values) assertEquals(200, patch(t, """{"values":{"$key":$v}}""").status.value, "$key=$v")
+        }
+        assertEquals(200, patch(t, """{"values":{"tts.voice":"08","audio.prefetch_days":1e2}}""").status.value)
+        assertEquals("\"08\"", stored("tts.voice"), "the voice string is stored as written")
+        assertEquals("100", stored("audio.prefetch_days"))
     }
 
     @Test
