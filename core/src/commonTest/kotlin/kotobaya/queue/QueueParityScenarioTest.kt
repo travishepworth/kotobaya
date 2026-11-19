@@ -290,6 +290,92 @@ class QueueParityScenarioTest {
     }
 
     @Test
+    fun queueKanjiOrderStable() {
+        val sim = QueueSim(
+            input(
+                listOf(
+                    word(10, listOf("日"), created = 1, state = CardState.REVIEW, due = notDue),
+                    word(20, listOf("家"), created = 2, state = CardState.REVIEW, due = notDue),
+                    word(30, listOf("本"), created = 3, state = CardState.REVIEW, due = notDue),
+                    word(40, listOf("日", "本", "語"), created = 4),
+                    kanji(50, "日", 5), kanji(60, "家", 6), kanji(70, "本", 7), kanji(80, "語", 8),
+                ),
+                limits = limits(newPerDay = 5),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(50, 60, 70, 80, 40), r0.queue.cards())
+        assertEquals(5, r0.state.untilStop)
+        sim.answer(50, Ans.EASY)
+        sim.answer(60, Ans.EASY)
+        val r3 = sim.eval()
+        assertEquals(listOf(70, 80, 40), r3.queue.cards())
+        assertEquals(3, r3.state.untilStop)
+        assertEquals(2, r3.state.newToday)
+        sim.answer(70, Ans.EASY)
+        val r5 = sim.eval()
+        assertEquals(listOf(80, 40), r5.queue.cards())
+        assertEquals(2, r5.state.untilStop)
+        assertEquals(3, r5.state.newToday)
+    }
+
+    @Test
+    fun queueKanjiDeckLimit() {
+        val sim = QueueSim(
+            input(
+                listOf(
+                    word(10, listOf("本"), created = 1, members = listOf(member(1, 1024))),
+                    kanji(20, "本", 2).copy(memberships = listOf(member(1, 2048))),
+                    card(30, created = 3, members = listOf(member(1, 3072))),
+                ),
+                decks = listOf(deck(1, newPerDay = 1)),
+                limits = limits(),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(20), r0.queue.cards())
+        assertEquals(1, r0.state.untilStop)
+        sim.answer(20, Ans.EASY)
+        val r2 = sim.eval()
+        assertEquals(emptyList(), r2.queue.cards())
+        assertEquals(0, r2.state.untilStop)
+        assertEquals(1, r2.state.newToday)
+        sim.nextDay()
+        val r3 = sim.eval()
+        assertEquals(listOf(10), r3.queue.cards())
+        assertEquals(LoopPhase.REVIEWING, r3.state.phase)
+        assertEquals(1, r3.state.untilStop)
+    }
+
+    @Test
+    fun queueKanjiTurnOrder() {
+        val sim = QueueSim(
+            input(
+                listOf(
+                    card(10, created = 1, members = listOf(member(1, 1))),
+                    card(20, created = 2, members = listOf(member(1, 2))),
+                    word(30, listOf("学", "校"), created = 3),
+                    kanji(40, "学", 4), kanji(50, "校", 5),
+                ),
+                decks = listOf(deck(1)),
+                limits = limits(newPerDay = 4),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(10, 40, 50, 30), r0.queue.cards())
+        assertEquals(4, r0.state.untilStop)
+        sim.answer(10, Ans.EASY)
+        val r2 = sim.eval()
+        assertEquals(listOf(40, 50, 30), r2.queue.cards())
+        assertEquals(3, r2.state.untilStop)
+        sim.answer(40, Ans.EASY)
+        val r4 = sim.eval()
+        assertEquals(listOf(50, 30), r4.queue.cards())
+        assertEquals(2, r4.state.untilStop)
+        assertEquals(2, r4.state.newToday)
+    }
+
+    @Test
     fun queueUntilStop() {
         val sim = QueueSim(
             input(

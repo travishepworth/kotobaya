@@ -19,7 +19,8 @@ import kotobaya.contracts.queue.ReviewQueue
 /**
  * [QueueBuilder] following the contract KDoc rules 0–6 literally (ADR-037: rule 4 budget = the day's
  * remainder with a batch, rule 5 = the proportional mix; ADR-040..044: kanji-first units, leads,
- * backfill with its half share, the mix on units with "open group first"). Pure: no clock, no
+ * backfill with its half share, the mix on units with "open group first"; C-28c: deck cost, turn
+ * order, `N` never reordered). Pure: no clock, no
  * randomness; every order is a total order on input keys, so the result does not depend on the
  * order of any input list and is identical on jvm, android and js.
  *
@@ -38,9 +39,10 @@ import kotobaya.contracts.queue.ReviewQueue
  * first; a pending entry whose `entrySeq` was already materialized from another deck is skipped; a
  * word's required kanji, missing kanji and override are read from the note's candidate with the
  * smallest card id (loaders pass the same values on every card of a note); a NEW card of another
- * base type reached on its turn is a unit of one card; the "open group first" rule (rule 5) is
- * applied whenever `s == 0`, also inside the rest of `N` in a keep-going build, so one build equals
- * rebuilding after every answer in both modes.
+ * base type reached on its turn is a unit of one card; a pending entry that is held (a required
+ * kanji buried) is skipped like a held vocab card. Rule 4 "Turn order" (C-28c) replaces the
+ * round-robin: `t(S)` counts today's and this build's cards per home source, and the source whose
+ * next word requires the last drawn kanji goes first.
  */
 public object DefaultQueueBuilder : QueueBuilder {
     private val excludedOverrides = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
@@ -274,6 +276,12 @@ public object DefaultQueueBuilder : QueueBuilder {
             }
             .sortedWith(compareBy({ it.createdAt }, { it.noteId }))
 
+        /** C-28c: every literal some vocab candidate (any state) or pending entry requires. */
+        private val requiredLiterals: Set<String> = buildSet {
+            for (c in input.candidates) if (c.noteBaseType == NoteBaseType.VOCAB) addAll(reqOf(c))
+            for (e in input.pendingEntries) addAll(reqOf(e))
+        }
+
         /** Backfill kanji in part order (first requiring word's age, index in its `req`). */
         private val backfillOrder: List<String> = buildList {
             val seen = HashSet<String>()
@@ -358,8 +366,8 @@ public object DefaultQueueBuilder : QueueBuilder {
         /**
          * Rule 5 (normal build: proportional mix of the ready reviews [r] and the new [units]; the next
          * unit iff `s * gRem >= rRem`) and rule 6 (keep going: reviews before new), both with "open
-         * group first": while `s == 0` and the last introduced card is a kanji that a waiting unit's
-         * word requires, that unit comes next.
+         * group first": while `s == 0` and the last introduced card is a kanji that the next unit's
+         * word requires, that unit comes before any review. Units always keep rule 4 draw order.
          */
         private fun order(r: List<QueueItem>, units: List<DrawnUnit>, availableToday: Int): List<QueueItem> {
             val intros = input.today.filter { it.introducedNew }
@@ -373,16 +381,11 @@ public object DefaultQueueBuilder : QueueBuilder {
             val out = ArrayList<QueueItem>(r.size + n.sumOf { it.items.size })
             var ri = 0
 
+            /** C-28c: 0 when the first unit left in `N` is the open group, else -1; `N` is never reordered. */
             fun openGroup(): Int {
                 val l = lastLiteral ?: return -1
-                if (s != 0L) return -1
-                val w = n.indexOfFirst { it.wordReq?.contains(l) == true }
-                if (w < 0) return -1
-                // Kanji first wins: a waiting unit ahead of the word that holds one of its required kanji
-                // (drawn on its own turn or by backfill) comes first, so the word never precedes its kanji.
-                val req = n[w].wordReq.orEmpty()
-                val k = n.subList(0, w).indexOfFirst { u -> u.items.any { literalOf(it) in req } }
-                return if (k >= 0) k else w
+                if (s != 0L || n.isEmpty()) return -1
+                return if (n[0].wordReq?.contains(l) == true) 0 else -1
             }
 
             fun emit(index: Int) {
@@ -406,7 +409,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                     emit(og)
                 }
                 while (ri < r.size) review()
-                while (n.isNotEmpty()) emit(maxOf(0, openGroup()))
+                while (n.isNotEmpty()) emit(0)
                 return out
             }
             while (n.isNotEmpty()) {
@@ -489,10 +492,40 @@ public object DefaultQueueBuilder : QueueBuilder {
             fun remainingOf(s: Source): Int =
                 s.deckId?.let { id -> deckRemaining[id]?.let { maxOf(0, it) } } ?: Int.MAX_VALUE
 
+            val deckTaken = HashSet<Uuid>()
+
             fun charge(deckId: Uuid?) {
                 if (deckId == null) return
+                deckTaken += deckId
                 deckRemaining[deckId]?.let { deckRemaining[deckId] = it - 1 }
             }
+
+            // ---- Turn order (C-28c) ----
+
+            /** `t(S)` by source key (deck id, null = the deckless source). */
+            val turnCount = HashMap<Uuid?, Int>()
+
+            fun countTurn(key: Uuid?) {
+                turnCount[key] = (turnCount[key] ?: 0) + 1
+            }
+
+            /** A deckless kanji card some word requires: drawn for a word or by backfill, not a turn of the deckless source. */
+            fun requiredDeckless(c: QueueCandidate?, home: Home): Boolean =
+                c != null && home == Home.Deckless && isKanjiCard(c) && c.kanjiLiteral in requiredLiterals
+
+            for (t in input.today) {
+                if (!t.introducedNew) continue
+                when (val h = homeNewSource(t.deckIds)) {
+                    is Home.Deck -> countTurn(h.deck.id)
+                    Home.Deckless -> if (!requiredDeckless(byId[t.cardId], h)) countTurn(null)
+                    Home.None -> {}
+                }
+            }
+
+            /** The kanji literal of the last thing drawn (else of today's last introduction), or null. */
+            var lastLiteral: String? = input.today.filter { it.introducedNew }
+                .maxWithOrNull(compareBy({ it.reviewedAt }, { it.cardId }))
+                ?.let { byId[it.cardId] }?.takeIf { isKanjiCard(it) }?.kanjiLiteral
 
             /** A kanji part "fits the day" (ADR-044): within the remainder, or the day's first new cards. */
             fun partFits(size: Int): Boolean =
@@ -507,10 +540,17 @@ public object DefaultQueueBuilder : QueueBuilder {
 
             /** Takes a NEW card, charged to its own home new-source (C-8 attribution); its item. */
             fun takeNew(c: QueueCandidate): QueueItem {
-                val home = (homeNewSource(c.deckIds()) as? Home.Deck)?.deck?.id
+                val h = homeNewSource(c.deckIds())
+                val home = (h as? Home.Deck)?.deck?.id
                 take(c)
                 charge(home)
+                when (h) {
+                    is Home.Deck -> countTurn(home)
+                    Home.Deckless -> if (!requiredDeckless(c, h)) countTurn(null)
+                    Home.None -> {}
+                }
                 if (isKanjiCard(c) && c.kanjiLiteral in backfillSet) b++
+                lastLiteral = if (isKanjiCard(c)) c.kanjiLiteral else null
                 return QueueItem(c.cardId, QueueItemKind.NEW, home)
             }
 
@@ -522,6 +562,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                     is Part.Mint -> {
                         claimed += part.literal
                         claims += part.literal
+                        lastLiteral = part.literal
                         if (part.literal in backfillSet) b += part.size
                         emptyList()
                     }
@@ -633,12 +674,19 @@ public object DefaultQueueBuilder : QueueBuilder {
                     }
                 }
                 val g = 1L + parts.sumOf { it.size.toLong() }
+                // C-28c "Deck cost": the word plus the kanji cards the drawing deck itself supplies.
+                val limited = s.deckId != null && s.deckId in deckRemaining
+                fun deckCost(p: Part): Int =
+                    if (!limited || p !is Part.Cards) 0 else p.cards.count { (homeNewSource(it.deckIds()) as? Home.Deck)?.deck?.id == s.deckId }
+                val dc = 1 + parts.sumOf { deckCost(it) }
                 val before = drawn
                 val claims = mutableListOf<String>()
-                if (drawn + g <= dayRemaining) {
+                if (drawn + g <= dayRemaining && (!limited || dc <= remainingOf(s))) {
                     val kItems = parts.flatMap { takePart(it, claims) }
                     drawn += 1
                     charge(s.deckId)
+                    countTurn(s.deckId)
+                    lastLiteral = null
                     val withheld = toMint.isNotEmpty()
                     if (e != null) {
                         materialized += e.entrySeq
@@ -653,8 +701,15 @@ public object DefaultQueueBuilder : QueueBuilder {
                 // Lead: the kanji parts that fit the day, in order; the source stops at this word.
                 val kItems = mutableListOf<QueueItem>()
                 var minted = false
+                fun deckFirstOfDay(): Boolean {
+                    val id = s.deckId ?: return false
+                    val d = decksById[id] ?: return false
+                    return (d.newPerDay ?: 0) >= 1 && (introducedPerDeck[id] ?: 0) == 0 && id !in deckTaken
+                }
                 for (p in parts) {
                     if (!partFits(p.size)) break
+                    val cost = deckCost(p)
+                    if (cost > 0 && cost > remainingOf(s) && !deckFirstOfDay()) break
                     kItems += takePart(p, claims)
                     if (p is Part.Mint) minted = true
                 }
@@ -662,54 +717,73 @@ public object DefaultQueueBuilder : QueueBuilder {
                 s.stopped = true
             }
 
-            /** One turn of [s]; false if the source is exhausted (no items left, at its limit, or stopped). */
-            fun turn(s: Source): Boolean {
-                if (s.stopped || remainingOf(s) <= 0) return false
+            fun held(req: List<String>): Boolean = req.any { it !in started && it in buriedKanji }
+
+            /** The item [s]'s next turn would draw (skipping what can no longer be drawn), or null. */
+            fun peek(s: Source): NewItem? {
                 while (s.cursor < s.items.size) {
-                    when (val item = s.items[s.cursor++]) {
-                        is NewItem.Entry -> {
-                            val e = item.e
-                            if (e.wordOverride in excludedEntryOverrides || e.entrySeq in materialized) continue
-                            val req = reqOf(e)
-                            if (req.any { it !in started && it in buriedKanji }) continue // held
-                            drawWord(s, req, e.missingKanji, null, e)
-                            return true
-                        }
-                        is NewItem.Card -> {
-                            val c = item.c
-                            if (!available(c)) continue
-                            if (c.noteBaseType == NoteBaseType.VOCAB) {
-                                val req = reqOf(c)
-                                if (req.any { it !in started && it in buriedKanji }) continue // held
-                                drawWord(s, req, c.missingKanji, c, null)
-                            } else if (drawn + 1L <= dayRemaining) {
-                                val before = drawn
-                                val single = takeNew(c)
-                                drawn += 1
-                                units += DrawnUnit(before, 1, listOf(single), null, emptyList(), null)
-                            } else {
-                                s.stopped = true
-                            }
-                            return true
+                    val item = s.items[s.cursor]
+                    val usable = when (item) {
+                        is NewItem.Entry -> item.e.wordOverride !in excludedEntryOverrides && item.e.entrySeq !in materialized && !held(reqOf(item.e))
+                        is NewItem.Card -> available(item.c) && !(item.c.noteBaseType == NoteBaseType.VOCAB && held(reqOf(item.c)))
+                    }
+                    if (usable) return item
+                    s.cursor++
+                }
+                return null
+            }
+
+            fun canTurn(s: Source): Boolean = !s.stopped && remainingOf(s) > 0 && peek(s) != null
+
+            /** The word the next turn of [s] would draw a unit for: its required kanji, or null for another card. */
+            fun nextWordReq(s: Source): List<String>? = when (val item = peek(s)) {
+                is NewItem.Entry -> reqOf(item.e)
+                is NewItem.Card -> if (item.c.noteBaseType == NoteBaseType.VOCAB) reqOf(item.c) else null
+                null -> null
+            }
+
+            /** One turn of [s] (C-28c: always draws something or stops the source). */
+            fun turn(s: Source) {
+                val item = peek(s) ?: return
+                s.cursor++
+                when (item) {
+                    is NewItem.Entry -> drawWord(s, reqOf(item.e), item.e.missingKanji, null, item.e)
+                    is NewItem.Card -> {
+                        val c = item.c
+                        if (c.noteBaseType == NoteBaseType.VOCAB) {
+                            drawWord(s, reqOf(c), c.missingKanji, c, null)
+                        } else if (drawn + 1L <= dayRemaining) {
+                            val before = drawn
+                            val single = takeNew(c)
+                            drawn += 1
+                            units += DrawnUnit(before, 1, listOf(single), null, emptyList(), null)
+                        } else {
+                            s.stopped = true
                         }
                     }
                 }
-                return false
             }
 
             val inOrder = compareBy<Source>({ it.priority }, { if (it.deckId == null) 1 else 0 }, { it.deckId ?: "" })
             val sorted = sources.sortedWith(inOrder)
+
+            /** Rule 4 "Turn order": (a) the open unit's sources first, (b) smallest `t(S)`, ties in source order. */
+            fun pick(tier: List<Source>): Source? {
+                val able = tier.filter { canTurn(it) }
+                if (able.isEmpty()) return null
+                val l = lastLiteral
+                val open = if (l == null) emptyList() else able.filter { nextWordReq(it)?.contains(l) == true }
+                return (open.ifEmpty { able }).minBy { turnCount[it.deckId] ?: 0 } // minBy keeps the first on ties
+            }
+
             draw@ for (priority in sorted.map { it.priority }.distinct()) {
                 val tier = sorted.filter { it.priority == priority }
                 while (true) {
-                    var progressed = false
-                    for (s in tier) {
-                        if (drawn >= drawLimit) break@draw
-                        shareStep()
-                        if (drawn >= drawLimit) break@draw
-                        if (turn(s)) progressed = true
-                    }
-                    if (!progressed) break
+                    if (drawn >= drawLimit) break@draw
+                    shareStep()
+                    if (drawn >= drawLimit) break@draw
+                    val next = pick(tier) ?: break
+                    turn(next)
                 }
             }
             // Remainder step: with no source left, backfill may use what is left of the day.

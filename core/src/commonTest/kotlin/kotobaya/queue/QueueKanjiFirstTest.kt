@@ -87,11 +87,88 @@ class QueueKanjiFirstTest {
             word(1, listOf("学", "校"), created = 0), card(2, created = 1),
             kanji(51, "学").copy(buriedUntil = TOKYO_DAY.endMs), kanji(52, "校"),
         )
-        // 学校 is held and its source goes on: たべる, then 校 on its own deckless turn ("Own turn"; it is not
-        // drawn *through* the held word). The KDoc example lists N = [たべる] only; see HANDOFF.
-        assertEquals(listOf(2, 52), build(input(c, limits = lim())).cards())
-        // Tomorrow the bury has ended.
+        // 学校 is held and its source goes on: たべる, then 校 on its own deckless turn ("Own turn", C-28c example).
+        val sim = QueueSim(input(c, limits = lim()))
+        assertEquals(listOf(2, 52), sim.build().cards())
+        // Tomorrow the bury has ended: 校 unanswered → [学, 校, 学校]; answered today → [学, 学校].
         assertEquals(listOf(51, 52, 1, 2), build(input(c, limits = lim(), now = TOKYO_DAY.endMs + 1000, day = TOKYO_DAY.copy(TOKYO_DAY.endMs, TOKYO_DAY.endMs + DAY_MS))).cards())
+        sim.answer(2, Ans.EASY)
+        sim.answer(52, Ans.EASY)
+        sim.nextDay()
+        assertEquals(listOf(51, 1), sim.build().cards())
+    }
+
+    @Test
+    fun deckLimitExampleAndVariants() {
+        // Deck "Core" (newPerDay 1): the word 本, the kanji note 本, うっかり in position order.
+        fun core(limit: Int, kanjiDeckless: Boolean = false) = QueueSim(
+            input(
+                listOf(
+                    card(10, exprKanji = listOf("本"), members = listOf(member(1, 0))),
+                    kanji(20, "本").copy(memberships = if (kanjiDeckless) emptyList() else listOf(member(1, 1))),
+                    card(30, members = listOf(member(1, 2))),
+                ),
+                decks = listOf(deck(1, newPerDay = limit)), limits = lim(),
+            ),
+        )
+        val one = core(1)
+        val r = one.eval()
+        assertEquals(listOf(20), r.queue.cards())
+        assertEquals(1, r.state.untilStop)
+        one.answer(20, Ans.EASY)
+        assertEquals(emptyList(), one.eval().queue.cards())
+        assertEquals(0, one.eval().state.untilStop)
+        one.nextDay()
+        assertEquals(listOf(10), one.build().cards())
+        one.answer(10, Ans.EASY)
+        one.nextDay()
+        assertEquals(listOf(30), one.build().cards())
+        // Limit 2: whole; after the kanji the word.
+        val two = core(2)
+        assertEquals(listOf(20, 10), two.build().cards())
+        two.answer(20, Ans.EASY)
+        assertEquals(listOf(10), two.build().cards())
+        // The kanji note deckless, limit 1: deck cost 1, whole.
+        val free = core(1, kanjiDeckless = true)
+        assertEquals(listOf(20, 10), free.build().cards())
+        free.answer(20, Ans.EASY)
+        assertEquals(listOf(10), free.build().cards())
+    }
+
+    @Test
+    fun aCappedDeckWhoseWordHasTwoKanjiHomedInIt() {
+        val sim = QueueSim(
+            input(
+                listOf(
+                    card(1, exprKanji = listOf("日", "本"), members = listOf(member(1, 0))),
+                    kanji(51, "日").copy(memberships = listOf(member(1, 1))),
+                    kanji(52, "本").copy(memberships = listOf(member(1, 2))),
+                ),
+                decks = listOf(deck(1, newPerDay = 1)), limits = lim(),
+            ),
+        )
+        val days = mutableListOf<List<Int>>()
+        repeat(3) {
+            val q = sim.build().cards()
+            days += q
+            q.forEach { sim.answer(it, Ans.EASY) }
+            sim.nextDay()
+        }
+        assertEquals(listOf(listOf(51), listOf(52), listOf(1)), days)
+    }
+
+    @Test
+    fun theDecksFirstNewCardOfTheDayTakesAMultiCardPart() {
+        // burySiblings false, 学 has two NEW kinds homed in the deck (limit 1): taken once as the deck's first cards.
+        val c = listOf(
+            card(1, exprKanji = listOf("学"), members = listOf(member(1, 0))),
+            kanji(51, "学", note = 50).copy(memberships = listOf(member(1, 1))),
+            kanji(52, "学", note = 50).copy(memberships = listOf(member(1, 1)), kindOrder = 1),
+        )
+        assertEquals(listOf(51, 52), build(input(c, decks = listOf(deck(1, newPerDay = 1)), limits = lim(bury = false))).cards())
+        // Something from the deck already introduced today: no room, nothing.
+        val t = listOf(today(9001, type = ReviewType.LEARNING, introducedNew = true, decks = listOf(1)))
+        assertEquals(emptyList(), build(input(c, decks = listOf(deck(1, newPerDay = 2)), limits = lim(bury = false), today = t)).cards())
     }
 
     @Test

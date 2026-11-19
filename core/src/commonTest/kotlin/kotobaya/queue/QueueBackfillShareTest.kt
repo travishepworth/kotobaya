@@ -163,7 +163,9 @@ class QueueBackfillShareTest {
         val gaku = kanji(70, "学", 8).copy(memberships = listOf(member(2, 1)))
         val big = { limit: Int -> build(base(6, cards = listOf(nihongo) + inKanjiDeck + words + gaku, decks = listOf(deck(1), deck(2, newPerDay = limit)))).cards() }
         assertEquals(listOf(40, 50, 60, 20, 30), big(1))
-        assertEquals(listOf(40, 50, 60, 20, 70, 30), big(2))
+        // Limit 2: 学 has its turn; "Turn order" (C-28c): 日 already counts for Kanji (t = 1), so the word deck
+        // (t = 1 after うっかり) wins the tie in source order before 学.
+        assertEquals(listOf(40, 50, 60, 20, 30, 70), big(2))
         // 語 in the Kanji deck: drawn on the deck's own turn after the share stopped at it.
         val goInDeck = kanji.map { if (it.cardId == cardId(60)) it.copy(memberships = listOf(member(2, 0))) else it }
         val sim = QueueSim(base(4, cards = listOf(nihongo) + goInDeck + words, decks = listOf(deck(1), deck(2))))
@@ -209,78 +211,36 @@ class QueueBackfillShareTest {
 
     // ---- Properties ----
 
-    private val lits = listOf("日", "本", "語", "学", "校", "先", "生", "食")
-
-    // The domain where the contract's rebuild property holds (HANDOFF: CONTRACT_CHANGE_REQUEST, cases 3 and 4):
-    // - studied words use the first four literals, new words the last four, and the kanji notes of the last
-    //   four are deckless, created after every word, and the deckless source comes after every deck. Otherwise a kanji drawn on its own (backfill or own
-    //   turn) can be required by a new word; rule 5 "open group first" then emits that word out of draw
-    //   order and the half share sees different numbers on the rebuild;
-    // - kanji notes sit only in decks without a per-deck new limit. Otherwise answering a deck-homed kanji
-    //   of a unit charges the word's own deck through , and the rebuild cannot draw the word.
-    private val studiedLits = lits.take(4)
-    private val newLits = lits.drop(4)
-
-    /** Random words (some studied), kanji notes (some deckless, some in a deck), missing kanji, reviews; one card per note. */
-    private fun randomInput(seed: Int, keepGoing: Boolean): QueueInput {
-        val r = Random(seed)
-        // One source per tier: round-robin inside a tier restarts at its first source on every build, so only
-        // tiers of one source are rebuild-stable (true before CORE-28 too); tiers still order the sources.
-        val decks = (1..r.nextInt(0, 3)).map { deck(it, priority = it, newPerDay = if (r.nextInt(3) == 0) r.nextInt(0, 4) else null) }
-        fun members() = decks.filter { r.nextInt(3) == 0 }.map { member(it.id.takeLast(12).toInt(), r.nextLong(0, 6)) }
-        val withNote = lits.filter { r.nextBoolean() }.toSet()
-        val words = (1..r.nextInt(0, 14)).map { n ->
-            val studied = r.nextInt(3) == 0
-            val ks = (if (studied) studiedLits else newLits).shuffled(r).take(r.nextInt(0, 4))
-            card(n, created = r.nextLong(0, 6), exprKanji = ks, missing = mks(*ks.filter { it !in withNote }.toTypedArray()),
-                state = if (studied) CardState.REVIEW else CardState.NEW, due = if (studied) notDue else null, members = members())
+    /** Plays [i] to the end, asserting rule 5 "Rebuild = tail" after every answer (minting first, exclusion 1). */
+    private fun assertRebuildIsTail(i: QueueInput, what: String) {
+        val sim = QueueSim(i)
+        repeat(3) { sim.materialize(sim.eval().queue) }
+        if (QueueRandom.rebuildExcluded(sim.input)) return
+        var q = sim.eval().queue
+        var steps = 0
+        while (q.items.isNotEmpty() && steps++ < 200) {
+            sim.answer(q.cards().first(), Ans.EASY)
+            val next = sim.eval().queue
+            assertEquals(q.items.drop(1), next.items, what)
+            q = next
         }
-        val reviews = (1..r.nextInt(0, 8)).map { n -> card(200 + n, created = 0, state = CardState.REVIEW, due = NOW - r.nextLong(1, 40) * HOUR) }
-        val kanjiCards = withNote.mapIndexed { i, l ->
-            if (l in newLits) {
-                kanji(100 + i, l, created = 10L + i)
-            } else {
-                kanji(100 + i, l, created = r.nextLong(0, 8)).copy(memberships = decks.filter { it.newPerDay == null && r.nextInt(3) == 0 }.map { member(it.id.takeLast(12).toInt(), r.nextLong(0, 6)) })
-            }
-        }
-        val done = r.nextInt(0, 3)
-        val t = (1..done).map { today(9000 + it, type = ReviewType.LEARNING, introducedNew = true, at = TOKYO_DAY.startMs + it) }
-        return input(
-            words + reviews + kanjiCards, decks = decks, today = t, decklessPriority = 3,
-            limits = lim(r.nextInt(0, 12), batch = Int.MAX_VALUE, keepGoing = keepGoing).copy(reviewsUnlimited = r.nextBoolean()),
-        )
     }
 
     @Test
     fun answeringTheHeadAndRebuildingYieldsTheTail() {
-        for (keepGoing in listOf(false, true)) {
-            for (seed in 0 until 250) {
-                val sim = QueueSim(randomInput(seed, keepGoing))
-                // Mint everything the unbounded draw claims first (C-27: at most 3 rounds), then play.
-                repeat(3) { sim.materialize(sim.eval().queue) }
-                var q = sim.eval().queue
-                assertTrue(q.kanjiToMaterialize.isEmpty() && q.toMaterialize.isEmpty(), "seed $seed")
-                var steps = 0
-                while (q.items.isNotEmpty() && steps++ < 200) {
-                    val head = q.items.first()
-                    val n = head.cardId.takeLast(12).toInt()
-                    // Answered: due after today, so nothing comes back in this run (as M4).
-                    sim.answer(n, Ans.EASY)
-                    if (head.kind == QueueItemKind.NEW) {
-                        sim.input = sim.input.copy(candidates = sim.input.candidates.map { if (it.cardId == head.cardId) it.copy(state = CardState.LEARNING, dueAt = notDue) else it })
-                    }
-                    val next = sim.eval().queue
-                    assertEquals(q.items.drop(1), next.items, "keepGoing $keepGoing seed $seed after ${q.items.first()}")
-                    q = next
-                }
-            }
+        // Normal build: every random input (backfill, units, shared kanji, capped decks, several sources per tier).
+        for (seed in 0 until 400) assertRebuildIsTail(QueueRandom.input(seed, keepGoing = false), "normal seed $seed")
+        // Keep going with backfill: new words without kanji (see QueueRandom: a unit answered half-way lets
+        // the keep-going share step admit a backfill part before the rest of the unit; HANDOFF).
+        for (seed in 0 until 400) {
+            assertRebuildIsTail(QueueRandom.input(seed, keepGoing = true, newWordKanji = false), "keep going seed $seed")
         }
     }
 
     @Test
     fun aNormalBuildKeepsBackfillWithinTheShare() {
         for (seed in 0 until 400) {
-            val i = randomInput(seed, keepGoing = false)
+            val i = QueueRandom.input(seed, keepGoing = false)
             val d = detailed(i)
             val share = maxOf(1, i.limits.newPerDay / 2)
             val within = d.backfillToday + d.backfillAfterFirstShare <= share

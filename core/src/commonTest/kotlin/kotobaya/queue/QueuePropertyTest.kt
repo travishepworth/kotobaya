@@ -285,10 +285,10 @@ class QueuePropertyTest {
 
     @Test
     fun mixDoesNotDependOnTheBatch() {
-        // A smaller batch draws a prefix of the new cards; the order is the unbounded one without the others.
-        // Without units: "open group first" may pull a later unit forward, and which units exist depends on the batch.
+        // A smaller batch draws a prefix of the new cards; the order is the unbounded one without the others
+        // (C-28c: rule 5 never reorders N, so units are cut whole and in draw order).
         for (seed in 0 until 300) {
-            val i = withoutUnits(randomLoopInput(seed))
+            val i = randomLoopInput(seed)
             val l = i.limits.copy(keepGoing = false)
             val all = DefaultReviewLoop.evaluate(i.copy(limits = l.copy(keepGoingNewBatch = Int.MAX_VALUE))).queue
             for (b in 1..4) {
