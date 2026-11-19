@@ -37,7 +37,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 1
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:55.000Z",
@@ -72,7 +73,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000220,
+            "entry_seq" : 1001010,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000001",
@@ -98,25 +99,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "明白",
-          "headword_reading" : "めいはく",
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
           "is_common" : true,
-          "kanji" : [ "明", "白" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "明白"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000001",
           "pitch" : [ ],
-          "pos" : [ "adj-na" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "めいはく"
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -126,36 +128,26 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "obvious"
+              "text" : "carelessly"
             }, {
               "lang" : "eng",
-              "text" : "clear"
+              "text" : "thoughtlessly"
             }, {
               "lang" : "eng",
-              "text" : "plain"
-            }, {
-              "lang" : "eng",
-              "text" : "evident"
-            }, {
-              "lang" : "eng",
-              "text" : "apparent"
-            }, {
-              "lang" : "eng",
-              "text" : "explicit"
-            }, {
-              "lang" : "eng",
-              "text" : "overt"
+              "text" : "inadvertently"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "adj-na" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000220,
+          "seq" : 1001010,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:56.000Z",
@@ -177,9 +169,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
-          "front" : "明白",
-          "reading" : "めいはく",
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
           "sentence" : null
         }
       } ],
@@ -207,7 +199,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 1
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

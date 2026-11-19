@@ -1,0 +1,686 @@
+{
+  "id" : "queue-kanji-partial-unit",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 2,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.003Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000030",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000003",
+            "kanji_literal" : "日",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.003Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 1,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "nanori" : [ "あ", "あき", "いる", "く", "くさ", "こう", "す", "たち", "に", "にっ", "につ", "へ" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "on_readings" : [ "ニチ", "ジツ" ],
+          "radical" : "72",
+          "stroke_count" : 4
+        },
+        "kanji_examples" : [ {
+          "gloss" : "Japanese (language)",
+          "headword" : "日本語",
+          "reading" : "にほんご",
+          "reading_type" : "other",
+          "seq" : 1464530
+        }, {
+          "gloss" : "happy birthday",
+          "headword" : "お誕生日おめでとうございます",
+          "reading" : "おたんじょうびおめでとうございます",
+          "reading_type" : "kun",
+          "seq" : 1002410
+        }, {
+          "gloss" : "every day; daily",
+          "headword" : "毎日",
+          "reading" : "まいにち",
+          "reading_type" : "on",
+          "seq" : 1524720
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "day; sun; Japan; counter for days\nニチ、ジツ、ひ、-び、-か",
+          "front" : "日",
+          "reading" : "ニチ、ジツ、ひ、-び、-か",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : "本",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 10,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "もと" ],
+          "literal" : "本",
+          "meanings" : [ "book", "present", "main", "origin", "true", "real", "counter for long cylindrical things" ],
+          "nanori" : [ "まと", "ごう" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "on_readings" : [ "ホン" ],
+          "radical" : "75",
+          "stroke_count" : 5
+        },
+        "kanji_examples" : [ {
+          "gloss" : "Japanese (language)",
+          "headword" : "日本語",
+          "reading" : "にほんご",
+          "reading_type" : "on",
+          "seq" : 1464530
+        }, {
+          "gloss" : "mere; only; just; slight",
+          "headword" : "本の",
+          "reading" : "ほんの",
+          "reading_type" : "on",
+          "seq" : 1011740
+        }, {
+          "gloss" : "book; volume; script",
+          "headword" : "本",
+          "reading" : "ほん",
+          "reading_type" : "on",
+          "seq" : 1522150
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "book; present; main; origin; true; real; counter for long cylindrical things\nホン、もと",
+          "front" : "本",
+          "reading" : "ホン、もと",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 2
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T09:00:00.003Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-30T10:00:02.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000030",
+        "interval_days" : 10,
+        "kind" : "keyword",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:02.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : null,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000003",
+          "kanji_literal" : "日",
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000102",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "kanji"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T09:00:00.003Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000030",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:02.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T09:00:00.004Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-30T10:00:03.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000040",
+        "interval_days" : 10,
+        "kind" : "keyword",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:03.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : null,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000004",
+          "kanji_literal" : "本",
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000102",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "kanji"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T09:00:00.004Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000040",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc2>",
+        "id" : "0193b000-0003-7000-8000-000000000002",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:03.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 2
+        },
+        "phase" : "done_for_today",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 0
+      },
+      "more_available" : true,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 2,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-22T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.005Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000050",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000005",
+            "kanji_literal" : "語",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000005",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.005Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 301,
+          "grade" : 2,
+          "jlpt" : 5,
+          "kun_readings" : [ "かた.る", "かた.らう" ],
+          "literal" : "語",
+          "meanings" : [ "word", "speech", "language" ],
+          "nanori" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000005",
+          "on_readings" : [ "ゴ" ],
+          "radical" : "149",
+          "stroke_count" : 14
+        },
+        "kanji_examples" : [ {
+          "gloss" : "Japanese (language)",
+          "headword" : "日本語",
+          "reading" : "にほんご",
+          "reading_type" : "on",
+          "seq" : 1464530
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-21T04:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-29T04:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-21T04:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-21T04:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "word; speech; language\nゴ、かた.る、かた.らう",
+          "front" : "語",
+          "reading" : "ゴ、かた.る、かた.らう",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1464530,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "日本語",
+          "headword_reading" : "にほんご",
+          "is_common" : true,
+          "kanji" : [ "日", "本", "語" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "日本語"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "にほんご"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "にっぽんご"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "Japanese (language)"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1464530,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "day",
+          "kun" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "on" : [ "ニチ", "ジツ" ],
+          "used_reading" : null
+        }, {
+          "keyword" : "book",
+          "kun" : [ "もと" ],
+          "literal" : "本",
+          "meanings" : [ "book", "present", "main", "origin", "true", "real", "counter for long cylindrical things" ],
+          "on" : [ "ホン" ],
+          "used_reading" : {
+            "kana" : "ほん",
+            "reading" : "ホン",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "word",
+          "kun" : [ "かた.る", "かた.らう" ],
+          "literal" : "語",
+          "meanings" : [ "word", "speech", "language" ],
+          "on" : [ "ゴ" ],
+          "used_reading" : {
+            "kana" : "ご",
+            "reading" : "ゴ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-21T04:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-29T04:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-21T04:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-21T04:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "にほんご\nJapanese (language)",
+          "front" : "日本語",
+          "reading" : "にほんご",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 2
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-21",
+      "to_materialize" : 0
+    }
+  } ]
+}

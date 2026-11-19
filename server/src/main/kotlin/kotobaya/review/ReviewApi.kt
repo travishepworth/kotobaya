@@ -85,7 +85,7 @@ internal class ReviewApi(
                 throw Problems.notFound("No live deck $deckId.")
             }
             val built = buildQueue(dsl, req)
-            if (mayMaterialize && built.queue.toMaterialize.isNotEmpty()) null else render(dsl, req, built)
+            if (mayMaterialize && built.queue.pendingMaterialization() > 0) null else render(dsl, req, built)
         }
         if (first != null) {
             call.respondJson(first)
@@ -94,13 +94,13 @@ internal class ReviewApi(
         val reply = opApply.rest(call.callerTokenId()) { tx ->
             var built = buildQueue(tx.dsl, req)
             var rounds = 0
-            // Each round creates notes for the entries drawn, then rebuilds: their cards now take those places (the core
+            // Each round mints the kanji notes (step A) and creates notes for the entries drawn (step B), then rebuilds: their cards now take those places (the core
             // drew each entry as the group its card will be, so they fit). A round can still free a slot (a sibling or
             // kanji card taken elsewhere), so a few rounds; anything left is reported in `to_materialize` and drawn by the
             // next fetch. Safety net: another round only if the last one's notes reached `items`, so a mismatch between
             // what was drawn and what shows can never create notes that are not shown.
-            while (built.queue.toMaterialize.isNotEmpty() && rounds < MATERIALIZE_ROUNDS) {
-                val created = materializer.materialize(tx, built.queue.toMaterialize).toSet()
+            while (built.queue.pendingMaterialization() > 0 && rounds < MATERIALIZE_ROUNDS) {
+                val created = materializer.materialize(tx, built.queue.kanjiToMaterialize, built.queue.toMaterialize).toSet()
                 built = buildQueue(tx.dsl, req)
                 rounds++
                 val noteOf = built.loaded.candidates.associate { it.cardId to it.noteId }
@@ -110,6 +110,9 @@ internal class ReviewApi(
         }
         call.send(reply)
     }
+
+    /** README "C-27": pending materialization = entries to create + kanji notes to mint (the API's `to_materialize`). */
+    private fun ReviewQueue.pendingMaterialization(): Int = toMaterialize.size + kanjiToMaterialize.size
 
     private class QueueRequest(val nowMs: Long, val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean)
 
@@ -152,7 +155,7 @@ internal class ReviewApi(
         } else {
             !r.keepGoing && wanted.isEmpty() &&
                 builder.build(loaded.input.copy(limits = loaded.input.limits.copy(keepGoing = true))).let { kg ->
-                    kg.items.any(::inKinds) || ("new" in kinds && kg.toMaterialize.isNotEmpty())
+                    kg.items.any(::inKinds) || ("new" in kinds && kg.pendingMaterialization() > 0)
                 }
         }
         val views = ReviewViews(dsl, settings.leechThreshold)
@@ -168,7 +171,7 @@ internal class ReviewApi(
             "day_ends_at" to formatInstant(Instant.ofEpochMilli(day.day.endMs)),
             "generated_at" to formatInstant(Instant.ofEpochMilli(nowMs)),
             "more_available" to moreAvailable,
-            "to_materialize" to if ("new" in kinds) queue.toMaterialize.size else 0,
+            "to_materialize" to if ("new" in kinds) queue.pendingMaterialization() else 0,
         )
         out["loop"] = loopJson(state)
         // ADR-033: omitted when no learning card is waiting later today.
@@ -183,6 +186,7 @@ internal class ReviewApi(
         "ready" to linkedMapOf("learning" to s.readyLearning, "review" to s.readyReviews, "total" to s.readyLearning + s.readyReviews),
         "later_today" to linkedMapOf("count" to s.laterToday, "next_due_at" to s.nextDueAt?.let { formatInstant(Instant.ofEpochMilli(it)) }),
         "backlog" to linkedMapOf("reviews" to s.backlog, "beyond_limit" to s.backlogBeyondLimit),
+        "until_stop" to s.untilStop,
         "reviews" to linkedMapOf("today" to s.reviewsToday, "limit" to s.reviewsLimit),
         "new" to linkedMapOf("today" to s.newToday, "goal" to s.newGoal, "available" to s.newAvailable),
     )

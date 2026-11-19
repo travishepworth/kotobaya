@@ -6,7 +6,7 @@ import org.jooq.DSLContext
 
 private fun ts(col: String) = "to_char($col at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')"
 
-private const val IDENTITY = "case when di.item_key like 'e:%' then di.item_key when sn.entry_seq is not null " +
+internal const val IDENTITY = "case when di.item_key like 'e:%' then di.item_key when sn.entry_seq is not null " +
     "then 'e:' || sn.entry_seq::text else 'n:' || sn.id::text end"
 
 /**
@@ -55,10 +55,28 @@ internal class DeckViews(private val dsl: DSLContext) {
 
     fun deck(id: String): ObjectNode? =
         dsl.fetchOptional("$DECK_SELECT where d.id = ?::uuid", id).map { parse(it.get(0, String::class.java)) }.orElse(null)
+            ?.also { withProgress(listOf(it)) }
+
+    /**
+     * ADR-041: sets `progress` on each of [decks] (null for a smart or tombstoned deck), computed by the core's
+     * `DeckProgress` over one batch of statements ([DeckProgressLoader]). Not learning data: nothing is stored.
+     */
+    private fun withProgress(decks: List<ObjectNode>) {
+        val live = decks.filter { it["deleted_at"].isNull && it["type"].asText() != "smart" }.map { it["id"].asText() }
+        val counts = DeckProgressLoader.load(dsl, live)
+        for (d in decks) {
+            val c = counts[d["id"].asText()]
+            if (c == null) {
+                d.putNull("progress")
+            } else {
+                d.putObject("progress").put("learned", c.learned).put("total", c.total).put("percent", c.percent)
+            }
+        }
+    }
 
     fun liveListDeck(listKey: String): ObjectNode? =
         dsl.fetchOptional("$DECK_SELECT where d.list_key = ? and d.deleted_at is null", listKey)
-            .map { parse(it.get(0, String::class.java)) }.orElse(null)
+            .map { parse(it.get(0, String::class.java)) }.orElse(null)?.also { withProgress(listOf(it)) }
 
     fun decks(type: String?, includeDeleted: Boolean): List<ObjectNode> {
         val where = mutableListOf<String>()
@@ -70,6 +88,7 @@ internal class DeckViews(private val dsl: DSLContext) {
         }
         val w = if (where.isEmpty()) "" else " where " + where.joinToString(" and ")
         return dsl.fetch("$DECK_SELECT$w order by d.priority, d.id", *args.toTypedArray()).map { parse(it.get(0, String::class.java)) }
+            .also { withProgress(it) }
     }
 
     private fun itemSelect(tail: String) =

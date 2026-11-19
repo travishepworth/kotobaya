@@ -7,6 +7,7 @@ import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.DeckMembership
+import kotobaya.contracts.queue.MissingKanji
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueDeck
@@ -43,9 +44,12 @@ internal class LoadedQueue(val input: QueueInput, val candidates: List<QueueCand
  *   decks whose entry exists in `ref.dict_entry`, that no live note holds, that no **user-deleted** note held
  *   (a tombstoned note with that `entry_seq` and no `merged_into_id`: deleting a deck word's note drops it, it is never
  *   resurrected), whose override is not KNOWN / NEVER_FORGET / BLACKLISTED / IGNORED, and whose materialization would
- *   create at least one vocab card ([DeckEntryPlan.vocabKinds]). Each carries `expressionKanji` (the headword's kanji)
- *   and `newKanjiCards` ([DeckEntryPlan.newKanjiCards] under the deck's present `add_kanji`), so the builder draws it
- *   as the group its card will be. Only the first `2 × B + 16` per deck in `(position, item_key)` order are passed,
+ *   create at least one vocab card ([DeckEntryPlan.vocabKinds]). Each carries `expressionKanji` (the headword's kanji),
+ *   `requiredKanji` ([KanjiNeeds], the core's `KanjiRequirement`) and `missingKanji` ([DeckEntryPlan.missingKanji]), so the
+ *   builder draws it as the unit its card will be (ADR-040/042; `add_kanji` is ignored);
+ * - candidates carry the same `requiredKanji` / `missingKanji` for every vocab note; started cards of vocab and kanji
+ *   notes are passed whatever their due date (backfill, ADR-043); a scoped build adds the required kanji notes' cards
+ *   as companions; Only the first `2 × B + 16` per deck in `(position, item_key)` order are passed,
  *   `B` = `max(1, batch)` (ADR-037: the batch bounds both builds of the loop); an entry beyond that is reached by a later build.
  */
 internal class QueueLoader(private val dsl: DSLContext) {
@@ -60,24 +64,27 @@ internal class QueueLoader(private val dsl: DSLContext) {
         val readingEnabled = kotobaya.cards.ReadingSetting.load(dsl)
         val decks = loadDecks(settings)
         val batch = maxOf(1, keepGoingNewBatch)
+        val plan = DeckEntryPlan(dsl, readingEnabled = readingEnabled)
         val pending = pendingEntries(
             // ADR-037: both builds of the loop draw at most the batch; new_per_session is ignored.
             batch,
             deckFilter,
             settings.burySiblings,
-            readingEnabled,
+            plan,
         )
 
-        // Candidates: NEW cards, and started cards that can come due before the day ends.
+        // Candidates: NEW cards, and started cards that can come due before the day ends. ADR-043: backfill needs to know
+        // which vocab words are introduced and which kanji are started, so every live started card of a vocab or kanji
+        // note is passed whatever its due date or suspension (the builder applies those rules itself).
         val rows = dsl.fetch(
             "select c.id::text, c.note_id::text, c.kind, n.note_type_id::text, n.type, ${msOf("n.created_at")}, c.state, " +
                 "${msOf("c.due_at")}, c.suspended, ${msOf("c.buried_until")}, ws.override_status, n.kanji_literal, " +
-                "coalesce(nullif(n.fields->>'expression', ''), de.headword) " +
+                "n.fields->>'expression', n.fields->>'reading', n.entry_seq " +
                 "from app.card c join app.note n on n.id = c.note_id " +
                 "left join app.word_status ws on ws.entry_seq = n.entry_seq " +
-                "left join ref.dict_entry de on de.seq = n.entry_seq " +
-                "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null and not c.suspended " +
-                "and (c.state = 'new' or c.due_at < ?::timestamptz) " +
+                "where c.deleted_at is null and c.merged_into_id is null and n.deleted_at is null " +
+                "and ((not c.suspended and (c.state = 'new' or c.due_at < ?::timestamptz)) " +
+                "  or (c.state <> 'new' and n.type in ('vocab', 'kanji'))) " +
                 // SYNC.md 9.4 item 4 (C-8): a refused cache has no trustworthy schedule; never queue it.
                 "and c.last_review_id is distinct from ?::uuid",
             java.sql.Timestamp(day.endMs), Reserved.REPLAY_REFUSED_ID,
@@ -87,10 +94,24 @@ internal class QueueLoader(private val dsl: DSLContext) {
         val memberships = memberships(noteIds, decks, nowMs, settings)
         val kindOrders = kindOrders()
 
-        var candidates = rows.map { r ->
+        // ADR-042 / README "C-27": the core decides which kanji a word requires; the loader only feeds it and then names
+        // the required kanji that have no kanji note yet. Once per vocab note.
+        val vocabNotes = LinkedHashMap<String, WordRef>()
+        for (r in rows) {
+            if (r.get(4, String::class.java) != NoteBaseType.VOCAB.wire) continue
+            vocabNotes.getOrPut(r.get(1, String::class.java)) {
+                WordRef(r.get(1, String::class.java), r.get(12, String::class.java), r.get(13, String::class.java), (r.get(14) as Number?)?.toLong())
+            }
+        }
+        val resolved = KanjiNeeds(dsl).resolve(vocabNotes.values)
+        val missing = HashMap<String, List<MissingKanji>>()
+        for ((noteId, w) in resolved) missing[noteId] = plan.missingKanji(w.required, settings.burySiblings)
+
+        val all = rows.map { r ->
             val noteId = r.get(1, String::class.java)
             val type = NoteBaseType.entries.first { it.wire == r.get(4, String::class.java) }
             val kind = r.get(2, String::class.java)
+            val word = resolved[noteId]
             QueueCandidate(
                 cardId = r.get(0, String::class.java),
                 noteId = noteId,
@@ -105,10 +126,23 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 wordOverride = r.get(10, String::class.java)?.let { w -> WordStatus.entries.first { it.wire == w } },
                 memberships = memberships[noteId].orEmpty(),
                 kanjiLiteral = r.get(11, String::class.java),
-                expressionKanji = if (type == NoteBaseType.VOCAB) r.get(12, String::class.java)?.let(ReviewViews::kanjiOf).orEmpty() else emptyList(),
+                expressionKanji = word?.expressionKanji.orEmpty(),
+                requiredKanji = if (type == NoteBaseType.VOCAB) word?.required.orEmpty() else null,
+                missingKanji = missing[noteId].orEmpty(),
             )
         }
-        if (deckFilter != null) candidates = candidates.filter { c -> c.memberships.any { it.deckId == deckFilter } }
+        var candidates = all
+        if (deckFilter != null) {
+            // Scoped build (README "C-27"): the deck's cards, plus every live card of a kanji note that a passed word or
+            // entry requires, as companions, so the deck's words are never served without their kanji.
+            val scoped = all.filter { c -> c.memberships.any { it.deckId == deckFilter } }
+            val inScope = scoped.mapTo(HashSet()) { it.cardId }
+            val required = scoped.filter { it.noteBaseType == NoteBaseType.VOCAB }.flatMapTo(HashSet()) { it.requiredKanji.orEmpty() } +
+                pending.flatMap { it.requiredKanji.orEmpty() }
+            candidates = scoped + all.filter { c ->
+                c.noteBaseType == NoteBaseType.KANJI && c.cardId !in inScope && c.kanjiLiteral in required
+            }.map { it.copy(companion = true) }
+        }
 
         val today = todayRows.map { it.copy(deckIds = memberships[it.noteId].orEmpty().map(DeckMembership::deckId)) }.map { it.review }
         val input = QueueInput(
@@ -137,7 +171,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
     }
 
     /** See the class KDoc. [budget] bounds how many new cards one build can draw (an upper bound). */
-    private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean, readingEnabled: Boolean): List<PendingEntry> {
+    private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean, plan: DeckEntryPlan): List<PendingEntry> {
         if (budget <= 0) return emptyList()
         val rows = dsl.fetch(
             "select x.deck_id, x.entry_seq, x.position, x.item_key, de.headword, de.headword_reading, de.senses::text, " +
@@ -160,20 +194,26 @@ internal class QueueLoader(private val dsl: DSLContext) {
             deckFilter, deckFilter, 2L * budget + 16,
         )
         if (rows.isEmpty()) return emptyList()
-        val plan = DeckEntryPlan(dsl, readingEnabled = readingEnabled)
-        return rows.mapNotNull { r ->
+        val entries = rows.mapNotNull { r ->
             val seq = (r.get(1) as Number).toLong()
             val dict = EntryDict(seq, r.get(4, String::class.java), r.get(5, String::class.java), EntryDict.glossesOf(r.get(6, String::class.java)))
             val deck = DeckEntrySettings.of(r.get(7, String::class.java), r.get(8, String::class.java))
             if (plan.vocabKinds(dict, deck.cardKinds).isEmpty()) return@mapNotNull null
+            r to seq
+        }
+        // ADR-042: the same requirement the entry's note will get once it exists (expression = the headword).
+        val resolved = KanjiNeeds(dsl).resolve(entries.map { (_, seq) -> WordRef("e:$seq", null, null, seq) }.distinctBy { it.key })
+        return entries.map { (r, seq) ->
+            val word = checkNotNull(resolved["e:$seq"])
             PendingEntry(
                 deckId = r.get(0).toString(),
                 entrySeq = seq,
                 position = (r.get(2) as Number).toLong(),
                 itemKey = r.get(3, String::class.java),
                 wordOverride = null,
-                expressionKanji = plan.kanjiOf(dict.headword),
-                newKanjiCards = plan.newKanjiCards(dict.headword, deck.addKanji, burySiblings),
+                expressionKanji = word.expressionKanji,
+                requiredKanji = word.required,
+                missingKanji = plan.missingKanji(word.required, burySiblings),
             )
         }
     }

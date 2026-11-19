@@ -7,7 +7,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : null,
       "override_status" : null,
       "status" : "new",
@@ -20,7 +20,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : "manual",
       "override_status" : "never_forget",
       "status" : "never_forget",
@@ -33,7 +33,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : "manual",
       "override_status" : "never_forget",
       "status" : "never_forget",
@@ -46,7 +46,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : "manual",
       "override_status" : "blacklisted",
       "status" : "blacklisted",
@@ -89,7 +89,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 0
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -102,7 +103,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : null,
       "override_status" : null,
       "status" : "new",
@@ -115,7 +116,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "override_origin" : null,
       "override_status" : null,
       "status" : "new",
@@ -149,7 +150,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000220,
+            "entry_seq" : 1001010,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000001",
@@ -175,25 +176,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "明白",
-          "headword_reading" : "めいはく",
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
           "is_common" : true,
-          "kanji" : [ "明", "白" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "明白"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000001",
           "pitch" : [ ],
-          "pos" : [ "adj-na" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "めいはく"
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -203,36 +205,26 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "obvious"
+              "text" : "carelessly"
             }, {
               "lang" : "eng",
-              "text" : "clear"
+              "text" : "thoughtlessly"
             }, {
               "lang" : "eng",
-              "text" : "plain"
-            }, {
-              "lang" : "eng",
-              "text" : "evident"
-            }, {
-              "lang" : "eng",
-              "text" : "apparent"
-            }, {
-              "lang" : "eng",
-              "text" : "explicit"
-            }, {
-              "lang" : "eng",
-              "text" : "overt"
+              "text" : "inadvertently"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "adj-na" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000220,
+          "seq" : 1001010,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:08.000Z",
@@ -254,9 +246,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
-          "front" : "明白",
-          "reading" : "めいはく",
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
           "sentence" : null
         }
       } ],
@@ -284,7 +276,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 1
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -301,7 +294,7 @@
         "code" : "invalid_value",
         "pointer" : "/status"
       } ],
-      "instance" : "/api/v1/words/1000220/status",
+      "instance" : "/api/v1/words/1001010/status",
       "status" : 422,
       "type" : "urn:kotobaya:problem:validation_failed"
     }
@@ -316,7 +309,7 @@
         "code" : "required",
         "pointer" : "/status"
       } ],
-      "instance" : "/api/v1/words/1000220/status",
+      "instance" : "/api/v1/words/1001010/status",
       "status" : 422,
       "type" : "urn:kotobaya:problem:validation_failed"
     }
@@ -327,7 +320,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000440,
+      "entry_seq" : 1001150,
       "override_origin" : "manual",
       "override_status" : "known",
       "status" : "known",
@@ -353,7 +346,7 @@
     },
     "body" : {
       "auto_status" : null,
-      "entry_seq" : 1000450,
+      "entry_seq" : 1001580,
       "override_origin" : null,
       "override_status" : null,
       "status" : "new",

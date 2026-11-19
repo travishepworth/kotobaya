@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import kotobaya.contracts.WordStatus
 import kotobaya.contracts.dict.KanjiExampleCandidate
 import kotobaya.contracts.dict.KanjiExamplePicker
+import kotobaya.contracts.dict.KanjiPartSource
 import kotobaya.contracts.dict.KanjiReadings
+import kotobaya.dict.DefaultKanjiParts
 import kotobaya.decks.DeckMembership
 import kotobaya.decks.NoteDeck
 import kotobaya.dict.DefaultKanjiExamplePicker
@@ -22,6 +24,7 @@ internal class QueueExtras private constructor(
     private val decksByNote: Map<String, List<NoteDeck>>,
     private val entryDecks: Map<Long, List<String>>,
     private val candidates: Map<String, List<Candidate>>,
+    private val partSources: Map<String, KanjiPartSource>,
 ) {
     private class Candidate(val core: KanjiExampleCandidate, val gloss: String)
 
@@ -55,6 +58,26 @@ internal class QueueExtras private constructor(
         return out
     }
 
+    /** `kanji_parts` of a vocab word (ADR-041): the core's [DefaultKanjiParts] over the page's [partSources]. */
+    fun kanjiParts(expression: String, reading: String): ArrayNode {
+        val out = json.createArrayNode()
+        for (p in DefaultKanjiParts.build(expression, reading, partSources.values.toList())) {
+            val part = out.addObject()
+                .put("literal", p.literal)
+                .put("keyword", p.keyword)
+            part.putArray("meanings").also { a -> p.meanings.forEach { a.add(it) } }
+            part.putArray("on").also { a -> p.on.forEach { a.add(it) } }
+            part.putArray("kun").also { a -> p.kun.forEach { a.add(it) } }
+            val used = p.usedReading
+            if (used == null) {
+                part.putNull("used_reading")
+            } else {
+                part.putObject("used_reading").put("type", used.type.wire).put("reading", used.reading).put("kana", used.kana)
+            }
+        }
+        return out
+    }
+
     companion object {
         /** `QueueItem.decks` lists at most this many decks; `deck_count` has the total. */
         const val MAX_DECKS = 3
@@ -63,8 +86,38 @@ internal class QueueExtras private constructor(
          * Loads the extras of one page: the decks of [noteIds], the `deck_ids` of [entrySeqs] and the example-word
          * candidates of [literals]. At most three statements, each skipped when its input is empty.
          */
-        fun load(dsl: DSLContext, noteIds: Collection<String>, entrySeqs: Collection<Long>, literals: Collection<String>): QueueExtras =
-            QueueExtras(DeckMembership.ofNotes(dsl, noteIds), DeckMembership.ofEntries(dsl, entrySeqs), candidates(dsl, literals))
+        fun load(
+            dsl: DSLContext,
+            noteIds: Collection<String>,
+            entrySeqs: Collection<Long>,
+            literals: Collection<String>,
+            partLiterals: Collection<String> = emptyList(),
+        ): QueueExtras =
+            QueueExtras(DeckMembership.ofNotes(dsl, noteIds), DeckMembership.ofEntries(dsl, entrySeqs), candidates(dsl, literals), partSources(dsl, partLiterals))
+
+        /**
+         * ADR-041: per kanji of the page's vocab words, its `ref.kanji` readings and meanings and the keyword of the user's
+         * earliest live kanji note (`created_at`, `id`). Two statements, none when [literals] is empty.
+         */
+        private fun partSources(dsl: DSLContext, literals: Collection<String>): Map<String, KanjiPartSource> {
+            if (literals.isEmpty()) return emptyMap()
+            val arr = literals.toSet().toTypedArray()
+            fun list(text: String?): List<String> = text?.let { json.readTree(it).map { n -> n.asText() } }.orEmpty()
+            val data = dsl.fetch(
+                "select literal, array_to_json(on_readings)::text, array_to_json(kun_readings)::text, array_to_json(meanings)::text " +
+                    "from ref.kanji where literal = any(array(select unnest(?::text[])))",
+                arr,
+            ).associate { r -> r.get(0, String::class.java) to Triple(list(r.get(1, String::class.java)), list(r.get(2, String::class.java)), list(r.get(3, String::class.java))) }
+            val keywords = dsl.fetch(
+                "select distinct on (kanji_literal) kanji_literal, fields->>'keyword' from app.note " +
+                    "where kanji_literal = any(array(select unnest(?::text[]))) and deleted_at is null order by kanji_literal, created_at, id",
+                arr,
+            ).associate { r -> r.get(0, String::class.java) to PlainText.of(r.get(1, String::class.java)).takeIf { it.isNotBlank() } }
+            return arr.associateWith { l ->
+                val d = data[l]
+                KanjiPartSource(KanjiReadings(l, d?.first.orEmpty(), d?.second.orEmpty()), d?.third.orEmpty(), keywords[l])
+            }
+        }
 
         /**
          * Per kanji, the picker's window: the first `CANDIDATE_LIMIT` eligible entries in pick order (the picker's

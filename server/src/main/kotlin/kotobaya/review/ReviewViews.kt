@@ -7,6 +7,7 @@ import kotobaya.contracts.fsrs.CardSchedule
 import kotobaya.contracts.fsrs.CardState
 import kotobaya.contracts.fsrs.PresetRow
 import kotobaya.contracts.fsrs.Scheduler
+import kotobaya.contracts.dict.KanjiParts
 import kotobaya.decks.DeckMembership
 import kotobaya.dict.SearchText
 import kotobaya.contracts.cards.NoteTypeInfo
@@ -89,11 +90,19 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
         val noteTypes = HashMap<String, NoteTypeInfo?>()
         // C-25: decks, entry deck_ids and example-word candidates of the whole page, a fixed number of statements.
         val pageNotes = views.values.map { it.json["note"] }
+        // ADR-041/042: the core's KanjiRequirement over the page's vocab notes (`front_furigana`) and the sources of their
+        // `kanji_parts`, in the same fixed number of statements.
+        fun field(n: JsonNode, key: String): String? = n["fields"]?.get(key)?.takeIf { it.isTextual }?.asText()
+        val vocabWords = pageNotes.filter { it["type"].asText() == "vocab" }.map { n ->
+            WordRef(n["id"].asText(), field(n, "expression"), field(n, "reading"), n["entry_seq"].takeUnless { it.isNull }?.asLong())
+        }
+        val words = KanjiNeeds(dsl).resolve(vocabWords)
         val extras = QueueExtras.load(
             dsl,
             noteIds = pageNotes.map { it["id"].asText() },
             entrySeqs = pageNotes.mapNotNull { n -> n["entry_seq"].takeUnless { it.isNull }?.asLong() },
             literals = pageNotes.mapNotNull { n -> n["kanji_literal"].takeUnless { it.isNull }?.asText() },
+            partLiterals = words.values.flatMap { it.expressionKanji.take(KanjiParts.MAX_PARTS) },
         )
         return cards.mapNotNull { id ->
             val v = views[id] ?: return@mapNotNull null
@@ -116,7 +125,10 @@ internal class ReviewViews(private val dsl: DSLContext, private val leechThresho
             note["kanji_literal"].takeUnless { it.isNull }?.let { item.set<JsonNode>("kanji_examples", extras.kanjiExamples(it.asText(), item["kanji"])) }
             // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client.
             val info = noteTypes.getOrPut(v.noteType) { noteViews.noteType(v.noteType)?.toNoteTypeInfo() }
-            QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"])?.let { item.set<JsonNode>("text", it) }
+            val word = words[note["id"].asText()]
+            item.put("front_furigana", word?.frontFurigana ?: false)
+            if (word != null) item.set<JsonNode>("kanji_parts", extras.kanjiParts(word.expression, word.reading))
+            QueueText.of(info, v.json, item["entry"], item["kanji"], item["grammar_sentence"], word?.frontFurigana ?: false)?.let { item.set<JsonNode>("text", it) }
             if (type == "drill" || type == "cram") {
                 item.putNull("preview")
             } else {

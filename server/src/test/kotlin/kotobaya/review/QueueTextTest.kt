@@ -45,7 +45,7 @@ class QueueTextTest : SyncFixture() {
             seq,
         )
         it.execute("insert into ref.entry_pitch (seq, reading, positions) values (?, 'たべる', '{2}')", seq)
-        it.execute("insert into ref.kanji (literal, meanings, on_readings, kun_readings) values ('食', array['eat','food'], array['ショク'], array['た.べる'])")
+        it.execute("insert into ref.kanji (literal, meanings, on_readings, kun_readings, grade) values ('食', array['eat','food'], array['ショク'], array['た.べる'], 2)")
         it.execute("insert into app.grammar_point (id, title, created_at, updated_at) values (?::uuid, 'g', now(), now())", gid)
         it.execute("insert into app.media (id, title, kind, source, parse_status, content_version, created_at, updated_at) values (?::uuid, 'm', 'anime', 'file', 'parsed', 1, now(), now())", media)
         it.execute("insert into app.media_segment (id, media_id, ordinal, kind) values (?::uuid, ?::uuid, 0, 'episode')", seg, media)
@@ -96,8 +96,9 @@ class QueueTextTest : SyncFixture() {
         val cards = note(t, mapOf("note_type_id" to vocab, "fields" to emptyMap<String, String>(), "entry_seq" to seq), listOf("meaning", "reading"))
         val r = client.call(HttpMethod.Get, "/review/queue", bearer = t)
         assertEquals(200, r.status.value)
-        val items = r.json()["items"]
-        assertTrue(items.size() >= 1)
+        // ADR-040: 食 is learnable, so its kanji card is minted and served ahead of the word.
+        val items = r.json()["items"].filter { it["card"]["note"]["type"].asText() == "vocab" }
+        assertTrue(items.isNotEmpty())
         for (item in items) {
             assertTrue(item["card"]["id"].asText() in cards.values)
             // meaning and reading cards read the same as text

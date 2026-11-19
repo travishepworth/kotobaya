@@ -1,0 +1,1076 @@
+{
+  "id" : "queue-kanji-disabled-home-deck",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 4,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.002Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000020",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000002",
+            "kanji_literal" : "学",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.002Z"
+        },
+        "deck_count" : 1,
+        "decks" : [ {
+          "id" : "0193a1b2-0004-7000-8000-000000000001",
+          "name" : "Kanji",
+          "priority" : 0
+        } ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 63,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "まな.ぶ" ],
+          "literal" : "学",
+          "meanings" : [ "study", "learning", "science" ],
+          "nanori" : [ "たか", "のり" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "on_readings" : [ "ガク" ],
+          "radical" : "39",
+          "stroke_count" : 8
+        },
+        "kanji_examples" : [ {
+          "gloss" : "school",
+          "headword" : "学校",
+          "reading" : "がっこう",
+          "reading_type" : "on",
+          "seq" : 1206730
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "study; learning; science\nガク、まな.ぶ",
+          "front" : "学",
+          "reading" : "ガク、まな.ぶ",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1206730,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "学校",
+          "headword_reading" : "がっこう",
+          "is_common" : true,
+          "kanji" : [ "学", "校", "學" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "学校"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "學校"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "がっこう"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "school"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1206730,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "study",
+          "kun" : [ "まな.ぶ" ],
+          "literal" : "学",
+          "meanings" : [ "study", "learning", "science" ],
+          "on" : [ "ガク" ],
+          "used_reading" : {
+            "kana" : "がっ",
+            "reading" : "ガク",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "exam",
+          "kun" : [ ],
+          "literal" : "校",
+          "meanings" : [ "exam", "school", "printing", "proof", "correction" ],
+          "on" : [ "コウ", "キョウ" ],
+          "used_reading" : {
+            "kana" : "こう",
+            "reading" : "コウ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "がっこう\nschool",
+          "front" : "学校",
+          "reading" : "がっこう",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.008Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000060",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000006",
+            "kanji_literal" : "生",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.008Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 29,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "い.きる", "い.かす", "い.ける", "う.まれる", "うま.れる", "う.まれ", "うまれ", "う.む", "お.う", "は.える", "は.やす", "き", "なま", "なま-", "な.る", "な.す", "む.す", "-う" ],
+          "literal" : "生",
+          "meanings" : [ "life", "genuine", "birth" ],
+          "nanori" : [ "あさ", "いき", "いく", "いけ", "うぶ", "うまい", "え", "おい", "ぎゅう", "くるみ", "ごせ", "さ", "じょう", "すぎ", "そ", "そう", "ちる", "なば", "にう", "にゅう", "ふ", "み", "もう", "よい", "りゅう" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "on_readings" : [ "セイ", "ショウ" ],
+          "radical" : "100",
+          "stroke_count" : 5
+        },
+        "kanji_examples" : [ {
+          "gloss" : "teacher; instructor; master",
+          "headword" : "先生",
+          "reading" : "せんせい",
+          "reading_type" : "on",
+          "seq" : 1387990
+        }, {
+          "gloss" : "happy birthday",
+          "headword" : "お誕生日おめでとうございます",
+          "reading" : "おたんじょうびおめでとうございます",
+          "reading_type" : "on",
+          "seq" : 1002410
+        }, {
+          "gloss" : "to bear fruit",
+          "headword" : "生る",
+          "reading" : "なる",
+          "reading_type" : "kun",
+          "seq" : 1611000
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "life; genuine; birth\nセイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
+          "front" : "生",
+          "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.007Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1387990,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.007Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "先生",
+          "headword_reading" : "せんせい",
+          "is_common" : true,
+          "kanji" : [ "先", "生" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "先生"
+          } ],
+          "language" : "ja",
+          "misc" : [ "hon", "fam", "joc", "arch" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "pitch" : [ ],
+          "pos" : [ "n", "n-suf" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "せんせい"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "teacher"
+            }, {
+              "lang" : "eng",
+              "text" : "instructor"
+            }, {
+              "lang" : "eng",
+              "text" : "master"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sensei"
+            }, {
+              "lang" : "eng",
+              "text" : "title or form of address for a teacher, master, doctor, lawyer, etc."
+            } ],
+            "info" : [ ],
+            "misc" : [ "hon" ],
+            "pos" : [ "n", "n-suf" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "intimate or teasing form of address"
+            } ],
+            "info" : [ ],
+            "misc" : [ "fam", "joc" ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "one's elder"
+            } ],
+            "info" : [ "orig. meaning" ],
+            "misc" : [ "arch" ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1387990,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "before",
+          "kun" : [ "さき", "ま.ず" ],
+          "literal" : "先",
+          "meanings" : [ "before", "ahead", "previous", "future", "precedence" ],
+          "on" : [ "セン" ],
+          "used_reading" : {
+            "kana" : "せん",
+            "reading" : "セン",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "life",
+          "kun" : [ "い.きる", "い.かす", "い.ける", "う.まれる", "うま.れる", "う.まれ", "うまれ", "う.む", "お.う", "は.える", "は.やす", "き", "なま", "なま-", "な.る", "な.す", "む.す", "-う" ],
+          "literal" : "生",
+          "meanings" : [ "life", "genuine", "birth" ],
+          "on" : [ "セイ", "ショウ" ],
+          "used_reading" : {
+            "kana" : "せい",
+            "reading" : "セイ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "せんせい\nteacher; instructor; master; sensei; title or form of address for a teacher, master, doctor, lawyer, etc.; intimate or teasing form of address; one's elder",
+          "front" : "先生",
+          "reading" : "せんせい",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 4
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T09:00:00.002Z",
+        "deleted_at" : null,
+        "difficulty" : 2.118103970459016,
+        "due_at" : "2026-11-20T10:10:02.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000020",
+        "interval_days" : 0,
+        "kind" : "keyword",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:02.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : null,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : "学",
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000102",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "kanji"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 2.3065,
+        "state" : "learning",
+        "step" : 1,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T09:00:00.002Z"
+      },
+      "review" : {
+        "button" : "good",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000020",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 3,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:02.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 1,
+        "new" : 3,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1206730,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "学校",
+          "headword_reading" : "がっこう",
+          "is_common" : true,
+          "kanji" : [ "学", "校", "學" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "学校"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "學校"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "がっこう"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "school"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1206730,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "study",
+          "kun" : [ "まな.ぶ" ],
+          "literal" : "学",
+          "meanings" : [ "study", "learning", "science" ],
+          "on" : [ "ガク" ],
+          "used_reading" : {
+            "kana" : "がっ",
+            "reading" : "ガク",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "exam",
+          "kun" : [ ],
+          "literal" : "校",
+          "meanings" : [ "exam", "school", "printing", "proof", "correction" ],
+          "on" : [ "コウ", "キョウ" ],
+          "used_reading" : {
+            "kana" : "こう",
+            "reading" : "コウ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "がっこう\nschool",
+          "front" : "学校",
+          "reading" : "がっこう",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.008Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000060",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000006",
+            "kanji_literal" : "生",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.008Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 29,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "い.きる", "い.かす", "い.ける", "う.まれる", "うま.れる", "う.まれ", "うまれ", "う.む", "お.う", "は.える", "は.やす", "き", "なま", "なま-", "な.る", "な.す", "む.す", "-う" ],
+          "literal" : "生",
+          "meanings" : [ "life", "genuine", "birth" ],
+          "nanori" : [ "あさ", "いき", "いく", "いけ", "うぶ", "うまい", "え", "おい", "ぎゅう", "くるみ", "ごせ", "さ", "じょう", "すぎ", "そ", "そう", "ちる", "なば", "にう", "にゅう", "ふ", "み", "もう", "よい", "りゅう" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "on_readings" : [ "セイ", "ショウ" ],
+          "radical" : "100",
+          "stroke_count" : 5
+        },
+        "kanji_examples" : [ {
+          "gloss" : "teacher; instructor; master",
+          "headword" : "先生",
+          "reading" : "せんせい",
+          "reading_type" : "on",
+          "seq" : 1387990
+        }, {
+          "gloss" : "happy birthday",
+          "headword" : "お誕生日おめでとうございます",
+          "reading" : "おたんじょうびおめでとうございます",
+          "reading_type" : "on",
+          "seq" : 1002410
+        }, {
+          "gloss" : "to bear fruit",
+          "headword" : "生る",
+          "reading" : "なる",
+          "reading_type" : "kun",
+          "seq" : 1611000
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "life; genuine; birth\nセイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
+          "front" : "生",
+          "reading" : "セイ、ショウ、い.きる、い.かす、い.ける、う.まれる、うま.れる、う.まれ、うまれ、う.む、お.う、は.える、は.やす、き、なま、なま-、な.る、な.す、む.す、-う",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.007Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1387990,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.007Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "先生",
+          "headword_reading" : "せんせい",
+          "is_common" : true,
+          "kanji" : [ "先", "生" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "先生"
+          } ],
+          "language" : "ja",
+          "misc" : [ "hon", "fam", "joc", "arch" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "pitch" : [ ],
+          "pos" : [ "n", "n-suf" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "せんせい"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "teacher"
+            }, {
+              "lang" : "eng",
+              "text" : "instructor"
+            }, {
+              "lang" : "eng",
+              "text" : "master"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sensei"
+            }, {
+              "lang" : "eng",
+              "text" : "title or form of address for a teacher, master, doctor, lawyer, etc."
+            } ],
+            "info" : [ ],
+            "misc" : [ "hon" ],
+            "pos" : [ "n", "n-suf" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "intimate or teasing form of address"
+            } ],
+            "info" : [ ],
+            "misc" : [ "fam", "joc" ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "one's elder"
+            } ],
+            "info" : [ "orig. meaning" ],
+            "misc" : [ "arch" ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1387990,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "before",
+          "kun" : [ "さき", "ま.ず" ],
+          "literal" : "先",
+          "meanings" : [ "before", "ahead", "previous", "future", "precedence" ],
+          "on" : [ "セン" ],
+          "used_reading" : {
+            "kana" : "せん",
+            "reading" : "セン",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "life",
+          "kun" : [ "い.きる", "い.かす", "い.ける", "う.まれる", "うま.れる", "う.まれ", "うまれ", "う.む", "お.う", "は.える", "は.やす", "き", "なま", "なま-", "な.る", "な.す", "む.す", "-う" ],
+          "literal" : "生",
+          "meanings" : [ "life", "genuine", "birth" ],
+          "on" : [ "セイ", "ショウ" ],
+          "used_reading" : {
+            "kana" : "せい",
+            "reading" : "セイ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "せんせい\nteacher; instructor; master; sensei; title or form of address for a teacher, master, doctor, lawyer, etc.; intimate or teasing form of address; one's elder",
+          "front" : "先生",
+          "reading" : "せんせい",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 1,
+          "next_due_at" : "2026-11-20T10:10:02.000Z"
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 1
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 4
+      },
+      "more_available" : false,
+      "next_learning_due_at" : "2026-11-20T10:10:02.000Z",
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  } ]
+}

@@ -42,23 +42,40 @@ internal class DeckEntrySettings(val addKanji: AddKanjiMode?, val cardKinds: Lis
  * the server never creates a second live note for an entry. A device that created one offline is merged by
  * SYNC.md 8.1 when it pushes (the note that held the entry first on the server survives).
  *
- * Per entry, in the builder's order (contracts/core README "C-27"; what is created is [DeckEntryPlan]'s, the same
- * computation that sized the entry's group for the builder):
+ * Step A (contracts/core README "C-27"; ADR-040/042): the kanji notes the build named (`kanjiToMaterialize`, the core's
+ * decision), `origin` `auto_kanji`, built-in kanji type, each followed by its `card.created`s; skipped when a live kanji
+ * note holds the literal or the user deleted one. Step B, per entry in the builder's order (what is created is
+ * [DeckEntryPlan]'s, the same computation that told the builder what was missing):
  * 1. skip it if a live note holds `entry_seq` (idempotent), the dictionary entry is gone, or no vocab card kind
  *    is left;
- * 2. the kanji notes [DeckEntryPlan.kanjiToCreate] (`origin` `auto_kanji`, built-in kanji type), each followed by
- *    its `card.created`s;
- * 3. `note.created` {built-in vocab type, `entry_seq`, empty `fields` (rendered from the dictionary), `origin`
+ * 2. `note.created` {built-in vocab type, `entry_seq`, empty `fields` (rendered from the dictionary), `origin`
  *    `deck`}, then one `card.created` per [DeckEntryPlan.vocabKinds].
  */
 internal class DeckMaterializer {
-    /** Emits the ops for [entries]; returns the ids of the vocab notes it created. */
-    fun materialize(tx: OpTx, entries: List<PendingEntry>): List<String> {
-        if (entries.isEmpty()) return emptyList()
+    /**
+     * Emits the ops for step A ([kanji], the build's `kanjiToMaterialize`) and step B ([entries]) of README "C-27", in that
+     * order; returns the ids of the notes it created (kanji and vocab).
+     */
+    fun materialize(tx: OpTx, kanji: List<String>, entries: List<PendingEntry>): List<String> {
+        if (kanji.isEmpty() && entries.isEmpty()) return emptyList()
         val views = NoteViews(tx.dsl)
         val plan = DeckEntryPlan(tx.dsl)
         val settings = HashMap<String, DeckEntrySettings>()
         val created = ArrayList<String>()
+        // Step A: kanji notes. Skipped when a live kanji note holds the literal (idempotent) or the user deleted one (never
+        // re-created), or when the kanji type would give it no card.
+        for (literal in kanji.distinct()) {
+            if (views.liveHolder("kanji_literal", literal) != null || plan.blocked(literal)) continue
+            val kinds = plan.kanjiKinds(literal)
+            if (kinds.isEmpty()) continue
+            val id = Uuid7.generate().toString()
+            val p = json.createObjectNode().put("id", id).put("note_type_id", BuiltInNoteTypes.KANJI.id)
+                .put("kanji_literal", literal).put("origin", "auto_kanji")
+            tx.emit(OpType.NOTE_CREATED, payload(p))
+            kinds.forEach { emitCard(tx, id, it) }
+            plan.kanjiCreated(literal)
+            created += id
+        }
         for (e in entries) {
             if (views.liveHolder("entry_seq", e.entrySeq) != null) continue
             val dict = tx.dsl.fetchOptional(
@@ -68,15 +85,6 @@ internal class DeckMaterializer {
             val deck = settings.getOrPut(e.deckId) { DeckEntrySettings.load(tx.dsl, e.deckId) }
             val vocabKinds = plan.vocabKinds(dict, deck.cardKinds)
             if (vocabKinds.isEmpty()) continue
-
-            for (literal in plan.kanjiToCreate(dict.headword, deck.addKanji)) {
-                val id = Uuid7.generate().toString()
-                val p = json.createObjectNode().put("id", id).put("note_type_id", BuiltInNoteTypes.KANJI.id)
-                    .put("kanji_literal", literal).put("origin", "auto_kanji")
-                tx.emit(OpType.NOTE_CREATED, payload(p))
-                plan.kanjiKinds(literal).forEach { emitCard(tx, id, it) }
-                plan.kanjiCreated(literal)
-            }
 
             val noteId = Uuid7.generate().toString()
             val p = json.createObjectNode().put("id", noteId).put("note_type_id", BuiltInNoteTypes.VOCAB.id).put("entry_seq", e.entrySeq)

@@ -37,7 +37,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:55.000Z",
@@ -81,7 +82,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:55.000Z",
@@ -189,8 +191,10 @@
           "seq" : 1000110,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:55.000Z",
@@ -242,7 +246,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "next_learning_due_at" : "2026-11-20T10:00:56.000Z",
@@ -404,7 +409,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 0
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -447,7 +453,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 0
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

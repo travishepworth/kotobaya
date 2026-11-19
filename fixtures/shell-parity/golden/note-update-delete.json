@@ -33,7 +33,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : "from a drama"
@@ -86,7 +86,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -139,7 +139,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -192,7 +192,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -245,7 +245,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -298,7 +298,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -351,7 +351,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -404,7 +404,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -502,7 +502,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -555,7 +555,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : null,
-      "entry_seq" : 1000450,
+      "entry_seq" : 1001580,
       "fields" : { },
       "grammar_point_id" : null,
       "id" : "0193a1b2-0001-7000-8000-000000000002",
@@ -646,7 +646,7 @@
       "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
       "deck_ids" : [ ],
       "deleted_at" : "2026-11-20T10:00:16.000Z",
-      "entry_seq" : 1000220,
+      "entry_seq" : 1001010,
       "fields" : {
         "meaning" : "to eat",
         "notes" : ""
@@ -708,7 +708,7 @@
       "leech" : false,
       "merged_into_id" : null,
       "note" : {
-        "entry_seq" : 1000220,
+        "entry_seq" : 1001010,
         "fields" : {
           "meaning" : "to eat",
           "notes" : ""
@@ -759,7 +759,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000450,
+            "entry_seq" : 1001580,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000002",
@@ -785,29 +785,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの方",
-          "headword_reading" : "あのかた",
+          "headword" : "おろおろ",
+          "headword_reading" : "おろおろ",
           "is_common" : true,
-          "kanji" : [ "方", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの方"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の方"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "hon" ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000002",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのかた"
+            "text" : "おろおろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "オロオロ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -817,27 +814,57 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "that gentleman"
+              "text" : "in confusion"
             }, {
               "lang" : "eng",
-              "text" : "that lady"
+              "text" : "in a fluster"
             }, {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "in bewilderment"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "in a dither"
+            }, {
+              "lang" : "eng",
+              "text" : "in a panic"
+            }, {
+              "lang" : "eng",
+              "text" : "all shook up"
+            }, {
+              "lang" : "eng",
+              "text" : "helplessly"
             } ],
             "info" : [ ],
-            "misc" : [ "hon" ],
-            "pos" : [ "pn" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sobbing"
+            }, {
+              "lang" : "eng",
+              "text" : "tearfully"
+            }, {
+              "lang" : "eng",
+              "text" : "trembling (voice)"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000450,
+          "seq" : 1001580,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:23.000Z",
@@ -859,9 +886,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "あのかた\nthat gentleman; that lady; he; she",
-          "front" : "あの方",
-          "reading" : "あのかた",
+          "back" : "おろおろ\nin confusion; in a fluster; in bewilderment; in a dither; in a panic; all shook up; helplessly; sobbing; tearfully; trembling (voice)",
+          "front" : "おろおろ",
+          "reading" : "おろおろ",
           "sentence" : null
         }
       } ],
@@ -889,7 +916,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 1
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

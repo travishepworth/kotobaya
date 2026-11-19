@@ -28,7 +28,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000450,
+            "entry_seq" : 1001580,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000003",
@@ -54,29 +54,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの方",
-          "headword_reading" : "あのかた",
+          "headword" : "おろおろ",
+          "headword_reading" : "おろおろ",
           "is_common" : true,
-          "kanji" : [ "方", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの方"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の方"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "hon" ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000003",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのかた"
+            "text" : "おろおろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "オロオロ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -86,27 +83,57 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "that gentleman"
+              "text" : "in confusion"
             }, {
               "lang" : "eng",
-              "text" : "that lady"
+              "text" : "in a fluster"
             }, {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "in bewilderment"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "in a dither"
+            }, {
+              "lang" : "eng",
+              "text" : "in a panic"
+            }, {
+              "lang" : "eng",
+              "text" : "all shook up"
+            }, {
+              "lang" : "eng",
+              "text" : "helplessly"
             } ],
             "info" : [ ],
-            "misc" : [ "hon" ],
-            "pos" : [ "pn" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sobbing"
+            }, {
+              "lang" : "eng",
+              "text" : "tearfully"
+            }, {
+              "lang" : "eng",
+              "text" : "trembling (voice)"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000450,
+          "seq" : 1001580,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:10:01.000Z",
@@ -128,9 +155,9 @@
         "review_type" : "scheduled",
         "sentence" : null,
         "text" : {
-          "back" : "あのかた\nthat gentleman; that lady; he; she",
-          "front" : "あの方",
-          "reading" : "あのかた",
+          "back" : "おろおろ\nin confusion; in a fluster; in bewilderment; in a dither; in a panic; all shook up; helplessly; sobbing; tearfully; trembling (voice)",
+          "front" : "おろおろ",
+          "reading" : "おろおろ",
           "sentence" : null
         }
       }, {
@@ -222,8 +249,10 @@
           "seq" : 1000110,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:01.000Z",
@@ -275,7 +304,8 @@
         "reviews" : {
           "limit" : 1,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -309,7 +339,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000450,
+            "entry_seq" : 1001580,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000003",
@@ -335,29 +365,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの方",
-          "headword_reading" : "あのかた",
+          "headword" : "おろおろ",
+          "headword_reading" : "おろおろ",
           "is_common" : true,
-          "kanji" : [ "方", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの方"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の方"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "hon" ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000003",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのかた"
+            "text" : "おろおろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "オロオロ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -367,27 +394,57 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "that gentleman"
+              "text" : "in confusion"
             }, {
               "lang" : "eng",
-              "text" : "that lady"
+              "text" : "in a fluster"
             }, {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "in bewilderment"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "in a dither"
+            }, {
+              "lang" : "eng",
+              "text" : "in a panic"
+            }, {
+              "lang" : "eng",
+              "text" : "all shook up"
+            }, {
+              "lang" : "eng",
+              "text" : "helplessly"
             } ],
             "info" : [ ],
-            "misc" : [ "hon" ],
-            "pos" : [ "pn" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sobbing"
+            }, {
+              "lang" : "eng",
+              "text" : "tearfully"
+            }, {
+              "lang" : "eng",
+              "text" : "trembling (voice)"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000450,
+          "seq" : 1001580,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:10:02.000Z",
@@ -409,9 +466,9 @@
         "review_type" : "scheduled",
         "sentence" : null,
         "text" : {
-          "back" : "あのかた\nthat gentleman; that lady; he; she",
-          "front" : "あの方",
-          "reading" : "あのかた",
+          "back" : "おろおろ\nin confusion; in a fluster; in bewilderment; in a dither; in a panic; all shook up; helplessly; sobbing; tearfully; trembling (voice)",
+          "front" : "おろおろ",
+          "reading" : "おろおろ",
           "sentence" : null
         }
       }, {
@@ -430,7 +487,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000220,
+            "entry_seq" : 1001010,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000001",
@@ -456,25 +513,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "明白",
-          "headword_reading" : "めいはく",
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
           "is_common" : true,
-          "kanji" : [ "明", "白" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "明白"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000001",
           "pitch" : [ ],
-          "pos" : [ "adj-na" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "めいはく"
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -484,36 +542,26 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "obvious"
+              "text" : "carelessly"
             }, {
               "lang" : "eng",
-              "text" : "clear"
+              "text" : "thoughtlessly"
             }, {
               "lang" : "eng",
-              "text" : "plain"
-            }, {
-              "lang" : "eng",
-              "text" : "evident"
-            }, {
-              "lang" : "eng",
-              "text" : "apparent"
-            }, {
-              "lang" : "eng",
-              "text" : "explicit"
-            }, {
-              "lang" : "eng",
-              "text" : "overt"
+              "text" : "inadvertently"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "adj-na" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000220,
+          "seq" : 1001010,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:10:02.000Z",
@@ -535,9 +583,9 @@
         "review_type" : "scheduled",
         "sentence" : null,
         "text" : {
-          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
-          "front" : "明白",
-          "reading" : "めいはく",
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
           "sentence" : null
         }
       }, {
@@ -556,7 +604,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000440,
+            "entry_seq" : 1001150,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000002",
@@ -582,29 +630,66 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの人",
-          "headword_reading" : "あのひと",
+          "headword" : "えっと",
+          "headword_reading" : "えっと",
           "is_common" : true,
-          "kanji" : [ "人", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの人"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の人"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "arch" ],
+          "misc" : [ ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000002",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "int" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのひと"
+            "text" : "えっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えーと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "えーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "え〜と"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーーっと"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -614,37 +699,29 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "let me see"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "well"
             }, {
               "lang" : "eng",
-              "text" : "that person"
-            } ],
-            "info" : [ "sometimes of one's spouse or partner" ],
-            "misc" : [ ],
-            "pos" : [ "pn" ],
-            "xref" : [ ]
-          }, {
-            "applies_to_kana" : [ "*" ],
-            "applies_to_kanji" : [ "*" ],
-            "dialect" : [ ],
-            "field" : [ ],
-            "gloss" : [ {
+              "text" : "errr ..."
+            }, {
               "lang" : "eng",
-              "text" : "you"
+              "text" : "uhh ..."
             } ],
             "info" : [ ],
-            "misc" : [ "arch" ],
-            "pos" : [ "pn" ],
+            "misc" : [ ],
+            "pos" : [ "int" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000440,
+          "seq" : 1001150,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:10:02.000Z",
@@ -666,9 +743,9 @@
         "review_type" : "scheduled",
         "sentence" : null,
         "text" : {
-          "back" : "あのひと\nhe; she; that person; you",
-          "front" : "あの人",
-          "reading" : "あのひと",
+          "back" : "えっと\nlet me see; well; errr ...; uhh ...",
+          "front" : "えっと",
+          "reading" : "えっと",
           "sentence" : null
         }
       }, {
@@ -760,8 +837,10 @@
           "seq" : 1000110,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:02.000Z",
@@ -871,8 +950,10 @@
           "seq" : 1000160,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:02.000Z",
@@ -915,7 +996,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000390,
+            "entry_seq" : 1001060,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000006",
@@ -941,45 +1022,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あっという間に",
-          "headword_reading" : "あっというまに",
+          "headword" : "うろうろ",
+          "headword_reading" : "うろうろ",
           "is_common" : true,
-          "kanji" : [ "間", "言" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あっという間に"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "あっと言う間に"
-          }, {
-            "common" : false,
-            "tags" : [ "sK" ],
-            "text" : "アッという間に"
-          }, {
-            "common" : false,
-            "tags" : [ "sK" ],
-            "text" : "アッと言う間に"
-          }, {
-            "common" : false,
-            "tags" : [ "sK" ],
-            "text" : "あっとゆう間に"
-          }, {
-            "common" : false,
-            "tags" : [ "sK" ],
-            "text" : "アッとゆう間に"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000006",
           "pitch" : [ ],
-          "pos" : [ "exp", "adv" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あっというまに"
+            "text" : "うろうろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウロウロ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -989,30 +1051,70 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "in an instant"
+              "text" : "restlessly"
             }, {
               "lang" : "eng",
-              "text" : "in a flash"
+              "text" : "aimlessly"
             }, {
               "lang" : "eng",
-              "text" : "in the blink of an eye"
-            }, {
-              "lang" : "eng",
-              "text" : "in no time at all"
-            }, {
-              "lang" : "eng",
-              "text" : "just like that"
+              "text" : "without purpose"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "exp", "adv" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to loiter"
+            }, {
+              "lang" : "eng",
+              "text" : "to drift"
+            }, {
+              "lang" : "eng",
+              "text" : "to hang about doing nothing"
+            }, {
+              "lang" : "eng",
+              "text" : "to wander aimlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "to be restless"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
+            "xref" : [ "うろつく" ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to be restless"
+            }, {
+              "lang" : "eng",
+              "text" : "to fuss"
+            }, {
+              "lang" : "eng",
+              "text" : "to be in a fidget"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000390,
+          "seq" : 1001060,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:02.000Z",
@@ -1034,9 +1136,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "あっというまに\nin an instant; in a flash; in the blink of an eye; in no time at all; just like that",
-          "front" : "あっという間に",
-          "reading" : "あっというまに",
+          "back" : "うろうろ\nrestlessly; aimlessly; without purpose; to loiter; to drift; to hang about doing nothing; to wander aimlessly; to be restless; to be restless; to fuss; to be in a fidget",
+          "front" : "うろうろ",
+          "reading" : "うろうろ",
           "sentence" : null
         }
       } ],
@@ -1064,7 +1166,8 @@
         "reviews" : {
           "limit" : 1,
           "today" : 0
-        }
+        },
+        "until_stop" : 6
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -1098,7 +1201,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000450,
+            "entry_seq" : 1001580,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "0193a1b2-0001-7000-8000-000000000003",
@@ -1124,29 +1227,26 @@
           "deck_ids" : [ ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの方",
-          "headword_reading" : "あのかた",
+          "headword" : "おろおろ",
+          "headword_reading" : "おろおろ",
           "is_common" : true,
-          "kanji" : [ "方", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの方"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の方"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "hon" ],
+          "misc" : [ "on-mim" ],
           "note_id" : "0193a1b2-0001-7000-8000-000000000003",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのかた"
+            "text" : "おろおろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "オロオロ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -1156,27 +1256,57 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "that gentleman"
+              "text" : "in confusion"
             }, {
               "lang" : "eng",
-              "text" : "that lady"
+              "text" : "in a fluster"
             }, {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "in bewilderment"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "in a dither"
+            }, {
+              "lang" : "eng",
+              "text" : "in a panic"
+            }, {
+              "lang" : "eng",
+              "text" : "all shook up"
+            }, {
+              "lang" : "eng",
+              "text" : "helplessly"
             } ],
             "info" : [ ],
-            "misc" : [ "hon" ],
-            "pos" : [ "pn" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sobbing"
+            }, {
+              "lang" : "eng",
+              "text" : "tearfully"
+            }, {
+              "lang" : "eng",
+              "text" : "trembling (voice)"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000450,
+          "seq" : 1001580,
           "status" : "learning"
         },
+        "front_furigana" : false,
         "is_new" : false,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:10:03.000Z",
@@ -1198,9 +1328,9 @@
         "review_type" : "scheduled",
         "sentence" : null,
         "text" : {
-          "back" : "あのかた\nthat gentleman; that lady; he; she",
-          "front" : "あの方",
-          "reading" : "あのかた",
+          "back" : "おろおろ\nin confusion; in a fluster; in bewilderment; in a dither; in a panic; all shook up; helplessly; sobbing; tearfully; trembling (voice)",
+          "front" : "おろおろ",
+          "reading" : "おろおろ",
           "sentence" : null
         }
       }, {
@@ -1292,8 +1422,10 @@
           "seq" : 1000110,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:03.000Z",
@@ -1345,7 +1477,8 @@
         "reviews" : {
           "limit" : 1,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

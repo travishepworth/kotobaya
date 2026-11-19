@@ -140,7 +140,9 @@ class DeckMaterializeTest : SyncFixture() {
         val t = token()
         val deck = deckWithEntries(1, base = 8000)
         db.txBlocking { it.execute("update ref.dict_entry set headword = '食堂' where seq = 8001") }
-        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"before","card_kinds":["reading"]}}}""")
+        learnable("食", "堂")
+        // ADR-040/042: `add_kanji` is ignored; the required kanji are minted whatever the deck says.
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"off","card_kinds":["reading"]}}}""")
         fetch(t)
         val vocabNote = db.txBlocking { it.fetchValue("select id::text from app.note where entry_seq = 8001 and deleted_at is null") as String }
         // ADR-035: card_kinds ["reading"] names only a retired kind, so the type's defaults apply: meaning.
@@ -266,11 +268,18 @@ class DeckMaterializeTest : SyncFixture() {
         assertEquals(core, off["items"].map { it["card"]["id"].asText() })
     }
 
+    /** ADR-042: kanji with a KANJIDIC grade are learnable (required by the words that contain them). */
+    private fun learnable(vararg literals: String) = db.txBlocking {
+        for (l in literals) {
+            it.execute("insert into ref.kanji (literal, meanings, on_readings, kun_readings, grade) values (?, array['m'], array['オン'], array['くん'], 2) on conflict do nothing", l)
+        }
+    }
+
     private fun headword(seq: Long, h: String) = db.txBlocking { it.execute("update ref.dict_entry set headword = ? where seq = ?", h, seq) }
 
     /**
-     * C-27 review finding 1: with one new card left, an entry whose word brings two new kanji (add_kanji before) is a
-     * group of 3 and is never drawn, so polling creates nothing; keep going draws it whole.
+     * ADR-043: with one new card left, an entry whose word brings two new kanji is a unit of 3 that does not fit; it leads
+     * with the kanji that fit (食), only that one is minted, the entry stays pending; keep going draws the unit whole.
      */
     @Test
     fun anEntryWhoseKanjiGroupDoesNotFitIsNeverMaterialized() = reviewApp {
@@ -279,19 +288,19 @@ class DeckMaterializeTest : SyncFixture() {
         val deck = deckWithEntries(2, base = 9000)
         headword(9001, "食堂")
         headword(9002, "会社")
-        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"before"}}}""")
+        learnable("食", "堂", "会", "社")
         repeat(5) {
             val q = fetch(t)
-            assertEquals(0, q["items"].size())
+            assertEquals(listOf("kanji"), q["items"].map { it["card"]["note"]["type"].asText() }, "the lead: the kanji that fit")
             assertEquals(0, q["to_materialize"].asInt())
-            assertTrue(q["more_available"].asBoolean())
         }
-        assertEquals(0L, changes("note.created"), "nothing is created that could not be shown")
+        assertEquals(1L, changes("note.created"), "only the lead kanji is minted, once")
+        assertEquals(0L, liveNotes())
         val kg = fetch(t, "?keep_going=true&limit=3")
         // The whole group: 食 and 堂 kanji cards before the word; the batch of 3 holds nothing else.
         assertEquals(3, kg["items"].size())
         assertEquals(listOf("kanji", "kanji", "vocab"), kg["items"].map { it["card"]["note"]["type"].asText() })
-        assertEquals(3L, changes("note.created"))
+        assertEquals(3L, changes("note.created"), "the lead kanji existed: 堂 and the word are new")
         repeat(3) { fetch(t, "?keep_going=true&limit=3") }
         assertEquals(3L, changes("note.created"), "unanswered: the same group again, nothing more created")
     }
@@ -302,7 +311,8 @@ class DeckMaterializeTest : SyncFixture() {
         val deck = deckWithEntries(2, base = 9100)
         headword(9101, "食堂")
         headword(9102, "食事")
-        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"add_kanji":"alongside","card_kinds":[]}}}""")
+        learnable("食", "堂", "事")
+        emit(OpType.DECK_UPDATED, """{"id":"$deck","set":{"settings":{"card_kinds":[]}}}""")
         fetch(t, "?limit=1")
         val shoku = db.txBlocking { it.fetchValue("select id::text from app.note where kanji_literal = '食' and deleted_at is null") as String }
         assertEquals(204, client.call(HttpMethod.Delete, "/notes/$shoku", bearer = t).status.value)

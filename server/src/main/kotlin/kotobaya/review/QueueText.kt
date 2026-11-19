@@ -22,7 +22,7 @@ internal object QueueText {
      * `CardText` JSON for one item. [noteType] null (row missing) falls back to the built-in type of `note.type`; null
      * when that is unknown too (the item then has no `text`, the rest of the page is unaffected).
      */
-    fun of(noteType: NoteTypeInfo?, card: JsonNode, entry: JsonNode?, kanji: JsonNode?, grammarSentence: JsonNode?): ObjectNode? {
+    fun of(noteType: NoteTypeInfo?, card: JsonNode, entry: JsonNode?, kanji: JsonNode?, grammarSentence: JsonNode?, frontFurigana: Boolean = false): ObjectNode? {
         val note = card["note"]
         val info = noteType ?: BuiltInNoteTypes.ALL.firstOrNull { it.info.baseType.wire == note["type"]?.asText() }?.info ?: return null
         val fields = LinkedHashMap<String, String>()
@@ -35,6 +35,7 @@ internal object QueueText {
                 dictionary = entry.present()?.let(::dictionaryData),
                 cloze = grammarSentence.present()?.let(::cloze),
                 kanji = kanji.present()?.let(::kanjiData),
+                frontFurigana = frontFurigana,
             ),
         )
         return json.createObjectNode()

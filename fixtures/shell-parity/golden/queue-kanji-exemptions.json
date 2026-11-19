@@ -1,0 +1,1996 @@
+{
+  "id" : "queue-kanji-exemptions",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 7,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1595650,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "寿司",
+          "headword_reading" : "すし",
+          "is_common" : true,
+          "kanji" : [ "寿", "司", "鮨", "鮓", "壽" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ "ateji" ],
+            "text" : "寿司"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鮨"
+          }, {
+            "common" : false,
+            "tags" : [ "rK" ],
+            "text" : "鮓"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "寿し"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "壽司"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "壽し"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "すし"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ "food" ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sushi"
+            }, {
+              "lang" : "eng",
+              "text" : "range of dishes made with vinegared rice combined with fish, vegetables, egg, etc."
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1595650,
+          "status" : "new"
+        },
+        "front_furigana" : true,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "longevity",
+          "kun" : [ "ことぶき", "ことぶ.く", "ことほ.ぐ" ],
+          "literal" : "寿",
+          "meanings" : [ "longevity", "congratulations", "one's natural life" ],
+          "on" : [ "ジュ", "ス", "シュウ" ],
+          "used_reading" : {
+            "kana" : "す",
+            "reading" : "ス",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "director",
+          "kun" : [ "つかさど.る" ],
+          "literal" : "司",
+          "meanings" : [ "director", "official", "govt office", "rule", "administer" ],
+          "on" : [ "シ" ],
+          "used_reading" : {
+            "kana" : "し",
+            "reading" : "シ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "すし\nsushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "front" : "寿司（すし）",
+          "reading" : "すし",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id1>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id2>",
+            "kanji_literal" : "昨",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id2>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 226,
+          "grade" : 4,
+          "jlpt" : 2,
+          "kun_readings" : [ ],
+          "literal" : "昨",
+          "meanings" : [ "yesterday", "previous" ],
+          "nanori" : [ ],
+          "note_id" : "<id2>",
+          "on_readings" : [ "サク" ],
+          "radical" : "72",
+          "stroke_count" : 9
+        },
+        "kanji_examples" : [ {
+          "gloss" : "yesterday",
+          "headword" : "昨日",
+          "reading" : "きのう",
+          "reading_type" : "other",
+          "seq" : 1579260
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "yesterday; previous\nサク",
+          "front" : "昨",
+          "reading" : "サク",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id3>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id4>",
+            "kanji_literal" : "日",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id4>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 1,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "nanori" : [ "あ", "あき", "いる", "く", "くさ", "こう", "す", "たち", "に", "にっ", "につ", "へ" ],
+          "note_id" : "<id4>",
+          "on_readings" : [ "ニチ", "ジツ" ],
+          "radical" : "72",
+          "stroke_count" : 4
+        },
+        "kanji_examples" : [ {
+          "gloss" : "yesterday",
+          "headword" : "昨日",
+          "reading" : "きのう",
+          "reading_type" : "other",
+          "seq" : 1579260
+        }, {
+          "gloss" : "happy birthday",
+          "headword" : "お誕生日おめでとうございます",
+          "reading" : "おたんじょうびおめでとうございます",
+          "reading_type" : "kun",
+          "seq" : 1002410
+        }, {
+          "gloss" : "every day; daily",
+          "headword" : "毎日",
+          "reading" : "まいにち",
+          "reading_type" : "on",
+          "seq" : 1524720
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "day; sun; Japan; counter for days\nニチ、ジツ、ひ、-び、-か",
+          "front" : "日",
+          "reading" : "ニチ、ジツ、ひ、-び、-か",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.002Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000020",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1579260,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000002",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.002Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "昨日",
+          "headword_reading" : "きのう",
+          "is_common" : true,
+          "kanji" : [ "昨", "日" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "昨日"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "pitch" : [ ],
+          "pos" : [ "n", "adv" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ "gikun" ],
+            "text" : "きのう"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "さくじつ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "yesterday"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n", "adv" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1579260,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "yesterday",
+          "kun" : [ ],
+          "literal" : "昨",
+          "meanings" : [ "yesterday", "previous" ],
+          "on" : [ "サク" ],
+          "used_reading" : null
+        }, {
+          "keyword" : "day",
+          "kun" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "on" : [ "ニチ", "ジツ" ],
+          "used_reading" : null
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "きのう\nyesterday",
+          "front" : "昨日",
+          "reading" : "きのう",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.003Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000030",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1416790,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000003",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.003Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "鱈",
+          "headword_reading" : "たら",
+          "is_common" : false,
+          "kanji" : [ "鱈", "大", "口", "魚", "鰔" ],
+          "kanji_forms" : [ {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鱈"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "大口魚"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鰔"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "たら"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "タラ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "gadid (any fish of the family Gadidae, incl. cod, haddock, whiting and pollack)"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "Pacific cod (Gadus macrocephalus)"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ "真鱈・まだら" ]
+          } ],
+          "seq" : 1416790,
+          "status" : "new"
+        },
+        "front_furigana" : true,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "codfish",
+          "kun" : [ "たら" ],
+          "literal" : "鱈",
+          "meanings" : [ "codfish", "(kokuji)" ],
+          "on" : [ "セツ" ],
+          "used_reading" : {
+            "kana" : "たら",
+            "reading" : "たら",
+            "type" : "kun"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "たら\ngadid (any fish of the family Gadidae, incl. cod, haddock, whiting and pollack); Pacific cod (Gadus macrocephalus)",
+          "front" : "鱈（たら）",
+          "reading" : "たら",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id5>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id6>",
+            "kanji_literal" : "子",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id6>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 72,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "こ", "-こ", "ね" ],
+          "literal" : "子",
+          "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
+          "nanori" : [ "い", "き", "ぎ", "く", "け", "ねっ" ],
+          "note_id" : "<id6>",
+          "on_readings" : [ "シ", "ス", "ツ" ],
+          "radical" : "39",
+          "stroke_count" : 3
+        },
+        "kanji_examples" : [ {
+          "gloss" : "confections; sweets; candy; cake",
+          "headword" : "お菓子",
+          "reading" : "おかし",
+          "reading_type" : "on",
+          "seq" : 1001710
+        }, {
+          "gloss" : "(another's) child",
+          "headword" : "お子様",
+          "reading" : "おこさま",
+          "reading_type" : "kun",
+          "seq" : 1002010
+        }, {
+          "gloss" : "glass; pane",
+          "headword" : "硝子",
+          "reading" : "ガラス",
+          "reading_type" : "on",
+          "seq" : 1040380
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "child; sign of the rat; 11PM-1AM; first sign of Chinese zodiac\nシ、ス、ツ、こ、-こ、ね",
+          "front" : "子",
+          "reading" : "シ、ス、ツ、こ、-こ、ね",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : {
+              "expression" : "鱈子",
+              "meaning" : "cod roe",
+              "reading" : "たらこ"
+            },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "codfish",
+          "kun" : [ "たら" ],
+          "literal" : "鱈",
+          "meanings" : [ "codfish", "(kokuji)" ],
+          "on" : [ "セツ" ],
+          "used_reading" : {
+            "kana" : "たら",
+            "reading" : "たら",
+            "type" : "kun"
+          }
+        }, {
+          "keyword" : "child",
+          "kun" : [ "こ", "-こ", "ね" ],
+          "literal" : "子",
+          "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
+          "on" : [ "シ", "ス", "ツ" ],
+          "used_reading" : {
+            "kana" : "こ",
+            "reading" : "こ",
+            "type" : "kun"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "たらこ\ncod roe",
+          "front" : "鱈子",
+          "reading" : "たらこ",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 7
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "key" : "cards.kanji_exemptions",
+        "updated_at" : "2026-11-20T10:00:02.000Z",
+        "value" : false
+      } ]
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 10,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:03.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id7>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id8>",
+            "kanji_literal" : "寿",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id8>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:03.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 1245,
+          "grade" : 8,
+          "jlpt" : 1,
+          "kun_readings" : [ "ことぶき", "ことぶ.く", "ことほ.ぐ" ],
+          "literal" : "寿",
+          "meanings" : [ "longevity", "congratulations", "one's natural life" ],
+          "nanori" : [ "かず", "じ", "じゅう", "すっ", "すみ", "とし", "としかつ", "なが", "のぶ", "のり", "ひさ", "ひさし", "やす" ],
+          "note_id" : "<id8>",
+          "on_readings" : [ "ジュ", "ス", "シュウ" ],
+          "radical" : "41",
+          "stroke_count" : 7
+        },
+        "kanji_examples" : [ {
+          "gloss" : "sushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "headword" : "寿司",
+          "reading" : "すし",
+          "reading_type" : "on",
+          "seq" : 1595650
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "longevity; congratulations; one's natural life\nジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
+          "front" : "寿",
+          "reading" : "ジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:03.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id9>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id10>",
+            "kanji_literal" : "司",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id10>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:03.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 759,
+          "grade" : 4,
+          "jlpt" : 2,
+          "kun_readings" : [ "つかさど.る" ],
+          "literal" : "司",
+          "meanings" : [ "director", "official", "govt office", "rule", "administer" ],
+          "nanori" : [ "つ", "つか", "つかさ" ],
+          "note_id" : "<id10>",
+          "on_readings" : [ "シ" ],
+          "radical" : "30",
+          "stroke_count" : 5
+        },
+        "kanji_examples" : [ {
+          "gloss" : "sushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "headword" : "寿司",
+          "reading" : "すし",
+          "reading_type" : "on",
+          "seq" : 1595650
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "director; official; govt office; rule; administer\nシ、つかさど.る",
+          "front" : "司",
+          "reading" : "シ、つかさど.る",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1595650,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "寿司",
+          "headword_reading" : "すし",
+          "is_common" : true,
+          "kanji" : [ "寿", "司", "鮨", "鮓", "壽" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ "ateji" ],
+            "text" : "寿司"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鮨"
+          }, {
+            "common" : false,
+            "tags" : [ "rK" ],
+            "text" : "鮓"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "寿し"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "壽司"
+          }, {
+            "common" : false,
+            "tags" : [ "sK" ],
+            "text" : "壽し"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "すし"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ "food" ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "sushi"
+            }, {
+              "lang" : "eng",
+              "text" : "range of dishes made with vinegared rice combined with fish, vegetables, egg, etc."
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1595650,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "longevity",
+          "kun" : [ "ことぶき", "ことぶ.く", "ことほ.ぐ" ],
+          "literal" : "寿",
+          "meanings" : [ "longevity", "congratulations", "one's natural life" ],
+          "on" : [ "ジュ", "ス", "シュウ" ],
+          "used_reading" : {
+            "kana" : "す",
+            "reading" : "ス",
+            "type" : "on"
+          }
+        }, {
+          "keyword" : "director",
+          "kun" : [ "つかさど.る" ],
+          "literal" : "司",
+          "meanings" : [ "director", "official", "govt office", "rule", "administer" ],
+          "on" : [ "シ" ],
+          "used_reading" : {
+            "kana" : "し",
+            "reading" : "シ",
+            "type" : "on"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "すし\nsushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "front" : "寿司",
+          "reading" : "すし",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id1>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id2>",
+            "kanji_literal" : "昨",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id2>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 226,
+          "grade" : 4,
+          "jlpt" : 2,
+          "kun_readings" : [ ],
+          "literal" : "昨",
+          "meanings" : [ "yesterday", "previous" ],
+          "nanori" : [ ],
+          "note_id" : "<id2>",
+          "on_readings" : [ "サク" ],
+          "radical" : "72",
+          "stroke_count" : 9
+        },
+        "kanji_examples" : [ {
+          "gloss" : "yesterday",
+          "headword" : "昨日",
+          "reading" : "きのう",
+          "reading_type" : "other",
+          "seq" : 1579260
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "yesterday; previous\nサク",
+          "front" : "昨",
+          "reading" : "サク",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id3>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id4>",
+            "kanji_literal" : "日",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id4>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 1,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "nanori" : [ "あ", "あき", "いる", "く", "くさ", "こう", "す", "たち", "に", "にっ", "につ", "へ" ],
+          "note_id" : "<id4>",
+          "on_readings" : [ "ニチ", "ジツ" ],
+          "radical" : "72",
+          "stroke_count" : 4
+        },
+        "kanji_examples" : [ {
+          "gloss" : "yesterday",
+          "headword" : "昨日",
+          "reading" : "きのう",
+          "reading_type" : "other",
+          "seq" : 1579260
+        }, {
+          "gloss" : "happy birthday",
+          "headword" : "お誕生日おめでとうございます",
+          "reading" : "おたんじょうびおめでとうございます",
+          "reading_type" : "kun",
+          "seq" : 1002410
+        }, {
+          "gloss" : "every day; daily",
+          "headword" : "毎日",
+          "reading" : "まいにち",
+          "reading_type" : "on",
+          "seq" : 1524720
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "day; sun; Japan; counter for days\nニチ、ジツ、ひ、-び、-か",
+          "front" : "日",
+          "reading" : "ニチ、ジツ、ひ、-び、-か",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.002Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000020",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1579260,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000002",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.002Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "昨日",
+          "headword_reading" : "きのう",
+          "is_common" : true,
+          "kanji" : [ "昨", "日" ],
+          "kanji_forms" : [ {
+            "common" : true,
+            "tags" : [ ],
+            "text" : "昨日"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "pitch" : [ ],
+          "pos" : [ "n", "adv" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ "gikun" ],
+            "text" : "きのう"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "さくじつ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "yesterday"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n", "adv" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1579260,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "yesterday",
+          "kun" : [ ],
+          "literal" : "昨",
+          "meanings" : [ "yesterday", "previous" ],
+          "on" : [ "サク" ],
+          "used_reading" : null
+        }, {
+          "keyword" : "day",
+          "kun" : [ "ひ", "-び", "-か" ],
+          "literal" : "日",
+          "meanings" : [ "day", "sun", "Japan", "counter for days" ],
+          "on" : [ "ニチ", "ジツ" ],
+          "used_reading" : null
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "きのう\nyesterday",
+          "front" : "昨日",
+          "reading" : "きのう",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:03.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id11>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id12>",
+            "kanji_literal" : "鱈",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id12>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:03.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : null,
+          "grade" : null,
+          "jlpt" : null,
+          "kun_readings" : [ "たら" ],
+          "literal" : "鱈",
+          "meanings" : [ "codfish", "(kokuji)" ],
+          "nanori" : [ ],
+          "note_id" : "<id12>",
+          "on_readings" : [ "セツ" ],
+          "radical" : "195",
+          "stroke_count" : 22
+        },
+        "kanji_examples" : [ {
+          "gloss" : "gadid (any fish of the family Gadidae, incl. cod, haddock, whiting and pollack)",
+          "headword" : "鱈",
+          "reading" : "たら",
+          "reading_type" : "kun",
+          "seq" : 1416790
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "codfish; (kokuji)\nセツ、たら",
+          "front" : "鱈",
+          "reading" : "セツ、たら",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.003Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000030",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1416790,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000003",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.003Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "鱈",
+          "headword_reading" : "たら",
+          "is_common" : false,
+          "kanji" : [ "鱈", "大", "口", "魚", "鰔" ],
+          "kanji_forms" : [ {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鱈"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "大口魚"
+          }, {
+            "common" : false,
+            "tags" : [ ],
+            "text" : "鰔"
+          } ],
+          "language" : "ja",
+          "misc" : [ ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "pitch" : [ ],
+          "pos" : [ "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "たら"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "タラ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "gadid (any fish of the family Gadidae, incl. cod, haddock, whiting and pollack)"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "Pacific cod (Gadus macrocephalus)"
+            } ],
+            "info" : [ ],
+            "misc" : [ ],
+            "pos" : [ "n" ],
+            "xref" : [ "真鱈・まだら" ]
+          } ],
+          "seq" : 1416790,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "codfish",
+          "kun" : [ "たら" ],
+          "literal" : "鱈",
+          "meanings" : [ "codfish", "(kokuji)" ],
+          "on" : [ "セツ" ],
+          "used_reading" : {
+            "kana" : "たら",
+            "reading" : "たら",
+            "type" : "kun"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "たら\ngadid (any fish of the family Gadidae, incl. cod, haddock, whiting and pollack); Pacific cod (Gadus macrocephalus)",
+          "front" : "鱈",
+          "reading" : "たら",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id5>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id6>",
+            "kanji_literal" : "子",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id6>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 72,
+          "grade" : 1,
+          "jlpt" : 5,
+          "kun_readings" : [ "こ", "-こ", "ね" ],
+          "literal" : "子",
+          "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
+          "nanori" : [ "い", "き", "ぎ", "く", "け", "ねっ" ],
+          "note_id" : "<id6>",
+          "on_readings" : [ "シ", "ス", "ツ" ],
+          "radical" : "39",
+          "stroke_count" : 3
+        },
+        "kanji_examples" : [ {
+          "gloss" : "confections; sweets; candy; cake",
+          "headword" : "お菓子",
+          "reading" : "おかし",
+          "reading_type" : "on",
+          "seq" : 1001710
+        }, {
+          "gloss" : "(another's) child",
+          "headword" : "お子様",
+          "reading" : "おこさま",
+          "reading_type" : "kun",
+          "seq" : 1002010
+        }, {
+          "gloss" : "glass; pane",
+          "headword" : "硝子",
+          "reading" : "ガラス",
+          "reading_type" : "on",
+          "seq" : 1040380
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "child; sign of the rat; 11PM-1AM; first sign of Chinese zodiac\nシ、ス、ツ、こ、-こ、ね",
+          "front" : "子",
+          "reading" : "シ、ス、ツ、こ、-こ、ね",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T09:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : {
+              "expression" : "鱈子",
+              "meaning" : "cod roe",
+              "reading" : "たらこ"
+            },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T09:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ {
+          "keyword" : "codfish",
+          "kun" : [ "たら" ],
+          "literal" : "鱈",
+          "meanings" : [ "codfish", "(kokuji)" ],
+          "on" : [ "セツ" ],
+          "used_reading" : {
+            "kana" : "たら",
+            "reading" : "たら",
+            "type" : "kun"
+          }
+        }, {
+          "keyword" : "child",
+          "kun" : [ "こ", "-こ", "ね" ],
+          "literal" : "子",
+          "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
+          "on" : [ "シ", "ス", "ツ" ],
+          "used_reading" : {
+            "kana" : "こ",
+            "reading" : "こ",
+            "type" : "kun"
+          }
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:03.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:03.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:03.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:33.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "たらこ\ncod roe",
+          "front" : "鱈子",
+          "reading" : "たらこ",
+          "sentence" : null
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 20,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 10
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  } ]
+}

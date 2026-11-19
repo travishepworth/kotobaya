@@ -5,7 +5,7 @@ import kotobaya.cards.DefaultCardGenerator
 import kotobaya.cards.ReadingSetting
 import kotobaya.contracts.cards.CardGenerator
 import kotobaya.contracts.cards.NoteTypeInfo
-import kotobaya.contracts.queue.AddKanjiMode
+import kotobaya.contracts.queue.MissingKanji
 import kotobaya.contracts.render.DictionaryData
 import kotobaya.contracts.render.FuriganaSegment
 import kotobaya.contracts.render.KanjiData
@@ -33,18 +33,16 @@ internal class EntryDict(val seq: Long, val headword: String, val reading: Strin
 }
 
 /**
- * C-27: what materializing a deck entry creates (contracts/core README "C-27"), computed the same way for the queue
- * loader (to tell the core builder the size of the entry's group, `PendingEntry.newKanjiCards`) and for
- * [DeckMaterializer] (to mint it), so the two always agree. One instance per transaction; caches lookups.
+ * C-27: what materializing creates (contracts/core README "C-27"), computed the same way for the queue loader (to tell
+ * the core builder which required kanji are missing, `missingKanji`) and for [DeckMaterializer] (to mint), so the two always agree. One instance per transaction; caches lookups.
  *
  * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds, cards.reading_enabled)`; if that is empty (card_kinds `[]` or no valid
  *   kind) the type's default kinds; then every kind whose front would render empty for the entry is dropped
  *   (`DefaultCardRenderer.frontIsEmpty` with the entry's dictionary data; e.g. `listening` without audio). An entry
  *   left with no kind is never drawn nor created.
- * - Kanji notes (only when the drawing deck's `add_kanji` is present and not `off`): `kanjiToAdd(headword, blocked,
- *   mode)`, `blocked` = the headword's kanji that have a live kanji note **or a user-deleted one** (`deleted_at` set,
- *   no `merged_into_id`): a kanji note the user deleted is never re-created. Each with the kanji type's default kinds
- *   minus empty fronts (with `ref.kanji` data).
+ * - Kanji notes (ADR-040/042: whatever a deck's `add_kanji` says): only the core's required kanji, unless `blocked` = a
+ *   live kanji note **or a user-deleted one** (`deleted_at` set, no `merged_into_id`) holds the literal: a kanji note the
+ *   user deleted is never re-created. Each with the kanji type's default kinds minus empty fronts (with `ref.kanji` data).
  */
 internal class DeckEntryPlan(
     private val dsl: DSLContext,
@@ -58,9 +56,6 @@ internal class DeckEntryPlan(
     private val blockedKanji = HashMap<String, Boolean>()
     private val kanjiKindsCache = HashMap<String, List<String>>()
 
-    /** `PendingEntry.expressionKanji`: what the loader passes as `QueueCandidate.expressionKanji` once the note exists. */
-    fun kanjiOf(headword: String): List<String> = ReviewViews.kanjiOf(headword)
-
     /** Card kinds of the new vocab note for [entry], drawn by a deck whose `card_kinds` is [deckCardKinds]. */
     fun vocabKinds(entry: EntryDict, deckCardKinds: List<String>?): List<String> {
         val kinds = cards.kindsForNewNote(vocabType, deckCardKinds, readingEnabled)
@@ -69,12 +64,26 @@ internal class DeckEntryPlan(
         return kinds.filterNot { DefaultCardRenderer.frontIsEmpty(vocabType, it, emptyMap(), dictionary = dict) }
     }
 
-    /** Literals of the kanji notes materializing [headword] creates under the deck's present [mode] (null = absent). */
-    fun kanjiToCreate(headword: String, mode: AddKanjiMode?): List<String> {
-        if (mode == null || mode == AddKanjiMode.OFF || kanjiType == null) return emptyList()
-        val literals = cards.kanjiOf(headword)
-        loadBlocked(literals)
-        return cards.kanjiToAdd(headword, literals.filterTo(HashSet()) { blockedKanji[it] == true }, mode)
+    /**
+     * `MissingKanji` of a word whose required kanji are [required] (ADR-040/042, contracts/core README "C-27"): the literals
+     * with no live kanji note and no user-deleted one that step A would give at least one card, in required order.
+     * `newCards` = the kinds step A creates, at most 1 when [burySiblings].
+     */
+    fun missingKanji(required: List<String>, burySiblings: Boolean): List<MissingKanji> {
+        if (required.isEmpty() || kanjiType == null) return emptyList()
+        loadBlocked(required)
+        prefetchKanji(required.filter { blockedKanji[it] != true })
+        return required.mapNotNull { l ->
+            if (blockedKanji[l] == true) return@mapNotNull null
+            val n = kanjiKinds(l).size.let { if (burySiblings) minOf(1, it) else it }
+            if (n >= 1) MissingKanji(l, n) else null
+        }
+    }
+
+    /** True iff a live kanji note or a user-deleted one (`deleted_at` set, no `merged_into_id`) holds [literal]. */
+    fun blocked(literal: String): Boolean {
+        loadBlocked(listOf(literal))
+        return blockedKanji[literal] == true
     }
 
     /** Card kinds of a new kanji note for [literal]. */
@@ -85,10 +94,6 @@ internal class DeckEntryPlan(
             cards.kindsForNewNote(type, null, readingEnabled).filterNot { DefaultCardRenderer.frontIsEmpty(type, it, emptyMap(), kanji = data) }
         }
     }
-
-    /** `PendingEntry.newKanjiCards`: the kanji cards the materialization creates, at most 1 per note when [burySiblings]. */
-    fun newKanjiCards(headword: String, mode: AddKanjiMode?, burySiblings: Boolean): Int =
-        kanjiToCreate(headword, mode).sumOf { l -> kanjiKinds(l).size.let { if (burySiblings) minOf(1, it) else it } }
 
     /** Marks a literal as having a live kanji note (created in this transaction). */
     fun kanjiCreated(literal: String) {
@@ -106,13 +111,26 @@ internal class DeckEntryPlan(
         ).forEach { blockedKanji[it.get(0, String::class.java)] = true }
     }
 
+    private val kanjiDataCache = HashMap<String, KanjiData>()
+
+    /** One statement for the `ref.kanji` rows of [literals] not cached yet (a literal without a row caches the bare literal). */
+    private fun prefetchKanji(literals: List<String>) {
+        val missing = literals.filter { it !in kanjiDataCache }.distinct()
+        if (missing.isEmpty()) return
+        missing.forEach { kanjiDataCache[it] = KanjiData(it, emptyList(), emptyList(), emptyList(), null) }
+        dsl.fetch(
+            "select literal, array_to_json(meanings)::text, array_to_json(on_readings)::text, array_to_json(kun_readings)::text, stroke_count " +
+                "from ref.kanji where literal = any(array(select unnest(?::text[])))",
+            missing.toTypedArray(),
+        ).forEach { r ->
+            fun list(i: Int) = r.get(i, String::class.java)?.let { json.readTree(it).map { n -> n.asText() } }.orEmpty()
+            val literal = r.get(0, String::class.java)
+            kanjiDataCache[literal] = KanjiData(literal, list(1), list(2), list(3), (r.get(4) as Number?)?.toInt())
+        }
+    }
+
     private fun kanjiData(literal: String): KanjiData {
-        val r = dsl.fetchOptional(
-            "select array_to_json(meanings)::text, array_to_json(on_readings)::text, array_to_json(kun_readings)::text, stroke_count " +
-                "from ref.kanji where literal = ?",
-            literal,
-        ).orElse(null) ?: return KanjiData(literal, emptyList(), emptyList(), emptyList(), null)
-        fun list(i: Int) = r.get(i, String::class.java)?.let { json.readTree(it).map { n -> n.asText() } }.orEmpty()
-        return KanjiData(literal, list(0), list(1), list(2), (r.get(3) as Number?)?.toInt())
+        prefetchKanji(listOf(literal))
+        return checkNotNull(kanjiDataCache[literal])
     }
 }

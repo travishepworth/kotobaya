@@ -107,7 +107,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 0
       },
       "more_available" : false,
       "study_day" : "2026-11-20",

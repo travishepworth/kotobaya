@@ -28,7 +28,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000220,
+            "entry_seq" : 1001010,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "<id2>",
@@ -58,25 +58,26 @@
           "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "明白",
-          "headword_reading" : "めいはく",
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
           "is_common" : true,
-          "kanji" : [ "明", "白" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "明白"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "<id2>",
           "pitch" : [ ],
-          "pos" : [ "adj-na" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "めいはく"
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -86,36 +87,26 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "obvious"
+              "text" : "carelessly"
             }, {
               "lang" : "eng",
-              "text" : "clear"
+              "text" : "thoughtlessly"
             }, {
               "lang" : "eng",
-              "text" : "plain"
-            }, {
-              "lang" : "eng",
-              "text" : "evident"
-            }, {
-              "lang" : "eng",
-              "text" : "apparent"
-            }, {
-              "lang" : "eng",
-              "text" : "explicit"
-            }, {
-              "lang" : "eng",
-              "text" : "overt"
+              "text" : "inadvertently"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "adj-na" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000220,
+          "seq" : 1001010,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:01.000Z",
@@ -137,9 +128,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
-          "front" : "明白",
-          "reading" : "めいはく",
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
           "sentence" : null
         }
       }, {
@@ -158,7 +149,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000440,
+            "entry_seq" : 1001150,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "<id4>",
@@ -188,29 +179,66 @@
           "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの人",
-          "headword_reading" : "あのひと",
+          "headword" : "えっと",
+          "headword_reading" : "えっと",
           "is_common" : true,
-          "kanji" : [ "人", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの人"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の人"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "arch" ],
+          "misc" : [ ],
           "note_id" : "<id4>",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "int" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのひと"
+            "text" : "えっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えーと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "えーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "え〜と"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーーっと"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -220,37 +248,29 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "let me see"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "well"
             }, {
               "lang" : "eng",
-              "text" : "that person"
-            } ],
-            "info" : [ "sometimes of one's spouse or partner" ],
-            "misc" : [ ],
-            "pos" : [ "pn" ],
-            "xref" : [ ]
-          }, {
-            "applies_to_kana" : [ "*" ],
-            "applies_to_kanji" : [ "*" ],
-            "dialect" : [ ],
-            "field" : [ ],
-            "gloss" : [ {
+              "text" : "errr ..."
+            }, {
               "lang" : "eng",
-              "text" : "you"
+              "text" : "uhh ..."
             } ],
             "info" : [ ],
-            "misc" : [ "arch" ],
-            "pos" : [ "pn" ],
+            "misc" : [ ],
+            "pos" : [ "int" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000440,
+          "seq" : 1001150,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:01.000Z",
@@ -272,9 +292,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "あのひと\nhe; she; that person; you",
-          "front" : "あの人",
-          "reading" : "あのひと",
+          "back" : "えっと\nlet me see; well; errr ...; uhh ...",
+          "front" : "えっと",
+          "reading" : "えっと",
           "sentence" : null
         }
       } ],
@@ -302,7 +322,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -336,7 +357,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000220,
+            "entry_seq" : 1001010,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "<id2>",
@@ -366,25 +387,26 @@
           "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "明白",
-          "headword_reading" : "めいはく",
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
           "is_common" : true,
-          "kanji" : [ "明", "白" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "明白"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ ],
+          "misc" : [ "on-mim" ],
           "note_id" : "<id2>",
           "pitch" : [ ],
-          "pos" : [ "adj-na" ],
+          "pos" : [ "adv", "adv-to", "vs" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "めいはく"
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -394,36 +416,26 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "obvious"
+              "text" : "carelessly"
             }, {
               "lang" : "eng",
-              "text" : "clear"
+              "text" : "thoughtlessly"
             }, {
               "lang" : "eng",
-              "text" : "plain"
-            }, {
-              "lang" : "eng",
-              "text" : "evident"
-            }, {
-              "lang" : "eng",
-              "text" : "apparent"
-            }, {
-              "lang" : "eng",
-              "text" : "explicit"
-            }, {
-              "lang" : "eng",
-              "text" : "overt"
+              "text" : "inadvertently"
             } ],
             "info" : [ ],
-            "misc" : [ ],
-            "pos" : [ "adj-na" ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000220,
+          "seq" : 1001010,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:02.000Z",
@@ -445,9 +457,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "めいはく\nobvious; clear; plain; evident; apparent; explicit; overt",
-          "front" : "明白",
-          "reading" : "めいはく",
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
           "sentence" : null
         }
       }, {
@@ -466,7 +478,7 @@
           "leech" : false,
           "merged_into_id" : null,
           "note" : {
-            "entry_seq" : 1000440,
+            "entry_seq" : 1001150,
             "fields" : { },
             "grammar_point_id" : null,
             "id" : "<id4>",
@@ -496,29 +508,66 @@
           "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
           "freq_rank" : null,
           "freqs" : [ ],
-          "headword" : "あの人",
-          "headword_reading" : "あのひと",
+          "headword" : "えっと",
+          "headword_reading" : "えっと",
           "is_common" : true,
-          "kanji" : [ "人", "彼" ],
-          "kanji_forms" : [ {
-            "common" : true,
-            "tags" : [ ],
-            "text" : "あの人"
-          }, {
-            "common" : false,
-            "tags" : [ ],
-            "text" : "彼の人"
-          } ],
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
           "language" : "ja",
-          "misc" : [ "arch" ],
+          "misc" : [ ],
           "note_id" : "<id4>",
           "pitch" : [ ],
-          "pos" : [ "pn" ],
+          "pos" : [ "int" ],
           "readings" : [ {
             "applies_to" : [ "*" ],
             "common" : true,
             "tags" : [ ],
-            "text" : "あのひと"
+            "text" : "えっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "えーと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "えーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "え〜と"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ええっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "えーーーーっと"
           } ],
           "retired" : false,
           "senses" : [ {
@@ -528,37 +577,29 @@
             "field" : [ ],
             "gloss" : [ {
               "lang" : "eng",
-              "text" : "he"
+              "text" : "let me see"
             }, {
               "lang" : "eng",
-              "text" : "she"
+              "text" : "well"
             }, {
               "lang" : "eng",
-              "text" : "that person"
-            } ],
-            "info" : [ "sometimes of one's spouse or partner" ],
-            "misc" : [ ],
-            "pos" : [ "pn" ],
-            "xref" : [ ]
-          }, {
-            "applies_to_kana" : [ "*" ],
-            "applies_to_kanji" : [ "*" ],
-            "dialect" : [ ],
-            "field" : [ ],
-            "gloss" : [ {
+              "text" : "errr ..."
+            }, {
               "lang" : "eng",
-              "text" : "you"
+              "text" : "uhh ..."
             } ],
             "info" : [ ],
-            "misc" : [ "arch" ],
-            "pos" : [ "pn" ],
+            "misc" : [ ],
+            "pos" : [ "int" ],
             "xref" : [ ]
           } ],
-          "seq" : 1000440,
+          "seq" : 1001150,
           "status" : "new"
         },
+        "front_furigana" : false,
         "is_new" : true,
         "kanji" : null,
+        "kanji_parts" : [ ],
         "preview" : {
           "again" : {
             "due_at" : "2026-11-20T10:01:02.000Z",
@@ -580,9 +621,9 @@
         "review_type" : "learning",
         "sentence" : null,
         "text" : {
-          "back" : "あのひと\nhe; she; that person; you",
-          "front" : "あの人",
-          "reading" : "あのひと",
+          "back" : "えっと\nlet me see; well; errr ...; uhh ...",
+          "front" : "えっと",
+          "reading" : "えっと",
           "sentence" : null
         }
       } ],
@@ -610,7 +651,8 @@
         "reviews" : {
           "limit" : 200,
           "today" : 0
-        }
+        },
+        "until_stop" : 2
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
