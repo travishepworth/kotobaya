@@ -173,7 +173,16 @@ private fun loopJson(s: LoopState): JsonObject = JsonObject(
         "backlog" to JsonObject(linkedMapOf("reviews" to n(s.backlog), "beyond_limit" to n(s.backlogBeyondLimit))),
         "reviews" to JsonObject(linkedMapOf("today" to n(s.reviewsToday), "limit" to (s.reviewsLimit?.let { n(it) } ?: JsonNull))),
         "new" to JsonObject(linkedMapOf("today" to n(s.newToday), "goal" to n(s.newGoal), "available" to JsonBool(s.newAvailable))),
+        "keep_going_available" to JsonBool(s.keepGoingAvailable),
         "until_stop" to n(s.untilStop),
+        "until_stop_parts" to JsonObject(
+            linkedMapOf(
+                "learning" to n(s.untilStopParts.learning),
+                "later" to n(s.untilStopParts.later),
+                "review" to n(s.untilStopParts.review),
+                "new" to n(s.untilStopParts.new),
+            ),
+        ),
     ),
 )
 
