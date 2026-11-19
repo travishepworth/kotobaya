@@ -1391,3 +1391,4 @@
 2026-11-19T12:33:04Z USER: audio broken everywhere + wants replay icon (diagnosis running); WEB-DICT-DESKTOP filed + DISPATCH writer
 2026-11-19T12:34:03Z DECIDE ADR-047 (audio: system-generated word audio, speaker next to word on answer, autoplay setting); C-29 DISPATCH architect
 2026-11-19T12:38:52Z WEB-DICT-DESKTOP CHECK_GREEN (web) + MERGE (screenshots viewed by orchestrator: overlap fixed, two-pane); release with audio round
+2026-11-19T12:49:50Z DECIDE ADR-048 (review back = undo shown revealed; dictionary round-trip keeps state); WEB-REVIEW-BACK DISPATCH writer; web 0.1.30 deploy HELD (user: bundle)

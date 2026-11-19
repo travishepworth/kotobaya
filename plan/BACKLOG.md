@@ -881,3 +881,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SCROLL-TOP — review card scrolls to absolute top on show (web + android) · model: sonnet · risk: low · deps: — · status: MERGED (ticket: plan/tickets/SCROLL-TOP.md)
 - WEB-DICT-DESKTOP — /dictionary desktop redesign (phone unchanged) · model: sonnet · risk: low · deps: — · status: MERGED (ticket: plan/tickets/WEB-DICT-DESKTOP.md)
 - C-29 — ADR-047 automatic word audio contract · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-29.md)
+- WEB-REVIEW-BACK — ADR-048 back = previous card flipped + dictionary round-trip state (web + android shell) · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/WEB-REVIEW-BACK.md)
