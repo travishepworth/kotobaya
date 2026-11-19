@@ -512,3 +512,4 @@
 - (C-28b minor) Scoped builds (deck_id): backfill literals/bToday differ from unscoped build (introduced out-of-scope words missing) → counts disagree between deck review and global; same on server+device. Pass introduced words requiring backfill literals to scoped loaders, or state scoped builds do no backfill.
 - (C-28b minor) A large enabled kanji deck in tier 0 can take backfill kanji past the half share, up to the whole goal (intended); release note / UI hint.
 - (C-28c minors) t(S) "required" deckless kanji counts NEW words in disabled/later-tier decks (count only introduced words or drawn units); req over scoped/deleted candidates shifts turn order (ordering only); keep core tail-property exclusion (3) as narrow as README.
+- (CORE-28b minor) core rebuildIsTail runs 400 seeds/mode in repo (8000 run locally, 0 failures); raise to ~2000 if runtime ok.
