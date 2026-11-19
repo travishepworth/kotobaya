@@ -1402,3 +1402,4 @@
 2026-11-19T13:03:22Z RELEASE APK 0.1.37 built (pin ffb37e0d, code 137, cert ok) — install when user plugs in
 2026-11-19T13:03:36Z WRK-29 HANDOFF + green (worker 908); held on t/WRK-29 until C-29 merge
 2026-11-19T13:06:39Z RELEASE web 0.1.31 DEPLOYED helm rev 41 (pin ffb37e0d: WEB-DICT-DESKTOP + WEB-REVIEW-BACK); api 0.1.26/worker 0.1.20 unchanged
+2026-11-19T13:08:21Z C-29 alone: server/android red = expected drift (resolveSpeech route/wiring audit) -> chain merges together; CORE-29 HANDOFF green, reviewer; SRV-29 (writer-senior) + WEB-29 (writer) DISPATCH from t/CORE-29
