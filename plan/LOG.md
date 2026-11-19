@@ -1390,3 +1390,4 @@
 2026-11-19T11:00:16Z DICT refresh OK release 5 (headword_rule ADR-046): シンガポール/かるた/いる headwords kana. Run 35 complete
 2026-11-19T12:33:04Z USER: audio broken everywhere + wants replay icon (diagnosis running); WEB-DICT-DESKTOP filed + DISPATCH writer
 2026-11-19T12:34:03Z DECIDE ADR-047 (audio: system-generated word audio, speaker next to word on answer, autoplay setting); C-29 DISPATCH architect
+2026-11-19T12:38:52Z WEB-DICT-DESKTOP CHECK_GREEN (web) + MERGE (screenshots viewed by orchestrator: overlap fixed, two-pane); release with audio round
