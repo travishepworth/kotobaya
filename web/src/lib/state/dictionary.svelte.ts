@@ -82,6 +82,16 @@ export class DictionaryPage {
 		clearTimeout(this.timer);
 	}
 
+	/** No entry selected (desktop back/forward to a URL without one). */
+	clearSelection(): void {
+		this.entryGen++;
+		this.selectedSeq = null;
+		this.kanjiOpen = null;
+		this.entry = null;
+		this.examples = null;
+		this.loadingEntry = false;
+	}
+
 	async open(seq: number): Promise<void> {
 		this.selectedSeq = seq;
 		this.kanjiOpen = null;

@@ -274,6 +274,31 @@
 		}
 	}
 
+	/* Desktop: the actions sit on their own row below the headword (beside it they squeezed the headword to a column of
+	   single glyphs), and the entry may use the room, with the reading text itself held to a comfortable measure. */
+	@media (min-width: 900px) {
+		.entry {
+			max-width: 60rem;
+			gap: var(--kb-space-6);
+		}
+		.head {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas: 'words' 'tags' 'actions';
+		}
+		.hw {
+			font-size: 4rem;
+			line-height: 1.15;
+		}
+		.actions {
+			justify-content: flex-start;
+		}
+		.senses,
+		.forms,
+		.examples {
+			max-width: var(--kb-size-measure);
+		}
+	}
+
 	/* ---------- senses ---------- */
 	.senses {
 		display: flex;

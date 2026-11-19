@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Dictionary: search on the left, the entry set for reading on the right (phones: the entry is a pushed view).
 	import { onMount } from 'svelte';
+	import { pushState, replaceState } from '$app/navigation';
 	import Chip from '../../lib/ui/Chip.svelte';
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import Icon from '../../lib/ui/Icon.svelte';
@@ -20,13 +21,71 @@
 		vm.sentence = intakeFromSearch(window.location.search).sentence;
 		const seq = seqFromSearch(window.location.search);
 		const q = queryFromSearch(window.location.search);
+		desktopMq = window.matchMedia(DESKTOP);
+		desktop = desktopMq.matches;
+		const onMq = (): void => {
+			desktop = desktopMq?.matches ?? false;
+		};
+		desktopMq.addEventListener('change', onMq);
+		applied = window.location.search;
+		// Desktop URLs carry both: the query (the list) and the selected entry.
+		if (q !== null) tryQuery(q);
 		if (seq !== null) open(seq);
 		// A kanji (or word without an entry) linked from elsewhere: its search results.
-		else if (q !== null) tryQuery(q);
 		// Desktop: straight to typing.
-		else if (window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
-		return () => vm.dispose();
+		else if (q === null && window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) searchBox()?.focus();
+		return () => {
+			desktopMq?.removeEventListener('change', onMq);
+			vm.dispose();
+		};
 	});
+
+	// Two panes from 900 px of viewport; below that the phone layout (list, then a pushed entry view) is untouched.
+	const DESKTOP = '(min-width: 900px)';
+	let desktopMq: MediaQueryList | null = null;
+	let desktop = $state(false);
+	// The URL search string the screen last wrote or applied (so back/forward is told apart from our own writes).
+	let applied = '';
+
+	function urlSearch(q: string, seq: number | null): string {
+		const p = new URLSearchParams(window.location.search);
+		if (q === '') p.delete('q');
+		else p.set('q', q);
+		if (seq === null) p.delete('seq');
+		else p.set('seq', String(seq));
+		const s = p.toString();
+		return s === '' ? '' : `?${s}`;
+	}
+
+	/** Desktop: keep the query and the selected entry in the URL; opening an entry is a history step, typing is not. */
+	function syncUrl(push: boolean): void {
+		if (!desktop) return;
+		const search = urlSearch(lastQuery, vm.selectedSeq);
+		if (search === window.location.search) return;
+		applied = search;
+		const url = `${window.location.pathname}${search}`;
+		if (push) pushState(url, {});
+		else replaceState(url, {});
+	}
+
+	// Back/forward changed the URL (shallow entries leave `page.url` alone, so listen to the history itself).
+	function onpopstate(): void {
+		const search = window.location.search;
+		if (search === applied) return;
+		applied = search;
+		if (!desktop) return;
+		const q = queryFromSearch(search) ?? '';
+		const seq = seqFromSearch(search);
+		if (q !== lastQuery) {
+			vm.query = q;
+			lastQuery = q;
+			vm.searchNow();
+		}
+		if (seq !== vm.selectedSeq) {
+			if (seq === null) vm.clearSelection();
+			else open(seq, false);
+		}
+	}
 
 	let pane = $state<'results' | 'entry'>('results');
 	let lastQuery = $state('');
@@ -39,27 +98,50 @@
 		e.preventDefault();
 		vm.searchNow();
 		lastQuery = vm.query.trim();
+		syncUrl(false);
 	}
 
 	function oninput(): void {
 		vm.queryChanged();
 		lastQuery = vm.query.trim();
 		pane = 'results';
+		syncUrl(false);
 	}
 
-	function open(seq: number): void {
+	function open(seq: number, push = true): void {
 		pane = 'entry';
 		void vm.open(seq);
 		window.scrollTo({ top: 0 });
+		detailEl?.scrollTo({ top: 0 });
+		if (push) syncUrl(true);
 	}
 
 	function tryQuery(q: string): void {
 		vm.query = q;
 		lastQuery = q;
 		vm.searchNow();
+		syncUrl(false);
+	}
+
+	let detailEl = $state<HTMLElement | null>(null);
+
+	/** Desktop: ↑/↓ walk the result rows (from the search box too); Enter on a focused row opens it. */
+	function walkResults(e: KeyboardEvent): void {
+		if (!desktop || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || e.altKey || e.ctrlKey || e.metaKey) return;
+		const rows = [...document.querySelectorAll<HTMLButtonElement>('.list button.result')];
+		if (rows.length === 0) return;
+		const t = e.target as HTMLElement | null;
+		const i = t ? rows.indexOf(t as HTMLButtonElement) : -1;
+		const inBox = t === searchBox();
+		if (i < 0 && !inBox) return;
+		e.preventDefault();
+		if (e.key === 'ArrowDown') rows[Math.min(i + 1, rows.length - 1)]?.focus();
+		else if (i <= 0) searchBox()?.focus();
+		else rows[i - 1]?.focus();
 	}
 
 	function onkeydown(e: KeyboardEvent): void {
+		walkResults(e);
 		const t = e.target as HTMLElement | null;
 		if (e.key === '/' && !(t?.tagName === 'INPUT' || t?.tagName === 'TEXTAREA' || t?.isContentEditable)) {
 			e.preventDefault();
@@ -73,7 +155,7 @@
 	});
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} {onpopstate} />
 <svelte:head><title>{td('dict.title')} · Kotobaya</title></svelte:head>
 
 <div class="dict-frame">
@@ -141,7 +223,7 @@
 								<span class="gloss">{it.glosses.join('; ')}</span>
 								{#if it.noteId !== null || it.isCommon || it.retired}
 									<span class="marks">
-										{#if it.noteId !== null}<span class="mark in"><Icon name="check" size={12} />{dx('dx.inNotes')}</span>{/if}
+										{#if it.noteId !== null}<span class="mark in"><Icon name="check" size={12} /><span class="mtext">{dx('dx.inNotes')}</span></span>{/if}
 										{#if it.isCommon}<span class="mark">{dx('dx.common')}</span>{/if}
 										{#if it.retired}<span class="mark">{dx('dx.retired')}</span>{/if}
 									</span>
@@ -159,7 +241,7 @@
 		</div>
 	</section>
 
-	<section class="detail" aria-label={td('dict.entry')}>
+	<section class="detail" aria-label={td('dict.entry')} bind:this={detailEl}>
 		<div class="back">
 			<Button variant="quiet" icon="chevronLeft" onclick={() => (pane = 'results')}>{dx('dx.backToResults')}</Button>
 		</div>
@@ -368,6 +450,111 @@
 		}
 		.detail {
 			padding-inline: var(--kb-space-12);
+		}
+	}
+	/* Desktop (>= 900 px): a fixed-height workspace. The list pane keeps its search box on top and scrolls its rows;
+	   the entry pane scrolls on its own. Dense rows, a calm reading column on the right. */
+	@media (min-width: 900px) {
+		.dict {
+			grid-template-columns: clamp(21rem, 28%, 27rem) minmax(0, 1fr);
+			height: var(--kb-shell-height, 100dvh);
+			min-height: 0;
+			overflow: hidden;
+		}
+		.list,
+		.show-entry .list {
+			position: static;
+			max-height: none;
+			height: 100%;
+			overflow: hidden;
+			padding: var(--kb-space-5) var(--kb-space-4) 0;
+		}
+		.title {
+			margin-bottom: var(--kb-space-3);
+			font-size: 1.5rem;
+		}
+		.search {
+			margin-bottom: var(--kb-space-3);
+		}
+		.results {
+			flex: 1 1 auto;
+			min-height: 0;
+			overflow-y: auto;
+			margin: 0 calc(-1 * var(--kb-space-4));
+			padding: 0 var(--kb-space-3) var(--kb-space-6);
+			border-top: 1px solid var(--kb-color-border);
+			padding-top: var(--kb-space-2);
+		}
+		.results ul {
+			margin: 0;
+			gap: 1px;
+		}
+		.result {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-areas: 'line marks' 'gloss gloss';
+			align-items: baseline;
+			column-gap: var(--kb-space-2);
+			min-height: 3rem;
+			padding: var(--kb-space-2) var(--kb-space-3);
+		}
+		.result .line {
+			grid-area: line;
+			flex-wrap: nowrap;
+			min-width: 0;
+		}
+		.result .hw {
+			font-size: 1.125rem;
+			white-space: nowrap;
+		}
+		.result .rd {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			min-width: 0;
+		}
+		.result .gloss {
+			grid-area: gloss;
+			display: block;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.result .marks {
+			grid-area: marks;
+			flex-wrap: nowrap;
+			margin: 0;
+			white-space: nowrap;
+		}
+		/* The in-your-notes mark is a check only in dense rows (its text stays for screen readers). */
+		.mark.in {
+			padding: 0 var(--kb-space-1);
+		}
+		.mark.in .mtext {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+		.result[aria-current='true']::before {
+			inset-block: var(--kb-space-2);
+		}
+		.start {
+			padding-top: var(--kb-space-2);
+		}
+		.detail {
+			display: block;
+			height: 100%;
+			overflow-y: auto;
+			padding: var(--kb-space-8) var(--kb-space-10) var(--kb-space-16);
+		}
+		.back {
+			display: none;
+		}
+		.pick {
+			min-height: 100%;
 		}
 	}
 </style>
