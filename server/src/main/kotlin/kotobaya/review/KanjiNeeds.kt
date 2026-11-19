@@ -1,5 +1,7 @@
 package kotobaya.review
 
+import kotobaya.render.FieldPlainText
+import kotobaya.render.PlainTextMode
 import kotobaya.cards.DefaultCardGenerator
 import kotobaya.cards.DefaultKanjiRequirement
 import kotobaya.contracts.cards.KanjiFacts
@@ -18,14 +20,6 @@ internal object KanjiExemptionSetting {
         val value: JsonValue? = text?.let { SyncJson.fromJackson(json.readTree(it)) }
         return KanjiRequirement.exemptionsEnabled(value)
     }
-}
-
-/** Plain text of a note field (the renderer's "text of a field"): ruby readings and tags dropped. */
-internal object PlainText {
-    private val RUBY_TEXT = Regex("<(rt|rp)[^>]*>.*?</\\1>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
-    private val TAG = Regex("<[^>]*>")
-
-    fun of(html: String?): String = if (html == null) "" else TAG.replace(RUBY_TEXT.replace(html, ""), "").replace(' ', ' ').trim()
 }
 
 /** One vocab note (or a pending entry) to evaluate: its `expression` / `reading` field values (raw, may be null) and entry. */
@@ -61,8 +55,8 @@ internal class KanjiNeeds(
         val forms = LinkedHashMap<String, Pair<String, String>>()
         for (w in words) {
             val entry = w.entrySeq?.let(entries::get)
-            val e = PlainText.of(w.expressionField).ifEmpty { entry?.headword.orEmpty() }
-            val r = PlainText.of(w.readingField).ifEmpty { entry?.reading.orEmpty() }
+            val e = FieldPlainText.of(w.expressionField, PlainTextMode.KANJI).ifEmpty { entry?.headword.orEmpty() }
+            val r = FieldPlainText.of(w.readingField, PlainTextMode.KANA).ifEmpty { entry?.reading.orEmpty() }
             forms[w.key] = e to r
         }
         val literals = forms.values.flatMap { DefaultCardGenerator.kanjiOf(it.first) }.toSet()

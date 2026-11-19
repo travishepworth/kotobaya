@@ -1,5 +1,7 @@
 package kotobaya.android.queue
 
+import kotobaya.render.FieldPlainText
+import kotobaya.render.PlainTextMode
 import kotobaya.cards.BuiltInNoteTypes
 import kotobaya.cards.DefaultCardGenerator
 import kotobaya.cards.DefaultKanjiRequirement
@@ -380,8 +382,8 @@ class LocalQueueLoader(
 
     /** The note's displayed `expression` as plain text: its `expression` field unless blank, else the entry's headword. */
     private fun expressionOf(fieldsJson: String, entrySeq: Long?): String {
-        val field = if (fieldsJson.length <= 2) null else (jsonObject(fieldsJson)["expression"] as? JsonString)?.value?.replace(HTML_TAG, "")
-        return field?.takeIf { it.isNotBlank() } ?: entrySeq?.let(headwordOf)?.replace(HTML_TAG, "").orEmpty()
+        val field = if (fieldsJson.length <= 2) null else (jsonObject(fieldsJson)["expression"] as? JsonString)?.value?.let { FieldPlainText.of(it, PlainTextMode.KANJI) }
+        return field?.takeIf { it.isNotBlank() } ?: entrySeq?.let(headwordOf)?.let { FieldPlainText.of(it, PlainTextMode.KANJI) }.orEmpty()
     }
 
     private fun jsonObject(text: String): Map<String, JsonValue> =
@@ -396,7 +398,6 @@ class LocalQueueLoader(
         private const val HOUR_MS = 3_600_000L
         private const val MAX_MATERIALIZE_ROUNDS = 3
         private const val MIN_PENDING_PAGE = 64
-        private val HTML_TAG = Regex("<[^>]*>")
     }
 }
 

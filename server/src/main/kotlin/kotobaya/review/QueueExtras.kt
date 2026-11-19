@@ -1,5 +1,7 @@
 package kotobaya.review
 
+import kotobaya.render.FieldPlainText
+import kotobaya.render.PlainTextMode
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -112,7 +114,7 @@ internal class QueueExtras private constructor(
                 "select distinct on (kanji_literal) kanji_literal, fields->>'keyword' from app.note " +
                     "where kanji_literal = any(array(select unnest(?::text[]))) and deleted_at is null order by kanji_literal, created_at, id",
                 arr,
-            ).associate { r -> r.get(0, String::class.java) to PlainText.of(r.get(1, String::class.java)).takeIf { it.isNotBlank() } }
+            ).associate { r -> r.get(0, String::class.java) to FieldPlainText.of(r.get(1, String::class.java), PlainTextMode.KANJI).takeIf { it.isNotBlank() } }
             return arr.associateWith { l ->
                 val d = data[l]
                 KanjiPartSource(KanjiReadings(l, d?.first.orEmpty(), d?.second.orEmpty()), d?.third.orEmpty(), keywords[l])
