@@ -54,6 +54,7 @@ internal fun JsRenderInput.toRenderInput(): RenderInput {
         options = RenderOptions(furigana, pitch, showMnemonic, mediaUrlTemplate, fieldRegions),
         kanji = kanji?.let { KanjiData(it.literal, it.meanings.toList(), it.onyomi.toList(), it.kunyomi.toList(), it.strokeCount) },
         frontFurigana = frontFurigana,
+        wordAudio = wordAudio,
     )
 }
 
@@ -64,4 +65,6 @@ internal fun RenderedCard.toJs(): JsRenderedCard =
         extraCss,
         warnings.toTypedArray(),
         fields.map { JsRenderedField(it.key, it.source.wire, it.rendered) }.toTypedArray(),
+        wordAudio,
+        autoplayAudio,
     )

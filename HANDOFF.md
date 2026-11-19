@@ -1,23 +1,24 @@
-# HANDOFF C-29
+# HANDOFF CORE-29
 
 STATUS: DONE
-BRANCH: t/C-29-audio
-CHECK: `make check MODULE=contracts` → green (attempt 2; core Kotlin changed in KDoc only since the green `:core:jvmTest` of attempt 1, not re-run)
+BRANCH: t/CORE-29 (from t/C-29-audio fffcf0c4)
+CHECK: `make check MODULE=core` → green (jvm + js)
 
 ## Changed (≤ 6 lines)
-- Attempt 1: V4 `tts_audio`, SCHEMA.md 6.6, `QueueItem.word_audio`, `resolveSpeech`, `WordAudio.kt`, render "Word audio", REVIEW-LOOP §14
-- Fix 1: `resolveSpeech` needs `write` for every request shape; urgent is no exemption: hard limit 340 queued jobs (300 + reserve 40)
-- Fix 2/3: `P(now)` asks today's new cards first, early stop never skips them; "Backlog" no longer promises the sweep for arbitrary texts
-- Fix 4/5: `audio:` prefix reserved (only `audio:word`); note whose `[sound:]` blob is missing → `failed`, source `note`
-- Fix 6: device reports a `tts` hash offline only when cached (SCHEMA 6.6 rule 6, SHELL.md 4.3)
+- New `render/DefaultWordAudioResolver.kt`: resolve (note sound / speech text via `DefaultCardTextRenderer.fieldLines` kana) and effectiveVoice
+- `DefaultCardRenderer`: block W, `{{audio:word}}`, built-in-only `{{wordaudio:back}}`, `RenderedCard.wordAudio` / `autoplayAudio`, `audio` referred at W's position
+- `BuiltInTemplates`: vocab backs drop `{{audio}}`; W is the last child of `kb-expression` on the answer side; listening front = W
+- `JsRenderMapping`: `wordAudio` in, `wordAudio` / `autoplayAudio` out
+- Goldens: 4 vocab backs (plain + region) moved the audio span into `kb-expression`; region field order updated
 
 ## Acceptance → tests
-- contracts green; examples for both note shapes → `WordAudio` schema examples, `SpeechResolveResult*`, WordAudio.kt table
+- Resolver table (jvm+js) → `WordAudioResolverTest` (every row, plus effectiveVoice examples)
+- Worked render examples, pre-ADR-047 output for 5 vocab kinds, listening back autoplay null, `{{audio:…}}` reserved → `WordAudioRenderTest`
+- Goldens → `RenderGoldenTest`, `FieldRegionTest`, `CoreJsRenderTest`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Deviation from finding 1: `note_id`-only requests also need `write` (one rule, no per-item scope). Read-only clients get audio via `getReviewQueue`'s own enqueue.
-- Fix 6 makes the local `tts` hash depend on connectivity; `note` hashes are unchanged (parity).
-- The three open ADR-047 choices are untouched.
+- `RenderedCard.wordAudio` for a note-sourced W is the first button in W. If an upper-case `[sound:]` comes before a valid one, that hash differs from the resolver's `Note` hash (edge case; contract text followed literally).
+- Server/Android parity goldens that embed vocab back HTML will need re-recording (SRV-29/AND-29).

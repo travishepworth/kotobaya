@@ -166,8 +166,9 @@ class FieldRegionTest {
         val filled = render(vocab, mapOf("meaning" to " "), kind = "meaning", side = CardSide.BACK, dictionary = RenderFixtures.TABEMONO)
         assertEquals(
             listOf(
-                "expression:dictionary:true", "sentence:empty:false", "image:empty:false", "reading:dictionary:true",
-                "meaning:dictionary:true", "audio:empty:false", "sentence_translation:empty:false", "sentence_audio:empty:false",
+                // ADR-047: `audio` is referred at block W's position, inside the expression line
+                "expression:dictionary:true", "audio:empty:false", "sentence:empty:false", "image:empty:false", "reading:dictionary:true",
+                "meaning:dictionary:true", "sentence_translation:empty:false", "sentence_audio:empty:false",
                 "notes:empty:false",
             ),
             fields(filled),
