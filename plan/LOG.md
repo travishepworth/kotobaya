@@ -1395,3 +1395,5 @@
 2026-11-19T12:50:00Z web 0.1.30 image pushed (pin 6c484738) but NOT deployed; next web build will supersede
 2026-11-19T12:50:36Z C-29 HANDOFF + green; reviewer; CORE-29/WRK-29/SRV-29/WEB-29/AND-29 filed
 2026-11-19T12:51:01Z WEB-REVIEW-BACK scope += Undo hotkey/button show undone card revealed (ADR-048)
+2026-11-19T12:52:15Z C-29 REVIEW_CHANGES (1 major: resolveSpeech text items under read scope; 5 minors) -> architect attempt 2
+2026-11-19T12:58:47Z C-29 attempt 2 HANDOFF; contracts+core green after rebase; server/worker/android check running before merge; CORE-29 (writer-senior) + WRK-29 (writer) DISPATCH from t/C-29-audio

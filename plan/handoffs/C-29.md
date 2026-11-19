@@ -2,21 +2,22 @@
 
 STATUS: DONE
 BRANCH: t/C-29-audio
-CHECK: `make check MODULE=contracts` → green (also `:core:jvmTest :core:compileKotlinJs` green)
+CHECK: `make check MODULE=contracts` → green (attempt 2; core Kotlin changed in KDoc only since the green `:core:jvmTest` of attempt 1, not re-run)
 
 ## Changed (≤ 6 lines)
-- db: `V4__tts_audio.sql` (+ smoke), device table `tts_audio` in `Local.sq`, SCHEMA.md 6.6 (rule book), settings `review.autoplay_audio`, `tts.voice`, `audio.prefetch_days` 0–365
-- api: `QueueItem.word_audio`, `POST /tts/resolve` (`resolveSpeech`, shell class `proxy`), SHELL.md 4.3
-- core contract: `render/WordAudio.kt` (`WordAudioResolver`), `RenderInput.wordAudio`, `RenderedCard.wordAudio`/`autoplayAudio`, `{{audio:word}}`, JS facade fields
-- docs/REVIEW-LOOP.md §14 (screen rules A1–A6); clients regenerated
+- Attempt 1: V4 `tts_audio`, SCHEMA.md 6.6, `QueueItem.word_audio`, `resolveSpeech`, `WordAudio.kt`, render "Word audio", REVIEW-LOOP §14
+- Fix 1: `resolveSpeech` needs `write` for every request shape; urgent is no exemption: hard limit 340 queued jobs (300 + reserve 40)
+- Fix 2/3: `P(now)` asks today's new cards first, early stop never skips them; "Backlog" no longer promises the sweep for arbitrary texts
+- Fix 4/5: `audio:` prefix reserved (only `audio:word`); note whose `[sound:]` blob is missing → `failed`, source `note`
+- Fix 6: device reports a `tts` hash offline only when cached (SCHEMA 6.6 rule 6, SHELL.md 4.3)
 
 ## Acceptance → tests
-- contracts green; both examples (deck-materialized empty fields; own `[sound:]`) → `WordAudio` schema examples, `SpeechResolveResult*`, WordAudio.kt table, REVIEW-LOOP §14
+- contracts green; examples for both note shapes → `WordAudio` schema examples, `SpeechResolveResult*`, WordAudio.kt table
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Identity is the pair (voice, text), not a hash; audio is never written to notes (no op). VOICEVOX gets kana only (accent guessed).
-- Tickets + deps: `contracts/api/SUMMARY.md` "C-29 changes": CORE-29 → WRK-29, SRV-29 (re-records parity goldens) → WEB-29, AND-29.
-- WRK-29: `worker/tests/dict/conftest.py` lists migrations by name; add V4. Vocab only; `listening` creation rule unchanged.
+- Deviation from finding 1: `note_id`-only requests also need `write` (one rule, no per-item scope). Read-only clients get audio via `getReviewQueue`'s own enqueue.
+- Fix 6 makes the local `tts` hash depend on connectivity; `note` hashes are unchanged (parity).
+- The three open ADR-047 choices are untouched.
