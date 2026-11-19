@@ -420,6 +420,7 @@ All URIs are relative to */api/v1*
 - [ReviewLoopNew](docs/ReviewLoopNew.md)
 - [ReviewLoopReady](docs/ReviewLoopReady.md)
 - [ReviewLoopReviews](docs/ReviewLoopReviews.md)
+- [ReviewLoopUntilStopParts](docs/ReviewLoopUntilStopParts.md)
 - [ReviewPage](docs/ReviewPage.md)
 - [ReviewQueue](docs/ReviewQueue.md)
 - [ReviewQueueCounts](docs/ReviewQueueCounts.md)

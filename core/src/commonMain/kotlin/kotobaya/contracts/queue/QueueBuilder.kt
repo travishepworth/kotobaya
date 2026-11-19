@@ -1074,9 +1074,10 @@ public data class ReviewQueue(
  *    visit after the user pressed Keep going, and `false` everywhere else — every new visit, the
  *    home screen, widgets, notifications and status lines always build with `false`. So a user
  *    who met the goal, kept going, left and comes back to newly due reviews gets those reviews
- *    and then the `goal_reached` / `done_for_today` screen again before any card over the quota.
+ *    and then the `goal_reached` / `done_for_today` screen again before any card over the quota
+ *    (ADR-049: after a `waiting` phase while today's learning cards are still on their timers).
  *    It is never stored, never an op and never a synced setting; counts do not depend on it
- *    ([LoopState], except `untilStop`).
+ *    ([LoopState], except `untilStop`, `untilStopParts` and `keepGoingAvailable`).
  *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
  *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
  *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`

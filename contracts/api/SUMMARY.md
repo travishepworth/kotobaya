@@ -817,3 +817,46 @@ Three choices most worth a second look:
 - New parity scenario `queue-kanji-rare-forms` (tags `queue.kanji_kana_word`,
   `queue.kanji_tagged_joyo_only`, both mandatory). Its golden is recorded by CORE-28d once the
   fixture dictionary loaders apply SCHEMA.md 4.5 "Headword"; no existing golden changes.
+
+## C-30 changes (ADR-049; additive)
+
+What was decided:
+- `loop.phase` order: `waiting` is now decided before `goal_reached` / `done_for_today`. Whenever
+  nothing can be served and a learning card falls due before `day_ends_at`, the phase is `waiting`,
+  with and without `keep_going`. The stop screens (`goal_reached`, `done_for_today`, `empty`)
+  appear only with `ready.total` 0, `later_today.count` 0 and `until_stop` 0. No enum value was
+  added, so older clients render the new behaviour with their existing waiting screen.
+- `ReviewQueue.loop.keep_going_available` (boolean): show a Keep going button now. True at
+  `goal_reached` / `done_for_today` and during `waiting` when new cards or a backlog remain.
+  Absent (older server): clients use `phase` in (`goal_reached`, `done_for_today`).
+- `ReviewQueue.loop.until_stop_parts` = `{learning, later, review, new}`: `until_stop` split into
+  the numbers the review header and Home show; the sum is always `until_stop`. Absent (older
+  server): clients show `ready.learning`, `later_today.count`, `ready.review`.
+- Client rules: C3 (header and Home show the four parts; single-number surfaces keep
+  `ready.total`), C4 (the waiting screen resumes by itself and may offer Keep going), new C6 (every
+  surface that stays on screen refetches once at `later_today.next_due_at` in every phase, not only
+  in `waiting`; at a stop screen that member is null).
+- Deprecated members keep their frozen meaning. `more_available` can now be true in phase
+  `waiting`; that was already its definition ("nothing served and keep going has more").
+- No new operation, table, op type or setting; the cross-check tables are unchanged. No
+  `LOCAL_API_VERSION` bump: both members have a fallback.
+- Parity: new scenario `queue-loop-wait-before-stop` (tag `queue.loop_waits_before_stop`, the
+  reported case scaled down); `queue-until-stop` step 8 is `waiting` instead of `done_for_today`;
+  every whole-`/loop` expectation gained the two members (19 expectations in 5 scenarios). All
+  hand-evaluated; SRV-30 re-records the goldens.
+
+Alternatives rejected:
+- A new phase value for "goal reached but waiting". Older readers map an unknown phase with empty
+  `items` to `empty`, the dead end this ticket removes.
+- Putting the new-cards-left number into `loop.new`. That object is the same with and without
+  keep going (asserted by the parity invariants); the parts are not.
+- A `StatsSummary` field for Home. Home already calls `getReviewQueue?limit=1`.
+
+Three choices most worth a second look:
+1. `until_stop_parts.review` is `backlog.reviews` when `keep_going=true` and `ready.review`
+   otherwise, so that the parts always sum to `until_stop`.
+2. Rule C6 makes Home and an open review screen fetch once per learning step that ends (at most
+   one fetch per 3 s). It is what keeps Home from showing a stale number.
+3. An older web bundle on a new server shows its existing waiting screen without a Keep going
+   button during a wait (the button appears at the stop screen as before). Accepted for the
+   minutes until the bundle is updated; server and web deploy from one pin.

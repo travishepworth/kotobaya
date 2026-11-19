@@ -7,11 +7,11 @@
   "narrative": [
     "new_per_day is 2, the review cap is the default 200. Two review cards are overdue (...10, ...20). Card ...30 was introduced in the previous study day and failed again at 09:59:55: it is in its first learning step, due 10:00:55 (later today). Three cards are new (...40, ...50, ...60). Every step happens before 10:00:55.",
     "Step 0: until_stop = 0 ready learning + 1 later today + 2 ready reviews + 2 new cards left to the goal = 5.",
-    "Step 1 answers review ...10 Again: it moves to relearning (later today). Step 2: 0 + 2 + 1 + 2 = 5, unchanged, so the bar total done + until_stop grew from 5 to 6.",
+    "Step 1 answers review ...10 Again: it moves to relearning (later today). Step 2: 0 + 2 + 1 + 2 = 5, unchanged, so the bar total done + until_stop grew from 5 to 6. until_stop_parts is 0 learning / 2 later / 1 review / 2 new.",
     "Step 3 answers review ...20 Good. Step 4: 0 + 2 + 0 + 2 = 4.",
     "Step 5 introduces ...40 with Easy (it graduates, no learning step). Step 6: 0 + 2 + 0 + 1 = 3.",
-    "Step 7 introduces ...50 with Easy. Step 8: the goal is reached and nothing is ready: done_for_today (the review cap is on) although two learning cards fall due later; until_stop is those two.",
-    "Step 9, keep_going=true&limit=5: reviewing; until_stop = 0 + 2 later + 0 backlog + 1 new card drawn = 3. The other loop numbers equal step 8."
+    "Step 7 introduces ...50 with Easy. Step 8: the goal is reached and nothing is ready, but two learning cards fall due later today, so the phase is waiting, not done_for_today (ADR-049): until_stop is those two (parts 0 learning + 2 later + 0 reviews + 0 new), next_due_at is 10:00:55, and keep_going_available is true because the new card ...60 remains.",
+    "Step 9, keep_going=true&limit=5: reviewing; until_stop = 0 + 2 later + 0 backlog + 1 new card drawn = 3 (until_stop_parts 0/2/0/1), keep_going_available false. The other loop numbers equal step 8."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -329,7 +329,14 @@
               "goal": 2,
               "available": true
             },
-            "until_stop": 5
+            "until_stop": 5,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 1,
+              "review": 2,
+              "new": 2
+            }
           }
         },
         "lengths": {
@@ -375,7 +382,13 @@
           "/loop/later_today/count": 2,
           "/loop/later_today/next_due_at": "2026-11-20T10:00:55.000Z",
           "/loop/until_stop": 5,
-          "/loop/phase": "reviewing"
+          "/loop/phase": "reviewing",
+          "/loop/until_stop_parts": {
+            "learning": 0,
+            "later": 2,
+            "review": 1,
+            "new": 2
+          }
         }
       }
     },
@@ -496,7 +509,7 @@
       "expect": {
         "status": 200,
         "body": {
-          "/loop/phase": "done_for_today",
+          "/loop/phase": "waiting",
           "/loop/until_stop": 2,
           "/loop/later_today/count": 2,
           "/loop/new": {
@@ -504,7 +517,15 @@
             "goal": 2,
             "available": true
           },
-          "/items": []
+          "/items": [],
+          "/loop/keep_going_available": true,
+          "/loop/until_stop_parts": {
+            "learning": 0,
+            "later": 2,
+            "review": 0,
+            "new": 0
+          },
+          "/loop/later_today/next_due_at": "2026-11-20T10:00:55.000Z"
         }
       }
     },
@@ -522,7 +543,14 @@
           "/loop/phase": "reviewing",
           "/loop/keep_going": true,
           "/loop/until_stop": 3,
-          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000060"
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000060",
+          "/loop/keep_going_available": false,
+          "/loop/until_stop_parts": {
+            "learning": 0,
+            "later": 2,
+            "review": 0,
+            "new": 1
+          }
         },
         "lengths": {
           "/items": 1

@@ -624,7 +624,14 @@
               "goal": 20,
               "available": true
             },
-            "until_stop": 15
+            "until_stop": 15,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 3,
+              "review": 0,
+              "new": 12
+            }
           },
           "/counts": {
             "new": 12,
@@ -678,7 +685,14 @@
               "goal": 20,
               "available": true
             },
-            "until_stop": 15
+            "until_stop": 15,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 1,
+              "later": 2,
+              "review": 0,
+              "new": 12
+            }
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
           "/items/0/is_new": false,

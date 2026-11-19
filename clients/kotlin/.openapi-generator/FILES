@@ -261,6 +261,7 @@ docs/ReviewLoopLaterToday.md
 docs/ReviewLoopNew.md
 docs/ReviewLoopReady.md
 docs/ReviewLoopReviews.md
+docs/ReviewLoopUntilStopParts.md
 docs/ReviewPage.md
 docs/ReviewQueue.md
 docs/ReviewQueueCounts.md
@@ -592,6 +593,7 @@ src/main/kotlin/app/kotobaya/client/models/ReviewLoopLaterToday.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewLoopNew.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewLoopReady.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewLoopReviews.kt
+src/main/kotlin/app/kotobaya/client/models/ReviewLoopUntilStopParts.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewPage.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewQueue.kt
 src/main/kotlin/app/kotobaya/client/models/ReviewQueueCounts.kt
@@ -905,6 +907,7 @@ src/test/kotlin/app/kotobaya/client/models/ReviewLoopNewTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewLoopReadyTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewLoopReviewsTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewLoopTest.kt
+src/test/kotlin/app/kotobaya/client/models/ReviewLoopUntilStopPartsTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewPageTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewQueueCountsTest.kt
 src/test/kotlin/app/kotobaya/client/models/ReviewQueueTest.kt

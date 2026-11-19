@@ -616,6 +616,7 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.ReviewLoopNew](docs/ReviewLoopNew.md)
  - [app.kotobaya.client.models.ReviewLoopReady](docs/ReviewLoopReady.md)
  - [app.kotobaya.client.models.ReviewLoopReviews](docs/ReviewLoopReviews.md)
+ - [app.kotobaya.client.models.ReviewLoopUntilStopParts](docs/ReviewLoopUntilStopParts.md)
  - [app.kotobaya.client.models.ReviewPage](docs/ReviewPage.md)
  - [app.kotobaya.client.models.ReviewQueue](docs/ReviewQueue.md)
  - [app.kotobaya.client.models.ReviewQueueCounts](docs/ReviewQueueCounts.md)

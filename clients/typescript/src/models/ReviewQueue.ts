@@ -68,7 +68,9 @@ export interface ReviewQueue {
      */
     loop?: ReviewLoop;
     /**
-     * **Deprecated (ADR-037): use `loop.phase`** (`goal_reached` / `done_for_today`). Still
+     * **Deprecated (ADR-037): use `loop.phase` and `loop.keep_going_available`** (ADR-049:
+     * this member can be true in phase `waiting` too; for a request without `kinds` it
+     * equals `loop.keep_going_available`). Still
      * sent with the frozen meaning below (for a request without `kinds`: the core's
      * `LoopState.legacy.moreAvailable`, forced to false when `keep_going=true`). There is no
      * per-session cap any more, so the "done for now" case below no longer occurs. Since

@@ -375,3 +375,42 @@ Most worth a second look:
 3. **Common words become kana.** いる (居る), する (為る), それ (其れ), この (此の), あれ (彼) lose their
    kanji spelling and their kanji cards-to-be (居, 為 are jōyō and were required under ADR-045).
    This is what ADR-046 (a) says; notes whose own text field holds the kanji are not affected.
+
+## C-30 changes: the stop screen waits for today's learning (ADR-049)
+
+What was decided:
+- **The "done" screen now means done.** When no card can be shown but cards you studied today are
+  still on their learning timers, the loop says "waiting" (countdown, resumes by itself) instead of
+  "goal reached" / "done for today". The done screen appears only when nothing is left for today.
+  In the phase rule this is one swap: the waiting check now comes before the stop-screen check.
+- **Keep going while waiting.** A new yes/no value tells the client whether to offer a Keep going
+  button (`keepGoingAvailable`). It is on at the done screens as before and, new, during a wait
+  when new cards or a backlog remain. Pressing it serves those cards; learning cards still come
+  back the moment they are due and are never shown early.
+- **Header numbers that add up.** The "answers left" number is now also given as its four parts
+  (`untilStopParts`: learning ready, learning later today, reviews, new), so the header and Home
+  can show "9 learning · 14 later · 0 to review · 0 new" and it equals what is left of the bar.
+- Nothing is stored; no op, table or setting changed. Both new members have defaults, so core
+  compiles before CORE-30 implements them.
+
+Alternatives rejected:
+- Serving the waiting cards early at the end of the session (learn-ahead). The user ruled it out
+  (ADR-033): it re-serves the same card inside its step.
+- Keeping the old order and only fixing Home's refresh. The done screen would still appear with 23
+  cards minutes away.
+- A separate phase `waiting_goal_reached`. One `waiting` phase plus the Keep going flag says the
+  same with fewer cases for five clients; unknown phases would also degrade to "empty" on older
+  clients, which is exactly the bug.
+- Letting each client compute the header parts from `ready`, `later_today`, `backlog` and
+  `until_stop`. The reviews part differs between modes; one place computing it avoids five copies.
+- Waiting for learning cards due after the day boundary. They belong to the next study day.
+
+Three choices most worth a second look:
+1. **You can no longer reach the done screen while a learning card is due today.** If you answer a
+   card Again at the very end, you wait about a minute for it (or leave; Home then shows the
+   countdown). Keep going is offered meanwhile when there is something to keep going with.
+2. **Keep going during a wait starts new cards over the goal** (or the backlog) straight away, the
+   same as pressing it at the done screen a minute later would. It is offered, never automatic.
+3. **With keep going the "to review" part is the whole backlog**, not the capped number, so the
+   header still adds up to the bar in that mode. The single "ready now" number of widget and
+   notifications is unchanged.

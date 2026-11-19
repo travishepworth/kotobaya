@@ -292,6 +292,7 @@ __all__ = [
     "ReviewLoopNew",
     "ReviewLoopReady",
     "ReviewLoopReviews",
+    "ReviewLoopUntilStopParts",
     "ReviewPage",
     "ReviewQueue",
     "ReviewQueueCounts",
@@ -620,6 +621,7 @@ from kotobaya_client.models.review_loop_later_today import ReviewLoopLaterToday 
 from kotobaya_client.models.review_loop_new import ReviewLoopNew as ReviewLoopNew
 from kotobaya_client.models.review_loop_ready import ReviewLoopReady as ReviewLoopReady
 from kotobaya_client.models.review_loop_reviews import ReviewLoopReviews as ReviewLoopReviews
+from kotobaya_client.models.review_loop_until_stop_parts import ReviewLoopUntilStopParts as ReviewLoopUntilStopParts
 from kotobaya_client.models.review_page import ReviewPage as ReviewPage
 from kotobaya_client.models.review_queue import ReviewQueue as ReviewQueue
 from kotobaya_client.models.review_queue_counts import ReviewQueueCounts as ReviewQueueCounts

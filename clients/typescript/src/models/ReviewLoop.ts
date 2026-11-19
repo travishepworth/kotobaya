@@ -41,6 +41,13 @@ import {
     ReviewLoopLaterTodayToJSON,
     ReviewLoopLaterTodayToJSONTyped,
 } from './ReviewLoopLaterToday';
+import type { ReviewLoopUntilStopParts } from './ReviewLoopUntilStopParts';
+import {
+    ReviewLoopUntilStopPartsFromJSON,
+    ReviewLoopUntilStopPartsFromJSONTyped,
+    ReviewLoopUntilStopPartsToJSON,
+    ReviewLoopUntilStopPartsToJSONTyped,
+} from './ReviewLoopUntilStopParts';
 import type { ReviewLoopBacklog } from './ReviewLoopBacklog';
 import {
     ReviewLoopBacklogFromJSON,
@@ -53,7 +60,8 @@ import {
  * ADR-037. The review loop's state for one `getReviewQueue` request: the wire form of the
  * core's `LoopState` (`ReviewLoop.evaluate`), which is the only place a phase or a count
  * is decided. Scope: computed for the request's `deck_id` (as `items`); **unaffected by
- * `kinds` and `limit`**, and - except `phase` and `keep_going` - **by `keep_going`**. When
+ * `kinds` and `limit`**, and - except `phase`, `keep_going`, `keep_going_available`,
+ * `until_stop` and `until_stop_parts` - **by `keep_going`**. When
  * the request materialized deck entries (C-27) it describes the state after the last
  * rebuild. All members are required. Invariants: `ready.total = ready.learning +
  * ready.review`; `backlog.reviews >= ready.review`; `backlog.beyond_limit =
@@ -61,9 +69,15 @@ import {
  * `later_today.next_due_at` is null iff `later_today.count` is 0, else after
  * `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is
  * non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`.
- * `until_stop` (ADR-038) is the one number besides `phase` and `keep_going` that depends on
- * `keep_going`, and with `keep_going=true` on `limit`; it is not in `required` only because
- * servers older than ADR-038 do not send it.
+ * ADR-049: `phase = waiting` iff nothing is served and `later_today.count > 0`; a stop
+ * screen (`goal_reached`, `done_for_today`, `empty`) implies `ready.total = 0`,
+ * `later_today.count = 0` and `until_stop = 0`, and `until_stop = 0` implies a stop screen;
+ * `keep_going_available` is true in `goal_reached` / `done_for_today`, false in `empty`,
+ * false with `keep_going = true`; `until_stop_parts` sums to `until_stop`.
+ * `until_stop` (ADR-038) and `until_stop_parts` (ADR-049) are the numbers besides `phase`,
+ * `keep_going` and `keep_going_available` that depend on `keep_going`, and with
+ * `keep_going=true` on `limit`. `until_stop`, `keep_going_available` and
+ * `until_stop_parts` are not in `required` only because older servers do not send them.
  * 
  * @export
  * @interface ReviewLoop
@@ -78,6 +92,23 @@ export interface ReviewLoop {
      */
     keepGoing: boolean;
     /**
+     * ADR-049 (additive). **Show a Keep going button now** (core
+     * `LoopState.keepGoingAvailable`). True iff the request had `keep_going=false` (or
+     * omitted it), a normal request serves nothing (no item, nothing to materialize) and
+     * the same request with `keep_going=true` would serve at least one card. Always true
+     * in `goal_reached` / `done_for_today`; in `waiting` true when a backlog beyond the
+     * review cap or a new card exists, else false; false in `reviewing` for
+     * `keep_going=false`; false in `empty`; always false for `keep_going=true`.
+     * Unaffected by `kinds` and `limit`. Clients render the button from this member only.
+     * Sent by every server and local API implementing ADR-049; absent (older) → clients
+     * use `phase` in (`goal_reached`, `done_for_today`).
+     * Examples: goal reached, 14 learning cards on their timers, new cards remain →
+     * `waiting`, true. Only learning cards on their timers, nothing new, no backlog →
+     * `waiting`, false.
+     * 
+     */
+    keepGoingAvailable?: boolean;
+    /**
      * 
      */
     laterToday: ReviewLoopLaterToday;
@@ -88,10 +119,12 @@ export interface ReviewLoop {
     /**
      * Where the loop stands (rule under `getReviewQueue` "Review loop"; core `LoopPhase`).
      * `reviewing`: a card is served (or a deck entry awaits materialization).
+     * `waiting` (ADR-049: checked before the stop screens): nothing is served and a
+     * learning card falls due at `later_today.next_due_at`; Keep going may be available
+     * (`keep_going_available`).
      * `goal_reached` (reviews unlimited) / `done_for_today` (review cap on): nothing ready
-     * under the limits, Keep going would serve a card. `waiting`: nothing ready, nothing
-     * more with keep going, a learning card falls due at `later_today.next_due_at`.
-     * `empty`: nothing left today. The set is open for readers: an unknown value is
+     * under the limits, nothing due later today, Keep going would serve a card.
+     * `empty`: nothing left today, no Keep going. The set is open for readers: an unknown value is
      * treated as `reviewing` when `items` is non-empty, else as `empty`.
      * 
      */
@@ -113,8 +146,9 @@ export interface ReviewLoop {
      *   cards that can still be introduced today (the smaller of the goal's remainder and
      *   what the decks can supply under their limits; kanji cards served ahead of their
      *   word and deck entries not yet materialized included; **not** bounded by `limit`).
-     *   These are the answers before `goal_reached` / `done_for_today` (or `waiting` /
-     *   `empty`). At such a stop screen it equals `later_today.count`.
+     *   These are the answers before the stop screen (`goal_reached` / `done_for_today`
+     *   / `empty`). ADR-049: in `waiting` it equals `later_today.count` (>= 1); at a stop
+     *   screen it is always 0, and 0 only there.
      * - `keep_going = true`: the stream is endless, so it is what is in sight:
      *   `ready.learning + later_today.count + backlog.reviews` + the new cards this
      *   response drew (about `limit`; a kanji group may overshoot).
@@ -126,6 +160,10 @@ export interface ReviewLoop {
      * 
      */
     untilStop?: number;
+    /**
+     * 
+     */
+    untilStopParts?: ReviewLoopUntilStopParts;
 }
 
 
@@ -168,12 +206,14 @@ export function ReviewLoopFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         
         'backlog': ReviewLoopBacklogFromJSON(json['backlog']),
         'keepGoing': json['keep_going'],
+        'keepGoingAvailable': json['keep_going_available'] == null ? undefined : json['keep_going_available'],
         'laterToday': ReviewLoopLaterTodayFromJSON(json['later_today']),
         '_new': ReviewLoopNewFromJSON(json['new']),
         'phase': json['phase'],
         'ready': ReviewLoopReadyFromJSON(json['ready']),
         'reviews': ReviewLoopReviewsFromJSON(json['reviews']),
         'untilStop': json['until_stop'] == null ? undefined : json['until_stop'],
+        'untilStopParts': json['until_stop_parts'] == null ? undefined : ReviewLoopUntilStopPartsFromJSON(json['until_stop_parts']),
     };
 }
 
@@ -190,12 +230,14 @@ export function ReviewLoopToJSONTyped(value?: ReviewLoop | null, ignoreDiscrimin
         
         'backlog': ReviewLoopBacklogToJSON(value['backlog']),
         'keep_going': value['keepGoing'],
+        'keep_going_available': value['keepGoingAvailable'],
         'later_today': ReviewLoopLaterTodayToJSON(value['laterToday']),
         'new': ReviewLoopNewToJSON(value['_new']),
         'phase': value['phase'],
         'ready': ReviewLoopReadyToJSON(value['ready']),
         'reviews': ReviewLoopReviewsToJSON(value['reviews']),
         'until_stop': value['untilStop'],
+        'until_stop_parts': ReviewLoopUntilStopPartsToJSON(value['untilStopParts']),
     };
 }
 

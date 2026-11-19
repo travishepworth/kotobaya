@@ -14,7 +14,7 @@
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
- * Learning/relearning cards not ready yet that fall due before `day_ends_at`. A hint, never a reason to wait while anything else can be shown.
+ * Learning/relearning cards not ready yet that fall due before `day_ends_at`. Never served early. While `phase` is `reviewing` they are only a number; when nothing is served they make the phase `waiting` (ADR-049). A learning card due at or after `day_ends_at` is not counted.
  * @export
  * @interface ReviewLoopLaterToday
  */
