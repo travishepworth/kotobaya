@@ -1364,3 +1364,4 @@
 2026-11-19T06:22:05Z AND-28 REVIEW_CHANGES 3 majors (suspended-started parity, kanjiKinds N+1, first-build 30k dict reads) + minors; attempt 2
 2026-11-19T06:26:24Z CORE-28b HANDOFF + green (core); reviewer
 2026-11-19T06:27:53Z CORE-28b REVIEW_APPROVE (8000-seed probe clean); merge check running; KANJI-TEXT-SHARED expanded (goldens for C-28d scenarios)
+2026-11-19T06:28:29Z CORE-28b CHECK_GREEN + MERGE. AND-28 attempt 2 told to rebase on it
