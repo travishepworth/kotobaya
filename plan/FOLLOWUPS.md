@@ -517,3 +517,7 @@
 - C-28f review: SCHEMA 4.5 Rollout — devices on an old dict package can mint jōyō kanji notes for kana words that then stay forever (no auto cleanup); note it, refresh device packages promptly after dict release.
 - C-28f review: headword_reading should be the first reading that applies to the headword (skip re_nokanji, respect re_restr); e.g. 鯛 → タイ is re_nokanji, wrong furigana. Pre-existing.
 - C-28f review: kana-word headwords drop those words from kanji example lists (position(literal in headword)); consistent with ADR-046, optionally document.
+- CORE-28d review: android search/EntryLabelCache.kt persisted labels never invalidated → stale kanji headword labels (硝子 vs ガラス) after ADR-046; key by dict release id. Display only.
+- CORE-28d review: android ankiapi/store/EntryLookup.kt headword cache not keyed by InstalledDictionary.generation; reuse HeadwordCache. Display only.
+- CORE-28d review: worker test_refresh_resume — assert a 4th run after forced rebuild returns release_id None.
+- CORE-28d review: KanjiRequirementTest.singaporeEntryShape also passes on old predicate; optionally add 新嘉坡 field-form case.

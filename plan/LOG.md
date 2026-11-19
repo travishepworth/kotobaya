@@ -1379,3 +1379,6 @@
 2026-11-19T09:49:41Z SCROLL-TOP HANDOFF + CHECK_GREEN (web) + MERGE c87974a3 (web only)
 2026-11-19T09:59:17Z C-28f HANDOFF + green (contracts); reviewer; CORE-28d DISPATCH writer-senior from t/C-28f-contracts (parallel)
 2026-11-19T10:02:56Z C-28f REVIEW_APPROVE (5 minors → FOLLOWUPS; headword cache clear added to CORE-28d)
+2026-11-19T10:16:39Z CORE-28d REVIEW_APPROVE (4 minors → FOLLOWUPS); orchestrator checks running
+2026-11-19T10:18:27Z SCROLL-TOP visual verify PASS (playwright 412x915 + 1280x800: scrollTop 0 after Show and next card; screenshot viewed by orchestrator)
+2026-11-19T10:20:54Z C-28f + CORE-28d CHECK_GREEN (core,worker,server,android,contracts) + MERGE e41c2636; release run 35 next
