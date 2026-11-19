@@ -7,10 +7,13 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
-| CORE-28 | reviewer | 2 (in review) | t/CORE-28-core (worktree .claude/worktrees/agent-a08c4b59f05cfd098) | 2026-11-19 |
+| C-28d | architect | 1 | t/C-28d-contracts | 2026-11-19 |
+| SRV-28 | writer | 1 | t/SRV-28-server | 2026-11-19 |
+| AND-28 | writer | 1 | t/AND-28-android (Gradle lane) | 2026-11-19 |
+Then CORE-28b (after C-28d) -> SRV/AND re-run checks if core behaviour changed (no API change expected).
 If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> validate/check/review; else re-dispatch CORE-28 attempt 1 (prompt: ticket plan/tickets/CORE-28.md, owned core/** except core/src/commonMain/kotlin/kotobaya/contracts/**, read QueueBuilder rule 4-6, plan/handoffs/C-28.md + C-28b.md, ruby furigana note, Gradle flock).
 ### Next (in order)
-1. CORE-28 green -> reviewer (high risk; focus parity scenarios queue-kanji-*, queue-until-stop, backfill share, starvation, until_stop, KanjiRequirement on real JMdict tags) -> merge.
+1. DONE CORE-28 merged. (was: CORE-28 green -> reviewer (high risk; focus parity scenarios queue-kanji-*, queue-until-stop, backfill share, starvation, until_stop, KanjiRequirement on real JMdict tags) -> merge.
 2. Then SRV-28 (writer, server/**) and AND-28 (writer, android/**, Gradle lane) in parallel (only 1 Gradle-heavy at a time; flock serializes). Both must re-record parity goldens (15 re-pointed scenarios) and fix tests pinned to seqs 1000220/1000440/1000450.
 3. Before release: count live backfill size (missing learnable kanji of introduced words) and tell user; check real JMdict tags for 林檎/薔薇 (ADR-042 HUMAN_CHECK).
 4. Release: pin one SHA (worktree), make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=<new: api>0.1.24, web>0.1.27, never reuse>, bump ~/repos/kubernetes/kotobaya/values.yaml, helm upgrade; APK RELEASE build (memory phone-apk-install) next VERSION after 0.1.34; CLI reinstall with `uv tool install --force --no-sources --with ./clients/python ./cli` + systemctl --user restart kotobaya. Verify UI on phone visually (until_stop bar, deck progress, kanji tiles, ruby furigana, add-to-deck sheet).

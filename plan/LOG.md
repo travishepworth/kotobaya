@@ -1351,3 +1351,4 @@
 2026-11-19T05:26:42Z C-28c attempt 3 HANDOFF + green; reviewer r3
 2026-11-19T05:28:10Z C-28c REVIEW_APPROVE r3 + CHECK_GREEN + MERGE; CORE-28 attempt 2 (apply 5 resolutions)
 2026-11-19T05:40:18Z CORE-28 attempt 2 HANDOFF + CHECK_GREEN (core); reviewer dispatched
+2026-11-19T05:47:24Z CORE-28 REVIEW_APPROVE + MERGE; minors -> C-28d + CORE-28b; DISPATCH C-28d architect, SRV-28 writer, AND-28 writer
