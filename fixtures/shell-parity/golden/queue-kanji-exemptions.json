@@ -8,11 +8,187 @@
     "body" : {
       "counts" : {
         "learning" : 0,
-        "new" : 7,
+        "new" : 9,
         "review" : 0
       },
       "day_ends_at" : "2026-11-21T04:00:00.000Z",
       "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id1>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id2>",
+            "kanji_literal" : "寿",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id2>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 1245,
+          "grade" : 8,
+          "jlpt" : 1,
+          "kun_readings" : [ "ことぶき", "ことぶ.く", "ことほ.ぐ" ],
+          "literal" : "寿",
+          "meanings" : [ "longevity", "congratulations", "one's natural life" ],
+          "nanori" : [ "かず", "じ", "じゅう", "すっ", "すみ", "とし", "としかつ", "なが", "のぶ", "のり", "ひさ", "ひさし", "やす" ],
+          "note_id" : "<id2>",
+          "on_readings" : [ "ジュ", "ス", "シュウ" ],
+          "radical" : "41",
+          "stroke_count" : 7
+        },
+        "kanji_examples" : [ {
+          "gloss" : "sushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "headword" : "寿司",
+          "reading" : "すし",
+          "reading_type" : "on",
+          "seq" : 1595650
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "longevity; congratulations; one's natural life\nジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
+          "front" : "寿",
+          "reading" : "ジュ、ス、シュウ、ことぶき、ことぶ.く、ことほ.ぐ",
+          "sentence" : null
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-20T10:00:01.000Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "<id3>",
+          "interval_days" : null,
+          "kind" : "keyword",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : null,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "<id4>",
+            "kanji_literal" : "司",
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000102",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "kanji"
+          },
+          "note_id" : "<id4>",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-20T10:00:01.000Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : null,
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : {
+          "components" : [ ],
+          "freq_rank" : 759,
+          "grade" : 4,
+          "jlpt" : 2,
+          "kun_readings" : [ "つかさど.る" ],
+          "literal" : "司",
+          "meanings" : [ "director", "official", "govt office", "rule", "administer" ],
+          "nanori" : [ "つ", "つか", "つかさ" ],
+          "note_id" : "<id4>",
+          "on_readings" : [ "シ" ],
+          "radical" : "30",
+          "stroke_count" : 5
+        },
+        "kanji_examples" : [ {
+          "gloss" : "sushi; range of dishes made with vinegared rice combined with fish, vegetables, egg, etc.",
+          "headword" : "寿司",
+          "reading" : "すし",
+          "reading_type" : "on",
+          "seq" : 1595650
+        } ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "director; official; govt office; rule; administer\nシ、つかさど.る",
+          "front" : "司",
+          "reading" : "シ、つかさど.る",
+          "sentence" : null
+        }
+      }, {
         "card" : {
           "buried_until" : null,
           "created_at" : "2026-11-20T09:00:00.001Z",
@@ -175,7 +351,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id1>",
+          "id" : "<id5>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -186,7 +362,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id2>",
+            "id" : "<id6>",
             "kanji_literal" : "昨",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -194,7 +370,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id2>",
+          "note_id" : "<id6>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -217,7 +393,7 @@
           "literal" : "昨",
           "meanings" : [ "yesterday", "previous" ],
           "nanori" : [ ],
-          "note_id" : "<id2>",
+          "note_id" : "<id6>",
           "on_readings" : [ "サク" ],
           "radical" : "72",
           "stroke_count" : 9
@@ -263,7 +439,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id3>",
+          "id" : "<id7>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -274,7 +450,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id4>",
+            "id" : "<id8>",
             "kanji_literal" : "日",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -282,7 +458,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id4>",
+          "note_id" : "<id8>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -305,7 +481,7 @@
           "literal" : "日",
           "meanings" : [ "day", "sun", "Japan", "counter for days" ],
           "nanori" : [ "あ", "あき", "いる", "く", "くさ", "こう", "す", "たち", "に", "にっ", "につ", "へ" ],
-          "note_id" : "<id4>",
+          "note_id" : "<id8>",
           "on_readings" : [ "ニチ", "ジツ" ],
           "radical" : "72",
           "stroke_count" : 4
@@ -639,7 +815,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id5>",
+          "id" : "<id9>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -650,7 +826,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id6>",
+            "id" : "<id10>",
             "kanji_literal" : "子",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -658,7 +834,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id6>",
+          "note_id" : "<id10>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -681,7 +857,7 @@
           "literal" : "子",
           "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
           "nanori" : [ "い", "き", "ぎ", "く", "け", "ねっ" ],
-          "note_id" : "<id6>",
+          "note_id" : "<id10>",
           "on_readings" : [ "シ", "ス", "ツ" ],
           "radical" : "39",
           "stroke_count" : 3
@@ -852,7 +1028,7 @@
           "limit" : 200,
           "today" : 0
         },
-        "until_stop" : 7
+        "until_stop" : 9
       },
       "more_available" : false,
       "study_day" : "2026-11-20",
@@ -885,12 +1061,12 @@
       "items" : [ {
         "card" : {
           "buried_until" : null,
-          "created_at" : "2026-11-20T10:00:03.000Z",
+          "created_at" : "2026-11-20T10:00:01.000Z",
           "deleted_at" : null,
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id7>",
+          "id" : "<id1>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -901,7 +1077,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id8>",
+            "id" : "<id2>",
             "kanji_literal" : "寿",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -909,14 +1085,14 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id8>",
+          "note_id" : "<id2>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
           "state" : "new",
           "step" : null,
           "suspended" : false,
-          "updated_at" : "2026-11-20T10:00:03.000Z"
+          "updated_at" : "2026-11-20T10:00:01.000Z"
         },
         "deck_count" : 0,
         "decks" : [ ],
@@ -932,7 +1108,7 @@
           "literal" : "寿",
           "meanings" : [ "longevity", "congratulations", "one's natural life" ],
           "nanori" : [ "かず", "じ", "じゅう", "すっ", "すみ", "とし", "としかつ", "なが", "のぶ", "のり", "ひさ", "ひさし", "やす" ],
-          "note_id" : "<id8>",
+          "note_id" : "<id2>",
           "on_readings" : [ "ジュ", "ス", "シュウ" ],
           "radical" : "41",
           "stroke_count" : 7
@@ -973,12 +1149,12 @@
       }, {
         "card" : {
           "buried_until" : null,
-          "created_at" : "2026-11-20T10:00:03.000Z",
+          "created_at" : "2026-11-20T10:00:01.000Z",
           "deleted_at" : null,
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id9>",
+          "id" : "<id3>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -989,7 +1165,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id10>",
+            "id" : "<id4>",
             "kanji_literal" : "司",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -997,14 +1173,14 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id10>",
+          "note_id" : "<id4>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
           "state" : "new",
           "step" : null,
           "suspended" : false,
-          "updated_at" : "2026-11-20T10:00:03.000Z"
+          "updated_at" : "2026-11-20T10:00:01.000Z"
         },
         "deck_count" : 0,
         "decks" : [ ],
@@ -1020,7 +1196,7 @@
           "literal" : "司",
           "meanings" : [ "director", "official", "govt office", "rule", "administer" ],
           "nanori" : [ "つ", "つか", "つかさ" ],
-          "note_id" : "<id10>",
+          "note_id" : "<id4>",
           "on_readings" : [ "シ" ],
           "radical" : "30",
           "stroke_count" : 5
@@ -1221,7 +1397,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id1>",
+          "id" : "<id5>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -1232,7 +1408,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id2>",
+            "id" : "<id6>",
             "kanji_literal" : "昨",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -1240,7 +1416,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id2>",
+          "note_id" : "<id6>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -1263,7 +1439,7 @@
           "literal" : "昨",
           "meanings" : [ "yesterday", "previous" ],
           "nanori" : [ ],
-          "note_id" : "<id2>",
+          "note_id" : "<id6>",
           "on_readings" : [ "サク" ],
           "radical" : "72",
           "stroke_count" : 9
@@ -1309,7 +1485,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id3>",
+          "id" : "<id7>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -1320,7 +1496,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id4>",
+            "id" : "<id8>",
             "kanji_literal" : "日",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -1328,7 +1504,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id4>",
+          "note_id" : "<id8>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -1351,7 +1527,7 @@
           "literal" : "日",
           "meanings" : [ "day", "sun", "Japan", "counter for days" ],
           "nanori" : [ "あ", "あき", "いる", "く", "くさ", "こう", "す", "たち", "に", "にっ", "につ", "へ" ],
-          "note_id" : "<id4>",
+          "note_id" : "<id8>",
           "on_readings" : [ "ニチ", "ジツ" ],
           "radical" : "72",
           "stroke_count" : 4
@@ -1773,7 +1949,7 @@
           "difficulty" : null,
           "due_at" : null,
           "flags" : 0,
-          "id" : "<id5>",
+          "id" : "<id9>",
           "interval_days" : null,
           "kind" : "keyword",
           "lapses" : 0,
@@ -1784,7 +1960,7 @@
             "entry_seq" : null,
             "fields" : { },
             "grammar_point_id" : null,
-            "id" : "<id6>",
+            "id" : "<id10>",
             "kanji_literal" : "子",
             "mnemonic" : "",
             "note_type_id" : "00000000-0000-7000-8000-000000000102",
@@ -1792,7 +1968,7 @@
             "tags" : [ ],
             "type" : "kanji"
           },
-          "note_id" : "<id6>",
+          "note_id" : "<id10>",
           "preset_id" : "00000000-0000-7000-8000-000000000010",
           "reps" : 0,
           "stability" : null,
@@ -1815,7 +1991,7 @@
           "literal" : "子",
           "meanings" : [ "child", "sign of the rat", "11PM-1AM", "first sign of Chinese zodiac" ],
           "nanori" : [ "い", "き", "ぎ", "く", "け", "ねっ" ],
-          "note_id" : "<id6>",
+          "note_id" : "<id10>",
           "on_readings" : [ "シ", "ス", "ツ" ],
           "radical" : "39",
           "stroke_count" : 3

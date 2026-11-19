@@ -232,12 +232,15 @@ class QueueParityScenarioTest {
         val sim = QueueSim(input(on, limits = limits()))
         val r0 = fetch(sim)
         val m = sim.minted
-        assertEquals(listOf("昨", "日", "子"), m.keys.toList())
-        assertEquals(listOf(10, m.getValue("昨"), m.getValue("日"), 20, 30, m.getValue("子"), 40), r0.queue.cards())
-        assertEquals(7, r0.state.untilStop)
+        assertEquals(listOf("寿", "司", "昨", "日", "子"), m.keys.toList())
+        assertEquals(
+            listOf(m.getValue("寿"), m.getValue("司"), 10, m.getValue("昨"), m.getValue("日"), 20, 30, m.getValue("子"), 40),
+            r0.queue.cards(),
+        )
+        assertEquals(9, r0.state.untilStop)
         assertEquals(mapOf(10 to true, 20 to false, 30 to true, 40 to false), furiganaOn)
-        // Step 1-2: the setting off. The loader re-evaluates every word; 昨, 日, 子 are notes now.
-        val (off, furiganaOff) = exemptionWords(enabled = false, existing = setOf("昨", "日", "子"))
+        // Step 1-2: the setting off. The loader re-evaluates every word; 寿, 司, 昨, 日, 子 are notes now.
+        val (off, furiganaOff) = exemptionWords(enabled = false, existing = setOf("寿", "司", "昨", "日", "子"))
         val words = off.associateBy { it.cardId }
         sim.input = sim.input.copy(candidates = sim.input.candidates.map { words[it.cardId] ?: it })
         val r2 = fetch(sim)

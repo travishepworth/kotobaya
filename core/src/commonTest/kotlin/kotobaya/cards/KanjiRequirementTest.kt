@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** ADR-042: every worked example of the `KanjiRequirement` KDoc, on and off, and its edge cases. */
+/** ADR-042 as amended by ADR-045: every worked example of the `KanjiRequirement` KDoc, on and off, and its edge cases. */
 class KanjiRequirementTest {
     private val k = DefaultKanjiRequirement
 
@@ -36,25 +36,44 @@ class KanjiRequirementTest {
 
     @Test
     fun workedExamples() {
-        assertEquals(r(true, emptyList(), true), on("寿司", setOf("ateji")))
+        assertEquals(r(true, listOf("海", "老"), true), on("海老", uk = true))
+        assertEquals(r(false, listOf("海", "老"), false), off("海老", uk = true))
+        assertEquals(r(true, listOf("寿", "司"), true), on("寿司", setOf("ateji")))
         assertEquals(r(false, listOf("寿", "司"), false), off("寿司", setOf("ateji")))
         assertEquals(r(true, emptyList(), true), on("珈琲", setOf("ateji"), uk = true))
-        assertEquals(r(true, emptyList(), true), on("海老", uk = true))
-        // The word-level exemption beats learnable kanji.
-        assertEquals(r(true, emptyList(), true), on("お化け", uk = true))
-        assertEquals(r(true, emptyList(), true), on("彼", setOf("rK"), uk = true))
-        assertEquals(r(false, listOf("化"), false), on("化学"), "an untagged word with the same kanji still requires it")
+        assertEquals(r(false, listOf("珈", "琲"), false), off("珈琲", setOf("ateji"), uk = true))
+        assertEquals(r(true, listOf("林"), true), on("林檎", uk = true))
+        assertEquals(r(false, listOf("林"), false), on("林檎"), "without the tag")
+        // ADR-045: tags never remove a learnable kanji.
+        assertEquals(r(true, listOf("化"), true), on("お化け", uk = true))
+        assertEquals(r(true, listOf("彼"), true), on("彼", setOf("rK"), uk = true))
         // Irregular readings without a tag: every learnable kanji, no furigana.
         assertEquals(r(false, listOf("今", "日"), false), on("今日"))
         assertEquals(r(false, listOf("昨", "日"), false), on("昨日"))
         assertEquals(r(false, emptyList(), true), on("鱈"))
         assertEquals(r(false, listOf("鱈"), false), off("鱈"))
         assertEquals(r(false, listOf("子"), false), on("鱈子"))
+        assertEquals(r(true, listOf("薔"), true), on("薔薇", uk = true))
         assertEquals(r(false, listOf("薔"), false), on("薔薇"), "if it were untagged")
-        assertEquals(r(true, emptyList(), true), on("薔薇", uk = true))
-        // Ticket: 林檎 needs 林 only and has no furigana.
-        assertEquals(r(false, listOf("林"), false), on("林檎"))
         assertEquals(r(false, emptyList(), false), on("たべる"))
+    }
+
+    @Test
+    fun taggedAndUntaggedWordsRequireTheSameKanji() {
+        assertEquals(listOf("化"), on("化学").learnableKanji, "an untagged word with the same kanji requires it alike")
+        for (e in listOf("寿司", "海老", "珈琲", "林檎", "今日", "鱈", "鱈子", "薔薇", "彼")) {
+            val untagged = on(e)
+            for (tags in listOf(setOf("ateji"), setOf("rK", "iK"), setOf("oK"), setOf("sK"))) {
+                val tagged = on(e, tags)
+                assertEquals(untagged.learnableKanji, tagged.learnableKanji, "$e $tags")
+                assertTrue(tagged.wordExempt && tagged.frontFurigana, "$e $tags")
+            }
+            val uk = on(e, uk = true)
+            assertEquals(untagged.learnableKanji, uk.learnableKanji, "$e uk")
+            assertTrue(uk.wordExempt && uk.frontFurigana, "$e uk")
+            // Untagged: furigana iff no learnable kanji.
+            assertEquals(untagged.learnableKanji.isEmpty(), untagged.frontFurigana, e)
+        }
     }
 
     @Test
@@ -77,7 +96,7 @@ class KanjiRequirementTest {
     fun usuallyKanaOnlyWhenTheSenseUsedSaysSo() {
         // The host passes usuallyKana = false when `uk` sits on a later sense only, true for the first sense that applies.
         assertEquals(r(false, listOf("今", "日"), false), on("今日", uk = false))
-        assertEquals(r(true, emptyList(), true), on("今日", uk = true))
+        assertEquals(r(true, listOf("今", "日"), true), on("今日", uk = true))
     }
 
     @Test

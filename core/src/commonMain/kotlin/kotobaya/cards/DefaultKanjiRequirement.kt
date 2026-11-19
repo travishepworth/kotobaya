@@ -6,7 +6,7 @@ import kotobaya.contracts.cards.KanjiRequirementResult
 import kotobaya.contracts.cards.WordForm
 
 /**
- * The one [KanjiRequirement] (ADR-042): which kanji a vocab word requires and whether its front shows
+ * The one [KanjiRequirement] (ADR-042 as amended by ADR-045): which kanji a vocab word requires and whether its front shows
  * furigana. Queue loaders (`requiredKanji`), materialization, backfill and the card front all use it.
  */
 public object DefaultKanjiRequirement : KanjiRequirement {
@@ -17,14 +17,11 @@ public object DefaultKanjiRequirement : KanjiRequirement {
         if (all.isEmpty()) return NONE
         if (!exemptionsEnabled) return KanjiRequirementResult(wordExempt = false, learnableKanji = all, frontFurigana = false)
         val exempt = form.usuallyKana || form.formTags.any { it in KanjiRequirement.EXEMPT_FORM_TAGS }
-        val learnable = if (exempt) {
-            emptyList()
-        } else {
-            val facts = LinkedHashMap<String, KanjiFacts>()
-            for (f in kanji) if (f.literal !in facts) facts[f.literal] = f
-            all.filter { l -> facts[l]?.let { isLearnable(it.grade, it.freqRank) } ?: false }
-        }
-        return KanjiRequirementResult(wordExempt = exempt, learnableKanji = learnable, frontFurigana = learnable.isEmpty())
+        // ADR-045: tags never remove a required kanji; they only drive the furigana front.
+        val facts = LinkedHashMap<String, KanjiFacts>()
+        for (f in kanji) if (f.literal !in facts) facts[f.literal] = f
+        val learnable = all.filter { l -> facts[l]?.let { isLearnable(it.grade, it.freqRank) } ?: false }
+        return KanjiRequirementResult(wordExempt = exempt, learnableKanji = learnable, frontFurigana = exempt || learnable.isEmpty())
     }
 
     override fun isLearnable(grade: Int?, freqRank: Int?): Boolean =

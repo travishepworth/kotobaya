@@ -1,21 +1,26 @@
-# HANDOFF C-28e
+# HANDOFF CORE-28c
 
 STATUS: DONE
-BRANCH: t/C-28e-contracts
-CHECK: `make check MODULE=contracts` → green (`:core:compileKotlinJvm` also green; core tests not run, they will fail until CORE-28c)
+BRANCH: t/CORE-28c (on top of C-28e d1529c15)
+CHECK: `make check MODULE=core` green (jvm 659/0 fail, js 645/0 fail); `server` green (549/0 fail); `android` green (605, 2 skipped, 0 fail)
 
 ## Changed (≤ 6 lines)
-- `KanjiRequirement.kt`: `learnableKanji` = learnable kanji regardless of tags; `frontFurigana` = `wordExempt` OR no learnable kanji; worked examples as triples. KDoc only, no signature change.
-- `QueueBuilder.kt` KDoc (`requiredKanji`, rule 4 wording only), SCHEMA.md 6/6.5 (+ "no migration" note), core README test list, openapi (`front_furigana`, queue text), SHELL.md, REVIEW-LOOP.md, SUMMARYs; clients regenerated.
-- `queue-kanji-exemptions.json` step 0: 寿 司 寿司(furigana) 昨 日 昨日 鱈 子 鱈子, 9 items, `until_stop` 9. Step 2 expects unchanged.
+- `core/.../cards/DefaultKanjiRequirement.kt`: learnable kanji ignore word-level tags; `frontFurigana = wordExempt || learnable.isEmpty()`.
+- `KanjiRequirementTest`: every KDoc triple (on/off) + `taggedAndUntaggedWordsRequireTheSameKanji`; `QueueParityScenarioTest.queueKanjiExemptions` mirrors the new step 0 (寿 司 寿司 …, 9).
+- `fixtures/shell-parity/golden/queue-kanji-exemptions.json` re-recorded (`RECORD=1`, parity tests); no other golden changed.
+- Server/android: no code change; they only pass through core's result (`KanjiNeeds`, `LocalQueueLoader`, `QueueViews`).
 
 ## Acceptance → tests
-- contracts green; expects hand-evaluated → only `queue-kanji-exemptions` changes (no other scenario uses a tagged displayed form; 学校/食べる forms are untagged).
+- ADR-045 worked examples → `KanjiRequirementTest.workedExamples`
+- Parity scenario → `QueueParityScenarioTest.queueKanjiExemptions`, server `ParityGoldenTest`, android parity tests
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Kept the names `wordExempt` / `EXEMPT_FORM_TAGS` (now "word-level tagged, furigana only") so callers compile; rename is a follow-up choice.
-- Must change: core `DefaultKanjiRequirement` steps 2-3 + `KanjiRequirementTest`; server and android only if they read `wordExempt` or cache `requiredKanji`/furigana (else just pick up core); rerun parity.
-- 老, 林, 檎, 今 are not in the fixture KANJIDIC; their grades in the KDoc are from memory.
+- `FuriganaFrontTest` needed no change (takes `frontFurigana` as input).
+
+# C-28e (contract handoff, kept)
+- `KanjiRequirement.kt` KDoc: learnable kanji regardless of tags; furigana = tagged OR none learnable. `QueueBuilder` KDoc, SCHEMA 6/6.5, core README, openapi, SHELL.md, REVIEW-LOOP.md, clients regenerated.
+- `queue-kanji-exemptions.json` step 0: 9 items, until_stop 9; step 2 unchanged.
+- Names `wordExempt`/`EXEMPT_FORM_TAGS` kept (read as "word-level tagged"); 老, 林, 檎, 今 grades in KDoc from memory.
