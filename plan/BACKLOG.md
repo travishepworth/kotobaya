@@ -868,3 +868,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - WEB-28 — progress bar on until_stop, deck progress UI, kanji parts tiles · model: sonnet · risk: low-med · deps: C-28, WEB-REVIEW-FLOW · status: TODO (ticket: plan/tickets/WEB-28.md)
 - BUG-ADD2DECK-500 — Svelte effect loop on /dictionary etc. shows "500" (web+android) · model: opus · risk: med · deps: — · status: RUNNING (ticket: plan/tickets/BUG-ADD2DECK-500.md)
 - WEB-KG-IDLE — keep going ends after 10 min idle (ADR-039 amendment) · model: haiku · risk: low · deps: WEB-REVIEW-FLOW · status: MERGED (ticket: plan/tickets/WEB-KG-IDLE.md)
+- WEB-MORE-CLOSE — mobile More sheet closes after choosing a page (user) · model: haiku · risk: low · deps: — · status: RUNNING (ticket: plan/tickets/WEB-MORE-CLOSE.md)
