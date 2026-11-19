@@ -63,8 +63,9 @@ fetches again first.
 
 **Keep going** (per device, not synced). In phase `goal_reached`/`done_for_today` send
 `keep_going` to continue past every limit: due reviews first (no cap), then new cards without
-end. The study day it was started on is stored in `$XDG_STATE_HOME/kotobaya/keep-going-day`, so
-it survives a daemon restart; on a different study day it is dropped. `stop_keep_going` clears it.
+end. ADR-039: keep going lasts one review session = one daemon run. It is held in memory only
+(nothing is written to disk); a daemon restart or a different study day clears it, and so does
+`stop_keep_going`.
 The state carries `"keep_going"` (bool); `"loading"` (bool) is true while a refetch runs.
 
 ### Keep going from `kby`

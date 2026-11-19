@@ -537,7 +537,9 @@ def _recording(backend: FakeBackend) -> list[bool]:
     return flags
 
 
-def test_keep_going_day_survives_restart(paths: Paths) -> None:
+def test_keep_going_resets_on_new_session(paths: Paths) -> None:
+    """ADR-039 / CLI-KG-SCOPE: keep going lives in memory for one daemon run. A restart (a new
+    review session) starts with the normal limits and nothing is written to disk."""
     backend = FakeBackend()
     flags = _recording(backend)
     backend.snap = _loop_snapshot("goal_reached")
@@ -547,13 +549,15 @@ def test_keep_going_day_survives_restart(paths: Paths) -> None:
         await first.refetch()
         await first.handle(Action("keep_going"))
         await first.idle()
-        assert paths.keep_going_file.read_text().strip() == "2026-11-15"
+        assert first.session.keep_going is True
+        assert first.session.keep_going_day == "2026-11-15"
+        assert not paths.journal.parent.joinpath("keep-going-day").exists()
         flags.clear()
         second = Daemon(backend, paths)  # a restart
-        assert second.session.keep_going and second.session.keep_going_day == "2026-11-15"
+        assert second.session.keep_going is False and second.session.keep_going_day is None
         await second.refetch()
-        assert flags[0] is True  # the first fetch already keeps going
-        assert second.session.keep_going is True
+        assert flags == [False]  # the first fetch after a restart uses the normal limits
+        assert second.session.keep_going is False
 
     asyncio.run(scenario())
 
@@ -561,20 +565,20 @@ def test_keep_going_day_survives_restart(paths: Paths) -> None:
 def test_keep_going_dropped_on_new_day(paths: Paths) -> None:
     backend = FakeBackend()
     flags = _recording(backend)
-    paths.keep_going_file.parent.mkdir(parents=True, exist_ok=True)
-    paths.keep_going_file.write_text("2026-11-14\n")  # started yesterday
-    backend.snap = _loop_snapshot("reviewing", "a", study_day="2026-11-15")
+    backend.snap = _loop_snapshot("goal_reached", study_day="2026-11-14")
 
     async def scenario() -> None:
         daemon = Daemon(backend, paths)
-        assert daemon.session.keep_going is True
+        await daemon.refetch()
+        await daemon.handle(Action("keep_going"))
+        await daemon.idle()
+        assert daemon.session.keep_going_day == "2026-11-14"
+        backend.snap = _loop_snapshot("reviewing", "a", study_day="2026-11-15")
+        flags.clear()
         await daemon.refetch()
         assert flags == [True, False]  # the mismatching response is discarded, refetched normally
         assert daemon.session.keep_going is False and daemon.session.keep_going_day is None
-        assert not paths.keep_going_file.exists()
         assert check_state(daemon.session.state())["keep_going"] is False
-        await Daemon(backend, paths).refetch()
-        assert flags[-1] is False  # a later restart stays off
 
     asyncio.run(scenario())
 

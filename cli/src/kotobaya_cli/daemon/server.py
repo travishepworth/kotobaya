@@ -52,11 +52,6 @@ class Paths:
     sock: Path
     journal: Path  # CLI-REVIEW writes here; the daemon only knows where it lives
 
-    @property
-    def keep_going_file(self) -> Path:
-        """C2: the study day Keep going was started on (daemon state dir, next to the journal)."""
-        return self.journal.parent / "keep-going-day"
-
     @staticmethod
     def from_env(env: Mapping[str, str]) -> Paths:
         runtime = env.get("XDG_RUNTIME_DIR") or f"/tmp/kotobaya-{os.getuid()}"
@@ -184,32 +179,6 @@ class Daemon:
         self._stream: EventStream | None = None
         self._fifo_buf = b""
         self._writers: set[asyncio.StreamWriter] = set()
-        self._restore_keep_going()
-
-    # ---- keep going, persisted per study day (C2) ---------------------------------
-
-    def _restore_keep_going(self) -> None:
-        try:
-            day = self.paths.keep_going_file.read_text(encoding="utf-8").strip()
-        except OSError:
-            return
-        if day:
-            self.session.keep_going = True
-            self.session.keep_going_day = day
-
-    def _save_keep_going(self) -> None:
-        """Persist (or, with keep going off, delete) the day file; a failure is never fatal."""
-        file = self.paths.keep_going_file
-        try:
-            if self.session.keep_going and self.session.keep_going_day:
-                file.parent.mkdir(parents=True, exist_ok=True)
-                tmp = file.with_name(file.name + ".tmp")
-                tmp.write_text(self.session.keep_going_day + "\n", encoding="utf-8")
-                tmp.replace(file)
-            else:
-                file.unlink(missing_ok=True)
-        except OSError:
-            self.session.set_notice("keep going state not saved")
 
     # ---- output -------------------------------------------------------------
 
@@ -258,13 +227,11 @@ class Daemon:
                 # C-26/C-27: same semantics as the web: past today's limits until a keep-going fetch is empty.
                 session.keep_going = True
                 session.keep_going_day = session.study_day  # None: adopted from the next response
-                self._save_keep_going()
                 self._spawn_refetch()
             elif cmd.name == "stop_keep_going":
                 # Back to the normal limits (the web leaves keep going by leaving the screen).
                 session.keep_going = False
                 session.keep_going_day = None
-                self._save_keep_going()
                 self._spawn_refetch()
         return self.emit()
 
@@ -418,11 +385,11 @@ class Daemon:
         snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
         if session.keep_going_day is None:
             session.keep_going_day = snapshot.study_day
-            self._save_keep_going()
         elif snapshot.study_day != session.keep_going_day:
-            session.keep_going = False  # C2: the stored day is not today: drop it, fetch normally
+            session.keep_going = (
+                False  # C2: the day it started on is not today: drop it, fetch normally
+            )
             session.keep_going_day = None
-            self._save_keep_going()
             return await asyncio.to_thread(self.backend.fetch_queue)
         for _ in range(KEEP_GOING_RETRIES):
             if snapshot.items or snapshot.to_materialize <= 0:
