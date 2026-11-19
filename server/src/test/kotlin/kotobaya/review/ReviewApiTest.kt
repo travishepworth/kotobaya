@@ -467,6 +467,43 @@ class ReviewApiTest : SyncFixture() {
         return cards
     }
 
+    /** SRV-28: the loader passes started vocab cards whatever their due date or suspension; the builder alone drops a suspended one. */
+    @Test
+    fun aSuspendedDueStartedReviewCardIsNeitherServedNorCounted() = reviewApp {
+        val t = token()
+        val cards = dueReviews(t, 2)
+        db.txBlocking { it.execute("update app.card set suspended = true where id = ?::uuid", cards[0]) }
+        val q = fetchQueue(t)
+        assertEquals(listOf(cards[1]), q["items"].map { it["card"]["id"].asText() })
+        assertEquals(1, q["counts"]["review"].asInt())
+        assertEquals(1, q["loop"]["ready"]["review"].asInt())
+        assertEquals(1, q["loop"]["until_stop"].asInt())
+    }
+
+    /** SRV-28 review: missing-kanji lookups are one pair of statements for a whole queue, not one per word. */
+    @Test
+    fun missingKanjiLookupsAreBoundedForManyWords() = reviewApp {
+        val literals = (0 until 200).map { String(Character.toChars(0x4E00 + it)) }
+        db.txBlocking { d ->
+            for (l in literals) d.execute("insert into ref.kanji (literal, meanings, on_readings, kun_readings, grade) values (?, '{m}', '{オン}', '{}', 2)", l)
+        }
+        var statements = 0
+        val counting = db.txBlocking { d ->
+            val listener = object : org.jooq.impl.DefaultExecuteListener() {
+                override fun executeStart(ctx: org.jooq.ExecuteContext) { statements++ }
+            }
+            val conf = d.configuration().derive(org.jooq.impl.DefaultExecuteListenerProvider(listener))
+            val plan = DeckEntryPlan(org.jooq.impl.DSL.using(conf), readingEnabled = false)
+            val before = statements
+            plan.prepare(literals)
+            val afterPrepare = statements
+            literals.forEach { plan.missingKanji(listOf(it), true) }
+            Triple(afterPrepare - before, statements - afterPrepare, plan)
+        }
+        assertTrue(counting.first <= 2, "prepare: ${counting.first} statements")
+        assertEquals(0, counting.second, "per-word lookups after prepare hit the cache")
+    }
+
     /** A1: reviews unlimited, learning cards later today, new cards remain: the loop never waits. */
     @Test
     fun loopUnlimitedLaterLearningServesNew() = reviewApp {

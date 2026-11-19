@@ -14,7 +14,7 @@ import org.jooq.DSLContext
 /**
  * ADR-041: `Deck.progress` for a batch of decks. The host loads the deck words as `DeckProgress` documents them (live
  * items, identity as [visibleItems], the live note of an entry, its live cards, the entry's effective word status) and the
- * core's [DeckProgress] decides; no counting rule lives here. Four statements however many decks and items there are.
+ * core's [DeckProgress] decides; no counting rule lives here. Six statements (items, smart decks, notes, cards, statuses, reading setting) however many decks and items there are.
  */
 internal object DeckProgressLoader {
     /** Progress of each non-smart deck of [deckIds]; smart decks are absent from the result. */

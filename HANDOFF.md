@@ -7,8 +7,9 @@ CHECK: `make check MODULE=server` → green
 ## Changed (≤ 6 lines)
 - QueueLoader: `requiredKanji`/`missingKanji` via new `KanjiNeeds` (core KanjiRequirement), companions in scoped builds, started vocab/kanji cards passed whatever their due date/suspension (backfill needs them)
 - DeckMaterializer: step A mints `kanjiToMaterialize` (skips live/user-deleted), then step B; ReviewApi rounds + `to_materialize` count both; `loop.until_stop`
-- `kanji_parts` (QueueExtras, batched), `front_furigana` + furigana text front (ReviewViews/QueueText); `Deck.progress` (DeckProgressLoader, 4 statements)
+- `kanji_parts` (QueueExtras, batched), `front_furigana` + furigana text front (ReviewViews/QueueText); `Deck.progress` (DeckProgressLoader, 6 fixed statements)
 - Goldens re-recorded (all expects held) + 11 new in `fixtures/shell-parity/golden`; tests adapted (loopSame, ref.kanji grades, lead semantics)
+- Attempt 2: `DeckEntryPlan.prepare` loads blocked set + kanji data once per build (2 statements, not per word); tests: bounded-statement and suspended-due-review
 
 ## Acceptance → tests
 - mint once/idempotent, kanji_parts, deleted not recreated → `KanjiFirstTest`; progress → `KanjiFirstTest.deckProgress…`; parity → `ParityGoldenTest`

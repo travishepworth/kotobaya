@@ -64,6 +64,13 @@ internal class DeckEntryPlan(
         return kinds.filterNot { DefaultCardRenderer.frontIsEmpty(vocabType, it, emptyMap(), dictionary = dict) }
     }
 
+    /** Loads the blocked set and the `ref.kanji` data of the union [required] once (two statements), so [missingKanji] per word is free. */
+    fun prepare(required: Collection<String>) {
+        val all = required.distinct()
+        loadBlocked(all)
+        prefetchKanji(all.filter { blockedKanji[it] != true })
+    }
+
     /**
      * `MissingKanji` of a word whose required kanji are [required] (ADR-040/042, contracts/core README "C-27"): the literals
      * with no live kanji note and no user-deleted one that step A would give at least one card, in required order.

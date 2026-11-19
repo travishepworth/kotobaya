@@ -105,6 +105,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
         }
         val resolved = KanjiNeeds(dsl).resolve(vocabNotes.values)
         val missing = HashMap<String, List<MissingKanji>>()
+        plan.prepare(resolved.values.flatMap { it.required }) // one pair of statements, not one per note
         for ((noteId, w) in resolved) missing[noteId] = plan.missingKanji(w.required, settings.burySiblings)
 
         val all = rows.map { r ->
@@ -203,6 +204,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
         }
         // ADR-042: the same requirement the entry's note will get once it exists (expression = the headword).
         val resolved = KanjiNeeds(dsl).resolve(entries.map { (_, seq) -> WordRef("e:$seq", null, null, seq) }.distinctBy { it.key })
+        plan.prepare(resolved.values.flatMap { it.required })
         return entries.map { (r, seq) ->
             val word = checkNotNull(resolved["e:$seq"])
             PendingEntry(
