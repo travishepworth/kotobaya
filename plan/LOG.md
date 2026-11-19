@@ -1404,3 +1404,4 @@
 2026-11-19T13:06:39Z RELEASE web 0.1.31 DEPLOYED helm rev 41 (pin ffb37e0d: WEB-DICT-DESKTOP + WEB-REVIEW-BACK); api 0.1.26/worker 0.1.20 unchanged
 2026-11-19T13:08:21Z C-29 alone: server/android red = expected drift (resolveSpeech route/wiring audit) -> chain merges together; CORE-29 HANDOFF green, reviewer; SRV-29 (writer-senior) + WEB-29 (writer) DISPATCH from t/CORE-29
 2026-11-19T13:09:34Z CORE-29 REVIEW_APPROVE (2 minors: upper-case [sound:] → FOLLOWUPS; live has 0 [sound:] notes)
+2026-11-19T13:15:19Z DECIDE ADR-047 open choices confirmed by user (kana-only, vocab-only, no listening-answer autoplay)
