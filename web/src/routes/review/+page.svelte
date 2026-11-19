@@ -82,45 +82,24 @@
 		moreBelow = body.scrollTop + body.clientHeight < body.scrollHeight - 2;
 	}
 
-	// Large text or a short window can push the answer below the fold. On flip, scroll just far
-	// enough to show the answer (never past the divider), so nobody grades without seeing it.
-	async function bringAnswerIntoView(el: HTMLDivElement): Promise<void> {
-		const divider = el.querySelector('.kb-divider');
-		const overflow = el.scrollHeight - el.clientHeight;
-		if (!divider || overflow <= 0) return;
-		// Align the bottom edge of the question (the element right above the divider) with the container's top
-		// edge, so the cut falls in the whitespace between question and divider, never through a glyph row.
-		const question = divider.previousElementSibling ?? divider;
-		const dividerTop = Math.ceil(question.getBoundingClientRect().bottom - el.getBoundingClientRect().top + el.scrollTop) + 5;
-		// The divider must be able to reach the top so the headword is fully scrolled out, never cut mid-glyph:
-		// when the answer is short, add the missing room below it (blank space under the answer).
-		extraBottom = Math.max(0, Math.ceil(dividerTop - overflow));
-		await tick();
-		const top = Math.max(0, dividerTop);
-		if (top <= el.scrollTop) return;
-		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		el.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
-	}
-
 	// Set when the revealed card does not fit: the question then steps back (smaller headword, less air).
 	// Only then, so on a card that fits the front stays exactly where it was.
 	let compact = $state(false);
-	/** Extra padding under the answer so the divider can scroll to the top edge (see bringAnswerIntoView). */
-	let extraBottom = $state(0);
 
 	$effect(() => {
 		const flipped = s.flipped;
 		void s.current?.card.id;
 		void s.rendered;
 		compact = false;
-		extraBottom = 0;
 		const el = body;
 		if (!el) return;
 		void tick().then(async () => {
+			// Always show the card from its very top (the headword); the user scrolls down for the answer.
+			el.scrollTop = 0;
 			if (flipped && el.scrollHeight > el.clientHeight) {
 				compact = true;
 				await tick();
-				await bringAnswerIntoView(el);
+				el.scrollTop = 0;
 			}
 			measure();
 		});
@@ -411,7 +390,7 @@
 							<span class="new-badge">{d.isNew ? rv('rv.newBadge') : ''}</span>
 						</div>
 					{/if}
-					<div class="card-body" bind:this={body} onscroll={measure} style:padding-bottom={extraBottom > 0 ? `calc(var(--kb-space-10) + ${extraBottom}px)` : undefined}>
+					<div class="card-body" bind:this={body} onscroll={measure}>
 						{#if s.rendered === null}
 							<!-- unreachable: display is set -->
 						{:else if s.rendered.ok}
