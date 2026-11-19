@@ -45,7 +45,8 @@
 		}
 	});
 
-	function play(hash: string): void {
+	/** Play one blob, stopping the one playing. A sound that cannot load or play is ignored (ADR-047 A5). */
+	export function play(hash: string): void {
 		current?.pause();
 		current = new Audio(MEDIA_URL_TEMPLATE.replace('{sha256}', hash));
 		void current.play().catch(() => {});
@@ -62,9 +63,9 @@
 		if (field && onfield) onfield(field);
 	}
 
-	/** Play the first audio of the card (review `P` shortcut). */
+	/** Replay (review `P`): the side's word audio, else the first audio of the card (ADR-047 A3). */
 	export function playFirst(): void {
-		const first = rendered.audio[0];
+		const first = rendered.wordAudio ?? rendered.audio[0];
 		if (first) play(first);
 	}
 </script>

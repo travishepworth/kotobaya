@@ -1,24 +1,22 @@
-# HANDOFF CORE-29
+# HANDOFF WEB-29
 
 STATUS: DONE
-BRANCH: t/CORE-29 (from t/C-29-audio fffcf0c4)
-CHECK: `make check MODULE=core` → green (jvm + js)
+BRANCH: t/WEB-29
+CHECK: `make check MODULE=web` → green
 
-## Changed (≤ 6 lines)
-- New `render/DefaultWordAudioResolver.kt`: resolve (note sound / speech text via `DefaultCardTextRenderer.fieldLines` kana) and effectiveVoice
-- `DefaultCardRenderer`: block W, `{{audio:word}}`, built-in-only `{{wordaudio:back}}`, `RenderedCard.wordAudio` / `autoplayAudio`, `audio` referred at W's position
-- `BuiltInTemplates`: vocab backs drop `{{audio}}`; W is the last child of `kb-expression` on the answer side; listening front = W
-- `JsRenderMapping`: `wordAudio` in, `wordAudio` / `autoplayAudio` out
-- Goldens: 4 vocab backs (plain + region) moved the audio span into `kb-expression`; region field order updated
+## Changed
+- core facade (`web/src/lib/core/index.ts`): `wordAudio` in; `wordAudio`/`autoplayAudio` out. Passed via `preview.svelte.ts`.
+- `state/review.svelte.ts`: `autoplay` setting, `showSeq`/`showKey`, `resolveAudio()` (A4: urgent resolveSpeech, wait doubling, max 5 calls, drop if moved on). `review/api.ts`: `speechApi` on the quiet config (no error toast, A5).
+- `review/+page.svelte`: two effects (resolve once per showing; autoplay once per showing+side, also when the hash arrives later). `CardFrame`: `play()` exported; `P` plays `wordAudio ?? audio[0]`.
+- Settings toggle `review.autoplay_audio` (i18n). `assets/card/card.css`: speaker inline-flex, in the expression line, beside the word.
 
 ## Acceptance → tests
-- Resolver table (jvm+js) → `WordAudioResolverTest` (every row, plus effectiveVoice examples)
-- Worked render examples, pre-ADR-047 output for 5 vocab kinds, listening back autoplay null, `{{audio:…}}` reserved → `WordAudioRenderTest`
-- Goldens → `RenderGoldenTest`, `FieldRegionTest`, `CoreJsRenderTest`
+- Layout/no-overlap + behaviour → `web/playwright/word-audio.spec.ts` (5 pass; API mocked via page.route). Screenshots viewed:
+  /tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/audio-shots/answer-phone-412x915.png and answer-desktop-1280x800.png
 
 ## New dependencies
 - none
 
-## For the reviewer (≤ 3 lines)
-- `RenderedCard.wordAudio` for a note-sourced W is the first button in W. If an upper-case `[sound:]` comes before a valid one, that hash differs from the resolver's `Note` hash (edge case; contract text followed literally).
-- Server/Android parity goldens that embed vocab back HTML will need re-recording (SRV-29/AND-29).
+## For the reviewer
+- `review-back.spec.ts` "undo button and U key" fails (timeout waiting for grade after U) with and without my changes in this env; the other 4 pass. Likely pre-existing flake or env. Please check on main.
+- The Playwright mock harness (`web/mock`, not mine) has no `word_audio`, so my spec injects it with `page.route`.

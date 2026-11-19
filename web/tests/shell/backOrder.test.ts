@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { runBack, wouldHandleBack, type BackEnv } from '../../src/lib/api/shell/nav';
-import { ReviewBackPolicy } from '../../src/lib/api/shell/reviewBackPolicy';
 
 function env(over: Partial<BackEnv> & { dialogs?: number } = {}) {
 	const calls = { close: 0, undo: 0, back: 0, home: 0 };
 	let dialogs = over.dialogs ?? 0;
-	const policy = new ReviewBackPolicy(3_000, () => 0);
 	const e: BackEnv = {
 		overlays: {
 			count: () => dialogs,
@@ -22,7 +20,7 @@ function env(over: Partial<BackEnv> & { dialogs?: number } = {}) {
 		historyBack: () => void calls.back++,
 		goHome: () => void calls.home++
 	};
-	return { e, calls, policy };
+	return { e, calls };
 }
 
 describe('back order (SHELL.md 6.2)', () => {
@@ -32,13 +30,13 @@ describe('back order (SHELL.md 6.2)', () => {
 		expect(calls).toEqual({ close: 1, undo: 0, back: 0, home: 0 });
 	});
 
-	it('review with an undoable answer undoes once, then falls through', () => {
-		const { e, calls, policy } = env({ path: '/review', canGoBack: () => true });
-		let answers = 1;
+	it('review with an undoable answers undo one by one (ADR-048), then falls through', () => {
+		const { e, calls } = env({ path: '/review', canGoBack: () => true });
+		let answers = 2;
 		e.review = {
-			canUndo: () => policy.wouldUndo(true, answers > 0),
+			canUndo: () => answers > 0,
 			undo: () => {
-				if (!policy.shouldUndo(true, answers > 0)) return false;
+				if (answers === 0) return false;
 				calls.undo++;
 				answers--;
 				return true;
@@ -47,8 +45,11 @@ describe('back order (SHELL.md 6.2)', () => {
 		expect(runBack(e)).toBe(true);
 		expect(calls.undo).toBe(1);
 		expect(calls.back).toBe(0);
+		expect(runBack(e)).toBe(true);
+		expect(calls.undo).toBe(2);
+		expect(calls.back).toBe(0);
 		expect(runBack(e)).toBe(true); // nothing left to undo: history.back
-		expect(calls.undo).toBe(1);
+		expect(calls.undo).toBe(2);
 		expect(calls.back).toBe(1);
 	});
 

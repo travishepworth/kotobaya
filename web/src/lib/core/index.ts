@@ -128,6 +128,8 @@ export interface RenderInput {
 	options: RenderOptions;
 	/** `QueueItem.front_furigana` (ADR-042), passed through unchanged; absent = false. */
 	frontFurigana?: boolean;
+	/** `QueueItem.word_audio.blob_hash` (ADR-047); absent or null = none. */
+	wordAudio?: string | null;
 }
 
 export interface RenderedCard {
@@ -145,6 +147,10 @@ export interface RenderedCard {
 	 * value: an editor loads `note.fields[key]`, never the region's content.
 	 */
 	fields: RenderedField[];
+	/** Hash `P` / the speaker replays, or null (ADR-047). */
+	wordAudio: string | null;
+	/** Hash to play once when this side is shown (and autoplay is on), or null (ADR-047). */
+	autoplayAudio: string | null;
 }
 
 export function renderCard(input: RenderInput): RenderedCard {
@@ -180,7 +186,8 @@ export function renderCard(input: RenderInput): RenderedCard {
 			input.options.mediaUrlTemplate,
 			k ? new JsKanji(k.literal, [...k.meanings], [...k.onyomi], [...k.kunyomi], k.strokeCount) : null,
 			input.options.fieldRegions ?? false,
-			input.frontFurigana ?? false
+			input.frontFurigana ?? false,
+			input.wordAudio ?? null
 		)
 	);
 	return {
@@ -188,7 +195,9 @@ export function renderCard(input: RenderInput): RenderedCard {
 		audio: [...out.audio],
 		extraCss: out.extraCss,
 		warnings: [...out.warnings],
-		fields: out.fields.map((f) => ({ key: f.key, source: f.source as FieldSource, rendered: f.rendered }))
+		fields: out.fields.map((f) => ({ key: f.key, source: f.source as FieldSource, rendered: f.rendered })),
+		wordAudio: out.wordAudio ?? null,
+		autoplayAudio: out.autoplayAudio ?? null
 	};
 }
 

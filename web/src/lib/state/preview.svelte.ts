@@ -23,6 +23,8 @@ export interface PreviewInput {
 	fieldRegions?: boolean;
 	/** `QueueItem.front_furigana` (ADR-042): the front shows the reading as furigana over the whole word. */
 	frontFurigana?: boolean;
+	/** `QueueItem.word_audio.blob_hash` (ADR-047), or null. */
+	wordAudio?: string | null;
 }
 
 /** Render one side of a card through the shared core; a renderer error becomes `{ ok: false }`. */
@@ -40,6 +42,7 @@ export function renderPreview(p: PreviewInput): Rendered {
 				...(p.cloze !== undefined ? { cloze: p.cloze } : {}),
 				side: p.side,
 				frontFurigana: p.frontFurigana ?? false,
+				wordAudio: p.wordAudio ?? null,
 				// Furigana is switched with a CSS class in CardView, not by re-rendering.
 				options: {
 					furigana: true,

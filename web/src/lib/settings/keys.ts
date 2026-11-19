@@ -22,6 +22,8 @@ export const STUDY_SETTINGS: SettingDef[] = [
 	{ key: 'scheduler.bury_siblings', label: 'settings.burySiblings', type: 'bool', default: true },
 	{ key: 'scheduler.kanji_before_vocab', label: 'settings.kanjiBeforeVocab', type: 'bool', default: false },
 	{ key: 'scheduler.mined_priority', label: 'settings.minedPriority', type: 'int', default: 0 },
+	// ADR-047 A6: play the word's sound when a card side is shown (absent = on).
+	{ key: 'review.autoplay_audio', label: 'settings.autoplayAudio', type: 'bool', default: true },
 	{ key: 'audio.prefetch_days', label: 'settings.audioPrefetch', type: 'int', default: 7, min: 0 }
 ];
 

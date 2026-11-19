@@ -14,9 +14,8 @@ import type {
 import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
 import { haptic } from '../api/shell/nav';
-import { ReviewBackPolicy } from '../api/shell/reviewBackPolicy';
 import { pushToast } from '../toasts.svelte';
-import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, wordsApi } from '../review/api';
+import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, speechApi, wordsApi } from '../review/api';
 import { tr, type ReviewMessageKey } from '../review/messages';
 import {
 	BUTTONS_4,
@@ -299,6 +298,16 @@ export class ReviewPage {
 	presets = $state<Map<string, Preset>>(new Map());
 	fiveButtons = $state(false);
 	furigana = $state(true);
+	/** Setting `review.autoplay_audio` (ADR-047 A6; absent = on). */
+	autoplay = $state(true);
+	/** Bumped each time a card is shown afresh (new card, undo, restore): one showing = one autoplay (A2). */
+	showSeq = $state(0);
+	/** Which showing and side the autoplay already happened for (kept with the session, so a return does not replay). */
+	autoplayedKey: string | null = null;
+	/** Hashes resolved through `resolveSpeech` for cards whose `word_audio.blob_hash` was null (A4), by card id. */
+	private resolvedAudio = $state<Map<string, string>>(new Map());
+	/** Identifies the showing the speech lookup is for; any change ends the lookup. */
+	private audioToken = 0;
 	flipped = $state(false);
 	editing = $state(false);
 	busy = $state(false);
@@ -376,6 +385,7 @@ export class ReviewPage {
 					}
 				: null,
 			frontFurigana: item.frontFurigana ?? false,
+			wordAudio: item.wordAudio?.blobHash ?? this.resolvedAudio.get(item.card.id) ?? null,
 			// A held card was graded on its back and stays so.
 			side: this.flipped || !this.current ? 'back' : 'front'
 		});
@@ -403,15 +413,12 @@ export class ReviewPage {
 		}
 	});
 
-	constructor() {
-		// Another card on screen (queue refetch, restore): fresh state for it.
-		$effect(() => {
-			this.syncCard();
-		});
-	}
-
-	/** If the card on screen is not the one the per-card state belongs to, reset that state. */
-	private syncCard(): void {
+	/**
+	 * If the card on screen is not the one the per-card state belongs to, reset that state. The review view calls it
+	 * from an effect (another card on screen after a refetch or restore: fresh state for it), so a page kept across a
+	 * route change (ADR-048) is re-bound by the next view.
+	 */
+	syncCard(): void {
 		const id = this.current?.card.id ?? '';
 		if (this.current && this.held) this.held = null; // a card is on screen: nothing to hold any more
 		if (id !== this.lastCardId) this.showCard(id, outbox.retryIds.get(id) ?? uuidv7(), false, Date.now());
@@ -419,6 +426,7 @@ export class ReviewPage {
 
 	private showCard(cardId: string, answerId: string, flipped: boolean, shownAt: number): void {
 		this.lastCardId = cardId;
+		this.showSeq++;
 		this.answerId = answerId;
 		this.flipped = flipped;
 		this.editing = false;
@@ -450,6 +458,7 @@ export class ReviewPage {
 		this.noteTypes = new Map(nts.items.map((n) => [n.id, n]));
 		this.presets = new Map(ps.items.map((p) => [p.id, p]));
 		this.fiveButtons = st.items.find((s) => s.key === 'scheduler.grading_buttons')?.value === 5;
+		this.autoplay = st.items.find((s) => s.key === 'review.autoplay_audio')?.value !== false;
 	}
 
 	/**
@@ -609,6 +618,30 @@ export class ReviewPage {
 			this.clearWake();
 			void this.wake();
 		} else if (this.wakeTimer === null) this.scheduleWake();
+	}
+
+	private keptGoing: Date | null = null;
+
+	/**
+	 * Leaving the screen for a page it can come back to (ADR-048): timers and fetches stop, the session state stays.
+	 * `resume` picks it up again. A page that is never resumed must be `dispose`d.
+	 */
+	pauseSession(): void {
+		this.keptGoing = this.keepGoing && this.view ? this.view.studyDay : null;
+		this.dispose();
+	}
+
+	/** The view is back after `suspend`: same card, side and queue; timers run again, nothing is re-fetched. */
+	resume(): void {
+		if (!this.disposed) return;
+		this.disposed = false;
+		this.abort = new AbortController();
+		if (this.keptGoing) startKeepGoing(this.keptGoing);
+		this.keptGoing = null;
+		if (!this.isDrill) {
+			this.scheduleDueFetch();
+			this.scheduleWake();
+		}
 	}
 
 	/** Leaving the screen: no timer or queue fetch outlives it (answers in the outbox still go out). */
@@ -792,22 +825,19 @@ export class ReviewPage {
 		this.flipped = true;
 	}
 
-	/** ADR-030 / SHELL.md 6.2 step 2: the 3 s rule of back-undo (port of Android's `ReviewBackPolicy`). */
-	private readonly backPolicy = new ReviewBackPolicy();
-
-	/** Would a back press undo now? No side effects. */
+	/** ADR-048: would back undo now? Any answer of this session can be stepped back over; no side effects. */
 	canBackUndo(): boolean {
-		return this.backPolicy.wouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy);
+		return this.history.length > 0;
 	}
 
-	/** Back pressed: undo once through the `u` key's path, with the toast. False when back should fall through. */
+	/**
+	 * Back pressed (browser, mouse button or the shell's Back): the same undo as the button and `u`, which shows the
+	 * card revealed. False when there is nothing to undo (back then leaves). A press while an undo is in flight is
+	 * swallowed so a quick double back cannot leave the screen.
+	 */
 	backUndo(): boolean {
-		if (!this.backPolicy.shouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy)) {
-			return false;
-		}
-		void this.undo().then(() => {
-			if (this.notice !== 'undoFailed') pushToast(tr('review.undone'));
-		});
+		if (this.history.length === 0) return false;
+		if (!this.busy && !this.editing) void this.undo();
 		return true;
 	}
 
@@ -841,6 +871,47 @@ export class ReviewPage {
 		this.furigana = !this.furigana;
 	}
 
+	/** The key of what is on screen right now: one autoplay per key (A2). */
+	get showKey(): string {
+		return `${this.showSeq}:${this.flipped}`;
+	}
+
+	/**
+	 * ADR-047 A4: the card on screen has speech that is not generated yet: ask for it (urgent), ask again after
+	 * `retry_after_ms` doubling, at most 5 calls; any failure ends it for this showing. On `ready` the hash is kept
+	 * and the card renders again; an answer for a card the user has moved on from is dropped. Call once per showing.
+	 */
+	async resolveAudio(): Promise<void> {
+		const item = this.current;
+		const wa = item?.wordAudio;
+		if (!item || !wa || wa.source !== 'tts' || wa.blobHash || !wa.text || this.resolvedAudio.has(item.card.id)) return;
+		const token = ++this.audioToken;
+		const seq = this.showSeq;
+		const cardId = item.card.id;
+		let wait = 0;
+		for (let call = 0; call < 5; call++) {
+			if (wait > 0) await new Promise<void>((resolve) => setTimeout(resolve, wait));
+			if (token !== this.audioToken || this.disposed) return;
+			let r;
+			try {
+				const res = await speechApi.resolveSpeech({
+					speechResolveRequest: { items: [{ text: wa.text, voice: wa.voice ?? undefined }], urgent: true }
+				});
+				r = res.items[0];
+			} catch {
+				return;
+			}
+			if (token !== this.audioToken || this.disposed || seq !== this.showSeq || this.current?.card.id !== cardId) return;
+			if (!r) return;
+			if (r.status === 'ready' && r.blobHash) {
+				this.resolvedAudio = new Map(this.resolvedAudio).set(cardId, r.blobHash);
+				return;
+			}
+			if (r.status !== 'pending') return;
+			wait = (r.retryAfterMs ?? 1000) * 2 ** call;
+		}
+	}
+
 	/** Remove the current card locally; a scheduled queue is refreshed behind it. */
 	private async advance(): Promise<void> {
 		this.clearNotice();
@@ -870,7 +941,6 @@ export class ReviewPage {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
-		this.backPolicy.answered();
 		touchKeepGoing(); // ADR-039 idle amendment: an answer restarts the keep-going idle clock
 		const entry: PendingAnswer = {
 			answerId: this.answerId,
@@ -992,6 +1062,7 @@ export class ReviewPage {
 				this.items = [last.item, ...this.items];
 				this.epoch++;
 				this.newPress();
+				this.flipped = true; // ADR-048: the undone card comes back revealed, ready to re-grade
 				return;
 			}
 			if (entry?.state === 'sending') {
@@ -1006,6 +1077,7 @@ export class ReviewPage {
 			this.items = [last.item, ...this.items];
 			this.epoch++;
 			this.newPress();
+			this.flipped = true;
 			await this.refresh();
 		} catch {
 			this.notice = 'undoFailed'; // beside the client's toast; the view offers Undo again

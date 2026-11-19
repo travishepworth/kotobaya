@@ -21,7 +21,7 @@
 	<ul class="examples" aria-label={rv('rv.examples')}>
 		{#each examples as ex (ex.seq)}
 			<li>
-				<a href={dictionaryHref(ex.seq)} target="_blank" rel="noopener">
+				<a href={dictionaryHref(ex.seq)}>
 					<span class="hw" lang="ja">{ex.headword}</span>
 					<span class="rd" lang="ja">{ex.reading}</span>
 					{#if ex.readingType === 'on' || ex.readingType === 'kun'}
@@ -35,7 +35,7 @@
 {:else if decks.length > 0}
 	<ul class="decks" aria-label={rv('rv.decks')}>
 		{#each decks as d (d.id)}
-			<li><a class="chip" href="/decks/{d.id}" target="_blank" rel="noopener">{d.name}</a></li>
+			<li><a class="chip" href="/decks/{d.id}">{d.name}</a></li>
 		{/each}
 		{#if more > 0}<li class="more">{rv('rv.decks.more', { n: more })}</li>{/if}
 	</ul>

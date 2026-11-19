@@ -20,7 +20,7 @@
 		{ title: 'sx.cards', keys: ['cards.reading_enabled'] },
 		{ title: 'sx.grading', keys: ['scheduler.grading_buttons', 'scheduler.leech_threshold'] },
 		{ title: 'sx.queue', keys: ['scheduler.bury_siblings', 'scheduler.kanji_before_vocab', 'scheduler.mined_priority'] },
-		{ title: 'sx.other', keys: ['audio.prefetch_days'] }
+		{ title: 'sx.other', keys: ['review.autoplay_audio', 'audio.prefetch_days'] }
 	];
 	const defs = (keys: string[]): SettingDef[] => keys.map((k) => STUDY_SETTINGS.find((d) => d.key === k)).filter((d): d is SettingDef => !!d);
 

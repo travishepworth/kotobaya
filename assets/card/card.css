@@ -102,7 +102,11 @@
 .kb-divider { border: none; border-top: 1px solid var(--kb-card-divider); margin: 1rem 0; }
 
 .kb-audio {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex: none;
   width: 2rem;
   height: 2rem;
   margin: 0.25rem;
@@ -113,7 +117,9 @@
   cursor: pointer;
   vertical-align: middle;
 }
-.kb-audio::before { content: "\25B6"; font-size: 0.8rem; }
+.kb-audio::before { content: "\25B6"; font-size: 0.8rem; line-height: 1; }
+/* ADR-047: the speaker sits in the expression line, in normal flow, beside the word (never over it). */
+.kb-expression .kb-audio { margin: 0 0 0 0.5rem; font-size: 1rem; vertical-align: middle; }
 
 .kb-cloze { letter-spacing: 0.02em; }
 .kb-cloze-blank {
