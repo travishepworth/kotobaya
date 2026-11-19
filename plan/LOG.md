@@ -1358,3 +1358,4 @@
 2026-11-19T06:14:28Z C-28d HANDOFF (claims-based pick, 40k-seed prototype 0 failures) + green; reviewer
 2026-11-19T06:15:34Z C-28d REVIEW_APPROVE (+1-line lastNew clarification requested before merge)
 2026-11-19T06:15:56Z SRV-28 attempt 2 CHECK_GREEN + MERGE (N+1 fixed, bounded-statement test)
+2026-11-19T06:16:07Z AND-28 rebased on main (SRV-28 goldens); android check running
