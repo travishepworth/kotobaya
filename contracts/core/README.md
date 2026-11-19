@@ -376,8 +376,10 @@ platform, from the same rows):
 
 The builder draws a word as the **unit** it will be once everything exists (QueueBuilder rule 4
 "Kanji first"): its vocab card, the existing new kanji cards of its required kanji and the cards
-of the kanji still to mint. A unit that would not fit is never drawn, so nothing is created that
-the same build would not show, and the counts (`drawn`, `availableToday`, `untilStop`) are the
+of the kanji still to mint. A unit that does not fit today's goal leads with the kanji that fit
+(ADR-043): only those are claimed and minted, the entry itself stays pending. Backfill claims the
+missing required kanji of words already studied. In every case nothing is created that the
+rebuild would not show, and the counts (`drawn`, `availableToday`, `untilStop`) are the
 same before and after the rebuild. An existing vocab card with a missing kanji is **withheld**
 from `items` until step A has run.
 
@@ -450,8 +452,11 @@ and B through the device's op path, `kanji_parts` by `KanjiParts.build` and `fro
 
 **Tests implementers must write** (`core/src/commonTest`, jvm and js; write them first, from the
 KDoc examples):
-- `queue/QueueKanjiFirstTest.kt`: the three rule-4 examples (withheld and after minting; 39/40;
-  backfill); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
+- `queue/QueueKanjiFirstTest.kt`: every rule-4 example (withheld and after minting; lead at 39/40;
+  no starvation over three days with `newPerDay` 2; buried kanji holds the word and the source
+  goes on; backfill with minting, order by oldest word, same order after minting); a lead stops
+  its source but not the others; a lead of an entry leaves the entry out of `toMaterialize`; the
+  goal is never overshot by a normal build (property); a deckless word gets its kanji first; a deck with `add_kanji` `off` behaves the
   same; the 40-card budget includes kanji; a kanji card whose decks are all disabled joins its
   word's unit; a started, a suspended and a manually buried kanji do not block; two words
   sharing a kanji; `burySiblings` false; companions (new only through a unit, learning served,

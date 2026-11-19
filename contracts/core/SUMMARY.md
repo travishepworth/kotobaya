@@ -229,14 +229,17 @@ What was decided:
   deck, and the per-kanji breakdown of a word with the reading that word uses.
 
 Alternatives rejected:
-- **Splitting a block when it does not fit the rest of today's goal** (show the kanji today, the
-  word tomorrow). Rejected: you asked for "same session". The block waits for a day it fits.
+- **Skipping a block that does not fit the rest of today's goal.** First draft; reversed in review
+  (ADR-043): a word needing more kanji than the daily goal would never come. Now the kanji that
+  fit are shown today and the word follows on a later day, right behind its last kanji; its deck
+  does not jump ahead to other words meanwhile. The goal is never overshot.
 - **Remembering "a block is in progress" in session state.** Rejected: the queue is rebuilt from
   the data after every answer and must give the same result on every device. Instead the builder
   recognises a started block from the data: the last card introduced today is a kanji that a
   waiting word needs, and no review was answered since.
-- **Creating kanji cards for every word you already know.** Rejected: an imported history would
-  turn into thousands of new kanji cards. Only kanji cards that already exist are pulled forward.
+- **Leaving words you already study without their kanji.** First draft; reversed in review
+  (ADR-043): kanji that have no card yet are now created for those words too, oldest word first,
+  never more than the daily goal per day.
 - **A per-kanji "learnable" list shipped with the app.** Rejected: KANJIDIC grade and frequency
   are already in the dictionary on the server and on the phone.
 
@@ -244,10 +247,9 @@ Three choices most worth a second look:
 1. **A deck's explicit `add_kanji: off` no longer opts out.** ADR-040 says "always". The ways out
    are deleting or suspending the kanji card, or the ADR-042 exemptions. If you want a per-deck
    opt-out back, it should be a new, clearly named deck setting.
-2. **A block bigger than the daily goal never fits a normal day.** With a goal of 2 and a word
-   with two new kanji (3 cards) the word only comes through Keep going. With the default goal of
-   20 (and your 40) this does not happen. The alternative is to let such a block fill the rest of
-   a day with its kanji and continue the next day.
+2. **Backfill can take all new-card slots for a while.** With a large imported history, the
+   kanji of words you already study are created and come first, up to the daily goal each day, so
+   new words wait until that backlog of kanji is done (ADR-043 decided this).
 3. **Real dictionary data may disagree with two examples in ADR-042.** To my knowledge JMdict tags
    林檎 and 薔薇 "usually kana" (neither word is in the test dictionary, so this is unverified here).
    If so, the word-level rule exempts both (furigana, no kanji cards) and 林檎 gets no card for 林.
@@ -256,6 +258,7 @@ Three choices most worth a second look:
 
 Also decided, smaller:
 - A kanji card whose own decks are all disabled is still pulled in by its word.
+- A kanji card you buried holds its word back until the bury ends; a suspended one does not.
 - Review-scoped to one deck: the kanji of that deck's words are passed along as "companions" so
   they still come first.
 - `PendingEntry.newKanjiCards` is replaced by a list of the kanji to create, so two words that

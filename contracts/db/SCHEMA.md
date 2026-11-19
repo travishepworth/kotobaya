@@ -626,7 +626,8 @@ one exception to `foreign_keys = ON` above.
 ### 6.2 The two queue keys (C-7)
 
 **ADR-040:** `scheduler.kanji_before_vocab` and the deck setting `add_kanji` are deprecated and no
-longer read; the end of this section says what replaced them. `scheduler.mined_priority` is
+longer read. **A deck with `add_kanji: "off"` is no longer opted out: its words get kanji cards
+first like every other word** (a behaviour change for existing decks; release note); the end of this section says what replaced them. `scheduler.mined_priority` is
 unchanged.
 
 Both were introduced for the core queue builder (`core/.../contracts/queue/QueueBuilder.kt`, T205). Each
@@ -660,8 +661,10 @@ without the key and for the deckless source. Since ADR-040 neither is read by an
 | | Before | Since ADR-040 |
 |---|---|---|
 | Order | kanji before (or after) the word only where the effective mode said so | **Always** kanji first, for every deck and the deckless source (QueueBuilder rule 4 "Kanji first"); the group is atomic and the review mix never splits it. |
-| Kanji notes | minted at materialization only for a deck with a present `add_kanji` other than `off` | Minted in the queue's materialize path for **every** drawn word that requires a kanji without a kanji note (contracts/core README "C-27", step A), deck or no deck. |
-| Explicit `off` | opted the deck out | No effect. The ways to opt out are: delete the kanji note (never re-created), suspend its card, or `cards.kanji_exemptions` (6.5) for the words it covers. |
+| Kanji notes | minted at materialization only for a deck with a present `add_kanji` other than `off` | Minted in the queue's materialize path for **every** drawn word that requires a kanji without a kanji note (contracts/core README "C-27", step A), deck or no deck, and by backfill for words already studied (ADR-043). |
+| A unit that does not fit today's goal | skipped | Its kanji that fit are introduced, the word follows on a later day; its source does not skip ahead (ADR-043). |
+| A required kanji card buried by the user | — | Holds its word until the bury ends (ADR-043); a suspended one does not. |
+| Explicit `off` | opted the deck out | **No effect: `off` no longer opts a deck out.** The ways to opt out are: delete the kanji note (never re-created), suspend its card, or `cards.kanji_exemptions` (6.5) for the words it covers. |
 | Loaders | resolved `QueueDeck.addKanji` / `QueueInput.decklessAddKanji` | Pass anything (new loaders: `OFF`); the builder ignores both. |
 
 Storage is unchanged, so nothing is migrated and old clients keep working: `updateSettings` still
@@ -747,7 +750,7 @@ rule is `kotobaya.contracts.cards.KanjiRequirement.evaluate`:
 | Queue (`QueueCandidate.requiredKanji`, `PendingEntry.requiredKanji`; rule 4 "Kanji first") | Only required kanji join a word's group, block it, and are backfilled because of it. |
 | Materialization (README "C-27" step A; `missingKanji`) | Kanji notes are minted only for required kanji. |
 | Card front (`RenderInput.frontFurigana`, `TextRenderInput.frontFurigana`, API `QueueItem.front_furigana`) | The reading as one ruby over the whole word on built-in vocab `meaning` / `pitch` fronts. |
-| Existing kanji notes and cards | Untouched. Turning the key on never deletes, suspends or hides a kanji card that exists; such a card is simply no longer pulled by an exempt word and is studied on its own turn like any card. Turning it off makes the missing kanji required again; they are minted when their word is next drawn. No backfill minting for words already introduced (ADR-040). |
+| Existing kanji notes and cards | Untouched. Turning the key on never deletes, suspends or hides a kanji card that exists; such a card is simply no longer pulled by an exempt word and is studied on its own turn like any card. Turning it off makes the missing kanji required again; they are minted when their word is next drawn, or by backfill when the word is already studied (ADR-043: backfill mints the missing required kanji of introduced words, oldest word first, within the daily new goal). |
 
 **Data the rule needs, and where it is** (all present; nothing has to be added to a table or to
 the dictionary package):

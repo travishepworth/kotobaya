@@ -1,13 +1,13 @@
 {
   "id": "queue-kanji-backfill",
-  "title": "New kanji cards of a word already studied come ahead of other new cards; nothing is minted for such a word (ADR-040)",
+  "title": "The required kanji of words already studied come ahead of other new cards; missing ones are minted (ADR-040, ADR-043)",
   "covers": [
     "queue.kanji_backfill"
   ],
   "narrative": [
-    "先生 (card ...10) and 学校 (card ...50) were graduated two days ago with Easy (review state, not due). The kanji notes 先 (card ...20) and 生 (card ...30) exist and are new; 学 and 校 have no kanji note. The new deckless word うっかり (card ...40) was created before the kanji notes.",
-    "Step 0: 先 and 生 are backfill cards (a word that requires them is already being studied): they come first among the new cards, in creation order, before うっかり although it is older. No kanji note is minted for 学校: backfill never mints (to_materialize 0, three items). until_stop is 3.",
-    "Step 1 answers 先 Good. Step 2: 生, then うっかり; 先 is later today, so until_stop is still 3."
+    "先生 (card ...10, the older note) and 学校 (card ...50) were graduated two days ago with Easy (review state, not due). The kanji notes 先 (card ...20) and 生 (card ...30) exist and are new; 学 and 校 have no kanji note. The new deckless word うっかり (card ...40) was created before the kanji notes.",
+    "Step 0: backfill comes before every other new card, the oldest word first: 先 and 生 (existing new cards of 先生), then 学 and 校, whose kanji notes the fetch mints for the already studied 学校 (ADR-043), then うっかり although it is older than every kanji note. until_stop is 5.",
+    "Step 1 answers 先 Good. Step 2: 生, 学, 校, then うっかり; 先 is later today, so until_stop is still 5."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -218,15 +218,18 @@
         "body": {
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020",
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000030",
-          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000040",
           "/items/0/card/note/kanji_literal": "先",
           "/items/1/card/note/kanji_literal": "生",
+          "/items/2/card/note/kanji_literal": "学",
+          "/items/3/card/note/kanji_literal": "校",
+          "/items/4/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/2/is_new": true,
           "/to_materialize": 0,
           "/loop/phase": "reviewing",
-          "/loop/until_stop": 3
+          "/loop/until_stop": 5
         },
         "lengths": {
-          "/items": 3
+          "/items": 5
         }
       }
     },
@@ -261,12 +264,14 @@
         "status": 200,
         "body": {
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000030",
-          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/1/card/note/kanji_literal": "学",
+          "/items/2/card/note/kanji_literal": "校",
+          "/items/3/card/id": "0193a1b2-0002-7000-8000-000000000040",
           "/loop/later_today/count": 1,
-          "/loop/until_stop": 3
+          "/loop/until_stop": 5
         },
         "lengths": {
-          "/items": 2
+          "/items": 4
         }
       }
     }

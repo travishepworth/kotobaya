@@ -1,24 +1,24 @@
 # HANDOFF C-28
 
-STATUS: DONE
-BRANCH: t/C-28-contracts (rebased on main ce39f012; includes 3b / ADR-042)
+STATUS: DONE (attempt 2, ADR-043 applied)
+BRANCH: t/C-28-contracts (rebased on main)
 CHECK: `make check MODULE=contracts` → green, no drift; core compiles (jvm + js)
 
 ## Changed (≤ 6 lines)
-- core contracts: `QueueBuilder.kt` rules 4–6 (kanji units, backfill, withheld, open group, per-visit scope), `ReviewLoop.kt` (`untilStop`), new `KanjiRequirement.kt`, `DeckProgress.kt`, `KanjiParts.kt`, `frontFurigana` on render inputs
-- openapi: `loop.until_stop`, `QueueItem.kanji_parts` / `front_furigana`, `Deck.progress`, C2 rewritten; clients regenerated
-- SCHEMA.md 6.2 (add_kanji / kanji_before_vocab deprecated), 6.5 `cards.kanji_exemptions`
-- README "C-27" rewritten (step A kanji notes), test lists; SUMMARYs; REVIEW-LOOP.md §13
-- shell: 6 new parity scenarios, 7 mandatory tags; `getDeckCoverage` stays proxy
+- `QueueBuilder.kt` rule 4: backfill also mints missing required kanji of introduced words (oldest word first, within budget); "Fits or leads" replaces atomic-or-skip (kanji that fit, word later, source stops); buried required kanji holds the word; open group covers leads
+- `ReviewLoop.kt` 39/40 edge case; `KanjiRequirement.kt`: `uk` beats jōyō (お化け, 彼)
+- SCHEMA.md 6.2 (`off` no longer opts out, new rows), 6.5 backfill wording; SHELL.md 10.7 documented difference
+- openapi / README / REVIEW-LOOP / SUMMARY wording; clients regenerated
+- parity: `queue-kanji-backfill` pins 学, 校 minted; new `queue-kanji-partial-unit` (+ mandatory tag); `queue-reviews-unlimited`, `queue-learning-wait` moved to kana-only
 
 ## Acceptance → tests
 - contracts green → `make check MODULE=contracts`
-- new scenarios pin order + `until_stop` → `queue-kanji-*`, `queue-until-stop`
+- findings 1, 2 → `queue-kanji-backfill`, `queue-kanji-partial-unit`; finding 3 → rule 4 worked example (no scenario)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- 海老/林檎/薔薇/今日 are not in `fixtures/dict` (not my path): scenario uses 寿司/昨日/鱈/鱈子. 林檎, 薔薇 are probably `uk` in JMdict (unverified) → exempt, contradicting ADR-042's examples; 薔 has freq 2356.
-- 13 old parity scenarios moved to kana-only entries; all goldens stale until SRV-28 re-records. Server/android tests pinned to those seqs may break.
-- Hand-evaluated expects; `add_kanji: off` no longer opts out; units larger than `new_per_day` need Keep going.
+- A held (buried-kanji) word lets its source move on; only a budget lead stops the source. My reading of ADR-043 (3).
+- Backfill order is by the oldest introduced word, not by kanji-note age, so it is stable across minting.
+- `parent-deleted-by-pull` left unchanged (note is deleted before the fetch). All expects hand-evaluated; goldens stale until SRV-28.

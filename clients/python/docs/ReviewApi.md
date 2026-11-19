@@ -399,20 +399,25 @@ in memory, never persisted.
 of the kanji it requires. Those kanji cards come immediately before it, in the order of
 the word's kanji, as one **group**: the proportional mix never puts a review between
 them (only a learning card that falls due can come between; the group then continues
-right after it), the whole group counts against the new-card goal and is drawn only if
-it fits today's remainder (a group may overshoot `limit`, never the goal). This holds
+right after it) and the whole group counts against the new-card goal. A group that does
+not fit today's remainder is not skipped and never overshoots the goal (ADR-043): as
+many of its kanji as fit are served today, and the word follows, behind its last kanji,
+on the first day the rest fits; nothing behind that word in its deck is introduced
+before it (a group may overshoot `limit`, never the goal). This holds
 for every word, whatever deck it comes from and for words in no deck; the deck setting
 `add_kanji` and the setting `scheduler.kanji_before_vocab` are no longer read. A kanji
 that already has a card in learning or review does not block and is not shown again; a
-suspended or buried kanji card and a kanji note the user deleted are respected (the word
-comes without it). A kanji card joins its word's group even when its own decks are all
+suspended kanji card and a kanji note the user deleted are respected (the word comes
+without it); a kanji card the user **buried** holds its word back until the bury ends
+(ADR-043). A kanji card joins its word's group even when its own decks are all
 disabled. **Missing kanji notes are created here**, like deck entries (C-27): when the
 served build draws a word whose required kanji has no kanji note, the server creates
 the kanji note (`note.created` `origin` `auto_kanji`, built-in kanji type, and its
 default `card.created`s) in the same op transaction, before any vocab note of that
 fetch, and rebuilds; the word is withheld from `items` until its kanji exist. **Backfill:**
-kanji cards that are still new although a word requiring them is already being studied
-come first among the new cards. Core `QueueBuilder` rule 4 "Kanji first" is normative.
+the required kanji of words that are already being studied come first among the new
+cards, the oldest word's first: kanji cards that are still new, and (ADR-043) kanji
+that have no note yet, which are created in the same way, within the daily goal. Core `QueueBuilder` rule 4 "Kanji first" is normative.
 Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →
 `R1 学 校 学校 R2 R3`.
 

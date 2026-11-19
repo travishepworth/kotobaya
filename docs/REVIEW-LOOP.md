@@ -241,24 +241,27 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   add_kanji modes and `scheduler.kanji_before_vocab` are deprecated and ignored; kanji cards join whatever their
   home source; started / suspended / buried / user-deleted kanji do not block; missing kanji notes are minted in
   the materialize path (`ReviewQueue.kanjiToMaterialize`, step A of README "C-27") and the word is withheld
-  until they exist; backfill cards (new kanji of words already studied) are drawn before every source turn.
+  until they exist; backfill (the required kanji of words already studied, existing cards and - ADR-043 -
+  kanji notes still to mint, oldest word first) is drawn before every source turn.
   Rule 5: the mix works on units and never splits one; "open group first" continues a started unit after a
   rebuild (stateless: the last card introduced today is a kanji a waiting word requires and no review was
-  answered since). Section 2's edge case "39/40 and only a 3-card add_kanji group" now applies to every word
-  with two new kanji. Known limit: a unit larger than `new_per_day` is only reachable through Keep going.
+  answered since). ADR-043: a unit that does not fit today's remainder leads with the kanji that fit and its
+  source stops at that word, so the goal is filled exactly and no word is starved; section 2's edge case
+  "39/40 and only a 3-card add_kanji group -> goal_reached at 39/40" is superseded (the first kanji is
+  served, 40/40). A required kanji card the user buried holds its word until the bury ends.
 - **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
   `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
   none has a furigana front (`QueueItem.front_furigana`).
 - **ADR-041** is outside the loop: `Deck.progress`, `QueueItem.kanji_parts`.
 - **Parity (section 9).** New scenarios `queue-until-stop`, `queue-kanji-first-deckless`,
   `queue-kanji-disabled-home-deck`, `queue-kanji-group-not-split`, `queue-kanji-backfill`,
-  `queue-kanji-exemptions`. The older queue scenarios now use kana-only entries so that ADR-040 does not change
+  `queue-kanji-partial-unit`, `queue-kanji-exemptions`. The older queue scenarios now use kana-only entries so that ADR-040 does not change
   them; whole-`/loop` expectations gained `until_stop`. Every golden with `getReviewQueue`, `listDecks` or
   `getDeck` is re-recorded by SRV-28.
 - **Tests (section 10).** contracts/core README "ADR-038..042" lists them; the web C2 tests become "keep going
   ends with the visit / on re-entry / after 10 idle minutes / on a day change" and the `keepGoingDay`
   persistence tests are replaced.
 - **Rejected.** A hold that keeps a word back until its kanji are learned (user chose "same session");
-  splitting a unit at the goal's edge (the user sees a kanji without its word); persisted "open group" session
+  skipping a unit that does not fit (starves words whose unit exceeds the goal; reversed by ADR-043); persisted "open group" session
   state (the rebuild must stay a pure function of the data); counting a new card as two answers in
-  `until_stop`; minting kanji notes for every word already studied (thousands of new cards at once).
+  `until_stop`.

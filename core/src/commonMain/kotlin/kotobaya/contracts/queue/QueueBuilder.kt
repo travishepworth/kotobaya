@@ -134,7 +134,8 @@ public data class QueueCandidate(
      * A): a literal of the required kanji such that no live kanji note has that `kanji_literal`,
      * no user-deleted kanji note has it (`deleted_at` set and `merged_into_id` null: a kanji note
      * the user deleted is never re-created) and minting would give it at least one card. The same
-     * value on every card of the note. The builder reads it only on NEW vocab cards it draws.
+     * value on every card of the note, in every state: the builder reads it on the NEW vocab cards
+     * it draws and, for backfill (ADR-043), on words already introduced.
      * Empty = nothing to mint. Example: 学校 with a live note for 学 only → `[MissingKanji("校", 1)]`.
      */
     public val missingKanji: List<MissingKanji> = emptyList(),
@@ -469,14 +470,15 @@ public data class ReviewQueue(
  *    200 REVIEW items when false, 300 when true.
  * 4. **New**: **budget** (ADR-037; normal build): `dayRemaining = max(0, newPerDay − today's
  *    introducedNew)` and `batch = max(1, keepGoingNewBatch)`. `drawn` counts what this build has
- *    drawn against the budget (each card 1, each pending entry its whole group, below). A turn's
- *    group of size `g` is drawn iff `drawn < batch` **and** `drawn + g <= dayRemaining` (it fits
- *    the **day**; the batch may be overshot by `g − 1`, as in rule 6) and the per-deck test below
- *    holds; a group that does not fit the day is skipped for this build and the turn passes on (a
- *    smaller group later in the order may still be drawn). Once `drawn >= batch` rule 4 stops.
+ *    drawn against the budget (each card 1, each pending entry its whole unit, below). A turn's
+ *    unit of size `g` is drawn whole iff `drawn < batch` **and** `drawn + g <= dayRemaining` (it
+ *    fits the **day**; the batch may be overshot by `g − 1`, as in rule 6) and the per-deck test
+ *    below holds. A unit that does not fit the day **leads** with as many of its kanji as fit and
+ *    its source stops there for this build (ADR-043, "Fits or leads" below): the goal is never
+ *    overshot and no source skips ahead of a word. Once `drawn >= batch` rule 4 stops.
  *    `newPerSession` and `newShownThisSession` are ignored (no session cap, no "done for now").
  *    Wherever the text below says "the budget" it means this test. Example: goal 40, 12 introduced,
- *    batch 10, 100 single cards → 10 NEW; 39 introduced and only a 3-card group left → none.
+ *    batch 10, 100 single cards → 10 NEW; 39 introduced and the next unit is `[学, 校, 学校]` → 学 alone.
  *    **`availableToday`** = what `drawn` would reach if the batch were unbounded (same input, same
  *    turn order, only the `drawn < batch` test removed): the new cards that can still be introduced
  *    today under the day goal and the per-deck caps, `<= dayRemaining`. The batch-bounded draw is a
@@ -524,8 +526,9 @@ public data class ReviewQueue(
  *      in `(noteCreatedAt, noteId, kindOrder, cardId)` order, at most one per note if
  *      `burySiblings`. **Whatever their home new-source**: a kanji card whose decks are all
  *      disabled, a deckless one and a companion all join (this amends ADR-006 for kanji cards
- *      pulled by a word; such a card still has no turn of its own). A suspended or manually
- *      buried kanji card is not eligible, so it neither joins nor blocks.
+ *      pulled by a word; such a card still has no turn of its own). A suspended kanji card is
+ *      not eligible: it neither joins nor blocks. A manually buried one is not eligible either,
+ *      but it **holds** the word ("Buried kanji" below).
  *    - **Unit of a vocab card V** (NEW, eligible, reached on a turn of its home new-source):
  *      `K` = `kc(L)` for each L of `req(V)` in order; `M` = the elements of `V.missingKanji` whose
  *      literal is in `req(V)`, has no candidate kanji note in the input (a loader inconsistency
@@ -535,16 +538,35 @@ public data class ReviewQueue(
  *    - **Unit of a pending entry E** (C-27): the same with E in place of V (`req(E)`,
  *      `E.missingKanji`); the 1 stands for the vocab card its materialization creates. E goes to
  *      `toMaterialize`, never to `items`.
- *    - **Atomic.** A unit is drawn iff its vocab card or entry fits the drawing source's per-deck
- *      remaining (`>= 1`; the deckless source has no limit) **and** the whole unit fits the
- *      budget (`drawn < batch` and `drawn + g <= dayRemaining`; keep going: `drawn < batch`).
- *      Otherwise **none** of it is drawn; it is skipped for this build and the turn passes on as
- *      for an empty turn. Drawing takes V and `K`, claims the literals of `M` (appended to
- *      [ReviewQueue.kanjiToMaterialize]) and adds `g` to `drawn`.
+ *    - **Kanji parts.** The unit's kanji come in parts, one per required literal that
+ *      contributes, in required order: the `kc(L)` cards of L, or the `newCards` cards to mint
+ *      for an element of `M`. A part is never divided.
+ *    - **Buried kanji (ADR-043).** If for some L of `req(V)` that is not started a NEW candidate
+ *      of a kanji note of L is not suspended and is manually buried (`buriedUntil > now`), the
+ *      unit is **held**: nothing of it is drawn in this build and the turn passes to the source's
+ *      next card. The word comes back when the bury ends (normally the next study day), still
+ *      behind its kanji. Suspended kanji cards and retired cards never hold a word.
+ *    - **Fits or leads (ADR-043; replaces "atomic or nothing").** A unit that is not held is
+ *      considered iff its vocab card or entry fits the drawing source's per-deck remaining
+ *      (`>= 1`; the deckless source has no limit) and `drawn < batch`. Then:
+ *      - **Whole**: if `drawn + g <= dayRemaining` (keep going: always), the unit is drawn:
+ *        V and `K` are taken, the literals of `M` are claimed (appended to
+ *        [ReviewQueue.kanjiToMaterialize]), `drawn += g`.
+ *      - **Lead**: otherwise its kanji parts are taken in order while `drawn + size(part) <=
+ *        dayRemaining`, stopping at the first part that does not fit (possibly none). The taken
+ *        `kc` cards are items of this build, the taken missing literals are claimed; V is **not**
+ *        taken (an entry is not put in `toMaterialize`) and does not count against the per-deck
+ *        limit. The **source then stops** for this build: it takes no further turn, so nothing
+ *        behind the word in that source is introduced before it. Other sources go on.
+ *      So today's goal is filled exactly, never overshot, and a word whose unit is larger than
+ *      what is left (or than `newPerDay` itself) is not starved: its kanji are introduced over
+ *      as many days as needed and the word follows, with its last kanji, on the first day the
+ *      rest fits. Kanji introduced on an earlier day are started and no longer part of the unit.
  *    - **Withheld.** If V has any element of `missingKanji` in `req(V)` without a candidate
- *      kanji note (claimed by this unit or by an earlier one), the unit is drawn and counted but
- *      **none of its cards is an item** of this build (as for an entry): the word must not be
- *      shown before its kanji exist. After materialization the rebuild shows the unit, with the
+ *      kanji note (claimed by this unit or by an earlier one), a whole unit is drawn and counted
+ *      but **none of its cards is an item** of this build (as for an entry): the word must not be
+ *      shown before its kanji exist. A lead is withheld the same way iff one of its taken parts
+ *      is a claimed missing literal. After materialization the rebuild shows the unit, with the
  *      same counts (the minted cards are then in `K`).
  *    - **Attribution.** V (or E) counts 1 against the drawing source's per-deck limit. Each card
  *      of `K` and each card to be minted counts against the budget only and, when the kanji card
@@ -553,15 +575,24 @@ public data class ReviewQueue(
  *      (that deck's remaining is clamped to 0 for its own later turns). [QueueInput.today] counts
  *      an answered kanji card the same way, so a rebuild neither frees the drawing deck's limit
  *      nor double-counts.
- *    - **Backfill.** Before the first source turn, in both builds: the **backfill cards** are the
- *      eligible NEW candidates of kanji notes whose literal L is not started and is a required
- *      kanji of an **introduced** word: a vocab note W with `L in req(W)`, at least one candidate
- *      of W (after rule 0) in a state other than NEW, and `wordOverride` neither BLACKLISTED nor
- *      IGNORED. Order `(noteCreatedAt, kanjiLiteral, noteId, kindOrder, cardId)`, at most one per
- *      note if `burySiblings`. Each is a unit of size 1, drawn while it fits the budget, whatever
- *      its home new-source and outside tiers, turns and per-deck tests; attribution as for a `K`
- *      card. So kanji whose words the user already studies come ahead of every other new card.
- *      Backfill never mints: a missing kanji note is created only for a word that is being drawn.
+ *    - **Backfill (ADR-040, ADR-043).** Before the first source turn, in both builds. A literal
+ *      L is a **backfill kanji** iff it is not started and is a required kanji of an
+ *      **introduced** word: a vocab note W with `L in req(W)`, at least one candidate of W (after
+ *      rule 0) in a state other than NEW, and `wordOverride` neither BLACKLISTED nor IGNORED.
+ *      Its part is `kc(L)` when a candidate kanji note of L exists (possibly empty: suspended or
+ *      buried cards are simply not drawn), else the `newCards` cards to mint for the element of
+ *      `W.missingKanji` with that literal (ADR-043: backfill **also mints** the missing required
+ *      kanji of words already studied; a literal in no `missingKanji`, e.g. one whose note the
+ *      user deleted, has no part). Order of the parts: by `(W.noteCreatedAt, W.noteId, index of
+ *      L in req(W), L)` of the first introduced word W in `(noteCreatedAt, noteId)` order that
+ *      requires L, so the kanji of the oldest words come first and the order is the same before
+ *      and after minting. Each part is a unit of its own, drawn while it fits the budget
+ *      (`drawn < batch` and `drawn + size <= dayRemaining`; keep going: `drawn < batch`); the
+ *      first part that does not fit ends backfill for this build. Outside tiers, turns and
+ *      per-deck tests, whatever the card's home new-source; attribution as for a `K` card. A part
+ *      to mint claims its literal ([ReviewQueue.kanjiToMaterialize]) and has no item until the
+ *      rebuild. So the kanji of words the user already studies come ahead of every other new
+ *      card, at most the daily goal per day.
  *    - **Own turn.** A NEW kanji card that is neither backfilled nor taken by a unit is an
  *      ordinary card of its home new-source and is drawn alone on that source's turn (a kanji
  *      deck studied for itself). That keeps it before any word that requires it.
@@ -572,20 +603,28 @@ public data class ReviewQueue(
  *    note with two NEW kinds → both in `K`; a kanji note the user deleted → not in `missingKanji`,
  *    the word is drawn without it; a word whose own decks are all disabled is not introduced (as
  *    before), so it pulls nothing; KNOWN-override words are not introduced and pull nothing; a
- *    unit larger than `newPerDay` never fits a normal build (keep going draws it: rule 6) —
- *    a known limit, visible as `goal_reached` / `done_for_today` below the goal.
+ *    lead of zero parts (no room at all, or the first part alone is too big) still stops its
+ *    source; a held word does not stop its source; a kanji card buried by the user whose word is
+ *    then deleted is an ordinary card again when the bury ends.
  *    Example (goal 20, deckless NEW cards in creation order: たべる (no kanji), 学校, 先生; kanji
  *    notes: 学 NEW, 先 REVIEW; none for 校, 生): units `[たべる]`, `[学, (校), 学校]` withheld (g = 3,
  *    claims 校), `[(生), 先生]` withheld (g = 2, claims 生; 先 is started) → `items = [たべる]`,
  *    `kanjiToMaterialize = [校, 生]`, `drawn = 6`; after minting: `items = [たべる, 学, 校, 学校, 生,
  *    先生]`, `drawn = 6`.
- *    Example (39 of 40 introduced, the next unit is `[学, 校, 学校]`): it does not fit the day →
- *    not drawn; a later single card is drawn instead.
- *    Example (backfill): 先生 is in REVIEW, kanji notes 先 and 生 are NEW, a new word たべる waits →
- *    N = `[先, 生, たべる]`.
+ *    Example (lead; 39 of 40 introduced, the next unit of the deck is `[学, 校, 学校]`): it does
+ *    not fit → 学 is drawn (40 of 40), the deck stops; the next day `[校, 学校]` is a unit of 2.
+ *    Example (no starvation; `newPerDay` 2, deckless 日本語 then たべる, kanji notes 日, 本, 語 NEW):
+ *    day 1 → `[日, 本]` (たべる is not drawn: the source stays at 日本語); day 2, 日 and 本 started →
+ *    `[語, 日本語]`; day 3 → `[たべる]`.
+ *    Example (buried; deckless 学校 then たべる, kanji 学 NEW and buried until tomorrow, 校 NEW) →
+ *    N = `[たべる]`: 学校 is held, 校 is not drawn through it; tomorrow `[学, 校, 学校]`.
+ *    Example (backfill): 先生 and 学校 are in REVIEW (先生 the older note), kanji notes 先 and 生 are
+ *    NEW, 学 and 校 have no note, a new word たべる waits → parts 先, 生, (学), (校): `items = [先, 生,
+ *    たべる]`, `kanjiToMaterialize = [学, 校]`, `drawn = 5`; after minting N = `[先, 生, 学, 校, たべる]`.
  *    **Breaking** against the C-8 / C-27 text: the modes are gone (every source groups, kanji
  *    first); kanji cards without a home new-source join groups; `PendingEntry.newKanjiCards` is
- *    replaced by `missingKanji`; existing vocab cards can be withheld.
+ *    replaced by `missingKanji`; existing vocab cards can be withheld; a unit that does not fit
+ *    leads with its kanji and stops its source instead of being skipped (ADR-043).
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
  *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
  *    is a kanji group or a single card; withheld units and entries have no items and are left
@@ -606,7 +645,8 @@ public data class ReviewQueue(
  *      `last` = the card of today's `introducedNew` review with the greatest `(reviewedAt,
  *      cardId)`, or none (ADR-040).
  *    - **Open group first (ADR-040).** Whenever `s == 0` and `last` is a card of a kanji note
- *      with literal L and some unit left in `N` contains a vocab card V with `L in req(V)`: the
+ *      with literal L and some unit left in `N` was built for a word W (the vocab card or entry
+ *      of the unit, whether the unit is whole or a lead) with `L in req(W)`: the
  *      first such unit in draw order is emitted **now**, all its cards in a row, before any
  *      review; then `gRem -= its size` and `last` = its last card (`s` stays 0). This is what
  *      keeps a group together across rebuilds: after the first kanji of `[学, 校, 学校]` is

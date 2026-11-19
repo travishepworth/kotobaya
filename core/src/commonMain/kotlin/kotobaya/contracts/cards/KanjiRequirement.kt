@@ -110,6 +110,10 @@ public data class KanjiRequirementResult(
  * Worked examples (setting on unless stated; facts as in KANJIDIC2):
  * - 寿司 (`ateji`; 寿 grade 8, 司 grade 4): exempt → no kanji cards, furigana front. Off → `[寿, 司]`, no furigana.
  * - 珈琲 (`ateji`, `uk`), 海老 (`uk`): exempt → furigana front.
+ * - **The word-level exemption beats learnable kanji** (ADR-042 (a) comes first): お化け (`uk`; 化
+ *   is jōyō, grade 3) and 彼 read あれ (`rK`, `uk`; 彼 is jōyō) are exempt → no kanji card for 化 /
+ *   彼 because of this word, furigana front. Another, untagged word with the same kanji still
+ *   requires it.
  * - 今日, 昨日 (no tag; both kanji jōyō): `[今, 日]` / `[昨, 日]`, no furigana although the reading is irregular.
  * - 鱈 (no grade, no rank), no tag: `[]`, furigana front, no kanji card. Off → `[鱈]`.
  * - 鱈子 without an entry (鱈 unranked, 子 grade 1): `[子]`, no furigana, no card for 鱈.

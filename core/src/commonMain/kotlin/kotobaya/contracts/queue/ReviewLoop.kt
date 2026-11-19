@@ -247,9 +247,10 @@ public data class LoopResult(
  * due is therefore always at the front of the next evaluation.
  *
  * **Edge cases** (each is a LOOP-CORE test):
- * - Goal 39/40 and only a 3-card kanji unit left (two kanji and their word, ADR-040): the unit
- *   does not fit the day (rule 4, atomic), N has no new → phase 2 at 39/40; `newToday = 39`,
- *   `newGoal = 40`, `untilStop` without the unit (UIs show the real numbers).
+ * - Goal 39/40 and only a 3-card kanji unit left (two kanji and their word): the unit leads with
+ *   its first kanji (rule 4 "Fits or leads", ADR-043) → `REVIEWING`, `untilStop` counts 1 new card;
+ *   after it the phase is 2 at 40/40. The goal is always reachable while new cards exist and is
+ *   never overshot without keep going.
  * - The served build draws only withheld units (existing words whose kanji notes are missing):
  *   `items` empty, `kanjiToMaterialize` non-empty → `REVIEWING`; the caller materializes and
  *   re-evaluates (C-27); `untilStop` is the same before and after.
