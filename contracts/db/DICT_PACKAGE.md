@@ -87,6 +87,16 @@ Rules for the list of one release `R`:
    `entry_pitch`, `example_sentence_entry`) holds exactly the `ref.*` rows whose `seq` is in the
    entry set; `example_sentence` holds exactly the sentences linked from those
    `example_sentence_entry` rows. `dict_entry_gloss.gloss_lower` = `gloss` lowercased.
+   **`dict_entry.headword`** has exactly the value of `ref.dict_entry.headword`, i.e. the
+   display form of `SCHEMA.md` 4.5 "Headword" (ADR-046 (a): the first reading when every kanji
+   form of the entry is tagged `rK` or `sK`, e.g. `シンガポール` for 1063410, `かるた` for
+   1590710; otherwise the first kanji form, or the first reading of a kana-only entry). The
+   package builder copies the column; it MUST NOT derive it again. `kanji_forms`,
+   `dict_entry_form` and `entry_kanji` still hold every kanji form (新嘉坡 stays searchable on the
+   device). A release built after the producer adopts the rule differs from its predecessor in the
+   `headword` of those entries only; a diff lists them as ordinary `dict_entry` upserts. This is
+   a value change inside the existing meaning of the column ("display form"), so `user_version`
+   and the diff `format_version` stay `1` (section 6).
 5. **No dangling rows**: `PRAGMA foreign_key_check` returns nothing.
 6. **Nothing dropped**: for each table the row count equals the count of the corresponding
    `ref.*` selection; the producer MUST fail the build otherwise.

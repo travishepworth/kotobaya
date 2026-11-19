@@ -6,7 +6,7 @@
 | ------------ | ------------- | ------------- | ------------- |
 | **freqRank** | **kotlin.Int** | Rank in the primary frequency list, or null. |  |
 | **glosses** | **kotlin.collections.List&lt;kotlin.String&gt;** | English glosses of the first sense, in order. |  |
-| **headword** | **kotlin.String** | First kanji form, or first reading for kana-only entries. |  |
+| **headword** | **kotlin.String** | Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged &#x60;rK&#x60; or &#x60;sK&#x60;, e.g. &#x60;シンガポール&#x60; for 新嘉坡; SCHEMA.md 4.5 \&quot;Headword\&quot;). The other forms stay searchable. |  |
 | **headwordReading** | **kotlin.String** | First reading. |  |
 | **isCommon** | **kotlin.Boolean** | JMdict \&quot;common\&quot; marker. |  |
 | **noteId** | **kotlin.String** | Your live vocab note for this entry, or null. |  |

@@ -30,8 +30,8 @@ import com.google.gson.annotations.SerializedName
  * The label fields of one dictionary entry (`listDictHeadwords`, C-18). A subset of `DictEntrySummary` with identical values; no caller overlay.
  *
  * @param glosses English glosses of the first sense, in order; the first element is the short meaning. Empty when the first sense has no English gloss.
- * @param headword First kanji form, or first reading for kana-only entries.
- * @param headwordReading First reading. Equal to `headword` for kana-only entries.
+ * @param headword Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 \"Headword\").
+ * @param headwordReading First reading. Equal to `headword` for kana-only entries and kana words (ADR-046).
  * @param seq JMdict sequence number (`ref.dict_entry.seq`).
  */
 
@@ -42,11 +42,11 @@ data class DictHeadword (
     @SerializedName("glosses")
     val glosses: kotlin.collections.List<kotlin.String>,
 
-    /* First kanji form, or first reading for kana-only entries. */
+    /* Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 \"Headword\"). */
     @SerializedName("headword")
     val headword: kotlin.String,
 
-    /* First reading. Equal to `headword` for kana-only entries. */
+    /* First reading. Equal to `headword` for kana-only entries and kana words (ADR-046). */
     @SerializedName("headword_reading")
     val headwordReading: kotlin.String,
 

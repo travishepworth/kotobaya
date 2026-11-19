@@ -1360,8 +1360,9 @@ paths:
 
         **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for
         the same entry: `headword` = first kanji form in JMdict order, or the first reading when
-        the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for
-        kana-only entries); `glosses` = English glosses of the first sense, in order (the first
+        the entry has no kanji form or every kanji form is tagged `rK` / `sK` (ADR-046: a kana
+        word, e.g. `シンガポール`, not `新嘉坡`; SCHEMA.md 4.5 "Headword"); `headword_reading` =
+        first reading (equal to `headword` for kana-only entries and kana words); `glosses` = English glosses of the first sense, in order (the first
         element is the short meaning; empty array if the first sense has no English gloss).
 
         **Request size.** 500 seven-digit values with percent-encoded commas make a request line
@@ -2334,16 +2335,20 @@ paths:
         Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →
         `R1 学 校 学校 R2 R3`.
 
-        **Which kanji a word requires (ADR-042, ADR-045).** Decided by the core predicate
+        **Which kanji a word requires (ADR-042, ADR-045, ADR-046).** Decided by the core predicate
         `KanjiRequirement` from the setting `cards.kanji_exemptions` (bool, default `true`;
-        SCHEMA.md 6.5). While it is on: every word requires its **learnable** kanji only
-        (jōyō, i.e. KANJIDIC grade 1-6 or 8, or KANJIDIC frequency rank 1-2500), whatever its
-        JMdict tags. A word written with kanji shows its reading as furigana over the whole
+        SCHEMA.md 6.5). While it is on: a word requires its **learnable** kanji only
+        (jōyō, i.e. KANJIDIC grade 1-6 or 8, or KANJIDIC frequency rank 1-2500); a word whose
+        displayed form is word-level tagged (JMdict `uk` on the sense used, or the kanji form
+        tagged `ateji`, `rK`, `oK`, `iK` or `sK`) requires its **jōyō** kanji only (ADR-046).
+        A word written with kanji shows its reading as furigana over the whole
         word on the front (`QueueItem.front_furigana`) when its displayed form is word-level
-        tagged (JMdict `uk` on the sense used, or the kanji form tagged `ateji`, `rK`, `oK`,
-        `iK` or `sK`) or when it requires no kanji. With the setting `false` every kanji is
-        required and no front has furigana. Examples: 寿司 (ateji) → 寿, 司 first, furigana
-        front; 昨日 → 昨, 日 first, no furigana; 鱈 → no kanji card, furigana.
+        tagged or when it requires no kanji. With the setting `false` every kanji is
+        required and no front has furigana. A **kana word** (every kanji form of its entry is
+        `rK` / `sK`; its `headword` is the reading) has no kanji either way. Examples: 寿司
+        (ateji) → 寿, 司 first, furigana front; 金糸雀 (ateji; 雀 is not jōyō) → 金, 糸 first,
+        furigana front; 昨日 → 昨, 日 first, no furigana; 鱈 → no kanji card, furigana;
+        シンガポール (forms 新嘉坡 … all `rK`) → front `シンガポール`, no kanji card.
 
         **Old clients.** A client written before ADR-037 keeps working: `counts`,
         `more_available` and `next_learning_due_at` are still sent with their old meaning (see
@@ -7569,7 +7574,7 @@ components:
           $ref: '#/components/schemas/EntrySeq'
         headword:
           type: string
-          description: First kanji form, or first reading for kana-only entries.
+          description: Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール` for 新嘉坡; SCHEMA.md 4.5 "Headword"). The other forms stay searchable.
           examples:
           - 食べる
         headword_reading:
@@ -7718,13 +7723,13 @@ components:
         headword:
           type: string
           minLength: 1
-          description: First kanji form, or first reading for kana-only entries.
+          description: Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 "Headword").
           examples:
           - 食べる
         headword_reading:
           type: string
           minLength: 1
-          description: First reading. Equal to `headword` for kana-only entries.
+          description: First reading. Equal to `headword` for kana-only entries and kana words (ADR-046).
           examples:
           - たべる
         glosses:
@@ -7777,7 +7782,7 @@ components:
           - ja
         headword:
           type: string
-          description: Display form.
+          description: Display form (SCHEMA.md 4.5 "Headword"). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール`). `kanji_forms` still lists every kanji form.
           examples:
           - 食べる
         headword_reading:
@@ -9283,12 +9288,13 @@ components:
         front_furigana:
           type: boolean
           description: |
-            ADR-042, ADR-045 (additive). True iff the card's front shows the reading as furigana
+            ADR-042, ADR-045, ADR-046 (additive). True iff the card's front shows the reading as furigana
             over the whole word: the note's base type is `vocab`, the setting
             `cards.kanji_exemptions` is on, the displayed form contains a kanji and is word-level
             tagged in JMdict (`uk`, `ateji`, `rK`, `oK`, `iK`, `sK`) or requires no kanji (core
             `KanjiRequirement.evaluate(...).frontFurigana`). It says nothing about kanji cards:
-            a tagged word can have both furigana and required kanji. Clients pass it to the core renderer
+            a tagged word can have both furigana and required kanji (its jōyō kanji). Always
+            false for a kana word (ADR-046: its displayed form, the entry's `headword`, is kana). Clients pass it to the core renderer
             unchanged as `RenderInput.frontFurigana` / `JsRenderInput.frontFurigana`; they do not
             decide it themselves. `text.front` already reflects it (`寿司（すし）`). Sent on every
             item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-042

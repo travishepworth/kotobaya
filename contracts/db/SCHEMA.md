@@ -466,6 +466,48 @@ Release rules: a refresh upserts by natural key inside one transaction and flips
 `retired_release_id` set and lose their `dict_entry_form`/`dict_entry_gloss` rows (so they drop out
 of search) but keep everything else. An entry that reappears has `retired_release_id` reset to NULL.
 
+**Headword (ADR-046 (a); normative for the dictionary build, the only place that decides it).**
+`dict_entry.headword` is the entry's **display form**; `headword_reading` is always the first
+reading (`readings[0].text`). With `K` = the entry's kanji forms in JMdict order (`kanji_forms`,
+each with its `ke_inf` codes in `tags`):
+
+| Case | `headword` | Example |
+|---|---|---|
+| `K` is empty (kana-only entry) | the first reading | うっかり → `うっかり` |
+| `K` is not empty and **every** element of `K` has `rK` or `sK` among its `tags` (**kana word**) | the first reading (= `headword_reading`) | 1063410: 新嘉坡, 新加坡, 星嘉坡, all `ateji` + `rK` → `シンガポール`; 1590710: 歌留多 / 骨牌 / 加留多 `rK`, six more `sK`, readings かるた, カルタ → `かるた` |
+| otherwise | `K[0].text`, the first kanji form, whatever its own tags | 寿司 (`ateji`) → `寿司`; お化け, 御化け (`sK`) → `お化け`; 軈て (`rK`), 頓て (`rK`), 漸て (`oK`) → `軈て` (one form is not `rK`/`sK`) |
+
+Rules and edge cases:
+- Tag test: exact, case-sensitive JMdict entity codes (`KanjiRequirement.KANA_WORD_FORM_TAGS` =
+  `rK`, `sK`). A form with no tags, or with only `ateji` / `oK` / `iK` / `io`-style codes, is not
+  a rare form; one such form anywhere in `K` keeps the kanji headword. A form tagged both
+  `ateji` and `rK` is a rare form.
+- Sense tags (`uk`) play no part: an entry whose only sign is `uk` keeps its kanji headword
+  (海老, 珈琲) and is handled by section 6.5 (furigana front).
+- Invariant: `headword = headword_reading` iff the entry is kana-only or a kana word; then the
+  headword contains no kanji and `KanjiRequirement` requires nothing for it, with
+  `cards.kanji_exemptions` on **and** off (the rule is the dictionary's, not the setting's).
+- **Nothing else changes for the entry**: `kanji_forms`, `readings`, `senses`, `is_common`,
+  `freq_rank`, `dict_entry_form` (every kanji form and reading, so searching `新嘉坡` or `歌留多`
+  still finds the entry and a note linked to it, by the recipes below), `entry_kanji` (every kanji
+  of every kanji form, so `kanji:嘉` still lists シンガポール) and `entry_pitch` are exactly as
+  before. Only the one column value differs.
+- Every reader takes `headword` as stored (API `headword`, the card's dictionary fill for a blank
+  `expression`, the queue loader's `WordForm.expression`, deck and list labels, kanji examples,
+  which already drop an entry whose headword lacks the kanji). No reader recomputes it from
+  `kanji_forms`.
+- A note whose own `expression` field holds a kanji form (`新嘉坡`) is not affected: the field
+  wins over the dictionary fill, as always.
+- Rollout: the rule takes effect with the first release built by a worker that implements it.
+  That refresh upserts the changed `dict_entry` rows (same `seq`, new `headword`); device
+  packages and diffs carry them as ordinary changed rows (`DICT_PACKAGE.md` 2.3, 3.3; no
+  `user_version` / `format_version` bump: same column, same meaning "display form"). Until a
+  device has installed that release it still shows the kanji form for such a word, as tagged
+  (`rK`), and may mint kanji notes for its **jōyō** kanji that the server does not (6.5); they
+  are ordinary kanji cards and converge by SYNC.md 8.1 like every offline-minted kanji note.
+- The column comment in `V1__init.sql` ("first kanji form, or first reading for kana-only
+  entries") predates ADR-046 and is not edited (migrations are frozen); this section wins.
+
 Search recipes (server): normalise the query like `dict_entry_form.norm`; 1–2 characters → exact
 or prefix (`norm LIKE 'x%'`, btree); 3+ characters → `norm LIKE '%x%'` (trigram); English →
 `gloss ILIKE '%x%'`; order by `dict_entry.freq_rank NULLS LAST`. Notes: `note.search_text`, OR
@@ -730,7 +772,7 @@ reading-retired-offline-review.json`. Example: vocab note with meaning M (REVIEW
 R (LEARNING): key absent → queue shows M when due, never R; `auto_status` = `known` (from M); key
 `true` → R is served when due and `auto_status` = `learning`.
 
-### 6.5 `cards.kanji_exemptions` (ADR-042, ADR-045)
+### 6.5 `cards.kanji_exemptions` (ADR-042, ADR-045, ADR-046)
 
 Which kanji a word makes the user learn. Bool, default **`true`**, read by the 6.1 `bool` test
 with that default: only JSON `false` is false; a missing row, JSON `null`, `true` and every
@@ -739,18 +781,25 @@ invalid value (`0`, `"false"`, …) mean `true`. `updateSettings` validates it a
 op, column or migration. The core helper is `KanjiRequirement.exemptionsEnabled(value)`; the one
 rule is `kotobaya.contracts.cards.KanjiRequirement.evaluate`:
 
-> While on: every vocab word requires exactly its **learnable** kanji: `ref.kanji.grade` in 1–6 or
-> 8 (jōyō), or `ref.kanji.freq_rank` in 1–2500. JMdict tags never change that (ADR-045). A word
-> that contains kanji has a **furigana front** iff its displayed form is **word-level tagged**
-> (`uk` on the sense used, or the kanji form tagged `ateji`, `rK`, `oK`, `iK` or `sK`) **or** it
-> requires no kanji. While off: every kanji is required and no front has furigana.
+> While on: a vocab word whose displayed form is **not** word-level tagged requires exactly its
+> **learnable** kanji: `ref.kanji.grade` in 1–6 or 8 (jōyō), or `ref.kanji.freq_rank` in 1–2500.
+> A word whose displayed form **is word-level tagged** (`uk` on the sense used, or the kanji form
+> tagged `ateji`, `rK`, `oK`, `iK` or `sK`) requires its **jōyō** kanji only (grade 1–6 or 8;
+> ADR-046 (b)): a tag never removes a jōyō kanji (ADR-045), it removes the kanji that are
+> learnable by frequency rank alone. A word that contains kanji has a **furigana front** iff its
+> displayed form is word-level tagged **or** it requires no kanji. While off: every kanji is
+> required and no front has furigana.
+>
+> **Kana words (ADR-046 (a))** are outside the key: an entry whose kanji forms are all `rK` / `sK`
+> has its reading as `headword` (4.5 "Headword"), so a note of it with a blank `expression` field
+> displays kana, requires no kanji and has a plain front, with the key on and off.
 
 | Where | Effect |
 |---|---|
 | Queue (`QueueCandidate.requiredKanji`, `PendingEntry.requiredKanji`; rule 4 "Kanji first") | Only required kanji join a word's group, block it, and are backfilled because of it. |
 | Materialization (README "C-27" step A; `missingKanji`) | Kanji notes are minted only for required kanji. |
 | Card front (`RenderInput.frontFurigana`, `TextRenderInput.frontFurigana`, API `QueueItem.front_furigana`) | The reading as one ruby over the whole word on built-in vocab `meaning` / `pitch` fronts. |
-| Existing kanji notes and cards | Untouched. Turning the key on never deletes, suspends or hides a kanji card that exists; such a card is simply no longer pulled by a word that does not require it (its kanji is not learnable) and is studied on its own turn like any card. Turning it off makes the missing kanji required again; they are minted when their word is next drawn, or by backfill when the word is already studied (ADR-043: backfill mints the missing required kanji of introduced words, oldest word first, within the daily new goal). |
+| Existing kanji notes and cards | Untouched. Neither the key nor a rule change (ADR-046) ever deletes, suspends or hides a kanji card that exists; such a card is simply no longer pulled by a word that does not require it and is studied on its own turn like any card (see "Kanji notes no word requires any more" below). Turning it off makes the missing kanji required again; they are minted when their word is next drawn, or by backfill when the word is already studied (ADR-043: backfill mints the missing required kanji of introduced words, oldest word first, within the daily new goal). |
 
 **Data the rule needs, and where it is** (all present; nothing has to be added to a table or to
 the dictionary package):
@@ -766,20 +815,51 @@ Codes are the JMdict entity names, case-sensitive, as the importer stores them (
 expanded text). A device answers from the installed package or the sidecar cache only (SHELL.md
 L-7 steps 1–2). While it lacks an entry or a kanji row the rule sees no tags and no facts: no
 word-level tag, no learnable kanji, so nothing is minted for that word and its front has furigana
+(when the note's own field holds kanji; a blank field without the entry shows nothing to evaluate)
 until gap fill delivers the data; the result may then differ from the server's for that word
 (SHELL.md 10.7; the same lag as `counts.new`). `top60k` packages carry every kanji row.
 
 Worked example, key absent (= on): 寿司 (`ateji`; 寿 and 司 are jōyō) → kanji cards 寿 and 司 first,
 then front `寿司` with `すし` above; 海老 (`uk`) → 海, 老, then a furigana front; 珈琲 (`ateji`, no
-learnable kanji) → no kanji cards, furigana front; 林檎 (`uk`) → kanji card 林 only, furigana front;
-昨日 → kanji cards 昨 and 日 first, plain front; 鱈 (no grade, no rank) → no kanji card, furigana
-front; a note 鱈子 without an entry → kanji card 子 only, plain front. Key `false` → 寿 司 寿司, 昨 日
-昨日, 鱈 鱈, and for 鱈子 the cards 子 (and 鱈 unless another word took it first), all with plain fronts.
+jōyō kanji) → no kanji cards, furigana front; 林檎 (`uk`) → kanji card 林 only, furigana front;
+薔薇 (`uk`; 薔 is not jōyō, rank 2356) → **no kanji card**, furigana front (ADR-046 (b); an untagged
+word with 薔 still requires it); 金糸雀 (`ateji`, `uk`; 雀 is grade 9, rank 1856) → kanji cards 金 and
+糸 only, furigana front; 昨日 → kanji cards 昨 and 日 first, plain front; 鱈 (no grade, no rank) → no
+kanji card, furigana front; a note 鱈子 without an entry → kanji card 子 only, plain front;
+シンガポール (1063410, every kanji form `rK`) and かるた (1590710, every kanji form `rK` or `sK`) →
+kana words: fronts `シンガポール` / `かるた`, no kanji card, no furigana; a note whose own field
+says 新嘉坡 → kanji card 新 only (not 嘉: grade 9, rank 1553; not 坡), furigana front. Key `false` →
+寿 司 寿司, 昨 日 昨日, 鱈 鱈, 金 糸 雀 金糸雀, and for 鱈子 the cards 子 (and 鱈 unless another word
+took it first), all with plain fronts; シンガポール and かるた unchanged (still kana, no kanji card).
 
 **Switching from the ADR-042 rule (no migration).** A replica that evaluated tagged words under
 ADR-042 has no kanji notes for them. Under ADR-045 those kanji are simply required again: they
 are minted when their word is next drawn, or by backfill (ADR-043) when the word is already
 studied. Nothing is deleted, no op is rewritten, and the minted ids are deterministic as before.
+
+**Switching from the ADR-045 rule to ADR-046 (no migration, no new op).** Both changes only make
+words require **fewer** kanji, so nothing new is minted because of them and no op is rewritten.
+
+**Kanji notes no word requires any more** (e.g. the `auto_kanji` note 嘉 that ADR-045 minted for
+新嘉坡; a note 薔 minted for 薔薇). **They stay.** No platform deletes, suspends or hides a kanji
+note because no word requires it, reviewed or not: materialization (README "C-27" step A) and
+backfill only ever create. Such a card is an ordinary deckless new kanji card, served on its own
+turn; the user removes it like any note (`deleteNote` → `note.deleted`), and a kanji note the
+user deleted is never re-created (step A), which is what they want for it. Why the system does
+not delete it itself:
+1. `note.deleted` is permanent and carries no reason, so an automatic delete is
+   indistinguishable from a user's: the literal could **never be minted again**, also not for an
+   untagged word that does require it later (嘉 is learnable: rank 1553). That is a silent,
+   permanent loss of a required kanji card.
+2. "No word requires it" is a statement about every vocab note and every deck entry evaluated
+   against the dictionary. A replica that lacks an entry or has an older package (4.5 "Headword"
+   rollout; SHELL.md L-7) evaluates it differently, would delete a note that another replica
+   still requires, and the tombstone would win everywhere.
+3. A delete racing an offline review of the same card would hide that review's card for good.
+An automatic clean-up therefore needs a reversible, attributed op (e.g. a `reason` on a new op
+version, exempt from the "never re-created" rule) and is a separate contract change, not part
+of ADR-046. Finding the candidates is a read-only query: live notes with `origin = 'auto_kanji'`
+whose cards are all `new` with no `review_log` row.
 
 ## 7. Cross-check: table ↔ op ↔ API
 

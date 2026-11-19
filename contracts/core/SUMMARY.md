@@ -340,3 +340,38 @@ Worth a second look:
    kanji, day 2 the second kanji and the word. Before it tried to show both kanji on day 1.
 3. The tests no longer skip any random input. If the core writer finds a failing seed, the
    contract is wrong, not the test: it comes back as a change request.
+
+## C-28f: rare kanji forms and tagged words (ADR-046)
+
+What changed, in plain words:
+- **Kana words.** A dictionary word whose kanji spellings are all marked "rare" or "search only"
+  (新嘉坡 for シンガポール, 歌留多 for かるた, 彼 for あれ, 居る for いる) is now simply a kana
+  word: the dictionary build stores the reading as the word's display form. Cards, lists and
+  the queue show the kana, no kanji card is made for it, and searching the kanji spelling still
+  finds it. In the test dictionary this applies to 137 of 2,000 entries.
+- **Tagged words need only jōyō kanji.** A word marked "usually kana", ateji, rare, out-dated or
+  irregular makes you learn its jōyō kanji and nothing else. Untagged words are unchanged
+  (jōyō or the 2,500 most frequent). 薔薇 no longer creates a card for 薔.
+- **Kanji cards already created** for the old rule (嘉) are kept; delete them by hand if unwanted.
+
+Alternatives rejected:
+- **Deciding "kana word" in the core at read time** (pass every form's tags to
+  `KanjiRequirement`). Rejected: the display form is also shown by lists, deck views, kanji
+  examples and the API's `headword`, which do not go through that rule; two definitions of "what
+  this word looks like" would drift. One stored value has one answer everywhere. Cost: it needs a
+  dictionary rebuild, and a phone shows the old spelling until it has the new package.
+- **A new column** (`display_form`) next to `headword`. Rejected: `headword` already means
+  "display form"; a new column would need a package format bump and every reader changed.
+- **Deleting unreviewed kanji cards that no word needs any more.** Rejected for now: a delete is
+  permanent and looks like the user's own, so that kanji could never be created again, and a
+  phone with an older dictionary could delete a card the server still needs (SCHEMA.md 6.5).
+
+Most worth a second look:
+1. **Kanji cards like 嘉 stay** (the ticket preferred automatic removal). Removing them safely
+   needs a new, reversible sync op; say so if you want it. Until then: delete the note by hand.
+2. **"All forms rare" is read literally.** Only `rK` and `sK` count. A word whose forms are rare
+   plus one out-dated form (軈て / 頓て `rK`, 漸て `oK`) keeps its kanji spelling, with furigana and
+   no card for non-jōyō kanji. Widening the rule to `oK` / `iK` is a one-line change in SCHEMA.md 4.5.
+3. **Common words become kana.** いる (居る), する (為る), それ (其れ), この (此の), あれ (彼) lose their
+   kanji spelling and their kanji cards-to-be (居, 為 are jōyō and were required under ADR-045).
+   This is what ADR-046 (a) says; notes whose own text field holds the kanji are not affected.

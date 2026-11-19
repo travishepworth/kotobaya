@@ -84,7 +84,7 @@ export interface DictEntry {
      */
     freqs: Array<DictEntryFreqsInner>;
     /**
-     * Display form.
+     * Display form (SCHEMA.md 4.5 "Headword"). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール`). `kanji_forms` still lists every kanji form.
      */
     headword: string;
     /**

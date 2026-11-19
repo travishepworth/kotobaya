@@ -29,8 +29,8 @@ class DictHeadword(BaseModel):
     The label fields of one dictionary entry (`listDictHeadwords`, C-18). A subset of `DictEntrySummary` with identical values; no caller overlay.
     """ # noqa: E501
     glosses: List[StrictStr] = Field(description="English glosses of the first sense, in order; the first element is the short meaning. Empty when the first sense has no English gloss.")
-    headword: Annotated[str, Field(min_length=1, strict=True)] = Field(description="First kanji form, or first reading for kana-only entries.")
-    headword_reading: Annotated[str, Field(min_length=1, strict=True)] = Field(description="First reading. Equal to `headword` for kana-only entries.")
+    headword: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 \"Headword\").")
+    headword_reading: Annotated[str, Field(min_length=1, strict=True)] = Field(description="First reading. Equal to `headword` for kana-only entries and kana words (ADR-046).")
     seq: Annotated[int, Field(strict=True, ge=1)] = Field(description="JMdict sequence number (`ref.dict_entry.seq`).")
     __properties: ClassVar[List[str]] = ["glosses", "headword", "headword_reading", "seq"]
 

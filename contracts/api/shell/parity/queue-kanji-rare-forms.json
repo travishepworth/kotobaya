@@ -1,0 +1,264 @@
+{
+  "id": "queue-kanji-rare-forms",
+  "title": "ADR-046: a word whose kanji forms are all rK/sK is a kana word (no kanji, plain kana front); a word-level tagged word requires its jōyō kanji only; an untagged word still requires a frequency-only kanji",
+  "covers": [
+    "queue.kanji_kana_word",
+    "queue.kanji_tagged_joyo_only"
+  ],
+  "narrative": [
+    "Stand-ins from the fixture dictionary (シンガポール 1063410 and かるた 1590710 are not in fixtures/dict). イタリア (1021360; kanji forms 伊太利 and 伊太利亜, both ateji + rK; sense uk; 伊 is grade 9 with frequency rank 703, exactly the case of 嘉 in 新嘉坡) and おにぎり (1001620; お握り rK, 御握り sK: a mix of rK and sK like かるた; 握 is jōyō) are kana words: the dictionary build stores the reading as headword (SCHEMA.md 4.5 Headword), so the cards show イタリア / おにぎり, require no kanji and have no furigana front. 金糸雀 (1037910, カナリア; ateji, uk; 金 and 糸 grade 1, 雀 grade 9 with rank 1856) is word-level tagged and not a kana word: it requires its jōyō kanji 金 and 糸, not 雀, and has a furigana front. 鯛 (1411550; uk; grade 9, rank 2446) is tagged and has no jōyō kanji: no kanji card, furigana front (the 薔薇 case). 炒る (1391500; no tag; 炒 has no grade and rank 2001) is untagged: the frequency-only kanji is still required, plain front.",
+    "Five deckless new cards in that order (...10 イタリア, ...20 おにぎり, ...30 金糸雀, ...40 鯛, ...50 炒る); no kanji note exists; cards.kanji_exemptions is absent (= on); scheduler.new_per_day is the default 20.",
+    "Step 0 (on): イタリア, おにぎり (plain kana fronts, front_furigana false, no kanji card before them: nothing is minted for 伊, 太, 利 or 握), 金, 糸, 金糸雀 with front_furigana true (text front 金糸雀（カナリア）), 鯛 alone with front_furigana true, 炒, 炒る with a plain front. The fetch mints three kanji notes (金, 糸, 炒). Eight items, until_stop 8. Under ADR-045 this was 伊 太 利 伊太利 握 お握り 金 糸 雀 金糸雀 鯛(kanji) 鯛 炒 炒る.",
+    "Step 1 switches cards.kanji_exemptions off.",
+    "Step 2 (off): every kanji of the displayed form is required and no front has furigana: 金, 糸 (the cards of step 0), 雀 (minted now), 金糸雀; 鯛 (kanji, minted now), 鯛 (the word); 炒, 炒る. The kana words are unchanged: their displayed form is the dictionary's headword, which the setting does not touch, so イタリア and おにぎり still have no kanji card. Ten items, until_stop 10."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1001620,
+    1021360,
+    1037910,
+    1391500,
+    1411550
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1021360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e81-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1001620
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e82-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1037910
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e83-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000007",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000004",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1411550
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000008",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000040",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e84-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000040",
+          "note_id": "0193a1b2-0001-7000-8000-000000000004",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000009",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000005",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e85-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000005",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1391500
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-703f-8000-000000000010",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000050",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f82f1e85-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000050",
+          "note_id": "0193a1b2-0001-7000-8000-000000000005",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getReviewQueue",
+    "updateSettings"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/front_furigana": false,
+          "/items/0/text/front": "イタリア",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/1/front_furigana": false,
+          "/items/1/text/front": "おにぎり",
+          "/items/2/card/note/kanji_literal": "金",
+          "/items/3/card/note/kanji_literal": "糸",
+          "/items/4/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/4/front_furigana": true,
+          "/items/4/text/front": "金糸雀（カナリア）",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/5/front_furigana": true,
+          "/items/6/card/note/kanji_literal": "炒",
+          "/items/7/card/id": "0193a1b2-0002-7000-8000-000000000050",
+          "/items/7/front_furigana": false,
+          "/items/7/text/front": "炒る",
+          "/to_materialize": 0,
+          "/loop/until_stop": 8
+        },
+        "lengths": {
+          "/items": 8
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/settings",
+        "query": "",
+        "body": {
+          "values": {
+            "cards.kanji_exemptions": false
+          }
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "limit=20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/front_furigana": false,
+          "/items/0/text/front": "イタリア",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/1/front_furigana": false,
+          "/items/1/text/front": "おにぎり",
+          "/items/2/card/note/kanji_literal": "金",
+          "/items/3/card/note/kanji_literal": "糸",
+          "/items/4/card/note/kanji_literal": "雀",
+          "/items/5/card/id": "0193a1b2-0002-7000-8000-000000000030",
+          "/items/5/front_furigana": false,
+          "/items/5/text/front": "金糸雀",
+          "/items/6/card/note/kanji_literal": "鯛",
+          "/items/7/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/7/front_furigana": false,
+          "/items/8/card/note/kanji_literal": "炒",
+          "/items/9/card/id": "0193a1b2-0002-7000-8000-000000000050",
+          "/to_materialize": 0,
+          "/loop/until_stop": 10
+        },
+        "lengths": {
+          "/items": 10
+        }
+      }
+    }
+  ]
+}

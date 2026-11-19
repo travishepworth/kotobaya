@@ -32,7 +32,7 @@ class DictEntrySummary(BaseModel):
     deck_ids: Optional[List[Annotated[str, Field(strict=True)]]] = Field(default=None, description="C-25 (additive). Ids of your live decks (`deleted_at` null; enabled or not) that hold this entry as a live item `e:<seq>` (an `app.deck_item` row with `entry_seq` = `seq` and `deleted_at` null), in draw order: `deck.priority` ascending, then deck id ascending (order of the lower-case UUID text). No duplicates; empty when none. Smart decks never appear (they have no items) and `n:<note id>` items are not counted (they are on `Note.deck_ids`). The same set of decks as `KanjiWord.decks`, in another order. Servers that implement C-25 send it wherever this schema is returned. Absent on older servers: clients treat absent as \"unknown\" (fall back to scanning `listDeckItems`), never as \"in no deck\". ")
     freq_rank: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(description="Rank in the primary frequency list, or null.")
     glosses: List[StrictStr] = Field(description="English glosses of the first sense, in order.")
-    headword: StrictStr = Field(description="First kanji form, or first reading for kana-only entries.")
+    headword: StrictStr = Field(description="Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール` for 新嘉坡; SCHEMA.md 4.5 \"Headword\"). The other forms stay searchable.")
     headword_reading: StrictStr = Field(description="First reading.")
     is_common: StrictBool = Field(description="JMdict \"common\" marker.")
     note_id: Optional[Annotated[str, Field(strict=True)]] = Field(description="Your live vocab note for this entry, or null.")

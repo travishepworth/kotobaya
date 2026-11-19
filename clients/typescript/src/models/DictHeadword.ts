@@ -24,11 +24,11 @@ export interface DictHeadword {
      */
     glosses: Array<string>;
     /**
-     * First kanji form, or first reading for kana-only entries.
+     * Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 "Headword").
      */
     headword: string;
     /**
-     * First reading. Equal to `headword` for kana-only entries.
+     * First reading. Equal to `headword` for kana-only entries and kana words (ADR-046).
      */
     headwordReading: string;
     /**

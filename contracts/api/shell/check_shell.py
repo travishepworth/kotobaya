@@ -85,6 +85,8 @@ MANDATORY = [
     "queue.kanji_order_stable", "queue.kanji_deck_limit", "queue.kanji_turn_order",
     # C-28d: rebuild = tail without exclusions (shared kanji, keep going with an open unit, capped lead)
     "queue.kanji_shared_kanji", "queue.kanji_keep_going_open_unit", "queue.kanji_lead_deck_limit",
+    # C-28f: ADR-046 (kana words by headword; tagged words require jōyō kanji only)
+    "queue.kanji_kana_word", "queue.kanji_tagged_joyo_only",
 ]
 RETIRED = ["queue.session_cap_more_available"]  # ADR-037: no session cap
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.

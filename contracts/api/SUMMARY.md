@@ -807,3 +807,13 @@ Three choices most worth a second look:
 3. The older parity scenarios were moved to kana-only words so that kanji-first does not change
    what they test. Kanji behaviour is tested only by the six new scenarios. The ADR-042 scenario
    uses 寿司, 昨日, 鱈 and 鱈子 because 海老, 林檎, 薔薇 and 今日 are not in the fixture dictionary.
+
+## C-28f changes (ADR-046): descriptions only
+- No operation, schema, field or status code changes. `headword` descriptions (`DictEntry`,
+  `DictEntrySummary`, `DictHeadword`, `listDictHeadwords`) now say: the first reading also when
+  every kanji form is tagged `rK` / `sK` (`シンガポール`, not `新嘉坡`); `getReviewQueue` and
+  `QueueItem.front_furigana` restate the amended rule (a tagged word requires its jōyō kanji only;
+  a kana word never has a furigana front). Generated clients change in doc comments only.
+- New parity scenario `queue-kanji-rare-forms` (tags `queue.kanji_kana_word`,
+  `queue.kanji_tagged_joyo_only`, both mandatory). Its golden is recorded by CORE-28d once the
+  fixture dictionary loaders apply SCHEMA.md 4.5 "Headword"; no existing golden changes.

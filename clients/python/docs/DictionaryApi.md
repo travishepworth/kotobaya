@@ -304,8 +304,9 @@ match items to their rows by `seq` and keep their fallback label for omitted one
 
 **Item fields** have exactly the values `getDictEntry` and `searchDictionary` report for
 the same entry: `headword` = first kanji form in JMdict order, or the first reading when
-the entry has no kanji form; `headword_reading` = first reading (equal to `headword` for
-kana-only entries); `glosses` = English glosses of the first sense, in order (the first
+the entry has no kanji form or every kanji form is tagged `rK` / `sK` (ADR-046: a kana
+word, e.g. `シンガポール`, not `新嘉坡`; SCHEMA.md 4.5 "Headword"); `headword_reading` =
+first reading (equal to `headword` for kana-only entries and kana words); `glosses` = English glosses of the first sense, in order (the first
 element is the short meaning; empty array if the first sense has no English gloss).
 
 **Request size.** 500 seven-digit values with percent-encoded commas make a request line

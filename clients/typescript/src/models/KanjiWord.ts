@@ -56,7 +56,7 @@ export interface KanjiWord {
      */
     glosses: Array<string>;
     /**
-     * First kanji form, or first reading for kana-only entries.
+     * Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール` for 新嘉坡; SCHEMA.md 4.5 "Headword"). The other forms stay searchable.
      */
     headword: string;
     /**

@@ -429,16 +429,20 @@ introduced in the study day. Example: goal 4, three such kanji and two new words
 Example: new word 学校, no kanji notes, 3 reviews ready, 3 new left today →
 `R1 学 校 学校 R2 R3`.
 
-**Which kanji a word requires (ADR-042, ADR-045).** Decided by the core predicate
+**Which kanji a word requires (ADR-042, ADR-045, ADR-046).** Decided by the core predicate
 `KanjiRequirement` from the setting `cards.kanji_exemptions` (bool, default `true`;
-SCHEMA.md 6.5). While it is on: every word requires its **learnable** kanji only
-(jōyō, i.e. KANJIDIC grade 1-6 or 8, or KANJIDIC frequency rank 1-2500), whatever its
-JMdict tags. A word written with kanji shows its reading as furigana over the whole
+SCHEMA.md 6.5). While it is on: a word requires its **learnable** kanji only
+(jōyō, i.e. KANJIDIC grade 1-6 or 8, or KANJIDIC frequency rank 1-2500); a word whose
+displayed form is word-level tagged (JMdict `uk` on the sense used, or the kanji form
+tagged `ateji`, `rK`, `oK`, `iK` or `sK`) requires its **jōyō** kanji only (ADR-046).
+A word written with kanji shows its reading as furigana over the whole
 word on the front (`QueueItem.front_furigana`) when its displayed form is word-level
-tagged (JMdict `uk` on the sense used, or the kanji form tagged `ateji`, `rK`, `oK`,
-`iK` or `sK`) or when it requires no kanji. With the setting `false` every kanji is
-required and no front has furigana. Examples: 寿司 (ateji) → 寿, 司 first, furigana
-front; 昨日 → 昨, 日 first, no furigana; 鱈 → no kanji card, furigana.
+tagged or when it requires no kanji. With the setting `false` every kanji is
+required and no front has furigana. A **kana word** (every kanji form of its entry is
+`rK` / `sK`; its `headword` is the reading) has no kanji either way. Examples: 寿司
+(ateji) → 寿, 司 first, furigana front; 金糸雀 (ateji; 雀 is not jōyō) → 金, 糸 first,
+furigana front; 昨日 → 昨, 日 first, no furigana; 鱈 → no kanji card, furigana;
+シンガポール (forms 新嘉坡 … all `rK`) → front `シンガポール`, no kanji card.
 
 **Old clients.** A client written before ADR-037 keeps working: `counts`,
 `more_available` and `next_learning_due_at` are still sent with their old meaning (see

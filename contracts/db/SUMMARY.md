@@ -277,3 +277,10 @@
   kanji. Tags only decide whether the front shows furigana (tagged, or no learnable kanji).
   SCHEMA.md 6.5 reworded; still no table, column, op or migration. Words that were tagged get
   their kanji cards on the next draw or through backfill.
+- **C-28f (ADR-046).** (a) `dict_entry.headword` is the first reading when every kanji form of
+  the entry is tagged `rK` or `sK` (SCHEMA.md 4.5 "Headword"): the dictionary build decides it
+  once, everything else reads the column. Same column, no migration, no package format bump; it
+  needs one dictionary refresh and the devices' normal package update. All forms stay searchable.
+  (b) A tagged word requires its jōyō kanji only (6.5). Kanji notes minted under the old rule
+  that no word requires now are kept, never deleted automatically (6.5 says why). Details and
+  the three choices worth a second look: `contracts/core/SUMMARY.md` "C-28f".

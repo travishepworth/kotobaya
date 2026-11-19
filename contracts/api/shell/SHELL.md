@@ -475,7 +475,7 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `listDecks`, `getDeck`, `createDeck`, `updateDeck` (answers) | ADR-041: every `Deck` carries `progress`, computed by core `DeckProgress.count` over the replica (deck items, notes, cards, `word_status`, setting `cards.reading_enabled`) exactly as the server computes it; `null` for smart and tombstoned decks. It needs no dictionary data, so it is always available offline. |
 | `getDeckCoverage` | **Stays `proxy`** (ADR-041 decision, C-28). The deck page's "N of M words learned" line is `Deck.progress` and works offline; the raw coverage and words bar of media decks need the server (`segments`, `curve`, `difficulty`, per-token counts and the `hide` classes come from media tables and analysis that are not replicated). Offline the SPA shows the progress line and hides the coverage block; `503 shell_offline` from this operation is not an error state. |
 | `createDeck` | `type: user` and `type: smart`: local (one `deck.created` minted by the device). `type: list`: `deck.created` for a list deck is server-only (OPS.md `deck.created`: a pushed one is rejected `server_only`) and needs the server's `deck-build` job, so the handler forwards the request by rules P-1 … P-3 — `503 shell_offline` offline; the deck arrives by pull (P-3). `type: media` is `422` locally, as on the server. The request is validated locally first in every case. |
-| `updateSettings` | One `settings.set` per present key. Applying `cards.reading_enabled` re-derives vocab word statuses through the same code as the pull path. `cards.kanji_exemptions` (ADR-042) is validated as `bool` and needs no re-derivation: the next `getReviewQueue` reads it. |
+| `updateSettings` | One `settings.set` per present key. Applying `cards.reading_enabled` re-derives vocab word statuses through the same code as the pull path. `cards.kanji_exemptions` (ADR-042) is validated as `bool` and needs no re-derivation: the next `getReviewQueue` reads it. It never changes a kana word (ADR-046: the displayed form is the package's `dict_entry.headword`, which the shell reads as stored and does not recompute from `kanji_forms`). |
 | `createDrillSession` | No op (as the server). |
 | `getBlob` | Section 2.7. |
 
@@ -737,6 +737,7 @@ difference is a finding.
 | `queue.kanji_lead_deck_limit` | `queue-kanji-lead-deck-limit` | C-28d: deck limit 1, a word with one kanji card in that deck and one in a disabled deck: only the first kanji today (the lead ends when the limit is used up), the other kanji and the word on the next study day. |
 | `queue.kanji_partial_unit` | `queue-kanji-partial-unit` | ADR-043: `new_per_day` 2 and a word with three new kanji: two kanji on the first study day (goal reached, not overshot), the third kanji and the word on the next; the card behind the word in the same source is not drawn ahead of it. |
 | `queue.kanji_exemptions_on`, `queue.kanji_exemptions_off` | `queue-kanji-exemptions` | ADR-042, ADR-045: with `cards.kanji_exemptions` on, an ateji word with learnable kanji gets its kanji cards **and** `front_furigana`, a word without learnable kanji gets no kanji cards and `front_furigana`, an untagged word with learnable kanji gets them and no furigana, a mixed word only its learnable one; switched off by a local `updateSettings`, every kanji is required and no front has furigana. |
+| `queue.kanji_kana_word`, `queue.kanji_tagged_joyo_only` | `queue-kanji-rare-forms` | ADR-046 (C-28f): a word whose kanji forms are all `rK` / `sK` (イタリア 伊太利, おにぎり お握り; stand-ins for シンガポール 新嘉坡 and かるた 歌留多) is served with its kana `headword` as front, no kanji card and `front_furigana` false, with `cards.kanji_exemptions` on and off; a tagged word (金糸雀) gets cards for its jōyō kanji only and `front_furigana`; a tagged word without jōyō kanji (鯛) none; an untagged word (炒る) still gets its frequency-only kanji. |
 | `queue.day_rollover_timezone` | `queue-day-rollover-timezone` | Day rollover with `scheduler.timezone` = `Asia/Tokyo`. |
 | `answer.retry_same_id` | `answer-retry-same-id` | Answer retried with the same `id`. |
 | `answer.suspended_409`, `answer.deleted_410` | `answer-suspended-deleted`, `parent-deleted-by-pull` | `409 card_not_reviewable`, `410 gone`. |
@@ -754,6 +755,14 @@ what they were written for and mint no kanji notes; their `expect`s are unchange
 `until_stop` inside whole-`/loop` expectations. Kanji behaviour is covered by the `queue.kanji_*`
 scenarios only. The ADR-042 scenario uses the fixture's 寿司, 昨日 and 鱈 and a note 鱈子 without an
 entry, because 海老, 林檎, 薔薇 and 今日 are not in `fixtures/dict/JMdict_subset.xml`.
+The ADR-046 scenario (`queue-kanji-rare-forms`) likewise uses イタリア (1021360, 伊太利; 伊 is grade
+9 with a frequency rank, like 嘉 of 新嘉坡) and おにぎり (1001620) for シンガポール (1063410) and かるた
+(1590710), which are not in the fixture. **Harness requirement (ADR-046 (a)):** the dictionary both
+harnesses load MUST carry `headword` by SCHEMA.md 4.5 "Headword" (the reading for the 137 fixture
+entries whose kanji forms are all `rK` / `sK`), on the server side in `ref.dict_entry` and in the
+shell's fixture package alike; a fixture loader that still writes the first kanji form fails this
+scenario at step 0. No scenario older than C-28f uses one of those entries, so their goldens do
+not change.
 
 `queue.session_cap_more_available` (scenario `queue-session-cap-more-available`) was retired by
 ADR-037: there is no session cap. Every golden whose steps call `getReviewQueue` is re-recorded by

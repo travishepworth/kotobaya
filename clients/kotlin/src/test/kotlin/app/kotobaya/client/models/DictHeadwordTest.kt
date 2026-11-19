@@ -39,13 +39,13 @@ class DictHeadwordTest : ShouldSpec() {
             //modelInstance.glosses shouldBe ("TODO")
         }
 
-        // to test the property `headword` - First kanji form, or first reading for kana-only entries.
+        // to test the property `headword` - Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`; SCHEMA.md 4.5 \"Headword\").
         should("test headword") {
             // uncomment below to test the property
             //modelInstance.headword shouldBe ("TODO")
         }
 
-        // to test the property `headwordReading` - First reading. Equal to `headword` for kana-only entries.
+        // to test the property `headwordReading` - First reading. Equal to `headword` for kana-only entries and kana words (ADR-046).
         should("test headwordReading") {
             // uncomment below to test the property
             //modelInstance.headwordReading shouldBe ("TODO")

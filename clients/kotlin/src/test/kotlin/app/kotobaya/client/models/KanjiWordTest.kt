@@ -47,7 +47,7 @@ class KanjiWordTest : ShouldSpec() {
             //modelInstance.glosses shouldBe ("TODO")
         }
 
-        // to test the property `headword` - First kanji form, or first reading for kana-only entries.
+        // to test the property `headword` - Display form. First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール` for 新嘉坡; SCHEMA.md 4.5 \"Headword\"). The other forms stay searchable.
         should("test headword") {
             // uncomment below to test the property
             //modelInstance.headword shouldBe ("TODO")

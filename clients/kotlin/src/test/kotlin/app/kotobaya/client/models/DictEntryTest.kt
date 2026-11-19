@@ -51,7 +51,7 @@ class DictEntryTest : ShouldSpec() {
             //modelInstance.freqs shouldBe ("TODO")
         }
 
-        // to test the property `headword` - Display form.
+        // to test the property `headword` - Display form (SCHEMA.md 4.5 \"Headword\"). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール`). `kanji_forms` still lists every kanji form.
         should("test headword") {
             // uncomment below to test the property
             //modelInstance.headword shouldBe ("TODO")

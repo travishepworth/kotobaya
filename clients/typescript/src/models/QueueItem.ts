@@ -116,12 +116,13 @@ export interface QueueItem {
      */
     entry: DictEntry | null;
     /**
-     * ADR-042, ADR-045 (additive). True iff the card's front shows the reading as furigana
+     * ADR-042, ADR-045, ADR-046 (additive). True iff the card's front shows the reading as furigana
      * over the whole word: the note's base type is `vocab`, the setting
      * `cards.kanji_exemptions` is on, the displayed form contains a kanji and is word-level
      * tagged in JMdict (`uk`, `ateji`, `rK`, `oK`, `iK`, `sK`) or requires no kanji (core
      * `KanjiRequirement.evaluate(...).frontFurigana`). It says nothing about kanji cards:
-     * a tagged word can have both furigana and required kanji. Clients pass it to the core renderer
+     * a tagged word can have both furigana and required kanji (its jōyō kanji). Always
+     * false for a kana word (ADR-046: its displayed form, the entry's `headword`, is kana). Clients pass it to the core renderer
      * unchanged as `RenderInput.frontFurigana` / `JsRenderInput.frontFurigana`; they do not
      * decide it themselves. `text.front` already reflects it (`寿司（すし）`). Sent on every
      * item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-042

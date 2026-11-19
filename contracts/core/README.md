@@ -348,7 +348,9 @@ it once.
 platform, from the same rows):
 - `form` = `WordForm(expression, formTags, usuallyKana)` as `KanjiRequirement.kt` defines
   (expression = the note's `expression` text, else the entry's `headword`; for an entry: its
-  `headword`), `facts` = `ref.kanji.grade` / `freq_rank` of its kanji, `enabled` =
+  `headword`. The `headword` is taken **as stored**; since ADR-046 (a) it is the reading for an
+  entry whose kanji forms are all `rK` / `sK`, SCHEMA.md 4.5 "Headword", so such a word has no
+  kanji here and the loader does not look at its other forms), `facts` = `ref.kanji.grade` / `freq_rank` of its kanji, `enabled` =
   `KanjiRequirement.exemptionsEnabled(settings["cards.kanji_exemptions"])`.
 - `expressionKanji` = `CardGenerator.kanjiOf(expression)` (as before).
 - `requiredKanji` = `KanjiRequirement.evaluate(form, facts, enabled).learnableKanji`.
@@ -525,13 +527,49 @@ KDoc examples):
   between and the group continues after it; the open group is not pulled after a review was
   answered (`s > 0`), after a day rollover, or when the last introduced card is a vocab card;
   keep going: open group, then reviews, then the rest.
+## ADR-046: kana words and jōyō-only for tagged words (C-28f)
+
+Contract files: `cards/KanjiRequirement.kt` (rule and KDoc), SCHEMA.md 4.5 "Headword" and 6.5,
+`DICT_PACKAGE.md` 2.3, parity `queue-kanji-rare-forms`. Additive on the types:
+`KanjiRequirement.isJoyo(grade)` and `KANA_WORD_FORM_TAGS` are new **companion** members with
+bodies, so `DefaultKanjiRequirement` compiles unchanged; only `evaluate`'s behaviour changes.
+
+| What | Where it is decided | Who changes |
+|---|---|---|
+| (a) An entry whose kanji forms are all `rK` / `sK` displays its reading | The **dictionary build** writes the first reading into `dict_entry.headword` (SCHEMA.md 4.5). Every reader already takes `headword` as stored. | worker (`dict-refresh`: headword rule, new release so packages and diffs are rebuilt); every Kotlin/TS fixture-dictionary loader used by tests (same rule); nothing in the core |
+| (b) A word-level tagged word requires its jōyō kanji only | `KanjiRequirement.evaluate` step 2 | core `DefaultKanjiRequirement` (one branch: `wordExempt` → `isJoyo(grade)`, else `isLearnable`) |
+| Kanji notes no word requires any more | SCHEMA.md 6.5: they stay; nothing deletes them | nobody |
+
+Server, Android and web need **no code change** for (a) or (b) beyond taking the new core and
+the new dictionary data: the loader, the materializer, the renderer host and the API all go
+through `headword` and `KanjiRequirement.evaluate`. They MUST NOT re-derive "kana word" from
+`kanji_forms` at read time.
+
+Tests (CORE-28d):
+- `cards/KanjiRequirementTest.kt`: re-record against the KDoc. Every worked example as the full
+  triple, on and off: 海老, 寿司, 珈琲, 林檎, お化け, 彼 (field), 今日, 昨日, 鱈, 鱈子 **unchanged**;
+  薔薇 tagged → `(true, [], true)`, untagged → `(false, [薔], false)`; 金糸雀 → `(true, [金, 糸],
+  true)`, off `(false, [金, 糸, 雀], false)`; 鯛 tagged / untagged; シンガポール and かるた as kana
+  forms → `(false, [], false)` on and off; 新嘉坡 (field) → `(true, [新], true)`, off all three;
+  歌留多 (field) → `(true, [歌, 留, 多], true)`. Properties: for random forms and facts the tagged
+  result is a sub-list of the untagged one and the difference holds only non-jōyō kanji with a
+  rank in 1..2500; a jōyō kanji is in both; `isJoyo` for null, 0, 1, 6, 7, 8, 9, 10; `isJoyo(g)`
+  implies `isLearnable(g, r)`. The C-28e assertion "`learnableKanji` equal with and without tags"
+  is **replaced** by these, not kept.
+- Worker: the headword rule on the fixture (the 137 entries of `JMdict_subset.xml` whose kanji
+  forms are all `rK` / `sK` get their first reading, e.g. 1000580 あれ, 1021360 イタリア, 1001620
+  おにぎり, 1577980 いる; 1012730 軈て and 1001670 お化け keep the kanji form); `dict_entry_form`
+  and `entry_kanji` row counts unchanged by the rule.
+- Parity: record the golden of `queue-kanji-rare-forms`; no other golden changes.
+
 - `queue/QueueParityScenarioTest.kt`: mirrors of the three C-28d parity scenarios
   (`queue-kanji-shared-kanji`, `queue-kanji-keep-going-open-unit`, `queue-kanji-lead-deck-limit`;
   14 mirrors in all), every step's items and `until_stop`.
 - `queue/ReviewLoopTest.kt`: `untilStop` for A1 (66), B3 (0), B4 (145), U1 (65, 47 with 12 new
   cards) and its three follow-ups (Again on a review keeps it, Good lowers it, a new card
   answered Good keeps it); equal before and after materialization; `REVIEWING` implies `>= 1`.
-- `cards/KanjiRequirementTest.kt` (ADR-045, C-28e): every worked example of the KDoc, on and off,
+- `cards/KanjiRequirementTest.kt` (ADR-045, C-28e; **amended by C-28f, see the ADR-046 section
+  above** for 薔薇 and the "equal with and without tags" property): every worked example of the KDoc, on and off,
   as the full triple (海老, 寿司, 珈琲, 林檎, お化け, 彼, 今日, 昨日, 鱈, 鱈子, 薔薇 tagged and
   untagged); each word-level tag alone on a word with learnable kanji → `wordExempt`,
   `frontFurigana` **and the learnable kanji still in `learnableKanji`**; `learnableKanji` equal

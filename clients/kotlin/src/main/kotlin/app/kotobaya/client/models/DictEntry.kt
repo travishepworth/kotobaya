@@ -37,7 +37,7 @@ import com.google.gson.annotations.SerializedName
  *
  * @param freqRank Rank in the primary frequency list.
  * @param freqs Rank per loaded frequency list, ordered by the list's priority.
- * @param headword Display form.
+ * @param headword Display form (SCHEMA.md 4.5 \"Headword\"). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール`). `kanji_forms` still lists every kanji form.
  * @param headwordReading First reading.
  * @param isCommon JMdict \"common\" marker.
  * @param kanji Distinct kanji in the entry's kanji forms, in order of first appearance.
@@ -66,7 +66,7 @@ data class DictEntry (
     @SerializedName("freqs")
     val freqs: kotlin.collections.List<DictEntryFreqsInner>,
 
-    /* Display form. */
+    /* Display form (SCHEMA.md 4.5 \"Headword\"). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged `rK` or `sK`, e.g. `シンガポール`). `kanji_forms` still lists every kanji form. */
     @SerializedName("headword")
     val headword: kotlin.String,
 

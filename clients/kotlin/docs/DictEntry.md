@@ -6,7 +6,7 @@
 | ------------ | ------------- | ------------- | ------------- |
 | **freqRank** | **kotlin.Int** | Rank in the primary frequency list. |  |
 | **freqs** | [**kotlin.collections.List&lt;DictEntryFreqsInner&gt;**](DictEntryFreqsInner.md) | Rank per loaded frequency list, ordered by the list&#39;s priority. |  |
-| **headword** | **kotlin.String** | Display form. |  |
+| **headword** | **kotlin.String** | Display form (SCHEMA.md 4.5 \&quot;Headword\&quot;). First kanji form; the first reading for kana-only entries and for kana words (ADR-046, every kanji form tagged &#x60;rK&#x60; or &#x60;sK&#x60;, e.g. &#x60;シンガポール&#x60;). &#x60;kanji_forms&#x60; still lists every kanji form. |  |
 | **headwordReading** | **kotlin.String** | First reading. |  |
 | **isCommon** | **kotlin.Boolean** | JMdict \&quot;common\&quot; marker. |  |
 | **kanji** | **kotlin.collections.List&lt;kotlin.String&gt;** | Distinct kanji in the entry&#39;s kanji forms, in order of first appearance. |  |
