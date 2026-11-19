@@ -523,3 +523,4 @@
 - CORE-28d review: KanjiRequirementTest.singaporeEntryShape also passes on old predicate; optionally add 新嘉坡 field-form case.
 - WEB-REVIEW-BACK: contracts/api/shell/SHELL.md 6.2 step 2 still describes the ADR-030 3 s back rule; update for ADR-048 (architect, next C-ticket).
 - WRK-29: no test runs the real PgCache SQL against V4 (fake store only); add a Postgres-backed test.
+- CORE-29 review: upper-case [sound:HASH] — Furigana.sound accepts A-F, WordAudioRules.SOUND_PATTERN lowercase only → W hash can differ from resolver Note hash; upper-only audio fields fall through to TTS and skip listening-card creation. Fix: normalise hashes to lowercase on import/edit, or contract clarifies W hash = resolver Note hash / relax SOUND_PATTERN. Live DB had 0 notes with [sound:] on 2026-11-19, so no current impact.
