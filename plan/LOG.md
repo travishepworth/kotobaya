@@ -1321,3 +1321,4 @@
 2026-11-17T01:20:00Z LOOP-C2 CHECK_GREEN (contracts/server/android after rebase) + MERGE; 24 parity match, no allowlist; 2 questions -> FOLLOWUPS. RUN PAUSED per user
 2026-11-19T03:12:22Z CLI FIX daemon crash-loop (editable kotobaya_client in deleted scratchpad); reinstalled non-editable from main (cli unchanged since pin), daemon active
 2026-11-19T03:13:55Z WEB-REVIEW-FLOW CHECK_GREEN + MERGE (seamless splice fetch, keep going per visit in-memory, example rows one line)
+2026-11-19T03:14:07Z CLI-KG-SCOPE DISPATCH writer-light
