@@ -29,7 +29,13 @@ import {
 	type GradeButton,
 	type ReviewPhase
 } from '../review/model';
-import { clearKeepGoing, fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
+import {
+	clearKeepGoing,
+	expireKeepGoingIfIdle,
+	fetchWithKeepGoing,
+	startKeepGoing,
+	touchKeepGoing
+} from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
 import { renderPreview, type Rendered } from './preview.svelte';
 
@@ -595,6 +601,7 @@ export class ReviewPage {
 
 	/** The tab became visible again: timers are throttled while hidden, so catch up at once if the card is due. */
 	onVisible(): void {
+		expireKeepGoingIfIdle(); // ADR-039 idle amendment: a page left open for hours has gone idle
 		const due = this.wakeTarget();
 		if (this.isDrill || !due || this.busy || this.disposed) return;
 		if (Date.now() >= due.getTime() && Date.now() - this.lastWake >= WAKE_MIN_MS) {
@@ -863,6 +870,7 @@ export class ReviewPage {
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
 		this.backPolicy.answered();
+		touchKeepGoing(); // ADR-039 idle amendment: an answer restarts the keep-going idle clock
 		const entry: PendingAnswer = {
 			answerId: this.answerId,
 			item,

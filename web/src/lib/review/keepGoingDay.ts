@@ -7,12 +7,26 @@ export function studyDayString(d: Date): string {
 	return d.toISOString().slice(0, 10);
 }
 
+/**
+ * ADR-039 (idle amendment): keep going also ends after this long without an answer (or without the press that
+ * started it). Checked lazily on every read, no timer: a WebView left on Review for hours still ends it.
+ */
+export const KEEP_GOING_IDLE_MS = 10 * 60_000;
+
 // ADR-039: Keep going lasts one review visit. Held in memory only: gone on app restart and cleared when the
 // review screen is left (ReviewPage.dispose), so it stays on across answers within a visit and never longer.
 let day: string | null = null;
+/** When the last answer (or the Keep going press) happened; the idle clock runs from here. */
+let lastActivity = 0;
 
-/** The study day keep going was started on, or null when it is off. */
+/** Clears keep going when it has been idle for KEEP_GOING_IDLE_MS. */
+export function expireKeepGoingIfIdle(): void {
+	if (day !== null && Date.now() - lastActivity >= KEEP_GOING_IDLE_MS) day = null;
+}
+
+/** The study day keep going was started on, or null when it is off (or has gone idle). */
 export function keepGoingDay(): string | null {
+	expireKeepGoingIfIdle();
 	return day;
 }
 
@@ -24,6 +38,13 @@ export function keepGoingFlag(): boolean {
 /** Keep going was pressed on a response of `studyDay`. */
 export function startKeepGoing(studyDay: Date): void {
 	day = studyDayString(studyDay);
+	lastActivity = Date.now();
+}
+
+/** An answer was given: restarts the idle clock. A no-op when keep going is off or already idle-expired. */
+export function touchKeepGoing(): void {
+	expireKeepGoingIfIdle();
+	if (day !== null) lastActivity = Date.now();
 }
 
 export function clearKeepGoing(): void {
