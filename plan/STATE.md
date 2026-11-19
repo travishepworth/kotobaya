@@ -7,7 +7,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
-| C-28d | architect | 1 | t/C-28d-contracts | 2026-11-19 |
+| C-28d | reviewer | 1 (in review) | t/C-28d-contracts | 2026-11-19 |
 | SRV-28 | writer | 2 | t/SRV-28-server | 2026-11-19 |
 | AND-28 | (waiting) | 1 done | t/AND-28-android — HANDOFF in, red only on 4 golden tests until SRV-28 merges goldens; then rebase + make check android + reviewer (focus: perf of all-cards candidate query per answer, minting via device ops, KanjiSource cache) | 2026-11-19 |
 Then CORE-28b (after C-28d), then KANJI-TEXT-SHARED (before release) -> SRV/AND re-run checks if core behaviour changed (no API change expected).

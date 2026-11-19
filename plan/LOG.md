@@ -1355,3 +1355,4 @@
 2026-11-19T06:05:57Z SRV-28 HANDOFF + CHECK_GREEN; reviewer dispatched (minting via op path, perf, goldens). Disk / 9.5G free
 2026-11-19T06:08:44Z SRV-28 REVIEW_CHANGES 1 major (N+1 kanji queries per word under sync lock); attempt 2; KANJI-TEXT-SHARED filed (PlainText divergence)
 2026-11-19T06:09:59Z AND-28 HANDOFF (green except 4 golden tests pending SRV-28 goldens); waiting for SRV-28 merge
+2026-11-19T06:14:28Z C-28d HANDOFF (claims-based pick, 40k-seed prototype 0 failures) + green; reviewer
