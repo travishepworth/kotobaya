@@ -882,3 +882,8 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - WEB-DICT-DESKTOP — /dictionary desktop redesign (phone unchanged) · model: sonnet · risk: low · deps: — · status: MERGED (ticket: plan/tickets/WEB-DICT-DESKTOP.md)
 - C-29 — ADR-047 automatic word audio contract · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-29.md)
 - WEB-REVIEW-BACK — ADR-048 back = previous card flipped + dictionary round-trip state (web + android shell) · model: sonnet · risk: med · deps: — · status: TODO (ticket: plan/tickets/WEB-REVIEW-BACK.md)
+- CORE-29 — DefaultWordAudioResolver + renderer word audio · model: opus · risk: high · deps: C-29 · status: TODO (ticket: plan/tickets/CORE-29.md)
+- WRK-29 — tts job tts_audio cache · model: sonnet · risk: med · deps: C-29 · status: TODO (ticket: plan/tickets/WRK-29.md)
+- SRV-29 — word_audio, resolveSpeech, sweep · model: opus · risk: high · deps: C-29, CORE-29 · status: TODO (ticket: plan/tickets/SRV-29.md)
+- WEB-29 — web review audio · model: sonnet · risk: med · deps: C-29, CORE-29, WEB-REVIEW-BACK · status: TODO (ticket: plan/tickets/WEB-29.md)
+- AND-29 — android word_audio + prefetch · model: sonnet · risk: med · deps: C-29, CORE-29, SRV-29 · status: TODO (ticket: plan/tickets/AND-29.md)

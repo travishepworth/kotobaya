@@ -1392,3 +1392,5 @@
 2026-11-19T12:34:03Z DECIDE ADR-047 (audio: system-generated word audio, speaker next to word on answer, autoplay setting); C-29 DISPATCH architect
 2026-11-19T12:38:52Z WEB-DICT-DESKTOP CHECK_GREEN (web) + MERGE (screenshots viewed by orchestrator: overlap fixed, two-pane); release with audio round
 2026-11-19T12:49:50Z DECIDE ADR-048 (review back = undo shown revealed; dictionary round-trip keeps state); WEB-REVIEW-BACK DISPATCH writer; web 0.1.30 deploy HELD (user: bundle)
+2026-11-19T12:50:00Z web 0.1.30 image pushed (pin 6c484738) but NOT deployed; next web build will supersede
+2026-11-19T12:50:36Z C-29 HANDOFF + green; reviewer; CORE-29/WRK-29/SRV-29/WEB-29/AND-29 filed
