@@ -1412,3 +1412,4 @@
 2026-11-19T13:38:54Z SRV-29 attempt 2 HANDOFF green (major fixed as prescribed, tests added) -> accepted; AND-29 DISPATCH writer from t/SRV-29
 2026-11-19T13:43:00Z C-30 HANDOFF + green; reviewer; CORE-30/SRV-30/WEB-30/AND-30/CLI-30 filed
 2026-11-19T13:44:43Z C-30 REVIEW_APPROVE (4 minors: day-boundary parity + A3 text -> architect quick fix; KG-on-backlog noted in ADR-049; ship web/android with server)
+2026-11-19T13:48:13Z C-30 follow-up (day-end parity, A3) done 9eff7d03; CORE-30 dispatched from t/C-30-loop-wait
