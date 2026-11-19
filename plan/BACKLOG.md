@@ -875,4 +875,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - CORE-28b — apply C-28d + backfillPart perf + ruby escaping test · model: opus · risk: high · deps: C-28d · status: MERGED (ticket: plan/tickets/CORE-28b.md)
 - KANJI-TEXT-SHARED — server+android use core FieldPlainText + server goldens for C-28d scenarios · model: sonnet · risk: med · deps: CORE-28b, AND-28 · status: MERGED (ticket: plan/tickets/KANJI-TEXT-SHARED.md)
 - C-28e — ADR-045 learnable kanji always required (word tags → furigana only) · model: fable · risk: high · deps: C-28d · status: RUNNING (ticket: plan/tickets/C-28e.md)
-- CORE-28c — implement C-28e + goldens · model: opus · risk: high · deps: C-28e, KANJI-TEXT-SHARED · status: TODO (ticket: plan/tickets/CORE-28c.md)
+- CORE-28c — implement C-28e + goldens · model: opus · risk: high · deps: C-28e, KANJI-TEXT-SHARED · status: RUNNING (ticket: plan/tickets/CORE-28c.md)

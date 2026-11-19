@@ -1369,3 +1369,4 @@
 2026-11-19T06:40:59Z DECIDE ADR-045 (user: learnable kanji always carded; tags only furigana); C-28e DISPATCH architect; CORE-28c filed
 2026-11-19T06:49:36Z KANJI-TEXT-SHARED + AND-28 CHECK_GREEN (server, android re-run by orchestrator) + MERGE
 2026-11-19T06:50:52Z C-28e HANDOFF + green; reviewer
+2026-11-19T06:51:39Z C-28e REVIEW_APPROVE; CORE-28c DISPATCH writer-senior on top of C-28e (merge together)
