@@ -1,12 +1,16 @@
 # STATE
 Mode: single-session
 Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
-Updated: run 33 (2026-11-17)
+Updated: run 34 (2026-11-19)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## Running (run 33)
-(none — PAUSED by user after LOOP-C2 merged 2026-11-17)
-PAUSED (user 2026-11-17): LOOP-C2 MERGED; dispatch NOTHING (no C2b, no Z2) until user resumes.
+## Running (run 34, 2026-11-19) — user feedback round (ADR-038..041)
+| C-28 | architect | 1 | t/C-28-contracts | 2026-11-19 |
+| WEB-REVIEW-FLOW | writer | 1 | t/WEB-REVIEW-FLOW-web | 2026-11-19 |
+| BUG-ADD2DECK-500 | writer-senior | 1 | t/BUG-ADD2DECK-500-android | 2026-11-19 |
+Queued: CLI-KG-SCOPE (next free slot); CORE-28 after C-28; SRV-28 + AND-28 after CORE-28; WEB-28 after C-28 + WEB-REVIEW-FLOW.
+Still HELD from pause: LOOP-C2b, SHELL-Z2.
+CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
 LIVE (2026-11-17, helm rev 38, pin 91140ed8): api 0.1.24 + web 0.1.27, worker 0.1.19. CLI daemon + kby reinstalled from pin (daemon active, loop fields OK). APK 0.1.34 INSTALLED (users 0+10, launches clean, no crashes).
 LOOP chain: C -> CORE -> SRV -> AND; WEB, CLI, PORTRAIT-WEB after C; PORTRAIT-AND after C+A7. Then SHELL L4..L8, Z1 (user-approved, no gate), Z2 OTA LAST (in scope).
