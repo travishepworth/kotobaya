@@ -887,3 +887,5 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - SRV-29 — word_audio, resolveSpeech, sweep · model: opus · risk: high · deps: C-29, CORE-29 · status: TODO (ticket: plan/tickets/SRV-29.md)
 - WEB-29 — web review audio · model: sonnet · risk: med · deps: C-29, CORE-29, WEB-REVIEW-BACK · status: TODO (ticket: plan/tickets/WEB-29.md)
 - AND-29 — android word_audio + prefetch · model: sonnet · risk: med · deps: C-29, CORE-29, SRV-29 · status: TODO (ticket: plan/tickets/AND-29.md)
+- C-30 — ADR-049 loop waits for today's learning; counts add up; Home refresh · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-30.md)
+- WEB-PW-FLAKY — isolate Playwright mock state per worker · model: haiku · risk: low · deps: WEB-29 · status: TODO (ticket: plan/tickets/WEB-PW-FLAKY.md)

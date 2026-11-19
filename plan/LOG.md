@@ -1405,3 +1405,6 @@
 2026-11-19T13:08:21Z C-29 alone: server/android red = expected drift (resolveSpeech route/wiring audit) -> chain merges together; CORE-29 HANDOFF green, reviewer; SRV-29 (writer-senior) + WEB-29 (writer) DISPATCH from t/CORE-29
 2026-11-19T13:09:34Z CORE-29 REVIEW_APPROVE (2 minors: upper-case [sound:] → FOLLOWUPS; live has 0 [sound:] notes)
 2026-11-19T13:15:19Z DECIDE ADR-047 open choices confirmed by user (kana-only, vocab-only, no listening-answer autoplay)
+2026-11-19T13:18:24Z WEB-29 HANDOFF; review-back U/undo test FAILS on branch but passes on main (verified) -> regression, attempt 2
+2026-11-19T13:22:28Z USER BUG: home 9 due vs review bar 23 (9 learning/0 review), done screen while reviews left after new limit, home then empty. Server 13:22: learning due 21, review due 5. Investigation DISPATCH
+2026-11-19T13:30:43Z WEB-29 attempt 2: flake confirmed on main (review-back 3/4 parallel runs fail) -> accepted, WEB-PW-FLAKY filed. SRV-29 HANDOFF green -> reviewer. DECIDE ADR-049 (loop waits for today's learning; counts add up; Home refresh); C-30 DISPATCH architect

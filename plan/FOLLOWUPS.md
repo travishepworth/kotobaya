@@ -525,3 +525,5 @@
 - WRK-29: no test runs the real PgCache SQL against V4 (fake store only); add a Postgres-backed test.
 - CORE-29 review: upper-case [sound:HASH] — Furigana.sound accepts A-F, WordAudioRules.SOUND_PATTERN lowercase only → W hash can differ from resolver Note hash; upper-only audio fields fall through to TTS and skip listening-card creation. Fix: normalise hashes to lowercase on import/edit, or contract clarifies W hash = resolver Note hash / relax SOUND_PATTERN. Live DB had 0 notes with [sound:] on 2026-11-19, so no current impact.
 - ADR-047 follow-up: pitch-accented TTS — send dictionary pitch data (entry_pitch) to VOICEVOX accent phrases so homophones (橋/箸) differ; only changes the (voice, text) text.
+- SRV-29: back-off lookup scans app.job by dedupe_key across all statuses without an index — add index via contract migration.
+- SRV-29: sweep does not skip buried cards (spec silent).
