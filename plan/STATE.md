@@ -7,7 +7,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
-| CORE-28 | writer-senior | 2 | t/CORE-28-core (worktree .claude/worktrees/agent-a08c4b59f05cfd098) | 2026-11-19 |
+| CORE-28 | reviewer | 2 (in review) | t/CORE-28-core (worktree .claude/worktrees/agent-a08c4b59f05cfd098) | 2026-11-19 |
 If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> validate/check/review; else re-dispatch CORE-28 attempt 1 (prompt: ticket plan/tickets/CORE-28.md, owned core/** except core/src/commonMain/kotlin/kotobaya/contracts/**, read QueueBuilder rule 4-6, plan/handoffs/C-28.md + C-28b.md, ruby furigana note, Gradle flock).
 ### Next (in order)
 1. CORE-28 green -> reviewer (high risk; focus parity scenarios queue-kanji-*, queue-until-stop, backfill share, starvation, until_stop, KanjiRequirement on real JMdict tags) -> merge.

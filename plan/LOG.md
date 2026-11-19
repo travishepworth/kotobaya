@@ -1350,3 +1350,4 @@
 2026-11-19T05:24:58Z C-28c REVIEW_CHANGES r2: 1 major (unrequired deckless kanji keep t=0 -> deck starves) + tie-break minor folded in; attempt 3
 2026-11-19T05:26:42Z C-28c attempt 3 HANDOFF + green; reviewer r3
 2026-11-19T05:28:10Z C-28c REVIEW_APPROVE r3 + CHECK_GREEN + MERGE; CORE-28 attempt 2 (apply 5 resolutions)
+2026-11-19T05:40:18Z CORE-28 attempt 2 HANDOFF + CHECK_GREEN (core); reviewer dispatched
