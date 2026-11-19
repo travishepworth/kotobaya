@@ -265,5 +265,5 @@ Known gaps: offline search/dictionary/decks/browse not yet local (L4-L8); pairin
 
 ## Round 2026-11-19 (ADR-038..043) — check after the next release
 - ADR-043 provisional: kanji units larger than today's remaining new budget introduce their kanji first and the word on a later day (limit never exceeded). OK?
-- ADR-042: words tagged usually-kana in JMdict (likely 林檎, 薔薇) are exempt by word: furigana front, no kanji cards (even for jōyō 林). 薔 is freq rank 2356, so it counts as learnable where it matters. Confirm that's what you want.
+- ANSWERED 2026-11-19 (ADR-045): learnable kanji always get cards; word tags only give furigana.
 - Release note: deck `add_kanji: off` no longer opts out of kanji cards; the rule is global (setting `cards.kanji_exemptions` controls exemptions only).

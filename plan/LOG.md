@@ -1366,3 +1366,4 @@
 2026-11-19T06:27:53Z CORE-28b REVIEW_APPROVE (8000-seed probe clean); merge check running; KANJI-TEXT-SHARED expanded (goldens for C-28d scenarios)
 2026-11-19T06:28:29Z CORE-28b CHECK_GREEN + MERGE. AND-28 attempt 2 told to rebase on it
 2026-11-19T06:32:07Z AND-28 attempt 2 HANDOFF (3 majors fixed w/ tests; red only on 3 missing goldens); KANJI-TEXT-SHARED DISPATCH from AND-28 branch
+2026-11-19T06:40:59Z DECIDE ADR-045 (user: learnable kanji always carded; tags only furigana); C-28e DISPATCH architect; CORE-28c filed
