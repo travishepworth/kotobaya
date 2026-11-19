@@ -1376,3 +1376,4 @@
 - 2026-11-19 run 34 release: helm rev 39 api 0.1.25/web 0.1.28 rolled out; CLI reinstalled; APK 0.1.35 on user 10.
 2026-11-19T09:47:29Z DECIDE ADR-046 (user: rK/sK-only words → kana; tagged words require jōyō only); C-28f, CORE-28d, SCROLL-TOP filed
 2026-11-19T09:47:42Z C-28f DISPATCH architect; SCROLL-TOP DISPATCH writer
+2026-11-19T09:49:41Z SCROLL-TOP HANDOFF + CHECK_GREEN (web) + MERGE c87974a3 (web only)
