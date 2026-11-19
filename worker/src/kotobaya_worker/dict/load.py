@@ -41,10 +41,25 @@ def _form_json(f: Form, *, reading: bool) -> dict[str, Any]:
     return d
 
 
-def entry_row(e: Entry) -> tuple[Any, ...]:
+# SCHEMA.md 4.5 "Headword" (ADR-046 (a)); KanjiRequirement.KANA_WORD_FORM_TAGS in the core.
+KANA_WORD_FORM_TAGS = frozenset({"rK", "sK"})
+# Recorded in ``ref.dict_release.sources.jmdict.headword_rule``. A current release without this
+# value was built by an older rule, so dict-refresh builds a new release instead of resuming it.
+HEADWORD_RULE = "ADR-046"
+
+
+def display_headword(e: Entry) -> str:
+    """``dict_entry.headword``: the first reading for a kana-only entry or a kana word (every kanji
+    form tagged ``rK`` or ``sK``), else the first kanji form (SCHEMA.md 4.5 "Headword")."""
     if not e.readings:
         raise ValueError(f"entry {e.seq} has no reading")
-    headword = e.kanji[0].text if e.kanji else e.readings[0].text
+    if not e.kanji or all(KANA_WORD_FORM_TAGS.intersection(f.tags) for f in e.kanji):
+        return e.readings[0].text
+    return e.kanji[0].text
+
+
+def entry_row(e: Entry) -> tuple[Any, ...]:
+    headword = display_headword(e)
     is_common = any(f.common for f in (*e.kanji, *e.readings))
     senses = [
         {

@@ -44,6 +44,7 @@ from kotobaya_worker.dict.fetch import (
     fetch_source,
     urllib_fetcher,
 )
+from kotobaya_worker.dict.load import HEADWORD_RULE
 from kotobaya_worker.dict.models import ReleaseInfo
 from kotobaya_worker.dict.package.release import build_release
 from kotobaya_worker.dict.package.s3 import S3Client, S3Config
@@ -254,8 +255,13 @@ def make_dict_refresh(
                 # The JLPT lists are matched while a release loads, so their configuration is core
                 # data: adding, changing or dropping them builds a new release (VOCAB_LISTS.md 2.2).
                 core_keys = CORE_KEYS + (("jlpt",) if "jlpt" in fp else ())
-                core_ok = all(have.get(k) == fp[k] for k in core_keys) and (
-                    "jlpt" in fp or "jlpt" not in have
+                # A release built by an older headword rule (SCHEMA.md 4.5, ADR-046) is rebuilt.
+                jm = cur[2].get("jmdict")
+                rule_ok = isinstance(jm, dict) and jm.get("headword_rule") == HEADWORD_RULE
+                core_ok = (
+                    rule_ok
+                    and all(have.get(k) == fp[k] for k in core_keys)
+                    and ("jlpt" in fp or "jlpt" not in have)
                 )
                 clash = any(have.get(k) not in (None, v) for k, v in fp.items())
                 if core_ok and not clash:

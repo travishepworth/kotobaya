@@ -22,7 +22,7 @@ from .fetch import (
 )
 from .jmdict import parse_jmdict
 from .kanjidic import merge_krad, parse_kanjidic, parse_krad, with_components
-from .load import load_release
+from .load import HEADWORD_RULE, load_release
 from .models import LoadResult, ReleaseInfo
 from .vocab import VocabSource
 
@@ -85,7 +85,7 @@ def refresh(
     info = replace(
         release,
         sources={
-            "jmdict": jm.spec.provenance(LICENSE),
+            "jmdict": {**jm.spec.provenance(LICENSE), "headword_rule": HEADWORD_RULE},
             "kanjidic2": kd.spec.provenance(LICENSE),
             "kradfile": kz.spec.provenance(LICENSE),
             **release.sources,

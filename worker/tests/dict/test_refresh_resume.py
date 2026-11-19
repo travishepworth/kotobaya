@@ -92,3 +92,35 @@ def test_resume_after_load_publishes_package_once(
     assert again["release_id"] is None
     rows, n = _state(db_url)
     assert n == 1 and rows[0][1] == published
+
+
+def test_release_without_headword_rule_is_rebuilt(db_url: str, tmp_path: Path) -> None:
+    """ADR-046 (a): a current release built before the headword rule forces a new release."""
+    blobs = _blobs()
+
+    def fetch(url: str, dest: Path) -> None:
+        dest.write_bytes(blobs[url])
+
+    handler = make_dict_refresh(
+        db_url,
+        sources=lambda: DictSources.from_json(json.dumps({"jlpt": None})),
+        s3=lambda: None,
+        cache_dir=tmp_path,
+        fetch=fetch,
+    )
+    ctx = cast(JobContext, Ctx())
+    assert handler(ctx)["release_id"] == 1
+    assert handler(ctx)["release_id"] is None  # same sources, same rule: unchanged
+    with psycopg.connect(to_conninfo(db_url)) as c:
+        src = c.execute("SELECT sources FROM ref.dict_release WHERE id = 1").fetchone()
+        assert src is not None and src[0]["jmdict"]["headword_rule"] == "ADR-046"
+        # Simulate a release built by a worker before ADR-046.
+        c.execute("UPDATE ref.dict_release SET sources = sources #- '{jmdict,headword_rule}'")
+        c.execute("UPDATE ref.dict_entry SET headword = '伊太利' WHERE seq = 1021360")
+        c.commit()
+    assert handler(ctx)["release_id"] == 2
+    rows, n = _state(db_url)
+    assert n == 2 and {a["scope"] for a in rows[1][1] if a["kind"] == "full"} == set(SCOPES)
+    with psycopg.connect(to_conninfo(db_url)) as c:
+        hw = c.execute("SELECT headword FROM ref.dict_entry WHERE seq = 1021360").fetchone()
+    assert hw == ("イタリア",)

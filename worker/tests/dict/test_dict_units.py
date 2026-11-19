@@ -22,6 +22,8 @@ from kotobaya_worker.dict.fetch import (
 )
 from kotobaya_worker.dict.jmdict import parse_jmdict
 from kotobaya_worker.dict.kanjidic import parse_krad
+from kotobaya_worker.dict.load import display_headword, entry_kanji_rows, entry_row, form_rows
+from kotobaya_worker.dict.models import Entry, Form
 from kotobaya_worker.dict.normalize import normalize_form
 
 FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "dict"
@@ -50,6 +52,54 @@ def test_jmdict_tags_keep_entity_codes() -> None:
     assert first.seq == 1000110
     assert first.senses[0].pos == ("n",)
     assert first.kanji[0].common is True  # spec1
+
+
+def test_headword_rule_kana_words_on_fixture() -> None:
+    """ADR-046 (a), SCHEMA.md 4.5 "Headword": every kanji form rK/sK -> the first reading."""
+    entries = {e.seq: e for e in parse_jmdict(FIXTURES / "JMdict_subset.xml")}
+    kana_words = {
+        s
+        for s, e in entries.items()
+        if e.kanji and all({"rK", "sK"} & set(f.tags) for f in e.kanji)
+    }
+    assert len(kana_words) == 137
+    for s, e in entries.items():
+        hw = display_headword(e)
+        if s in kana_words or not e.kanji:
+            assert hw == e.readings[0].text, s
+        else:
+            assert hw == e.kanji[0].text, s
+        row = entry_row(e)
+        assert row[1] == hw and row[2] == e.readings[0].text
+    for s, want in (
+        (1000580, "あれ"),
+        (1021360, "イタリア"),
+        (1001620, "おにぎり"),
+        (1577980, "いる"),
+    ):
+        assert display_headword(entries[s]) == want
+    assert display_headword(entries[1012730]) == "軈て"  # one form is oK, not rK/sK
+    assert display_headword(entries[1001670]) == "お化け"  # first form untagged
+    # Forms and entry_kanji are untouched by the rule: every kanji form stays searchable.
+    for e in entries.values():
+        assert [r[3] for r in form_rows(e)] == [f.text for f in (*e.kanji, *e.readings)]
+    assert any(r[3] == "伊太利" for r in form_rows(entries[1021360]))
+    assert {"伊", "太", "利"} <= {r[1] for r in entry_kanji_rows(entries[1021360])}
+
+
+def test_headword_rule_edge_cases() -> None:
+    def e(*kanji: tuple[str, tuple[str, ...]]) -> Entry:
+        return Entry(
+            1, tuple(Form(t, False, tags) for t, tags in kanji), (Form("よみ", False),), ()
+        )
+
+    assert display_headword(e()) == "よみ"
+    assert display_headword(e(("新嘉坡", ("ateji", "rK")), ("新加坡", ("rK",)))) == "よみ"
+    assert display_headword(e(("歌留多", ("rK",)), ("骨牌", ("sK",)))) == "よみ"
+    assert display_headword(e(("寿司", ("ateji",)))) == "寿司"
+    assert display_headword(e(("軈て", ("rK",)), ("漸て", ("oK",)))) == "軈て"
+    assert display_headword(e(("彼", ("rk",)))) == "彼"  # case-sensitive
+    assert display_headword(e(("鮨", ()), ("寿司", ("rK",)))) == "鮨"
 
 
 def test_krad_parse_euc_jp() -> None:
