@@ -1,0 +1,410 @@
+{
+  "id": "queue-loop-day-end-learning",
+  "title": "A learning card due at day_ends_at does not hold the day open (goal_reached); one due 1 ms before it does (waiting) (ADR-049)",
+  "covers": [
+    "queue.loop_learning_past_day_end"
+  ],
+  "narrative": [
+    "scheduler.reviews_unlimited is true, new_per_day is 1, default time zone: the study day 2026-11-20 ends at 2026-11-21T04:00:00.000Z. Cards ...10, ...20 and ...30 are new; nothing is due. The first learning step is 60 s.",
+    "Step 0, 03:59:00.000: ...10 is answered Again (reviewed_at given explicitly): learning, due_at 04:00:00.000 = day_ends_at exactly.",
+    "Step 1, 03:59:01: the goal is reached (1/1), nothing is ready and the only learning card falls due at day_ends_at, which is not 'later today' (later today is now < due_at < day_ends_at): later_today.count 0, until_stop 0, phase goal_reached (keep_going_available true: new cards remain). The loop does not wait for a card of the next study day. The deprecated counts.learning is 0 and next_learning_due_at is absent.",
+    "Step 2, 03:59:02: ...20 is answered Again with reviewed_at 03:58:59.999 (a late submission; answers are not gated by the goal): due_at 03:59:59.999, 1 ms before day_ends_at.",
+    "Step 3, 03:59:03: that card is later today: waiting, later_today.count 1, next_due_at 03:59:59.999, until_stop 1 (parts 0/1/0/0), keep_going_available true; new.today 2 exceeds the goal 1. ...10 is still not counted.",
+    "Step 4, 03:59:59.999: ...20 is ready and served (reviewing, 1 learning); ...10 is neither ready nor later today.",
+    "Step 5, 04:00:01, study day 2026-11-21: both learning cards are ready learning of the new day, in (due_at, card id) order ...20 then ...10, followed by the new card ...30 (goal 1, 0 introduced): until_stop 3 = 2 learning + 0 later + 0 reviews + 1 new."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000110,
+    1000160,
+    1000170
+  ],
+  "settings": {
+    "scheduler.reviews_unlimited": true,
+    "scheduler.new_per_day": 1
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000110
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000160
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000170
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000007",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.reviews_unlimited",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f8660cff-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.reviews_unlimited",
+          "value": true
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7040-8000-000000000008",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f8660d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 1
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795233540000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 1,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "again",
+          "reviewed_at": "2026-11-21T03:59:00.000Z"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/reviewed_at": "2026-11-21T03:59:00.000Z",
+          "/card/state": "learning",
+          "/card/due_at": "2026-11-21T04:00:00.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795233541000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "goal_reached",
+            "keep_going": false,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 0,
+              "next_due_at": null
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 1,
+              "goal": 1,
+              "available": true
+            },
+            "until_stop": 0,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 0,
+            "review": 0
+          },
+          "/more_available": true,
+          "/study_day": "2026-11-20",
+          "/day_ends_at": "2026-11-21T04:00:00.000Z"
+        },
+        "absent": [
+          "/next_learning_due_at"
+        ]
+      }
+    },
+    {
+      "at_ms": 1795233542000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "rating": 1,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "again",
+          "reviewed_at": "2026-11-21T03:58:59.999Z"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/review/reviewed_at": "2026-11-21T03:58:59.999Z",
+          "/card/state": "learning",
+          "/card/due_at": "2026-11-21T03:59:59.999Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795233543000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "waiting",
+            "keep_going": false,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 1,
+              "next_due_at": "2026-11-21T03:59:59.999Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 2,
+              "goal": 1,
+              "available": true
+            },
+            "until_stop": 1,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 1,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 1,
+            "review": 0
+          },
+          "/more_available": true,
+          "/next_learning_due_at": "2026-11-21T03:59:59.999Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795233599999,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": false,
+            "ready": {
+              "learning": 1,
+              "review": 0,
+              "total": 1
+            },
+            "later_today": {
+              "count": 0,
+              "next_due_at": null
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 2,
+              "goal": 1,
+              "available": true
+            },
+            "until_stop": 1,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 1,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/study_day": "2026-11-20"
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795233601000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/study_day": "2026-11-21",
+          "/loop/phase": "reviewing",
+          "/loop/ready": {
+            "learning": 2,
+            "review": 0,
+            "total": 2
+          },
+          "/loop/later_today": {
+            "count": 0,
+            "next_due_at": null
+          },
+          "/loop/new": {
+            "today": 0,
+            "goal": 1,
+            "available": true
+          },
+          "/loop/until_stop": 3,
+          "/loop/until_stop_parts": {
+            "learning": 2,
+            "later": 0,
+            "review": 0,
+            "new": 1
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020",
+          "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/2/card/id": "0193a1b2-0002-7000-8000-000000000030"
+        },
+        "lengths": {
+          "/items": 3
+        }
+      }
+    }
+  ]
+}

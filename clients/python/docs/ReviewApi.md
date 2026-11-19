@@ -270,7 +270,9 @@ instant):
   remaining review budget (`scheduler.reviews_per_day`, deck `reviews_per_day`; no
   budget when `scheduler.reviews_unlimited`).
 - *ready now* = ready learning + ready reviews. New cards are not part of it.
-- *later today*: learning/relearning cards due later, before `day_ends_at`. A hint only.
+- *later today*: learning/relearning cards due later, before `day_ends_at`. Never served
+  early; while a card can be shown they are only a number, and once nothing can be shown
+  they make the phase `waiting` and hold back the stop screen (ADR-049).
 - *backlog*: every due review an uncapped build would take; *beyond limit* = backlog -
   ready reviews.
 - *new today / new goal*: cards introduced today / `scheduler.new_per_day`.
@@ -293,18 +295,28 @@ of the mix and is never split by it.
 Example: 4 reviews ready, 2 new cards left in the goal, nothing done today:
 `R1 R2 N1 R3 N2 R4`. Example: 200 ready, 40 left: a new card after every 5th review.
 
-Phases (`loop.phase`; first match wins):
+Phases (`loop.phase`; first match wins; order amended by ADR-049):
 1. `reviewing`: the served queue has a card (or a deck entry to materialize, C-27).
-2. `goal_reached` (only with `scheduler.reviews_unlimited` = true) / `done_for_today`
-   (only with it false): only for `keep_going=false`; nothing is ready under the limits
-   and `keep_going=true` would return at least one card. Offer Keep going; it never
-   leads to a dead end. Which of the two is chosen by the setting, not by which limit
-   was hit.
-3. `waiting`: nothing ready, keep going would return nothing (or is on and returned
-   nothing), and at least one card falls due later today:
-   `loop.later_today.next_due_at`. Happens only when no new card is left anywhere.
+2. `waiting`: the served queue is empty and at least one learning/relearning card falls
+   due later today (`loop.later_today.count > 0`), **with and without `keep_going`,
+   whether or not new cards or a backlog remain**. Show a countdown to
+   `loop.later_today.next_due_at` and resume then (rule C4). Offer Keep going iff
+   `loop.keep_going_available`. No card is served early.
+3. `goal_reached` (only with `scheduler.reviews_unlimited` = true) / `done_for_today`
+   (only with it false): only for `keep_going=false`; nothing is ready under the limits,
+   **nothing falls due later today**, and `keep_going=true` would return at least one
+   card. Offer Keep going; it never leads to a dead end. Which of the two is chosen by
+   the setting, not by which limit was hit.
 4. `empty`: nothing now, nothing with keep going, nothing later today.
-A learning card that falls due during 2-4 makes the next response `reviewing` again.
+`goal_reached`, `done_for_today` and `empty` are the **stop screens**: they appear only
+when nothing is left for today (`ready.total` = 0, `later_today.count` = 0,
+`until_stop` = 0). (Before ADR-049 rules 2 and 3 were the other way round, so the stop
+screen showed while learning cards were minutes away.) A learning card that falls due
+makes the next response `reviewing` again, and that card is first.
+Example (ADR-049): goal 40 with 40 introduced, no reviews due, 707 new cards, 9 learning
+cards due and 14 on their timers: `reviewing` (the 9; `until_stop` 23); once none is
+ready: `waiting` with `keep_going_available: true`; `goal_reached` only after the last
+of them was answered into a state that is not due again today.
 
 Client rules (normative for web, the shell SPA and the CLI):
 - **C1 Due first.** A client may hold a page of `items`, but before showing each next
@@ -326,9 +338,22 @@ Client rules (normative for web, the shell SPA and the CLI):
   `goal_reached` / `done_for_today` again before any card over the quota is served.
   Per client, never synced, not an op, not a setting. (Replaces ADR-037's "persisted for
   the study day".)
-- **C3 Display.** The headline "ready now" number is **always** `loop.ready.total`,
-  with or without keep going, so every client and surface (web, phone, widget, CLI)
-  shows the same number at the same instant. The backlog is shown only in a separate
+- **C3 Display.** The headline "ready now" number of a surface that shows **one**
+  number (widget, notification, CLI status line, a badge) is **always**
+  `loop.ready.total`, with or without keep going, so every such surface shows the same
+  number at the same instant. The **review header and Home** (ADR-049) show the four
+  numbers of `loop.until_stop_parts`, each with its label, in this order: `learning`
+  ("learning"), `later` ("later"), `review` ("to review"), `new` ("new"); a part that
+  is 0 may be hidden, a part that is not 0 MUST be shown, and no client adds, subtracts
+  or re-derives them. Their sum is `loop.until_stop`, the remainder of the progress
+  bar, so header and bar always agree (the report behind ADR-049: Home 9, header 9, bar
+  23). Home sends `keep_going=false` and shows the same four numbers the review header
+  shows for a normal request at that instant; when `until_stop_parts` is absent (older
+  server) both show `ready.learning`, `later_today.count` and `ready.review` instead.
+  Home's state follows `loop.phase`: `reviewing` offers Start review; `waiting` shows
+  the countdown to `later_today.next_due_at` (Start review stays available and leads to
+  the waiting screen); `goal_reached` / `done_for_today` / `empty` show the day as done
+  (the first two with the way into Keep going). The backlog is shown only in a separate
   backlog line, `loop.backlog.reviews`, displayed iff `loop.backlog.beyond_limit > 0`,
   in both modes (while keeping going past the cap the headline is therefore
   `ready.learning` and the backlog line carries the reviews being cleared). A "later
@@ -341,13 +366,32 @@ Client rules (normative for web, the shell SPA and the CLI):
 - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
   fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
   timer-driven fetch (the client's clock may differ from the server's; if the card is
-  still not served, the new response reschedules). New clients never read `counts`,
+  still not served, the new response reschedules). The waiting screen (ADR-049) shows
+  the countdown, resumes by itself with that fetch (no tap needed), and shows a Keep
+  going button iff `loop.keep_going_available` is true (absent, older server: iff
+  `phase` is `goal_reached` or `done_for_today`); pressing it starts keep going for the
+  visit (C2) and fetches with `keep_going=true`. The same field decides the button on
+  the stop screens. The countdown counts down to the instant of that scheduled fetch
+  and shows no negative time (it stays at 0:00 until the response arrives). New clients never read `counts`,
   `more_available` or `next_learning_due_at`. An unknown `phase` value is treated as
   `reviewing` when `items` is non-empty and as `empty` otherwise.
 - **C5 Materialization retries** (C-27): `reviewing` with empty `items` and
   `to_materialize > 0` (the three rounds ran out, or the caller is read-only): a caller
   with `review` or `write` fetches again (at most 3 times in a row); a read-only caller
   shows that new cards exist but cannot be created by it.
+- **C6 Refresh at the next due, in every phase (ADR-049).** Every surface that shows a
+  number or a state from `loop` and stays on screen (Home, the review screen, the CLI
+  status line, a widget where the platform allows a timer) schedules **one** fetch at
+  `loop.later_today.next_due_at` + 1 s whenever that member is not null, **whatever
+  `loop.phase` is** (not only in `waiting`), with the same 3 s minimum gap as C4, and
+  replaces what it shows with the new response. When `next_due_at` is null it schedules
+  none for this reason (a stop screen has `later_today.count` = 0, so nothing changes
+  before `day_ends_at`); it SHOULD fetch once at `day_ends_at` + 1 s (the new study
+  day) and when it becomes visible again after being hidden. A surface never counts
+  down to zero and then changes its numbers by itself: only a response changes them.
+  On the review screen C1 already covers the time between cards; C6 adds the fetch
+  while a card is on screen only for the header numbers and MUST NOT replace the card
+  being shown.
 - A client that sends `kinds` may get `reviewing` with empty `items` (the ready cards
   are of a kind it excluded): for that filter there is nothing to show; `loop` still
   describes the whole queue.
@@ -375,7 +419,7 @@ Cards not due before `day_ends_at` are never returned (no study-ahead). It is a 
 per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
 on every fetch while the user keeps going. Cards answered this way are ordinary reviews
 and count against today's limits as usual. Everything in `loop` except `phase`,
-`keep_going` and `until_stop` is the same with or without keep going (ADR-033 principle), so every client
+`keep_going`, `keep_going_available`, `until_stop` and `until_stop_parts` is the same with or without keep going (ADR-033 principle), so every client
 shows the same numbers at the same moment whatever mode it is in; so are the deprecated
 `counts`.
 
@@ -384,7 +428,8 @@ shows the same numbers at the same moment whatever mode it is in; so are the dep
 `scheduler.reviews_per_day` and deck `reviews_per_day`: every review due before
 `day_ends_at` is returned and counted in `loop.ready.review` (`loop.reviews.limit` is
 null, `loop.backlog.beyond_limit` 0). The new goal and the proportional mix apply as
-usual; at the goal the phase is `goal_reached`. It is an ordinary setting written with
+usual; at the goal, once no learning card is left for today (ADR-049), the phase is
+`goal_reached`. It is an ordinary setting written with
 `updateSettings`.
 
 **Reading cards retired (ADR-035).** While the setting `cards.reading_enabled` is not
@@ -395,10 +440,12 @@ no `reading` card. Setting it `true` returns the same cards with their history.
 
 **No learn-ahead (ADR-033).** A learning or relearning card is returned only once its
 `due_at` has passed (core `QueueLimits.learnAheadMs` = 0 on the server and on devices).
-Cards due later today are counted in `loop.later_today` and are only a hint while
-anything else can be shown (reviews, new cards, Keep going). Only in phase `waiting`
-does the client show a waiting state ("next card in m:ss") and fetch again at
-`loop.later_today.next_due_at` (rule C4). A card is never shown again before its
+Cards due later today are counted in `loop.later_today` and are only a number while
+a card can be shown under the limits (reviews, new cards left to the goal). When none
+can (ADR-049), the phase is `waiting`, also when the goal is reached and new cards
+remain: the client shows a waiting state ("next card in m:ss", plus Keep going iff
+`loop.keep_going_available`) and fetches again at `loop.later_today.next_due_at` (rule
+C4). Waiting never serves a card early: a card is never shown again before its
 learning step has passed.
 
 **Keep-going scope (normative).** Rule C2 above: one review visit of one client, held

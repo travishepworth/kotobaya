@@ -27,7 +27,7 @@ from pydantic_core import to_jsonable_python
 
 class ReviewLoopLaterToday(BaseModel):
     """
-    Learning/relearning cards not ready yet that fall due before `day_ends_at`. A hint, never a reason to wait while anything else can be shown.
+    Learning/relearning cards not ready yet that fall due before `day_ends_at`. Never served early. While `phase` is `reviewing` they are only a number; when nothing is served they make the phase `waiting` (ADR-049). A learning card due at or after `day_ends_at` is not counted.
     """ # noqa: E501
     count: Annotated[int, Field(strict=True, ge=0)] = Field(description="How many.")
     next_due_at: Optional[datetime] = Field(description="The earliest `due_at` among them; null iff `count` is 0.")

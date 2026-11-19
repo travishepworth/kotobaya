@@ -32,6 +32,7 @@ import app.kotobaya.client.models.ReviewLoopLaterToday
 import app.kotobaya.client.models.ReviewLoopNew
 import app.kotobaya.client.models.ReviewLoopReady
 import app.kotobaya.client.models.ReviewLoopReviews
+import app.kotobaya.client.models.ReviewLoopUntilStopParts
 
 class ReviewLoopTest : ShouldSpec() {
     init {
@@ -62,7 +63,7 @@ class ReviewLoopTest : ShouldSpec() {
             //modelInstance.new shouldBe ("TODO")
         }
 
-        // to test the property `phase` - Where the loop stands (rule under `getReviewQueue` \"Review loop\"; core `LoopPhase`). `reviewing`: a card is served (or a deck entry awaits materialization). `goal_reached` (reviews unlimited) / `done_for_today` (review cap on): nothing ready under the limits, Keep going would serve a card. `waiting`: nothing ready, nothing more with keep going, a learning card falls due at `later_today.next_due_at`. `empty`: nothing left today. The set is open for readers: an unknown value is treated as `reviewing` when `items` is non-empty, else as `empty`. 
+        // to test the property `phase` - Where the loop stands (rule under `getReviewQueue` \"Review loop\"; core `LoopPhase`). `reviewing`: a card is served (or a deck entry awaits materialization). `waiting` (ADR-049: checked before the stop screens): nothing is served and a learning card falls due at `later_today.next_due_at`; Keep going may be available (`keep_going_available`). `goal_reached` (reviews unlimited) / `done_for_today` (review cap on): nothing ready under the limits, nothing due later today, Keep going would serve a card. `empty`: nothing left today, no Keep going. The set is open for readers: an unknown value is treated as `reviewing` when `items` is non-empty, else as `empty`. 
         should("test phase") {
             // uncomment below to test the property
             //modelInstance.phase shouldBe ("TODO")
@@ -80,10 +81,22 @@ class ReviewLoopTest : ShouldSpec() {
             //modelInstance.reviews shouldBe ("TODO")
         }
 
-        // to test the property `untilStop` - ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`); the review progress bar's total is `done + until_stop` (client rule C3). Each card counts once, so the total grows when a card comes back (Again) or a new card enters its learning steps. - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new   cards that can still be introduced today (the smaller of the goal's remainder and   what the decks can supply under their limits; kanji cards served ahead of their   word and deck entries not yet materialized included; **not** bounded by `limit`).   These are the answers before `goal_reached` / `done_for_today` (or `waiting` /   `empty`). At such a stop screen it equals `later_today.count`. - `keep_going = true`: the stream is endless, so it is what is in sight:   `ready.learning + later_today.count + backlog.reviews` + the new cards this   response drew (about `limit`; a kanji group may overshoot). Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every server and local API implementing ADR-038; absent (older) → clients use `ready.total`. Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40 with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145. 
+        // to test the property `keepGoingAvailable` - ADR-049 (additive). **Show a Keep going button now** (core `LoopState.keepGoingAvailable`). True iff the request had `keep_going=false` (or omitted it), a normal request serves nothing (no item, nothing to materialize) and the same request with `keep_going=true` would serve at least one card. Always true in `goal_reached` / `done_for_today`; in `waiting` true when a backlog beyond the review cap or a new card exists, else false; false in `reviewing` for `keep_going=false`; false in `empty`; always false for `keep_going=true`. Unaffected by `kinds` and `limit`. Clients render the button from this member only. Sent by every server and local API implementing ADR-049; absent (older) → clients use `phase` in (`goal_reached`, `done_for_today`). Examples: goal reached, 14 learning cards on their timers, new cards remain → `waiting`, true. Only learning cards on their timers, nothing new, no backlog → `waiting`, false. 
+        should("test keepGoingAvailable") {
+            // uncomment below to test the property
+            //modelInstance.keepGoingAvailable shouldBe ("TODO")
+        }
+
+        // to test the property `untilStop` - ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`); the review progress bar's total is `done + until_stop` (client rule C3). Each card counts once, so the total grows when a card comes back (Again) or a new card enters its learning steps. - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new   cards that can still be introduced today (the smaller of the goal's remainder and   what the decks can supply under their limits; kanji cards served ahead of their   word and deck entries not yet materialized included; **not** bounded by `limit`).   These are the answers before the stop screen (`goal_reached` / `done_for_today`   / `empty`). ADR-049: in `waiting` it equals `later_today.count` (>= 1); at a stop   screen it is always 0, and 0 only there. - `keep_going = true`: the stream is endless, so it is what is in sight:   `ready.learning + later_today.count + backlog.reviews` + the new cards this   response drew (about `limit`; a kanji group may overshoot). Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every server and local API implementing ADR-038; absent (older) → clients use `ready.total`. Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40 with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145. 
         should("test untilStop") {
             // uncomment below to test the property
             //modelInstance.untilStop shouldBe ("TODO")
+        }
+
+        // to test the property `untilStopParts`
+        should("test untilStopParts") {
+            // uncomment below to test the property
+            //modelInstance.untilStopParts shouldBe ("TODO")
         }
 
     }

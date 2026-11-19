@@ -255,6 +255,7 @@ from kotobaya_client.models.review_loop_later_today import ReviewLoopLaterToday
 from kotobaya_client.models.review_loop_new import ReviewLoopNew
 from kotobaya_client.models.review_loop_ready import ReviewLoopReady
 from kotobaya_client.models.review_loop_reviews import ReviewLoopReviews
+from kotobaya_client.models.review_loop_until_stop_parts import ReviewLoopUntilStopParts
 from kotobaya_client.models.review_page import ReviewPage
 from kotobaya_client.models.review_queue import ReviewQueue
 from kotobaya_client.models.review_queue_counts import ReviewQueueCounts

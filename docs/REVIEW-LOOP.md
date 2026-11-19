@@ -21,7 +21,7 @@ confirmed. (3) Keep going per device, not synced, is confirmed. The normative te
 | backlog | all due reviews an uncapped build would take (= REVIEW items of the keep-going build K). |
 | ready reviews | due reviews within the remaining review budget (= REVIEW items of the normal build N). `backlog >= ready reviews`; equal when `reviews_unlimited`. |
 | ready now | ready learning + ready reviews. New cards are NOT part of it (they have the bar). |
-| later today | eligible LEARNING/RELEARNING with `now < dueAt < day.endMs`; `nextDueAt` = their min dueAt. Hint only. |
+| later today | eligible LEARNING/RELEARNING with `now < dueAt < day.endMs`; `nextDueAt` = their min dueAt. Never served early; makes the phase `waiting` once nothing can be served (ADR-049, section 14). |
 | new today / new goal | today's `introducedNew` count / `scheduler.new_per_day`. |
 | keep going | per-request flag (as C-26). Lifts review caps and the new goal; nothing else. Lasts one review visit (ADR-039, C2). |
 | until stop | ADR-038. Answers left until the stop screen: ready learning + later today + ready reviews + new cards left to the goal (rule 4 `availableToday`, kanji cards included). Each card once. With keep going: ready learning + later today + backlog + the new batch drawn. |
@@ -56,11 +56,12 @@ public interface ReviewLoop { public fun evaluate(input: QueueInput): LoopResult
   identical with and without keep going (ADR-033 principle kept).
 - `phase`, with S = `queue`, "non-empty" = `items` or `toMaterialize` non-empty:
   1. S non-empty -> REVIEWING.
-  2. else if `!keepGoing` and K non-empty -> GOAL_REACHED if `limits.reviewsUnlimited` else DONE_FOR_TODAY.
-  3. else if `laterToday > 0` -> WAITING (resume at `nextDueAt`).
+  2. else if `laterToday > 0` -> WAITING (resume at `nextDueAt`). (ADR-049: rules 2 and 3 swapped, section 15.)
+  3. else if `!keepGoing` and K non-empty -> GOAL_REACHED if `limits.reviewsUnlimited` else DONE_FOR_TODAY.
   4. else EMPTY.
-  So WAITING happens only when nothing is ready and no new card is left anywhere (B6); GOAL_REACHED /
-  DONE_FOR_TODAY always have a Keep going that yields at least one card (never a dead end).
+  So a stop screen appears only when nothing is left for today; GOAL_REACHED / DONE_FOR_TODAY always have a
+  Keep going that yields at least one card (never a dead end); WAITING may have one too
+  (`keepGoingAvailable`, section 15).
 
 QueueBuilder rule changes (contract KDoc; `DefaultQueueBuilder`):
 - Rule 5 (order, normal build): due learning first, then the ready reviews R (`(dueAt, cardId)`, most overdue
@@ -105,7 +106,7 @@ read-only caller counts as REVIEWING (as C-27).
   bar, show the number). Review progress bar (ADR-038): `done / (done + loop.until_stop)`, `done` = answers
   sent in this visit (undo takes one off); the total may grow. `until_stop` absent (older server) -> `ready.total`.
 - C4 Empty `items` -> render by `loop.phase` only; `waiting` schedules one refetch at `next_due_at`
-  (existing slack/min-gap rules). New clients never read `counts`, `more_available`, `next_learning_due_at`.
+  (existing slack/min-gap rules); Keep going button iff `loop.keep_going_available` (section 15, also C6). New clients never read `counts`, `more_available`, `next_learning_due_at`.
 - C5 Materialization retries (C-27) unchanged: `reviewing` with empty `items` and `to_materialize > 0` -> refetch.
 
 ## 5. API (openapi, additive)
@@ -338,3 +339,122 @@ Worked examples:
   silent (`autoplayAudio` null on the back); `P` replays on both sides.
 - **Phone offline, pair never resolved**: `blob_hash: null`, `resolveSpeech` answers
   `503 shell_offline`: no button, no sound, reviewing goes on.
+
+## 15. Amendment 2026-11-19 (ADR-049, ticket C-30): the stop screen waits for today's learning
+The normative text is the contract (`ReviewLoop.kt`, openapi `getReviewQueue` and schema `ReviewLoop`);
+this section lists what changed against sections 1-13 (and is independent of section 14). Where they disagree, this section and the contract win.
+
+**Report.** Web, 2026-11-19: the 40th new card was answered at 13:15:23, the queue built at 13:15:24 was
+`goal_reached` while 23 learning cards fell due within 8 minutes (the first at 13:15:47). Home showed 9
+(`ready.total`), the header showed `ready.*`, the bar's total was 23 (`done + until_stop`), and Home never
+refreshed after `goal_reached`.
+
+**Phase order (replaces section 2's rule and section 5's list).** S = the served build:
+1. S non-empty -> `reviewing`.
+2. else if `laterToday > 0` -> `waiting` (resume at `nextDueAt`), with and without keep going, whatever K holds.
+3. else if `!keepGoing` and K non-empty -> `goal_reached` if `reviewsUnlimited` else `done_for_today`.
+4. else `empty`.
+
+So a stop screen (3 or 4) means nothing is left for today: nothing ready, nothing later, `until_stop` 0, and
+`until_stop == 0` only there. `waiting` no longer implies "no new card left" (section 2's last sentence and
+B6's wording are superseded; B6's result is unchanged). No learn-ahead: waiting never serves a card early.
+A learning card due at or after `day.endMs` does not hold the day open.
+
+**Vocabulary (section 1) changes.**
+
+| Term | Definition |
+|---|---|
+| later today | as before, but no longer "hint only": once nothing can be served it makes the phase `waiting`. |
+| stop screen | `goal_reached`, `done_for_today` or `empty`. Only with ready now 0 and later today 0. |
+| keep going available | `!keepGoing` and N empty and K non-empty: a Keep going button is offered. True at `goal_reached` / `done_for_today`; during `waiting` iff a backlog beyond the cap or a new card exists. |
+| until-stop parts | `until_stop` as four numbers: learning (= ready learning), later (= later today), review (ready reviews; the backlog with keep going), new (left to the goal; the batch drawn with keep going). Sum = `until_stop`. |
+
+**Core (section 2).** `LoopState` gains `keepGoingAvailable: Boolean = false` and
+`untilStopParts: UntilStopParts = UntilStopParts()` (`learning`, `later`, `review`, `new`); the defaults exist
+only so that callers compile. The mode-dependent fields are now `phase`, `keepGoing`, `keepGoingAvailable`,
+`untilStop`, `untilStopParts`; everything else is identical with and without keep going.
+
+**API (section 5).** Additive, not in `required`:
+```yaml
+loop:
+  phase: waiting
+  keep_going: false
+  ready: {learning: 0, review: 0, total: 0}
+  later_today: {count: 14, next_due_at: '2026-11-19T13:21:40.000Z'}
+  backlog: {reviews: 0, beyond_limit: 0}
+  reviews: {today: 0, limit: null}
+  new: {today: 40, goal: 40, available: true}
+  until_stop: 14
+  keep_going_available: true                                   # ADR-049
+  until_stop_parts: {learning: 0, later: 14, review: 0, new: 0} # ADR-049; sums to until_stop
+```
+Fallbacks for an older server: no `keep_going_available` -> button iff `phase` is `goal_reached` /
+`done_for_today`; no `until_stop_parts` -> show `ready.learning`, `later_today.count`, `ready.review`.
+Legacy fields keep their frozen meaning; `more_available` equals `keep_going_available` for an unfiltered
+request and can therefore be true in `waiting`. No `LOCAL_API_VERSION` bump.
+
+**Client rules (section 4).**
+- C3: surfaces with one number (widget, notification, CLI status line) keep `ready.total`. The review header
+  and Home show the four until-stop parts with labels ("9 learning · 14 later · 0 to review · 0 new"); a zero
+  part may be hidden, a non-zero part must be shown; nobody re-derives them. Home sends `keep_going=false`
+  and shows what the header shows for a normal request. Home's state follows the phase: `reviewing` ->
+  Start review; `waiting` -> countdown to `next_due_at` (Start review leads to the waiting screen); stop
+  screens -> done (with the way into Keep going for the first two).
+- C4: the waiting screen shows the countdown, resumes by itself with the scheduled fetch, and shows Keep going
+  iff `keep_going_available`. Pressing it starts keep going for the visit (C2) and fetches with
+  `keep_going=true`; due learning cards still come first as they fall due (C1).
+- C6 (new): every surface that shows loop numbers and stays on screen schedules one fetch at
+  `later_today.next_due_at` + 1 s whenever it is not null, in **every** phase (C4's 3 s minimum gap), and
+  shows the new response; with null it schedules none (a stop screen has nothing later), fetches at
+  `day_ends_at` + 1 s and when it becomes visible again. On the review screen this refreshes the header only
+  and never replaces the card on screen. This replaces Home's "refetch only in `waiting`".
+
+**Edge cases (each a CORE-30 test).** A card with `dueAt == now` is ready, `now + 1` is later; a learning
+card due exactly at `day.endMs` is not later today; the last waiting card suspended, buried or deleted ->
+stop screen on the next evaluation; `waiting` with keep going on and K empty -> `keep_going_available` false;
+the keep-going visit ends during a wait (ADR-039) -> `waiting` with the button again; `new_per_day = 0` and a
+review answered Again -> `waiting` until it is relearned; an undo at a stop screen that brings a card back ->
+`waiting` or `reviewing` (C1: an undo is followed by a fetch); day rollover during `waiting` -> everything
+recomputed for the new day (the card is ready learning or later of the new day); a read-only caller with
+`to_materialize > 0` stays `reviewing`; a `kinds` filter does not change `loop`.
+
+**Worked examples (section 10; core `ReviewLoopTest`).** Settings as section 10.
+- W1 (the report; unlimited; 40/40; 0 due reviews; 707 new; 23 learning cards due today):
+  1. 9 due, 14 not -> `reviewing`, items = the 9; `until_stop` 23, parts (9, 14, 0, 0), button off.
+  2. none due (13:15:24) -> `waiting`, next 13:15:47, `until_stop` 23, parts (0, 23, 0, 0), button on.
+  3. step 2 with keep going, batch 10 -> `reviewing`, 10 NEW, `until_stop` 33, parts (0, 23, 0, 10), button off.
+  4. all 23 answered out of today -> `goal_reached`, `until_stop` 0, parts (0, 0, 0, 0), button on.
+  Capped twin: step 4 is `done_for_today`.
+- W2 (capped; 200/200, 40/40, backlog 135 beyond the cap, 2 relearning cards due in 6 minutes) -> `waiting`,
+  button on, `until_stop` 2; with keep going `reviewing` (the backlog), `until_stop` 147, parts (0, 2, 135, 10);
+  after the 2 graduate -> B3.
+- P1 gains: `waiting` iff served queue empty and later today > 0; stop screen implies ready 0, later 0,
+  `until_stop` 0, and `until_stop == 0` implies a stop screen; parts sum to `until_stop`;
+  `keepGoingAvailable == (!keepGoing && legacy.moreAvailable)`.
+
+**Parity (section 9).** New `queue-loop-wait-before-stop` (`queue.loop_waits_before_stop`, mandatory): W1 scaled
+to 1 ready / 2 later / 2 new with goal 3, through reviewing -> waiting -> keep going -> reviewing -> waiting ->
+reviewing -> `goal_reached`. `queue-until-stop` step 8: `waiting` (was `done_for_today` with 2 later).
+New `queue-loop-day-end-learning` (`queue.loop_learning_past_day_end`, mandatory): a learning card due exactly at
+`day_ends_at` -> `goal_reached` with later 0 and `until_stop` 0; one due 1 ms earlier -> `waiting`.
+`queue-learning-wait` and `queue-loop-waiting-empty`: `keep_going_available` false. Every whole-`/loop`
+expectation gained `keep_going_available` and `until_stop_parts`. Goldens are re-recorded by SRV-30.
+
+**Implementation tickets.**
+- CORE-30: `DefaultReviewLoop` (rule order, the two members), tests first from contracts/core README "ADR-049".
+- SRV-30 (after CORE-30): map the two members in `getReviewQueue`; `ReviewApiTest` W1; re-record parity goldens.
+- WEB-30 (after the client regen of this ticket; works against an old server through the fallbacks): Home and
+  review header from `until_stop_parts`; rule C6 in `today.svelte.ts` and the review session; waiting screen
+  with countdown, auto-resume and Keep going from `keep_going_available`; state tests per phase, layout test
+  and screenshots (Home waiting, review waiting with and without the button).
+- AND-30 (after CORE-30): local API maps the two members; parity goldens; due notification and widget treat
+  `WAITING` as "next card at", re-evaluate at `nextDueAt`. CLI-30: status line per phase (waiting shows the
+  next due time, never "done"), refetch by C6.
+
+**Rejected.** Learn-ahead at the end of a session (ADR-033); a new phase value (older readers would show
+`empty`); fixing only Home's refresh; client-side arithmetic for the header; holding the day open for cards
+due after the day boundary.
+
+**Most worth a second look.** (1) The done screen cannot be reached while a card answered today is still on a
+timer that ends today; the user waits or leaves. (2) Keep going is offered during the wait and then introduces
+cards over the goal right away. (3) With keep going the "to review" part is the whole backlog.

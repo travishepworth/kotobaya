@@ -743,7 +743,7 @@ every `deck.reviews_per_day`, so every eligible review with `due_at` before the 
 day is served. Unchanged: new-card limits (`scheduler.new_per_day`, `deck.new_cards_per_day`), no
 learn-ahead (ADR-033), no study-ahead, the proportional mix of reviews and new cards (QueueBuilder
 rule 5; its review side is then every ready review), keep going. ADR-037: the key also selects the
-end state when nothing is ready under the limits and keep going has more - `goal_reached` when
+end state when nothing is ready under the limits, no learning card is due later today (ADR-049) and keep going has more - `goal_reached` when
 `true`, `done_for_today` when `false` (`ReviewLoop`). Queue numbers (`getReviewQueue` `loop`, the
 deprecated `counts`, the device's Today counts) come from the same evaluation, so with the key
 `true` they include every review due today, identically on every client. No new op: it syncs as an ordinary `settings.set` (Replay: none). Example: 300 reviews due,

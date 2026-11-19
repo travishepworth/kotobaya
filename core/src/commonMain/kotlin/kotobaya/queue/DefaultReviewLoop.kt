@@ -8,12 +8,13 @@ import kotobaya.contracts.queue.QueueInput
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.ReviewLoop
 import kotobaya.contracts.queue.ReviewQueue
+import kotobaya.contracts.queue.UntilStopParts
 
 /**
- * [ReviewLoop] (ADR-037) over [DefaultQueueBuilder]: exactly two builds per evaluation, the normal
- * build N and the keep-going build K, both from the same input with learn-ahead forced to 0. Every
- * count comes from N, K and `input.today`, so only `phase` and `keepGoing` depend on the caller's
- * keep-going flag. `LegacyCounts.new` comes from N's own batch-unbounded draw (the contract allows
+ * [ReviewLoop] (ADR-037, phase order ADR-049) over [DefaultQueueBuilder]: exactly two builds per
+ * evaluation, the normal build N and the keep-going build K, both from the same input with learn-ahead
+ * forced to 0. Every count comes from N, K and `input.today`, so only `phase`, `keepGoing`,
+ * `keepGoingAvailable`, `untilStop` and `untilStopParts` depend on the caller's keep-going flag. `LegacyCounts.new` comes from N's own batch-unbounded draw (the contract allows
  * this instead of a third build N∞).
  */
 public object DefaultReviewLoop : ReviewLoop {
@@ -29,13 +30,21 @@ public object DefaultReviewLoop : ReviewLoop {
         val readyLearning = normal.items.count { it.kind == QueueItemKind.LEARNING }
         val readyReviews = normal.items.count { it.kind == QueueItemKind.REVIEW }
         val backlog = k.queue.items.count { it.kind == QueueItemKind.REVIEW }
+        // ADR-049: wait for today's learning cards before any stop screen, in both modes.
         val phase = when {
             served.nonEmpty() -> LoopPhase.REVIEWING
+            n.laterToday > 0 -> LoopPhase.WAITING
             !keepGoing && kNonEmpty ->
                 if (input.limits.reviewsUnlimited) LoopPhase.GOAL_REACHED else LoopPhase.DONE_FOR_TODAY
-            n.laterToday > 0 -> LoopPhase.WAITING
             else -> LoopPhase.EMPTY
         }
+        // ADR-038 / ADR-049: answers left until the stop screen, split as the header shows them; follows the mode.
+        val parts = UntilStopParts(
+            learning = readyLearning,
+            later = n.laterToday,
+            review = if (keepGoing) backlog else readyReviews,
+            new = if (keepGoing) k.availableToday else n.availableToday,
+        )
         val state = LoopState(
             phase = phase,
             keepGoing = keepGoing,
@@ -57,9 +66,9 @@ public object DefaultReviewLoop : ReviewLoop {
                 review = readyReviews,
                 moreAvailable = normal.moreAvailable,
             ),
-            // ADR-038: answers left until the stop screen; the only count besides the phase that follows the mode.
-            untilStop = readyLearning + n.laterToday +
-                if (keepGoing) backlog + k.availableToday else readyReviews + n.availableToday,
+            untilStop = parts.learning + parts.later + parts.review + parts.new,
+            keepGoingAvailable = !keepGoing && normal.moreAvailable,
+            untilStopParts = parts,
         )
         return LoopResult(served, state)
     }

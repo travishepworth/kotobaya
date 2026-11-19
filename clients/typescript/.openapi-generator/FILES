@@ -262,6 +262,7 @@ docs/ReviewLoopLaterToday.md
 docs/ReviewLoopNew.md
 docs/ReviewLoopReady.md
 docs/ReviewLoopReviews.md
+docs/ReviewLoopUntilStopParts.md
 docs/ReviewPage.md
 docs/ReviewQueue.md
 docs/ReviewQueueCounts.md
@@ -587,6 +588,7 @@ src/models/ReviewLoopLaterToday.ts
 src/models/ReviewLoopNew.ts
 src/models/ReviewLoopReady.ts
 src/models/ReviewLoopReviews.ts
+src/models/ReviewLoopUntilStopParts.ts
 src/models/ReviewPage.ts
 src/models/ReviewQueue.ts
 src/models/ReviewQueueCounts.ts

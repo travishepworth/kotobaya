@@ -90,6 +90,7 @@ class TestReviewQueue(unittest.TestCase):
                         beyond_limit = 0, 
                         reviews = 0, ), 
                     keep_going = True, 
+                    keep_going_available = True, 
                     later_today = kotobaya_client.models.review_loop_later_today.ReviewLoopLaterToday(
                         count = 0, 
                         next_due_at = null, ), 
@@ -105,7 +106,12 @@ class TestReviewQueue(unittest.TestCase):
                     reviews = kotobaya_client.models.review_loop_reviews.ReviewLoopReviews(
                         limit = 0, 
                         today = 0, ), 
-                    until_stop = 0, ),
+                    until_stop = 0, 
+                    until_stop_parts = kotobaya_client.models.review_loop_until_stop_parts.ReviewLoopUntilStopParts(
+                        later = 0, 
+                        learning = 0, 
+                        new = 0, 
+                        review = 0, ), ),
                 more_available = True,
                 next_learning_due_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'),
                 study_day = datetime.datetime.strptime('1975-12-30', '%Y-%m-%d').date(),

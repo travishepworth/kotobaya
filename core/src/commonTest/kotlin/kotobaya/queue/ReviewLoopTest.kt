@@ -16,6 +16,7 @@ import kotobaya.contracts.queue.QueueLimits
 import kotobaya.contracts.queue.ReviewQueue
 import kotobaya.contracts.queue.StudyDay
 import kotobaya.contracts.queue.TodayReview
+import kotobaya.contracts.queue.UntilStopParts
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -64,8 +65,9 @@ class ReviewLoopTest {
 
     private fun ReviewQueue.nonEmpty(): Boolean = items.isNotEmpty() || toMaterialize.isNotEmpty()
 
-    /** The mode-independent numbers: everything but `phase`, `keepGoing` and `untilStop` (ADR-038). */
-    private fun LoopState.counts(): LoopState = copy(phase = LoopPhase.EMPTY, keepGoing = false, untilStop = 0)
+    /** The mode-independent numbers: everything but `phase`, `keepGoing`, `untilStop` (ADR-038), `keepGoingAvailable` and `untilStopParts` (ADR-049). */
+    private fun LoopState.counts(): LoopState =
+        copy(phase = LoopPhase.EMPTY, keepGoing = false, untilStop = 0, keepGoingAvailable = false, untilStopParts = UntilStopParts())
 
     private fun kinds(q: ReviewQueue): String = q.items.joinToString("") { it.kind.name.take(1) }
 
@@ -122,24 +124,42 @@ class ReviewLoopTest {
                 reviewsToday = 0, reviewsLimit = null, newToday = 0, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 40, learning = 26, review = 0, moreAvailable = false),
                 untilStop = 66,
+                keepGoingAvailable = false,
+                untilStopParts = UntilStopParts(0, 26, 0, 40),
             ),
             r.state,
         )
-        // Never waits: answer the head until the day's goal is reached; learning cards that come due
-        // are served first, new cards fill every gap.
+        // Never waits before the goal: answer the head until the day's goal is reached; learning cards
+        // that come due are served first, new cards fill every gap.
         val sim = Sim(i)
         while (true) {
             val s = sim.eval()
-            assertNotEquals(LoopPhase.WAITING, s.state.phase, "waited after ${sim.answers} answers")
+            if (s.state.newToday < 40) assertNotEquals(LoopPhase.WAITING, s.state.phase, "waited after ${sim.answers} answers")
             if (s.state.phase != LoopPhase.REVIEWING) break
             assertTrue(s.queue.items.isNotEmpty())
             sim.answerHead(s)
             assertTrue(sim.answers < 500)
         }
+        // ADR-049: the last introductions are still in their learning step, so the loop waits for them.
         val end = sim.eval().state
-        assertEquals(LoopPhase.GOAL_REACHED, end.phase)
+        assertEquals(LoopPhase.WAITING, end.phase)
         assertEquals(40, end.newToday)
-        assertTrue(end.laterToday > 0, "the last introductions are still in their learning step")
+        assertTrue(end.laterToday > 0)
+        assertTrue(end.keepGoingAvailable)
+        // Follow the timers until nothing is left for today: only then the stop screen.
+        while (true) {
+            val s = sim.eval()
+            when (s.state.phase) {
+                LoopPhase.REVIEWING -> sim.answerHead(s)
+                LoopPhase.WAITING -> sim.input = sim.input.copy(now = s.state.nextDueAt ?: fail("no nextDueAt"))
+                else -> break
+            }
+            assertTrue(sim.answers < 500)
+        }
+        val stop = sim.eval().state
+        assertEquals(LoopPhase.GOAL_REACHED, stop.phase)
+        assertEquals(0, stop.laterToday)
+        assertEquals(0, stop.untilStop)
     }
 
     @Test
@@ -254,6 +274,8 @@ class ReviewLoopTest {
                 reviewsToday = 200, reviewsLimit = 200, newToday = 40, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 0, learning = 0, review = 0, moreAvailable = true),
                 untilStop = 0,
+                keepGoingAvailable = true,
+                untilStopParts = UntilStopParts(0, 0, 0, 0),
             ),
             b3.state,
         )
@@ -268,6 +290,8 @@ class ReviewLoopTest {
         assertEquals(b3.state.counts(), b4.state.counts())
         // ADR-038: 135 backlog + the batch of 10.
         assertEquals(145, b4.state.untilStop)
+        assertEquals(UntilStopParts(0, 0, 135, 10), b4.state.untilStopParts)
+        assertFalse(b4.state.keepGoingAvailable)
 
         // A due learning card leads the keep-going queue.
         val withLearning = eval(kgInput.copy(candidates = kgInput.candidates + learning(2001, NOW - minute)))
@@ -289,7 +313,7 @@ class ReviewLoopTest {
     }
 
     @Test
-    fun waitingOnlyWhenNothingAnywhere() {
+    fun waitingWhileLearningIsOnItsTimer() {
         // B6: no backlog, no new card anywhere, 8 learning later today -> waiting; none later -> empty.
         for (unlimited in listOf(false, true)) {
             for (keepGoing in listOf(false, true)) {
@@ -299,14 +323,16 @@ class ReviewLoopTest {
                 assertEquals(NOW + 5 * minute, r.state.nextDueAt)
                 assertEquals(8, r.state.laterToday)
                 assertFalse(r.state.newAvailable)
+                assertFalse(r.state.keepGoingAvailable)
                 val e = eval(input(emptyList(), limits = l, today = doneToday(200, 40)))
                 assertEquals(LoopPhase.EMPTY, e.state.phase)
                 assertNull(e.state.nextDueAt)
             }
         }
-        // One new card anywhere -> never waiting.
+        // ADR-049: one new card anywhere still waits (it used to be GOAL_REACHED); Keep going is offered.
         val one = eval(input(laterLearning(8) + newCards(1), limits = loopLimits(unlimited = true), today = doneToday(0, 40)))
-        assertEquals(LoopPhase.GOAL_REACHED, one.state.phase)
+        assertEquals(LoopPhase.WAITING, one.state.phase)
+        assertTrue(one.state.keepGoingAvailable)
     }
 
     @Test
@@ -423,14 +449,22 @@ class ReviewLoopTest {
         assertEquals("N1002", r.queue.shape())
         assertEquals(1, r.state.untilStop)
         assertEquals(1, r.state.legacy.new)
-        // After it: 40/40, phase 2, never overshot.
+        // After it: 40/40, never overshot; ADR-049: WAITING while the kanji is in its learning step.
         val sim = Sim(i)
         sim.answerHead()
         val after = sim.eval()
-        assertEquals(LoopPhase.GOAL_REACHED, after.state.phase)
+        assertEquals(LoopPhase.WAITING, after.state.phase)
         assertEquals(40, after.state.newToday)
+        assertEquals(1, after.state.laterToday)
         assertEquals("N1003 N1001", eval(sim.input.copy(limits = sim.input.limits.copy(keepGoing = true))).queue.shape())
         // A batch of 1 still draws the whole unit when it fits the day.
+        // Once the kanji has left its learning step for today: the stop screen.
+        val graduated = sim.input.copy(
+            candidates = sim.input.candidates.map {
+                if (it.cardId == cardId(1002)) it.copy(state = CardState.REVIEW, dueAt = TOKYO_DAY.endMs + 86_400_000L) else it
+            },
+        )
+        assertEquals(LoopPhase.GOAL_REACHED, eval(graduated).state.phase)
         val fits = eval(i.copy(today = doneToday(0, 30), limits = i.limits.copy(keepGoingNewBatch = 1)))
         assertEquals("N1002 N1003 N1001", fits.queue.shape())
     }
@@ -517,9 +551,10 @@ class ReviewLoopTest {
     }
 
     @Test
-    fun learningCardComingDueDuringGoalReachedReviewsThenReturns() {
+    fun learningCardComingDueDuringWaitingReviewsThenStopScreen() {
+        // ADR-049: was "...during goal_reached"; a learning card on its timer now means WAITING.
         val i = input(newCards(5) + learning(2001, NOW + minute), limits = loopLimits(unlimited = true), today = doneToday(0, 40))
-        assertEquals(LoopPhase.GOAL_REACHED, eval(i).state.phase)
+        assertEquals(LoopPhase.WAITING, eval(i).state.phase)
         val due = i.copy(now = NOW + minute)
         val r = eval(due)
         assertEquals(LoopPhase.REVIEWING, r.state.phase)
@@ -632,6 +667,8 @@ class ReviewLoopTest {
     private companion object {
         // CORE-28: re-recorded only because `LoopState.toString()` now carries `untilStop` (ADR-038); with
         // that field stripped the hash is still the pre-CORE-28 5076156702524499125 (queues unchanged).
-        const val GOLDEN_FINGERPRINT: Long = 398548625834242320L
+        // CORE-30: re-recorded because `LoopState.toString()` now carries `keepGoingAvailable` and
+        // `untilStopParts` and ADR-049 turns some stop phases into WAITING; the queue builder is untouched.
+        const val GOLDEN_FINGERPRINT: Long = 5446840590562372352L
     }
 }

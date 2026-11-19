@@ -39,6 +39,7 @@ class TestReviewLoop(unittest.TestCase):
                     beyond_limit = 0, 
                     reviews = 0, ),
                 keep_going = True,
+                keep_going_available = True,
                 later_today = kotobaya_client.models.review_loop_later_today.ReviewLoopLaterToday(
                     count = 0, 
                     next_due_at = null, ),
@@ -54,7 +55,12 @@ class TestReviewLoop(unittest.TestCase):
                 reviews = kotobaya_client.models.review_loop_reviews.ReviewLoopReviews(
                     limit = 0, 
                     today = 0, ),
-                until_stop = 0
+                until_stop = 0,
+                until_stop_parts = kotobaya_client.models.review_loop_until_stop_parts.ReviewLoopUntilStopParts(
+                    later = 0, 
+                    learning = 0, 
+                    new = 0, 
+                    review = 0, )
             )
         else:
             return ReviewLoop(

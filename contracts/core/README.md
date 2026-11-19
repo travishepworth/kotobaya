@@ -271,7 +271,10 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
   persisted (the ADR-037 `kotobaya.keepGoingDay` storage key is gone).
 - **Progress bar (ADR-038).** `LoopState.untilStop`; the bar is `done / (done + untilStop)`.
   Native surfaces show no bar.
-- **Waiting.** Only `LoopPhase.WAITING` waits; resume at `LoopState.nextDueAt`.
+- **Waiting (ADR-049, C-30).** Only `LoopPhase.WAITING` waits; resume at `LoopState.nextDueAt`.
+  `WAITING` is decided before the stop screens: whenever the served queue is empty and
+  `laterToday > 0`, in both modes. A caller that shows a state re-evaluates at `nextDueAt`
+  whatever the phase, and offers Keep going iff `LoopState.keepGoingAvailable`.
 
 ## ADR-035: reading cards retired by a setting (C-28)
 
@@ -588,3 +591,43 @@ Tests (CORE-28d):
 - `render/`: furigana-front goldens (HTML and text) for 寿司 and 珈琲; off = byte-identical to the
   existing goldens; not applied to `reading`, `production`, `listening`, custom templates, an
   empty reading.
+
+## ADR-049: the stop screen waits for today's learning (C-30)
+
+Contract: `queue/ReviewLoop.kt` (KDoc of `LoopPhase`, `LoopState`, `ReviewLoop` "Phase", edge cases,
+worked examples W1 and W2; new `UntilStopParts`). Design note: `docs/REVIEW-LOOP.md` section 15.
+
+| Core member | Input | Output on the wire |
+|---|---|---|
+| `LoopPhase` order: `WAITING` (rule 2) before `GOAL_REACHED` / `DONE_FOR_TODAY` (rule 3) | — | API `loop.phase` (same values) |
+| `LoopState.keepGoingAvailable` (default `false`) | — (output) | API `loop.keep_going_available` |
+| `LoopState.untilStopParts: UntilStopParts(learning, later, review, new)` (default zeros) | — (output) | API `loop.until_stop_parts` |
+
+No signature was removed or changed; both new members have defaults so that existing callers compile.
+`ReviewLoop.evaluate` MUST set them. No op, no table, no setting, no `SCHEDULER_VERSION` change: the
+loop is a pure view of the replica.
+
+Implementation ticket CORE-30 (`kotobaya.queue.DefaultReviewLoop`), tests first:
+
+- `ReviewLoopTest` (jvm + js): **W1** steps 1-4 with the numbers of the KDoc (9 ready / 14 later /
+  707 new, goal 40/40, unlimited: `REVIEWING` 23 `(9,14,0,0)`; `WAITING` `keepGoingAvailable`
+  `(0,23,0,0)`; keep going `REVIEWING` 33 `(0,23,0,10)`; `GOAL_REACHED` 0); the capped twin ending
+  in `DONE_FOR_TODAY`; **W2**; B6 now also asserts `keepGoingAvailable == false`; A1, A3, B3, B4,
+  U1 gain their `untilStopParts` (`(0,26,0,40)`, `(0,0,0,0)`, `(0,0,0,0)`, `(0,0,135,10)`,
+  `(0,5,30,30)`) and `keepGoingAvailable` (false, true, true, false, false).
+- Edge cases of the KDoc, one test each: a learning card due at exactly `day.endMs` and one due
+  1 ms before it (the first does not hold the day open, the second does); a learning card with
+  `dueAt == now` is ready (`REVIEWING`), `dueAt == now + 1` is later (`WAITING`); the last
+  waiting card suspended / buried → rule 3 or 4; `WAITING` with keep going on and K empty
+  (`keepGoingAvailable` false); `new_per_day = 0` with a relearning card on its timer →
+  `WAITING`; a read-only caller with `toMaterialize` non-empty stays `REVIEWING`.
+- Properties (extend `QueuePropertyTest`; random inputs, both modes): `WAITING` iff served queue
+  empty and `laterToday > 0`; stop phase implies `laterToday == 0 && readyLearning == 0 &&
+  readyReviews == 0 && untilStop == 0`; `untilStop == 0` iff stop phase; `untilStopParts` sums to
+  `untilStop` with `learning == readyLearning`, `later == laterToday`, `review == (keepGoing ?
+  backlog : readyReviews)`; `keepGoingAvailable == (!keepGoing && legacy.moreAvailable)`; every
+  field except `phase`, `keepGoing`, `keepGoingAvailable`, `untilStop`, `untilStopParts` is equal
+  across the flag; no LEARNING item with `dueAt > now` in either build (no learn-ahead).
+- The existing tests that expect `GOAL_REACHED` / `DONE_FOR_TODAY` with `laterToday > 0` are
+  changed to `WAITING`, not kept (the old ADR-037 edge case "a learning card falls due during
+  goal_reached" becomes "…during waiting").

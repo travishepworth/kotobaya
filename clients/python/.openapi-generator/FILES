@@ -264,6 +264,7 @@ docs/ReviewLoopLaterToday.md
 docs/ReviewLoopNew.md
 docs/ReviewLoopReady.md
 docs/ReviewLoopReviews.md
+docs/ReviewLoopUntilStopParts.md
 docs/ReviewPage.md
 docs/ReviewQueue.md
 docs/ReviewQueueCounts.md
@@ -594,6 +595,7 @@ kotobaya_client/models/review_loop_later_today.py
 kotobaya_client/models/review_loop_new.py
 kotobaya_client/models/review_loop_ready.py
 kotobaya_client/models/review_loop_reviews.py
+kotobaya_client/models/review_loop_until_stop_parts.py
 kotobaya_client/models/review_page.py
 kotobaya_client/models/review_queue.py
 kotobaya_client/models/review_queue_counts.py
@@ -914,6 +916,7 @@ test/test_review_loop_later_today.py
 test/test_review_loop_new.py
 test/test_review_loop_ready.py
 test/test_review_loop_reviews.py
+test/test_review_loop_until_stop_parts.py
 test/test_review_page.py
 test/test_review_queue.py
 test/test_review_queue_counts.py

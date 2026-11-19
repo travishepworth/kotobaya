@@ -1,17 +1,24 @@
-# HANDOFF WRK-29
+# HANDOFF CORE-30
 
 STATUS: DONE
-BRANCH: t/WRK-29
-CHECK: `make check MODULE=worker` green
+BRANCH: t/CORE-30 (from t/C-30-loop-wait)
+CHECK: `make check MODULE=core` → green (jvm + js)
 
-## Changed
-- `worker/src/kotobaya_worker/tts/job.py`: cache is now `app.tts_audio` keyed (voice, text) (replaces job-history lookup); blob row, then upsert `tts_audio` (created_at = now()); voice `^[0-9]{1,9}$` and text 1-500 validated before any VOICEVOX call.
-- `worker/tests/dict/conftest.py`: V4 added to migration list.
-- `worker/tests/tts/test_tts_job.py`: run-twice idempotency, voice-as-key, validation tests.
+## Changed (≤ 6 lines)
+- `core/.../queue/DefaultReviewLoop.kt`: phase rule 2 `laterToday > 0 → WAITING` now runs before the stop screens (both modes). Sets `untilStopParts` (untilStop = their sum) and `keepGoingAvailable = !keepGoing && legacy.moreAvailable`. Learn-ahead is still forced to 0.
+- New `ReviewLoopWaitTest.kt`. `QueuePropertyTest` gains the ADR-049 properties. `QueueParityScenarioTest` gains the two C-30 scenarios. Old tests that expected a stop phase with `laterToday > 0` now expect WAITING.
+
+## Acceptance → tests
+- W1 steps 1-4 + capped twin → `w1Step1…`, `w1Step2…`, `w1PlayedThrough…`
+- Reported case (9 ready / 14 later / 707 new) → `reportedCaseAfterTheNineAreAnsweredWaitsForTheFourteen`
+- W2 → `w2WaitsForRelearningBeforeDoneForToday`
+- Day-end boundary → `learningDueAtDayEndDoesNotHoldTheDayOpen`, `queueLoopDayEndLearning`
+- README edge cases and properties → remaining `ReviewLoopWaitTest` tests, `loopInvariantsHoldOnRandomInputs`
+- Parity → `queueLoopWaitBeforeStop`, `queueUntilStop` (step 8 now WAITING)
 
 ## New dependencies
 - none
 
-## For the reviewer
-- Cache hit requires the `app.blob` row; a stale tts_audio row is overwritten by resynthesis.
-- `dedupe_key` kept (server still enqueues with it).
+## For the reviewer (≤ 3 lines)
+- `GOLDEN_FINGERPRINT` was re-recorded because `LoopState.toString()` has new fields and some phases changed. The queue builder is untouched.
+- The parity scenarios were replayed from their narratives, not from the JSON steps (core has no parity runner).

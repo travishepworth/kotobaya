@@ -1,0 +1,879 @@
+{
+  "id": "queue-loop-wait-before-stop",
+  "title": "Goal reached with learning cards still due today: reviewing, then waiting, and goal_reached only when nothing is left for today (ADR-049)",
+  "covers": [
+    "queue.loop_waits_before_stop"
+  ],
+  "narrative": [
+    "The case reported on 2026-11-19, scaled down (9 ready / 14 later / 707 new there; 1 / 2 / 2 here). scheduler.reviews_unlimited is true, new_per_day is 3. Cards ...10, ...20 and ...30 were introduced today and answered Again at 09:59:00, 09:59:55 and 09:59:58: they are in the first learning step (60 s) and fall due at 10:00:00, 10:00:55 and 10:00:58. The goal is reached (3/3). No review is due. Cards ...40 and ...50 are new.",
+    "Step 0, 10:00:01: ...10 is ready, two are later today. reviewing, never goal_reached; until_stop 3 = until_stop_parts 1 learning + 2 later + 0 reviews + 0 new, the numbers the header and Home show; keep_going_available is false because a card is served.",
+    "Step 1 graduates ...10 (Easy). Step 2, 10:00:03: nothing is ready, two learning cards fall due later today and new cards remain. Under ADR-037 this was goal_reached; under ADR-049 it is waiting with next_due_at 10:00:55, keep_going_available true, until_stop 2. No card is served early. The deprecated more_available is true and next_learning_due_at is set, as before.",
+    "Step 3, the same instant with keep_going=true&limit=1: reviewing with the new card ...40 (the learning cards are not served early); until_stop 0 + 2 + 0 + 1 = 3; keep_going_available false; ready, later_today, backlog, reviews and new equal step 2.",
+    "Step 4, 10:00:55, without the flag (a new visit, or the timer of rule C4/C6): ...20 came due and is served: reviewing, 1 learning + 1 later.",
+    "Step 5 graduates ...20. Step 6, 10:00:57: waiting again for ...30 (next_due_at 10:00:58), until_stop 1.",
+    "Step 7, 10:00:58: ...30 is served. Step 8 graduates it.",
+    "Step 9, 10:01:00: nothing is ready and nothing falls due later today: only now goal_reached, with until_stop 0, all four parts 0 and keep_going_available true.",
+    "Step 10, keep_going=true&limit=1: reviewing with the new card ...40; the mode-independent numbers equal step 9."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000110,
+    1000160,
+    1000170,
+    1000360,
+    1001010
+  ],
+  "settings": {
+    "scheduler.reviews_unlimited": true,
+    "scheduler.new_per_day": 3
+  },
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000110
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000160
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb102-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000170
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb103-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000007",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb104-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000004",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000008",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000040",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb104-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000040",
+          "note_id": "0193a1b2-0001-7000-8000-000000000004",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-000000000009",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000005",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb105-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000005",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1001010
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000a",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000050",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb105-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000050",
+          "note_id": "0193a1b2-0001-7000-8000-000000000005",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000b",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f86522a0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1795168740000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 1,
+          "button": "again",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000c",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f865f978-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1795168795000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 1,
+          "button": "again",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000d",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f8660530-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000030",
+          "reviewed_at": 1795168798000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 1,
+          "button": "again",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000e",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.reviews_unlimited",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f8660cff-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.reviews_unlimited",
+          "value": true
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7030-8000-00000000000f",
+        "op_type": "settings.set",
+        "op_version": 1,
+        "entity_type": "settings",
+        "entity_id": "scheduler.new_per_day",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f8660d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "key": "scheduler.new_per_day",
+          "value": 3
+        }
+      }
+    ]
+  },
+  "operations": [
+    "answerReview",
+    "getReviewQueue"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": false,
+            "ready": {
+              "learning": 1,
+              "review": 0,
+              "total": 1
+            },
+            "later_today": {
+              "count": 2,
+              "next_due_at": "2026-11-20T10:00:55.000Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 3,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 1,
+              "later": 2,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
+          "/items/0/is_new": false,
+          "/counts": {
+            "new": 0,
+            "learning": 3,
+            "review": 0
+          },
+          "/more_available": false
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "waiting",
+            "keep_going": false,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 2,
+              "next_due_at": "2026-11-20T10:00:55.000Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 2,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 2,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 2,
+            "review": 0
+          },
+          "/more_available": true,
+          "/next_learning_due_at": "2026-11-20T10:00:55.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "keep_going=true&limit=1",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": true,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 2,
+              "next_due_at": "2026-11-20T10:00:55.000Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 3,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 2,
+              "review": 0,
+              "new": 1
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/0/is_new": true,
+          "/more_available": false
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168855000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": false,
+            "ready": {
+              "learning": 1,
+              "review": 0,
+              "total": 1
+            },
+            "later_today": {
+              "count": 1,
+              "next_due_at": "2026-11-20T10:00:58.000Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 2,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 1,
+              "later": 1,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020"
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168856000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168857000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "waiting",
+            "keep_going": false,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 1,
+              "next_due_at": "2026-11-20T10:00:58.000Z"
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 1,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 1,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items": [],
+          "/more_available": true,
+          "/next_learning_due_at": "2026-11-20T10:00:58.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168858000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": false,
+            "ready": {
+              "learning": 1,
+              "review": 0,
+              "total": 1
+            },
+            "later_today": {
+              "count": 0,
+              "next_due_at": null
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 1,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 1,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000030"
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168859000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/review/answer",
+        "query": "",
+        "body": {
+          "id": "0193b000-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000030",
+          "rating": 4,
+          "duration_ms": 4200,
+          "utc_offset_min": 0,
+          "button": "easy"
+        }
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168860000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "goal_reached",
+            "keep_going": false,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 0,
+              "next_due_at": null
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 0,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
+          },
+          "/items": [],
+          "/counts": {
+            "new": 0,
+            "learning": 0,
+            "review": 0
+          },
+          "/more_available": true
+        },
+        "absent": [
+          "/next_learning_due_at"
+        ]
+      }
+    },
+    {
+      "at_ms": 1795168861000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/review/queue",
+        "query": "keep_going=true&limit=1",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/loop": {
+            "phase": "reviewing",
+            "keep_going": true,
+            "ready": {
+              "learning": 0,
+              "review": 0,
+              "total": 0
+            },
+            "later_today": {
+              "count": 0,
+              "next_due_at": null
+            },
+            "backlog": {
+              "reviews": 0,
+              "beyond_limit": 0
+            },
+            "reviews": {
+              "today": 0,
+              "limit": null
+            },
+            "new": {
+              "today": 3,
+              "goal": 3,
+              "available": true
+            },
+            "until_stop": 1,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 0,
+              "new": 1
+            }
+          },
+          "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000040",
+          "/items/0/is_new": true
+        },
+        "lengths": {
+          "/items": 1
+        }
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "equal": [
+        {
+          "step": 2,
+          "pointer": "/loop/ready"
+        },
+        {
+          "step": 3,
+          "pointer": "/loop/ready"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 2,
+          "pointer": "/loop/later_today"
+        },
+        {
+          "step": 3,
+          "pointer": "/loop/later_today"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 2,
+          "pointer": "/loop/backlog"
+        },
+        {
+          "step": 3,
+          "pointer": "/loop/backlog"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 2,
+          "pointer": "/loop/reviews"
+        },
+        {
+          "step": 3,
+          "pointer": "/loop/reviews"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 2,
+          "pointer": "/loop/new"
+        },
+        {
+          "step": 3,
+          "pointer": "/loop/new"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 9,
+          "pointer": "/loop/ready"
+        },
+        {
+          "step": 10,
+          "pointer": "/loop/ready"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 9,
+          "pointer": "/loop/later_today"
+        },
+        {
+          "step": 10,
+          "pointer": "/loop/later_today"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 9,
+          "pointer": "/loop/backlog"
+        },
+        {
+          "step": 10,
+          "pointer": "/loop/backlog"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 9,
+          "pointer": "/loop/reviews"
+        },
+        {
+          "step": 10,
+          "pointer": "/loop/reviews"
+        }
+      ]
+    },
+    {
+      "equal": [
+        {
+          "step": 9,
+          "pointer": "/loop/new"
+        },
+        {
+          "step": 10,
+          "pointer": "/loop/new"
+        }
+      ]
+    }
+  ]
+}

@@ -422,7 +422,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 3
+            "until_stop": 3,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 2,
+              "new": 1
+            }
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000010",
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000060",
@@ -495,7 +502,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 2
+            "until_stop": 2,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 1,
+              "new": 1
+            }
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000060",
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000020"
@@ -560,7 +574,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 1
+            "until_stop": 1,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 1,
+              "new": 0
+            }
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000020"
         },
@@ -624,7 +645,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 0
+            "until_stop": 0,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
           },
           "/items": [],
           "/counts": {
@@ -675,7 +703,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 5
+            "until_stop": 5,
+            "keep_going_available": false,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 3,
+              "new": 2
+            }
           },
           "/items/0/card/id": "0193a1b2-0002-7000-8000-000000000030",
           "/items/1/card/id": "0193a1b2-0002-7000-8000-000000000040",
@@ -750,7 +785,14 @@
               "goal": 1,
               "available": true
             },
-            "until_stop": 0
+            "until_stop": 0,
+            "keep_going_available": true,
+            "until_stop_parts": {
+              "learning": 0,
+              "later": 0,
+              "review": 0,
+              "new": 0
+            }
           },
           "/items": []
         }
