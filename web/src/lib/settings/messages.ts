@@ -22,6 +22,7 @@ const en = {
 	'settings.burySiblings': 'Bury sibling cards',
 	'settings.kanjiBeforeVocab': 'Introduce kanji before vocabulary that uses them',
 	'settings.minedPriority': 'Priority of mined (deckless) new cards',
+	'settings.autoplayAudio': 'Play audio automatically',
 	'settings.audioPrefetch': 'Audio prefetch horizon (days)',
 	'settings.invalidNumber': 'Enter a whole number for “{field}”.',
 	'presets.title': 'Scheduling presets',

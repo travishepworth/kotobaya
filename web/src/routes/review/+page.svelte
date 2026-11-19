@@ -51,6 +51,19 @@
 		s.backUndo();
 	});
 	let frame: CardFrame | undefined = $state();
+	// ADR-047 A4: once per showing, ask for the card's speech when it is not generated yet.
+	$effect(() => {
+		void s.showSeq;
+		untrack(() => void s.resolveAudio());
+	});
+	// ADR-047 A2: play the side's sound once per showing (and again if it only arrives later, A4).
+	$effect(() => {
+		const r = s.rendered;
+		const hash = r?.ok ? r.card.autoplayAudio : null;
+		if (!hash || !s.autoplay || !s.current || !frame || s.autoplayedKey === s.showKey) return;
+		s.autoplayedKey = s.showKey;
+		frame.play(hash);
+	});
 	let helpOpen = $state(false);
 	let body: HTMLDivElement | undefined = $state();
 	// True while part of the card is below the fold: a fade at the bottom says the card scrolls.

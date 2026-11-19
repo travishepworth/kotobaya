@@ -15,7 +15,7 @@ import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
 import { haptic } from '../api/shell/nav';
 import { pushToast } from '../toasts.svelte';
-import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, wordsApi } from '../review/api';
+import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, speechApi, wordsApi } from '../review/api';
 import { tr, type ReviewMessageKey } from '../review/messages';
 import {
 	BUTTONS_4,
@@ -298,6 +298,16 @@ export class ReviewPage {
 	presets = $state<Map<string, Preset>>(new Map());
 	fiveButtons = $state(false);
 	furigana = $state(true);
+	/** Setting `review.autoplay_audio` (ADR-047 A6; absent = on). */
+	autoplay = $state(true);
+	/** Bumped each time a card is shown afresh (new card, undo, restore): one showing = one autoplay (A2). */
+	showSeq = $state(0);
+	/** Which showing and side the autoplay already happened for (kept with the session, so a return does not replay). */
+	autoplayedKey: string | null = null;
+	/** Hashes resolved through `resolveSpeech` for cards whose `word_audio.blob_hash` was null (A4), by card id. */
+	private resolvedAudio = $state<Map<string, string>>(new Map());
+	/** Identifies the showing the speech lookup is for; any change ends the lookup. */
+	private audioToken = 0;
 	flipped = $state(false);
 	editing = $state(false);
 	busy = $state(false);
@@ -375,6 +385,7 @@ export class ReviewPage {
 					}
 				: null,
 			frontFurigana: item.frontFurigana ?? false,
+			wordAudio: item.wordAudio?.blobHash ?? this.resolvedAudio.get(item.card.id) ?? null,
 			// A held card was graded on its back and stays so.
 			side: this.flipped || !this.current ? 'back' : 'front'
 		});
@@ -415,6 +426,7 @@ export class ReviewPage {
 
 	private showCard(cardId: string, answerId: string, flipped: boolean, shownAt: number): void {
 		this.lastCardId = cardId;
+		this.showSeq++;
 		this.answerId = answerId;
 		this.flipped = flipped;
 		this.editing = false;
@@ -446,6 +458,7 @@ export class ReviewPage {
 		this.noteTypes = new Map(nts.items.map((n) => [n.id, n]));
 		this.presets = new Map(ps.items.map((p) => [p.id, p]));
 		this.fiveButtons = st.items.find((s) => s.key === 'scheduler.grading_buttons')?.value === 5;
+		this.autoplay = st.items.find((s) => s.key === 'review.autoplay_audio')?.value !== false;
 	}
 
 	/**
@@ -856,6 +869,47 @@ export class ReviewPage {
 
 	toggleFurigana(): void {
 		this.furigana = !this.furigana;
+	}
+
+	/** The key of what is on screen right now: one autoplay per key (A2). */
+	get showKey(): string {
+		return `${this.showSeq}:${this.flipped}`;
+	}
+
+	/**
+	 * ADR-047 A4: the card on screen has speech that is not generated yet: ask for it (urgent), ask again after
+	 * `retry_after_ms` doubling, at most 5 calls; any failure ends it for this showing. On `ready` the hash is kept
+	 * and the card renders again; an answer for a card the user has moved on from is dropped. Call once per showing.
+	 */
+	async resolveAudio(): Promise<void> {
+		const item = this.current;
+		const wa = item?.wordAudio;
+		if (!item || !wa || wa.source !== 'tts' || wa.blobHash || !wa.text || this.resolvedAudio.has(item.card.id)) return;
+		const token = ++this.audioToken;
+		const seq = this.showSeq;
+		const cardId = item.card.id;
+		let wait = 0;
+		for (let call = 0; call < 5; call++) {
+			if (wait > 0) await new Promise<void>((resolve) => setTimeout(resolve, wait));
+			if (token !== this.audioToken || this.disposed) return;
+			let r;
+			try {
+				const res = await speechApi.resolveSpeech({
+					speechResolveRequest: { items: [{ text: wa.text, voice: wa.voice ?? undefined }], urgent: true }
+				});
+				r = res.items[0];
+			} catch {
+				return;
+			}
+			if (token !== this.audioToken || this.disposed || seq !== this.showSeq || this.current?.card.id !== cardId) return;
+			if (!r) return;
+			if (r.status === 'ready' && r.blobHash) {
+				this.resolvedAudio = new Map(this.resolvedAudio).set(cardId, r.blobHash);
+				return;
+			}
+			if (r.status !== 'pending') return;
+			wait = (r.retryAfterMs ?? 1000) * 2 ** call;
+		}
 	}
 
 	/** Remove the current card locally; a scheduled queue is refreshed behind it. */
