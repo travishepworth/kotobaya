@@ -61,6 +61,19 @@
 		color: var(--kb-color-text);
 		text-decoration: none;
 	}
+	.examples li {
+		min-width: 0;
+	}
+	.examples a {
+		min-width: 0;
+	}
+	/* Expression + reading stay on one line; the meaning ellipsizes first. */
+	.hw,
+	.rd,
+	.chip {
+		flex: none;
+		white-space: nowrap;
+	}
 	.hw {
 		font-weight: 600;
 	}
@@ -70,6 +83,7 @@
 		color: var(--kb-color-text-muted);
 	}
 	.gl {
+		flex: 1 1 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

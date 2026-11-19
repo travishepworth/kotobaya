@@ -54,7 +54,7 @@ describe('due first (C1)', () => {
 		vi.useRealTimers();
 	});
 
-	it('page holds 3 NEW, a learning step falls due → refetch happens before the next card', async () => {
+	it('3 cards + a learning card due during card 2: never loading, due card next after it is due, never before', async () => {
 		const due = new Date(Date.now() + 60_000);
 		const answered: string[] = [];
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string; cardId: string } }) => {
@@ -68,20 +68,28 @@ describe('due first (C1)', () => {
 				: queue({ items: news, loop: { phase: 'reviewing', later: { count: 1, nextDueAt: due } } });
 		});
 		const { page, dispose } = mount();
+		const phases: string[] = [];
+		const watch = $effect.root(() => {
+			$effect(() => {
+				phases.push(page.phase);
+			});
+		});
 		page.start(null);
 		await tick();
 		expect(page.items.map((i) => i.card.id)).toEqual(['n1', 'n2', 'n3']);
-		const fetches = api.getReviewQueue.mock.calls.length;
-
-		await tick(70_000); // the user looks at n1 while l1's step ends
-		expect(api.getReviewQueue.mock.calls.length).toBe(fetches); // no polling while a card is on screen
+		page.flip();
+		void page.grade(good); // n1 answered before l1 is due
+		await tick();
+		expect(page.current?.card.id).toBe('n2'); // never l1 before its due_at
+		await tick(61_000); // l1 falls due while n2 is on screen: spliced in behind it in the background
+		expect(page.current?.card.id).toBe('n2');
 		page.flip();
 		void page.grade(good);
-		// n2 is never shown: the held page is dropped before the next card.
-		expect(page.current?.card.id).not.toBe('n2');
+		expect(page.current?.card.id).toBe('l1'); // next, immediately
 		await tick();
-		expect(api.getReviewQueue.mock.calls.length).toBeGreaterThan(fetches);
 		expect(page.current?.card.id).toBe('l1');
+		expect(phases.slice(phases.indexOf('card')).every((p) => p === 'card')).toBe(true); // no loading/settling
+		watch();
 		dispose();
 	});
 

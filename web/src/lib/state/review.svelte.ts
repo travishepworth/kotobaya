@@ -39,6 +39,7 @@ export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
 export { countdown, minutesUntil } from '../review/loop';
 export type { Rendered } from './preview.svelte';
 
+const DUE_SLACK_MS = 250;
 const QUEUE_LIMIT = 20;
 /** C4: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
 const WAKE_SLACK_MS = 1000;
@@ -258,6 +259,7 @@ export class ReviewPage {
 	private learningDues: { recordedAt: number; dueAt: number }[] = [];
 	/** `to_materialize` of the last applied fetch (C5: retries ran out when it is still > 0 with nothing served). */
 	private toMaterialize = 0;
+	private dueTimer: ReturnType<typeof setTimeout> | null = null;
 	private wakeTimer: ReturnType<typeof setTimeout> | null = null;
 	private lastWake = 0;
 	/** Refetches in a row in the pending phase (backoff). */
@@ -521,6 +523,7 @@ export class ReviewPage {
 		const next = q.loop ? q.loop.laterToday.nextDueAt : (q.nextLearningDueAt ?? null);
 		const all = [...(next ? [next.getTime()] : []), ...this.learningDues.map((d) => d.dueAt)];
 		this.dueFirstAt = all.length > 0 ? Math.min(...all) : null;
+		this.scheduleDueFetch();
 	}
 
 	/** C1: a learning card has come due since the page was fetched, so the next card must come from a new fetch. */
@@ -605,6 +608,9 @@ export class ReviewPage {
 		this.disposed = true;
 		this.gen++;
 		this.clearWake();
+		if (this.dueTimer !== null) clearTimeout(this.dueTimer);
+		this.dueTimer = null;
+		clearKeepGoing(); // ADR-039: keep going lasts one review visit
 		this.abort.abort();
 	}
 
@@ -647,6 +653,35 @@ export class ReviewPage {
 		} finally {
 			this.prefetching = false;
 		}
+	}
+
+	/**
+	 * Seamless due-card slot-in: fetch in the background (no loading state) and splice the server's order behind
+	 * the card on screen. Used when a learning card has come due (never before: the server lists it only then).
+	 */
+	private async spliceFetch(): Promise<void> {
+		if (this.isDrill || this.disposed || this.prefetching) return;
+		this.prefetching = true;
+		try {
+			await this.fetchQueue(false, true);
+		} catch {
+			/* the next advance or the refresh after the answers tries again */
+		} finally {
+			this.prefetching = false;
+		}
+	}
+
+	/** One timer at the next learning card's due instant while a card is on screen: splice it in behind it. */
+	private scheduleDueFetch(): void {
+		if (this.dueTimer !== null) clearTimeout(this.dueTimer);
+		this.dueTimer = null;
+		if (this.isDrill || this.disposed || this.dueFirstAt === null) return;
+		const delay = Math.max(this.dueFirstAt + DUE_SLACK_MS - Date.now(), 0);
+		this.dueTimer = setTimeout(() => {
+			this.dueTimer = null;
+			if (this.disposed || this.isDrill) return;
+			if (this.current && outbox.pending.length === 0) void this.spliceFetch();
+		}, delay);
 	}
 
 	/** Refresh once every queued answer (also those of an earlier visit) has been sent. */
@@ -801,9 +836,10 @@ export class ReviewPage {
 	/** Remove the current card locally; a scheduled queue is refreshed behind it. */
 	private async advance(): Promise<void> {
 		this.clearNotice();
-		this.items = this.dueFirstPassed() ? [] : this.items.slice(1); // C1: the next card comes from a new fetch
+		this.items = this.items.slice(1); // seamless: the next local card is shown at once; a due card is spliced in
 		this.epoch++;
 		this.newPress();
+		if (this.dueFirstPassed() && this.items.length > 0) void this.spliceFetch();
 		await this.refresh();
 	}
 
@@ -853,12 +889,15 @@ export class ReviewPage {
 		outbox.retryIds.delete(item.card.id);
 		outbox.add(entry);
 		this.history = [...this.history, { reviewId: entry.answerId, item }];
-		this.items = this.dueFirstPassed() ? [] : this.items.slice(1); // C1: the next card comes from a new fetch
+		this.items = this.items.slice(1); // seamless: never blank; a due card is spliced in by spliceFetch
 		this.held = this.items.length === 0 ? item : null;
 		this.epoch++;
 		this.newPress();
 		outbox.tail = outbox.tail.then(() => Outbox_send(entry));
-		if (!this.isDrill) void this.prefetch();
+		if (!this.isDrill) {
+			if (this.dueFirstPassed() && this.items.length > 0) void this.spliceFetch();
+			else void this.prefetch();
+		}
 		return done;
 	}
 
@@ -874,6 +913,7 @@ export class ReviewPage {
 			const dueAt = card.dueAt.getTime();
 			this.learningDues.push({ recordedAt: Date.now(), dueAt });
 			this.dueFirstAt = this.dueFirstAt === null ? dueAt : Math.min(this.dueFirstAt, dueAt);
+			this.scheduleDueFetch();
 		}
 	}
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// ADR-037 C2: Keep going is persisted per client for the study day (localStorage["kotobaya.keepGoingDay"]); it
-// survives leaving the screen and a reload, is dropped (and the queue fetched again without it) when `study_day`
+// ADR-039: Keep going lasts one review visit (in memory): cleared when the screen is left, on for the whole visit,
+// never in localStorage. A stale study_day is dropped (and the queue fetched again without it) when `study_day`
 // changes, and Home and the review screen send the same flag.
 import { flushSync } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -30,7 +30,7 @@ vi.mock('../../src/lib/api/generated', async (orig) => ({
 
 import { ReviewPage, resetOutboxForTests } from '../../src/lib/state/review.svelte';
 import { TodayQueue } from '../../src/lib/state/today.svelte';
-import { KEEP_GOING_KEY } from '../../src/lib/review/keepGoingDay';
+import { clearKeepGoing, keepGoingDay, startKeepGoing } from '../../src/lib/review/keepGoingDay';
 
 const settle = async () => {
 	for (let i = 0; i < 10; i++) await new Promise((r) => setTimeout(r, 0));
@@ -67,35 +67,37 @@ describe('keep going day (C2)', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		resetOutboxForTests();
-		localStorage.clear();
+		clearKeepGoing();
 	});
 
-	it('persists across a remount: the next visit sends keep_going=true', async () => {
+	it('cleared on a new visit; persists across fetches within a visit', async () => {
 		serve('2026-11-17');
 		const first = reviewPage();
 		await settle();
-		expect(first.page.phase).toBe('doneForToday');
 		await first.page.keepGoingOn();
 		await settle();
-		expect(localStorage.getItem(KEEP_GOING_KEY)).toBe('2026-11-17');
 		expect(first.page.keepGoing).toBe(true);
+		await first.page.reload();
+		await settle();
+		expect(flags().slice(-1)).toEqual([true]); // still on within the visit
+		expect(localStorage.getItem('kotobaya.keepGoingDay')).toBeNull();
 		first.dispose();
 
 		api.getReviewQueue.mockClear();
 		const second = reviewPage();
 		await settle();
-		expect(flags()).toEqual([true]);
-		expect(second.page.keepGoing).toBe(true);
+		expect(flags()).toEqual([false]);
+		expect(second.page.keepGoing).toBe(false);
 		second.dispose();
 	});
 
 	it('is dropped when study_day changes: refetched with keep_going=false, mismatching response discarded', async () => {
-		localStorage.setItem(KEEP_GOING_KEY, '2026-11-16');
+		startKeepGoing(new Date('2026-11-16T00:00:00Z'));
 		serve('2026-11-17');
 		const { page, dispose } = reviewPage();
 		await settle();
 		expect(flags()).toEqual([true, false]);
-		expect(localStorage.getItem(KEEP_GOING_KEY)).toBeNull();
+		expect(keepGoingDay()).toBeNull();
 		expect(page.keepGoing).toBe(false);
 		expect(page.phase).toBe('doneForToday'); // the keep_going=false answer, not the discarded one
 		dispose();
@@ -120,7 +122,7 @@ describe('keep going day (C2)', () => {
 		api.getReviewQueue.mockClear();
 		expect(home.phase).toBe('done_for_today');
 		home.keepGoing();
-		expect(localStorage.getItem(KEEP_GOING_KEY)).toBe('2026-11-17');
+		expect(keepGoingDay()).toBe('2026-11-17');
 		await home.load();
 		const r2 = reviewPage();
 		await settle();
@@ -135,7 +137,7 @@ describe('keep going day (C2)', () => {
 		await settle();
 		api.getReviewQueue.mockRejectedValueOnce(new Error('504'));
 		await page.keepGoingOn();
-		expect(localStorage.getItem(KEEP_GOING_KEY)).toBeNull();
+		expect(keepGoingDay()).toBeNull();
 		expect(page.phase).toBe('doneForToday');
 		dispose();
 	});

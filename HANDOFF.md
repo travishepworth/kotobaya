@@ -1,23 +1,9 @@
-# HANDOFF LOOP-C2
+# HANDOFF WEB-REVIEW-FLOW
+Status: DONE (`make check MODULE=web` green)
 
-STATUS: DONE
-BRANCH: t/LOOP-C2
-CHECK: `make check MODULE=contracts` → green · `MODULE=server` → green · `MODULE=android` → green (shell parity: 24 match, 0 differ, 0 pending)
-
-## Changed (≤ 6 lines)
-- `parity/queue-loop-cap-keep-going-backlog.json`: seed reviews now 10 days apart (100…60 d before clock), so due_at order = card order whatever the fuzz; `expect` unchanged; golden re-recorded.
-- `ParityGoldenTest.kt`: `EXPECT_DISAGREES` removed (Android had no equivalent).
-- New scenarios + server goldens: `bulk-cards-local`, `word-status-set-clear`, `note-update-delete`, `card-get-reviews`.
-- `SHELL.md` §4.3 `createNote` row: mints only `note.created`, `card.created`, `deck.item_put`; kanji notes come from C-27 only.
-
-## Acceptance → tests
-- No allowlist, green → `ParityGoldenTest`, `LocalParityTest`
-- Four scenarios recorded, run on Android → same tests
-
-## New dependencies
-- none
-
-## For the reviewer (≤ 3 lines)
-- Server `updateNote` accepts an `entry_seq` that is in no dictionary (200); SHELL.md §4.3 says the shell checks it like `createNote` (422). Left out of parity; needs a decision.
-- Server answers `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Recorded as is; Android agrees.
-- `/next_cursor` ignored in `card-get-reviews` step 7 (opaque cursor); new coverage tags are not in §8.4 (outside owned paths).
+- Seamless: advance()/send() no longer blank the list when a learning card is due. A timer at `dueFirstAt`+250ms (and after each answer) runs `spliceFetch` (background, no loading state) that splices the server order behind the card on screen. If the user answers before it lands, the next local card shows at once. The server lists a learning card only once due, so no-learn-ahead holds.
+- ADR-039: `review/keepGoingDay.ts` is now in-memory (no localStorage, `KEEP_GOING_KEY` removed). Cleared in `ReviewPage.dispose()`, so it holds for the whole visit and across answers, and is gone after restart. A Keep going pressed on Home still carries into the Review visit it opens (today.svelte.ts untouched; it is not an owned path).
+- ADR-041(3): BackExtras example rows: headword, reading and chip are `nowrap`/`flex:none`; the gloss ellipsizes first.
+- Tests: dueFirst test 1 rewritten (3 cards, learning card due during card 2, no loading/settling phase, never early); keepGoingDay test rewritten (cleared on a new visit, persists within one visit).
+- Screenshot 360x800: scratchpad `kanji-back-360x800.png`. It renders the component CSS in a standalone HTML page with long glosses, not the real route.
+- No new dependencies. No contract change.

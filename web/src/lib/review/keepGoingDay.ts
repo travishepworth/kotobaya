@@ -1,25 +1,19 @@
-// ADR-037 rule C2: Keep going is persisted per client for the study day it was started in. One store, used by
+// ADR-037 rule C2 as amended by ADR-039 (one visit, not persisted). One store, used by
 // Home and the review screen, so both send the same `keep_going`. Not an op, not a setting, never synced.
 import type { ReviewQueue } from '../api/generated';
-
-export const KEEP_GOING_KEY = 'kotobaya.keepGoingDay';
 
 /** The wire `study_day` ("YYYY-MM-DD"); the generated client parses it as UTC midnight. */
 export function studyDayString(d: Date): string {
 	return d.toISOString().slice(0, 10);
 }
 
-function storage(): Storage | null {
-	try {
-		return typeof localStorage === 'undefined' ? null : localStorage;
-	} catch {
-		return null; // storage disabled: keep going lasts for nothing beyond the request it was pressed on
-	}
-}
+// ADR-039: Keep going lasts one review visit. Held in memory only: gone on app restart and cleared when the
+// review screen is left (ReviewPage.dispose), so it stays on across answers within a visit and never longer.
+let day: string | null = null;
 
-/** The stored study day, or null when keep going is off. */
+/** The study day keep going was started on, or null when it is off. */
 export function keepGoingDay(): string | null {
-	return storage()?.getItem(KEEP_GOING_KEY) ?? null;
+	return day;
 }
 
 /** The flag every `getReviewQueue` of this client sends. */
@@ -29,11 +23,11 @@ export function keepGoingFlag(): boolean {
 
 /** Keep going was pressed on a response of `studyDay`. */
 export function startKeepGoing(studyDay: Date): void {
-	storage()?.setItem(KEEP_GOING_KEY, studyDayString(studyDay));
+	day = studyDayString(studyDay);
 }
 
 export function clearKeepGoing(): void {
-	storage()?.removeItem(KEEP_GOING_KEY);
+	day = null;
 }
 
 /**
