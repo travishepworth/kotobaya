@@ -1352,3 +1352,4 @@
 2026-11-19T05:28:10Z C-28c REVIEW_APPROVE r3 + CHECK_GREEN + MERGE; CORE-28 attempt 2 (apply 5 resolutions)
 2026-11-19T05:40:18Z CORE-28 attempt 2 HANDOFF + CHECK_GREEN (core); reviewer dispatched
 2026-11-19T05:47:24Z CORE-28 REVIEW_APPROVE + MERGE; minors -> C-28d + CORE-28b; DISPATCH C-28d architect, SRV-28 writer, AND-28 writer
+2026-11-19T06:05:57Z SRV-28 HANDOFF + CHECK_GREEN; reviewer dispatched (minting via op path, perf, goldens). Disk / 9.5G free
