@@ -1348,3 +1348,4 @@
 2026-11-19T05:18:45Z C-28c REVIEW_CHANGES 1 major (round-robin restart breaks rebuild=tail in default deck+deckless tier); attempt 2
 2026-11-19T05:23:49Z C-28c attempt 2 HANDOFF (turn order by t(S) replaces round-robin) + green; reviewer r2
 2026-11-19T05:24:58Z C-28c REVIEW_CHANGES r2: 1 major (unrequired deckless kanji keep t=0 -> deck starves) + tie-break minor folded in; attempt 3
+2026-11-19T05:26:42Z C-28c attempt 3 HANDOFF + green; reviewer r3
