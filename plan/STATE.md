@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RESUME HERE (run 35, 2026-11-19) — ADR-046 + SCROLL-TOP
 User present. MERGED: SCROLL-TOP c87974a3 (visual verify PASS), C-28f dbedbbf7 + CORE-28d e41c2636 (reviewed APPROVE; checks core/worker/server/android/contracts green).
-LIVE: helm rev 41; web 0.1.31 (pin ffb37e0d: dict desktop + review back). Earlier rev 40 (pin 17eb3969) api 0.1.26, web 0.1.29, worker 0.1.20. APK 0.1.36 INSTALLED (user 10); APK 0.1.37 BUILT (pin ffb37e0d, scratchpad relweb31) awaiting phone. dict release 5 (ADR-046) loaded 2026-11-19; phone must download the package. Cookie POSTs need header X-Kotobaya-Csrf: 1.
+LIVE: helm rev 42 (2026-11-19): api 0.1.28 + web 0.1.33 (pin 6cfb9455: audio ADR-047 + loop wait ADR-049), worker 0.1.21 (pin 3f377a1b). V4 tts_audio migrated. APK 0.1.36 INSTALLED (user 10); APK 0.1.39 BUILT (pin 6cfb9455, scratchpad c30int) awaiting phone (0.1.37/0.1.38 superseded). dict release 5 (ADR-046). Cookie POSTs need header X-Kotobaya-Csrf: 1.
 Live: 嘉 auto_kanji note 01a1f310-d484-7986-b7c4-cac32d9d6656 stays (no auto-delete per C-28f); user to delete/suspend by hand.
 
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
