@@ -1336,3 +1336,4 @@
 2026-11-19T03:47:01Z C-28 REVIEW_CHANGES 2 major (backfill never mints; unit>budget starvation) + minors; DECIDE ADR-043 provisional; attempt 2 to architect
 2026-11-19T03:55:14Z C-28 REVIEW_APPROVE r2 + CHECK_GREEN + MERGE; 2 minors -> FOLLOWUPS (backfill share asked user)
 2026-11-19T03:56:41Z DECIDE ADR-044 (user: backfill half the goal); C-28b DISPATCH architect
+2026-11-19T03:56:57Z WEB-28 DISPATCH writer (+front_furigana)
