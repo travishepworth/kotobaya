@@ -28,6 +28,7 @@ _SAMPLE: State = {
     "v": 1,
     "conn": "ok",
     "counts": {"new": 1, "learning": 2, "review": 3},
+    "until_stop_parts": {"new": 1, "learning": 2, "later": 4, "review": 3},
     "day_ends_at": "2026-11-16T00:00:00Z",
     "card": {
         "id": "x",
@@ -70,17 +71,50 @@ def _next_due_in(instant: object, now: datetime | None = None) -> str:
     return f"{total // 60}:{total % 60:02d}"
 
 
+def _four_parts(state: State) -> tuple[int, int, int, int] | None:
+    """ADR-049 (new, learning, later, review) from until_stop_parts; None when the server is old."""
+    parts = _obj(state.get("until_stop_parts"))
+    if not parts:
+        return None
+    return (
+        _int(parts.get("new")),
+        _int(parts.get("learning")),
+        _int(parts.get("later")),
+        _int(parts.get("review")),
+    )
+
+
+def _int(value: object) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _numbers(state: State) -> tuple[int, int, int, int]:
+    """(new, learning, later, review). Old servers: the deprecated counts, whose learning
+    includes the cards due later, so later reads 0 there."""
+    parts = _four_parts(state)
+    if parts is not None:
+        return parts
+    counts = _obj(state.get("counts"))
+    return (
+        _int(counts.get("new")),
+        _int(counts.get("learning")),
+        0,
+        _int(counts.get("review")),
+    )
+
+
 def _fields(state: State) -> dict[str, object]:
     """Flat values for a template. Unknown counts read as 0; absent card text reads as ""."""
-    counts = _obj(state.get("counts"))
     card = _obj(state.get("card"))
     previews = _obj(card.get("previews"))
     last = _obj(state.get("last"))
+    new, learning, later, review = _numbers(state)
     return {
         "conn": state.get("conn", ""),
-        "new": counts.get("new", 0),
-        "learning": counts.get("learning", 0),
-        "review": counts.get("review", 0),
+        "new": new,
+        "learning": learning,
+        "later": later,
+        "review": review,
         "pending": state.get("pending", 0),
         "day_ends_at": state.get("day_ends_at") or "",
         "notice": state.get("notice") or "",
@@ -130,12 +164,19 @@ def offline_state(last: State | None) -> State:
 
 def _waybar(state: State) -> str:
     conn = str(state.get("conn", ""))
-    counts = _obj(state.get("counts"))
-    if conn == "ok" and counts:
-        text = f"{counts.get('new')} / {counts.get('learning')} / {counts.get('review')}"
+    has_numbers = _four_parts(state) is not None or bool(_obj(state.get("counts")))
+    if conn == "ok" and has_numbers:
+        new, learning, later, review = _numbers(state)
+        # Like the web header (ADR-049): new and later appear only when above 0.
+        segments = [f"{new} new"] if new > 0 else []
+        segments.append(f"{learning} learning")
+        if later > 0:
+            segments.append(f"{later} later")
+        segments.append(f"{review} review")
+        text = " · ".join(segments)
         tooltip = (
-            f"new {counts.get('new')}, learning {counts.get('learning')}, "
-            f"review {counts.get('review')}, pending {state.get('pending', 0)}"
+            f"new {new}, learning {learning}, later {later}, review {review}, "
+            f"pending {state.get('pending', 0)}"
         )
     elif conn == "ok":
         text, tooltip = "-", "counts not loaded yet"

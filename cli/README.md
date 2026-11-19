@@ -99,7 +99,7 @@ daemon is down, `watch` prints the last known state with `conn` set to `offline`
 and retries with backoff (0.5 s doubling to 10 s). `watch` needs no token and no config file, only
 the daemon's socket.
 
-Template fields: `conn`, `new`, `learning`, `review`, `pending`, `day_ends_at`, `notice`,
+Template fields: `conn`, `new`, `learning`, `later`, `review`, `pending`, `day_ends_at`, `notice`,
 `last_rating`, `undoable` (`true`/`false`), `card_id`, `kind`, `front`, `back`, `reading`,
 `sentence`, `revealed` (`true`/`false`), `preview_again`, `preview_hard`, `preview_good`,
 `preview_easy`. Card text is empty until the server sends it. An unknown field is rejected at
@@ -120,7 +120,9 @@ startup.
 }
 ```
 
-Add `"custom/kotobaya"` to `modules-right` (or another list). The text is `new / learning / review`.
+Add `"custom/kotobaya"` to `modules-right` (or another list). The text is `N learning · M review`, with `N new` before and `K later` between them only when above 0
+(ADR-049, the web header's four parts). Numbers come from `until_stop_parts`; an older daemon falls
+back to the deprecated `counts`, where `learning` includes the cards due later.
 The `class` is `ok`, `offline` or `auth`, for CSS styling.
 
 ### eww

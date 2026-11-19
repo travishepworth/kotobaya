@@ -87,6 +87,23 @@
     "reviews_today": {"type": ["integer", "null"], "minimum": 0},
     "reviews_limit": {"type": ["integer", "null"], "minimum": 0, "description": "null: reviews unlimited (or not loaded)."},
     "new_today": {"type": ["integer", "null"], "minimum": 0},
-    "new_goal": {"type": ["integer", "null"], "minimum": 0}
+    "new_goal": {"type": ["integer", "null"], "minimum": 0},
+    "until_stop_parts": {
+      "description": "ADR-049: until_stop split into the four numbers the web header shows (learning + later + review + new = until_stop). Null from an older server or while not conn ok; widgets then fall back to counts.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["learning", "later", "review", "new"],
+          "properties": {
+            "learning": {"type": "integer", "minimum": 0},
+            "later": {"type": "integer", "minimum": 0},
+            "review": {"type": "integer", "minimum": 0},
+            "new": {"type": "integer", "minimum": 0}
+          }
+        }
+      ]
+    }
   }
 }
