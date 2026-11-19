@@ -3,9 +3,10 @@
 Payload is ``TtsRequest`` (``text``, ``voice``; the server fills the voice in). Result is
 ``JobResultTts`` (``blob_hash``, ``content_type``, ``duration_ms``).
 
-Cache (no table): an earlier *succeeded* ``tts`` job with the same dedupe key
-(``tts:<sha256(voice NUL text)>``, the key the server enqueues under) whose blob row still exists
-supplies the result; VOICEVOX is not called. Object first, ``app.blob`` row second.
+Cache (C-29, ADR-047, SCHEMA.md 6.6): ``app.tts_audio`` keyed by ``(voice, text)``. A row whose
+``app.blob`` row exists supplies the result; VOICEVOX is not called. Otherwise synthesize, store the
+object, insert the ``app.blob`` row, then upsert the ``tts_audio`` row (in that order). A voice
+outside ``^[0-9]{1,9}$`` or a text outside 1-500 characters fails the job before any VOICEVOX call.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import hashlib
 import io
 import logging
 import os
+import re
 import subprocess
 import tempfile
 import urllib.parse
@@ -35,6 +37,8 @@ KIND = "tts"
 log = logging.getLogger(__name__)
 DEFAULT_VOICE = "3"  # keep in step with the server's default (kotobaya.tts.DEFAULT_VOICE)
 DEFAULT_VOICEVOX_URL = "http://localhost:50021"
+VOICE_RE = re.compile(r"[0-9]{1,9}")
+MAX_TEXT = 500
 
 
 def dedupe_key(voice: str, text: str) -> str:
@@ -48,8 +52,12 @@ class Synthesizer(Protocol):
 
 
 class Cache(Protocol):
-    def lookup(self, key: str) -> dict[str, Any] | None:
-        """Result of an earlier succeeded job under ``key`` whose blob still exists, else None."""
+    def lookup(self, voice: str, text: str) -> dict[str, Any] | None:
+        """Result of the generated pair whose blob row still exists, else None."""
+        ...
+
+    def record(self, voice: str, text: str, result: Mapping[str, Any]) -> None:
+        """Upsert the ``tts_audio`` row (after the blob row is stored)."""
         ...
 
 
@@ -123,7 +131,11 @@ def run_tts(
     voice = ctx.payload.get("voice") or DEFAULT_VOICE
     if not isinstance(text, str) or not text or not isinstance(voice, str):
         raise TypeError("tts payload needs a non-empty string `text` (and a string `voice`)")
-    hit = cache.lookup(dedupe_key(voice, text))
+    if not VOICE_RE.fullmatch(voice):
+        raise ValueError(f"tts voice must be 1-9 decimal digits, got {voice!r}")
+    if not 1 <= len(text) <= MAX_TEXT:
+        raise ValueError(f"tts text must be 1-{MAX_TEXT} characters, got {len(text)}")
+    hit = cache.lookup(voice, text)
     if hit is not None:
         log_tts_summary(text, voice, hit, size_bytes=None, cached=True)
         return hit
@@ -138,6 +150,7 @@ def run_tts(
         size = out.stat().st_size
         sink.store(out, digest)
     result = {"blob_hash": digest, "content_type": CONTENT_TYPE, "duration_ms": duration}
+    cache.record(voice, text, result)
     log_tts_summary(text, voice, result, size_bytes=size, cached=False)
     return result
 
@@ -163,17 +176,28 @@ class PgCache:
     def __init__(self, conn: psycopg.Connection[Any]) -> None:
         self._c = conn
 
-    def lookup(self, key: str) -> dict[str, Any] | None:
+    def lookup(self, voice: str, text: str) -> dict[str, Any] | None:
         row = self._c.execute(
-            "select j.result from app.job j join app.blob b on b.hash = j.result->>'blob_hash' "
-            "where j.kind = 'tts' and j.status = 'succeeded' and j.dedupe_key = %s "
-            "order by j.finished_at desc limit 1",
-            (key,),
+            "select t.blob_hash, t.duration_ms, b.content_type from app.tts_audio t "
+            "join app.blob b on b.hash = t.blob_hash where t.voice = %s and t.text = %s",
+            (voice, text),
         ).fetchone()
-        if row is None or not isinstance(row["result"], dict):
+        if row is None:
             return None
-        r: dict[str, Any] = row["result"]
-        return {k: r[k] for k in ("blob_hash", "content_type", "duration_ms")}
+        return {
+            "blob_hash": row["blob_hash"],
+            "content_type": row["content_type"],
+            "duration_ms": row["duration_ms"],
+        }
+
+    def record(self, voice: str, text: str, result: Mapping[str, Any]) -> None:
+        self._c.execute(
+            "insert into app.tts_audio (voice, text, blob_hash, duration_ms) "
+            "values (%s, %s, %s, %s) on conflict (voice, text) do update set "
+            "blob_hash = excluded.blob_hash, duration_ms = excluded.duration_ms, "
+            "created_at = now()",
+            (voice, text, result["blob_hash"], result["duration_ms"]),
+        )
 
 
 class S3PgSink:

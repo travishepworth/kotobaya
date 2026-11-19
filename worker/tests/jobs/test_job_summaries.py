@@ -243,8 +243,11 @@ class _Synth:
 
 
 class _Store:
-    def lookup(self, key: str) -> dict[str, Any] | None:
+    def lookup(self, voice: str, text: str) -> dict[str, Any] | None:
         return None
+
+    def record(self, voice: str, text: str, result: Any) -> None:
+        pass
 
     def store(self, path: Path, digest: str) -> None:
         pass
