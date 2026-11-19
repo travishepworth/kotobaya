@@ -513,3 +513,7 @@
 - (C-28b minor) A large enabled kanji deck in tier 0 can take backfill kanji past the half share, up to the whole goal (intended); release note / UI hint.
 - (C-28c minors) t(S) "required" deckless kanji counts NEW words in disabled/later-tier decks (count only introduced words or drawn units); req over scoped/deleted candidates shifts turn order (ordering only); keep core tail-property exclusion (3) as narrow as README.
 - (CORE-28b minor) core rebuildIsTail runs 400 seeds/mode in repo (8000 run locally, 0 failures); raise to ~2000 if runtime ok.
+- C-28f review (2026-11-19): AnkiDroid/Takoboto duplicate checksum (android ankiapi/store/ChecksumIndex.kt) uses headword; after ADR-046 rebuild, Takoboto adding 居る won't match an existing いる note → possible duplicate (not loss). Consider checksumming all entry forms; list it among SCHEMA 4.5 readers.
+- C-28f review: SCHEMA 4.5 Rollout — devices on an old dict package can mint jōyō kanji notes for kana words that then stay forever (no auto cleanup); note it, refresh device packages promptly after dict release.
+- C-28f review: headword_reading should be the first reading that applies to the headword (skip re_nokanji, respect re_restr); e.g. 鯛 → タイ is re_nokanji, wrong furigana. Pre-existing.
+- C-28f review: kana-word headwords drop those words from kanji example lists (position(literal in headword)); consistent with ADR-046, optionally document.

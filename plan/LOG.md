@@ -1378,3 +1378,4 @@
 2026-11-19T09:47:42Z C-28f DISPATCH architect; SCROLL-TOP DISPATCH writer
 2026-11-19T09:49:41Z SCROLL-TOP HANDOFF + CHECK_GREEN (web) + MERGE c87974a3 (web only)
 2026-11-19T09:59:17Z C-28f HANDOFF + green (contracts); reviewer; CORE-28d DISPATCH writer-senior from t/C-28f-contracts (parallel)
+2026-11-19T10:02:56Z C-28f REVIEW_APPROVE (5 minors → FOLLOWUPS; headword cache clear added to CORE-28d)
