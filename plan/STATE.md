@@ -7,7 +7,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 34, 2026-11-19) — user feedback round ADR-038..044
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
-| C-28c | architect | 2 | t/C-28c-contracts (worktree .claude/worktrees/C-28c-contracts) | 2026-11-19 |
+| C-28c | reviewer | 2 (in review) | t/C-28c-contracts (worktree .claude/worktrees/C-28c-contracts) | 2026-11-19 |
 CORE-28: BLOCKED_CONTRACT on C-28c; code green on t/CORE-28-core (keep branch/worktree .claude/worktrees/agent-a08c4b59f05cfd098). After C-28c merges: CORE-28 attempt 2 (same writer if alive, else writer-senior) applies C-28c decisions on that branch, then reviewer.
 If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> validate/check/review; else re-dispatch CORE-28 attempt 1 (prompt: ticket plan/tickets/CORE-28.md, owned core/** except core/src/commonMain/kotlin/kotobaya/contracts/**, read QueueBuilder rule 4-6, plan/handoffs/C-28.md + C-28b.md, ruby furigana note, Gradle flock).
 ### Next (in order)

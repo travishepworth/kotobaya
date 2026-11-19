@@ -1346,3 +1346,4 @@
 2026-11-19T05:10:14Z C-28c resumed after usage-limit reset (same architect agent)
 2026-11-19T05:17:17Z C-28c HANDOFF (4 cases resolved, rebuild=tail normative) + CHECK_GREEN; reviewer dispatched
 2026-11-19T05:18:45Z C-28c REVIEW_CHANGES 1 major (round-robin restart breaks rebuild=tail in default deck+deckless tier); attempt 2
+2026-11-19T05:23:49Z C-28c attempt 2 HANDOFF (turn order by t(S) replaces round-robin) + green; reviewer r2
