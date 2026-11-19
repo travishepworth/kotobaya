@@ -15,6 +15,8 @@
 ## Do
 1. Reproduce in vitest/jsdom (TEST-1 set up bounded-effect tests, see web/tests) or a dev build: open /dictionary entry, toggle deck membership via AddToDeck → effect loop. Fix the cycle (untrack / derive instead of effect-write / compare-before-set).
 2. Audit the other reported routes (/settings, /stats, /notes, /) for the same pattern and fix what reproduces; list anything you couldn't reproduce in HANDOFF.
+2b. Also: "View note" from a dictionary entry → same loop on /notes; /decks too (03:30Z reports). One shared chunk — likely one shared component.
+2c. UX (user): "Add to deck" opens a dropdown/popover of decks to pick (toggle per deck); screenshot 360x800 of it open.
 3. Make SvelteKit's client error page for a non-HTTP exception not say "500" (show a friendly "Something went wrong" + reload), i18n.
 ## Acceptance
 - [ ] Bounded-effect test that fails on current code for the add-to-deck toggle on /dictionary; passes after fix.
