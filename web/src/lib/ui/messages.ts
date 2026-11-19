@@ -49,6 +49,12 @@ const en = {
 	// App shell and strings shared by every screen.
 	'app.name': 'Kotobaya',
 	'app.loading': 'Loading Kotobaya…',
+	'app.error.title': 'Something went wrong',
+	'app.error.body': 'This screen hit a problem. Reloading usually fixes it; your reviews and notes are safe.',
+	'app.error.notFound': 'Page not found',
+	'app.error.notFoundBody': 'There is nothing at this address.',
+	'app.error.reload': 'Reload',
+	'app.error.home': 'Go to Today',
 	'app.logout': 'Log out',
 	'app.signedInAs': 'Signed in as {name}',
 	'app.nav.home': 'Today',
