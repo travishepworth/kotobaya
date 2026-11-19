@@ -1325,3 +1325,4 @@
 2026-11-19T03:16:00Z CLI-KG-SCOPE REVIEW_CHANGES attempt 2: daemon-run scope still leaks over quota; add 10-min idle reset. DECIDE ADR-039 amended (idle 10 min); WEB-KG-IDLE filed
 2026-11-19T03:17:34Z CLI-KG-SCOPE attempt 2 CHECK_GREEN + MERGE (in-memory keep going, 10-min idle reset)
 2026-11-19T03:17:54Z CLI daemon reinstalled from main 0ccb8f01 (CLI-KG-SCOPE), active
+2026-11-19T03:18:29Z WEB-KG-IDLE CHECK_GREEN + MERGE (lazy 10-min idle expiry, resume check)
