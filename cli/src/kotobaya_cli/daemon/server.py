@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Protocol
 
 from kotobaya_cli.api import CliError
+from kotobaya_cli.config import KEEP_GOING_IDLE_S
 from kotobaya_cli.daemon.backend import Backend, BackendError, EventStream, classify
 from kotobaya_cli.daemon.journal import Journal
 from kotobaya_cli.daemon.protocol import (
@@ -153,10 +154,13 @@ class Daemon:
         clock: Clock = utc_now,
         handler: AnswerHandler | None = None,
         timer_seconds: float = TIMER_SECONDS,
+        keep_going_idle_s: float = KEEP_GOING_IDLE_S,
     ) -> None:
         self.backend = backend
         self.paths = paths
         self.session = Session(clock)
+        self._keep_going_idle_s = keep_going_idle_s
+        self._last_activity = clock()  # answers, undo, skip and the keep-going press (ADR-039)
         self.handler: AnswerHandler = handler or NoAnswers()
         self._clock = clock
         self._timer_seconds = timer_seconds
@@ -179,6 +183,23 @@ class Daemon:
         self._stream: EventStream | None = None
         self._fifo_buf = b""
         self._writers: set[asyncio.StreamWriter] = set()
+
+    # ---- keep going, one review session (ADR-039) ---------------------------------
+
+    def _touch(self) -> None:
+        """An answer, undo, skip or keep-going press: the idle clock starts again."""
+        self._last_activity = self._clock()
+
+    def _expire_keep_going(self) -> None:
+        """Clear keep going once no answer, undo, skip or keep-going press came for the idle time.
+        Checked when a command arrives and before every queue fetch, never on a timer."""
+        session = self.session
+        if not session.keep_going:
+            return
+        idle = (self._clock() - self._last_activity).total_seconds()
+        if idle >= self._keep_going_idle_s:
+            session.keep_going = False
+            session.keep_going_day = None
 
     # ---- output -------------------------------------------------------------
 
@@ -204,27 +225,32 @@ class Daemon:
 
     async def handle(self, cmd: Command) -> dict[str, object]:
         session = self.session
+        self._expire_keep_going()
         if isinstance(cmd, Invalid):
             session.set_notice(cmd.notice)
         elif isinstance(cmd, AnswerCmd):
             if session.current is not None and not session.revealed:
                 session.set_notice("reveal the card before grading")  # nothing else changes
             else:
+                self._touch()
                 await self.handler.answer(self, cmd.button)
         elif isinstance(cmd, Action):
             if cmd.name == "reveal":
                 session.reveal()
             elif cmd.name == "skip":
+                self._touch()
                 if session.conn != "ok":
                     session.set_notice("offline")
                 elif not session.skip():
                     session.set_notice("nothing to skip to")
             elif cmd.name == "undo":
+                self._touch()
                 await self.handler.undo(self)
             elif cmd.name == "refresh":
                 self._spawn_refetch()
             elif cmd.name == "keep_going":
                 # C-26/C-27: same semantics as the web: past today's limits until a keep-going fetch is empty.
+                self._touch()  # the idle window starts at the press (ADR-039)
                 session.keep_going = True
                 session.keep_going_day = session.study_day  # None: adopted from the next response
                 self._spawn_refetch()
@@ -380,6 +406,7 @@ class Daemon:
         to turn into cards (`to_materialize` > 0) is fetched again, so keep going ends only on a
         truly empty keep-going fetch."""
         session = self.session
+        self._expire_keep_going()
         if not session.keep_going:
             return await asyncio.to_thread(self.backend.fetch_queue)
         snapshot = await asyncio.to_thread(self.backend.fetch_queue, True)
@@ -634,11 +661,14 @@ class Daemon:
                 self.paths.sock.unlink()
 
 
-def run_daemon(backend: Backend, paths: Paths) -> int:
+def run_daemon(
+    backend: Backend, paths: Paths, *, keep_going_idle_s: float = KEEP_GOING_IDLE_S
+) -> int:
     """Blocking entry point for `kotobaya daemon`."""
     try:
         handler = ReviewHandler(Journal(paths.journal))
-        asyncio.run(Daemon(backend, paths, handler=handler).run())
+        daemon = Daemon(backend, paths, handler=handler, keep_going_idle_s=keep_going_idle_s)
+        asyncio.run(daemon.run())
     except OSError as exc:
         raise CliError(f"daemon cannot start: {exc}") from exc
     except KeyboardInterrupt:

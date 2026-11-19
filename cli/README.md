@@ -19,6 +19,10 @@ token_file = "~/.config/kotobaya/token" # or: token_cmd = "pass show kotobaya/pa
 
 Use one `token_file` or one `token_cmd`, not both.
 
+Optional: `keep_going_idle_s = 600` (or `KOTOBAYA_KEEP_GOING_IDLE_S`, which wins) is how many
+seconds without an answer, undo, skip or keep-going press end keep going (ADR-039, default 600 =
+10 minutes). It must be a positive number.
+
 Create a personal access token with scopes **read** and **review**. A token without `review`
 cannot answer cards: the daemon reports `conn: "auth"` on each answer, so widgets flap between
 `ok` and `auth`.
@@ -63,9 +67,11 @@ fetches again first.
 
 **Keep going** (per device, not synced). In phase `goal_reached`/`done_for_today` send
 `keep_going` to continue past every limit: due reviews first (no cap), then new cards without
-end. ADR-039: keep going lasts one review session = one daemon run. It is held in memory only
-(nothing is written to disk); a daemon restart or a different study day clears it, and so does
-`stop_keep_going`.
+end. ADR-039: keep going lasts one review session. It is held in memory only (nothing is written
+to disk) and ends on a daemon restart, a different study day, `stop_keep_going`, or when no answer,
+undo, skip or keep-going press came for `keep_going_idle_s` (default 600 s). The idle check runs
+when a command arrives or the queue is fetched, not on a timer, so the state can show keep going
+until the next command or fetch. The idle clock starts at the keep-going press.
 The state carries `"keep_going"` (bool); `"loading"` (bool) is true while a refetch runs.
 
 ### Keep going from `kby`

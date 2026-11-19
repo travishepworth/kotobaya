@@ -9,7 +9,7 @@ import pytest
 
 from kotobaya_cli.api import CliError
 from kotobaya_cli.cli import main
-from kotobaya_cli.config import load_daemon_settings
+from kotobaya_cli.config import KEEP_GOING_IDLE_S, load_daemon_settings, load_keep_going_idle
 
 
 def write(path: Path, text: str) -> Path:
@@ -63,3 +63,16 @@ def test_daemon_command_reports_config_errors_without_a_traceback(tmp_path: Path
     code = main(["daemon", "--config", str(tmp_path / "none.toml")], env={}, stderr=err)
     assert code == 1
     assert "no server" in err.getvalue()
+
+
+def test_keep_going_idle_default_env_and_config(tmp_path: Path) -> None:
+    """ADR-039: 10 minutes unless KOTOBAYA_KEEP_GOING_IDLE_S (env) or keep_going_idle_s (file) say otherwise."""
+    cfg = write(tmp_path / "c.toml", "keep_going_idle_s = 120\n")
+    assert load_keep_going_idle({}, tmp_path / "missing.toml") == KEEP_GOING_IDLE_S == 600.0
+    assert load_keep_going_idle({}, cfg) == 120.0
+    assert load_keep_going_idle({"KOTOBAYA_KEEP_GOING_IDLE_S": "30"}, cfg) == 30.0
+    for bad in ("0", "-5", "soon", "nan"):
+        with pytest.raises(CliError):
+            load_keep_going_idle({"KOTOBAYA_KEEP_GOING_IDLE_S": bad}, cfg)
+    with pytest.raises(CliError):
+        load_keep_going_idle({}, write(tmp_path / "bad.toml", 'keep_going_idle_s = "x"\n'))

@@ -562,6 +562,65 @@ def test_keep_going_resets_on_new_session(paths: Paths) -> None:
     asyncio.run(scenario())
 
 
+def _idle_scenario(paths: Paths, idle_after: timedelta) -> tuple[list[bool], Daemon]:
+    """Keep going pressed, one answer a minute later, then `idle_after` without any input."""
+    backend = FakeBackend()
+    flags = _recording(backend)
+    t0 = datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)
+    clock = [t0]
+    backend.snap = _loop_snapshot("goal_reached")
+    daemon = Daemon(backend, paths, clock=lambda: clock[0], timer_seconds=3600)
+
+    async def scenario() -> None:
+        await daemon.refetch()
+        await daemon.handle(Action("keep_going"))
+        await daemon.idle()
+        backend.snap = _loop_snapshot("reviewing", "a")
+        clock[0] = t0 + timedelta(minutes=1)
+        await daemon.refetch()
+        await daemon.handle(Action("reveal"))
+        await daemon.handle(AnswerCmd("good"))  # the answer: the idle clock restarts here
+        clock[0] += idle_after
+        flags.clear()
+        await daemon.refetch()
+
+    asyncio.run(scenario())
+    return flags, daemon
+
+
+def test_keep_going_ends_after_ten_idle_minutes(paths: Paths) -> None:
+    flags, daemon = _idle_scenario(paths, timedelta(minutes=11))
+    assert flags == [False]  # the next build is the normal one: the stop screen returns
+    assert daemon.session.keep_going is False and daemon.session.keep_going_day is None
+    assert check_state(daemon.session.state())["keep_going"] is False
+
+
+def test_keep_going_survives_nine_idle_minutes(paths: Paths) -> None:
+    flags, daemon = _idle_scenario(paths, timedelta(minutes=9))
+    assert flags == [True]
+    assert daemon.session.keep_going is True
+
+
+def test_idle_clock_starts_at_the_keep_going_press(paths: Paths) -> None:
+    """Pressing keep going after a long pause must not expire at once."""
+    backend = FakeBackend()
+    flags = _recording(backend)
+    clock = [datetime(2026, 11, 15, 10, 0, 0, tzinfo=UTC)]
+    backend.snap = _loop_snapshot("goal_reached")
+    daemon = Daemon(backend, paths, clock=lambda: clock[0], timer_seconds=3600)
+
+    async def scenario() -> None:
+        await daemon.refetch()
+        clock[0] += timedelta(hours=3)  # the stop screen sat for hours
+        await daemon.handle(Action("keep_going"))
+        await daemon.idle()
+        flags.clear()
+        await daemon.refetch()
+        assert flags == [True] and daemon.session.keep_going is True
+
+    asyncio.run(scenario())
+
+
 def test_keep_going_dropped_on_new_day(paths: Paths) -> None:
     backend = FakeBackend()
     flags = _recording(backend)

@@ -186,12 +186,13 @@ def _api_error_text(exc: ApiException) -> str:
 
 def _run_daemon(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
     # Imported here so one-shot commands never pay for the daemon modules.
-    from kotobaya_cli.config import load_daemon_settings
+    from kotobaya_cli.config import load_daemon_settings, load_keep_going_idle
     from kotobaya_cli.daemon.backend import HttpBackend
     from kotobaya_cli.daemon.server import Paths, run_daemon
 
     settings = load_daemon_settings(args.server, environ, args.config)
-    return run_daemon(HttpBackend(settings), Paths.from_env(environ))
+    idle = load_keep_going_idle(environ, args.config)
+    return run_daemon(HttpBackend(settings), Paths.from_env(environ), keep_going_idle_s=idle)
 
 
 def main(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import shlex
 import subprocess
 import tomllib
@@ -11,6 +12,8 @@ from pathlib import Path
 from kotobaya_cli.api import ENV_TOKEN, ENV_URL, CliError, Settings, normalize_url
 
 TOKEN_CMD_TIMEOUT_S = 10.0
+ENV_KEEP_GOING_IDLE = "KOTOBAYA_KEEP_GOING_IDLE_S"
+KEEP_GOING_IDLE_S = 600.0  # ADR-039: keep going ends after this many seconds without an answer
 
 
 def default_config_path(env: Mapping[str, str]) -> Path:
@@ -67,6 +70,23 @@ def _token_from_config(config: Mapping[str, object]) -> str:
             raise CliError(f"token_cmd exited with {proc.returncode}")
         return proc.stdout.strip()
     return ""
+
+
+def load_keep_going_idle(env: Mapping[str, str], config_path: Path | None = None) -> float:
+    """Seconds without an answer, undo or skip after which keep going ends (ADR-039).
+    Precedence: KOTOBAYA_KEEP_GOING_IDLE_S > keep_going_idle_s in config.toml > 600."""
+    config = read_config(config_path or default_config_path(env))
+    raw = env.get(ENV_KEEP_GOING_IDLE, "").strip()
+    value: object = raw if raw else config.get("keep_going_idle_s")
+    if value is None:
+        return KEEP_GOING_IDLE_S
+    try:
+        seconds = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise CliError(f"keep_going_idle_s must be a number of seconds, got {value!r}") from exc
+    if isinstance(value, bool) or not math.isfinite(seconds) or seconds <= 0:
+        raise CliError(f"keep_going_idle_s must be a positive number of seconds, got {value!r}")
+    return seconds
 
 
 def load_daemon_settings(
