@@ -508,3 +508,5 @@
 - [ ] Server returns `auto_status: null` for an entry whose only card is new (schema: null = no live vocab note). Phone agrees; confirm intended.
 - [ ] New parity coverage tags (bulk-cards-local, word-status-set-clear, note-update-delete, card-get-reviews) not listed in SHELL.md §8.4.
 - (2026-11-19, CLI) cli/pyproject.toml sources kotobaya_client editable; a uv tool install from a temp worktree breaks when it is deleted (daemon crash-looped). Make the source non-editable or document `uv tool install --no-sources --with ./clients/python ./cli` in docs/CLI-DAEMON.md.
+- (C-28b minor) newPerDay 1 → backfill share 1 = whole goal until backfill done (no new words for N days). Consider alternate days; ask user if it bites.
+- (C-28b minor) Scoped builds (deck_id): backfill literals/bToday differ from unscoped build (introduced out-of-scope words missing) → counts disagree between deck review and global; same on server+device. Pass introduced words requiring backfill literals to scoped loaders, or state scoped builds do no backfill.
