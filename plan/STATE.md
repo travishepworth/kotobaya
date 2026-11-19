@@ -16,7 +16,7 @@ If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> vali
 4. Release: pin one SHA (worktree), make images push REGISTRY=core.harbor.batk.me/kotobaya VERSION=<new: api>0.1.24, web>0.1.27, never reuse>, bump ~/repos/kubernetes/kotobaya/values.yaml, helm upgrade; APK RELEASE build (memory phone-apk-install) next VERSION after 0.1.34; CLI reinstall with `uv tool install --force --no-sources --with ./clients/python ./cli` + systemctl --user restart kotobaya. Verify UI on phone visually (until_stop bar, deck progress, kanji tiles, ruby furigana, add-to-deck sheet).
 ### Merged this round, awaiting release
 WEB-REVIEW-FLOW, WEB-KG-IDLE, BUG-ADD2DECK-500 (Dialog effect loop), WEB-MORE-CLOSE, C-28, C-28b, WEB-28. CLI-KG-SCOPE merged AND installed (daemon active).
-Still HELD from pause: waiting: WEB-REVIEW-FLOW, WEB-KG-IDLE, BUG-ADD2DECK-500, WEB-MORE-CLOSE (CLI-KG-SCOPE already installed).
+Still HELD from pause: LOOP-C2b, SHELL-Z2 (do not dispatch).
 Still HELD from pause: LOOP-C2b, SHELL-Z2.
 CLI daemon reinstalled non-editable 2026-11-19 (was crash-looping).
 Gradle lane after: Z2 (last).
