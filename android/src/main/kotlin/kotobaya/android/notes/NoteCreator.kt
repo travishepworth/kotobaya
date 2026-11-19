@@ -142,29 +142,36 @@ class NoteCreator<L : LearningTables>(
                 val dict = plan.dict(ref.entrySeq) ?: return@mapNotNull null
                 val deck = plan.deck(ref.deckId)
                 if (plan.vocabKinds(ref.entrySeq, deck).isEmpty()) return@mapNotNull null
-                ref to kotobaya.android.queue.EntryPlan(
-                    expressionKanji = DeckEntryPlan.expressionKanji(dict.expression),
-                    newKanjiCards = plan.newKanjiCards(dict.expression, deck, burySiblings),
-                )
+                ref to kotobaya.android.queue.EntryPlan(expression = dict.expression, expressionKanji = DeckEntryPlan.expressionKanji(dict.expression))
             }.toMap()
         }
     }
 
+    /** ADR-040: the card kinds step A creates for each literal ([DeckEntryPlan.kanjiKinds]); none for a literal that would get no card. */
+    override fun kanjiKinds(literals: Collection<String>): Map<String, List<String>> {
+        if (literals.isEmpty()) return emptyMap()
+        return readTables { tables ->
+            val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
+            literals.associateWith { plan.kanjiKinds(it) }
+        }
+    }
+
     /**
-     * AND-KEEPGOING-FIX, C-27 (contracts/core/README.md "C-27: pending entries and materialization"; the same ops as the
-     * server): for each drawn entry (`ReviewQueue.toMaterialize`), in order, in ONE store transaction: skip it if a live
-     * note holds the entry (SYNC.md 4: never knowingly a second note per entry) or its dictionary entry is missing;
-     * else the kanji notes of [DeckEntryPlan.kanjiToCreate] (`origin` `auto_kanji`), each with
-     * [DeckEntryPlan.kanjiKinds]; then `note.created` {vocab type, `entry_seq`, `fields` {}, `origin` `deck`} and one
-     * `card.created` per [DeckEntryPlan.vocabKinds] (an entry without any is skipped). A note another replica created
-     * for the same entry converges by SYNC.md 8.1. Returns the ids of the vocab notes created.
+     * AND-KEEPGOING-FIX, C-27, ADR-040 (contracts/core/README.md "C-27: pending entries and materialization"; the same
+     * ops as the server), in ONE store transaction. Step A: for each literal of [kanji], in order, skip it if a live
+     * kanji note or a user-deleted one holds it; else `note.created` {kanji type, `kanji_literal`, `fields` {}, `origin`
+     * `auto_kanji`} and one `card.created` per [DeckEntryPlan.kanjiKinds]. Step B: for each drawn entry, in order, skip
+     * it if a live note holds the entry (SYNC.md 4: never knowingly a second note per entry) or its dictionary entry is
+     * missing; else `note.created` {vocab type, `entry_seq`, `fields` {}, `origin` `deck`} and one `card.created` per
+     * [DeckEntryPlan.vocabKinds] (an entry without any is skipped). A note another replica created for the same entry or
+     * literal converges by SYNC.md 8.1. Returns the ids of the notes created.
      */
-    override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> {
-        if (entries.isEmpty()) return emptySet()
-        // nothing to create (each entry has a live note by now, or no dictionary entry or kind): no write transaction
+    override fun materialize(kanji: List<String>, entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> {
+        if (entries.isEmpty() && kanji.isEmpty()) return emptySet()
+        // nothing to create (everything has a note by now, or no dictionary entry or kind): no write transaction
         val anything = readTables { tables ->
             val plan = DeckEntryPlan(tables, dictionary, kanjiData, generator)
-            entries.any { e ->
+            kanji.any { l -> !plan.kanjiBlocked(l) && plan.kanjiKinds(l).isNotEmpty() } || entries.any { e ->
                 plan.dict(e.entrySeq) != null && DuplicateCheck.byEntry(tables, e.entrySeq) == null &&
                     plan.vocabKinds(e.entrySeq, plan.deck(e.deckId)).isNotEmpty()
             }
@@ -176,22 +183,25 @@ class NoteCreator<L : LearningTables>(
             val now = clock.nowMs()
             val requests = ArrayList<MintRequest>()
             val notes = LinkedHashSet<String>()
+            for (literal in kanji.distinct()) {
+                if (plan.kanjiBlocked(literal)) continue
+                val kinds = plan.kanjiKinds(literal)
+                if (kinds.isEmpty()) continue
+                val id = ids.newOpId(now)
+                requests += MintRequest(
+                    OpType.NOTE_CREATED,
+                    obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
+                )
+                for (kind in kinds) requests += cardRequest(ids.newOpId(now), id, kind)
+                plan.kanjiCreated(literal)
+                notes += id
+            }
             val done = HashSet<Long>()
             for (e in entries) {
-                val dict = plan.dict(e.entrySeq) ?: continue
+                plan.dict(e.entrySeq) ?: continue
                 if (!done.add(e.entrySeq) || DuplicateCheck.byEntry(tables, e.entrySeq) != null) continue
-                val deck = plan.deck(e.deckId)
-                val kinds = plan.vocabKinds(e.entrySeq, deck)
+                val kinds = plan.vocabKinds(e.entrySeq, plan.deck(e.deckId))
                 if (kinds.isEmpty()) continue
-                for (literal in plan.kanjiToCreate(dict.expression, deck)) {
-                    val id = ids.newOpId(now)
-                    requests += MintRequest(
-                        OpType.NOTE_CREATED,
-                        obj("id" to JsonString(id), "note_type_id" to JsonString(KANJI_NOTE_TYPE_ID), "kanji_literal" to JsonString(literal), "origin" to JsonString("auto_kanji")),
-                    )
-                    for (kind in plan.kanjiKinds(literal)) requests += cardRequest(ids.newOpId(now), id, kind)
-                    plan.kanjiCreated(literal)
-                }
                 val noteId = ids.newOpId(now)
                 requests += MintRequest(
                     OpType.NOTE_CREATED,

@@ -1,11 +1,14 @@
 -- Android queue loader queries (T304a). Reads only; learning-data writes go through sync ops.
 -- Every query is set-based (one pass per table); nothing is looked up per card.
 
--- The scheduler.* settings plus cards.reading_enabled (ADR-035, SCHEMA.md 6.4): everything QueueSettings reads.
+-- The scheduler.* settings plus cards.reading_enabled (ADR-035, SCHEMA.md 6.4) and cards.kanji_exemptions (ADR-042): everything QueueSettings reads.
 schedulerSettings:
-SELECT key, value FROM settings WHERE key LIKE 'scheduler.%' OR key = 'cards.reading_enabled';
+SELECT key, value FROM settings WHERE key LIKE 'scheduler.%' OR key = 'cards.reading_enabled' OR key = 'cards.kanji_exemptions';
 
 -- Live cards of live notes that can be queued today. A refused cache (SYNC.md 9.4) is never a candidate.
+-- ADR-040 / ADR-043: every card of a vocab or kanji note is passed whatever its due date, because the builder reads
+-- "introduced" (a vocab note with a card past NEW, for backfill) and "started" (a kanji with a card past NEW) from the
+-- candidates; a not-yet-due card is never served by the builder.
 queueCandidates:
 SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
        c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq, n.fields
@@ -13,8 +16,15 @@ FROM card c
 JOIN note n ON n.id = c.note_id
 LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
 WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
-  AND (c.state = 'new' OR c.due_at < :dayEnd)
+  AND (c.state = 'new' OR c.due_at < :dayEnd OR n.type IN ('vocab', 'kanji'))
   AND c.last_review_id IS NOT :refusedId;
+
+-- ADR-040 (contracts/core README "C-27"): the literal of every kanji note that blocks minting: a live one, or one the
+-- user deleted (deleted, not a merge loser: never re-created). Merge losers do not block.
+kanjiNoteLiterals:
+SELECT kanji_literal
+FROM note
+WHERE kanji_literal IS NOT NULL AND type = 'kanji' AND merged_into_id IS NULL;
 
 liveDecks:
 SELECT id, priority, enabled, new_cards_per_day, reviews_per_day, settings, type
@@ -62,7 +72,8 @@ SELECT sc.id AS card_id, sc.note_id AS note_id, r.review_type AS review_type,
                      AND (p.reviewed_at < r.reviewed_at OR p.hlc < r.hlc OR (p.hlc = r.hlc AND p.id < r.id))
                      AND p.undone_at IS NULL AND p.review_type IN ('scheduled', 'learning', 'manual')
                    ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1), 'reset') = 'reset'
-       ELSE 0 END AS introduced_new
+       ELSE 0 END AS introduced_new,
+       r.reviewed_at AS reviewed_at
 FROM review_log r
 JOIN card c ON c.id = r.card_id
 JOIN card sc ON sc.id = COALESCE(c.merged_into_id, c.id)

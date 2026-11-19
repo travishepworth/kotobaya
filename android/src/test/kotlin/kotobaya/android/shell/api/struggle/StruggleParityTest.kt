@@ -55,12 +55,12 @@ class StruggleParityTest {
         val first = items.first()
         // the lapse in review state outranks every other note (a relearning failure weighs extra)
         assertEquals(N1, str(first, "note_id"))
-        assertEquals(JsonNumber(1000220.0), first.members["entry_seq"])
+        assertEquals(JsonNumber(1001010.0), first.members["entry_seq"])
         assertEquals(JsonNumber(1.0), first.members["failures_14d"])
         assertTrue((first.members["score"] as JsonNumber).value > 0.0)
         assertEquals(items.map { (it.members["score"] as JsonNumber).value }, items.map { (it.members["score"] as JsonNumber).value }.sortedDescending())
         val entry = ParityJson.obj(first.members["entry"] ?: error("no entry"))
-        assertEquals(JsonNumber(1000220.0), entry.members["seq"])
+        assertEquals(JsonNumber(1001010.0), entry.members["seq"])
         assertEquals(JsonString(N1), entry.members["note_id"])
         assertEquals(JsonString("learning"), entry.members["status"])
         assertTrue(str(entry, "headword").isNotEmpty())
@@ -96,6 +96,8 @@ class StruggleParityTest {
     @Test
     fun hotKanjiSumTheHotWordScores() {
         val d = struggled()
+        // the seed's entries are kana-only (C-28): point the hot note at a fixture entry with kanji (学校)
+        assertEquals(200, call(d, "PATCH", "/api/v1/notes/$N1", """{"entry_seq":1206730}""", StruggleTestSupport.NOW).status)
         val words = call(d, "GET", "/api/v1/words/hot").items()
         val kanji = call(d, "GET", "/api/v1/kanji/hot").items()
         assertTrue(kanji.isNotEmpty(), "the fixture entry of the hot word has kanji")

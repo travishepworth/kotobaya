@@ -38,6 +38,7 @@ class DeckParityTest {
             """{"id":"$D1","name":"Core words","type":"user","language":"ja","priority":0,"enabled":true,
                "new_cards_per_day":null,"reviews_per_day":null,"settings":{},"media_id":null,"list_key":null,"query":null,
                "content_version":0,"content_blob_hash":null,"item_count":$itemCount,
+               "progress":{"learned":0,"total":$itemCount,"percent":0},
                "created_at":"${iso(DECK_CREATED_MS)}","updated_at":"${iso(DECK_CREATED_MS)}","deleted_at":null$extra}""",
         ),
     )
@@ -54,6 +55,21 @@ class DeckParityTest {
         assertEquals("422 /foo unknown_field", d.call("GET", "/api/v1/decks", query = "foo=1").problem())
         assertEquals("404 not_found", d.call("GET", "/api/v1/decks/$UNKNOWN").problem())
         assertEquals("404 not_found", d.call("GET", "/api/v1/decks/not-a-uuid").problem())
+    }
+
+    /** ADR-041: `Deck.progress` is core `DeckProgress` over the deck's words: known counts as learned, blacklisted is in neither number. */
+    @Test
+    fun deckProgressCountsKnownAndLeavesOutBlacklisted() {
+        val d = device()
+        fun progress() = d.call("GET", "/api/v1/decks/$D1").json().members["progress"]
+        assertEquals(ParityJson.parse("""{"learned":0,"total":3,"percent":0}"""), progress())
+        assertEquals(200, d.call("PUT", "/api/v1/words/1001010/status", """{"status":"known"}""", at = T0 + 1_000).status)
+        assertEquals(ParityJson.parse("""{"learned":1,"total":3,"percent":33}"""), progress())
+        assertEquals(200, d.call("PUT", "/api/v1/words/1001150/status", """{"status":"blacklisted"}""", at = T0 + 2_000).status)
+        assertEquals(ParityJson.parse("""{"learned":1,"total":2,"percent":50}"""), progress())
+        val smart = "01a1f82f-0000-7000-8000-00000000d002"
+        assertEquals(201, d.call("POST", "/api/v1/decks", """{"id":"$smart","type":"smart","name":"S","query":"tag:a"}""", at = T0 + 3_000).status)
+        assertEquals(kotobaya.contracts.sync.JsonNull, d.call("GET", "/api/v1/decks/$smart").json().members["progress"])
     }
 
     @Test
@@ -75,11 +91,11 @@ class DeckParityTest {
         val d = device()
         val page = d.call("GET", "/api/v1/decks/$D1/items").json()
         val items = (page.members["items"] as kotobaya.contracts.sync.JsonArray).items.map(ParityJson::obj)
-        assertEquals(listOf("e:1000220", "e:1000440", "e:1000450"), items.map { ParityJson.str(it.members["item_key"]) })
+        assertEquals(listOf("e:1001010", "e:1001150", "e:1001580"), items.map { ParityJson.str(it.members["item_key"]) })
         assertEquals(JsonNull, page.members["next_cursor"])
         val first = items[0]
         assertEquals(JsonString(D1), first.members["deck_id"])
-        assertEquals(JsonNumber(1000220.0), first.members["entry_seq"])
+        assertEquals(JsonNumber(1001010.0), first.members["entry_seq"])
         assertEquals(JsonNull, first.members["note_id"])
         assertEquals(JsonNumber(1024.0), first.members["position"])
         assertEquals(JsonNumber(0.0), first.members["occurrence_count"])
@@ -100,15 +116,15 @@ class DeckParityTest {
         val cursor = ParityJson.str(p1.members["next_cursor"])
         val p2 = d.call("GET", "/api/v1/decks/$D1/items", query = "limit=2&cursor=$cursor").json()
         val keys = (ParityJson.arr(p1.members["items"]) + ParityJson.arr(p2.members["items"])).map { ParityJson.str(ParityJson.obj(it).members["item_key"]) }
-        assertEquals(listOf("e:1000220", "e:1000440", "e:1000450"), keys)
+        assertEquals(listOf("e:1001010", "e:1001150", "e:1001580"), keys)
         assertEquals(JsonNull, p2.members["next_cursor"])
         // a cursor of another request shape is refused
         assertEquals("422 /cursor invalid_value", d.call("GET", "/api/v1/decks/$D1/items", query = "limit=2&sort=freq_rank&cursor=$cursor").problem())
 
         // status filter on the effective word status
         assertEquals(emptyList(), d.call("GET", "/api/v1/decks/$D1/items", query = "status=known").items())
-        assertEquals(200, d.call("PUT", "/api/v1/words/1000440/status", """{"status":"known"}""").status)
-        assertEquals(listOf("e:1000440"), d.call("GET", "/api/v1/decks/$D1/items", query = "status=known,ignored").items().map { ParityJson.str(it.members["item_key"]) })
+        assertEquals(200, d.call("PUT", "/api/v1/words/1001150/status", """{"status":"known"}""").status)
+        assertEquals(listOf("e:1001150"), d.call("GET", "/api/v1/decks/$D1/items", query = "status=known,ignored").items().map { ParityJson.str(it.members["item_key"]) })
 
         // freq_rank: most frequent first, NULL last, ties by identity
         val byFreq = d.call("GET", "/api/v1/decks/$D1/items", query = "sort=freq_rank").items()
@@ -146,6 +162,7 @@ class DeckParityTest {
                 """{"id":"$id","name":"Inbox","type":"user","language":"ja","priority":0,"enabled":false,
                    "new_cards_per_day":null,"reviews_per_day":null,"settings":{},"media_id":null,"list_key":null,"query":null,
                    "content_version":0,"content_blob_hash":null,"item_count":0,
+                   "progress":{"learned":0,"total":0,"percent":0},
                    "created_at":"${iso(T0 + 5_000)}","updated_at":"${iso(T0 + 5_000)}","deleted_at":null}""",
             ),
             body,
@@ -199,10 +216,10 @@ class DeckParityTest {
     @Test
     fun addPutAndRemoveItems() {
         val d = device()
-        val added = d.call("POST", "/api/v1/decks/$D1/items", """{"items":[{"entry_seq":$SEQ_A},{"entry_seq":1000220,"position":1}]}""", at = T0 + 3_000)
+        val added = d.call("POST", "/api/v1/decks/$D1/items", """{"items":[{"entry_seq":$SEQ_A},{"entry_seq":1001010,"position":1}]}""", at = T0 + 3_000)
         assertEquals(200, added.status)
         val items = added.items()
-        assertEquals(listOf("e:$SEQ_A" to 4096.0, "e:1000220" to 1.0), items.map { ParityJson.str(it.members["item_key"]) to (it.members["position"] as JsonNumber).value })
+        assertEquals(listOf("e:$SEQ_A" to 4096.0, "e:1001010" to 1.0), items.map { ParityJson.str(it.members["item_key"]) to (it.members["position"] as JsonNumber).value })
         assertEquals(JsonString(iso(T0 + 3_000)), items[0].members["added_at"])
         assertNotEquals(JsonNull, items[0].members["entry"])
 
@@ -221,7 +238,7 @@ class DeckParityTest {
         assertEquals("404 not_found", d.call("POST", "/api/v1/decks/$UNKNOWN/items", """{"items":[{"entry_seq":$SEQ_A}]}""").problem())
 
         assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1/items/e:$SEQ_A").status)
-        assertEquals(listOf("e:1000220", "e:1000440", "e:1000450"), d.call("GET", "/api/v1/decks/$D1/items").items().map { ParityJson.str(it.members["item_key"]) })
+        assertEquals(listOf("e:1001010", "e:1001150", "e:1001580"), d.call("GET", "/api/v1/decks/$D1/items").items().map { ParityJson.str(it.members["item_key"]) })
     }
 
     @Test
@@ -235,7 +252,7 @@ class DeckParityTest {
         val other = "01a1f82f-0000-7000-8000-00000000d003"
         assertEquals(201, d.call("POST", "/api/v1/decks", """{"id":"$other","type":"user","name":"O"}""").status)
         val r = d.call("POST", "/api/v1/decks/$other/items", """{"items":[{"note_id":"$nid"}]}""")
-        assertEquals(listOf("e:1000220"), r.items().map { ParityJson.str(it.members["item_key"]) })
+        assertEquals(listOf("e:1001010"), r.items().map { ParityJson.str(it.members["item_key"]) })
         assertEquals("422 /item_key invalid_value", d.call("PUT", "/api/v1/decks/$other/items/n:$nid").problem())
         // removing by the note key removes the entry-form row of the same word
         assertEquals(204, d.call("DELETE", "/api/v1/decks/$other/items/n:$nid").status)

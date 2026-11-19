@@ -4,6 +4,7 @@ import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.queue.EntryMaterializer
 import kotobaya.android.queue.EntryPlan
 import kotobaya.android.queue.EntryRef
+import kotobaya.android.queue.KanjiSource
 import kotobaya.android.queue.LoadGate
 import kotobaya.android.queue.LoadedQueue
 import kotobaya.android.queue.LocalQueueLoader
@@ -95,6 +96,8 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
             materializeAllowed(true, coordinator.running.value, coordinator.consecutiveFailures, lastSyncAt, rebuild)
         }
     }
+    // ADR-042: the process-wide cache when the app provides one (the loader runs on every answer), else per request
+    val kanji = runCatching { services.get<KanjiSource>() }.getOrNull() ?: KanjiSource(dict)
     val headwords = HashMap<Long, String?>() // per-request cache
     val loader = LocalQueueLoader(
         db = db,
@@ -104,10 +107,11 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
         // a gate of its own: a build of another caller (native screens, another request) is never served for this one
         gate = LoadGate(),
         materializer = materializer,
+        kanji = kanji,
     )
     val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
-    return ShellResponse.json(render(r, now, loaded, settings, store, dict))
+    return ShellResponse.json(render(r, now, loaded, settings, store, dict, kanji))
 }
 
 private fun render(
@@ -117,6 +121,7 @@ private fun render(
     settings: QueueSettings,
     store: SqlDelightDeviceStore,
     dict: InstalledDictionary,
+    kanji: KanjiSource,
 ): JsonObject {
     val queue = loaded.queue
     val input = loaded.input
@@ -130,12 +135,12 @@ private fun render(
     } else {
         !r.keepGoing && wanted.isEmpty() &&
             DefaultQueueBuilder.build(input.copy(limits = input.limits.copy(keepGoing = true))).let { kg ->
-                kg.items.any(::inKinds) || ("new" in r.kinds && kg.toMaterialize.isNotEmpty())
+                kg.items.any(::inKinds) || ("new" in r.kinds && (kg.toMaterialize.isNotEmpty() || kg.kanjiToMaterialize.isNotEmpty()))
             }
     }
     val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour)
     val items = store.read { tx ->
-        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold)
+        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold, kanji)
             .items(wanted.map { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" }, now)
     }
     val out = LinkedHashMap<String, JsonValue>()
@@ -146,7 +151,7 @@ private fun render(
     out["day_ends_at"] = JsonString(timestamp(day.day.endMs))
     out["generated_at"] = JsonString(timestamp(now))
     out["more_available"] = JsonBool(moreAvailable)
-    out["to_materialize"] = n(if ("new" in r.kinds) queue.toMaterialize.size else 0)
+    out["to_materialize"] = n(if ("new" in r.kinds) queue.toMaterialize.size + queue.kanjiToMaterialize.size else 0)
     out["loop"] = loopJson(state)
     // ADR-033: absent when no learning card falls due later today
     state.nextDueAt?.let { out["next_learning_due_at"] = JsonString(timestamp(it)) }
@@ -163,6 +168,7 @@ private fun loopJson(s: LoopState): JsonObject = JsonObject(
         "backlog" to JsonObject(linkedMapOf("reviews" to n(s.backlog), "beyond_limit" to n(s.backlogBeyondLimit))),
         "reviews" to JsonObject(linkedMapOf("today" to n(s.reviewsToday), "limit" to (s.reviewsLimit?.let { n(it) } ?: JsonNull))),
         "new" to JsonObject(linkedMapOf("today" to n(s.newToday), "goal" to n(s.newGoal), "available" to JsonBool(s.newAvailable))),
+        "until_stop" to n(s.untilStop),
     ),
 )
 
@@ -179,5 +185,8 @@ internal class ShellEntryMaterializer(private val notes: EntryMaterializer, priv
 
     override fun plan(entries: List<EntryRef>, burySiblings: Boolean): Map<EntryRef, EntryPlan> = notes.plan(entries, burySiblings)
 
-    override fun materialize(entries: List<PendingEntry>): Set<String> = if (allowed()) notes.materialize(entries) else emptySet()
+    override fun kanjiKinds(literals: Collection<String>): Map<String, List<String>> = notes.kanjiKinds(literals)
+
+    override fun materialize(kanji: List<String>, entries: List<PendingEntry>): Set<String> =
+        if (allowed()) notes.materialize(kanji, entries) else emptySet()
 }

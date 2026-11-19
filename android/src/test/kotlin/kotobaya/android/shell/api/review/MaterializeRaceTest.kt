@@ -55,8 +55,8 @@ import org.robolectric.annotation.Config
 class MaterializeRaceTest {
     private val app: Application = ApplicationProvider.getApplicationContext()
     private val iterations = 50
-    private val entry = 1000220L
-    private val drawn = listOf(1000220L, 1000440L)
+    private val entry = 1001010L
+    private val drawn = listOf(1001010L, 1001150L)
     private val threads = CopyOnWriteArrayList<Thread>()
 
     @AfterTest
@@ -209,7 +209,7 @@ class MaterializeRaceTest {
                 val (s1, s2) = race({ d.queue().status }, { d.queue().status })
                 assertEquals(200 to 200, s1 to s2, "iteration $i")
                 drawn.forEach { assertEquals(1, d.liveNotesOf(it).size, "iteration $i: live notes of $it") }
-                assertEquals(0, d.liveNotesOf(1000450L).size, "iteration $i: an undrawn entry is not materialized")
+                assertEquals(0, d.liveNotesOf(1001580L).size, "iteration $i: an undrawn entry is not materialized")
                 assertEquals(0, run.gate.met.get(), "iteration $i: two writers were inside check-then-mint at once")
                 contested += run.gate.contested.get()
             } finally {

@@ -17,7 +17,7 @@ import kotobaya.sync.client.apply.Row
 
 /**
  * Helpers of the SHELL-L4 tests: [ParityDevice]s over the actions and review routes, seeded with the scenario
- * `answer-retry-same-id` (device A created two vocab notes, 1000220 and 1000440, each with a `meaning` card, one hour
+ * `answer-retry-same-id` (device A created two vocab notes, 1001010 and 1001150, each with a `meaning` card, one hour
  * before [T0]).
  */
 internal object ActionsTestSupport {
@@ -30,7 +30,7 @@ internal object ActionsTestSupport {
     const val N2 = "0193a1b2-0001-7000-8000-000000000002"
     const val C1 = "0193a1b2-0002-7000-8000-000000000010"
     const val C2 = "0193a1b2-0002-7000-8000-000000000020"
-    const val SEQ1 = 1000220L
+    const val SEQ1 = 1001010L
     const val UNKNOWN = "0193a1b2-0002-7000-8000-0000000000ff"
     const val HOUR = 3_600_000L
 

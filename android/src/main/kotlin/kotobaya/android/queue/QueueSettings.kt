@@ -1,6 +1,7 @@
 package kotobaya.android.queue
 
 import kotobaya.contracts.cards.CardKinds
+import kotobaya.contracts.cards.KanjiRequirement
 import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.queue.StudyDay
 import kotobaya.contracts.sync.JsonBool
@@ -31,6 +32,8 @@ internal data class QueueSettings(
     val leechThreshold: Int = 8,
     /** `cards.reading_enabled` (ADR-035, SCHEMA.md 6.4): false = vocab reading cards are retired. */
     val readingEnabled: Boolean = CardKinds.READING_ENABLED_DEFAULT,
+    /** `cards.kanji_exemptions` (ADR-042, SCHEMA.md 6.5): default true; the typed bool test of `KanjiRequirement.exemptionsEnabled`. */
+    val kanjiExemptions: Boolean = KanjiRequirement.KANJI_EXEMPTIONS_DEFAULT,
 ) {
     /** `decklessAddKanji` of the queue input (SCHEMA.md 6.2). */
     val decklessAddKanji: AddKanjiMode get() = if (kanjiBeforeVocab) AddKanjiMode.BEFORE else AddKanjiMode.OFF
@@ -55,6 +58,7 @@ internal data class QueueSettings(
                 minedPriority = int("mined_priority", d.minedPriority),
                 leechThreshold = int("leech_threshold", d.leechThreshold),
                 readingEnabled = CardKinds.readingEnabled(values[CardKinds.SETTING_READING_ENABLED]),
+                kanjiExemptions = KanjiRequirement.exemptionsEnabled(values[KanjiRequirement.SETTING_KANJI_EXEMPTIONS]),
             )
         }
 

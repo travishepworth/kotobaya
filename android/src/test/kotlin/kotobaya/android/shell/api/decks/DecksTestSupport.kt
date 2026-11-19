@@ -17,7 +17,7 @@ import kotobaya.sync.client.apply.Row
 /**
  * Helpers of the SHELL-L7 tests: [ParityDevice]s over the decks, review and actions routes, seeded with the parity
  * scenario `queue-materialize-count` (device A created the user deck "Core words" [D1] with three entries
- * `e:1000220`, `e:1000440`, `e:1000450` at positions 1024, 2048, 3072; `scheduler.new_per_day` 2).
+ * `e:1001010`, `e:1001150`, `e:1001580` at positions 1024, 2048, 3072; `scheduler.new_per_day` 2).
  */
 internal object DecksTestSupport {
     const val T0 = ActionsTestSupport.T0

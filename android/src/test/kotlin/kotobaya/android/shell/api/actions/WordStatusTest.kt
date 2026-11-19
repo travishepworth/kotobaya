@@ -14,7 +14,7 @@ import kotobaya.android.shell.parity.ParityJson
 
 /** `getWordStatus`, `setWordStatus`, `clearWordStatus` (openapi `/words/{seq}/status`; SHELL.md L-2, L-4). */
 class WordStatusTest {
-    private val path = "/api/v1/words/1000220/status"
+    private val path = "/api/v1/words/1001010/status"
 
     @Test
     fun anEntryWithoutARowIsNew() {
@@ -36,7 +36,7 @@ class WordStatusTest {
         assertEquals("never_forget", ParityJson.str(set.json().members["override_status"]))
         assertEquals("manual", ParityJson.str(set.json().members["override_origin"]))
         assertEquals(iso(T0 + 1_000), ParityJson.str(set.json().members["updated_at"]))
-        assertEquals(ParityJson.parse("""{"entry_seq":1000220,"status":"never_forget","origin":"manual"}"""), ParityJson.at(d.minted()[0], "/payload"))
+        assertEquals(ParityJson.parse("""{"entry_seq":1001010,"status":"never_forget","origin":"manual"}"""), ParityJson.at(d.minted()[0], "/payload"))
         assertEquals(set.json(), d.call("GET", path).json(), "read-your-writes")
 
         assertEquals(200, d.call("PUT", path, """{"status":"never_forget"}""", at = T0 + 2_000).status)

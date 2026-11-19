@@ -2,6 +2,7 @@ package kotobaya.android.queue
 
 import kotobaya.cards.BuiltInNoteTypes
 import kotobaya.cards.DefaultCardGenerator
+import kotobaya.cards.DefaultKanjiRequirement
 import kotobaya.contracts.NoteBaseType
 import kotobaya.contracts.Reserved
 import kotobaya.contracts.WordStatus
@@ -18,6 +19,7 @@ import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.QueueLimits
 import kotobaya.contracts.queue.LoopResult
+import kotobaya.contracts.queue.MissingKanji
 import kotobaya.contracts.queue.LoopState
 import kotobaya.contracts.queue.ReviewQueue
 import kotobaya.contracts.queue.StudyDay
@@ -87,7 +89,10 @@ fun interface SmartDeckResolver {
  * - decks are the live ones; a membership naming a deleted or unknown deck is dropped;
  * - candidates are live cards of live notes (not merge losers), not suspended, and never a card holding the refused
  *   cache (`last_review_id` = `Reserved.REPLAY_REFUSED_ID`, SYNC.md 9.4); such a card stays findable by search;
- * - `add_kanji` counts only when exactly "off", "before" or "alongside", else `scheduler.kanji_before_vocab` decides;
+ * - ADR-040 / ADR-042: `add_kanji` and `scheduler.kanji_before_vocab` are not read (the builder puts kanji first for
+ *   every source); the loader passes each vocab note's and pending entry's required and missing kanji ([KanjiSource] +
+ *   core `KanjiRequirement`), the companions of a scoped build, and materializes `kanjiToMaterialize` (step A) before
+ *   the entries (step B) through [materializer];
  * - deck_item `n:<id>` follows `merged_into_id` (SYNC.md 8.5).
  * - pending entries (AND-KEEPGOING-FIX): live `e:<seq>` items of enabled decks with no live note for the entry, bounded
  *   per deck by the build's new budget (the builder never draws more from one deck); the builder decides which are
@@ -107,6 +112,8 @@ class LocalQueueLoader(
     private val gate: LoadGate = LoadGate(),
     /** Creates notes and default cards for drawn pending entries (origin `deck`); null builds without materializing. */
     private val materializer: EntryMaterializer? = null,
+    /** ADR-042: dictionary facts for `KanjiRequirement` (form tags, `uk`, kanji grade / rank); none = every word requires nothing. */
+    private val kanji: KanjiSource = KanjiSource.NONE,
 ) {
     private val q get() = db.localQueueQueries
 
@@ -130,11 +137,11 @@ class LocalQueueLoader(
             // mismatch between what was drawn and what shows can never create notes that are not shown.
             var rounds = 0
             val m = materializer
-            while (m != null && loaded.queue.toMaterialize.isNotEmpty() && rounds < MAX_MATERIALIZE_ROUNDS) {
+            while (m != null && (loaded.queue.toMaterialize.isNotEmpty() || loaded.queue.kanjiToMaterialize.isNotEmpty()) && rounds < MAX_MATERIALIZE_ROUNDS) {
                 // a failed write costs this build its new entries, never the queue (Today, widget keep working); it is
                 // recorded so a review session does not end as "done" while those cards are counted (RC-AND)
                 val created = try {
-                    m.materialize(loaded.queue.toMaterialize)
+                    m.materialize(loaded.queue.kanjiToMaterialize, loaded.queue.toMaterialize)
                 } catch (e: Exception) {
                     kotobaya.android.report.ScreenLog.loadFailed("LocalQueueLoader.materialize", e)
                     return@run LoadedQueue(loaded.input, loaded.result, MaterializeFailed(e))
@@ -163,9 +170,8 @@ class LocalQueueLoader(
         val todayRows = q.todayReviews(day.startMs, now).executeAsList()
         val memberships = memberships(decks, liveDecks.filter { it.type == "smart" }.map { it.id }, rows.associate { it.id to (it.note_id to it.created_at) }, now, day)
         val kindOrders = kindOrders()
-        val parseKanji = settings.decklessAddKanji != AddKanjiMode.OFF || decks.any { it.addKanji != AddKanjiMode.OFF }
 
-        var candidates = rows.map { r ->
+        val all = rows.map { r ->
             val type = NoteBaseType.entries.first { it.wire == r.type }
             QueueCandidate(
                 cardId = r.id,
@@ -181,10 +187,37 @@ class LocalQueueLoader(
                 wordOverride = r.override_status?.let { w -> WordStatus.entries.first { it.wire == w } },
                 memberships = memberships[r.note_id].orEmpty(),
                 kanjiLiteral = r.kanji_literal,
-                expressionKanji = if (parseKanji && type == NoteBaseType.VOCAB) kanjiOfExpression(r.fields, r.entry_seq) else emptyList(),
+                expressionKanji = emptyList(),
             )
         }
-        if (deckFilter != null) candidates = candidates.filter { c -> c.memberships.any { it.deckId == deckFilter } }
+        fun inScope(c: QueueCandidate) = deckFilter == null || c.memberships.any { it.deckId == deckFilter }
+        var candidates = all.filter(::inScope)
+
+        // ADR-040 / ADR-042 (contracts/core README "C-27"): the kanji each vocab note and pending entry requires, and the
+        // required ones with no kanji note, evaluated by core KanjiRequirement over the dictionary
+        val resolver = WordKanjiResolver(settings, q.kanjiNoteLiterals().executeAsList().mapNotNullTo(HashSet()) { it }, kanji, materializer)
+        val fieldsOf = rows.asSequence().filter { it.type == NoteBaseType.VOCAB.wire }.associate { it.note_id to (it.entry_seq to it.fields) }
+        for (c in candidates) if (c.noteBaseType == NoteBaseType.VOCAB && !resolver.has(c.noteId)) {
+            val (seq, fields) = fieldsOf.getValue(c.noteId)
+            resolver.evaluate(c.noteId, seq, expressionOf(fields, seq))
+        }
+        val (pendingBase, pendingExpression) = pendingEntries(decks, deckFilter, settings, keepGoingNewBatch)
+        for (e in pendingBase) resolver.evaluate("e:${e.entrySeq}", e.entrySeq, pendingExpression.getValue(e.entrySeq))
+        resolver.finish()
+        candidates = candidates.map { c ->
+            if (c.noteBaseType != NoteBaseType.VOCAB) c else resolver.of(c.noteId).let { w ->
+                c.copy(expressionKanji = w.expressionKanji, requiredKanji = w.required, missingKanji = w.missing)
+            }
+        }
+        val pending = pendingBase.map { e -> resolver.of("e:${e.entrySeq}").let { w -> e.copy(expressionKanji = w.expressionKanji, requiredKanji = w.required, missingKanji = w.missing) } }
+        if (deckFilter != null) {
+            // a scoped build still needs the kanji cards of its words (companions: new only through a unit or backfill)
+            val required = HashSet<String>()
+            candidates.forEach { c -> c.requiredKanji?.let(required::addAll) }
+            pending.forEach { e -> e.requiredKanji?.let(required::addAll) }
+            val inDeck = candidates.mapTo(HashSet()) { it.cardId }
+            candidates = candidates + all.filter { c -> c.kanjiLiteral in required && c.cardId !in inDeck }.map { it.copy(companion = true) }
+        }
 
         val today = todayRows.map { r ->
             val type = ReviewType.entries.first { it.wire == r.review_type }
@@ -195,9 +228,9 @@ class LocalQueueLoader(
                 introducedNew = r.introduced_new == true,
                 countsAsReview = type == ReviewType.SCHEDULED,
                 deckIds = memberships[r.note_id].orEmpty().map(DeckMembership::deckId),
+                reviewedAt = r.reviewed_at,
             )
         }
-        val pending = pendingEntries(decks, deckFilter, settings, keepGoingNewBatch)
         val input = QueueInput(
             now = now,
             day = day,
@@ -217,7 +250,7 @@ class LocalQueueLoader(
             today = today,
             pendingEntries = pending,
             decklessPriority = settings.minedPriority,
-            decklessAddKanji = settings.decklessAddKanji,
+            decklessAddKanji = AddKanjiMode.OFF, // ADR-040: not read; kanji first applies to every source
             readingEnabled = settings.readingEnabled,
         )
         return LoadedQueue(input)
@@ -253,15 +286,13 @@ class LocalQueueLoader(
 
     private fun loadDecks(rows: List<kotobaya.db.app.LiveDecks>, settings: QueueSettings): List<QueueDeck> =
         rows.map { r ->
-            val explicit = (jsonObject(r.settings)["add_kanji"] as? JsonString)?.value
-                ?.let { s -> AddKanjiMode.entries.firstOrNull { it.wire == s } }
             QueueDeck(
                 id = r.id,
                 priority = r.priority.toInt(),
                 enabled = r.enabled,
                 newPerDay = r.new_cards_per_day?.toInt(),
                 reviewsPerDay = r.reviews_per_day?.toInt(),
-                addKanji = explicit ?: settings.decklessAddKanji,
+                addKanji = AddKanjiMode.OFF, // ADR-040: not read
             )
         }
 
@@ -272,13 +303,19 @@ class LocalQueueLoader(
      * not [EntryMaterializer.ready] (no dictionary, or a pull in progress: the notes may still be on their way). Per deck
      * the first `2 * B + 16` in `(position, item_key)` order, `B` = `max(1, batch)` (ADR-037); later ones are reached by a later build.
      */
-    private fun pendingEntries(decks: List<QueueDeck>, deckFilter: String?, settings: QueueSettings, keepGoingNewBatch: Int): List<PendingEntry> {
-        val m = materializer ?: return emptyList()
-        if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList()
+    private fun pendingEntries(
+        decks: List<QueueDeck>,
+        deckFilter: String?,
+        settings: QueueSettings,
+        keepGoingNewBatch: Int,
+    ): Pair<List<PendingEntry>, Map<Long, String>> {
+        val m = materializer ?: return emptyList<PendingEntry>() to emptyMap()
+        if (!runCatching { m.ready() }.getOrDefault(false)) return emptyList<PendingEntry>() to emptyMap()
         val batch = maxOf(1, keepGoingNewBatch)
         val window = 2 * batch + 16 // ADR-037: B = max(1, batch) bounds both builds of the loop
         val page = maxOf(window * 2, MIN_PENDING_PAGE).toLong()
-        return decks.filter { it.enabled && (deckFilter == null || it.id == deckFilter) }.flatMap { deck ->
+        val expressions = HashMap<Long, String>()
+        val entries = decks.filter { it.enabled && (deckFilter == null || it.id == deckFilter) }.flatMap { deck ->
             val out = ArrayList<PendingEntry>()
             var offset = 0L
             while (out.size < window) {
@@ -288,14 +325,14 @@ class LocalQueueLoader(
                 for (r in rows) {
                     val ref = EntryRef(deck.id, checkNotNull(r.entry_seq))
                     val plan = plans[ref] ?: continue
+                    expressions[ref.entrySeq] = plan.expression
                     out += PendingEntry(
                         deckId = deck.id,
                         entrySeq = ref.entrySeq,
                         position = r.position,
                         itemKey = r.item_key,
                         wordOverride = r.override_status?.let { w -> WordStatus.entries.firstOrNull { it.wire == w } },
-                        expressionKanji = plan.expressionKanji,
-                        newKanjiCards = plan.newKanjiCards,
+                        // expressionKanji, requiredKanji and missingKanji are filled in by the caller (WordKanjiResolver)
                     )
                     if (out.size == window) break
                 }
@@ -304,6 +341,7 @@ class LocalQueueLoader(
             }
             out
         }
+        return entries to expressions
     }
 
     /** Index of each card kind in its note type's templates: built-in order for built-in types, else alphabetical (as the server). */
@@ -340,11 +378,10 @@ class LocalQueueLoader(
         return out.mapValues { (_, byDeck) -> byDeck.values.toList() }
     }
 
-    private fun kanjiOfExpression(fieldsJson: String, entrySeq: Long?): List<String> {
-        val expression = (jsonObject(fieldsJson)["expression"] as? JsonString)?.value?.takeIf { it.isNotEmpty() }
-            ?: entrySeq?.let(headwordOf)
-            ?: return emptyList()
-        return DefaultCardGenerator.kanjiOf(expression.replace(HTML_TAG, ""))
+    /** The note's displayed `expression` as plain text: its `expression` field unless blank, else the entry's headword. */
+    private fun expressionOf(fieldsJson: String, entrySeq: Long?): String {
+        val field = if (fieldsJson.length <= 2) null else (jsonObject(fieldsJson)["expression"] as? JsonString)?.value?.replace(HTML_TAG, "")
+        return field?.takeIf { it.isNotBlank() } ?: entrySeq?.let(headwordOf)?.replace(HTML_TAG, "").orEmpty()
     }
 
     private fun jsonObject(text: String): Map<String, JsonValue> =
@@ -369,12 +406,13 @@ class MaterializeFailed(cause: Throwable) : RuntimeException("deck entries not m
 /** A deck entry `e:<seq>` of one deck. */
 data class EntryRef(val deckId: String, val entrySeq: Long)
 
-/** C-27: what the builder needs to know of an entry's add_kanji group (`PendingEntry.expressionKanji`, `newKanjiCards`). */
-data class EntryPlan(val expressionKanji: List<String>, val newKanjiCards: Int)
+/** C-27: what the loader needs to know of an entry before it is drawn: its displayed form (ADR-042 reads the kanji from it). */
+data class EntryPlan(val expression: String, val expressionKanji: List<String> = emptyList())
 
 /**
- * AND-KEEPGOING-FIX, C-27 (contracts/core README "C-27"): plans and creates deck entries' notes and cards through the
- * device's op path (production: [kotobaya.android.notes.NoteCreator] over `DeckEntryPlan`, so both agree).
+ * AND-KEEPGOING-FIX, C-27, ADR-040 (contracts/core README "C-27"): plans and creates the kanji notes and the deck
+ * entries' notes and cards of a served build through the device's op path (production:
+ * [kotobaya.android.notes.NoteCreator] over `DeckEntryPlan`, so both agree).
  */
 interface EntryMaterializer {
     /**
@@ -384,11 +422,61 @@ interface EntryMaterializer {
      */
     fun ready(): Boolean = true
 
-    /** The plan of each entry that may be passed (dictionary entry installed, at least one vocab card kind); others are absent. */
+    /** The plan of each entry that may be passed (dictionary entry installed, at least one vocab kind); others are absent. */
     fun plan(entries: List<EntryRef>, burySiblings: Boolean): Map<EntryRef, EntryPlan>
 
-    /** Creates the notes and cards of the drawn [entries]; returns the ids of the vocab notes created (empty: none, or refused). */
-    fun materialize(entries: List<PendingEntry>): Set<String>
+    /** The card kinds step A creates for each of [literals] (a literal with none is never minted); default: one card each. */
+    fun kanjiKinds(literals: Collection<String>): Map<String, List<String>> = literals.associateWith { listOf("meaning") }
+
+    /**
+     * Step A (a kanji note for each of [kanji] with neither a live nor a user-deleted one) then step B (the notes and
+     * cards of the drawn [entries]) in one transaction; returns the ids of the notes created (empty: none, or refused).
+     */
+    fun materialize(kanji: List<String>, entries: List<PendingEntry>): Set<String>
+}
+
+/**
+ * ADR-040 / ADR-042 inputs of one build: evaluates `KanjiRequirement` per vocab note and pending entry, then (after
+ * [finish], one batched card-kind lookup) says which required kanji have no kanji note and how many cards minting gives.
+ */
+private class WordKanjiResolver(
+    private val settings: QueueSettings,
+    /** literals of the live kanji notes and of those the user deleted (never re-created). */
+    private val blocked: Set<String>,
+    private val source: KanjiSource,
+    private val materializer: EntryMaterializer?,
+) {
+    class Kanji(val expressionKanji: List<String>, val required: List<String>, val missing: List<MissingKanji>)
+
+    private val required = LinkedHashMap<String, Pair<List<String>, List<String>>>()
+    private val result = HashMap<String, Kanji>()
+
+    fun has(key: String): Boolean = key in required
+
+    fun evaluate(key: String, seq: Long?, expression: String) {
+        if (key in required) return
+        val all = DefaultCardGenerator.kanjiOf(expression)
+        val req = if (all.isEmpty()) emptyList() else DefaultKanjiRequirement.evaluate(
+            source.form(seq, expression), all.map(source::facts), settings.kanjiExemptions,
+        ).learnableKanji
+        required[key] = all to req
+    }
+
+    fun finish() {
+        val lits = required.values.flatMapTo(LinkedHashSet()) { it.second }.filter { it !in blocked }
+        val kinds = if (lits.isEmpty()) emptyMap() else runCatching { materializer?.kanjiKinds(lits) }.getOrNull() ?: lits.associateWith { listOf("meaning") }
+        for ((key, p) in required) {
+            val (all, req) = p
+            val missing = req.mapNotNull { l ->
+                if (l in blocked) return@mapNotNull null
+                val n = kinds[l]?.size ?: 1
+                if (n < 1) null else MissingKanji(l, if (settings.burySiblings) 1 else n)
+            }
+            result[key] = Kanji(all, req, missing)
+        }
+    }
+
+    fun of(key: String): Kanji = result[key] ?: Kanji(emptyList(), emptyList(), emptyList())
 }
 
 /**

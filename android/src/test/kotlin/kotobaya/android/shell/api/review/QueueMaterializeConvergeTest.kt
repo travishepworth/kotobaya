@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [34])
 class QueueMaterializeConvergeTest {
-    private val entry = 1000220L
+    private val entry = 1001010L
     private val serverNote = "0193b000-00aa-7000-8000-000000000001"
     private val serverCard = "0193b000-00aa-7000-8000-000000000002"
     private val vocabType = "00000000-0000-7000-8000-000000000101"

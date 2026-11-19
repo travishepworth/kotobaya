@@ -18,7 +18,7 @@ import kotobaya.sync.client.apply.Row
 
 /**
  * Helpers of the SHELL-L8 tests: a [ParityDevice] over the struggle, review, identity and actions routes, seeded with the
- * scenario `answer-retry-same-id` (two vocab notes, entries 1000220 and 1000440, each with a `meaning` card [C1], [C2]).
+ * scenario `answer-retry-same-id` (two vocab notes, entries 1001010 and 1001150, each with a `meaning` card [C1], [C2]).
  *
  * [struggled] builds the history the scenarios share: `scheduler.leech_threshold` 1; C1 learned to review and then
  * failed in review state (a lapse: a leech and hot), C2 failed once as a new card.

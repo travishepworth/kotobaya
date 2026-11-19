@@ -3,6 +3,7 @@ package kotobaya.android.shell.api.review
 import kotobaya.android.dict.DictEntryDetail
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.dict.KanjiDetail
+import kotobaya.android.queue.KanjiSource
 import kotobaya.android.grammar.GrammarSentenceSource
 import kotobaya.android.review.CardRows
 import kotobaya.android.review.InstalledKanjiWords
@@ -11,10 +12,15 @@ import kotobaya.android.sync.SqlLearningTables
 import kotobaya.android.shell.api.identity.obj
 import kotobaya.android.shell.api.identity.timestamp
 import kotobaya.cards.BuiltInNoteTypes
+import kotobaya.cards.DefaultCardGenerator
+import kotobaya.cards.DefaultKanjiRequirement
 import kotobaya.cards.grammar.GrammarCandidate
 import kotobaya.cards.grammar.GrammarCardSentences
 import kotobaya.contracts.WordStatus
+import kotobaya.contracts.cards.KanjiRequirement
 import kotobaya.contracts.cards.NoteTypeInfo
+import kotobaya.contracts.dict.KanjiPartSource
+import kotobaya.contracts.dict.KanjiParts
 import kotobaya.contracts.dict.KanjiExampleCandidate
 import kotobaya.contracts.dict.KanjiExamplePicker
 import kotobaya.contracts.dict.KanjiReadings
@@ -32,6 +38,7 @@ import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
 import kotobaya.dict.DefaultKanjiExamplePicker
+import kotobaya.dict.DefaultKanjiParts
 import kotobaya.render.DefaultCardTextRenderer
 import kotobaya.sync.DefaultCanonicalJson
 import kotobaya.sync.client.apply.LearningTable
@@ -50,8 +57,13 @@ internal class QueueViews(
     private val dict: InstalledDictionary,
     private val scheduler: Scheduler,
     private val leechThreshold: Int,
+    /** ADR-042: the dictionary facts of `KanjiRequirement` (a shared cache in the app). */
+    private val kanjiSource: KanjiSource = KanjiSource(dict),
 ) {
     private val renderData = InstalledRenderData(dict)
+    private val exemptions: Boolean by lazy {
+        KanjiRequirement.exemptionsEnabled(t.get(LearningTable.SETTINGS, listOf(JsonString(KanjiRequirement.SETTING_KANJI_EXEMPTIONS)))?.get("value"))
+    }
     private val noteTypes = HashMap<String, NoteTypeInfo?>()
     private val decks = HashMap<String, Row?>()
 
@@ -89,8 +101,15 @@ internal class QueueViews(
         out["decks"] = JsonArray(decks.take(MAX_DECKS).map { d -> obj("id" to d["id"].orNull(), "name" to d["name"].orNull(), "priority" to d["priority"].orNull()) })
         out["deck_count"] = num(decks.size.toLong())
         if (literal != null) out["kanji_examples"] = guarded { kanjiExamples(literal, kanjiDetail) } ?: JsonArray(emptyList())
+        // ADR-041 / ADR-042: vocab notes only; the shared core decides both
+        val vocab = CardRows.str(note["type"]) == "vocab"
+        val entryForText = entryDetail.takeIf { entry != JsonNull }
+        val word = if (vocab) wordTexts(note, entryForText) else null
+        val furigana = word != null && frontFurigana(entrySeq, word.first)
+        out["front_furigana"] = JsonBool(furigana)
+        if (word != null) out["kanji_parts"] = guarded { kanjiParts(word.first, word.second) } ?: JsonArray(emptyList())
         // ARCH-CARD-TEXT: the core's plain-text render from the same inputs the item gives an HTML client
-        textOf(note, kind, entryDetail.takeIf { entry != JsonNull }, kanjiDetail.takeIf { kanji != JsonNull }, picked?.third)?.let { out["text"] = it }
+        textOf(note, kind, entryForText, kanjiDetail.takeIf { kanji != JsonNull }, picked?.third, furigana)?.let { out["text"] = it }
         out["preview"] = if (reviewType == "drill" || reviewType == "cram") JsonNull else preview(card, nowMs)
         return JsonObject(out)
     }
@@ -224,6 +243,64 @@ internal class QueueViews(
         )
     }
 
+    // ---- kanji breakdown and furigana front (ADR-041, ADR-042) ---------------------------------------------------------
+
+    /**
+     * The plain `expression` and `reading` texts of a vocab note as the core text renderer resolves them (a non-blank
+     * field wins, else the entry's headword / reading): the front of `meaning` is `expression[kanji]`, `reading` is
+     * `reading[kana]`, over the built-in vocab type so a custom template cannot change them.
+     */
+    private fun wordTexts(note: Row, entry: DictEntryDetail?): Pair<String, String> {
+        val out = DefaultCardTextRenderer.renderText(
+            TextRenderInput(
+                noteType = BuiltInNoteTypes.VOCAB.info,
+                kind = "meaning",
+                fields = CardRows.fieldsOf(note),
+                dictionary = entry?.let(::textDictionary),
+                cloze = null,
+            ),
+        )
+        return out.front to out.reading.orEmpty()
+    }
+
+    /** `KanjiRequirement.evaluate(...).frontFurigana` for the displayed [expression] of the note's entry. */
+    private fun frontFurigana(entrySeq: Long?, expression: String): Boolean {
+        val all = DefaultCardGenerator.kanjiOf(expression)
+        if (all.isEmpty()) return false
+        return DefaultKanjiRequirement.evaluate(kanjiSource.form(entrySeq, expression), all.map(kanjiSource::facts), exemptions).frontFurigana
+    }
+
+    /** `QueueItem.kanji_parts`: core `KanjiParts.build` over the local dictionary and the user's kanji notes. */
+    private fun kanjiParts(expression: String, reading: String): JsonArray {
+        val literals = DefaultCardGenerator.kanjiOf(expression).take(KanjiParts.MAX_PARTS)
+        val sources = literals.map { l ->
+            val k = dict.kanji(l)
+            KanjiPartSource(KanjiReadings(l, k?.onReadings.orEmpty(), k?.kunReadings.orEmpty()), k?.meanings.orEmpty(), noteKeyword(l))
+        }
+        return JsonArray(
+            DefaultKanjiParts.build(expression, reading, sources).map { p ->
+                obj(
+                    "literal" to JsonString(p.literal),
+                    "keyword" to (p.keyword?.let(::JsonString) ?: JsonNull),
+                    "meanings" to strings(p.meanings),
+                    "on" to strings(p.on),
+                    "kun" to strings(p.kun),
+                    "used_reading" to (p.usedReading?.let { u -> obj("type" to JsonString(u.type.wire), "reading" to JsonString(u.reading), "kana" to JsonString(u.kana)) } ?: JsonNull),
+                )
+            },
+        )
+    }
+
+    /** Plain text of the `keyword` field of the earliest live kanji note of [literal] by `(created_at, id)`; null when blank. */
+    private fun noteKeyword(literal: String): String? {
+        val note = t.where(LearningTable.NOTE, "kanji_literal", JsonString(literal)).filter { CardRows.live(it) && CardRows.str(it["type"]) == "kanji" }
+            .minWithOrNull(compareBy<Row>({ (it["created_at"] as? JsonNumber)?.value ?: 0.0 }, { CardRows.str(it["id"]).orEmpty() })) ?: return null
+        val html = CardRows.fieldsOf(note)["keyword"].orEmpty()
+        val text = html.replace(HTML_TAG, " ").replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">")
+            .replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&").replace(WHITESPACE, " ").trim()
+        return text.takeIf { it.isNotEmpty() }
+    }
+
     // ---- grammar sentence (C-15) ----------------------------------------------------------------------------------------
 
     /** (`Sentence`, `GrammarCardSentence`, the renderer's cloze) of the core pick over the replica, or null. */
@@ -297,7 +374,7 @@ internal class QueueViews(
      * `CardText` from the note's fields, entry, kanji and grammar cloze (the server's `QueueText`); null when the note
      * type is unknown (no row, not a built-in base type).
      */
-    private fun textOf(note: Row, kind: String, entry: DictEntryDetail?, kanji: KanjiDetail?, cloze: ClozeSentence?): JsonObject? {
+    private fun textOf(note: Row, kind: String, entry: DictEntryDetail?, kanji: KanjiDetail?, cloze: ClozeSentence?, furigana: Boolean): JsonObject? {
         val typeId = CardRows.str(note["note_type_id"])
         val info = typeId?.let { id -> noteTypes.getOrPut(id) { CardRows.get(t, LearningTable.NOTE_TYPE, id)?.let(CardRows::noteTypeInfo) } }
             ?: BuiltInNoteTypes.ALL.firstOrNull { it.info.baseType.wire == CardRows.str(note["type"]) }?.info
@@ -309,6 +386,7 @@ internal class QueueViews(
                 fields = CardRows.fieldsOf(note),
                 dictionary = entry?.let(::textDictionary),
                 cloze = cloze,
+                frontFurigana = furigana,
                 kanji = kanji?.let { KanjiData(it.literal, it.meanings, it.onReadings, it.kunReadings, it.strokeCount) },
             ),
         )
@@ -339,6 +417,8 @@ internal class QueueViews(
     private companion object {
         /** `QueueItem.decks` lists at most this many decks; `deck_count` has the total. */
         const val MAX_DECKS = 3
+        val HTML_TAG = Regex("<[^>]*>")
+        val WHITESPACE = Regex("\\s+")
         val RATINGS = listOf("again" to 1, "hard" to 2, "good" to 3, "easy" to 4)
 
         fun isNull(v: JsonValue?): Boolean = v == null || v == JsonNull

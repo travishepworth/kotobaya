@@ -22,19 +22,19 @@ import org.robolectric.annotation.Config
 /**
  * SHELL-L2 acceptance "MaterializeIdempotentTest" (C-27, SHELL.md L-2/L-4): fetches create one note per drawn deck
  * entry however often and however concurrently they run, mint as this device, and every minted op validates against
- * `op.schema.json` (concurrent fetches: [MaterializeRaceTest], on the production driver). Seed: `queue-materialize-count` (a user deck with entries 1000220, 1000440, 1000450 and no
+ * `op.schema.json` (concurrent fetches: [MaterializeRaceTest], on the production driver). Seed: `queue-materialize-count` (a user deck with entries 1001010, 1001150, 1001580 and no
  * notes; `new_per_day` 2).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [34])
 class QueueMaterializeIdempotentTest {
-    private val drawn = listOf(1000220L, 1000440L)
+    private val drawn = listOf(1001010L, 1001150L)
 
     private fun ParityDevice.noteCreated(): List<JsonObject> = minted().filter { str(it.members["op_type"]) == "note.created" }
 
     private fun assertOneNotePerDrawnEntry(d: ParityDevice) {
         drawn.forEach { assertEquals(1, d.liveNotesOf(it).size, "live notes of $it") }
-        assertEquals(0, d.liveNotesOf(1000450L).size, "an entry the budget did not draw is not materialized")
+        assertEquals(0, d.liveNotesOf(1001580L).size, "an entry the budget did not draw is not materialized")
         assertEquals(drawn.size, d.noteCreated().size)
     }
 

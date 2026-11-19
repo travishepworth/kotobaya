@@ -49,7 +49,7 @@ class DeckOpsTest {
         assertEquals(201, d.call("POST", "/api/v1/decks", """{"id":"$smart","type":"smart","name":"Leeches","query":"tag:leech"}""", at = T0 + 2_000).status)
         assertEquals(200, d.call("PATCH", "/api/v1/decks/$user", """{"name":"Inbox 2","new_cards_per_day":5,"settings":{"add_kanji":"before"}}""", at = T0 + 3_000).status)
         assertEquals(200, d.call("POST", "/api/v1/decks/$user/items", """{"items":[{"entry_seq":$SEQ_A},{"entry_seq":$SEQ_B,"position":10}]}""", at = T0 + 4_000).status)
-        assertEquals(200, d.call("PUT", "/api/v1/decks/$user/items/e:1000220", at = T0 + 5_000).status)
+        assertEquals(200, d.call("PUT", "/api/v1/decks/$user/items/e:1001010", at = T0 + 5_000).status)
         assertEquals(200, d.call("PUT", "/api/v1/decks/$user/items/e:$SEQ_A", """{"position":1}""", at = T0 + 6_000).status)
         assertEquals(204, d.call("DELETE", "/api/v1/decks/$user/items/e:$SEQ_B", at = T0 + 7_000).status)
         assertEquals(200, d.call("PATCH", "/api/v1/decks/$smart", """{"query":"tag:hard"}""", at = T0 + 8_000).status)
@@ -110,8 +110,8 @@ class DeckOpsTest {
         assertEquals(emptyList(), d.mintedTypes())
         assertEquals(0, d.localChanges)
         // removing twice: the second removal finds nothing live
-        assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1/items/e:1000220").status)
-        assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1/items/e:1000220").status)
+        assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1/items/e:1001010").status)
+        assertEquals(204, d.call("DELETE", "/api/v1/decks/$D1/items/e:1001010").status)
         assertEquals(listOf("deck.item_removed"), d.mintedTypes())
     }
 

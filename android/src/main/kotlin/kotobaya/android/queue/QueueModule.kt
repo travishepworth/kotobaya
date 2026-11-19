@@ -16,6 +16,7 @@ val queueFeature = FeatureEntry(
         // AND-PERF: one gate for every loader, so home, widget, notifications and review conflate their builds
         single { LoadGate() }
         single(HEADWORDS) { ConcurrentHashMap<Long, String>() }
+        single { KanjiSource(get<kotobaya.android.dict.InstalledDictionary>()) }
         factory {
             val koin = getKoin()
             val headwords = get<ConcurrentHashMap<Long, String>>(HEADWORDS)
@@ -35,12 +36,17 @@ val queueFeature = FeatureEntry(
                         ?.let { kotlinx.coroutines.runBlocking { it.await() } }
                 },
                 gate = get(),
+                // ADR-042: the dictionary facts, cached for the life of the process
+                kanji = runCatching { koin.get<KanjiSource>() }.getOrDefault(KanjiSource.NONE),
                 materializer = object : EntryMaterializer {
                     // resolved per call: the notes and sync modules may be absent (tests) and are wired after this one
                     private fun notes() = koin.getOrNull<EntryMaterializer>()
 
-                    override fun materialize(entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> =
-                        notes()?.materialize(entries) ?: emptySet()
+                    override fun materialize(kanji: List<String>, entries: List<kotobaya.contracts.queue.PendingEntry>): Set<String> =
+                        notes()?.materialize(kanji, entries) ?: emptySet()
+
+                    override fun kanjiKinds(literals: Collection<String>): Map<String, List<String>> =
+                        notes()?.kanjiKinds(literals) ?: super.kanjiKinds(literals)
 
                     override fun plan(entries: List<EntryRef>, burySiblings: Boolean): Map<EntryRef, EntryPlan> =
                         notes()?.plan(entries, burySiblings) ?: emptyMap()

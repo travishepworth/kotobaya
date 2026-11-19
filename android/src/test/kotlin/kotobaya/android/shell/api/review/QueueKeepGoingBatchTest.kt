@@ -30,7 +30,7 @@ class QueueKeepGoingBatchTest {
     fun keepGoingWithSmallLimitCreatesOnlyLimitNotes() {
         val d = device("queue-materialize-count")
         assertEquals(1, d.queue("keep_going=true&limit=1").json().items().size)
-        val notes = listOf(1000220L, 1000440L, 1000450L).sumOf { d.liveNotesOf(it).size }
+        val notes = listOf(1001010L, 1001150L, 1001580L).sumOf { d.liveNotesOf(it).size }
         assertEquals(1, notes)
     }
 

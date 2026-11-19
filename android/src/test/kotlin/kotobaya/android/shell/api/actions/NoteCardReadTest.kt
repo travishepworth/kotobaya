@@ -40,9 +40,9 @@ class NoteCardReadTest {
         d.pull(
             listOf(
                 remote(1, "deck.created", "deck", deck, T0, obj("id" to JsonString(deck), "name" to JsonString("Frieren"), "type" to JsonString("user"))),
-                remote(2, "deck.item_put", "deck_item", "$deck|e:1000220", T0 + 1, obj("deck_id" to JsonString(deck), "item_key" to JsonString("e:1000220"), "position" to JsonNumber(1024.0))),
+                remote(2, "deck.item_put", "deck_item", "$deck|e:1001010", T0 + 1, obj("deck_id" to JsonString(deck), "item_key" to JsonString("e:1001010"), "position" to JsonNumber(1024.0))),
             ),
-            "a deck holding entry 1000220",
+            "a deck holding entry 1001010",
         )
         val note = d.call("GET", "/api/v1/notes/$N1").json()
         assertEquals(
@@ -57,7 +57,7 @@ class NoteCardReadTest {
         val cards = ParityJson.arr(note.members["cards"]).map(ParityJson::obj)
         assertEquals(listOf(C1), cards.map { ParityJson.str(it.members["id"]) })
         assertNull(cards[0].members["note"], "an embedded card has no note summary")
-        assertEquals(JsonNumber(1000220.0), note.members["entry_seq"])
+        assertEquals(JsonNumber(1001010.0), note.members["entry_seq"])
         assertEquals(ParityJson.parse("[]"), d.call("GET", "/api/v1/notes/$N2").json().members["deck_ids"])
     }
 

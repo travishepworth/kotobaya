@@ -48,14 +48,14 @@ class NoteEditLwwTest {
     @Test
     fun aRematchCollisionAnswersTheNoteItselfAndMergesNothing() {
         val d = device(X)
-        val res = d.patchNote(N1, """{"entry_seq":1000440}""", at = T0 + 10_000)
+        val res = d.patchNote(N1, """{"entry_seq":1001150}""", at = T0 + 10_000)
         assertEquals(200, res.status, res.body)
         assertNull(res.headers["content-location"])
         val body = ParityJson.obj(ParityJson.parse(checkNotNull(res.body)))
         assertEquals(N1, ParityJson.str(body.members["id"]))
-        assertEquals(JsonNumber(1000440.0), body.members["entry_seq"])
+        assertEquals(JsonNumber(1001150.0), body.members["entry_seq"])
         assertEquals(listOf("note.updated"), d.minted().map { ParityJson.str(it.members["op_type"]) })
-        val holders = d.rows(LearningTable.NOTE).filter { it["entry_seq"] == JsonNumber(1000440.0) && (it["deleted_at"] ?: JsonNull) == JsonNull && (it["merged_into_id"] ?: JsonNull) == JsonNull }
+        val holders = d.rows(LearningTable.NOTE).filter { it["entry_seq"] == JsonNumber(1001150.0) && (it["deleted_at"] ?: JsonNull) == JsonNull && (it["merged_into_id"] ?: JsonNull) == JsonNull }
         assertEquals(listOf(N1, N2), holders.map { ParityJson.str(it["id"]) })
         assertEquals(200, d.call("GET", "/api/v1/notes/$N2").status, "the other note is untouched")
     }

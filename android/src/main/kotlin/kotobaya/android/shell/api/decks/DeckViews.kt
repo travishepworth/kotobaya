@@ -53,7 +53,8 @@ internal object DeckViews {
     /** `Deck` (server `DECK_SELECT`): `item_count` = visible items, 0 for a smart deck. */
     fun deck(t: LearningTables, row: Row): JsonObject {
         val id = row["id"].text().orEmpty()
-        val count = if (type(row) == "smart") 0 else visibleItems(t, id).size
+        val items = if (type(row) == "smart") emptyList() else visibleItems(t, id)
+        val count = items.size
         return jsonObj(
             "id" to row.col("id"),
             "name" to row.col("name"),
@@ -70,6 +71,8 @@ internal object DeckViews {
             "content_version" to (row["content_version"] as? JsonNumber ?: JsonNumber(0.0)),
             "content_blob_hash" to row.col("content_blob_hash"),
             "item_count" to JsonNumber(count.toDouble()),
+            // ADR-041: core DeckProgress over the replica; null for a smart or tombstoned deck
+            "progress" to DeckProgressView.progress(t, row, items),
             "created_at" to row.stamp("created_at"),
             "updated_at" to row.stamp("updated_at"),
             "deleted_at" to row.stamp("deleted_at"),

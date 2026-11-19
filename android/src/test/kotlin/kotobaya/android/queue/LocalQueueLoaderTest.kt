@@ -312,20 +312,14 @@ class LocalQueueLoaderTest {
     }
 
     @Test
-    fun addKanjiCountsOnlyForTheExactStrings() {
+    fun addKanjiIsNotReadAnyMore() {
+        // ADR-040: kanji first applies to every source; the loader passes OFF whatever decks and settings say
         setting("scheduler.kanji_before_vocab", "true")
-        addDeck(1, settings = """{"add_kanji":"off"}""")
-        addDeck(2, settings = """{"add_kanji":"Before"}""")
-        addDeck(3, settings = """{"add_kanji":"alongside"}""")
-        addDeck(4, settings = """{"add_kanji":null}""")
-        addDeck(5, settings = """{"add_kanji":1}""")
-        val modes = loader().load().input.decks.associate { it.id to it.addKanji }
-        assertEquals(AddKanjiMode.OFF, modes[deck(1)])
-        assertEquals(AddKanjiMode.BEFORE, modes[deck(2)])
-        assertEquals(AddKanjiMode.ALONGSIDE, modes[deck(3)])
-        assertEquals(AddKanjiMode.BEFORE, modes[deck(4)])
-        assertEquals(AddKanjiMode.BEFORE, modes[deck(5)])
-        assertEquals(AddKanjiMode.BEFORE, loader().load().input.decklessAddKanji)
+        addDeck(1, settings = """{"add_kanji":"before"}""")
+        addDeck(2, settings = """{"add_kanji":"alongside"}""")
+        val input = loader().load().input
+        assertEquals(setOf(AddKanjiMode.OFF), input.decks.map { it.addKanji }.toSet())
+        assertEquals(AddKanjiMode.OFF, input.decklessAddKanji)
     }
 
     @Test

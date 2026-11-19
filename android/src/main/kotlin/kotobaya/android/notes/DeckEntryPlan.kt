@@ -5,7 +5,6 @@ import kotobaya.cards.DefaultCardGenerator
 import kotobaya.contracts.cards.CardGenerator
 import kotobaya.contracts.cards.CardKinds
 import kotobaya.contracts.cards.NoteTypeInfo
-import kotobaya.contracts.queue.AddKanjiMode
 import kotobaya.contracts.render.DictionaryData
 import kotobaya.contracts.render.KanjiData
 import kotobaya.contracts.sync.JsonNull
@@ -16,18 +15,17 @@ import kotobaya.sync.client.apply.LearningTables
 import kotobaya.sync.client.apply.Row
 
 /**
- * C-27: what materializing a deck entry creates (contracts/core README "C-27"), computed the same way for the queue
- * loader (the size of the entry's add_kanji group, `PendingEntry.newKanjiCards`) and for [NoteCreator.materialize] (the
+ * C-27: what materializing a served build creates (contracts/core README "C-27"), computed the same way for the queue
+ * loader (the card kinds of a kanji note to mint, `MissingKanji.newCards`) and for [NoteCreator.materialize] (the
  * ops), so the two always agree. The device twin of the server's `DeckEntryPlan`. One instance per transaction or
  * read; caches its lookups.
  *
  * - Vocab card kinds: `kindsForNewNote(vocab type, deck card_kinds, cards.reading_enabled)`; if that is empty
  *   (card_kinds `[]`, no valid kind, or only retired kinds — ADR-035) the type's default kinds; then every kind whose front would render empty for the entry is dropped. An entry
  *   left with no kind is never passed nor created.
- * - Kanji notes, only when the drawing deck's `add_kanji` is present and not `off`: `kanjiToAdd(headword, blocked,
- *   mode)`, `blocked` = the headword's kanji with a live kanji note or a user-deleted one (`deleted_at` set, no
- *   `merged_into_id`): a kanji note the user deleted is never re-created. Each with the kanji type's default kinds
- *   minus empty fronts (with the kanji's dictionary data, or the literal alone).
+ * - Kanji notes (ADR-040), whatever a deck's `add_kanji` says: [kanjiBlocked] literals (a live kanji note or a
+ *   user-deleted one, never re-created) are skipped; each new one gets the kanji type's default kinds minus empty fronts
+ *   (with the kanji's dictionary data, or the literal alone).
  */
 class DeckEntryPlan(
     private val tables: LearningTables,
@@ -61,14 +59,6 @@ class DeckEntryPlan(
         return kinds.filterNot { DefaultCardRenderer.frontIsEmpty(vocabType, it, emptyMap(), dictionary = dict) }
     }
 
-    /** Literals of the kanji notes materializing [headword] for [deck] creates (none unless its add_kanji is present and not off). */
-    fun kanjiToCreate(headword: String, deck: Row?): List<String> {
-        val mode = deck?.let(NoteCreator.Companion::addKanjiMode) ?: AddKanjiMode.OFF
-        if (mode == AddKanjiMode.OFF || kanjiType == null) return emptyList()
-        val literals = cards.kanjiOf(headword)
-        return cards.kanjiToAdd(headword, literals.filterTo(HashSet()) { isBlocked(it) }, mode)
-    }
-
     /** Card kinds of a new kanji note for [literal]. */
     fun kanjiKinds(literal: String): List<String> {
         val type = kanjiType ?: return emptyList()
@@ -78,9 +68,8 @@ class DeckEntryPlan(
         }
     }
 
-    /** `PendingEntry.newKanjiCards`: the kanji cards the materialization creates, at most 1 per note when [burySiblings]. */
-    fun newKanjiCards(headword: String, deck: Row?, burySiblings: Boolean): Int =
-        kanjiToCreate(headword, deck).sumOf { l -> kanjiKinds(l).size.let { if (burySiblings) minOf(1, it) else it } }
+    /** True iff a live kanji note or a user-deleted one (`deleted_at` set, no `merged_into_id`) holds [literal]: it is never created. */
+    fun kanjiBlocked(literal: String): Boolean = isBlocked(literal)
 
     /** A kanji note for [literal] was created in this transaction: it now blocks the literal. */
     fun kanjiCreated(literal: String) {

@@ -113,13 +113,13 @@ class BulkQuerySelectionTest {
         val d = device()
         d.clock.now = T0 + 1_000
         val trusted = LocalCardQuery(d.driver, d.database, d.installedDictionary)
-        val selected = trusted.select("明白", T0 + 1_000)
+        val selected = trusted.select("うっかり", T0 + 1_000)
         assertEquals(CardQueryResult.Ids(listOf(C1)), selected, "the dictionary form finds note 1 (its fields are empty)")
         val guarded = LocalCardQuery(d.driver, d.database, d.installedDictionary, dictFormsMaxSeqs = 0)
-        assertTrue(guarded.select("明白", T0 + 1_000) is CardQueryResult.Forward)
+        assertTrue(guarded.select("うっかり", T0 + 1_000) is CardQueryResult.Forward)
 
         val forwarded = ArrayList<String>()
-        val res = api(d, guarded, forwarded).bulk("""{"query":"明白","action":{"type":"suspend"}}""")
+        val res = api(d, guarded, forwarded).bulk("""{"query":"うっかり","action":{"type":"suspend"}}""")
         assertEquals("503 shell_offline", res.problem())
         assertEquals(listOf("bulkCards"), forwarded)
         assertEquals(0, d.minted().size)
