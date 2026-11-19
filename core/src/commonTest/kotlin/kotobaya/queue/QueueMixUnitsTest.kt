@@ -114,13 +114,12 @@ class QueueMixUnitsTest {
 
     @Test
     fun rebuildIsTail() {
-        // C-28c: random inputs with reviews, units, shared kanji, capped decks, several sources per tier, backfill.
+        // C-28d: random inputs with reviews, units, shared kanji, capped decks, several sources per tier,
+        // backfill; no input excluded. Seeds 506 and 1471 are the named regression cases (CORE-28 review).
         for (keepGoing in listOf(false, true)) {
-            for (seed in 0 until 400) {
-                // Keep going: units without backfill here (QueueBackfillShareTest covers backfill with kana words).
-                val sim = QueueSim(QueueRandom.input(seed, keepGoing).let { if (keepGoing) it.withoutStudiedWords() else it })
+            for (seed in (0 until 400) + listOf(506, 1471)) {
+                val sim = QueueSim(QueueRandom.input(seed, keepGoing))
                 repeat(3) { sim.materialize(sim.eval().queue) }
-                if (QueueRandom.rebuildExcluded(sim.input)) continue
                 var q = sim.eval().queue
                 var steps = 0
                 while (q.items.isNotEmpty() && steps++ < 200) {
@@ -132,9 +131,6 @@ class QueueMixUnitsTest {
             }
         }
     }
-
-    private fun QueueInput.withoutStudiedWords(): QueueInput =
-        copy(candidates = candidates.filter { !(it.noteBaseType == NoteBaseType.VOCAB && it.state == CardState.REVIEW && it.expressionKanji.isNotEmpty()) })
 
     // ---- C-28c examples ----
 
@@ -218,24 +214,92 @@ class QueueMixUnitsTest {
     }
 
     @Test
-    fun ruleAPicksTheOpenUnitsSourceWithTheSmallestCountThenSourceOrder() {
-        // 学 (deckless) was just introduced; decks A and B both have a next word requiring it; deck C (lowest
-        // count) has a kana word. Rule (a) restricts the choice to A and B.
+    fun ruleAPicksTheFirstClaimerInSourceOrderWhateverTheCounts() {
+        // 学 was just introduced; decks A and B both have a next word requiring it; deck C (lowest count)
+        // has a kana word. C-28d: rule (a) takes the first of A and B in source order, not the smaller `t`.
+        fun first(gakuDeck: Int?, aExtra: Int): Int {
+            val gaku = card(50, base = NoteBaseType.KANJI, kanji = "学", state = CardState.LEARNING, due = TOKYO_DAY.endMs + DAY_MS,
+                members = gakuDeck?.let { listOf(member(it, 9)) }.orEmpty())
+            val c = listOf(
+                gaku,
+                card(1, exprKanji = listOf("学"), members = listOf(member(1, 0))),
+                card(2, exprKanji = listOf("学"), members = listOf(member(2, 0))),
+                card(3, members = listOf(member(3, 0))),
+            )
+            val t = listOf(today(50, type = ReviewType.LEARNING, introducedNew = true, decks = listOfNotNull(gakuDeck), at = NOW - 10)) +
+                listOf(1, 2).flatMap { d -> (1..(if (d == 1) aExtra + 1 else 1)).map { today(8000 + 10 * d + it, type = ReviewType.LEARNING, introducedNew = true, decks = listOf(d), at = NOW - 100) } }
+            return build(input(c, decks = listOf(deck(1), deck(2), deck(3)), limits = lim(newPerDay = 10), today = t)).cards().first()
+        }
+        assertEquals(1, first(null, 0), "deckless 学, tie: source order")
+        assertEquals(1, first(null, 1), "deckless 学, A has more turns: still A")
+        assertEquals(1, first(2, 0), "学 homed in the later deck B: A")
+        assertEquals(1, first(2, 3), "学 homed in B, A has more turns: A")
+    }
+
+    @Test
+    fun kanjiThatTwoSourcesNeed() {
+        // C-28d KDoc example: goal 5; D holds a, 日本語; deckless: the word 本, then the kanji notes 本, 日, 語.
+        val c = listOf(
+            card(1, members = listOf(member(1, 0))),
+            card(2, exprKanji = listOf("日", "本", "語"), members = listOf(member(1, 1))),
+            card(3, exprKanji = listOf("本"), created = 1),
+            card(11, base = NoteBaseType.KANJI, kanji = "本", created = 2),
+            card(12, base = NoteBaseType.KANJI, kanji = "日", created = 3),
+            card(13, base = NoteBaseType.KANJI, kanji = "語", created = 4),
+        )
+        val sim = QueueSim(input(c, decks = listOf(deck(1)), limits = lim(newPerDay = 5)))
+        assertEquals(listOf(1, 12, 11, 13, 2), sim.build().cards())
+        assertEquals(5, sim.eval().state.untilStop)
+        sim.answer(1, Ans.EASY)
+        assertEquals(listOf(12, 11, 13, 2), sim.build().cards())
+        sim.answer(12, Ans.EASY)
+        assertEquals(listOf(11, 13, 2), sim.build().cards())
+        sim.answer(11, Ans.EASY)
+        assertEquals(listOf(13, 2), sim.build().cards())
+        sim.nextDay()
+        assertEquals(listOf(13, 2, 3), sim.build().cards())
+    }
+
+    @Test
+    fun ruleCAnEarlierSourceWhoseNextCardIsTheKanjiItselfGoesFirst() {
+        // Deck K (earlier) holds the NEW kanji 学 as its next card; deck W (later, t = 0) has 学校's unit next.
+        // t(K) = 1 > t(W) = 0, so (b) names W; K claims 学 (own turn) → (c): K draws 学, then W's unit by rule (a).
+        val c = listOf(
+            card(10, base = NoteBaseType.KANJI, kanji = "学", members = listOf(member(1, 0))),
+            card(1, exprKanji = listOf("学"), members = listOf(member(2, 0))),
+        )
+        val t = listOf(today(8001, type = ReviewType.LEARNING, introducedNew = true, decks = listOf(1), at = NOW - 100))
+        val sim = QueueSim(input(c + card(2, members = listOf(member(2, 1))), decks = listOf(deck(1), deck(2)), limits = lim(newPerDay = 20), today = t))
+        assertEquals(listOf(10, 1, 2), sim.build().cards())
+        sim.answer(10, Ans.EASY)
+        assertEquals(listOf(1, 2), sim.build().cards())
+    }
+
+    @Test
+    fun aSourceAtItsLimitOrStoppedByALeadClaimsNothing() {
+        // 学 was just introduced (deckless). Deck A (limit used up) and deck B both have a word requiring it next.
         val gaku = card(50, base = NoteBaseType.KANJI, kanji = "学", state = CardState.LEARNING, due = TOKYO_DAY.endMs + DAY_MS)
         val c = listOf(
             gaku,
             card(1, exprKanji = listOf("学"), members = listOf(member(1, 0))),
             card(2, exprKanji = listOf("学"), members = listOf(member(2, 0))),
-            card(3, members = listOf(member(3, 0))),
         )
-        val decks = listOf(deck(1), deck(2), deck(3))
-        fun first(aExtra: Int): Int {
-            val t = listOf(today(50, type = ReviewType.LEARNING, introducedNew = true, at = NOW - 10)) +
-                listOf(1, 2).flatMap { d -> (1..(if (d == 1) aExtra + 1 else 1)).map { today(8000 + 10 * d + it, type = ReviewType.LEARNING, introducedNew = true, decks = listOf(d), at = NOW - 100) } }
-            return build(input(c, decks = decks, limits = lim(newPerDay = 10), today = t)).cards().first()
-        }
-        assertEquals(1, first(0), "tie between A and B: source order")
-        assertEquals(2, first(1), "A has more turns: B")
+        val t = listOf(
+            today(50, type = ReviewType.LEARNING, introducedNew = true, at = NOW - 10),
+            today(8001, type = ReviewType.LEARNING, introducedNew = true, decks = listOf(1), at = NOW - 100),
+        )
+        assertEquals(listOf(2), build(input(c, decks = listOf(deck(1, newPerDay = 1), deck(2)), limits = lim(newPerDay = 10), today = t)).cards())
+        // Goal 3: A leads with 先 (the 3-card mint part of 生 does not fit) and stops; its next word would need 校,
+        // as B's does. A stopped claims nothing, so (c) does not move the turn to it: B draws [校, b].
+        val c2 = listOf(
+            card(1, exprKanji = listOf("先", "生"), missing = listOf(mk("生", 3)), members = listOf(member(1, 0))),
+            card(2, exprKanji = listOf("校"), members = listOf(member(1, 1))),
+            card(3, exprKanji = listOf("校"), members = listOf(member(2, 0))),
+            card(11, base = NoteBaseType.KANJI, kanji = "先", created = 5),
+            card(12, base = NoteBaseType.KANJI, kanji = "校", created = 6),
+        )
+        val q = build(input(c2, decks = listOf(deck(1), deck(2)), limits = lim(newPerDay = 3)))
+        assertEquals(listOf(11, 12, 3), q.cards())
     }
 
     @Test

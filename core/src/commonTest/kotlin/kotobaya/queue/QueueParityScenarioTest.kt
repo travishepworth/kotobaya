@@ -376,6 +376,92 @@ class QueueParityScenarioTest {
     }
 
     @Test
+    fun queueKanjiSharedKanji() {
+        // C-28d: deck "Words" (うっかり, 日本語) and the deckless word 本 both need 本; rule (c) then rule (a).
+        val sim = QueueSim(
+            input(
+                listOf(
+                    word(10, emptyList(), created = 1, members = listOf(member(1, 1024))),
+                    word(20, listOf("日", "本", "語"), created = 2, members = listOf(member(1, 2048))),
+                    word(30, listOf("本"), created = 3),
+                    kanji(40, "本", 4), kanji(50, "日", 5), kanji(60, "語", 6),
+                ),
+                decks = listOf(deck(1)),
+                limits = limits(newPerDay = 5),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(10, 50, 40, 60, 20), r0.queue.cards())
+        assertEquals(5, r0.state.untilStop)
+        sim.answer(10, Ans.EASY)
+        val r2 = sim.eval()
+        assertEquals(listOf(50, 40, 60, 20), r2.queue.cards())
+        assertEquals(4, r2.state.untilStop)
+        sim.answer(50, Ans.EASY)
+        sim.answer(40, Ans.EASY)
+        val r5 = sim.eval()
+        assertEquals(listOf(60, 20), r5.queue.cards())
+        assertEquals(2, r5.state.untilStop)
+        sim.nextDay()
+        val r6 = sim.eval()
+        assertEquals(listOf(60, 20, 30), r6.queue.cards())
+        assertEquals(3, r6.state.untilStop)
+    }
+
+    @Test
+    fun queueKanjiKeepGoingOpenUnit() {
+        // C-28d: keep going; 日 is a backfill kanji; the share step waits while the unit [学, 校, 学校] is open.
+        val sim = QueueSim(
+            input(
+                listOf(
+                    word(10, listOf("日"), created = 0, state = CardState.REVIEW, due = notDue),
+                    word(20, listOf("学", "校"), created = 2),
+                    kanji(30, "学", 3), kanji(40, "校", 4), kanji(50, "日", 5),
+                ),
+                limits = limits().copy(keepGoing = true),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(30, 40, 20, 50), r0.queue.cards())
+        assertEquals(4, r0.state.untilStop)
+        sim.answer(30, Ans.EASY)
+        val r2 = sim.eval()
+        assertEquals(listOf(40, 20, 50), r2.queue.cards())
+        assertEquals(3, r2.state.untilStop)
+        sim.answer(40, Ans.EASY)
+        val r4 = sim.eval()
+        assertEquals(listOf(20, 50), r4.queue.cards())
+        assertEquals(2, r4.state.untilStop)
+    }
+
+    @Test
+    fun queueKanjiLeadDeckLimit() {
+        // C-28d: "Core" (newPerDay 1) holds 学校 then 学; 校 is only in the disabled deck "Kanji".
+        val sim = QueueSim(
+            input(
+                listOf(
+                    word(10, listOf("学", "校"), created = 1, members = listOf(member(1, 1024))),
+                    kanji(20, "学", 2).copy(memberships = listOf(member(1, 2048))),
+                    kanji(30, "校", 3).copy(memberships = listOf(member(2, 1024))),
+                ),
+                decks = listOf(deck(1, newPerDay = 1), deck(2, enabled = false)),
+                limits = limits(),
+            ),
+        )
+        val r0 = fetch(sim)
+        assertEquals(listOf(20), r0.queue.cards())
+        assertEquals(1, r0.state.untilStop)
+        sim.answer(20, Ans.EASY)
+        val r2 = sim.eval()
+        assertEquals(emptyList(), r2.queue.cards())
+        assertEquals(0, r2.state.untilStop)
+        sim.nextDay()
+        val r3 = sim.eval()
+        assertEquals(listOf(30, 10), r3.queue.cards())
+        assertEquals(2, r3.state.untilStop)
+    }
+
+    @Test
     fun queueUntilStop() {
         val sim = QueueSim(
             input(

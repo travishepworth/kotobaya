@@ -95,6 +95,43 @@ class QueueBackfillShareTest {
     }
 
     @Test
+    fun keepGoingWithAnOpenUnit() {
+        // C-28d: the word 日 in REVIEW; deckless NEW 学校, then the kanji notes 学, 校, 日; batch 10.
+        val sim = QueueSim(
+            input(
+                listOf(
+                    card(10, created = 0, exprKanji = listOf("日"), state = CardState.REVIEW, due = notDue),
+                    card(20, created = 1, exprKanji = listOf("学", "校")),
+                    kanji(30, "学", 2), kanji(40, "校", 3), kanji(50, "日", 4),
+                ),
+                limits = lim(20, keepGoing = true),
+            ),
+        )
+        assertEquals(listOf(30, 40, 20, 50), sim.build().cards())
+        sim.answer(30, Ans.EASY)
+        assertEquals(listOf(40, 20, 50), sim.build().cards())
+        sim.answer(40, Ans.EASY)
+        assertEquals(listOf(20, 50), sim.build().cards())
+    }
+
+    @Test
+    fun aShareStepEndsRightAfterAPartWhoseKanjiASourceClaims() {
+        // Keep going, ten kana cards introduced today: the share admits both backfill kanji 学 and 日, but after
+        // 学 the deckless source's next word 学校 claims it, so its unit comes before 日.
+        val c = listOf(
+            card(10, created = 1, exprKanji = listOf("学"), state = CardState.REVIEW, due = notDue),
+            card(11, created = 2, exprKanji = listOf("日"), state = CardState.REVIEW, due = notDue),
+            card(20, created = 3, exprKanji = listOf("学", "校")),
+            kanji(40, "学", 5), kanji(41, "校", 6), kanji(42, "日", 7),
+        )
+        val t = (1..10).map { today(9000 + it, type = ReviewType.LEARNING, introducedNew = true, at = TOKYO_DAY.startMs + it) }
+        val sim = QueueSim(input(c, limits = lim(20, keepGoing = true), today = t))
+        assertEquals(listOf(40, 41, 20, 42), sim.build().cards())
+        sim.answer(40, Ans.EASY)
+        assertEquals(listOf(41, 20, 42), sim.build().cards())
+    }
+
+    @Test
     fun goalsOfOneAndThreeGiveAShareOfOne() {
         assertEquals(listOf(40), build(base(1)).cards())
         assertEquals(listOf(40, 20, 30), build(base(3)).cards())
@@ -215,7 +252,6 @@ class QueueBackfillShareTest {
     private fun assertRebuildIsTail(i: QueueInput, what: String) {
         val sim = QueueSim(i)
         repeat(3) { sim.materialize(sim.eval().queue) }
-        if (QueueRandom.rebuildExcluded(sim.input)) return
         var q = sim.eval().queue
         var steps = 0
         while (q.items.isNotEmpty() && steps++ < 200) {
@@ -230,11 +266,8 @@ class QueueBackfillShareTest {
     fun answeringTheHeadAndRebuildingYieldsTheTail() {
         // Normal build: every random input (backfill, units, shared kanji, capped decks, several sources per tier).
         for (seed in 0 until 400) assertRebuildIsTail(QueueRandom.input(seed, keepGoing = false), "normal seed $seed")
-        // Keep going with backfill: new words without kanji (see QueueRandom: a unit answered half-way lets
-        // the keep-going share step admit a backfill part before the rest of the unit; HANDOFF).
-        for (seed in 0 until 400) {
-            assertRebuildIsTail(QueueRandom.input(seed, keepGoing = true, newWordKanji = false), "keep going seed $seed")
-        }
+        // Keep going (C-28d): the same inputs, NEW words with kanji included; nothing excluded.
+        for (seed in 0 until 400) assertRebuildIsTail(QueueRandom.input(seed, keepGoing = true), "keep going seed $seed")
     }
 
     @Test

@@ -136,6 +136,55 @@ class QueueKanjiFirstTest {
     }
 
     @Test
+    fun aLeadEndsAtTheDecksLimit() {
+        // C-28d: "Core" (newPerDay 1) holds 学校 then the kanji note 学; 校 is in a disabled deck only (or deckless).
+        fun core(kouDeckless: Boolean) = QueueSim(
+            input(
+                listOf(
+                    card(10, exprKanji = listOf("学", "校"), members = listOf(member(1, 0))),
+                    kanji(20, "学").copy(memberships = listOf(member(1, 1))),
+                    kanji(30, "校").copy(memberships = if (kouDeckless) emptyList() else listOf(member(2, 0))),
+                ),
+                decks = listOf(deck(1, newPerDay = 1), deck(2, enabled = false)), limits = lim(),
+            ),
+        )
+        val sim = core(kouDeckless = false)
+        val r0 = sim.eval()
+        assertEquals(listOf(20), r0.queue.cards())
+        assertEquals(1, r0.state.untilStop)
+        sim.answer(20, Ans.EASY)
+        assertEquals(emptyList(), sim.eval().queue.cards())
+        assertEquals(0, sim.eval().state.untilStop)
+        sim.nextDay()
+        assertEquals(listOf(30, 10), sim.build().cards())
+        // 校 deckless: the same lead [学]; 校 comes on the deckless source's own turn.
+        val free = core(kouDeckless = true)
+        assertEquals(listOf(20, 30), free.build().cards())
+        free.answer(20, Ans.EASY)
+        assertEquals(listOf(30), free.build().cards())
+        free.answer(30, Ans.EASY)
+        free.nextDay()
+        assertEquals(listOf(10), free.build().cards())
+    }
+
+    @Test
+    fun untilStopNeverDropsByMoreThanOneForOneAnswer() {
+        // C-28d: random inputs, normal builds; each answer of the head lowers untilStop by at most 1.
+        for (seed in 0 until 300) {
+            val sim = QueueSim(QueueRandom.input(seed, keepGoing = false))
+            repeat(3) { sim.materialize(sim.eval().queue) }
+            var r = sim.eval()
+            var steps = 0
+            while (r.queue.items.isNotEmpty() && steps++ < 200) {
+                sim.answer(r.queue.cards().first(), Ans.EASY)
+                val next = sim.eval()
+                assertTrue(next.state.untilStop >= r.state.untilStop - 1, "seed $seed: ${r.state.untilStop} -> ${next.state.untilStop}")
+                r = next
+            }
+        }
+    }
+
+    @Test
     fun aCappedDeckWhoseWordHasTwoKanjiHomedInIt() {
         val sim = QueueSim(
             input(

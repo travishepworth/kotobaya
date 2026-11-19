@@ -41,8 +41,10 @@ import kotobaya.contracts.queue.ReviewQueue
  * smallest card id (loaders pass the same values on every card of a note); a NEW card of another
  * base type reached on its turn is a unit of one card; a pending entry that is held (a required
  * kanji buried) is skipped like a held vocab card. Rule 4 "Turn order" (C-28c) replaces the
- * round-robin: `t(S)` counts today's and this build's cards per home source, and the source whose
- * next word requires the last drawn kanji goes first.
+ * round-robin: `t(S)` counts today's and this build's cards per home source; C-28d: (a) the first
+ * source in source order that claims the last drawn kanji goes first, (c) an earlier source that
+ * claims a kanji part of the candidate's unit takes the turn; a capped deck's lead ends when the deck's
+ * limit is used up; a keep-going share step draws nothing while a source claims the last kanji.
  */
 public object DefaultQueueBuilder : QueueBuilder {
     private val excludedOverrides = setOf(WordStatus.NEVER_FORGET, WordStatus.BLACKLISTED, WordStatus.IGNORED)
@@ -288,6 +290,18 @@ public object DefaultQueueBuilder : QueueBuilder {
             for (w in introducedWords) for (l in w.req) if (l !in started && seen.add(l)) add(l)
         }
         private val backfillSet: Set<String> = backfillOrder.toSet()
+
+        /**
+         * Per backfill literal without a kanji note: the mint size from the oldest introduced word that
+         * requires it and lists it as missing (built once, so a backfill part is a map lookup).
+         */
+        private val backfillMintSize: Map<String, Int> = buildMap {
+            for (w in introducedWords) {
+                for (m in w.missing) {
+                    if (m.literal in w.req && m.literal !in this) put(m.literal, maxOf(1, m.newCards))
+                }
+            }
+        }
 
         /** `bToday` (ADR-044): today's introductions of kanji cards whose literal an earlier-introduced word requires. */
         private val bToday: Int = run {
@@ -580,17 +594,17 @@ public object DefaultQueueBuilder : QueueBuilder {
             fun backfillPart(l: String): Part? {
                 if (l in kanjiWithNote) return kc(l).takeIf { it.isNotEmpty() }?.let { Part.Cards(l, it) }
                 if (l in claimed) return null
-                for (w in introducedWords) {
-                    if (l !in w.req) continue
-                    val m = w.missing.firstOrNull { it.literal == l } ?: continue
-                    return Part.Mint(l, maxOf(1, m.newCards))
-                }
-                return null
+                return backfillMintSize[l]?.let { Part.Mint(l, it) }
             }
+
+            /** C-28d (keep going): set below; true while `lastLiteral` is claimed by a source of any tier. */
+            var unitOpen: () -> Boolean = { false }
 
             fun drawBackfill(withShare: Boolean) {
                 while (bfIndex < backfillOrder.size) {
                     if (drawn >= drawLimit) return
+                    // Rule 4 "Share step", "Not while a unit is open" (keep-going build only), tested before every part.
+                    if (withShare && keepGoing && unitOpen()) return
                     val part = backfillPart(backfillOrder[bfIndex])
                     if (part == null) {
                         bfIndex++
@@ -712,6 +726,8 @@ public object DefaultQueueBuilder : QueueBuilder {
                     if (cost > 0 && cost > remainingOf(s) && !deckFirstOfDay()) break
                     kItems += takePart(p, claims)
                     if (p is Part.Mint) minted = true
+                    // C-28d: the lead ends with the part that uses up the drawing deck's limit (even before cost-0 parts).
+                    if (limited && remainingOf(s) == 0) break
                 }
                 if (drawn > before) units += DrawnUnit(before, drawn - before, if (minted) emptyList() else kItems, null, claims, req)
                 s.stopped = true
@@ -735,11 +751,34 @@ public object DefaultQueueBuilder : QueueBuilder {
 
             fun canTurn(s: Source): Boolean = !s.stopped && remainingOf(s) > 0 && peek(s) != null
 
-            /** The word the next turn of [s] would draw a unit for: its required kanji, or null for another card. */
-            fun nextWordReq(s: Source): List<String>? = when (val item = peek(s)) {
-                is NewItem.Entry -> reqOf(item.e)
-                is NewItem.Card -> if (item.c.noteBaseType == NoteBaseType.VOCAB) reqOf(item.c) else null
-                null -> null
+            /**
+             * Rule 4 "Claims" (C-28d): [s] can take a turn and its next turn would draw the unit of a word
+             * requiring [l], or the NEW kanji card of [l] on its own turn.
+             */
+            fun claims(s: Source, l: String): Boolean {
+                if (!canTurn(s)) return false
+                return when (val item = peek(s)) {
+                    is NewItem.Entry -> l in reqOf(item.e)
+                    is NewItem.Card -> when {
+                        item.c.noteBaseType == NoteBaseType.VOCAB -> l in reqOf(item.c)
+                        isKanjiCard(item.c) -> item.c.kanjiLiteral == l
+                        else -> false
+                    }
+                    null -> false
+                }
+            }
+
+            /** The literals of the kanji parts the unit of [s]'s next word would have now (rule (c)); null for a single card. */
+            fun nextUnitPartLiterals(s: Source): List<String>? {
+                val (req, missing) = when (val item = peek(s)) {
+                    is NewItem.Entry -> reqOf(item.e) to item.e.missingKanji
+                    is NewItem.Card -> if (item.c.noteBaseType == NoteBaseType.VOCAB) reqOf(item.c) to item.c.missingKanji else return null
+                    null -> return null
+                }
+                return req.filter { l ->
+                    kc(l).isNotEmpty() ||
+                        (l !in kanjiWithNote && l !in claimed && missing.any { it.literal == l })
+                }
             }
 
             /** One turn of [s] (C-28c: always draws something or stops the source). */
@@ -767,13 +806,28 @@ public object DefaultQueueBuilder : QueueBuilder {
             val inOrder = compareBy<Source>({ it.priority }, { if (it.deckId == null) 1 else 0 }, { it.deckId ?: "" })
             val sorted = sources.sortedWith(inOrder)
 
-            /** Rule 4 "Turn order": (a) the open unit's sources first, (b) smallest `t(S)`, ties in source order. */
+            unitOpen = { lastLiteral?.let { l -> sorted.any { claims(it, l) } } ?: false }
+
+            /**
+             * Rule 4 "Turn order" (C-28d): (a) the first source in source order that claims `lastLiteral`;
+             * (b) else the smallest `t(S)`, ties in source order; (c) while the candidate's next turn draws a
+             * word's unit and an earlier source claims one of its kanji parts, the earliest such source.
+             * [tier] is in source order.
+             */
             fun pick(tier: List<Source>): Source? {
                 val able = tier.filter { canTurn(it) }
                 if (able.isEmpty()) return null
                 val l = lastLiteral
-                val open = if (l == null) emptyList() else able.filter { nextWordReq(it)?.contains(l) == true }
-                return (open.ifEmpty { able }).minBy { turnCount[it.deckId] ?: 0 } // minBy keeps the first on ties
+                var candidate = l?.let { lit -> tier.firstOrNull { claims(it, lit) } }
+                    ?: able.minBy { turnCount[it.deckId] ?: 0 } // minBy keeps the first on ties
+                while (true) {
+                    val parts = nextUnitPartLiterals(candidate) ?: break
+                    if (parts.isEmpty()) break
+                    val idx = tier.indexOf(candidate)
+                    val earlier = tier.subList(0, idx).firstOrNull { s -> parts.any { claims(s, it) } } ?: break
+                    candidate = earlier
+                }
+                return candidate
             }
 
             draw@ for (priority in sorted.map { it.priority }.distinct()) {
