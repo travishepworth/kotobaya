@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotobaya.android.shell.api.identity.IdentityTestSupport.minted
 import kotobaya.android.shell.api.review.QueueTestSupport.at
+import kotobaya.android.shell.api.review.QueueTestSupport.cardsOf
 import kotobaya.android.shell.api.review.QueueTestSupport.device
 import kotobaya.android.shell.api.review.QueueTestSupport.items
 import kotobaya.android.shell.api.review.QueueTestSupport.json

@@ -1,22 +1,23 @@
-# HANDOFF AND-28
+# HANDOFF AND-28 (attempt 2)
 
-STATUS: DONE (goldens pending SRV-28)
-BRANCH: t/AND-28-android
-CHECK: `make check MODULE=android` → red only on 4 golden tests (599 run): LocalParityTest x2, AnswerParityTest, QueueParityTest. The goldens in `fixtures/shell-parity/golden` are server-recorded and outside `android/**`, so they stay stale until SRV-28 re-records; nothing else fails.
+STATUS: DONE
+BRANCH: t/AND-28-android (rebased on main incl. SRV-28 and CORE-28b)
+CHECK: `make check MODULE=android` → red on 2 tests (604 run), both only because the goldens of the 3 new C-28d scenarios do not exist (`queue-kanji-keep-going-open-unit`, `-lead-deck-limit`, `-shared-kanji`): `LocalParityTest` x2. 35 other scenarios match their goldens; `ParityExpectTest` meets the `expect` of all 38.
 
 ## Changed (≤ 6 lines)
-- `LocalQueueLoader`: required and missing kanji per vocab note/entry (new `KanjiSource` + core `KanjiRequirement`), companions for `deck_id`, `reviewedAt`, add_kanji OFF, all vocab/kanji cards passed (backfill needs them). `NoteCreator.materialize(kanji, entries)` mints step A then B. `QueueRoute`: `until_stop`, `to_materialize` incl. kanji.
-- `QueueViews`: `kanji_parts` (core `KanjiParts`), `front_furigana`, furigana in `text`. `DeckViews`/`DeckProgressView`: `Deck.progress` via core `DeckProgress`.
-- Tests pinned to 1000220/1000440/1000450 now 1001010/1001150/1001580.
+- Candidate query = server predicate (started vocab/kanji cards even when suspended or not due); `fields` read only for vocab.
+- `KanjiSource` + `KanjiDictionary`: one chunked narrow `IN` read (`InstalledDictionary.formJson` / `kanjiFacts`) per build, misses cached, dropped when the package or gap-fill generation changes; tags unioned per form text; no facts read when exemptions are off.
+- `NoteCreator.kanjiKinds` caches kinds per literal across builds (no per-build `dict.kanji`).
+- Earlier: kanji-first loader inputs, step A/B minting, `until_stop`, `kanji_parts`, `front_furigana`, `Deck.progress`.
 
 ## Acceptance → tests
-- device matches the scenarios' `expect` → new `ParityExpectTest` (all scenarios, passes without goldens)
-- mint once, never re-create a deleted kanji → `QueueKanjiMintTest`; progress → `DeckParityTest`
-- materialize race tests → `MaterializeRaceTest` green. Re-record goldens → SRV-28 (cannot from here).
+- suspended started card → `QueueKanjiMintTest.aSuspendedDueStartedReviewCardIsNeitherServedNorCounted`; kanji-first order and server-minted literal converging → `QueueKanjiMintTest`
+- race with missing kanji → `MaterializeRaceTest.twoConcurrentFetchesCreateOneLiveKanjiNotePerLiteral`
+- retired reading card / tombstoned deck → `DeckParityTest`; 10k-entry batching and cache (timing printed) → `KanjiSourceTest`
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- The candidate query now returns every card of vocab and kanji notes (not only due ones): the builder reads "introduced" and "started" from candidates. This costs rows per build; the server query needs the same widening or backfill parity breaks.
-- `KanjiSource` caches dictionary hits for the process life; cold first build reads every vocab entry once.
+- Per-(note, updated_at) memoization of the requirement was not added: the dictionary data is cached, so a build only decodes `fields` of vocab notes.
+- The kinds cache lives for the process; it is keyed by the kanji note type and `reading_enabled`.
