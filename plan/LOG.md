@@ -1353,3 +1353,4 @@
 2026-11-19T05:40:18Z CORE-28 attempt 2 HANDOFF + CHECK_GREEN (core); reviewer dispatched
 2026-11-19T05:47:24Z CORE-28 REVIEW_APPROVE + MERGE; minors -> C-28d + CORE-28b; DISPATCH C-28d architect, SRV-28 writer, AND-28 writer
 2026-11-19T06:05:57Z SRV-28 HANDOFF + CHECK_GREEN; reviewer dispatched (minting via op path, perf, goldens). Disk / 9.5G free
+2026-11-19T06:08:44Z SRV-28 REVIEW_CHANGES 1 major (N+1 kanji queries per word under sync lock); attempt 2; KANJI-TEXT-SHARED filed (PlainText divergence)

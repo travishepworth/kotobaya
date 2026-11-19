@@ -8,9 +8,9 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 User is away; keep going without asking. Single-session rules. User said: NO release until the whole round is merged, then ONE api+web deploy + APK install (phone: say "ready", user plugs in).
 ### Running
 | C-28d | architect | 1 | t/C-28d-contracts | 2026-11-19 |
-| SRV-28 | reviewer | 1 (in review) | t/SRV-28-server | 2026-11-19 |
+| SRV-28 | writer | 2 | t/SRV-28-server | 2026-11-19 |
 | AND-28 | writer | 1 | t/AND-28-android (Gradle lane) | 2026-11-19 |
-Then CORE-28b (after C-28d) -> SRV/AND re-run checks if core behaviour changed (no API change expected).
+Then CORE-28b (after C-28d), then KANJI-TEXT-SHARED (before release) -> SRV/AND re-run checks if core behaviour changed (no API change expected).
 If no live agent after a reset: per §2, branch has commits + HANDOFF.md -> validate/check/review; else re-dispatch CORE-28 attempt 1 (prompt: ticket plan/tickets/CORE-28.md, owned core/** except core/src/commonMain/kotlin/kotobaya/contracts/**, read QueueBuilder rule 4-6, plan/handoffs/C-28.md + C-28b.md, ruby furigana note, Gradle flock).
 ### Next (in order)
 1. DONE CORE-28 merged. (was: CORE-28 green -> reviewer (high risk; focus parity scenarios queue-kanji-*, queue-until-stop, backfill share, starvation, until_stop, KanjiRequirement on real JMdict tags) -> merge.
