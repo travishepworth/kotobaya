@@ -267,7 +267,11 @@ The normative text is the contract (`QueueBuilder.kt` rules 4-6, `ReviewLoop.kt`
   between a build and its rebuild). (2) A held word's other kanji keep their own turn: the buried example is
   `[たべる, 校]`. (4) A deck's limit is tested for the word plus the unit's kanji cards homed in that deck; if
   that does not fit, the kanji lead and the deck stops, so a word is never shown and then withdrawn.
-  "Rebuild = tail" is now normative (rule 5). Parity: `queue-kanji-order-stable`, `queue-kanji-deck-limit`.
+  (5) The sources of one tier (by default a deck and the deckless cards) no longer restart their round-robin
+  at every build: the next turn goes to the source with the fewest new cards today, and a half-answered unit's
+  source goes first, so a rebuild continues where the build before was.
+  "Rebuild = tail" is now normative (rule 5). Parity: `queue-kanji-order-stable`, `queue-kanji-deck-limit`,
+  `queue-kanji-turn-order`.
 - **ADR-042 required kanji.** `cards.kanji_exemptions` (default true): words tagged `uk` / `ateji` / `rK` / `oK` /
   `iK` / `sK` require no kanji; otherwise only learnable kanji (jōyō or KANJIDIC top 2500); a word that requires
   none has a furigana front (`QueueItem.front_furigana`).

@@ -505,10 +505,52 @@ public data class ReviewQueue(
  *    of their decks are disabled, it has none and **is not introduced** ("a disabled deck supplies no
  *    new cards"). A NEW card is drawn only from its home new-source.
  *    Sources are grouped into **tiers** by priority, ascending; a tier is exhausted (every source
- *    empty or at its limit) before the next starts. Inside a tier, sources take turns round-robin —
- *    decks in ascending `id`, the deckless source last in each round — one **turn** being one
- *    **unit**: one card together with its kanji group (below), or one pending entry with its
- *    group; an exhausted source is skipped. A companion NEW card has no turn of its own.
+ *    empty or at its limit) before the next starts. Inside a tier, sources take turns — one
+ *    **turn** being one **unit**: one card together with its kanji group (below), or one pending
+ *    entry with its group. A companion NEW card has no turn of its own.
+ *    **Turn order (C-28c; replaces "round-robin, restarted at every build").** The **source
+ *    order** of a tier is: decks in ascending `id`, the deckless source last. A source can take
+ *    a turn while it is not empty, not at its per-deck limit and not stopped by a lead. Which
+ *    of them takes the next turn is decided from data only, so that a rebuild continues where
+ *    the previous build was instead of starting again at the first deck:
+ *    - **Turn count** `t(S)` of a source S = the number of today's `introducedNew` reviews
+ *      (after rule 0) whose card's home new-source is S (from [TodayReview.deckIds] and the
+ *      decks now, exactly as for the per-deck limit; no deck ids = the deckless source; decks
+ *      all disabled = no source) **plus** the cards taken so far in this build whose home
+ *      new-source is S (a pending entry counts 1 for its deck when drawn), **not counting
+ *      cards of kanji notes whose home is the deckless source** (auto-minted and backfill
+ *      kanji: they are drawn for a word or by backfill, not as that source's choice; a today
+ *      review is such a card iff its `cardId` is a candidate of a kanji note and its `deckIds`
+ *      give the deckless source; a review whose card is not among the candidates counts). A kanji
+ *      card homed in a deck counts for that deck whichever unit or step took it. A lead's word
+ *      is not taken and does not count.
+ *    - **Last new card** `lastNew`: the last thing rule 4 has drawn so far in this build (a
+ *      card, or the last literal claimed for minting); when nothing is drawn yet, the card of
+ *      today's `introducedNew` review with the greatest `(reviewedAt, cardId)` (rule 5's
+ *      `last`); else none. `lastLiteral` = its kanji literal when it is a card of a kanji note
+ *      or a claimed literal, else none.
+ *    - **Next turn** in the current tier: (a) **open unit**: if `lastLiteral` is L and some
+ *      source of the tier that can take a turn has, as the unit its next turn would draw, the
+ *      unit of a word W (card or entry, not held) with `L in req(W)`, the first such source in
+ *      source order takes the turn. (b) Otherwise the source that can take a turn with the
+ *      smallest `t(S)`, ties in source order.
+ *    With nothing introduced today and one-card units this is the old round-robin (decks by
+ *    id, the deckless source last in each round). After an answer the counts are what they
+ *    were in the previous build at the same point, so the rebuild picks the same source next:
+ *    a whole unit adds to `t` at once what its cards add one by one when answered, and while a
+ *    unit is half answered (its kanji 学 answered, `[校, 学校]` left) rule (a) gives the turn
+ *    back to the unit's own source. Rule (a) applies inside a build as well (after a kanji
+ *    drawn by the share step, on a deck's own turn or as a lead, a source whose next word
+ *    requires it goes next), which is what makes build and rebuild agree; it reads nothing
+ *    that rule (b) does not, and never moves a unit that is already drawn.
+ *    Example (goal 4; deck D holds the kana words a, b; the deckless source holds 学校 and,
+ *    created after it, the NEW kanji notes 学, 校; one tier; nothing introduced today):
+ *    `t(D) = t(deckless) = 0` → D: a (`t(D) = 1`); deckless: `[学, 校, 学校]` (`drawn = 4`,
+ *    `t(deckless) = 1`: only the word counts) → N = `a 学 校 学校`. After a is answered:
+ *    `t(D) = 1 > t(deckless) = 0` → the deckless unit first, it fits (3 of 3) → `学 校 学校`
+ *    (a restart at D would draw b, and the unit would no longer fit and lead: the word
+ *    withdrawn after its kanji). After 学: `lastLiteral = 学` and the deckless source's next
+ *    word requires it → rule (a) → `校 学校`. The next day: a tie → D: b.
  *    Inside a deck: `(position, itemKey, kindOrder, cardId)`; pending entries of that
  *    deck are interleaved by `(position, itemKey)` and, when reached, go to `toMaterialize`
  *    unless their `wordOverride` is KNOWN, NEVER_FORGET, BLACKLISTED or IGNORED. Cards whose
@@ -705,6 +747,12 @@ public data class ReviewQueue(
  *    today or drawn in this build) still stops its source; a first part larger than `newPerDay`
  *    is drawn as the day's first new cards (ADR-044); `newPerDay` 1 → share 1: backfill takes
  *    the whole goal until it is done (ADR-044 "at least 1"); `newPerDay` 3 → share 1;
+ *    **the deck's first new card of the day** (C-28c, "Deck cost"): a kanji part whose deck
+ *    cost is larger than the deck's whole `newPerDay` (several NEW kinds, `burySiblings`
+ *    false) is taken when nothing homed in that deck was introduced today or taken in this
+ *    build, and overshoots the deck's limit by `deck cost − newPerDay` that once; without it
+ *    the part and its word would never be drawn from that deck; with one-card parts (the
+ *    built-in kanji type) the exception never changes a result;
  *    a held word does not stop its source, and a NEW kanji of a held word that is not itself
  *    buried keeps its own turn; a deck with remaining 1 whose next word has a kanji card homed
  *    in the same deck leads with that kanji (C-28c "Deck cost"); a deck with remaining 0 draws
@@ -775,7 +823,8 @@ public data class ReviewQueue(
  *    C-28c (against the C-28b text): a unit's kanji cards homed in the drawing deck are tested
  *    against that deck's limit before the draw ("Deck cost": whole or lead); rule 5 "Open group
  *    first" only promotes the **first** unit left in `N` and never reorders `N`; the buried
- *    example is `[たべる, 校]`.
+ *    example is `[たべる, 校]`; the sources of a tier no longer restart their round-robin at
+ *    every build ("Turn order": turn counts from today's reviews, open unit first).
  * 5. **Order** (ADR-037, normal build): due learning items first (rule 2 order); then the reviews
  *    `R` (rule 3 order, most overdue first) and the new **units** `N` (rule 4 draw order; a unit
  *    is a kanji group or a single card; withheld units and entries have no items and are left
@@ -838,13 +887,19 @@ public data class ReviewQueue(
  *    learning step falling due, no sync, no day change), answering the first item of a build
  *    and rebuilding gives exactly the remaining items of that build, in the same order, plus
  *    whatever the batch had cut off: no item moves and none disappears, in the normal and in
- *    the keep-going build, with units, leads, backfill and per-deck limits. (Outside this
- *    guarantee, known and accepted: a build with pending materialization, whose withheld
- *    units become items once minted; two or more sources in one tier, which restart their
- *    round-robin at every build, as before ADR-040; and a kanji part of several cards, which
- *    needs a kanji note type with several NEW kinds and `burySiblings` false and is dissolved
- *    once its first card is answered. Tests of the property use at most one source per tier,
- *    one-card parts and no missing kanji.) The
+ *    the keep-going build, with units, leads, backfill, per-deck limits and any number of
+ *    sources in a tier (rule 4 "Turn order"). Outside this guarantee, each for a stated
+ *    reason: (1) a build with pending materialization: its withheld units have no items until
+ *    the client has minted, so the item list grows by design. (2) A kanji part of several
+ *    cards (a kanji note type with several NEW kinds and `burySiblings` false; never the
+ *    built-in type): its first answer makes the literal started, which by ADR-040 dissolves
+ *    the part ("kanji that already have a learning card do not block"). (3) Two sources of
+ *    one tier whose next words both require the kanji just introduced, when that kanji was
+ *    drawn inside the unit of the later one: the stored data is the same as if the kanji had
+ *    been drawn alone, so no stateless rule can tell which unit is open; rule (a) then picks
+ *    the first in source order, and the other word follows on its source's next turn (its
+ *    kanji stay first; if the day has no room left it leads and comes the next day). Tests of
+ *    the property use one-card parts, no missing kanji, and exclude (3) only. The
  *    mix does not depend on the batch, on input order or on the caller. Between two new units there
  *    are at most `ceil(rRem / gRem)` reviews and never two units in a row while a review is left,
  *    except through the open-group rule. `toMaterialize` entries and withheld units are not items
@@ -887,7 +942,7 @@ public data class ReviewQueue(
  *    - Rule 4: budget = `max(1, keepGoingNewBatch)` alone; `newPerDay` and today's
  *      `introducedNew` count are ignored (no day test), and no source has a per-deck limit
  *      (`QueueDeck.newPerDay` ignored). Sources, home new-source (a disabled deck still supplies
- *      nothing on its own turns), tiers, round-robin, in-deck order, pending entries, KNOWN
+ *      nothing on its own turns), tiers, turn order, in-deck order, pending entries, KNOWN
  *      handling, backfill parts and their order, kanji units, withholding and unit order are
  *      unchanged. Backfill keeps its half share (ADR-044) in the keep-going form of the share
  *      test (rule 4 "Half share": at most half of today's introductions plus this build's

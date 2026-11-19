@@ -298,5 +298,7 @@ carry many words past the limit); keeping the move-up and correcting the half-sh
 Worth a second look:
 1. A backfill kanji and a new word that needs it can now be several new cards apart.
 2. A deck limited to 1 a day teaches a kanji one day and its word the next.
-3. Two decks of equal priority: the one with the smaller id is always drawn first after each
-   answer. This was already so and is unchanged.
+3. Decks of equal priority (and cards in no deck, by default) now share new cards evenly over
+   the day: the one with the fewest new cards today goes next. Before, the first deck was
+   always drawn first after each answer, so it used up the goal before the others got a turn.
+   Kanji cards created automatically do not count as a turn for anyone.

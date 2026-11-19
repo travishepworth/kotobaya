@@ -642,8 +642,8 @@ that name is not used.) Meaning, on the same scale as `deck.priority` (QueueBuil
 - New-card sources are drawn in tiers by priority, **ascending**: a lower number is drawn
   earlier; a **higher number means later** (lower precedence).
 - Equal to a deck's priority (default `0` vs. decks at the default `0`) → the same tier: the
-  deckless source takes turns round-robin with those decks, one card per turn, going **last** in
-  each round.
+  deckless source takes turns with those decks, one unit per turn, going **last** on a tie
+  (QueueBuilder rule 4 "Turn order": the source with the fewest new cards today goes next).
 - Below every enabled deck's priority (e.g. `-1` with all decks at `0`) → mined cards are
   introduced before any deck's; above all (e.g. `1`) → only once every deck tier is exhausted or at
   its limit for the day.

@@ -495,7 +495,13 @@ KDoc examples):
   between words, introduced words (backfill) and answers already given today, in the normal
   and the keep-going build, answering the head and rebuilding yields the previous build's tail;
   no exclusion for backfill kanji that a new word also requires or for kanji homed in a capped
-  deck (the two cases the CORE-28 attempt 1 properties left out); in every build no vocab item
+  deck (the two cases the CORE-28 attempt 1 properties left out); **several sources in one
+  tier** (decks and the deckless source at the same priority, the default setup) are part of
+  the random inputs, the only exclusion being two sources whose next words require the same
+  not yet started kanji (rule 5, exclusion 3); the "Turn order" example (`a 学 校 学校`, after a
+  `学 校 学校`, after 学 `校 学校`, the next day b first); `t(S)` ignores deckless kanji cards and
+  counts deck-homed ones; rule (a) inside one build (a kanji drawn on a kanji deck's own turn
+  is followed by the source whose next word requires it, whatever the counts); in every build no vocab item
   precedes a NEW kanji item of a kanji it requires; no review between the cards of a unit; a due learning card may come
   between and the group continues after it; the open group is not pulled after a review was
   answered (`s > 0`), after a day rollover, or when the last introduced card is a vocab card;
