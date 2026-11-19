@@ -1387,3 +1387,4 @@
 2026-11-19T10:22:16Z RELEASE APK 0.1.36 built (pin 17eb3969, code 136, cert ec6b7f45 ok)
 2026-11-19T10:36:40Z RELEASE run 35 DEPLOYED helm rev 40 (pin 17eb3969): api 0.1.26, web 0.1.29, worker 0.1.20; awaiting user dict-refresh + phone for APK 0.1.36
 2026-11-19T10:51:27Z RELEASE APK 0.1.36 INSTALLED (user 10, versionCode 136)
+2026-11-19T11:00:16Z DICT refresh OK release 5 (headword_rule ADR-046): シンガポール/かるた/いる headwords kana. Run 35 complete
