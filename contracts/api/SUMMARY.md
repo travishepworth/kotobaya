@@ -228,7 +228,7 @@ Everything else (additions):
 | Grammar | `getGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`, `putGrammarSpan`, `removeGrammarSpan` |
 | Stats | `getStatsSummary`, `getStatsCalibration` |
 | Parsing | `listParseOverrides`, `putParseOverride`, `deleteParseOverride` |
-| Jobs | `cancelJob`, `synthesizeSpeech` |
+| Jobs | `cancelJob`, `synthesizeSpeech`, `resolveSpeech` |
 | Blobs | `queryBlobs`, `getBlob`, `putBlob` |
 
 ## Cross-check: table ↔ ops ↔ API operations
@@ -817,3 +817,83 @@ Three choices most worth a second look:
 - New parity scenario `queue-kanji-rare-forms` (tags `queue.kanji_kana_word`,
   `queue.kanji_tagged_joyo_only`, both mandatory). Its golden is recorded by CORE-28d once the
   fixture dictionary loaders apply SCHEMA.md 4.5 "Headword"; no existing golden changes.
+
+## C-29 changes (ADR-047): automatic word audio
+
+The whole design in one place; the normative text is SCHEMA.md 6.6 (rules for server, worker,
+device), `openapi.yaml` (`resolveSpeech`, `QueueItem.word_audio`), the core contract
+(`render/WordAudio.kt`, "Word audio" on `CardRenderer`) and `docs/REVIEW-LOOP.md` section 14
+(what the review screen does).
+
+What was decided, in plain words:
+- **Audio is looked up, never written into notes.** A vocab card's sound is the note's own audio
+  if it has one, else speech generated from the word's reading. Nothing edits a note, so there is
+  no sync op, nothing to merge and nothing that can be lost: delete every generated file and the
+  system makes them again.
+- **One rule decides which sound a card has**, in the shared core (`WordAudioResolver`), used by
+  the server, the phone's local API and the phone's download pass.
+- **Generated audio is identified by the pair (voice, text)**, e.g. (`3`, `たべる`). The server
+  keeps a small index table `tts_audio` (pair to audio file); the phone keeps a copy of the pairs
+  it asked about. Two words with the same reading share one file.
+- **`QueueItem.word_audio`** (new, optional): `{source: note|tts, blob_hash, text, voice}` or null.
+  `blob_hash` null = not generated yet.
+- **`POST /tts/resolve` (`resolveSpeech`)** (new): ask for up to 200 pairs or notes; the answer
+  says ready / pending / failed / none, and missing ones are queued. The review screen asks for
+  the card on screen ("urgent": jumps the job queue); the phone asks for its prefetch window.
+  `POST /tts` and the `tts` job are reused unchanged in shape; the worker additionally records
+  each result in the index table.
+- **The server generates ahead**: for the cards it serves, and every 10 minutes for cards due
+  within `audio.prefetch_days` (default 7), at most 300 jobs waiting at a time.
+- **Offline**: the phone works out which sounds it needs (same window plus today's new cards),
+  resolves them while online, downloads the files into its existing blob cache, and its local
+  queue then hands out the same `word_audio` the server would.
+- **Card layout**: the speaker button sits inside the expression line on the answer side; on
+  listening cards it is the front. The renderer tells the app which sound to autoplay.
+- **Settings**: `review.autoplay_audio` (bool, default true), `tts.voice` (digits, default `"3"`;
+  it existed only as a mention before), `audio.prefetch_days` now 0-365.
+- Cross-check: `tts_audio` is a system table, not learning data, so it has no sync op by design;
+  its operations are `resolveSpeech`, `synthesizeSpeech` (through the job) and `getReviewQueue` /
+  `createDrillSession` (read). `settings` keeps `settings.set` / `listSettings`, `updateSettings`.
+  No sync op, op schema or learning-data table changed.
+
+Alternatives rejected:
+- **Writing `[sound:…]` into the note's `audio` field** (by the server or a client). It would be a
+  hidden note edit for every card: thousands of ops, a merge rule for "generated versus the
+  user's own audio", and a voice change would mean rewriting every note.
+- **A hash as the identity** (sha of engine, voice and text, as the ticket suggested). The pair
+  itself is short, readable and needs no SHA-256 in the shared core (it has none today); the
+  worker's job dedupe key keeps its existing hash. An engine other than VOICEVOX would later get
+  voices that are not plain digits, so the pair still tells them apart.
+- **A blocking "GET the audio, generate if missing" endpoint.** It would hold a request open on
+  the worker queue and VOICEVOX; with ask-again the server stays stateless and reviewing never
+  waits.
+- **A separate manifest endpoint for the phone.** The phone already knows its own due cards
+  (also ones it created offline that the server has not seen), so it asks for exactly those pairs
+  with the same `resolveSpeech`.
+- **The button carrying a text key instead of a file hash.** Every host already plays
+  `data-kb-audio=<hash>` and the phone already intercepts blob URLs; one mechanism stays.
+
+Three choices most worth a second look:
+1. **VOICEVOX hears kana only** (`たべる`, as ADR-047 says: "the word's reading"). The reading is
+   always right, but the pitch accent is VOICEVOX's guess for that kana, and 橋 and 箸 sound the
+   same. Sending the kanji instead risks wrong readings. A later step can send the accent from
+   the dictionary's pitch data; it only changes the text of the pair, nothing else here.
+2. **Only vocab notes get generated audio.** Phrase and sentence notes keep whatever audio they
+   have. Also unchanged: a `listening` card is still only created for a note that has its own
+   audio. Saying "yes, generate for those too" is a small follow-up.
+3. **Autoplay does not repeat on a listening card's answer.** The sound plays with the question;
+   on reveal it is silent unless the user taps or presses P. Everything else plays on reveal.
+
+Also changed in passing: `audio.prefetch_days` above 365 is now rejected by `updateSettings`
+(stored larger values fall back to 7), and a non-blank `audio` field without any `[sound:]`
+(left-over `<br>`) is no longer shown on built-in vocab cards.
+
+Implementation tickets (each reads SCHEMA.md 6.6 first):
+
+| Ticket | Module | Does | Needs |
+|---|---|---|---|
+| CORE-29 | core | `DefaultWordAudioResolver` (jvm + js tests from the table in `WordAudio.kt`); renderer: block W, `{{audio:word}}`, `RenderedCard.wordAudio` / `autoplayAudio`, `JsRenderInput.wordAudio` and the two `JsRenderedCard` members mapped; built-in vocab templates; update render goldens | C-29 |
+| WRK-29 | worker | `tts` job: cache lookup and upsert on `app.tts_audio` (replaces the job-history lookup), voice / length validation, tests for run-twice idempotency | C-29 (V4 migration) |
+| SRV-29 | server | V4 migration; `word_audio` on queue and drill items plus urgent enqueue; `resolveSpeech`; the sweep; settings validation of the three keys; `synthesizeSpeech` default voice via core; re-record parity goldens that call `getReviewQueue` / `createDrillSession`; scope test for `resolveSpeech` | C-29, CORE-29 |
+| WEB-29 | web + `assets/card/` | pass `word_audio.blob_hash` to the renderer; REVIEW-LOOP 14 rules (autoplay, P, tap, resolve-and-rerender); settings toggle (i18n); CSS for `.kb-expression .kb-audio`; layout test + screenshot | C-29, CORE-29 (SRV-29 to see it work) |
+| AND-29 | android | device table `tts_audio` (schema migration); local `word_audio`; the prefetch pass; local settings validation; parity goldens of SRV-29 | C-29, CORE-29, SRV-29 |

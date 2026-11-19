@@ -62,3 +62,17 @@ CREATE TABLE blob_cache (
 );
 
 CREATE INDEX blob_cache_state_idx ON blob_cache (state, requested_at);
+
+-- C-29 (ADR-047): the (voice, text) -> audio blob pairs this device has resolved with the server
+-- (API resolveSpeech). A device-local copy of rows of the server system table app.tts_audio:
+-- derived data, never synced, never written by an op, safe to delete entirely (the next prefetch
+-- pass refills it). The local getReviewQueue reads it to fill QueueItem.word_audio.blob_hash.
+-- Contract: contracts/db/SCHEMA.md 5.3 and 6.6.
+CREATE TABLE tts_audio (
+  voice TEXT NOT NULL,                -- VOICEVOX style id, decimal digits, e.g. '3'
+  text TEXT NOT NULL,                 -- exact speech text, e.g. 'たべる' (byte-for-byte key)
+  blob_hash TEXT NOT NULL,            -- sha256 hex of the audio; the bytes are tracked in blob_cache
+  duration_ms INTEGER NOT NULL,
+  checked_at INTEGER NOT NULL,        -- epoch ms of the resolveSpeech answer this row came from
+  PRIMARY KEY (voice, text)
+);

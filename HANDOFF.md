@@ -1,21 +1,22 @@
-# WEB-DICT-DESKTOP — HANDOFF
+# HANDOFF C-29
 
-Status: DONE. `make check MODULE=web` green.
+STATUS: DONE
+BRANCH: t/C-29-audio
+CHECK: `make check MODULE=contracts` → green (also `:core:jvmTest :core:compileKotlinJs` green)
 
-## What was bad at desktop (before)
-- 1920x1080: headword squeezed into a one-glyph-wide column and overlapping the Add-to-deck button (actions sat beside the headword).
-- Whole page scrolled; list pane was sticky with auto height, so its divider ended mid-screen (1280x800 start state).
-- Rows tall (3-line gloss + marks stacked); entry wasted the right half at 1920; no URL state (no back/forward), no arrow-key navigation.
+## Changed (≤ 6 lines)
+- db: `V4__tts_audio.sql` (+ smoke), device table `tts_audio` in `Local.sq`, SCHEMA.md 6.6 (rule book), settings `review.autoplay_audio`, `tts.voice`, `audio.prefetch_days` 0–365
+- api: `QueueItem.word_audio`, `POST /tts/resolve` (`resolveSpeech`, shell class `proxy`), SHELL.md 4.3
+- core contract: `render/WordAudio.kt` (`WordAudioResolver`), `RenderInput.wordAudio`, `RenderedCard.wordAudio`/`autoplayAudio`, `{{audio:word}}`, JS facade fields
+- docs/REVIEW-LOOP.md §14 (screen rules A1–A6); clients regenerated
 
-## Changes (web/src/routes/dictionary/{+page,EntryView}.svelte, lib/state/dictionary.svelte.ts, playwright/dictionary.spec.ts)
-- >=900px: fixed-height two panes; search stays on top of the list, rows scroll; entry pane scrolls separately. Dense rows (headword, reading, one-line gloss, check + Common badges). Entry: 4rem headword, actions on their own row, senses held to measure.
-- Up/Down walk results from the search box, Enter opens. URL keeps `q` and `seq` (pushState per opened entry, replace while typing); popstate restores. Desktop only.
-- Phone (<900px): pixel-identical (cmp on all 4 shots).
-- No new strings, no new deps. JLPT badge on rows omitted: summary has no JLPT field (would need API change).
-- Spec has bounds checks (overflow, row/pane overlap) and a keyboard/URL test.
+## Acceptance → tests
+- contracts green; both examples (deck-materialized empty fields; own `[sound:]`) → `WordAudio` schema examples, `SpeechResolveResult*`, WordAudio.kt table, REVIEW-LOOP §14
 
-## Screenshots (before/ and after/, names `<size>-{0-start,1-results,2-entry,3-kanji}.png`)
-/tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/dict-shots/before/
-/tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/dict-shots/after/
-Viewed: 1280 and 1920 before/after, 412 before. Dark mode not screenshotted (tokens only).
-Note: spec needs core/build/npm (copied from main checkout, gitignored).
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- Identity is the pair (voice, text), not a hash; audio is never written to notes (no op). VOICEVOX gets kana only (accent guessed).
+- Tickets + deps: `contracts/api/SUMMARY.md` "C-29 changes": CORE-29 → WRK-29, SRV-29 (re-records parity goldens) → WEB-29, AND-29.
+- WRK-29: `worker/tests/dict/conftest.py` lists migrations by name; add V4. Vocab only; `listening` creation rule unchanged.

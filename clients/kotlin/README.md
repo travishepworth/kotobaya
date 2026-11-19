@@ -304,6 +304,7 @@ All URIs are relative to */api/v1*
 | *JobsApi* | [**cancelJob**](docs/JobsApi.md#canceljob) | **POST** /jobs/{job_id}/cancel | Cancel a queued or running job. |
 | *JobsApi* | [**getJob**](docs/JobsApi.md#getjob) | **GET** /jobs/{job_id} | One job with progress, result or error. |
 | *JobsApi* | [**listJobs**](docs/JobsApi.md#listjobs) | **GET** /jobs | List background jobs (imports, parses, optimizer runs, ...). |
+| *JobsApi* | [**resolveSpeech**](docs/JobsApi.md#resolvespeech) | **POST** /tts/resolve | Look up generated speech for texts or notes, generating what is missing. |
 | *JobsApi* | [**synthesizeSpeech**](docs/JobsApi.md#synthesizespeech) | **POST** /tts | Synthesize Japanese speech (VOICEVOX) into an audio blob. |
 | *MediaApi* | [**clearJpdbVocabResolution**](docs/MediaApi.md#clearjpdbvocabresolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue. |
 | *MediaApi* | [**deleteMedia**](docs/MediaApi.md#deletemedia) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content. |
@@ -635,6 +636,10 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.SettingsPatch](docs/SettingsPatch.md)
  - [app.kotobaya.client.models.Settingssetschema](docs/Settingssetschema.md)
  - [app.kotobaya.client.models.SpanOrigin](docs/SpanOrigin.md)
+ - [app.kotobaya.client.models.SpeechResolution](docs/SpeechResolution.md)
+ - [app.kotobaya.client.models.SpeechResolveItem](docs/SpeechResolveItem.md)
+ - [app.kotobaya.client.models.SpeechResolveRequest](docs/SpeechResolveRequest.md)
+ - [app.kotobaya.client.models.SpeechResolveResult](docs/SpeechResolveResult.md)
  - [app.kotobaya.client.models.StatsCalibration](docs/StatsCalibration.md)
  - [app.kotobaya.client.models.StatsCalibrationBinsInner](docs/StatsCalibrationBinsInner.md)
  - [app.kotobaya.client.models.StatsForecast](docs/StatsForecast.md)
@@ -659,6 +664,7 @@ All URIs are relative to */api/v1*
  - [app.kotobaya.client.models.TokenList](docs/TokenList.md)
  - [app.kotobaya.client.models.TtsRequest](docs/TtsRequest.md)
  - [app.kotobaya.client.models.VocabListReport](docs/VocabListReport.md)
+ - [app.kotobaya.client.models.WordAudio](docs/WordAudio.md)
  - [app.kotobaya.client.models.WordStatus](docs/WordStatus.md)
  - [app.kotobaya.client.models.WordStatusSet](docs/WordStatusSet.md)
  - [app.kotobaya.client.models.WordStatusValue](docs/WordStatusValue.md)

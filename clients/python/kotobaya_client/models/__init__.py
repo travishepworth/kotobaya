@@ -273,6 +273,10 @@ from kotobaya_client.models.setting_list import SettingList
 from kotobaya_client.models.settings_patch import SettingsPatch
 from kotobaya_client.models.settings_set_schema import SettingsSetSchema
 from kotobaya_client.models.span_origin import SpanOrigin
+from kotobaya_client.models.speech_resolution import SpeechResolution
+from kotobaya_client.models.speech_resolve_item import SpeechResolveItem
+from kotobaya_client.models.speech_resolve_request import SpeechResolveRequest
+from kotobaya_client.models.speech_resolve_result import SpeechResolveResult
 from kotobaya_client.models.stats_calibration import StatsCalibration
 from kotobaya_client.models.stats_calibration_bins_inner import StatsCalibrationBinsInner
 from kotobaya_client.models.stats_forecast import StatsForecast
@@ -297,6 +301,7 @@ from kotobaya_client.models.token_kind import TokenKind
 from kotobaya_client.models.token_list import TokenList
 from kotobaya_client.models.tts_request import TtsRequest
 from kotobaya_client.models.vocab_list_report import VocabListReport
+from kotobaya_client.models.word_audio import WordAudio
 from kotobaya_client.models.word_status import WordStatus
 from kotobaya_client.models.word_status_cleared_schema import WordStatusClearedSchema
 from kotobaya_client.models.word_status_set import WordStatusSet

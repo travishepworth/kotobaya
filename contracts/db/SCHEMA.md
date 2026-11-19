@@ -10,6 +10,7 @@ Frozen interface. Files:
 | `DICT_PACKAGE.md` | Dictionary device package, diff format, blob keys, device update algorithm (section 5.4). |
 | `V2__jpdb_vocab.sql` | Additive migration (C-11): the server-only jpdb mapping-correction tables (4.4). |
 | `V3__vocab_list.sql` | Additive migration (C-21): the server-only vocabulary-list tables (JLPT) behind list decks (4.5). |
+| `V4__tts_audio.sql` | Additive migration (C-29, ADR-047): the server-only TTS audio index `tts_audio` (4.3, 6.6). |
 | `VOCAB_LISTS.md` | JLPT source and licence, matching rule and unmatched report, list-deck catalogue, `deck-build` job and the `deck-publish` hand-off (C-21). |
 | `SNAPSHOT.md` | Media content and deck-item snapshot archives: format, integrity rules, install rule (C-11). |
 | `MEDIA_PIPELINE.md` | The `media-publish` hand-off, `parse_status` transitions, jpdb mapping corrections (C-11). |
@@ -19,6 +20,7 @@ Frozen interface. Files:
 | `test/smoke.sql` | One worked example row per table plus the constraints you may rely on. Read it for examples. |
 | `test/smoke_v2.sql` | The same for `V2__jpdb_vocab.sql`. |
 | `test/smoke_v3.sql` | The same for `V3__vocab_list.sql` (the worked example of `VOCAB_LISTS.md` 6). |
+| `test/smoke_v4.sql` | The same for `V4__tts_audio.sql`. |
 | `check.sh` | Verifies all of the above (see section 8). |
 | `SUMMARY.md` | Decisions, rejected alternatives, things worth a second look. |
 
@@ -318,6 +320,7 @@ deleted the row stays and is hidden by readers; if either note is merged, reader
 | `sentence_grammar_span` (detected rows) | S D* | as `media_segment` | Replaced per media: `DELETE … WHERE media_id = ? AND origin = 'detected'`, then insert. Manual rows are learning data (4.1) and are never touched by an install. |
 | `parse_override` | S | `parse_override.put`, `parse_override.deleted` | Server only; devices ignore these ops. |
 | `blob` | S | API/worker after storing the object | Device tracks its own copies in `blob_cache`. Snapshot archives: `kind = snapshot`, `origin = build` (`SNAPSHOT.md` 2.6). |
+| `tts_audio` (C-29) | S D† | S: the worker's `tts` job only, after the object and its `blob` row are stored (upsert on `(voice, text)`). D†: the device's prefetch pass, from `resolveSpeech` answers | System table, **not learning data**: derived, not synced, no op, rebuildable from nothing. D† = a device-local copy of the pairs the device resolved (`Local.sq`; column `checked_at` instead of `created_at`). Section 6.6. |
 
 Deleting a media (`media.deleted`): server tombstones the `media` row, tombstones its deck
 (emitting `deck.deleted`), then hard-deletes that media's segments, sentences, occurrences and
@@ -556,6 +559,8 @@ Example: Postgres `tags = '{anime,frieren}'` ⇔ SQLite `tags = '["anime","frier
 
 Not on the device: `device`, `api_token`, `change`, `job`, `blob`, `parse_override`, `server_state`,
 `jpdb_vocab`, `jpdb_vocab_media`.
+`tts_audio` (C-29) is on both sides but is not replicated: the device table is a local copy of
+the pairs it resolved (5.3), with `checked_at` in place of `created_at`.
 `check.sh` fails if the two schemas drift apart in any way not listed in its allow-list.
 
 ### 5.3 Device-only tables (`Local.sq`)
@@ -580,6 +585,9 @@ Where this section and `contracts/sync/SYNC.md` overlap, **SYNC.md wins** (C-2).
   `durable_seq`, `hlc_acked`, `remint_offset`, `core_scheduler_version` (C-1). SYNC.md 10.5 is
   authoritative for their meaning and their "absent means" value.
 - `blob_cache` — which content-hashed blobs are wanted/cached.
+- `tts_audio` (C-29) — the `(voice, text) → blob_hash` pairs this device learned from
+  `resolveSpeech`. Not learning data: no `pending_op` row is ever written for it, a rebuild
+  (SYNC.md 10.3) may keep or drop it, and deleting every row is always safe. Rules: 6.6 "Device".
 
 ### 5.4 The dictionary file
 
@@ -608,7 +616,9 @@ one exception to `foreign_keys = ON` above.
 | `scheduler.bury_siblings` | bool | `true` | |
 | `scheduler.kanji_before_vocab` | bool | `false` | **Deprecated, ignored (ADR-040).** Was the default for the `add_kanji` ordering. Kanji cards now always come before their first word. Still accepted, stored and synced like `scheduler.new_per_session`. See 6.2. |
 | `scheduler.mined_priority` | int (int4, see 6.1) | `0` | Priority of the deckless ("mined") new-card source, ADR-006. Same scale as `deck.priority`: lower is drawn earlier. See 6.2. |
-| `audio.prefetch_days` | int | `7` | Audio prefetch horizon. |
+| `audio.prefetch_days` | int 0–365 | `7` | Audio prefetch horizon in days: word audio of every card due before `now + N × 86 400 000 ms` is generated ahead and downloaded by devices. `0` = only today's new cards. See 6.6. |
+| `review.autoplay_audio` | bool | `true` | ADR-047: while not `false`, the review screen plays the card's word audio when a side that carries it is shown (the answer on reveal; the front of a `listening` card). Display only: no effect on cards, scheduling or generation. See 6.6. |
+| `tts.voice` | string (voice) | `"3"` | VOICEVOX style id used for generated word audio and as the default of `POST /tts`. Part of the identity of TTS audio: changing it makes every word regenerate on demand. See 6.6. |
 | `cards.kanji_exemptions` | bool | `true` | ADR-042, ADR-045: while not `false`, only learnable kanji (jōyō or KANJIDIC frequency top 2500) are required, whatever the word's tags, and a word shows furigana on its front when JMdict tags it as usually-kana / ateji / rare, out-dated, irregular or search-only kanji form, or when it requires no kanji. See 6.5. |
 | `cards.reading_enabled` | bool | `false` | ADR-035 "Also create reading cards": while not `true`, vocab `reading` cards are **retired** (never created, never in a queue, ignored by `auto_status`; kept with their history). See 6.4. |
 
@@ -624,7 +634,7 @@ one exception to `foreign_keys = ON` above.
   replica's `settings` table to re-derive `word_status`, with the same `bool` test; 6.4.)
   - `int`: valid iff the value is a JSON number whose value is an integer inside the key's
     range. The range is int4 (−2147483648…2147483647) unless the table gives a narrower one
-    (`day_rollover_hour` 0–23, `grading_buttons` 4 or 5). The number's value is the IEEE-754
+    (`day_rollover_hour` 0–23, `grading_buttons` 4 or 5, `audio.prefetch_days` 0–365). The number's value is the IEEE-754
     binary64 nearest to the JSON text, as `JSON.parse` and Kotlin `String.toDouble()` produce it.
     Every int4 is exact in binary64, so all platforms agree. Under this test `1.0` and `1e2` are
     valid and mean 1 and 100, and `-0` is 0. `3.5`, `1e400`, `2147483648`, `"3"`, `true` and
@@ -633,6 +643,10 @@ one exception to `foreign_keys = ON` above.
   - `bool`: valid iff the value is JSON `true` or `false`. `0`, `1`, `"true"` and `"false"` are
     invalid.
   - `string (IANA)`: valid iff the value is a JSON string.
+  - `string (voice)` (C-29): valid iff the value is a JSON string matching `^[0-9]{1,9}$`
+    (a VOICEVOX style id in decimal digits). `"3"` and `"08"` are valid (and are different
+    voices as far as identity goes: the string is used as written); `3` (a number), `""`,
+    `"ずんだもん"` and `"3 "` are invalid.
 - **Only well-known keys are type-checked, and only by `updateSettings`** (`PATCH /settings`): an
   invalid value is `422` with problem `pointer` `/values/<key>` (e.g.
   `/values/scheduler.mined_priority`), and nothing in the request is written. JSON `null` is
@@ -861,6 +875,101 @@ version, exempt from the "never re-created" rule) and is a separate contract cha
 of ADR-046. Finding the candidates is a read-only query: live notes with `origin = 'auto_kanji'`
 whose cards are all `new` with no `review_log` row.
 
+### 6.6 Word audio (ADR-047, C-29)
+
+Every vocab card has word audio without anyone editing the note: the note's own `audio` field if
+it holds a sound, else VOICEVOX speech of the word's reading. **Nothing here is learning data and
+nothing here writes a note**: generated audio is derived data, found again from the note's content
+at any time, so there is no op, no clock and nothing to converge (CLAUDE.md rule 8 untouched).
+
+**Definitions** (used by the API, the core, the server, the worker and the device):
+
+| Term | Definition |
+|---|---|
+| effective voice | The value of `tts.voice` when valid by the 6.1 `string (voice)` test, else `"3"` (core `WordAudioRules.DEFAULT_VOICE`). |
+| word audio of a note | The result of the core `WordAudioResolver.resolve` (contract: `core/.../contracts/render/WordAudio.kt`): **none** (the note's base type is not `vocab`, or it has no speakable text), **note** (a blob hash: the first `[sound:<sha256>]` of the note's `audio` field; the note's own audio always wins), or **tts** (a speech text, e.g. `たべる`). |
+| pair | `(voice, text)`: the identity of one piece of TTS audio. Exact strings, compared code unit by code unit; no hash, no folding. Server table `app.tts_audio`, device table `tts_audio`, API `TtsAudio`. |
+| generated | A pair is generated iff `app.tts_audio` has its row **and** `app.blob` has a row for that `blob_hash`. A row whose blob row is gone is deleted by the reader that notices and the pair counts as not generated. |
+| backing off | A pair is backing off iff the newest `job` row of kind `tts` with `dedupe_key = 'tts:' + sha256hex(voice + U+0000 + text)` (UTF-8; the key `synthesizeSpeech` has always used) has status `failed` or `cancelled` and `finished_at > now − 600 s`. No job is enqueued for it meanwhile. |
+| prefetch set `P(now)` | The word audio of (a) every live `vocab` note that has at least one card with `retired = false`, `suspended = false`, `state <> 'new'` and `due_at < now + audio.prefetch_days × 86 400 000 ms` (`audio.prefetch_days` by the 6.1 `int` test with range 0–365, default 7; plain instants, no day boundary), ordered by the smallest such `due_at`, then note id; then (b) every NEW item and every entry to materialize of the normal queue build (`ReviewLoop.evaluate` with `keepGoing = false`) at `now`, in queue order. Each pair or note blob once (first position wins). |
+
+**Server**
+
+1. `getReviewQueue` and `createDrillSession` put `word_audio` on every item (API
+   `QueueItem.word_audio`): source, text and voice from the definitions above, `blob_hash` from
+   `app.tts_audio` when the pair is generated, else `null`. For the first 20 served items whose
+   pair is not generated and not backing off the server enqueues a `tts` job, **urgent** (below).
+   A failure to enqueue never fails the request.
+2. **Sweep.** 60 s after start and then every 600 s the server walks part (a) of `P(now)` in
+   order and enqueues a `tts` job (payload `{text, voice}`, the usual dedupe key, not urgent) for
+   every pair that is not generated, not backing off and has no queued or running job, stopping
+   when `tts` jobs with status `queued` or `running` number 300. Part (b) is covered by rule 1 and
+   by devices (below). The sweep reads only; its one write is the enqueue.
+3. `resolveSpeech` (API) answers and enqueues for explicit pairs.
+4. **Urgent** = the job's `run_after` is `now − 1 day`, so the dequeue order
+   (`run_after, created_at`) serves it before every non-urgent job; if a queued job with the
+   dedupe key already exists its `run_after` is lowered to that value instead. Urgent enqueues
+   ignore the 300 cap.
+5. Changing `tts.voice` deletes nothing. Pairs of the old voice stay generated and are simply no
+   longer asked for; no garbage collection in v1.
+
+**Worker** (`tts` job; payload `TtsRequest` with `voice` always filled in by the enqueuer):
+
+1. If the pair is generated → result from the row, VOICEVOX is not called.
+2. Else synthesize, store the object, insert the `blob` row (`kind = audio`, `origin = tts`),
+   then `INSERT INTO app.tts_audio … ON CONFLICT (voice, text) DO UPDATE SET blob_hash,
+   duration_ms, created_at = now()`. In this order, so a row never names bytes that are not stored.
+3. Idempotent and order-free: running the job twice, or two jobs of one pair one after the other,
+   leaves one row naming a stored blob (the later synthesis; the earlier blob stays stored and
+   stays valid for a device that still holds its hash).
+4. A voice that is not `^[0-9]{1,9}$` or a text outside 1–500 characters fails the job without a
+   VOICEVOX call. A voice VOICEVOX does not know fails the job (then: backing off).
+
+**Device** (Android; prefetch pass. The SPA never does any of this.)
+
+1. Triggers: after every successful sync pull, on app open while online, and 30 s after a local
+   `getReviewQueue` materialized something; one pass at a time; a pass that fails is simply
+   repeated by the next trigger.
+2. Compute `P(now)` locally (the core resolver over the replica and the installed dictionary; a
+   note whose dictionary data is missing and whose `reading` and `expression` fields are empty
+   resolves to none and is skipped).
+3. **note** results: the blob hash becomes a `blob_cache` row (`state = 'wanted'`, `reason =
+   'card'`) unless one exists.
+4. **tts** results: for every pair with no local `tts_audio` row, or whose `checked_at` is older
+   than 7 days, call `resolveSpeech` (not urgent) in chunks of at most 200, in `P` order. Status
+   `ready` → upsert the local row (`checked_at = now`) and add the `blob_cache` row as in 3.
+   `pending` and `failed` → nothing is stored; the next pass asks again. Stop the pass early
+   after a chunk in which fewer than half the items were `ready` (the server is still generating).
+5. Download `wanted` blobs with the existing downloader. Eviction follows the existing
+   `blob_cache` rules; a `tts_audio` row whose bytes were evicted stays (the hash is still right;
+   the blob intercept downloads it again when online).
+6. The local `getReviewQueue` / `createDrillSession` fill `word_audio` exactly as the server does
+   (rule 1 of "Server") with the local `tts_audio` table in place of `app.tts_audio`, and enqueue
+   nothing. "Generated" on the device means: the local row exists (whether or not the bytes are
+   cached). Offline with no row → `blob_hash: null` → no speaker button; nothing else changes.
+7. Offline creation: a note created or materialized offline gets its audio on the first pass
+   after the device is online; resolving needs only the pair, never the note's id, so it works
+   before the note is pushed.
+
+**Edge cases**
+
+| Case | Result |
+|---|---|
+| Note with `audio = "[sound:<A>]"` | Source note, hash A. No pair, no job, whatever `tts.voice` is. |
+| `audio` holds text but no `[sound:…]` (`<br>`, a file name) | Not a sound: TTS applies. The built-in vocab templates do not show that text. |
+| `audio` holds two sounds | The first is the word audio (autoplay, `P`); both buttons are shown. |
+| Deck-materialized note, all fields empty | Text from the dictionary reading (`たべる`). |
+| The user overrides `reading` | The pair's text changes with it; the old pair stays generated and unused. |
+| Two notes with the same reading (`はし`: 橋, 箸) | One pair, one blob, shared. (VOICEVOX gets kana only, so the accent is its default for that kana; see `contracts/api/SUMMARY.md` C-29, second look.) |
+| Kana word (ADR-046), empty `reading` | The dictionary reading; if that is empty too, the expression text. |
+| Text empty, or longer than 100 UTF-16 code units after the resolver's clean-up | None: no button. |
+| VOICEVOX down | Jobs fail; pairs back off for 600 s at a time; cards show no button until a later resolve succeeds. Reviewing is never blocked. |
+| `tts.voice` changed on one device while another is offline | `settings.set` is LWW as always; each replica uses the value it holds, so the two may briefly play different voices. Both pairs are valid. |
+| Voice changed twice quickly | Each `getReviewQueue` asks for the pair of the voice in force when it ran; all generated pairs stay. |
+| Clock skew between device and server | `P` uses the local clock on the device and the server clock in the sweep; a skewed device prefetches a slightly different window. Nothing is stored that depends on it. |
+| Note deleted or merged | Its pair is no longer in `P`; the row and blob stay. |
+| Server restored from a backup older than some `tts_audio` rows | Devices hold hashes the server lost: the blob intercept answers `404` for uncached ones; `checked_at` older than 7 days re-resolves and repairs. |
+
 ## 7. Cross-check: table ↔ op ↔ API
 
 Not maintained here (C-2: the table that stood here predated T004 and was stale). The
@@ -878,7 +987,8 @@ contracts/db/check.sh
 Validates the snapshot formats (`media/validate.py`: examples and negative cases) and the
 `fsrs-params-publish` hand-off (`optimizer/validate.py`, C-16), starts a
 throwaway `postgres:17` container, applies `V1__init.sql`, runs `test/smoke.sql`, applies
-`V2__jpdb_vocab.sql` and runs `test/smoke_v2.sql`,
+`V2__jpdb_vocab.sql` and runs `test/smoke_v2.sql`, likewise `V3__vocab_list.sql` and
+`V4__tts_audio.sql` with their smoke files,
 confirms the migration refuses an `LC_CTYPE=C` database, loads the `.sq` files into `sqlite3`,
 compares device and server columns and seed rows, and compiles the `.sq` files with the
 SQLDelight Gradle plugin (`verify/`). The container is removed on exit.

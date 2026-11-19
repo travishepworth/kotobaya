@@ -37,6 +37,7 @@ import app.kotobaya.client.models.KanjiPart
 import app.kotobaya.client.models.QueueItemDeck
 import app.kotobaya.client.models.SchedulePreview
 import app.kotobaya.client.models.Sentence
+import app.kotobaya.client.models.WordAudio
 
 class QueueItemTest : ShouldSpec() {
     init {
@@ -125,6 +126,12 @@ class QueueItemTest : ShouldSpec() {
         should("test text") {
             // uncomment below to test the property
             //modelInstance.text shouldBe ("TODO")
+        }
+
+        // to test the property `wordAudio` - ADR-047 (additive). The sound of the word itself, decided by the shared core (`WordAudioResolver`, contract `core/.../contracts/render/WordAudio.kt`); servers and the phone's local API MUST call that core function. Null when the note's base type is not `vocab` or it has no speakable text. Sent on every item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-047; absent (older server) is treated as null. Clients pass `word_audio.blob_hash` (or null) to the core renderer unchanged as `RenderInput.wordAudio` / `JsRenderInput.wordAudio`; the renderer places the speaker button and reports what to autoplay (`RenderedCard.wordAudio`, `autoplayAudio`). Clients never decide the source themselves and never write it into the note. 
+        should("test wordAudio") {
+            // uncomment below to test the property
+            //modelInstance.wordAudio shouldBe ("TODO")
         }
 
     }

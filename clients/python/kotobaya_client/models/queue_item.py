@@ -30,6 +30,7 @@ from kotobaya_client.models.kanji_part import KanjiPart
 from kotobaya_client.models.queue_item_deck import QueueItemDeck
 from kotobaya_client.models.schedule_preview import SchedulePreview
 from kotobaya_client.models.sentence import Sentence
+from kotobaya_client.models.word_audio import WordAudio
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -52,7 +53,8 @@ class QueueItem(BaseModel):
     review_type: StrictStr = Field(description="Review type an answer will be logged with.")
     sentence: Optional[Sentence] = Field(description="Example sentence chosen for this showing (grammar cloze and other rotating-example kinds); send its id back as `sentence_id`. Null otherwise. For a grammar card (C-15) it is the full row of `grammar_sentence.sentence_id` (tokens for furigana, audio, image) when `grammar_sentence` is non-null, and null when `grammar_sentence` is null.")
     text: Optional[CardText] = Field(default=None, description="ARCH-CARD-TEXT (additive). The card as plain text, rendered on the server by the shared core (`DefaultCardTextRenderer`) from the same inputs a client passes to the HTML renderer: the note's fields, `entry` (dictionary fill for empty fields), `kanji`, `grammar_sentence` (as the cloze) and the note type's templates. For text-only clients (the CLI daemon, desktop widgets) that must not re-implement rendering. Servers that implement it send it on every item (both `getReviewQueue` and `createDrillSession`) whose note type they can render. Absent when the item's note type is unknown to the server (its note-type row is missing and `card.note.type` is not a built-in base type; the item is still returned, never an error) and on every item from older servers. Clients treat an absent `text` as \"no text\" for that item (show counts only) and must not infer the server's version from it. ")
-    __properties: ClassVar[List[str]] = ["card", "deck_count", "decks", "entry", "front_furigana", "grammar_sentence", "is_new", "kanji", "kanji_examples", "kanji_parts", "preview", "review_type", "sentence", "text"]
+    word_audio: Optional[WordAudio] = Field(default=None, description="ADR-047 (additive). The sound of the word itself, decided by the shared core (`WordAudioResolver`, contract `core/.../contracts/render/WordAudio.kt`); servers and the phone's local API MUST call that core function. Null when the note's base type is not `vocab` or it has no speakable text. Sent on every item of `getReviewQueue` and `createDrillSession` by servers implementing ADR-047; absent (older server) is treated as null. Clients pass `word_audio.blob_hash` (or null) to the core renderer unchanged as `RenderInput.wordAudio` / `JsRenderInput.wordAudio`; the renderer places the speaker button and reports what to autoplay (`RenderedCard.wordAudio`, `autoplayAudio`). Clients never decide the source themselves and never write it into the note. ")
+    __properties: ClassVar[List[str]] = ["card", "deck_count", "decks", "entry", "front_furigana", "grammar_sentence", "is_new", "kanji", "kanji_examples", "kanji_parts", "preview", "review_type", "sentence", "text", "word_audio"]
 
     @field_validator('review_type')
     def review_type_validate_enum(cls, value):
@@ -139,6 +141,9 @@ class QueueItem(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of text
         if self.text:
             _dict['text'] = self.text.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of word_audio
+        if self.word_audio:
+            _dict['word_audio'] = self.word_audio.to_dict()
         # set to None if entry (nullable) is None
         # and model_fields_set contains the field
         if self.entry is None and "entry" in self.model_fields_set:
@@ -163,6 +168,11 @@ class QueueItem(BaseModel):
         # and model_fields_set contains the field
         if self.sentence is None and "sentence" in self.model_fields_set:
             _dict['sentence'] = None
+
+        # set to None if word_audio (nullable) is None
+        # and model_fields_set contains the field
+        if self.word_audio is None and "word_audio" in self.model_fields_set:
+            _dict['word_audio'] = None
 
         return _dict
 
@@ -189,7 +199,8 @@ class QueueItem(BaseModel):
             "preview": SchedulePreview.from_dict(obj["preview"]) if obj.get("preview") is not None else None,
             "review_type": obj.get("review_type"),
             "sentence": Sentence.from_dict(obj["sentence"]) if obj.get("sentence") is not None else None,
-            "text": CardText.from_dict(obj["text"]) if obj.get("text") is not None else None
+            "text": CardText.from_dict(obj["text"]) if obj.get("text") is not None else None,
+            "word_audio": WordAudio.from_dict(obj["word_audio"]) if obj.get("word_audio") is not None else None
         })
         return _obj
 

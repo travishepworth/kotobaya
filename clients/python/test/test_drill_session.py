@@ -77,7 +77,8 @@ class TestDrillSession(unittest.TestCase):
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 
-                        text = null, )
+                        text = null, 
+                        word_audio = null, )
                     ],
                 mode = 'drill'
             )
@@ -125,7 +126,8 @@ class TestDrillSession(unittest.TestCase):
                         preview = null, 
                         review_type = 'scheduled', 
                         sentence = null, 
-                        text = null, )
+                        text = null, 
+                        word_audio = null, )
                     ],
                 mode = 'drill',
         )

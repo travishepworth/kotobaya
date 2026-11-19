@@ -130,6 +130,15 @@ public data class RenderInput(
      * ADR-042, byte for byte. See "Furigana front" on [CardRenderer].
      */
     public val frontFurigana: Boolean = false,
+    /**
+     * ADR-047 (additive): the blob hash (64 lowercase hex) of the note's **generated** word audio,
+     * or null when there is none or it is not known yet. Hosts pass API
+     * `QueueItem.word_audio.blob_hash` unchanged (also when its `source` is `note`: the renderer
+     * ignores this value whenever the note's own `audio` field holds a sound). A value that is not
+     * 64 lowercase hex digits is treated as null. Default null = the output before ADR-047 for a
+     * note without audio. See "Word audio" on [CardRenderer].
+     */
+    public val wordAudio: String? = null,
 )
 
 /** Where the value of a field came from when a side was rendered (C-19). */
@@ -183,6 +192,19 @@ public data class RenderedCard(
      * first reference (see "Field regions" on [CardRenderer]). Empty when the option is off.
      */
     public val fields: List<RenderedField> = emptyList(),
+    /**
+     * ADR-047: the blob hash of the word audio this side carries (the first sound of its word-audio
+     * block W, see "Word audio" on [CardRenderer]), or null when the side has no W. What `P` and a
+     * tap on the speaker replay. Also contained in [audio].
+     */
+    public val wordAudio: String? = null,
+    /**
+     * ADR-047: the blob hash the host plays once when this side is shown and the setting
+     * `review.autoplay_audio` is on, else null. FRONT: equal to [wordAudio]. BACK: [wordAudio] when
+     * the FRONT of the same input has no word audio, else null (a sound already played with the
+     * question is not repeated by the reveal). The renderer does not read the setting.
+     */
+    public val autoplayAudio: String? = null,
 )
 
 /**
@@ -226,6 +248,63 @@ public data class RenderedCard(
  * follow-up may add a placeholder), an empty R or an R equal to E (nothing to show), and every
  * other base type. With field regions on, the region span wraps the ruby as it wraps the plain
  * value. Example (寿司, すし): `<ruby>寿司<rt>すし</rt></ruby>`; (珈琲, コーヒー): `<ruby>珈琲<rt>コーヒー</rt></ruby>`.
+ *
+ * **Word audio** (ADR-047, C-29). For a note of base type vocab the renderer builds one
+ * *word-audio block* W from the input:
+ * - `fields["audio"]` contains a `[sound:<sha256>]` ([WordAudioRules.SOUND_PATTERN]; the rule of
+ *   [WordAudioResolver] step 2) → W = the `audio` field value exactly as `{{audio}}` renders it
+ *   (sanitised, every sound a button, inside the field's usual wrapper span; with field regions
+ *   that span is the region).
+ * - else [RenderInput.wordAudio] is a hash H → W =
+ *   `<button class="kb-audio" data-kb-audio="H"></button>`, bare (no wrapper span and no
+ *   region: it is not a field value).
+ * - else W = `""` (nothing is emitted).
+ *
+ * W adds no element or class of its own, so [CardClasses.ALL] is unchanged; `assets/card/` styles
+ * the button by its place (`.kb-expression .kb-audio`).
+ *
+ * For every other base type W is `""` and nothing in this section applies.
+ *
+ * Where the **built-in** vocab templates put W (at most once per side):
+ * - `meaning`, `reading`, `pitch` (expression on the front): FRONT has no W and is unchanged. On
+ *   the BACK, W is the last child of the `kb-expression` element that `{{FrontSide}}` repeats:
+ *   `<div class="kb-expression">食べる<button class="kb-audio" data-kb-audio="…"></button></div>` (after the ruby
+ *   when [RenderInput.frontFurigana] applies; after the expression's wrapper span, never inside it).
+ * - `production` (expression on the back): W is the last child of the back's `kb-expression` element.
+ * - `listening`: the FRONT is W where `{{audio}}` used to stand (for a note with its own audio
+ *   that is the same bytes as before); the BACK repeats it through `{{FrontSide}}` and its
+ *   `kb-expression` element gets no second W.
+ * - The backs of `meaning`, `reading`, `production` and `pitch` no longer contain a separate
+ *   `{{audio}}`: the note's audio lives in W. A non-blank `audio` field that holds no sound is not
+ *   shown by these templates. `{{sentence_audio}}` is untouched.
+ *
+ * So for a note with an empty `audio` field and with `wordAudio = null` every built-in vocab side is byte for
+ * byte what it was before ADR-047. Worked examples (vocab `meaning`, 食べる, furigana and pitch
+ * off), BACK up to the divider; everything except W is exactly the pre-ADR-047 output:
+ * - deck-materialized note (`fields = {}`), `wordAudio = "b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"`:
+ *   `<div class="kb-expression"><span class="kb-field-expression">食べる</span><button class="kb-audio" data-kb-audio="b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"></button></div>`;
+ *   [RenderedCard.wordAudio] = [RenderedCard.autoplayAudio] = that hash; FRONT: no W, both null.
+ * - note with `audio = "[sound:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08]"`,
+ *   any `wordAudio`: the same with
+ *   `<span class="kb-field-audio"><button class="kb-audio" data-kb-audio="9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"></button></span>`
+ *   after the expression's span;
+ *   `wordAudio` = `autoplayAudio` = `9f86…0a08`.
+ * - the first note, `wordAudio = null` (not generated yet): no button; both null; the host asks
+ *   `resolveSpeech` and renders again when it has the hash.
+ * - vocab `listening`, first note with the hash: FRONT = W, `wordAudio` = `autoplayAudio` = hash;
+ *   BACK: `wordAudio` = hash, `autoplayAudio` = null.
+ *
+ * **Custom templates** are rendered as written. They can place W with the placeholder
+ * `{{audio:word}}` (either side, any number of times; `""` for non-vocab notes, no warning).
+ * `{{audio}}` keeps its meaning (the field value).
+ *
+ * [RenderedCard.wordAudio] is the first `data-kb-audio` hash of the first non-empty W emitted on
+ * this side, known by construction and not by scanning the HTML (null when no W was emitted,
+ * including a W inside a section that is not shown; other sounds, such as `{{sentence_audio}}` or
+ * a `[sound:]` typed into another field, never count);
+ * [RenderedCard.autoplayAudio] as documented there, for built-in and custom templates alike.
+ * [RenderedCard.audio] lists every hash as before, W's included. With field regions, `audio` is a
+ * referred field at W's position (source NOTE and `rendered = true` only when W shows the field).
  *
  * **Sanitising** (applied to field values and to custom templates; the output contains nothing else):
  * allowed elements `div span p br hr b i u em strong small sub sup ruby rb rt rp ul ol li img button`;

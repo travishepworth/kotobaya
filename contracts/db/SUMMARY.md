@@ -284,3 +284,16 @@
   (b) A tagged word requires its jōyō kanji only (6.5). Kanji notes minted under the old rule
   that no word requires now are kept, never deleted automatically (6.5 says why). Details and
   the three choices worth a second look: `contracts/core/SUMMARY.md` "C-28f".
+
+## C-29 changes (ADR-047: automatic word audio; additive: `V4__tts_audio.sql`)
+- New server system table `app.tts_audio` (`(voice, text)` to audio blob), written only by the
+  worker's `tts` job. Not learning data: no op, not synced, safe to lose. The device has a local
+  table of the same name holding the pairs it resolved (`Local.sq`; `checked_at` instead of
+  `created_at`); Android adds it by its usual schema migration.
+- Settings: new `review.autoplay_audio` (bool, default true) and `tts.voice` (new type
+  `string (voice)`: decimal digits, default `"3"`); `audio.prefetch_days` gets the range 0-365
+  and a real definition. All in SCHEMA.md 6 and 6.1.
+- New SCHEMA.md 6.6 is the rule book: definitions (effective voice, pair, generated, backing off,
+  prefetch set), what the server, the worker and the device each do, and the edge cases.
+- Decisions, rejected alternatives and the three choices worth a second look:
+  `contracts/api/SUMMARY.md` "C-29 changes".

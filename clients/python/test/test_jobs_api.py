@@ -47,6 +47,13 @@ class TestJobsApi(unittest.TestCase):
         """
         pass
 
+    def test_resolve_speech(self) -> None:
+        """Test case for resolve_speech
+
+        Look up generated speech for texts or notes, generating what is missing.
+        """
+        pass
+
     def test_synthesize_speech(self) -> None:
         """Test case for synthesize_speech
 

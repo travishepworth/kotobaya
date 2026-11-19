@@ -255,7 +255,12 @@ class TestQueueItem(unittest.TestCase):
                     back = '', 
                     front = '', 
                     reading = '0', 
-                    sentence = '0', )
+                    sentence = '0', ),
+                word_audio = kotobaya_client.models.word_audio.WordAudio(
+                    blob_hash = null, 
+                    source = 'note', 
+                    text = '0', 
+                    voice = '480728', )
             )
         else:
             return QueueItem(

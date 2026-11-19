@@ -283,6 +283,10 @@ docs/SettingsApi.md
 docs/SettingsPatch.md
 docs/SettingsSetSchema.md
 docs/SpanOrigin.md
+docs/SpeechResolution.md
+docs/SpeechResolveItem.md
+docs/SpeechResolveRequest.md
+docs/SpeechResolveResult.md
 docs/StatsApi.md
 docs/StatsCalibration.md
 docs/StatsCalibrationBinsInner.md
@@ -310,6 +314,7 @@ docs/TokenList.md
 docs/TokensApi.md
 docs/TtsRequest.md
 docs/VocabListReport.md
+docs/WordAudio.md
 docs/WordStatus.md
 docs/WordStatusClearedSchema.md
 docs/WordStatusSet.md
@@ -607,6 +612,10 @@ kotobaya_client/models/setting_list.py
 kotobaya_client/models/settings_patch.py
 kotobaya_client/models/settings_set_schema.py
 kotobaya_client/models/span_origin.py
+kotobaya_client/models/speech_resolution.py
+kotobaya_client/models/speech_resolve_item.py
+kotobaya_client/models/speech_resolve_request.py
+kotobaya_client/models/speech_resolve_result.py
 kotobaya_client/models/stats_calibration.py
 kotobaya_client/models/stats_calibration_bins_inner.py
 kotobaya_client/models/stats_forecast.py
@@ -631,6 +640,7 @@ kotobaya_client/models/token_kind.py
 kotobaya_client/models/token_list.py
 kotobaya_client/models/tts_request.py
 kotobaya_client/models/vocab_list_report.py
+kotobaya_client/models/word_audio.py
 kotobaya_client/models/word_status.py
 kotobaya_client/models/word_status_cleared_schema.py
 kotobaya_client/models/word_status_set.py
@@ -923,6 +933,10 @@ test/test_settings_api.py
 test/test_settings_patch.py
 test/test_settings_set_schema.py
 test/test_span_origin.py
+test/test_speech_resolution.py
+test/test_speech_resolve_item.py
+test/test_speech_resolve_request.py
+test/test_speech_resolve_result.py
 test/test_stats_api.py
 test/test_stats_calibration.py
 test/test_stats_calibration_bins_inner.py
@@ -950,6 +964,7 @@ test/test_token_list.py
 test/test_tokens_api.py
 test/test_tts_request.py
 test/test_vocab_list_report.py
+test/test_word_audio.py
 test/test_word_status.py
 test/test_word_status_cleared_schema.py
 test/test_word_status_set.py

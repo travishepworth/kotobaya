@@ -363,6 +363,7 @@ Class | Method | HTTP request | Description
 *JobsApi* | [**cancel_job**](docs/JobsApi.md#cancel_job) | **POST** /jobs/{job_id}/cancel | Cancel a queued or running job.
 *JobsApi* | [**get_job**](docs/JobsApi.md#get_job) | **GET** /jobs/{job_id} | One job with progress, result or error.
 *JobsApi* | [**list_jobs**](docs/JobsApi.md#list_jobs) | **GET** /jobs | List background jobs (imports, parses, optimizer runs, ...).
+*JobsApi* | [**resolve_speech**](docs/JobsApi.md#resolve_speech) | **POST** /tts/resolve | Look up generated speech for texts or notes, generating what is missing.
 *JobsApi* | [**synthesize_speech**](docs/JobsApi.md#synthesize_speech) | **POST** /tts | Synthesize Japanese speech (VOICEVOX) into an audio blob.
 *MediaApi* | [**clear_jpdb_vocab_resolution**](docs/MediaApi.md#clear_jpdb_vocab_resolution) | **DELETE** /import/jpdb/vocab/{jpdb_vid}/resolution | Clear a correction - the vocabulary item goes back to the review queue.
 *MediaApi* | [**delete_media**](docs/MediaApi.md#delete_media) | **DELETE** /media/{media_id} | Delete a media, its deck and its parsed content.
@@ -693,6 +694,10 @@ Class | Method | HTTP request | Description
  - [SettingsPatch](docs/SettingsPatch.md)
  - [SettingsSetSchema](docs/SettingsSetSchema.md)
  - [SpanOrigin](docs/SpanOrigin.md)
+ - [SpeechResolution](docs/SpeechResolution.md)
+ - [SpeechResolveItem](docs/SpeechResolveItem.md)
+ - [SpeechResolveRequest](docs/SpeechResolveRequest.md)
+ - [SpeechResolveResult](docs/SpeechResolveResult.md)
  - [StatsCalibration](docs/StatsCalibration.md)
  - [StatsCalibrationBinsInner](docs/StatsCalibrationBinsInner.md)
  - [StatsForecast](docs/StatsForecast.md)
@@ -717,6 +722,7 @@ Class | Method | HTTP request | Description
  - [TokenList](docs/TokenList.md)
  - [TtsRequest](docs/TtsRequest.md)
  - [VocabListReport](docs/VocabListReport.md)
+ - [WordAudio](docs/WordAudio.md)
  - [WordStatus](docs/WordStatus.md)
  - [WordStatusClearedSchema](docs/WordStatusClearedSchema.md)
  - [WordStatusSet](docs/WordStatusSet.md)
