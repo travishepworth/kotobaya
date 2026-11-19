@@ -861,7 +861,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 ### User feedback round (2026-11-19, human-confirmed, ADR-038..041)
 - WEB-REVIEW-FLOW — seamless due-card slot-in (no loading screen), keep going per visit (ADR-039), kanji example rows one line · model: sonnet · risk: med · deps: — · status: MERGED (ticket: plan/tickets/WEB-REVIEW-FLOW.md)
 - CLI-KG-SCOPE — CLI keep going per session (ADR-039) · model: haiku · risk: low · deps: — · status: MERGED (ticket: plan/tickets/CLI-KG-SCOPE.md)
-- C-28 — Contracts: until_stop, kanji-first, Deck.progress, kanji_parts · model: fable · risk: high · deps: — · status: TODO (ticket: plan/tickets/C-28.md)
+- C-28 — Contracts: until_stop, kanji-first, Deck.progress, kanji_parts · model: fable · risk: high · deps: — · status: MERGED (ticket: plan/tickets/C-28.md)
 - CORE-28 — Core impl of C-28 · model: opus · risk: high · deps: C-28 · status: TODO (ticket: plan/tickets/CORE-28.md)
 - SRV-28 — Server impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/SRV-28.md)
 - AND-28 — Android local API impl of C-28 · model: sonnet · risk: med · deps: CORE-28 · status: TODO (ticket: plan/tickets/AND-28.md)
