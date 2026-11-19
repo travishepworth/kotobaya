@@ -1,10 +1,22 @@
-# WEB-REVIEW-BACK — DONE
+# HANDOFF C-30
 
-- Back (mouse/browser) during review: `beforeNavigate` cancels a popstate-back when the session has answers and runs the shared `ReviewPage.undo()`; repeated back keeps stepping; nothing to undo leaves. Shell Back uses the same `backUndo()` (3 s rule removed per ADR-048).
-- Undo is one path for back, `U` key and menu/button: the undone card returns REVEALED.
-- Session kept in `web/src/lib/state/reviewSession.ts`; the /review history entry is tagged via `replaceState({reviewKey})`; returning to that entry resumes the same `ReviewPage` (`pauseSession`/`resume`), no refetch. Fresh nav starts new. Review links (dictionary, kanji, decks) now open in the same tab.
-- Follow-up: earlier shots were caught mid-fade (not stuck); re-taken after settling. Specs now assert card/footer opacity 1, grade buttons enabled, and that grading the restored card sends exactly one answer request (5 tests). Deleted unused `reviewBackPolicy.ts` + its test; `backOrder.test.ts` updated (repeated back undoes).
-- Tests: `web/playwright/review-back.spec.ts` ( back x3 with undo counts, hotkey+button, dict round trip revealed and front). `make check MODULE=web` green.
-- Screenshots (dir /tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/back-shots/): revealed-after-back.png, review-after-dictionary.png, review-front-after-dictionary.png.
-- Android: no change needed (shell back calls the same web handler).
-- Notes: SHELL.md 6.2 step 2 and `reviewBackPolicy.ts` (now unused) still describe the 3 s rule; contract update needed by architect. New `web/src/app.d.ts` (PageState). Run needs CHROMIUM_PATH=/usr/bin/chromium.
+STATUS: DONE
+BRANCH: t/C-30-loop-wait
+CHECK: `make check MODULE=contracts` → green; `:core:compileKotlinJvm :core:compileKotlinJs` → green (core tests not run)
+
+## Changed (≤ 6 lines)
+- `ReviewLoop.kt`: phase order `WAITING` (rule 2) before `GOAL_REACHED`/`DONE_FOR_TODAY` (rule 3); additive `LoopState.keepGoingAvailable`, `untilStopParts` (`UntilStopParts`), defaults so core compiles; W1/W2, edge cases, invariants.
+- openapi `ReviewLoop`: `keep_going_available`, `until_stop_parts {learning, later, review, new}` (optional); rules C3, C4, new C6 (refetch at `next_due_at` in every phase). Only loop fields touched.
+- Parity: new `queue-loop-wait-before-stop` (mandatory tag `queue.loop_waits_before_stop`); `queue-until-stop` step 8 → `waiting`; 19 whole-`/loop` expectations extended.
+- `docs/REVIEW-LOOP.md` §14, SHELL.md 4.3/8.4, contracts core/api SUMMARY + README; clients regenerated.
+
+## Acceptance → tests
+- contracts green, scenarios hand-evaluated → `contracts/api/check.sh` parity checks; goldens not recorded (SRV-30).
+
+## New dependencies
+- none
+
+## For the reviewer (≤ 3 lines)
+- Tickets: CORE-30 (DefaultReviewLoop; tests in contracts/core/README "ADR-049"), then SRV-30 (map + re-record goldens), AND-30, WEB-30 (Home/header/C6/waiting screen), CLI-30.
+- My decisions: Keep going offered during `waiting` (backlog too, not only new); `until_stop_parts.review` = backlog with keep going; no `LOCAL_API_VERSION` bump.
+- New scenario assumes Easy on a learning card graduates past today (as `queue-loop-waiting-empty`).
