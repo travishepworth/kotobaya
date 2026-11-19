@@ -1361,3 +1361,4 @@
 2026-11-19T06:16:07Z AND-28 rebased on main (SRV-28 goldens); android check running
 2026-11-19T06:17:53Z C-28d CHECK_GREEN + MERGE; CORE-28b DISPATCH writer-senior
 2026-11-19T06:18:39Z AND-28 CHECK_GREEN (android, rebased on SRV-28 goldens); reviewer dispatched
+2026-11-19T06:22:05Z AND-28 REVIEW_CHANGES 3 majors (suspended-started parity, kanjiKinds N+1, first-build 30k dict reads) + minors; attempt 2
