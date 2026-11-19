@@ -1337,3 +1337,4 @@
 2026-11-19T03:55:14Z C-28 REVIEW_APPROVE r2 + CHECK_GREEN + MERGE; 2 minors -> FOLLOWUPS (backfill share asked user)
 2026-11-19T03:56:41Z DECIDE ADR-044 (user: backfill half the goal); C-28b DISPATCH architect
 2026-11-19T03:56:57Z WEB-28 DISPATCH writer (+front_furigana)
+2026-11-19T04:01:50Z WEB-28 HANDOFF; sent back for screenshots (deleted) + loop mock; CORE-28 note: ruby furigana
