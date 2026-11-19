@@ -14,7 +14,6 @@ import type {
 import { ResponseError, readProblem } from '../api/client';
 import { previewIntervals, type IntervalPreview } from '../core/index';
 import { haptic } from '../api/shell/nav';
-import { ReviewBackPolicy } from '../api/shell/reviewBackPolicy';
 import { pushToast } from '../toasts.svelte';
 import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, wordsApi } from '../review/api';
 import { tr, type ReviewMessageKey } from '../review/messages';
@@ -403,15 +402,12 @@ export class ReviewPage {
 		}
 	});
 
-	constructor() {
-		// Another card on screen (queue refetch, restore): fresh state for it.
-		$effect(() => {
-			this.syncCard();
-		});
-	}
-
-	/** If the card on screen is not the one the per-card state belongs to, reset that state. */
-	private syncCard(): void {
+	/**
+	 * If the card on screen is not the one the per-card state belongs to, reset that state. The review view calls it
+	 * from an effect (another card on screen after a refetch or restore: fresh state for it), so a page kept across a
+	 * route change (ADR-048) is re-bound by the next view.
+	 */
+	syncCard(): void {
 		const id = this.current?.card.id ?? '';
 		if (this.current && this.held) this.held = null; // a card is on screen: nothing to hold any more
 		if (id !== this.lastCardId) this.showCard(id, outbox.retryIds.get(id) ?? uuidv7(), false, Date.now());
@@ -611,6 +607,30 @@ export class ReviewPage {
 		} else if (this.wakeTimer === null) this.scheduleWake();
 	}
 
+	private keptGoing: Date | null = null;
+
+	/**
+	 * Leaving the screen for a page it can come back to (ADR-048): timers and fetches stop, the session state stays.
+	 * `resume` picks it up again. A page that is never resumed must be `dispose`d.
+	 */
+	pauseSession(): void {
+		this.keptGoing = this.keepGoing && this.view ? this.view.studyDay : null;
+		this.dispose();
+	}
+
+	/** The view is back after `suspend`: same card, side and queue; timers run again, nothing is re-fetched. */
+	resume(): void {
+		if (!this.disposed) return;
+		this.disposed = false;
+		this.abort = new AbortController();
+		if (this.keptGoing) startKeepGoing(this.keptGoing);
+		this.keptGoing = null;
+		if (!this.isDrill) {
+			this.scheduleDueFetch();
+			this.scheduleWake();
+		}
+	}
+
 	/** Leaving the screen: no timer or queue fetch outlives it (answers in the outbox still go out). */
 	dispose(): void {
 		this.disposed = true;
@@ -792,22 +812,19 @@ export class ReviewPage {
 		this.flipped = true;
 	}
 
-	/** ADR-030 / SHELL.md 6.2 step 2: the 3 s rule of back-undo (port of Android's `ReviewBackPolicy`). */
-	private readonly backPolicy = new ReviewBackPolicy();
-
-	/** Would a back press undo now? No side effects. */
+	/** ADR-048: would back undo now? Any answer of this session can be stepped back over; no side effects. */
 	canBackUndo(): boolean {
-		return this.backPolicy.wouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy);
+		return this.history.length > 0;
 	}
 
-	/** Back pressed: undo once through the `u` key's path, with the toast. False when back should fall through. */
+	/**
+	 * Back pressed (browser, mouse button or the shell's Back): the same undo as the button and `u`, which shows the
+	 * card revealed. False when there is nothing to undo (back then leaves). A press while an undo is in flight is
+	 * swallowed so a quick double back cannot leave the screen.
+	 */
 	backUndo(): boolean {
-		if (!this.backPolicy.shouldUndo(this.current !== null || this.history.length > 0, this.history.length > 0 && !this.busy)) {
-			return false;
-		}
-		void this.undo().then(() => {
-			if (this.notice !== 'undoFailed') pushToast(tr('review.undone'));
-		});
+		if (this.history.length === 0) return false;
+		if (!this.busy && !this.editing) void this.undo();
 		return true;
 	}
 
@@ -870,7 +887,6 @@ export class ReviewPage {
 		let settle!: () => void;
 		const done = new Promise<void>((r) => (settle = r));
 		this.clearNotice();
-		this.backPolicy.answered();
 		touchKeepGoing(); // ADR-039 idle amendment: an answer restarts the keep-going idle clock
 		const entry: PendingAnswer = {
 			answerId: this.answerId,
@@ -992,6 +1008,7 @@ export class ReviewPage {
 				this.items = [last.item, ...this.items];
 				this.epoch++;
 				this.newPress();
+				this.flipped = true; // ADR-048: the undone card comes back revealed, ready to re-grade
 				return;
 			}
 			if (entry?.state === 'sending') {
@@ -1006,6 +1023,7 @@ export class ReviewPage {
 			this.items = [last.item, ...this.items];
 			this.epoch++;
 			this.newPress();
+			this.flipped = true;
 			await this.refresh();
 		} catch {
 			this.notice = 'undoFailed'; // beside the client's toast; the view offers Undo again

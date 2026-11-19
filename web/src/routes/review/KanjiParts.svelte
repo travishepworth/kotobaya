@@ -39,7 +39,7 @@
 		{#each parts as p (p.literal)}
 			{@const g = gloss(p)}
 			<li>
-				<a class="tile" href={dictionarySearchHref(p.literal)} target="_blank" rel="noopener" aria-label={rv('rv.kanji.open', { c: p.literal })}>
+				<a class="tile" href={dictionarySearchHref(p.literal)} aria-label={rv('rv.kanji.open', { c: p.literal })}>
 					<span class="lit" lang="ja">{p.literal}</span>
 					<span class="info">
 						<span class="kw">{g.title ?? rv('rv.kanji.noMeaning')}</span>

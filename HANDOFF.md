@@ -1,21 +1,9 @@
-# WEB-DICT-DESKTOP — HANDOFF
+# WEB-REVIEW-BACK — DONE
 
-Status: DONE. `make check MODULE=web` green.
-
-## What was bad at desktop (before)
-- 1920x1080: headword squeezed into a one-glyph-wide column and overlapping the Add-to-deck button (actions sat beside the headword).
-- Whole page scrolled; list pane was sticky with auto height, so its divider ended mid-screen (1280x800 start state).
-- Rows tall (3-line gloss + marks stacked); entry wasted the right half at 1920; no URL state (no back/forward), no arrow-key navigation.
-
-## Changes (web/src/routes/dictionary/{+page,EntryView}.svelte, lib/state/dictionary.svelte.ts, playwright/dictionary.spec.ts)
-- >=900px: fixed-height two panes; search stays on top of the list, rows scroll; entry pane scrolls separately. Dense rows (headword, reading, one-line gloss, check + Common badges). Entry: 4rem headword, actions on their own row, senses held to measure.
-- Up/Down walk results from the search box, Enter opens. URL keeps `q` and `seq` (pushState per opened entry, replace while typing); popstate restores. Desktop only.
-- Phone (<900px): pixel-identical (cmp on all 4 shots).
-- No new strings, no new deps. JLPT badge on rows omitted: summary has no JLPT field (would need API change).
-- Spec has bounds checks (overflow, row/pane overlap) and a keyboard/URL test.
-
-## Screenshots (before/ and after/, names `<size>-{0-start,1-results,2-entry,3-kanji}.png`)
-/tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/dict-shots/before/
-/tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/dict-shots/after/
-Viewed: 1280 and 1920 before/after, 412 before. Dark mode not screenshotted (tokens only).
-Note: spec needs core/build/npm (copied from main checkout, gitignored).
+- Back (mouse/browser) during review: `beforeNavigate` cancels a popstate-back when the session has answers and runs the shared `ReviewPage.undo()`; repeated back keeps stepping; nothing to undo leaves. Shell Back uses the same `backUndo()` (3 s rule removed per ADR-048).
+- Undo is one path for back, `U` key and menu/button: the undone card returns REVEALED.
+- Session kept in `web/src/lib/state/reviewSession.ts`; the /review history entry is tagged via `replaceState({reviewKey})`; returning to that entry resumes the same `ReviewPage` (`pauseSession`/`resume`), no refetch. Fresh nav starts new. Review links (dictionary, kanji, decks) now open in the same tab.
+- Tests: `web/playwright/review-back.spec.ts` (4: back x3 with undo counts, hotkey+button, dict round trip revealed and front). `make check MODULE=web` green.
+- Screenshots (dir /tmp/claude-1000/-home-travmonkey-repos-kotobaya/f871c8d0-e7b3-4d58-ba92-fd5b8044cb8f/scratchpad/back-shots/): revealed-after-back.png, review-after-dictionary.png, review-front-after-dictionary.png.
+- Android: no change needed (shell back calls the same web handler).
+- Notes: SHELL.md 6.2 step 2 and `reviewBackPolicy.ts` (now unused) still describe the 3 s rule; contract update needed by architect. New `web/src/app.d.ts` (PageState). Run needs CHROMIUM_PATH=/usr/bin/chromium.

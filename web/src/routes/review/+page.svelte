@@ -2,7 +2,7 @@
 	// Review: the product. A full-height card, the answer reveal, and the grade bar in the thumb zone.
 	// Keyboard-first on desktop (Space, 1-4/5, U, E, ?), one-handed on phones.
 	import { onDestroy, tick, untrack } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { registerReviewBack } from '../../lib/ui/backStack.svelte';
 	import Banner from '../../lib/ui/Banner.svelte';
@@ -22,12 +22,34 @@
 	import type { Grade, GradeOption, MenuItem } from '../../lib/ui/kinds';
 	import { tr } from '../../lib/review/messages';
 	import { ReviewPage, type GradeButton } from '../../lib/state/review.svelte';
+	import { keepSession, newSessionKey, takeSession } from '../../lib/state/reviewSession';
 	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
 	import LoopEnd from './LoopEnd.svelte';
 	import { rv, type ReviewViewKey } from './messages';
 
-	const s = new ReviewPage();
+	// ADR-048: coming back to this very history entry (after a dictionary link) resumes the kept session as it was.
+	const initialSource = page.url.searchParams.get('drill');
+	const resumed = takeSession(initialSource, page.state.reviewKey);
+	const sessionKey = page.state.reviewKey ?? newSessionKey();
+	let first = true;
+	const s = resumed ?? new ReviewPage();
+	$effect(() => s.syncCard());
+	// Tag this history entry so a return to it finds the session (replaceState adds no entry). Once the router is up.
+	$effect(() => {
+		if (!s.loaded || page.state.reviewKey === sessionKey) return;
+		try {
+			replaceState('', { reviewKey: sessionKey });
+		} catch {
+			/* the session then simply starts fresh on return */
+		}
+	});
+	// Browser/mouse back with an answer to undo: stay, undo it (card revealed). Nothing to undo: leave as usual.
+	beforeNavigate((nav) => {
+		if (nav.type !== 'popstate' || (nav.delta ?? 0) >= 0 || !s.canBackUndo()) return;
+		nav.cancel();
+		s.backUndo();
+	});
 	let frame: CardFrame | undefined = $state();
 	let helpOpen = $state(false);
 	let body: HTMLDivElement | undefined = $state();
@@ -50,7 +72,10 @@
 			root.style.removeProperty('--kb-toast-lift');
 		};
 	});
-	onDestroy(() => s.dispose());
+	onDestroy(() => {
+		s.pauseSession();
+		keepSession(s, s.drillSource, sessionKey);
+	});
 	// SHELL.md 6.2 step 2: the shell's Back undoes the last answer once (ADR-030).
 	$effect(() => registerReviewBack({ canUndo: () => s.canBackUndo(), undo: () => s.backUndo() }));
 
@@ -72,7 +97,11 @@
 	$effect(() => {
 		const source = drillSource;
 		// untrack: start() reads page state while it fetches; a tap on "Keep going" must not restart the session.
-		untrack(() => s.start(source));
+		untrack(() => {
+			if (first && resumed) s.resume();
+			else s.start(source);
+			first = false;
+		});
 	});
 
 	/* ---------- answer in view ---------- */
@@ -218,7 +247,7 @@
 				void s.bury();
 				break;
 			case 's':
-				void s.suspend();
+				void s.pauseSession();
 				break;
 			case 'n':
 				void s.neverForget();
@@ -400,11 +429,10 @@
 							{/if}
 							{#if s.flipped && s.current}
 								<BackExtras item={s.current} />
-								<!-- New tab: leaving would drop the session; a link never takes Space/1-5 (see onKeydown). -->
+								<!-- Same tab (ADR-048): the session is kept, back returns to this card as it was; a link never takes Space/1-5. -->
 								<p class="dict-link">
 									<DictionaryLink
 										look="text"
-										newTab
 										seq={s.current.entry?.seq ?? s.current.card.note?.entrySeq}
 										kanji={s.current.card.note?.kanjiLiteral}
 									/>
