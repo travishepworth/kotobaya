@@ -531,3 +531,5 @@
 - C-30: ship WEB-30/AND-30 together with SRV-30 — old clients get 'waiting' with no Keep going button while new cards remain (nothing breaks).
 - AND-29: no tests for HttpSpeechResolver or the 200-pair chunk early-stop; prefetch trigger approximated by any queue load with `new` kinds; TtsAudioNeeds fabricates due times (now - size + i) to keep P order.
 - CORE-30: DefaultReviewLoop KDoc l.15-17 rewrap + note keepGoingAvailable forced false in keep-going mode; C-30 parity scenarios in core replayed from narratives not JSON (no core parity runner).
+- WEB-30: Home waiting hero title wraps tight at desktop ('Waiting for / learning cards / Next card in / 1:00'); no day_ends_at refetch (C6 SHOULD); phone header hides parts below 34rem.
+- CLI-30: backend wire→UntilStopParts mapping untested; waybar text now labelled segments.

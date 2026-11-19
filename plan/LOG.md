@@ -1417,3 +1417,4 @@
 2026-11-19T13:58:13Z CORE-30 0f2f1b24 approved by reviewer; held for merge with SRV-30/WEB-30/AND-30/CLI-30 after audio chain
 2026-11-19T14:02:08Z audio chain (C-29,CORE-29,WRK-29,SRV-29,WEB-29,AND-29) merged ff via t/AUDIO-int 3f377a1b; all 6 module checks green
 2026-11-19T14:07:08Z t/C30-int 2c901cc8 = main + CORE-30 (REVIEW-LOOP ADR-049 renumbered §15); core+contracts green. SRV-30, WEB-30 dispatched from it. Audio release pinned 3f377a1b: api 0.1.27 web 0.1.32 worker 0.1.21, APK 0.1.38 built (cert ok)
+2026-11-19T14:22:51Z ADR-049 chain (C-30,CORE-30,SRV-30,WEB-30,AND-30,CLI-30) merged ff via t/C30-int 6cfb9455; all modules + cli green
