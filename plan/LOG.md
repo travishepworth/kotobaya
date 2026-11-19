@@ -1389,3 +1389,4 @@
 2026-11-19T10:51:27Z RELEASE APK 0.1.36 INSTALLED (user 10, versionCode 136)
 2026-11-19T11:00:16Z DICT refresh OK release 5 (headword_rule ADR-046): シンガポール/かるた/いる headwords kana. Run 35 complete
 2026-11-19T12:33:04Z USER: audio broken everywhere + wants replay icon (diagnosis running); WEB-DICT-DESKTOP filed + DISPATCH writer
+2026-11-19T12:34:03Z DECIDE ADR-047 (audio: system-generated word audio, speaker next to word on answer, autoplay setting); C-29 DISPATCH architect
