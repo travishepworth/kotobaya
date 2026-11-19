@@ -6,7 +6,7 @@
 	import EmptyState from '../../lib/ui/EmptyState.svelte';
 	import Icon from '../../lib/ui/Icon.svelte';
 	import { quotaLine, tr } from '../../lib/review/messages';
-	import { countdown, type LoopView } from '../../lib/state/review.svelte';
+	import { countdown, keepGoingAvailable, type LoopView } from '../../lib/state/review.svelte';
 	import { rv } from './messages';
 
 	interface Props {
@@ -23,6 +23,8 @@
 	let { phase, view, busy, canUndo, checkFailed, onkeepgoing, onundo, onreload }: Props = $props();
 
 	const loop = $derived(view && !view.legacy ? view.loop : null);
+	// ADR-049 C4: during the wait, Keep going shows iff the server says so.
+	const canKeepGoing = $derived(!!view && keepGoingAvailable(view));
 
 	// The countdown ticks once a second; the refetch itself is one timer in the state (C4).
 	let now = $state(Date.now());
@@ -44,6 +46,7 @@
 			{#if checkFailed}<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>{/if}
 			<p class="muted">{tr('loop.waiting.body')}</p>
 			<div class="actions">
+				{#if canKeepGoing}<Button variant="primary" loading={busy} onclick={onkeepgoing}>{tr('loop.keepGoing')}</Button>{/if}
 				<Button variant="outline" icon="sync" loading={busy} onclick={onreload}>{rv('rv.done.check')}</Button>
 				{#if canUndo}<Button variant="quiet" icon="undo" onclick={onundo}>{rv('rv.undo')}</Button>{/if}
 				<Button variant="quiet" href="/">{rv('rv.done.today')}</Button>

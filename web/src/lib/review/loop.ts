@@ -64,3 +64,24 @@ export function countdown(at: Date | null, now: number): string {
 	const sec = at ? Math.max(0, Math.ceil((at.getTime() - now) / 1000)) : 0;
 	return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
+
+/** ADR-049 C3: the four numbers the review header and Home show; they sum to `until_stop` (the bar's total). */
+export interface LoopParts {
+	learning: number;
+	later: number;
+	review: number;
+	new: number;
+}
+
+/** `until_stop_parts`; an older server sends none: `ready.learning`, `later_today.count`, `ready.review`. */
+export function loopParts(loop: ReviewLoop): LoopParts {
+	const p = loop.untilStopParts;
+	if (p) return { learning: p.learning, later: p.later, review: p.review, new: p._new };
+	return { learning: loop.ready.learning, later: loop.laterToday.count, review: loop.ready.review, new: 0 };
+}
+
+/** ADR-049 C4: Keep going shows iff `keep_going_available`; an older server: at the two stop screens only. */
+export function keepGoingAvailable(view: LoopView): boolean {
+	const a = view.loop.keepGoingAvailable;
+	return a ?? (view.phase === 'goal_reached' || view.phase === 'done_for_today');
+}

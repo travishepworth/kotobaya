@@ -41,7 +41,7 @@ import { renderPreview, type Rendered } from './preview.svelte';
 export type { KanjiPart, Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
 export type { GradeButton, ReviewPhase } from '../review/model';
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
-export { countdown, minutesUntil } from '../review/loop';
+export { countdown, minutesUntil, loopParts, keepGoingAvailable } from '../review/loop';
 export type { Rendered } from './preview.svelte';
 
 const DUE_SLACK_MS = 250;

@@ -21,7 +21,7 @@
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import type { Grade, GradeOption, MenuItem } from '../../lib/ui/kinds';
 	import { tr } from '../../lib/review/messages';
-	import { ReviewPage, type GradeButton } from '../../lib/state/review.svelte';
+	import { ReviewPage, loopParts, type GradeButton } from '../../lib/state/review.svelte';
 	import { keepSession, newSessionKey, takeSession } from '../../lib/state/reviewSession';
 	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
@@ -157,6 +157,8 @@
 	// ADR-037: the scheduled session's figures come from `loop` (ready now = `ready.total`, C3); a drill counts its
 	// own list. The bar is this visit's answers against those plus what is ready now.
 	const remaining = $derived(s.loop ? s.loop.ready.total : s.items.length);
+	// ADR-049 C3: the header shows `until_stop_parts` (learning, later, review, new), which sum to the bar's total.
+	const parts = $derived(s.loop ? loopParts(s.loop) : { learning: 0, later: 0, review: 0, new: 0 });
 	const done = $derived(s.history.length);
 	// ADR-038 C3: total = done + `until_stop` (every answer left before the stop screen, so it grows on Again); a
 	// server older than ADR-038 sends none and the ready count stands in.
@@ -305,9 +307,14 @@
 				<h1 class="mode">{modeLabel}</h1>
 				{#if s.loaded && s.loop && !s.view?.legacy}
 					<p class="counts">
-						<span class="count learning"><i aria-hidden="true"></i>{rv('rv.count.learning', { n: s.loop.ready.learning })}</span>
-						<span class="count due"><i aria-hidden="true"></i>{rv('rv.count.review', { n: s.loop.ready.review })}</span>
-						<span class="count new"><i aria-hidden="true"></i>{rv('rv.count.newOf', { today: s.loop._new.today, goal: s.loop._new.goal })}</span>
+						<span class="count learning" data-testid="hdr-learning"><i aria-hidden="true"></i>{tr('loop.part.learning', { n: parts.learning })}</span>
+						{#if parts.later > 0}
+							<span class="count later" data-testid="hdr-later"><i aria-hidden="true"></i>{tr('loop.part.later', { n: parts.later })}</span>
+						{/if}
+						<span class="count due" data-testid="hdr-review"><i aria-hidden="true"></i>{tr('loop.part.review', { n: parts.review })}</span>
+						{#if parts.new > 0}
+							<span class="count new" data-testid="hdr-new"><i aria-hidden="true"></i>{tr('loop.part.new', { n: parts.new })}</span>
+						{/if}
 					</p>
 				{/if}
 				{#if s.loaded && total > 0}
@@ -599,6 +606,10 @@
 	}
 	.count.learning i {
 		background: var(--kb-color-state-learning);
+	}
+	.count.later i {
+		background: var(--kb-color-state-learning);
+		opacity: 0.5;
 	}
 	.count.due i {
 		background: var(--kb-color-state-review);
