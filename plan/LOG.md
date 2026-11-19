@@ -1372,3 +1372,4 @@
 2026-11-19T06:51:39Z C-28e REVIEW_APPROVE; CORE-28c DISPATCH writer-senior on top of C-28e (merge together)
 2026-11-19T07:05:30Z C-28e + CORE-28c REVIEW_APPROVE + CHECK_GREEN (core, server, android, contracts) + MERGE. Round code complete -> release prep
 2026-11-19T07:06:06Z RELEASE prep: pin f108574d; building api 0.1.25, web 0.1.28, APK 0.1.35
+2026-11-19T07:22:40Z RELEASE BLOCK: helm upgrade failed (OIDC token expired, needs browser login); images pushed, APK built; nothing applied to cluster
