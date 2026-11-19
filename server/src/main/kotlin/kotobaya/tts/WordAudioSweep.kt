@@ -79,10 +79,8 @@ class WordAudioSweep(
         val missing = pairs.filter { it !in generated }
         val state = WordAudioStore.jobState(dsl, missing)
         val wanted = missing.filter { it !in state.backoffLeftMs && it !in state.active }
-        val before = WordAudioStore.backlog(dsl)
-        val out = WordAudioStore.enqueue(dsl, wanted, urgent = false, limit = WordAudioStore.BACKLOG_LIMIT)
-        val after = WordAudioStore.backlog(dsl)
-        return (after - before).coerceAtLeast(0) to (EnqueueOutcome.HELD in out.values || after >= WordAudioStore.BACKLOG_LIMIT)
+        val r = WordAudioStore.enqueue(dsl, wanted, urgent = false, limit = WordAudioStore.BACKLOG_LIMIT)
+        return r.created to (EnqueueOutcome.HELD in r.outcomes.values || WordAudioStore.backlog(dsl) >= WordAudioStore.BACKLOG_LIMIT)
     }
 
     private class SweepNote(val noteId: String, val due: OffsetDateTime, val audio: WordAudio?)

@@ -157,7 +157,7 @@ class TtsModule(private val db: Database) {
         val state = WordAudioStore.jobState(dsl, missing)
         val toEnqueue = missing.filter { it !in state.backoffLeftMs }
         val limit = if (urgent) WordAudioStore.URGENT_LIMIT else WordAudioStore.BACKLOG_LIMIT
-        val outcome = WordAudioStore.enqueue(dsl, toEnqueue, urgent, limit, tokenId)
+        val outcome = WordAudioStore.enqueue(dsl, toEnqueue, urgent, limit, tokenId).outcomes
         val blobs = WordAudioStore.blobsPresent(dsl, targets.filterIsInstance<Target.NoteSound>().map { it.hash })
         return targets.map { t ->
             when (t) {

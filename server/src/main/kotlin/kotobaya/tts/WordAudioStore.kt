@@ -51,7 +51,10 @@ object WordAudioStore {
     const val BACKOFF_MS = 600_000L
 
     /** Serializes counting and enqueueing `tts` jobs, so concurrent callers cannot pass the limits together. */
-    private const val TTS_ENQUEUE_LOCK = 7033047L
+    internal const val TTS_ENQUEUE_LOCK = 7033047L
+
+    /** How far back the back-off lookup reads `app.job` (SQL interval). */
+    private const val BACKOFF_HORIZON = "1 day"
 
     /** Vocab note type info for hosts that only know the base type (the resolver reads nothing else). */
     private val VOCAB_INFO = NoteTypeInfo(NoteBaseType.VOCAB, listOf("expression", "reading", "meaning"), emptyList(), "")
@@ -105,7 +108,7 @@ object WordAudioStore {
         if (pairs.isEmpty()) return emptyMap()
         val distinct = pairs.toSet().toList()
         val out = HashMap<SpeechPair, GeneratedAudio>()
-        val orphans = ArrayList<SpeechPair>()
+        val orphans = ArrayList<Pair<SpeechPair, String>>()
         dsl.fetch(
             "select t.voice, t.text, t.blob_hash, t.duration_ms, (b.hash is not null) from app.tts_audio t " +
                 "join unnest(?::text[], ?::text[]) as q(voice, text) on q.voice = t.voice and q.text = t.text " +
@@ -116,14 +119,16 @@ object WordAudioStore {
             if (r.get(4, Boolean::class.java)) {
                 out[p] = GeneratedAudio(r.get(2, String::class.java), r.get(3, Int::class.java))
             } else {
-                orphans += p
+                orphans += p to r.get(2, String::class.java)
             }
         }
         if (orphans.isNotEmpty()) {
             dsl.execute(
-                "delete from app.tts_audio t using unnest(?::text[], ?::text[]) as q(voice, text) " +
-                    "where q.voice = t.voice and q.text = t.text and not exists (select 1 from app.blob b where b.hash = t.blob_hash)",
-                orphans.map { it.voice }.toTypedArray(), orphans.map { it.text }.toTypedArray(),
+                // Only the row as it was read: a pair re-synthesised meanwhile names another blob and stays.
+                "delete from app.tts_audio t using unnest(?::text[], ?::text[], ?::text[]) as q(voice, text, blob_hash) " +
+                    "where q.voice = t.voice and q.text = t.text and q.blob_hash = t.blob_hash " +
+                    "and not exists (select 1 from app.blob b where b.hash = t.blob_hash)",
+                orphans.map { it.first.voice }.toTypedArray(), orphans.map { it.first.text }.toTypedArray(), orphans.map { it.second }.toTypedArray(),
             )
         }
         return out
@@ -144,10 +149,14 @@ object WordAudioStore {
         val byKey = pairs.toSet().associateBy { it.dedupeKey }
         val keys = byKey.keys.toTypedArray()
         val backoff = HashMap<SpeechPair, Long>()
+        // Bounded to recent jobs so `job_created_idx` applies: failed rows pile up while VOICEVOX is down and the
+        // dedupe index covers only queued/running ones. A newest job created before the horizon is not backing off
+        // unless it also finished within the last 600 s, which needs a retry chain longer than the horizon.
         dsl.fetch(
             "select distinct on (dedupe_key) dedupe_key, status, " +
                 "(extract(epoch from (finished_at - (now() - make_interval(secs => ?)))) * 1000)::bigint " +
-                "from app.job where kind = 'tts' and dedupe_key = any(array(select unnest(?::text[]))) order by dedupe_key, created_at desc, id desc",
+                "from app.job where kind = 'tts' and created_at > now() - interval '$BACKOFF_HORIZON' " +
+                "and dedupe_key = any(array(select unnest(?::text[]))) order by dedupe_key, created_at desc, id desc",
             BACKOFF_MS / 1000.0, keys,
         ).forEach { r ->
             val status = r.get(1, String::class.java)
@@ -156,11 +165,16 @@ object WordAudioStore {
                 backoff[checkNotNull(byKey[r.get(0, String::class.java)])] = left
             }
         }
-        val active = dsl.fetch(
-            "select dedupe_key from app.job where kind = 'tts' and status in ('queued', 'running') and dedupe_key = any(array(select unnest(?::text[])))", keys,
-        ).mapNotNull { byKey[it.get(0, String::class.java)] }.toSet()
-        return JobState(backoff, active)
+        return JobState(backoff, activePairs(dsl, byKey))
     }
+
+    /** The pairs of [byKey] with a queued or running `tts` job (the partial index `job_dedupe_uq`). */
+    private fun activePairs(dsl: DSLContext, byKey: Map<String, SpeechPair>): Set<SpeechPair> =
+        dsl.fetch(
+            "select dedupe_key from app.job where dedupe_key = any(array(select unnest(?::text[]))) " +
+                "and dedupe_key is not null and status in ('queued', 'running') and kind = 'tts'",
+            byKey.keys.toTypedArray(),
+        ).mapNotNull { byKey[it.get(0, String::class.java)] }.toSet()
 
     /** `tts` jobs queued or running now. */
     fun backlog(dsl: DSLContext): Int =
@@ -173,12 +187,24 @@ object WordAudioStore {
      * New urgent jobs get that `run_after` too (SCHEMA.md 6.6 "Urgent"). The caller filters generated and backing-off
      * pairs out first. Call inside a transaction; it takes a transaction-scoped lock so the limit holds across callers.
      */
-    fun enqueue(dsl: DSLContext, pairs: List<SpeechPair>, urgent: Boolean, limit: Int, createdByTokenId: UUID? = null): Map<SpeechPair, EnqueueOutcome> {
-        if (pairs.isEmpty()) return emptyMap()
-        dsl.execute("select pg_advisory_xact_lock(?)", TTS_ENQUEUE_LOCK)
+    fun enqueue(
+        dsl: DSLContext,
+        pairs: List<SpeechPair>,
+        urgent: Boolean,
+        limit: Int,
+        createdByTokenId: UUID? = null,
+        waitForLock: Boolean = true,
+    ): EnqueueResult {
+        if (pairs.isEmpty()) return EnqueueResult(emptyMap(), 0)
+        if (waitForLock) {
+            dsl.execute("select pg_advisory_xact_lock(?)", TTS_ENQUEUE_LOCK)
+        } else if (dsl.fetchValue("select pg_try_advisory_xact_lock(?)", TTS_ENQUEUE_LOCK) != true) {
+            return EnqueueResult(emptyMap(), 0, lockBusy = true)
+        }
         val out = LinkedHashMap<SpeechPair, EnqueueOutcome>()
         var count = backlog(dsl)
-        val active = jobState(dsl, pairs).active
+        var created = 0
+        val active = activePairs(dsl, pairs.toSet().associateBy { it.dedupeKey })
         val runAfter = if (urgent) {
             dsl.fetchValue("select now() - interval '1 day'").let { (it as OffsetDateTime).toInstant() }
         } else {
@@ -203,11 +229,17 @@ object WordAudioStore {
             }
             val payload = json.createObjectNode().put("text", p.text).put("voice", p.voice)
             val r = JobRepo.enqueue(dsl, "tts", payload, dedupeKey = p.dedupeKey, createdByTokenId = createdByTokenId, runAfter = runAfter)
-            if (r.created) count++
+            if (r.created) {
+                count++
+                created++
+            }
             out[p] = EnqueueOutcome.ACTIVE
         }
-        return out
+        return EnqueueResult(out, created)
     }
+
+    /** What [enqueue] did: per pair, the jobs it created, and whether it skipped everything because the lock was busy. */
+    class EnqueueResult(val outcomes: Map<SpeechPair, EnqueueOutcome>, val created: Int, val lockBusy: Boolean = false)
 
     /** Most urgent enqueues per served page (SCHEMA.md 6.6 "Server" rule 1). */
     const val SERVED_URGENT = 20
@@ -215,7 +247,8 @@ object WordAudioStore {
     /**
      * Rule 1 of SCHEMA.md 6.6 "Server": for the first [SERVED_URGENT] served items whose `word_audio` is a `tts` pair
      * that is not generated and not backing off, an urgent `tts` job. [items] are `QueueItem` JSON. Call in its own
-     * transaction; the caller never fails a request because of it.
+     * transaction; the caller never fails a request because of it. It never waits for the enqueue lock: while a sweep
+     * page or another caller holds it, this page enqueues nothing (a later fetch tries again).
      */
     fun enqueueServed(dsl: DSLContext, items: Iterable<JsonNode>) {
         val missing = items.mapNotNull { item ->
@@ -226,7 +259,7 @@ object WordAudioStore {
         if (missing.isEmpty()) return
         val state = jobState(dsl, missing)
         val wanted = missing.filter { it !in state.backoffLeftMs }.take(SERVED_URGENT)
-        enqueue(dsl, wanted, urgent = true, limit = URGENT_LIMIT)
+        enqueue(dsl, wanted, urgent = true, limit = URGENT_LIMIT, waitForLock = false)
     }
 }
 

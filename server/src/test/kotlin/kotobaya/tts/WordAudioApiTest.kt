@@ -80,11 +80,11 @@ class WordAudioApiTest : SyncFixture() {
         )
     }
 
-    private fun failedJob(voice: String, text: String, secondsAgo: Int) = db.txBlocking {
+    private fun failedJob(voice: String, text: String, secondsAgo: Int, createdSecondsAgo: Int = secondsAgo + 5) = db.txBlocking {
         it.execute(
             "insert into app.job (id, kind, status, payload, dedupe_key, attempts, created_at, finished_at, error) values " +
                 "(?, 'tts', 'failed', jsonb_build_object('text', ?::text, 'voice', ?::text), ?, 3, now() - make_interval(secs => ?), now() - make_interval(secs => ?), 'voicevox down')",
-            UUID.randomUUID(), text, voice, ttsDedupeKey(voice, text), secondsAgo + 5, secondsAgo,
+            UUID.randomUUID(), text, voice, ttsDedupeKey(voice, text), createdSecondsAgo, secondsAgo,
         )
     }
 
@@ -147,6 +147,39 @@ class WordAudioApiTest : SyncFixture() {
         failedJob("9", "あめ", secondsAgo = 700)
         assertEquals("pending", resolve(t, mapOf("items" to listOf(mapOf("text" to "あめ", "voice" to "9"))))[0]["status"].asText())
         assertEquals("queued", jobOf("9", "あめ")?.first)
+    }
+
+    @Test
+    fun backOffHoldsForJobsInsideTheLookupWindowOnQueueAndResolve() = ttsApp {
+        // The back-off lookup reads only jobs created within the last day (index-backed); a job created hours ago whose
+        // last attempt failed a minute ago is still backing off, and older failed rows of the pair do not matter.
+        val t = writer()
+        failedJob("3", "あめ", secondsAgo = 200_000, createdSecondsAgo = 200_100)
+        failedJob("3", "あめ", secondsAgo = 60, createdSecondsAgo = 3 * 3600)
+        val out = resolve(t, mapOf("items" to listOf(mapOf("text" to "あめ"))))
+        assertEquals("failed", out[0]["status"].asText())
+        assertTrue(out[0]["retry_after_ms"].asLong() in 500_000..540_000, out[0].toString())
+        note(t, vocab, mapOf("expression" to "あめ", "reading" to "あめ"))
+        assertEquals(200, client.call(HttpMethod.Get, "/review/queue", bearer = t).status.value)
+        assertEquals(0L, activeJobs(), "a backing-off pair is not queued by the served page either")
+        assertEquals("pending", resolve(t, mapOf("items" to listOf(mapOf("text" to "そら"))))[0]["status"].asText())
+    }
+
+    @Test
+    fun aServedPageNeverWaitsForTheEnqueueLock() = ttsApp {
+        val t = writer()
+        note(t, vocab, mapOf("expression" to "かぜ", "reading" to "かぜ"))
+        db.dataSource.connection.use { holder ->
+            holder.autoCommit = false
+            holder.createStatement().use { it.execute("select pg_advisory_xact_lock(${WordAudioStore.TTS_ENQUEUE_LOCK})") }
+            val q = client.call(HttpMethod.Get, "/review/queue", bearer = t)
+            assertEquals(200, q.status.value)
+            assertTrue(q.json()["items"].any { it["word_audio"]["text"].asText() == "かぜ" })
+            assertEquals(null, jobOf("3", "かぜ"), "lock busy: nothing enqueued, nothing waited for")
+            holder.rollback()
+        }
+        client.call(HttpMethod.Get, "/review/queue", bearer = t)
+        assertEquals("queued", jobOf("3", "かぜ")?.first, "a later fetch enqueues it")
     }
 
     @Test
