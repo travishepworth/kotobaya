@@ -17,6 +17,10 @@ CHECK: `make check MODULE=web` → green
 ## New dependencies
 - none
 
-## For the reviewer
-- `review-back.spec.ts` "undo button and U key" fails (timeout waiting for grade after U) with and without my changes in this env; the other 4 pass. Likely pre-existing flake or env. Please check on main.
-- The Playwright mock harness (`web/mock`, not mine) has no `word_audio`, so my spec injects it with `page.route`.
+## Attempt 2: review-back failure
+- Not a regression from my change: it is parallel-worker flakiness. The mock API keeps per-scenario state in memory, shared by all workers, so parallel answer/undo tests interfere.
+- Evidence: with web/src and assets/card reset to main (no WEB-29 code), `playwright test review-back` at default workers failed in 4 of 5 runs (different tests each time); it passed once.
+- Serialised, 3 of 3 runs green with my changes: `SCREENSHOT_WORKERS=1 playwright test review-back word-audio` → `10 passed (15.9s)`.
+- Coordinator: run with `SCREENSHOT_WORKERS=1`.
+- `make check MODULE=web` green.
+- `web/mock` (not mine) has no `word_audio`, so word-audio.spec injects it with `page.route`.
