@@ -69,7 +69,7 @@
 					{/if}
 					{#if checkFailed}<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>{/if}
 					<div class="actions">
-						<Button variant="primary" loading={busy} onclick={onkeepgoing}>{tr('loop.keepGoing')}</Button>
+						{#if canKeepGoing}<Button variant="primary" loading={busy} onclick={onkeepgoing}>{tr('loop.keepGoing')}</Button>{/if}
 						<Button variant="outline" href="/">{rv('rv.done.today')}</Button>
 						{#if canUndo}<Button variant="quiet" icon="undo" onclick={onundo}>{rv('rv.undo')}</Button>{/if}
 					</div>

@@ -12,7 +12,15 @@ import type {
 	ReviewQueue
 } from '../api/generated';
 import { ResponseError, readProblem } from '../api/client';
-import { previewIntervals, type IntervalPreview } from '../core/index';
+import {
+	presentLoop,
+	previewIntervals,
+	type CardState,
+	type IntervalPreview,
+	type LoopPresentation,
+	type PendingLoopAnswer,
+	type QueueItemKind
+} from '../core/index';
 import { haptic } from '../api/shell/nav';
 import { pushToast } from '../toasts.svelte';
 import { cardsApi, noteTypesApi, notesApi, presetsApi, reviewApi, settingsApi, speechApi, wordsApi } from '../review/api';
@@ -32,10 +40,11 @@ import {
 	clearKeepGoing,
 	expireKeepGoingIfIdle,
 	fetchWithKeepGoing,
+	keepGoingNewTarget,
 	startKeepGoing,
 	touchKeepGoing
 } from '../review/keepGoingDay';
-import { loopView, type LoopView } from '../review/loop';
+import { loopParts, loopView, type LoopView } from '../review/loop';
 import { renderPreview, type Rendered } from './preview.svelte';
 
 export type { KanjiPart, Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
@@ -63,15 +72,17 @@ const MATERIALIZE_RETRIES = 3;
 export const QUEUE_TIMEOUT_MS = 30_000;
 const ANSWER_TIMEOUT_MS = 30_000;
 /**
- * The server says `reviewing` but served no card (a response that raced an answer): fetch again after this,
- * doubling up to the cap. Never an end screen while the loop says cards are ready.
+ * `settling` (C7): no card held but one is expected (a response that raced an answer): fetch again after this,
+ * doubling up to the cap. Never an end screen while an answer is pending.
  */
 const PENDING_BASE_MS = 2000;
 /** RC-WEB: when this few cards are left locally, fetch more while answers are still being saved (no drain). */
 const PREFETCH_LOW = 3;
 const PENDING_MAX_MS = 30_000;
-/** ... and stops after this many refetches in a row (the view then offers Refresh): no endless polling. */
+/** ... and stops after this many refetches in a row (the view then offers a quiet Check again): no endless polling. */
 const PENDING_MAX_TRIES = 5;
+/** C5: `to_materialize` > 0 with nothing served: fetch again every 5 s while the screen is open. */
+const MATERIALIZE_POLL_MS = 5000;
 
 /**
  * RC-WEB: what a failed answer means.
@@ -142,6 +153,19 @@ interface PendingAnswer {
 	settle: () => void;
 }
 
+/** One tap as the presenter needs it. `acked`: its request has been answered (or refused) and left the outbox. */
+interface LoggedAnswer extends PendingLoopAnswer {
+	seq: number;
+	answerId: string;
+	acked: boolean;
+}
+
+/** The header part a card is counted in (core `QueueItemKind`), from what the wire item says. */
+function itemKind(item: QueueItem): QueueItemKind {
+	if (item.isNew ?? item.card.state === 'new') return 'new';
+	return item.card.state === 'learning' || item.card.state === 'relearning' ? 'learning' : 'review';
+}
+
 /**
  * Answers tapped but not yet recorded. A module singleton, so they survive leaving /review and coming back
  * (a new page must not list a card whose answer is still on its way), and so a tab close can be warned about.
@@ -156,6 +180,8 @@ class Outbox {
 	/** Count of answers ever added, and the card ids of the latest ones (to drop them from stale fetches). */
 	seq = 0;
 	private added: { seq: number; id: string }[] = [];
+	/** Reactive record of the latest answers for the presenter (C7 `pending`): see `LoggedAnswer`. */
+	log = $state<LoggedAnswer[]>([]);
 
 	/** Card ids answered after fetch number `seq` began, plus those still in flight. */
 	answeredSince(seq: number): Set<string> {
@@ -164,8 +190,10 @@ class Outbox {
 		return ids;
 	}
 
-	add(e: PendingAnswer): void {
+	add(e: PendingAnswer, kind: QueueItemKind, resultingState: CardState | null, dueAt: number | null): void {
 		this.seq++;
+		this.log.push({ seq: this.seq, answerId: e.answerId, kind, rating: e.button.rating, resultingState, dueAt, acked: false });
+		if (this.log.length > 200) this.log.splice(0, this.log.length - 200);
 		this.added.push({ seq: this.seq, id: e.item.card.id });
 		if (this.added.length > 200) this.added.splice(0, this.added.length - 200);
 		this.pending.push(e);
@@ -180,7 +208,22 @@ class Outbox {
 
 	remove(es: PendingAnswer[]): void {
 		this.pending = this.pending.filter((e) => !es.includes(e));
+		for (const l of this.log) if (es.some((e) => e.answerId === l.answerId)) l.acked = true;
 		this.sync();
+	}
+
+	/** The answer is no longer an answer (undone, withdrawn, restored, dropped): the presenter forgets it. */
+	forget(answerIds: string[]): void {
+		this.log = this.log.filter((l) => !answerIds.includes(l.answerId));
+	}
+
+	/** The server's own result for a recorded answer replaces the scheduler preview. */
+	setResult(answerId: string, state: CardState | null, dueAt: number | null): void {
+		const l = this.log.find((x) => x.answerId === answerId);
+		if (l) {
+			l.resultingState = state;
+			l.dueAt = dueAt;
+		}
 	}
 
 	hasCard(id: string): boolean {
@@ -199,6 +242,7 @@ export function resetOutboxForTests(): void {
 	outbox.pending = [];
 	outbox.tail = Promise.resolve();
 	outbox.count = 0;
+	outbox.log = [];
 	outbox.retryIds.clear();
 }
 
@@ -285,10 +329,12 @@ export class ReviewPage {
 	private dueTimer: ReturnType<typeof setTimeout> | null = null;
 	private wakeTimer: ReturnType<typeof setTimeout> | null = null;
 	private lastWake = 0;
-	/** Refetches in a row in the pending phase (backoff). */
+	/** Refetches in a row while settling (backoff). */
 	private pendingTries = 0;
-	/** Pending polling gave up after PENDING_MAX_TRIES; the view offers Refresh (`reload`), which resumes it. */
+	/** Settling gave up after PENDING_MAX_TRIES; the view offers a quiet Check again (`reload`), which resumes it. */
 	pendingStopped = $state(false);
+	/** `outbox.seq` when the request of the last applied full fetch was sent: later answers are C7 `pending`. */
+	private appliedSeq = $state(0);
 	/** Bumped whenever a full (non-prefetch) queue fetch is applied; a prefetch begun before it is stale. */
 	private applied = 0;
 	/** Bumped by start/dispose: a load or fetch begun under an older generation is dropped. */
@@ -351,23 +397,51 @@ export class ReviewPage {
 	readonly gradeLocked = $derived(
 		(this.notice === 'answerFailed' || this.notice === 'clockSkew') && !!this.current && this.failedCardId === this.current.card.id
 	);
-	/** Nothing to show yet, but answers are still being recorded: the queue will be refreshed when they are. */
-	readonly settling = $derived(outbox.count > 0 && !this.current && !this.refreshFailed);
+	/**
+	 * C7 `pending`: every answer given since the applied response's request was sent (its effect that response does
+	 * not show) and any answer not acknowledged yet, with the scheduler preview (or the server's result) for state/due.
+	 */
+	readonly pendingAnswers = $derived(
+		outbox.log.filter((l) => l.seq > this.appliedSeq || !l.acked).map((l) => ({
+			kind: l.kind,
+			rating: l.rating,
+			resultingState: l.resultingState,
+			dueAt: l.dueAt
+		}))
+	);
+	/** The core `LoopPresenter` output (C7): the screen, the header parts and the bar remainder. Null in a drill. */
+	readonly presentation = $derived.by((): LoopPresentation | null => {
+		const v = this.view;
+		if (this.isDrill || !v) return null;
+		const head = this.current;
+		try {
+			return presentLoop({
+				state: { phase: v.phase, untilStopParts: loopParts(v.loop) },
+				pending: this.pendingAnswers,
+				hasLocalCard: !!head,
+				localHeadKind: head ? itemKind(head) : null,
+				dayEndsAt: this.dayEndsAt?.getTime() ?? 0
+			});
+		} catch {
+			return null;
+		}
+	});
+	/** No card held but one is expected: the header stays, the grade buttons go, the queue is fetched again. */
+	readonly settling = $derived(this.presentation?.screen === 'settling');
 	/** What the stage shows: the current card, or the held one while answers settle. */
 	readonly display = $derived<QueueItem | undefined>(this.current ?? (this.settling ? (this.held ?? undefined) : undefined));
 	/** The numbers on screen: `loop` of the last applied fetch (null in a drill and before the first fetch). */
 	readonly loop = $derived(this.isDrill ? null : (this.view?.loop ?? null));
-	/** What the screen shows; with no card it is `loop.phase` only (C4). */
+	/** What the screen shows: the presenter's `screen` (C7), never derived from `loop.phase` here. */
 	readonly phase = $derived<ReviewPhase>(
 		reviewPhase({
 			loaded: this.loaded,
 			loadFailed: this.loadFailed,
 			refreshFailed: this.refreshFailed,
-			settling: this.settling,
 			hasCurrent: !!this.current,
 			isDrill: this.isDrill,
 			drillUnavailable: this.drillUnavailable,
-			loopPhase: this.view?.phase ?? null
+			screen: this.presentation?.screen ?? null
 		})
 	);
 	readonly gradeKeys = $derived(this.fiveButtons ? '1-5' : '1-4');
@@ -496,14 +570,14 @@ export class ReviewPage {
 		const startedAt = Date.now();
 		const pendingAtStart = new Set(outbox.pending.map((e) => e.item.card.id));
 		let sent = false;
-		const get = (keepGoing: boolean): Promise<ReviewQueue> => {
+		const get = (keepGoing: boolean, newTarget: number | null): Promise<ReviewQueue> => {
 			sent = keepGoing;
-			return this.getQueue(keepGoing);
+			return this.getQueue(keepGoing, newTarget);
 		};
 		let q = await fetchWithKeepGoing(get);
 		for (let i = 0; i < MATERIALIZE_RETRIES && !append && materializing(q); i++) {
 			if (gen !== this.gen) return false;
-			q = await get(sent);
+			q = await get(sent, keepGoingNewTarget());
 		}
 		// A newer start (retry) or leaving the screen supersedes this fetch.
 		if (gen !== this.gen || this.disposed) return false;
@@ -540,6 +614,7 @@ export class ReviewPage {
 				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
 				: fresh;
 		this.applied++;
+		this.appliedSeq = outboxSeq;
 		this.view = loopView(q);
 		this.keepGoing = sent;
 		this.toMaterialize = q.toMaterialize ?? 0;
@@ -565,11 +640,16 @@ export class ReviewPage {
 		return !this.isDrill && this.dueFirstAt !== null && Date.now() >= this.dueFirstAt;
 	}
 
-	private getQueue(keepGoing: boolean) {
+	private getQueue(keepGoing: boolean, newTarget: number | null) {
 		if (this.disposed) return Promise.reject(new Error('review page disposed'));
 		return timed(
 			QUEUE_TIMEOUT_MS,
-			(init) => reviewApi.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing }, init),
+			// C2 (C-31): the batch's target goes with every fetch of the visit (never an absent-flag one).
+			(init) =>
+				reviewApi.getReviewQueue(
+					{ limit: QUEUE_LIMIT, keepGoing, ...(keepGoing && newTarget !== null ? { keepGoingNewTarget: newTarget } : {}) },
+					init
+				),
 			this.abort.signal
 		);
 	}
@@ -586,8 +666,8 @@ export class ReviewPage {
 
 	/**
 	 * C4: one timer at the next learning card's due instant while no card is on screen (no polling loop).
-	 * `reviewing` with nothing served: fetch again with backoff (C5 entries still to materialize: retries ran out
-	 * in fetchQueue, so the view offers Refresh instead).
+	 * `settling` (nothing held, one expected): fetch again with backoff; with entries still to materialize (C5)
+	 * every 5 s.
 	 */
 	private scheduleWake(): void {
 		this.clearWake();
@@ -597,13 +677,16 @@ export class ReviewPage {
 		if (due) {
 			this.pendingTries = 0;
 			at = due.getTime() + WAKE_SLACK_MS;
-		} else if (!this.current && this.view?.phase === 'reviewing') {
-			if (this.toMaterialize > 0 || this.pendingTries >= PENDING_MAX_TRIES) {
-				this.pendingStopped = true; // the view offers Refresh
+		} else if (!this.current && this.settling) {
+			if (this.toMaterialize > 0) {
+				at = Date.now() + MATERIALIZE_POLL_MS; // C5: every 5 s while the screen is open
+			} else if (this.pendingTries >= PENDING_MAX_TRIES) {
+				this.pendingStopped = true; // the view offers a quiet Check again
 				return;
+			} else {
+				at = Date.now() + Math.min(PENDING_MAX_MS, PENDING_BASE_MS * 2 ** this.pendingTries);
+				this.pendingTries++;
 			}
-			at = Date.now() + Math.min(PENDING_MAX_MS, PENDING_BASE_MS * 2 ** this.pendingTries);
-			this.pendingTries++;
 		} else {
 			this.pendingTries = 0;
 			this.pendingStopped = false;
@@ -639,6 +722,7 @@ export class ReviewPage {
 	}
 
 	private keptGoing: Date | null = null;
+	private keptTarget: number | null = null;
 
 	/**
 	 * Leaving the screen for a page it can come back to (ADR-048): timers and fetches stop, the session state stays.
@@ -646,6 +730,7 @@ export class ReviewPage {
 	 */
 	pauseSession(): void {
 		this.keptGoing = this.keepGoing && this.view ? this.view.studyDay : null;
+		this.keptTarget = keepGoingNewTarget();
 		this.dispose();
 	}
 
@@ -654,8 +739,9 @@ export class ReviewPage {
 		if (!this.disposed) return;
 		this.disposed = false;
 		this.abort = new AbortController();
-		if (this.keptGoing) startKeepGoing(this.keptGoing);
+		if (this.keptGoing) startKeepGoing(this.keptGoing, this.keptTarget);
 		this.keptGoing = null;
+		this.keptTarget = null;
 		if (!this.isDrill) {
 			this.scheduleDueFetch();
 			this.scheduleWake();
@@ -808,13 +894,15 @@ export class ReviewPage {
 	}
 
 	/**
-	 * Keep going (C2): persisted for the shown study day, so every later fetch of this client (Home, review, after
-	 * a restart) sends it until the study day changes; then fetch the next batch.
+	 * Keep going (C2, C-31): one goal-sized batch for this visit. `T = new.today + pendingNew + max(1, new.goal)` from
+	 * the response on screen goes with the flag on every fetch of the visit; then fetch the batch. A server without
+	 * `loop` (legacy) does not know the parameter: none is sent.
 	 */
 	async keepGoingOn(): Promise<void> {
 		const v = this.view;
 		if (!v || this.busy) return;
-		startKeepGoing(v.studyDay);
+		const pendingNew = this.pendingAnswers.filter((a) => a.kind === 'new').length;
+		startKeepGoing(v.studyDay, v.legacy ? null : v.loop._new.today + pendingNew + Math.max(1, v.loop._new.goal));
 		this.busy = true;
 		this.refreshFailed = false;
 		try {
@@ -830,7 +918,7 @@ export class ReviewPage {
 	async reload(): Promise<void> {
 		this.busy = true;
 		this.refreshFailed = false;
-		// A manual Refresh resumes pending polling with a fresh backoff.
+		// A manual Check again resumes settling with a fresh backoff.
 		this.pendingTries = 0;
 		this.pendingStopped = false;
 		try {
@@ -992,7 +1080,9 @@ export class ReviewPage {
 		};
 		// Synchronously, before anything awaits: the card is gone and the next one is on its front.
 		outbox.retryIds.delete(item.card.id);
-		outbox.add(entry);
+		// C7: the scheduler preview stands in for the answer's result until its response arrives.
+		const preview = this.previews?.find((p) => p.rating === b.rating);
+		outbox.add(entry, itemKind(item), preview?.state ?? null, preview ? Date.now() + preview.intervalMs : null);
 		this.history = [...this.history, { reviewId: entry.answerId, item }];
 		this.items = this.items.slice(1); // seamless: never blank; a due card is spliced in by spliceFetch
 		this.held = this.items.length === 0 ? item : null;
@@ -1013,6 +1103,7 @@ export class ReviewPage {
 	/** The answer was recorded: its history entry now carries the server's review id. */
 	sent(entry: PendingAnswer, reviewId: string, card?: Card): void {
 		this.history = this.history.map((h) => (h.reviewId === entry.answerId ? { ...h, reviewId } : h));
+		if (card) outbox.setResult(entry.answerId, card.state, card.dueAt ? card.dueAt.getTime() : null);
 		// C1: an answer that left the card in (re)learning brings T forward to its due instant.
 		if (card?.dueAt && (card.state === 'learning' || card.state === 'relearning')) {
 			const dueAt = card.dueAt.getTime();
@@ -1030,6 +1121,7 @@ export class ReviewPage {
 		if (clockSkew) this.clockSkewed = true;
 		const ids = new Set(withdrawn.map((e) => e.answerId));
 		this.history = this.history.filter((h) => !ids.has(h.reviewId));
+		outbox.forget([...ids]);
 		this.items = [...withdrawn.map((e) => e.item), ...this.items];
 		this.epoch++;
 		if (failed) {
@@ -1049,6 +1141,7 @@ export class ReviewPage {
 	/** The server refused this answer for good (card deleted or suspended elsewhere): it is gone from the session. */
 	dropped(entry: PendingAnswer): void {
 		this.history = this.history.filter((h) => h.reviewId !== entry.answerId);
+		outbox.forget([entry.answerId]);
 		this.items = this.items.filter((i) => i.card.id !== entry.item.card.id);
 		if (this.held?.card.id === entry.item.card.id) this.held = null;
 		this.epoch++;
@@ -1084,6 +1177,7 @@ export class ReviewPage {
 				entry.state = 'cancelled';
 				entry.settle();
 				outbox.remove([entry]);
+				outbox.forget([entry.answerId]);
 				this.history = this.history.slice(0, -1);
 				this.items = [last.item, ...this.items];
 				this.epoch++;
@@ -1099,6 +1193,7 @@ export class ReviewPage {
 			const reviewId = last.reviewId;
 			await timed(ANSWER_TIMEOUT_MS, (init) => reviewApi.undoReview({ reviewUndoRequest: { reviewId } }, init));
 			this.clearNotice();
+			outbox.forget([reviewId]);
 			this.history = this.history.slice(0, -1);
 			this.items = [last.item, ...this.items];
 			this.epoch++;

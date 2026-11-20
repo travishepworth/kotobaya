@@ -2,13 +2,13 @@
 // interval maths stay in ../core/index.
 import type { DictEntry, Kanji, NoteType as ApiNoteType, Preset as ApiPreset, Card } from '../api/generated';
 import type {
+	LoopScreen,
 	CardSchedule,
 	DictionaryData,
 	KanjiData,
 	NoteType as CoreNoteType,
 	Preset as CorePreset
 } from '../core/index';
-import type { LoopPhase } from './loop';
 import { tr } from './messages';
 
 export const MEDIA_URL_TEMPLATE = '/api/v1/blobs/{sha256}';
@@ -131,12 +131,10 @@ export function uuidv7(now: number = Date.now()): string {
 }
 
 /**
- * What the review screen shows. With no card on screen it is the server's `loop.phase` (ADR-037 rule C4) and
- * nothing else: `goalReached` / `doneForToday` (Keep going offered), `waiting` (countdown to
- * `later_today.next_due_at`), `done` (`empty`). `pending`: `reviewing` but no item served (deck entries still to
- * materialize, C5, or a response that raced an answer): fetched again a few times. "settling": answers are still
- * being saved and nothing is left locally; the view keeps the last card on screen (inert) instead of a skeleton.
- * A failed refresh is a full-page error only when nothing else is known.
+ * What the review screen shows. Outside a drill it is the core presenter's `screen` (C7) and nothing else: `card`;
+ * `settling` (no card held but one is expected: the header stays, no grade buttons, fetched again by itself);
+ * `waiting` (countdown), `goalReached` / `doneForToday` (Keep going iff the server says so), `done` (`empty`).
+ * There is no "pending" screen. A failed refresh is a full-page error only when nothing else is known.
  */
 export type ReviewPhase =
 	| 'loading'
@@ -146,7 +144,6 @@ export type ReviewPhase =
 	| 'drillUnavailable'
 	| 'drillDone'
 	| 'waiting'
-	| 'pending'
 	| 'goalReached'
 	| 'doneForToday'
 	| 'done';
@@ -155,30 +152,28 @@ export interface PhaseInput {
 	loaded: boolean;
 	loadFailed: boolean;
 	refreshFailed: boolean;
-	/** Answers still on their way and nothing on screen. */
-	settling: boolean;
 	hasCurrent: boolean;
 	isDrill: boolean;
 	drillUnavailable: boolean;
-	/** `loop.phase` of the last applied response (null before the first). */
-	loopPhase: LoopPhase | null;
+	/** The presenter's screen (null in a drill and before the first response). */
+	screen: LoopScreen | null;
 }
 
 export function reviewPhase(s: PhaseInput): ReviewPhase {
 	if (!s.loaded) return 'loading';
 	if (s.loadFailed) return 'error';
 	if (s.hasCurrent) return 'card';
-	if (s.settling) return 'settling';
 	if (s.isDrill) return s.drillUnavailable ? 'drillUnavailable' : 'drillDone';
-	switch (s.loopPhase) {
+	switch (s.screen) {
+		case 'card':
+		case 'settling':
+			return 'settling'; // a card is expected but none is held
 		case 'waiting':
 			return 'waiting';
 		case 'goal_reached':
 			return 'goalReached';
 		case 'done_for_today':
 			return 'doneForToday';
-		case 'reviewing':
-			return 'pending';
 		case 'empty':
 			return s.refreshFailed ? 'error' : 'done';
 		default:
