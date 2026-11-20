@@ -6,6 +6,8 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## PAUSED by user (run 38, 2026-11-20): finish/merge in-flight LF-A8b + LF-W1 only; dispatch nothing new until the user says resume.
 BLOCKED_CONTRACT: LF-A8b (DONE, committed on t/LF-A8b, high risk, unreviewed; android only 2 known LocalParity fails, RouteTableTest now green) waits on C-32 (ticket written, NOT dispatched: paused). On resume: dispatch C-32 (architect, opus) + reviewer on LF-A8b in parallel; merge A8b after C-32.
+READY_FOR_REVIEW: LF-W1 (DONE, branch t/LF-W1-web-outbox, worktree .claude/worktrees/agent-a665afda378750992, web green 344/344, high risk -> reviewer on resume). Gap: logout doesn't call clearOutbox() (session.svelte.ts not in W1 paths) -> add to LF-W2 or tiny ticket before release. Ticket vs C8: followed C8 (30 s cap, 401 pauses).
+All agents idle — run paused cleanly.
 ## RESUME HERE (run 38, 2026-11-20; was run 37) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
