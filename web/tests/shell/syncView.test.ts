@@ -17,7 +17,8 @@ const base: ShellSyncStatus = {
 	mintingBlocked: false,
 	progress: null,
 	lastError: null,
-	consecutiveFailures: 0
+	consecutiveFailures: 0,
+	firstSync: { done: true, applied: 0, total: 0 }
 };
 
 describe('syncView', () => {

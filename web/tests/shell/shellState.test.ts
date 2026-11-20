@@ -44,7 +44,9 @@ describe('browser', () => {
 		expect(s.shell.online).toBe(true);
 		expect(s.has('sync')).toBe(false);
 		expect(s.modeOf('answerReview')).toBe('local');
-		expect(s.modeOf('getStatsSummary')).toBe('proxy');
+		expect(s.modeOf('getStatsSummary')).toBe('local');
+		expect(s.modeOf('getStatsForecast')).toBe('cached');
+		expect(s.modeOf('parseText')).toBe('proxy');
 		expect(s.modeOf('logout')).toBe('hidden');
 		expect(s.modeOf('searchDictionary')).toBe('local_or_proxy');
 		expect(s.modeOf('noSuchOperation')).toBeUndefined();
