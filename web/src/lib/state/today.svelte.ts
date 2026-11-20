@@ -7,7 +7,7 @@ import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
 
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
-export { countdown, minutesUntil, loopParts, keepGoingAvailable } from '../review/loop';
+export { countdown, minutesUntil, loopParts, keepGoingAvailable, presentedParts } from '../review/loop';
 
 const api = new ReviewApi(quietApiConfig);
 
@@ -43,7 +43,9 @@ export class TodayQueue {
 
 	/** Keep going pressed on Home: persisted for the shown study day (C2); the caller then opens the review. */
 	keepGoing(): void {
-		if (this.view) startKeepGoing(this.view.studyDay);
+		const v = this.view;
+		// C2 (C-31): one goal-sized batch per press, from the response on screen (Home holds no pending answers).
+		if (v) startKeepGoing(v.studyDay, v.legacy ? null : v.loop._new.today + Math.max(1, v.loop._new.goal));
 	}
 
 	/** C6: one refetch when the next learning card falls due, in every phase (null: none). */

@@ -87,7 +87,7 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('reviewing with items [] and nothing to wait for is pending and fetched again, never done', async () => {
+	it('reviewing with items [] and nothing to wait for is settling and fetched again, never done', async () => {
 		const due = new Date(Date.now() + 5000);
 		let calls = 0;
 		api.getReviewQueue.mockImplementation(async () => {
@@ -102,16 +102,16 @@ describe('review session end (RC-WEB)', () => {
 		expect(page.phase).toBe('waiting');
 		await tick(6100);
 		expect(calls).toBe(2);
-		expect(page.phase).toBe('pending');
+		expect(page.phase).toBe('settling');
 		for (let i = 0; i < 20 && page.phase !== 'card'; i++) {
-			expect(page.phase).toBe('pending');
+			expect(page.phase).toBe('settling');
 			await tick(5000);
 		}
 		expect(page.phase).toBe('card');
 		dispose();
 	});
 
-	it('a failed refresh while reviewing stays pending and refetches instead of ending', async () => {
+	it('a failed refresh while reviewing stays settling and refetches instead of ending', async () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		let answered = false;
 		api.getReviewQueue.mockImplementation(async () =>
@@ -128,8 +128,8 @@ describe('review session end (RC-WEB)', () => {
 		answered = true;
 		await page.grade(good);
 		await tick();
-		// The loop said reviewing: pending with an inline notice (no full-page error), fetched again by itself.
-		expect(page.phase).toBe('pending');
+		// The loop said reviewing: settling with an inline notice (no full-page error), fetched again by itself.
+		expect(page.phase).toBe('settling');
 		expect(page.refreshFailed).toBe(true);
 		await tick(5000);
 		expect(page.phase).toBe('card');
@@ -413,31 +413,31 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
-	it('C5: reviewing with only entries to materialize is fetched again at most 3 times, then Refresh', async () => {
+	it('C5: reviewing with only entries to materialize shows settling, refetches 3 times at once, then every 5 s', async () => {
 		api.getReviewQueue.mockResolvedValue(queue({ loop: { phase: 'reviewing' }, toMaterialize: 4 }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
-		await tick(60 * 60_000);
 		expect(api.getReviewQueue).toHaveBeenCalledTimes(4);
-		expect(page.phase).toBe('pending');
-		expect(page.pendingStopped).toBe(true);
-		expect(vi.getTimerCount()).toBe(0);
+		expect(page.phase).toBe('settling'); // there is no pending screen
+		await tick(5100);
+		expect(api.getReviewQueue.mock.calls.length).toBeGreaterThan(4); // a way forward: it refetches by itself
+		expect(page.phase).toBe('settling');
 		dispose();
 	});
 
-	it('pending polling stops after a few tries and offers a refresh, which resumes it', async () => {
+	it('settling backs off, stops after a few tries and offers a quiet Check again, which resumes it', async () => {
 		api.getReviewQueue.mockResolvedValue(reviewingEmpty()); // server never serves them
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
-		expect(page.phase).toBe('pending');
+		expect(page.phase).toBe('settling');
 		await tick(60 * 60_000);
 		const calls = api.getReviewQueue.mock.calls.length;
 		expect(calls).toBeLessThanOrEqual(7);
 		expect(page.pendingStopped).toBe(true);
 		expect(vi.getTimerCount()).toBe(0);
-		expect(page.phase).toBe('pending'); // never "done" while counts say cards remain
+		expect(page.phase).toBe('settling'); // never "done" while the loop says cards remain
 		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')] }));
 		await page.reload();
 		await tick();
@@ -587,30 +587,27 @@ describe('reviewPhase', () => {
 		loaded: true,
 		loadFailed: false,
 		refreshFailed: false,
-		settling: false,
 		hasCurrent: false,
 		isDrill: false,
 		drillUnavailable: false,
-		loopPhase: 'empty'
+		screen: 'empty'
 	};
 
-	it('with no card on screen the screen is loop.phase only (C4)', () => {
+	it('with no card on screen the screen is the presenter screen only (C7)', () => {
 		expect(reviewPhase(base)).toBe('done');
-		expect(reviewPhase({ ...base, loopPhase: 'waiting' })).toBe('waiting');
-		expect(reviewPhase({ ...base, loopPhase: 'goal_reached' })).toBe('goalReached');
-		expect(reviewPhase({ ...base, loopPhase: 'done_for_today' })).toBe('doneForToday');
-		expect(reviewPhase({ ...base, loopPhase: 'reviewing' })).toBe('pending');
-		expect(reviewPhase({ ...base, loopPhase: 'reviewing', hasCurrent: true })).toBe('card');
+		expect(reviewPhase({ ...base, screen: 'waiting' })).toBe('waiting');
+		expect(reviewPhase({ ...base, screen: 'goal_reached' })).toBe('goalReached');
+		expect(reviewPhase({ ...base, screen: 'done_for_today' })).toBe('doneForToday');
+		expect(reviewPhase({ ...base, screen: 'settling' })).toBe('settling');
+		expect(reviewPhase({ ...base, screen: 'settling', hasCurrent: true })).toBe('card');
 	});
 	it('loading and errors are never done', () => {
 		expect(reviewPhase({ ...base, loaded: false })).toBe('loading');
-		expect(reviewPhase({ ...base, settling: true })).toBe('settling');
 		expect(reviewPhase({ ...base, loadFailed: true })).toBe('error');
 		expect(reviewPhase({ ...base, refreshFailed: true })).toBe('error');
-		expect(reviewPhase({ ...base, loopPhase: null })).toBe('error');
-		expect(reviewPhase({ ...base, refreshFailed: true, loopPhase: 'waiting' })).toBe('waiting');
-		expect(reviewPhase({ ...base, refreshFailed: true, loopPhase: 'reviewing' })).toBe('pending');
+		expect(reviewPhase({ ...base, screen: null })).toBe('error');
+		expect(reviewPhase({ ...base, refreshFailed: true, screen: 'waiting' })).toBe('waiting');
+		expect(reviewPhase({ ...base, refreshFailed: true, screen: 'settling' })).toBe('settling');
 		expect(reviewPhase({ ...base, refreshFailed: true, hasCurrent: true })).toBe('card');
 	});
 });
-
