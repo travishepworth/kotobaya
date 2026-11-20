@@ -912,7 +912,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LOOP-31-CORE-B — Core: LoopPresenter + answer projection, exported to JS · model: opus · risk: med · deps: C-31, LOOP-31-CORE-A · status: MERGED (t/LF-int) (ticket: plan/tickets/LOOP-31-CORE-B.md)
 - LOOP-31-WEB — Web review: one presenter, Keep going on every non-final screen, no pending screen · model: opus · risk: high · deps: LOOP-31-CORE-B, LOOP-31-API · status: RUNNING (ticket: plan/tickets/LOOP-31-WEB.md)
 - LF-A8 — Shell: every device-mintable write is local (cards, presets, note types, confusables, grammar, media) · model: opus · risk: high · deps: C-31, LF-A1 (non-blocking triggers), LF-A4 (card op minting helpers in `shell/api/actions/`) · status: IN_REVIEW (part 1: cards/presets/note types) (ticket: plan/tickets/LF-A8.md)
-- LF-A2b — Shell response cache: LF-A2 review minors (race, stale mark, wiring test, trigger) · model: opus · risk: med · deps: LF-A2 · status: TODO (ticket: plan/tickets/LF-A2b.md)
+- LF-A2b — Shell response cache: LF-A2 review minors (race, stale mark, wiring test, trigger) · model: opus · risk: med · deps: LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A2b.md)
 - LF-A1b — Shell: StoreBusy -> retry/503 not 500; debounce races (LF-A1 review minors) · model: opus · risk: med · deps: LF-A1, LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A1b.md)
 - LF-GOLD — Record shell parity goldens for local-first scenarios · model: haiku · risk: low · deps: LF-A3, LF-A6, LF-A8, LF-A8b, LOOP-31-AND · status: TODO (ticket: plan/tickets/LF-GOLD.md)
 - LF-A8b — Shell: confusables, grammar, media writes local (rest of LF-A8) · model: opus · risk: high · deps: LF-A8 · status: TODO (ticket: plan/tickets/LF-A8b.md)
