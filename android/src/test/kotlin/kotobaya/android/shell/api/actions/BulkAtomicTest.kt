@@ -142,15 +142,14 @@ class BulkAtomicTest {
         assertEquals(2, d.minted().size)
     }
 
-    /** Other actions are validated locally, then forwarded (offline: `503 shell_offline`), never answered locally. */
+    /** C-31: every action is answered locally, never forwarded; a bad request is still a `422` first. */
     @Test
-    fun otherActionsAreForwardedAfterLocalValidation() {
+    fun noActionIsForwardedAndValidationComesFirst() {
         val d = device()
         assertEquals("422 /action/tags required", d.bulk("""{"card_ids":["$C1"],"action":{"type":"add_tags"}}""").problem())
+        assertEquals(200, d.bulk("""{"card_ids":["$C1"],"action":{"type":"add_tags","tags":["x"]}}""", at = T0 + 1_000).status)
+        assertEquals(200, d.bulk("""{"card_ids":["$C1"],"action":{"type":"delete"}}""", at = T0 + 2_000).status)
         assertEquals(emptyList(), d.forwarded)
-        assertEquals("503 shell_offline", d.bulk("""{"card_ids":["$C1"],"action":{"type":"add_tags","tags":["x"]}}""").problem())
-        assertEquals("503 shell_offline", d.bulk("""{"card_ids":["$C1"],"action":{"type":"delete"}}""").problem())
-        assertEquals(listOf("bulkCards POST /api/v1/cards/bulk", "bulkCards POST /api/v1/cards/bulk"), d.forwarded)
-        assertEquals(0, d.minted().size)
+        assertEquals(listOf("note.updated", "card.deleted"), d.mintedTypes())
     }
 }
