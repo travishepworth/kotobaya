@@ -30,3 +30,4 @@
 Prefetch depth and other stores (LF-W2); a service worker / offline browser.
 
 ## Notes from previous attempts
+- (from LOOP-31-WEB review r2, minors — do these too) 1. loopPresenter.svelte.test.ts: add a row where `answerReview` resolves (outbox empty) while an unguarded `reload()` is in flight and the response says `goal_reached`; assert `settling` until the follow-up fetch (the presenter-only case: acked answer with seq > appliedSeq). 2. Add a unit test of `trimLog` with > 200 unacked entries (only acked entries ≤ every live page's appliedSeq are dropped).
