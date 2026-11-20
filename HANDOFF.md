@@ -1,24 +1,27 @@
-# HANDOFF CLI-30
+# HANDOFF C-31
 
 STATUS: DONE
-BRANCH: t/CLI-30
-CHECK: `cd cli && uv run pytest` → green (132 passed); ruff check, ruff format and mypy strict → clean
+BRANCH: t/C-31-local-first
+CHECK: `make check MODULE=contracts` → green; `make check MODULE=core` → green
 
 ## Changed (≤ 6 lines)
-- `daemon/backend.py`, `daemon/session.py`: `Loop.until_stop_parts` (new `UntilStopParts`) from the wire; state line carries `until_stop_parts` (null from an old server).
-- `schema/state.v1.json`: additive `until_stop_parts` (nullable object, four ints).
-- `watch.py`: `new`/`learning`/`later`/`review` from `until_stop_parts`, else deprecated `counts` (later 0). Waybar shows `N new` and `K later` only when > 0.
-- `bin/kby`: tooltip "N learning later" reads `until_stop_parts.later`, else `later_today`.
+- `contracts/api/shell/`: class `cached` (K-1…K-4, `503 shell_uncached`, `cache.updated`), L-9, L-7/P-2/P-3 rewritten, `first_sync`, `LOCAL_API_VERSION` 3, 6 parity scenarios, `check_shell.py`.
+- `openapi.yaml`: `keep_going_new_target`, rules C2/C5 amended, C7, C8.
+- `core/.../contracts/queue/`: `QueueLimits.keepGoingNewTarget`, I1…I8, W3/W4/X1–X3, new `LoopPresenter.kt`.
+- `SYNC.md` 6.1/8.1 notes; `response_cache` DDL + SCHEMA.md; SUMMARY/README sections; clients regenerated.
 
 ## Acceptance → tests
-- state carries the four parts and validates → `test_state_carries_the_four_parts_and_validates`
-- old server → null parts, fallback → `test_older_server_state_has_null_parts_and_validates`, `test_fields_read_the_parts_and_fall_back_to_counts`, `test_waybar_falls_back_to_counts_on_old_server`
-- waybar hides zero new/later → `test_waybar_hides_zero_new_and_later`; kby → `test_tooltip_later_reads_until_stop_parts_then_later_today`
+- Checks green, counts match → `ops_map_complete`, `ops_map_counts`, `selftest_ops_counts`
+- Scopes → `ops_map_scopes`, `selftest_ops_cached_scope`, `selftest_ops_local_scope`, `selftest_ops_cached_not_get`
+- Cross-check → `shell_md_cross_check` (SYNC.md 14 needs no change)
+- Edge cases → SHELL.md 10.15–10.20; ReviewLoop X2, X3
+- Worked examples → `parity_mandatory_covered`; CORE-31 test list in `contracts/core/README.md`
+- SUMMARY → `contracts/api/SUMMARY.md`, `contracts/core/SUMMARY.md` (C-31)
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Decided: `learning` template field is now the learning-only part (not learning + later); old-server fallback keeps the legacy meaning.
-- Waybar text changed from `new / learning / review` to labelled segments, per the coordinator's web-mirroring decision.
-- Backend mapping (`UntilStopParts`) is not unit-tested; covered only by the generated-model shape.
+- Outside owned paths: one allow-list line in `contracts/db/check.sh` (`response_cache`); the DDL fails the check without it.
+- `LoopPresenter.present` has a fifth parameter `dayEndsAt`; I7 is not asserted for target-less keep going; a due review waits behind an open kanji unit.
+- New parity goldens are unrecorded (server `RECORD=1`); expectations are hand-evaluated.
