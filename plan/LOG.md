@@ -1451,3 +1451,4 @@
 2026-11-20T12:37:25Z LF-A7 DONE (app-open sync -> LF-A1b); LF-A8 part 1 HANDOFF -> reviewer; LF-A8b split (confusables/grammar/media); CORE-B merged locally, core green
 2026-11-20T12:37:47Z t/LF-int pushed: + LOOP-31-CORE-B (core+contracts green), LF-A7; DISPATCH LOOP-31-WEB
 2026-11-20T12:38:04Z DISPATCH LF-A2b
+2026-11-20T12:39:24Z LF-A8 part 1 REVIEW_APPROVE (minors -> LF-A8b notes + LF-X1)

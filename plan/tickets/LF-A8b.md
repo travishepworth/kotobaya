@@ -18,3 +18,9 @@ The remaining 14 ops from LF-A8: confusables (3), grammar (7), media (4), plus t
 
 ## Out of scope
 Recording goldens (LF-GOLD); STILL_FORWARDS cleanup (LF-X1).
+
+## Orchestrator notes (LF-A8 part 1 review minors — do these too)
+- Add one convergence test that interleaves a REMOTE op (SYNC.md 7.3): e.g. remote `fsrs_params.deleted` arriving after a local `card.preset_set`, remote note created after a local `note_type.deleted`. Part 1's convergence test only reorders the device's own ops.
+- NoteTypeWrites.kt:46: read `BuiltIns` directly instead of building a throwaway `InMemoryLearningTables.seeded()` store, or add a test asserting its keys equal the server's `OpRules.BUILTIN_SEEDS` (if the server list isn't reachable from android tests, compare against a checked-in fixture).
+- PresetWrites.kt:62: reject non-integral literals (30.0) for integer fields like the server (422), if JsonNumber can distinguish them.
+- model.py replay: waived unless a parity push harness exists (goldens via LF-GOLD cover payloads).
