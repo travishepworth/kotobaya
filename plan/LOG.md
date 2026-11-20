@@ -1420,3 +1420,5 @@
 2026-11-19T14:22:51Z ADR-049 chain (C-30,CORE-30,SRV-30,WEB-30,AND-30,CLI-30) merged ff via t/C30-int 6cfb9455; all modules + cli green
 2026-11-19T14:57:22Z RELEASED api 0.1.28 web 0.1.33 (pin 6cfb9455) + worker 0.1.21 (pin 3f377a1b; worker unchanged since); V4 tts_audio migrated; first tts job succeeded. APK 0.1.39 built at 6cfb9455 (cert ec6b7f45 ok), not installed; 0.1.37/0.1.38 superseded
 2026-11-19T15:24:19Z APK 0.1.39 installed (user 10)
+2026-11-20T04:54:20Z RELEASED api 0.1.29 (pin b9186765, PERF-1) helm rev 43; pre-deploy dump verified
+2026-11-20T05:15:00Z RELEASED api 0.1.30 + web 0.1.34 (pin dd00d243, PERF-2 + UX-1) helm rev 44; pre-deploy dump verified; APK 0.1.40 pending signing env
