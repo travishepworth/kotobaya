@@ -1,7 +1,7 @@
 # LF-X1 — Acceptance: black-hole network run of the shell API
 
 - Phase: P10 local-first · Model: sonnet · Risk: med
-- Deps: LF-A1, LF-A2, LF-A3, LF-A4, LF-A5, LF-A6, LF-A8, LOOP-31-AND
+- Deps: LF-A1, LF-A2, LF-A3, LF-A4, LF-A5, LF-A6, LF-A8, LF-A8b, LOOP-31-AND
 - Branch: t/LF-X1-blackhole
 - Owned paths (only edit these): acceptance/
 - Module(s) for CI: android (acceptance target)
@@ -28,3 +28,4 @@ Real-device measurement (HUMAN_CHECKS, orchestrator).
 
 ## Orchestrator notes
 - Remove every entry from UiPathNeverTouchesNetworkTest.STILL_FORWARDS whose route has landed (stats x3 from LF-A3, etc.); the strict pass must leave it empty or justified.
+- Drop the 9 card/preset/note-type ops (LF-A8) from STILL_FORWARDS too.

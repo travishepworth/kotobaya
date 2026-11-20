@@ -1,7 +1,7 @@
 # LF-GOLD — Record shell parity goldens for the local-first scenarios
 
 - Phase: P10 local-first · Model: haiku · Risk: low
-- Deps: LF-A3, LF-A6, LF-A8, LOOP-31-AND (every new scenario has its local handler)
+- Deps: LF-A3, LF-A6, LF-A8, LF-A8b, LOOP-31-AND (every new scenario has its local handler)
 - Branch: t/LF-GOLD
 - Owned paths (only edit these): fixtures/shell-parity/golden/
 - Module(s) for CI: server, android
