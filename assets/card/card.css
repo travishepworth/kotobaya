@@ -118,8 +118,21 @@
   vertical-align: middle;
 }
 .kb-audio::before { content: "\25B6"; font-size: 0.8rem; line-height: 1; }
-/* ADR-047: the speaker sits in the expression line, in normal flow, beside the word (never over it). */
-.kb-expression .kb-audio { margin: 0 0 0 0.5rem; font-size: 1rem; vertical-align: middle; }
+/* ADR-047: the speaker sits in the expression line, never over the word. It is pinned to the line's right edge
+   inside a gutter mirrored on the left, so the word stays centred whether or not the card has audio. */
+.kb-expression:has(> .kb-audio) {
+  --kb-audio-gutter: 2.5rem;
+  position: relative;
+  padding-inline: var(--kb-audio-gutter);
+}
+.kb-expression > .kb-audio {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  font-size: 1rem;
+}
 
 .kb-cloze { letter-spacing: 0.02em; }
 .kb-cloze-blank {

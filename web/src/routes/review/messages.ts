@@ -31,6 +31,7 @@ const en = {
 	'rv.hint.more': 'all shortcuts',
 	'rv.big.title': 'A big day: {n} cards are due.',
 	'rv.big.body': 'Take them in short sittings; every answer counts. The daily review limit is in Settings › Study.',
+	'rv.big.dismiss': 'Dismiss',
 	'rv.pending.title': 'Fetching your next cards',
 	'rv.pending.body': 'Cards are still due today. Checking again in a moment.',
 	'rv.pending.stopped': 'Cards are still due today, but the server is not serving them yet. Refresh to check again.',

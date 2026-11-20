@@ -164,7 +164,9 @@
 	// server older than ADR-038 sends none and the ready count stands in.
 	const total = $derived(done + (s.loop?.untilStop ?? remaining));
 	// A heavy day (e.g. after a break): a calm tip instead of a wall of numbers.
-	const bigDay = $derived(!s.isDrill && remaining >= 200);
+	// Shown before the first answer of a visit only, and dismissable: once you are going it is just in the way.
+	let bigDayDismissed = $state(false);
+	const bigDay = $derived(!s.isDrill && remaining >= 200 && done === 0 && !bigDayDismissed);
 
 	const DRILL_NAMES: Record<string, ReviewViewKey> = {
 		leeches: 'rv.drill.leeches',
@@ -351,7 +353,10 @@
 
 	{#if bigDay && s.current}
 		<div class="notice">
-			<Banner title={rv('rv.big.title', { n: remaining })}>{rv('rv.big.body')}</Banner>
+			<Banner title={rv('rv.big.title', { n: remaining })}>
+				{rv('rv.big.body')}
+				{#snippet action()}<IconButton icon="close" label={rv('rv.big.dismiss')} onclick={() => (bigDayDismissed = true)} />{/snippet}
+			</Banner>
 		</div>
 	{/if}
 

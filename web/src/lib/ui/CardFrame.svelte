@@ -107,6 +107,10 @@
 		width: var(--kb-size-touch-min);
 		height: var(--kb-size-touch-min);
 	}
+	/* card.css centres the word between mirrored gutters; size them to this larger touch target. */
+	.frame :global(.kb-expression:has(> .kb-audio)) {
+		--kb-audio-gutter: calc(var(--kb-size-touch-min) + 0.25rem);
+	}
 	.frame :global(.kb-audio:focus-visible) {
 		outline: 2px solid var(--kb-color-focus);
 		outline-offset: 2px;
