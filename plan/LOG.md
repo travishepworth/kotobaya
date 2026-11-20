@@ -1445,3 +1445,4 @@
 2026-11-20T12:10:27Z t/LF-int pushed with LF-A3 (android 671 tests, 4 known fails)
 2026-11-20T12:13:25Z LOOP-31-CORE-B HANDOFF (CCR additive KDoc) -> reviewer + architect; architect on fable failed 429 out of credits -> re-dispatched model=opus; DISPATCH LOOP-31-AND; LF-A3 pushed
 2026-11-20T12:14:51Z LOOP-31-CORE-B REVIEW_APPROVE; web-side risks written into LOOP-31-WEB ticket; merge after CCR commit
+2026-11-20T12:17:26Z LF-A5 HANDOFF (both flavors, 4 known fails) -> merged + pushed t/LF-int; DISPATCH LF-A8
