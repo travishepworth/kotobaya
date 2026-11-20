@@ -1452,3 +1452,4 @@
 2026-11-20T12:37:47Z t/LF-int pushed: + LOOP-31-CORE-B (core+contracts green), LF-A7; DISPATCH LOOP-31-WEB
 2026-11-20T12:38:04Z DISPATCH LF-A2b
 2026-11-20T12:39:24Z LF-A8 part 1 REVIEW_APPROVE (minors -> LF-A8b notes + LF-X1)
+2026-11-20T12:42:03Z LF-A8 part 1 merged + pushed t/LF-int (android 714 tests, 3 known fails)
