@@ -1,6 +1,5 @@
 package kotobaya.android.shell.api.actions
 
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -194,8 +193,6 @@ class BulkAllActionsTest {
         return d
     }
 
-    // Off until the route is registered with ApiOperations' PROXY -> LOCAL flip (see Routes.kt); then drop @Ignore.
-    @Ignore
     @Test
     fun scheduleRescheduleAndResetMintManualReviewRows() {
         val d = graduated()

@@ -6,9 +6,7 @@ import kotobaya.android.shell.api.LocalRoute
 val routes: List<LocalRoute> = listOf(
     // SHELL-L4: bulk card actions (BulkRoute.kt)
     LocalRoute("bulkCards", "POST", "/api/v1/cards/bulk") { call -> bulkCards(call) },
-    // bulkScheduleCards (C-31, local): the handler is `bulkScheduleCards` in BulkRoute.kt. Register it with the flip of its
-    // class in ApiOperations.kt (PROXY -> LOCAL, LF-A2): LocalApi refuses a route for a PROXY operation.
-    // LocalRoute("bulkScheduleCards", "POST", "/api/v1/cards/bulk/schedule") { call -> bulkScheduleCards(call) },
+    LocalRoute("bulkScheduleCards", "POST", "/api/v1/cards/bulk/schedule") { call -> bulkScheduleCards(call) },
     // word status (WordStatusRoutes.kt)
     LocalRoute("getWordStatus", "GET", "/api/v1/words/{seq}/status") { call -> getWordStatus(call) },
     LocalRoute("setWordStatus", "PUT", "/api/v1/words/{seq}/status") { call -> setWordStatus(call) },
