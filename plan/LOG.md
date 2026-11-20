@@ -1423,3 +1423,4 @@
 2026-11-20T04:54:20Z RELEASED api 0.1.29 (pin b9186765, PERF-1) helm rev 43; pre-deploy dump verified
 2026-11-20T05:15:00Z RELEASED api 0.1.30 + web 0.1.34 (pin dd00d243, PERF-2 + UX-1) helm rev 44; pre-deploy dump verified; APK 0.1.40 pending signing env
 2026-11-20T05:45:00Z RELEASED web 0.1.35 (pin 1bb9ab1b, BUG-DICTBACK: ReviewPage deriveds owned by its own effect root) helm rev 45; reproduced + verified in Chromium on a live-data copy; APK still pending signing env
+2026-11-20T09:52:53Z APK 0.1.40 built (pin 8b3f81df, code 140, cert ec6b7f45 ok) + INSTALLED (users 0+10)

@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RESUME HERE (2026-11-20) — perf + UX-1, direct session (not a ticket run)
 LIVE: helm rev 45 (2026-11-20): api 0.1.30 (pin dd00d243: PERF-1 queue loader, PERF-2 memberships) + web 0.1.35 (pin 1bb9ab1b: UX-1 centred headword/speaker + dismissable big-day banner, BUG-DICTBACK kept review session stuck after dictionary -> back), worker 0.1.21 unchanged. No migrations. Queue p50 on live-data copy 472 -> 125 ms; prod was ~900 ms.
-APK 0.1.40 NOT built: needs the signing env (cert ec6b7f45) for UX-1 + BUG-DICTBACK on the phone (the shell bundles web). Server speedups need no APK.
+APK 0.1.40 INSTALLED 2026-11-20 (pin 8b3f81df, code 140, cert ec6b7f45; UX-1 + BUG-DICTBACK in the shell). Signing env = debug keystore per Notes. Stale merged worktrees/t/* branches (C-29..WEB-30 chain) still present; cleanup awaits user OK.
 Open: no backup CronJob in cluster (backup.enabled off); pre-deploy dumps in ~/kotobaya-backups. scheduler.timezone unset (UTC) -> day rolls at 13:00 JST; user to set Asia/Tokyo in Settings > Study.
 
 ## RESUME HERE (run 35, 2026-11-19) — ADR-046 + SCROLL-TOP
