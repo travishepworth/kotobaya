@@ -245,7 +245,25 @@ async function Outbox_send(entry: PendingAnswer): Promise<void> {
 	entry.settle();
 }
 
+/**
+ * A review session for the /review view (ADR-048). The session outlives the component that shows it (it is kept
+ * across a dictionary visit), but a `$derived` belongs to the effect it is created under: made during the
+ * component's init, `current`/`display`/`phase` went inert when the component was destroyed, and the resumed
+ * session stayed on the old card. Its own root keeps them live; `release` ends it.
+ */
+export function createReviewPage(): ReviewPage {
+	let page: ReviewPage | undefined;
+	const destroyRoot = $effect.root(() => {
+		page = new ReviewPage();
+	});
+	if (!page) throw new Error('review page not created');
+	page.destroyRoot = destroyRoot;
+	return page;
+}
+
 export class ReviewPage {
+	/** Set by `createReviewPage`: destroys the reactive root that owns this session's deriveds. */
+	destroyRoot: (() => void) | null = null;
 	loaded = $state(false);
 	/** The settings or the queue could not be loaded; the view offers `retry`. */
 	loadFailed = $state(false);
@@ -653,6 +671,14 @@ export class ReviewPage {
 		this.dueTimer = null;
 		clearKeepGoing(); // ADR-039: keep going lasts one review visit
 		this.abort.abort();
+	}
+
+	/** The session is dropped for good (never resumed): dispose it and end its reactive root. */
+	release(): void {
+		this.dispose();
+		const destroy = this.destroyRoot;
+		this.destroyRoot = null;
+		destroy?.();
 	}
 
 	/**

@@ -21,7 +21,7 @@
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import type { Grade, GradeOption, MenuItem } from '../../lib/ui/kinds';
 	import { tr } from '../../lib/review/messages';
-	import { ReviewPage, loopParts, type GradeButton } from '../../lib/state/review.svelte';
+	import { createReviewPage, loopParts, type GradeButton } from '../../lib/state/review.svelte';
 	import { keepSession, newSessionKey, takeSession } from '../../lib/state/reviewSession';
 	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
@@ -33,7 +33,7 @@
 	const resumed = takeSession(initialSource, page.state.reviewKey);
 	const sessionKey = page.state.reviewKey ?? newSessionKey();
 	let first = true;
-	const s = resumed ?? new ReviewPage();
+	const s = resumed ?? createReviewPage();
 	$effect(() => s.syncCard());
 	// Tag this history entry so a return to it finds the session (replaceState adds no entry). Once the router is up.
 	$effect(() => {

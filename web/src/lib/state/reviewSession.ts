@@ -14,7 +14,7 @@ let kept: Kept | null = null;
 
 /** The route is left: keep the (suspended) session for a possible return through history. */
 export function keepSession(page: ReviewPage, source: string | null, key: string): void {
-	if (kept && kept.page !== page) kept.page.dispose();
+	if (kept && kept.page !== page) kept.page.release();
 	kept = { page, source, key };
 }
 
@@ -24,7 +24,7 @@ export function takeSession(source: string | null, key: string | undefined): Rev
 	kept = null;
 	if (!k) return null;
 	if (key !== undefined && k.key === key && k.source === source) return k.page;
-	k.page.dispose();
+	k.page.release();
 	return null;
 }
 
