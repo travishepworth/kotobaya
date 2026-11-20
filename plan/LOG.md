@@ -1467,3 +1467,4 @@
 2026-11-20T14:41:53Z LOOP-31-WEB REVIEW_APPROVE r2 (2 test minors -> LF-W1 ticket) -> merged locally into t/LF-int; DISPATCH LF-W1
 2026-11-20T14:43:07Z t/LF-int pushed a17988c0: + LF-A2b, LOOP-31-WEB (android 738 tests, 3 known fails; web green)
 2026-11-20T14:49:16Z - PAUSE requested by user: no new dispatches; let LF-A8b + LF-W1 finish
+2026-11-20T14:49:42Z LF-A8b HANDOFF CONTRACT_CHANGE_REQUEST (media deck deck.deleted rejected by server) -> BLOCKED_CONTRACT; C-32 filed, not dispatched (paused)
