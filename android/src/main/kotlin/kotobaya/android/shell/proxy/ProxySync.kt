@@ -1,5 +1,6 @@
 package kotobaya.android.shell.proxy
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,7 +32,14 @@ class CoordinatorProxySync(
         scope.launch {
             repeat(2) {
                 if (pullCursor() >= seq) return@launch
-                runCatching { coordinator().sync(SyncTrigger.PUSH) }
+                try {
+                    // MANUAL: the user's own write asked for it (PUSH is the server's push-notification trigger)
+                    coordinator().sync(SyncTrigger.MANUAL)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // the next cycle (or the next remote write) tries again
+                }
             }
         }
     }

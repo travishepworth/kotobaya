@@ -12,6 +12,8 @@ import kotobaya.android.ankiapi.store.AddOutcome
 import kotobaya.android.ankiapi.store.TakobotoAnkiStore
 import kotobaya.android.shell.cache.CacheHooks
 import kotobaya.android.shell.cache.CacheUpdate
+import kotobaya.android.shell.cache.SqlResponseCacheStore
+import kotobaya.android.shell.cache.StaleMarks
 import kotobaya.android.shell.web.BridgeCore
 import kotobaya.android.shell.web.BridgeMessage
 import kotobaya.android.sync.SyncOutcome
@@ -21,8 +23,10 @@ import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
+import kotobaya.db.app.AppDatabase
 import kotobaya.sync.DefaultCanonicalJson
 import kotobaya.sync.client.protocol.CycleResult
+import org.koin.core.context.GlobalContext
 
 /**
  * The shell's native -> web events (SHELL.md 2.6), except `hello` (the bridge's, in answer to `ready`) and `shell.dict` (A7).
@@ -43,6 +47,8 @@ class ShellEvents(
     private val syncStatus: () -> JsonObject,
     private val nowMs: () -> Long = System::currentTimeMillis,
     private val intervalMs: Long = DEFAULT_INTERVAL_MS,
+    /** LF-A2b: the hooks used while [cacheHooks] is unset (no WebView yet): stale marks straight on the DB. */
+    private val fallbackHooks: () -> CacheHooks? = ::dbStaleMarks,
 ) {
     private val changed = Coalescer { emitSyncChanged() }
     private val status = Coalescer { emitSyncStatus() }
@@ -61,23 +67,22 @@ class ShellEvents(
      * marks entries stale on the same occasions (all of them after a rebuild or log reset) and warms after a completed cycle.
      */
     fun onSyncOutcome(outcome: SyncOutcome) {
-        val ran = (outcome as? SyncOutcome.Ran)?.result
-        if (ran is CycleResult.RebuildPending || ran is CycleResult.LogChanged) runCatching { cacheHooks?.onAllStale() }
-        val result = ran as? CycleResult.Completed ?: return
-        if (result.pulledOps > 0 || result.pullAdvanced) {
-            changed.request()
-            runCatching { cacheHooks?.onReplicaChanged() }
+        val result = (outcome as? SyncOutcome.Ran)?.result as? CycleResult.Completed
+        if (result != null) {
+            if (result.pulledOps > 0 || result.pullAdvanced) changed.request()
+            status.request()
         }
-        status.request()
-        runCatching { cacheHooks?.onCycleSucceeded() }
+        applyCacheMarks(outcome, hooks())
     }
 
     /** After a committed local write (`LocalWrites` after-commit hook). */
     fun onLocalWrite() {
         changed.request()
         status.request()
-        runCatching { cacheHooks?.onReplicaChanged() }
+        runCatching { hooks()?.onReplicaChanged() }
     }
+
+    private fun hooks(): CacheHooks? = cacheHooks ?: runCatching { fallbackHooks() }.getOrNull()
 
     /**
      * `cache.updated` (C-31, SHELL.md 2.6): at most one per cache key per [intervalMs]; the last payload of a key is
@@ -183,6 +188,24 @@ class ShellEvents(
 
     companion object {
         const val DEFAULT_INTERVAL_MS: Long = 1000
+
+        /**
+         * The K-4 marks of one sync outcome: all stale after a rebuild or log reset; the replica tables after a cycle
+         * that applied ops; the warm pass after a completed cycle. `ShellEventHub` may call it with [dbStaleMarks] when
+         * no [ShellEvents] exists in the process.
+         */
+        fun applyCacheMarks(outcome: SyncOutcome, hooks: CacheHooks?) {
+            if (hooks == null) return
+            val ran = (outcome as? SyncOutcome.Ran)?.result
+            if (ran is CycleResult.RebuildPending || ran is CycleResult.LogChanged) runCatching { hooks.onAllStale() }
+            val result = ran as? CycleResult.Completed ?: return
+            if (result.pulledOps > 0 || result.pullAdvanced) runCatching { hooks.onReplicaChanged() }
+            runCatching { hooks.onCycleSucceeded() }
+        }
+
+        /** [StaleMarks] over the app's `response_cache` (Koin's [AppDatabase]); null before Koin started. */
+        fun dbStaleMarks(): CacheHooks? =
+            GlobalContext.getOrNull()?.getOrNull<AppDatabase>()?.let { StaleMarks(SqlResponseCacheStore(it)) }
     }
 }
 
