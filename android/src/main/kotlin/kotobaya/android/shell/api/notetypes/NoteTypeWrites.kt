@@ -43,7 +43,7 @@ private val VOCAB_KEYS = listOf("expression", "reading", "meaning")
 private val FIELD_KINDS = setOf("text", "audio", "image")
 
 /** Seeded field keys and template kinds of each built-in note type (the rows `Learning.sq` seeds: core `BuiltIns`). */
-private val SEEDS: Map<String, Pair<Set<String>, Set<String>>> by lazy {
+internal val SEEDS: Map<String, Pair<Set<String>, Set<String>>> by lazy {
     InMemoryLearningTables.seeded().all(LearningTable.NOTE_TYPE).associate { r ->
         val fields = (r["fields"] as? JsonArray)?.items.orEmpty().mapNotNull { (it as? JsonObject)?.members?.get("key").text() }.toSet()
         val kinds = (r["templates"] as? JsonObject)?.members?.keys.orEmpty()
