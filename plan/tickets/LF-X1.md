@@ -25,3 +25,6 @@ Extend the offline/sync simulation: a transport that (a) never answers, (b) answ
 Real-device measurement (HUMAN_CHECKS, orchestrator).
 
 ## Notes from previous attempts
+
+## Orchestrator notes
+- Remove every entry from UiPathNeverTouchesNetworkTest.STILL_FORWARDS whose route has landed (stats x3 from LF-A3, etc.); the strict pass must leave it empty or justified.

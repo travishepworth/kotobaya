@@ -1441,3 +1441,4 @@
 2026-11-20T11:41:21Z LF-A1 + LF-A2 merged into t/LF-int (android 649 tests, only 4 known drift fails); pushed
 2026-11-20T11:45:34Z LOOP-31-API + LF-A4 HANDOFF (red only on unrecorded goldens) -> merged into t/LF-int, re-check running; LF-GOLD filed; DISPATCH LF-A3
 2026-11-20T11:55:17Z t/LF-int pushed with LOOP-31-API + LF-A4 (server: only ParityGoldenTest 13; android: 4 known)
+2026-11-20T12:04:47Z LF-A3 HANDOFF (no new fails) -> merged into t/LF-int locally; DISPATCH LF-A6
