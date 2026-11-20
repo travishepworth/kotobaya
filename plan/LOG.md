@@ -1439,3 +1439,4 @@
 2026-11-20T11:34:48Z LF-A4 HANDOFF: bulkScheduleCards route disabled (branch predates LF-A2 ApiOperations); rebase after LF-int push, then enable + un-@Ignore test
 2026-11-20T11:35:03Z DISPATCH LF-A5
 2026-11-20T11:41:21Z LF-A1 + LF-A2 merged into t/LF-int (android 649 tests, only 4 known drift fails); pushed
+2026-11-20T11:45:34Z LOOP-31-API + LF-A4 HANDOFF (red only on unrecorded goldens) -> merged into t/LF-int, re-check running; LF-GOLD filed; DISPATCH LF-A3
