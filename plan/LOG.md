@@ -1457,3 +1457,4 @@
 2026-11-20T14:22:35Z LF-A8b DISPATCH writer-senior (opus) from origin/t/LF-int
 2026-11-20T14:30:16Z - RESUME run 38: run 37 writers dead again (uncommitted); lfint worktree recreated; LF-A1b, LF-A2b, LF-A8b, LOOP-31-WEB re-dispatched in place
 2026-11-20T14:35:47Z LOOP-31-WEB HANDOFF; check: only 3 web shell tests red, same 3 red on t/LF-int base (known drift) -> reviewer
+2026-11-20T14:36:13Z LF-A2b HANDOFF (3 known fails); item 4 half-fixed -> authorized ShellModule.kt fallback edit, writer resumed
