@@ -104,15 +104,15 @@ object ShellEventHub {
         transport?.send(event)
     }
 
-    /** The `SyncCoordinator` outcome hook. */
+    /** The `SyncCoordinator` outcome hook. With no [events] (no page yet) the K-4 stale marks still reach the DB (LF-A2b). */
     fun onSyncOutcome(outcome: SyncOutcome) {
-        events?.onSyncOutcome(outcome)
+        events?.onSyncOutcome(outcome) ?: ShellEvents.applyCacheMarks(outcome, ShellEvents.dbStaleMarks())
         dict?.poke()
     }
 
-    /** The `LocalWrites` after-commit hook. */
+    /** The `LocalWrites` after-commit hook; the same DB fallback as [onSyncOutcome]. */
     fun onLocalWrite() {
-        events?.onLocalWrite()
+        events?.onLocalWrite() ?: runCatching { ShellEvents.dbStaleMarks()?.onReplicaChanged() }
     }
 }
 

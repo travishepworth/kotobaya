@@ -11,6 +11,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotobaya.android.shell.ShellEventHub
 import kotobaya.android.shell.api.ShellResponse
 import kotobaya.android.shell.api.ShellServices
 import kotobaya.android.shell.api.Upstream
@@ -131,5 +132,24 @@ class CacheWiringTest {
         seed("getStatsForecast", "/api/v1/stats/forecast")
         ShellEvents.applyCacheMarks(pulled, StaleMarks(store))
         assertTrue(stale("getStatsForecast", "/api/v1/stats/forecast"))
+    }
+
+    @Test
+    fun theHubWithNoShellEventsStillMarksRowsStaleThroughKoin() {
+        seed("getStatsForecast", "/api/v1/stats/forecast")
+        seed("getDeckCoverage", "/api/v1/decks/d1/coverage")
+        val saved = ShellEventHub.events
+        ShellEventHub.events = null
+        startKoin { modules(module { single { db } }) }
+        try {
+            ShellEventHub.onSyncOutcome(pulled)
+            assertTrue(stale("getStatsForecast", "/api/v1/stats/forecast"))
+            store.confirm(CacheKey.of("getDeckCoverage", "/api/v1/decks/d1/coverage", ""), now, false)
+            ShellEventHub.onLocalWrite()
+            assertTrue(stale("getDeckCoverage", "/api/v1/decks/d1/coverage"))
+        } finally {
+            stopKoin()
+            ShellEventHub.events = saved
+        }
     }
 }
