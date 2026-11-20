@@ -4,8 +4,7 @@
 	// card; `empty`: all done. Under it the later-today hint, the new-card bar and the backlog line.
 	import Button from '../ui/Button.svelte';
 	import Icon from '../ui/Icon.svelte';
-	import { countdown, keepGoingAvailable, type LoopView } from '../state/today.svelte';
-	import { presentedParts } from './loop';
+	import { countdown, keepGoingAvailable, presentedParts, type LoopView } from '../state/today.svelte';
 	import LoopMeta from './LoopMeta.svelte';
 	import { tr } from './messages';
 

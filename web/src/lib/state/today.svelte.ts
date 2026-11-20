@@ -7,7 +7,7 @@ import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
 
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
-export { countdown, minutesUntil, loopParts, keepGoingAvailable } from '../review/loop';
+export { countdown, minutesUntil, loopParts, keepGoingAvailable, presentedParts } from '../review/loop';
 
 const api = new ReviewApi(quietApiConfig);
 
