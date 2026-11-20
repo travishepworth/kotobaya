@@ -109,4 +109,13 @@ class DictAutoInstallTest {
         assertEquals(10_000_000L, failedAt)
         assertEquals(AutoInstallOutcome.Skipped(AutoInstallSkip.BACKOFF), a.evaluate())
     }
+
+    @Test
+    fun neverOverridesAUserWhoChoseTop60k() = runBlocking<Unit> {
+        val o = auto(Env(scope = "top60k", chose = true)).evaluate()
+        assertEquals(AutoInstallOutcome.Skipped(AutoInstallSkip.USER_CHOSE_TOP60K), o)
+        assertEquals(0, runs)
+        assertEquals(emptyList(), scopes, "the scope setting is left alone")
+        assertEquals(0, remote.asked)
+    }
 }

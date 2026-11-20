@@ -2,7 +2,7 @@
 
 STATUS: DONE
 BRANCH: t/LF-A6 (from t/LF-int)
-CHECK: `make check MODULE=android` → red only for the expected tests: RouteTableTest.everyLocalOperationIsRegisteredOrPending, ParityExpectTest (queue-keep-going-target), LocalParityTest (unrecorded goldens incl. resolve-speech-local; goldensAndScenariosAreOneToOne). No new failures.
+CHECK: rebased on t/LF-int (LF-A5, LOOP-31-AND); `:android:testDebugUnitTest` red only for the expected RouteTableTest.everyLocalOperationIsRegisteredOrPending and LocalParityTest (unrecorded goldens incl. resolve-speech-local). No new failures.
 
 ## Changed
 - dict/: `GapFillQueue` + `BackgroundGapFillQueue`; `DictLookup.resolveEntry/Kanji` now local, enqueue (urgent) on a real miss; `DictAutoInstall` (+worker, `DictChoice`); koin wiring.
