@@ -1463,3 +1463,4 @@
 2026-11-20T14:39:26Z LF-W0 HANDOFF (tests stale vs C-31, no code change); web green -> merged + pushed t/LF-int
 2026-11-20T14:39:44Z LOOP-31-WEB REVIEW_CHANGES (2 major: inert stale-response test, C5 retry bursts; 6 minor) -> writer attempt 2; minor 5 -> FOLLOWUPS
 2026-11-20T14:40:02Z LF-A2b HANDOFF r2 (ShellModule fallback added; 3 known fails) -> merged locally into t/LF-int 61fad693, android re-check running
+2026-11-20T14:41:13Z LOOP-31-WEB HANDOFF attempt 2; web green 321/321 -> reviewer re-review
