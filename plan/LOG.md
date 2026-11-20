@@ -1461,3 +1461,4 @@
 2026-11-20T14:37:34Z LF-A1b HANDOFF (3 known fails) -> merged + pushed t/LF-int ed3062a5
 2026-11-20T14:37:34Z LF-W0 DISPATCH writer (new ticket: 3 pre-existing web shell test fails on LF-int)
 2026-11-20T14:39:26Z LF-W0 HANDOFF (tests stale vs C-31, no code change); web green -> merged + pushed t/LF-int
+2026-11-20T14:39:44Z LOOP-31-WEB REVIEW_CHANGES (2 major: inert stale-response test, C5 retry bursts; 6 minor) -> writer attempt 2; minor 5 -> FOLLOWUPS
