@@ -113,7 +113,7 @@ class WordAudioSet<L : LearningTables>(
 }
 
 /** One answer of `resolveSpeech` (SpeechResolution), reduced to what the device keeps. */
-data class SpeechAnswer(val status: String, val blobHash: String?, val durationMs: Long?)
+data class SpeechAnswer(val status: String, val blobHash: String?, val durationMs: Long?, val retryAfterMs: Long? = null)
 
 /** `POST /tts/resolve` for up to 200 `(voice, text)` pairs, non-urgent; null = the call failed (offline, 5xx, 403). */
 fun interface SpeechResolver {

@@ -12,6 +12,8 @@ val routes: List<LocalRoute> = listOf(
     LocalRoute("getDictRelease", "GET", "/api/v1/dict/release") { call -> getDictRelease(call) },
     LocalRoute("getKanji", "GET", "/api/v1/kanji/{literal}") { call -> getKanji(call) },
     LocalRoute("listKanjiWords", "GET", "/api/v1/kanji/{literal}/words") { call -> listKanjiWords(call) },
+    // C-31: resolveSpeech answers from tts_audio (ResolveSpeechRoute.kt)
+    LocalRoute("resolveSpeech", "POST", "/api/v1/tts/resolve") { call -> resolveSpeech(call) },
     // mining (CreateNoteRoute.kt)
     LocalRoute("createNote", "POST", "/api/v1/notes") { call -> createNote(call) },
 )

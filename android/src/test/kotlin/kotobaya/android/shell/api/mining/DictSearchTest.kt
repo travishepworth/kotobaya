@@ -62,8 +62,8 @@ class DictSearchTest {
             if (r.headers["kotobaya-local"] != "1") failures += "$q: not answered locally"
         }
         assertTrue(failures.isEmpty(), failures.joinToString("\n"))
-        // L-7: an authoritative package answers locally; only an empty first page asks the server (offline here: local)
-        assertEquals(cases.count { it.third == null }, d.forwarded.size, "forwarded: ${d.forwarded}")
+        // L-7 (C-31): always local, a miss is an empty page; nothing is ever forwarded
+        assertTrue(d.forwarded.isEmpty(), "forwarded: ${d.forwarded}")
     }
 
     @Test
@@ -131,15 +131,16 @@ class DictSearchTest {
     }
 
     @Test
-    fun anAuthoritativeEmptyPageIsForwardedWhenOnline() {
+    fun aSearchIsNeverForwardedEvenWhenOnlineAndAMissIsAnEmptyPage() {
         val d = device()
-        val server = FakeServer { 200 to obj("items" to JsonArray(emptyList()), "next_cursor" to JsonNull) }
+        val server = FakeServer { error("forwarded") }
         d.server = server
-        assertEquals(200, d.get("/api/v1/dict/search", "q=zzzzqqq").status)
-        assertEquals(listOf("searchDictionary"), server.seen)
-        // a page with results is answered locally
+        val miss = d.get("/api/v1/dict/search", "q=zzzzqqq")
+        assertEquals(200, miss.status)
+        assertTrue(miss.seqs().isEmpty())
         assertEquals(200, d.get("/api/v1/dict/search", "q=${enc("ねこ")}").status)
-        assertEquals(listOf("searchDictionary"), server.seen)
+        assertTrue(server.seen.isEmpty())
+        assertTrue(d.forwarded.isEmpty())
     }
 
     @Test

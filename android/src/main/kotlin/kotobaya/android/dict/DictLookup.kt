@@ -1,7 +1,5 @@
 package kotobaya.android.dict
 
-import kotlinx.coroutines.CancellationException
-
 /** The answer of the full lookup (SHELL.md L-7 steps 1-4) for one entry or kanji. */
 sealed interface Resolved<out T> {
     /** Steps 1-3 found it. */
@@ -10,23 +8,24 @@ sealed interface Resolved<out T> {
     /** A known miss: the package is authoritative, or a negative result stands. `404` / `422 not_found`. */
     data object NotFound : Resolved<Nothing>
 
-    /** Not on this device and the server could not be asked: `503 shell_dict_missing`. */
+    /** Not on this device and not a known miss (enqueued for gap fill): `503 shell_dict_missing`. */
     data object NotOnDevice : Resolved<Nothing>
 }
 
 /**
- * THE dictionary lookup of SHELL.md rule L-7 (SHELL-L9): installed package -> sidecar cache -> (only [resolveEntry] /
- * [resolveKanji], for `local_or_proxy` dictionary reads and `createNote`) the server -> miss. [entry] and [kanji] are
- * steps 1-2 only and never touch the network: everything that renders or schedules uses them. [InstalledDictionary]
- * with a cache attached answers the same steps 1-2 for its existing readers.
+ * THE dictionary lookup of SHELL.md rule L-7 (SHELL-L9, C-31): installed package -> sidecar cache -> miss. [entry] and
+ * [kanji] are steps 1-2 only: everything that renders or schedules uses them. [resolveEntry] / [resolveKanji] (dictionary
+ * reads, `createNote`) add the known-miss rules and enqueue a real miss on [queue]. No method touches the network.
+ * [InstalledDictionary] with a cache attached answers the same steps 1-2 for its existing readers.
  *
- * [remote] null = no server configured (the device is treated as offline).
+ * [remote] is unused since C-31 (the queue fetches); the parameter stays so that existing constructors compile.
  */
 class DictLookup(
     private val source: PackageSource,
     private val cache: DictGapCache,
-    private val remote: DictGapRemote?,
+    @Suppress("unused") private val remote: DictGapRemote?,
     private val nowMs: () -> Long = System::currentTimeMillis,
+    private val queue: GapFillQueue = GapFillQueue.None,
 ) {
     fun entry(seq: Long): DictEntryDetail? = source.packageEntry(seq) ?: cache.entry(seq)
 
@@ -42,41 +41,26 @@ class DictLookup(
         return installed.scope == "all" && installed.releaseId >= server
     }
 
-    suspend fun resolveEntry(seq: Long): Resolved<DictEntryDetail> =
-        resolve(GapRef.entry(seq), { entry(seq) }, { remote?.entry(seq) }, DictJson::entry)
+    /**
+     * `resolveEntry` / `resolveKanji` (C-31): steps 1-2, then the known-miss rules; any other miss is enqueued for gap fill
+     * (`urgent`: the miss came from a request) and answered at once as [Resolved.NotOnDevice]. Never touches the network.
+     */
+    fun resolveEntry(seq: Long): Resolved<DictEntryDetail> = resolve(GapRef.entry(seq)) { entry(seq) }
 
-    suspend fun resolveKanji(literal: String): Resolved<KanjiDetail> =
-        resolve(GapRef.kanji(literal), { kanji(literal) }, { remote?.kanji(literal) }, DictJson::kanji)
+    fun resolveKanji(literal: String): Resolved<KanjiDetail> = resolve(GapRef.kanji(literal)) { kanji(literal) }
 
-    private suspend fun <T> resolve(
-        ref: GapRef,
-        local: () -> T?,
-        ask: suspend () -> RemoteAnswer?,
-        parse: (String) -> T,
-    ): Resolved<T> {
+    private fun <T> resolve(ref: GapRef, local: () -> T?): Resolved<T> {
         local()?.let { return Resolved.Found(it) }
         if (isAuthoritative() || standingNegative(ref)) return Resolved.NotFound
-        val answer = try {
-            ask() ?: return Resolved.NotOnDevice
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return Resolved.NotOnDevice
-        }
-        val release = cache.serverReleaseId() ?: 0L
-        return when (answer) {
-            is RemoteAnswer.Found -> {
-                val body = runCatching { DictJson.stripOverlay(answer.body) }.getOrNull() ?: return Resolved.NotOnDevice
-                val value = runCatching { parse(body) }.getOrNull() ?: return Resolved.NotOnDevice
-                cache.put(listOf(GapRow(ref, release, body, nowMs())))
-                Resolved.Found(value)
-            }
-            RemoteAnswer.NotFound -> {
-                cache.put(listOf(GapRow(ref, release, null, nowMs())))
-                Resolved.NotFound
-            }
-        }
+        queue.request(ref.kind, ref.key, urgent = true)
+        return Resolved.NotOnDevice
     }
+
+    /** Enqueues [ref] for gap fill (the same reference twice is one fetch). */
+    fun enqueue(ref: GapRef, urgent: Boolean) = queue.request(ref.kind, ref.key, urgent)
+
+    /** True when [ref] is a known miss (authoritative package or a standing negative result): nothing to fetch. */
+    fun isKnownMiss(ref: GapRef): Boolean = isAuthoritative() || standingNegative(ref)
 
     private fun standingNegative(ref: GapRef): Boolean {
         val row = cache.row(ref) ?: return false

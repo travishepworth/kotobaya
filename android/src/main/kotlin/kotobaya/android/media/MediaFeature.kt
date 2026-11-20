@@ -13,7 +13,9 @@ import androidx.work.WorkerParameters
 import app.cash.sqldelight.db.SqlDriver
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import kotobaya.android.R
 import kotobaya.android.di.FeatureEntry
@@ -115,6 +117,15 @@ private val mediaModule = module {
             get<WordAudioSet<SqlLearningTables>>(), get(), get(),
             HttpSpeechResolver({ settings.serverBaseUrl }, { tokens.token }, ApiClient.defaultHttp()),
             System::currentTimeMillis,
+        )
+    }
+    // C-31: the native speech resolver behind the local `resolveSpeech`
+    single<SpeechResolveQueue> {
+        val settings = get<SettingsStore>()
+        val tokens = get<TokenStore>()
+        val http = HttpSpeechResolver({ settings.serverBaseUrl }, { tokens.token }, ApiClient.defaultHttp())
+        BackgroundSpeechResolveQueue(
+            CoroutineScope(SupervisorJob() + Dispatchers.IO), get(), get(), UrgentSpeechResolver { pairs, urgent -> http.resolve(pairs, urgent) },
         )
     }
     single<AudioNeedsSource> {

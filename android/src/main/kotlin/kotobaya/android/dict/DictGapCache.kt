@@ -168,6 +168,14 @@ class DictGapCache(private val store: SqlDelightDeviceStore, private val driver:
         if (c == null || m == null) null else GapFillCounts(c, m)
     }
 
+    /** One more reference cached by the background queue (between runs): `gap_fill.cached` + 1, `missing` - 1 (not below 0). */
+    internal fun countLanded() = store.transaction { tx ->
+        val c = tx.syncState.get(CACHED_KEY)?.toIntOrNull() ?: 0
+        val m = tx.syncState.get(MISSING_KEY)?.toIntOrNull() ?: 0
+        tx.syncState.put(CACHED_KEY, (c + 1).toString())
+        tx.syncState.put(MISSING_KEY, maxOf(0, m - 1).toString())
+    }
+
     internal fun state(key: String): String? = store.read { it.syncState.get(key) }
 
     internal fun putState(values: Map<String, String>) = store.transaction { tx -> values.forEach { (k, v) -> tx.syncState.put(k, v) } }
