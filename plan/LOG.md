@@ -1447,3 +1447,4 @@
 2026-11-20T12:14:51Z LOOP-31-CORE-B REVIEW_APPROVE; web-side risks written into LOOP-31-WEB ticket; merge after CCR commit
 2026-11-20T12:17:26Z LF-A5 HANDOFF (both flavors, 4 known fails) -> merged + pushed t/LF-int; DISPATCH LF-A8
 2026-11-20T12:20:29Z LOOP-31-AND DONE (LOCAL_API_VERSION 3; LocalQueueLoader.load +keepGoingNewTarget outside paths, accepted) -> merged + pushed t/LF-int; DISPATCH LF-A1b
+2026-11-20T12:28:23Z LF-A6 DONE (+approved DictChoice hook, top60k never overridden) -> merged + pushed t/LF-int; DISPATCH LF-A7

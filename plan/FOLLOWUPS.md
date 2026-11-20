@@ -537,3 +537,4 @@
 - LF-A2 minors (run 36): moved PROXY->LOCAL ops without handlers sit behind 20 s readiness gate until LF-A3..A8 land (transitional); UiPathNeverTouchesNetworkTest exempts STILL_FORWARDS -> LF-X1 strict pass. Others -> LF-A2b.
 - LOOP-31-CORE-B minors (run 36): fuzz never applies a state that already includes a pending answer (double subtraction); presentLoop is a top-level export, not CoreJs (README C-31 says CoreJs).
 - LF-A5 (run 36): delete now-unused LocalCardQuery + CardQueryResult.Forward (production binds ReplicaCardQuery); indexSeqLists depends on core's exact SQL text (guarded by SeqListRewriteTest).
+- LF-A6 (run 36): no bridge hook to re-evaluate dict auto-install on sync outcome (hourly UNMETERED worker instead); search misses not gap-filled (no query kind); DictLookup.remote unused (kept for ParityDevice).
