@@ -477,7 +477,7 @@
 					</div>
 				{:else if s.phase === 'settling'}
 					<!-- The held card is inert: a status line, never a button-looking control. -->
-					<p class="saving" role="status" data-testid="saving">{slow ? rv('rv.slow.saving') : rv('rv.saving')}</p>
+					<p class="saving" role="status" data-testid="saving">{s.saving ? (slow ? rv('rv.slow.saving') : rv('rv.saving')) : rv('rv.settling.body')}</p>
 					{#if s.pendingStopped}
 						<Button variant="quiet" icon="sync" loading={s.busy} onclick={() => void s.reload()}>{rv('rv.done.check')}</Button>
 					{/if}

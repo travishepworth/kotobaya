@@ -97,6 +97,6 @@ export function presentedParts(view: LoopView): LoopParts {
 		pending: [],
 		hasLocalCard: false,
 		localHeadKind: null,
-		dayEndsAt: view.loop.laterToday.nextDueAt?.getTime() ?? 0
+		dayEndsAt: 0 // unused without pending answers (Home holds none)
 	}).parts;
 }

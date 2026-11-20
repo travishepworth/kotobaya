@@ -193,7 +193,7 @@ class Outbox {
 	add(e: PendingAnswer, kind: QueueItemKind, resultingState: CardState | null, dueAt: number | null): void {
 		this.seq++;
 		this.log.push({ seq: this.seq, answerId: e.answerId, kind, rating: e.button.rating, resultingState, dueAt, acked: false });
-		if (this.log.length > 200) this.log.splice(0, this.log.length - 200);
+		this.trimLog();
 		this.added.push({ seq: this.seq, id: e.item.card.id });
 		if (this.added.length > 200) this.added.splice(0, this.added.length - 200);
 		this.pending.push(e);
@@ -210,6 +210,15 @@ class Outbox {
 		this.pending = this.pending.filter((e) => !es.includes(e));
 		for (const l of this.log) if (es.some((e) => e.answerId === l.answerId)) l.acked = true;
 		this.sync();
+	}
+
+	/** Applied seq per live page: an entry is only dropped once acked and no page's response may lack it. */
+	readonly applied = new Map<object, number>();
+
+	private trimLog(): void {
+		const floor = Math.min(...this.applied.values(), this.seq);
+		let extra = this.log.length - 200;
+		this.log = this.log.filter((l) => !(extra > 0 && l.acked && l.seq <= floor && extra-- > 0));
 	}
 
 	/** The answer is no longer an answer (undone, withdrawn, restored, dropped): the presenter forgets it. */
@@ -243,6 +252,7 @@ export function resetOutboxForTests(): void {
 	outbox.tail = Promise.resolve();
 	outbox.count = 0;
 	outbox.log = [];
+	outbox.applied.clear();
 	outbox.retryIds.clear();
 }
 
@@ -423,9 +433,14 @@ export class ReviewPage {
 				dayEndsAt: this.dayEndsAt?.getTime() ?? 0
 			});
 		} catch {
-			return null;
+			// Invalid host input: never hide a held card and pending answers behind a full-page error.
+			return outbox.count > 0 ? { screen: 'settling', parts: { learning: 0, later: 0, review: 0, new: 0 }, untilStop: 0 } : null;
 		}
 	});
+	/** Answers are on their way to the server (the held card is saving). */
+	get saving(): boolean {
+		return outbox.count > 0;
+	}
 	/** No card held but one is expected: the header stays, the grade buttons go, the queue is fetched again. */
 	readonly settling = $derived(this.presentation?.screen === 'settling');
 	/** What the stage shows: the current card, or the held one while answers settle. */
@@ -561,7 +576,7 @@ export class ReviewPage {
 	 * `keep_going` is the persisted per-client flag (C2, dropped on a new study day). A `reviewing` response with
 	 * no item yet while the server reports entries still to materialize is fetched again (C5, at most 3 times).
 	 */
-	private async fetchQueue(guard = false, append = false): Promise<boolean> {
+	private async fetchQueue(guard = false, append = false, polled = false): Promise<boolean> {
 		if (this.isDrill || this.disposed) return false;
 		const gen = this.gen;
 		const epoch = this.epoch;
@@ -575,7 +590,8 @@ export class ReviewPage {
 			return this.getQueue(keepGoing, newTarget);
 		};
 		let q = await fetchWithKeepGoing(get);
-		for (let i = 0; i < MATERIALIZE_RETRIES && !append && materializing(q); i++) {
+		// A timer-driven fetch (`polled`) is one request: C5's three quick retries are spent by the first fetch.
+		for (let i = 0; i < MATERIALIZE_RETRIES && !append && !polled && materializing(q); i++) {
 			if (gen !== this.gen) return false;
 			q = await get(sent, keepGoingNewTarget());
 		}
@@ -615,6 +631,7 @@ export class ReviewPage {
 				: fresh;
 		this.applied++;
 		this.appliedSeq = outboxSeq;
+		outbox.applied.set(this, outboxSeq);
 		this.view = loopView(q);
 		this.keepGoing = sent;
 		this.toMaterialize = q.toMaterialize ?? 0;
@@ -705,7 +722,7 @@ export class ReviewPage {
 		this.wakeTimer = null;
 		this.lastWake = Date.now();
 		const gen = this.gen;
-		await this.refreshWhenIdle();
+		await this.refreshWhenIdle(true);
 		// A fetch that failed or was dropped leaves no timer behind: keep the schedule alive (not after dispose).
 		if (gen === this.gen && !this.disposed && this.wakeTimer === null) this.scheduleWake();
 	}
@@ -739,6 +756,7 @@ export class ReviewPage {
 		if (!this.disposed) return;
 		this.disposed = false;
 		this.abort = new AbortController();
+		outbox.applied.set(this, this.appliedSeq);
 		if (this.keptGoing) startKeepGoing(this.keptGoing, this.keptTarget);
 		this.keptGoing = null;
 		this.keptTarget = null;
@@ -751,6 +769,7 @@ export class ReviewPage {
 	/** Leaving the screen: no timer or queue fetch outlives it (answers in the outbox still go out). */
 	dispose(): void {
 		this.disposed = true;
+		outbox.applied.delete(this);
 		this.gen++;
 		this.clearWake();
 		if (this.dueTimer !== null) clearTimeout(this.dueTimer);
@@ -772,7 +791,7 @@ export class ReviewPage {
 	 * is left on screen and nothing is in flight is tried again (in any mode): no later answer would trigger
 	 * another one, and the screen would show an end state while the server has cards.
 	 */
-	private async refresh(): Promise<void> {
+	private async refresh(polled = false): Promise<void> {
 		if (this.isDrill || this.disposed) return;
 		if (outbox.pending.length > 0) {
 			// Answers are still being saved: refill instead, so the local queue does not drain meanwhile.
@@ -781,8 +800,8 @@ export class ReviewPage {
 		}
 		const gen = this.gen;
 		try {
-			for (let i = 0; i <= MATERIALIZE_RETRIES; i++) {
-				const applied = await this.fetchQueue(true);
+			for (let i = 0; i <= (polled ? 0 : MATERIALIZE_RETRIES); i++) {
+				const applied = await this.fetchQueue(true, false, polled);
 				if (applied || this.current || outbox.pending.length > 0 || gen !== this.gen) break;
 			}
 		} catch {
@@ -838,9 +857,9 @@ export class ReviewPage {
 	}
 
 	/** Refresh once every queued answer (also those of an earlier visit) has been sent. */
-	private async refreshWhenIdle(): Promise<void> {
+	private async refreshWhenIdle(polled = false): Promise<void> {
 		await outbox.tail;
-		await this.refresh();
+		await this.refresh(polled);
 	}
 
 	private async fetchDrill(source: string): Promise<void> {

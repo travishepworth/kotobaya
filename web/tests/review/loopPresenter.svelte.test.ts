@@ -81,7 +81,14 @@ describe('no terminal screen while something is pending', () => {
 	const phases = ['reviewing', 'waiting', 'goal_reached', 'done_for_today', 'empty'] as const;
 	const terminal = ['goalReached', 'doneForToday', 'done'];
 
-	it.each(phases)('answer outstanding, stale response says %s: never a terminal screen', async (phase) => {
+	// Each row applies a full unguarded fetch (reload) while the answer is unacknowledged: the stale response is
+	// really in `view` (asserted), and the presenter still refuses to end the visit.
+	const rows: { phase: (typeof phases)[number]; parts: LoopOver['parts'] }[] = [
+		...phases.map((phase) => ({ phase, parts: {} })),
+		{ phase: 'goal_reached', parts: { review: 2 } },
+		{ phase: 'empty', parts: { review: 2 } }
+	];
+	it.each(rows)('answer outstanding, applied response says $phase with parts $parts: settling, never terminal', async ({ phase, parts }) => {
 		api.answerReview.mockImplementation(() => new Promise(() => {}));
 		let first = true;
 		api.getReviewQueue.mockImplementation(async () => {
@@ -90,7 +97,7 @@ describe('no terminal screen while something is pending', () => {
 				return queue({ items: reviewCards(1), loop: { phase: 'reviewing', parts: { review: 1 } } });
 			}
 			// The server has not seen the answer: nothing served and a stale phase.
-			return queue({ items: [], loop: { phase, parts: {} } });
+			return queue({ items: [], loop: { phase, parts } });
 		});
 		const { page, dispose } = mount();
 		page.start(null);
@@ -98,10 +105,11 @@ describe('no terminal screen while something is pending', () => {
 		page.flip();
 		void page.grade(good);
 		await tick(1);
-		for (let i = 0; i < 4; i++) {
-			expect(terminal).not.toContain(page.phase);
-			await tick(5000);
-		}
+		await page.reload();
+		await tick();
+		expect(page.view?.phase).toBe(phase); // the stale response was applied
+		expect(page.saving).toBe(true);
+		expect(terminal).not.toContain(page.phase);
 		expect(page.phase).toBe('settling');
 		dispose();
 	});
@@ -136,6 +144,18 @@ describe('settling, never a pending screen', () => {
 		for (let i = 0; i < 5 && page.phase === 'settling'; i++) await tick(5100);
 		expect(page.phase).toBe('card');
 		expect(calls).toBeGreaterThanOrEqual(6);
+	});
+
+	it('C5: after the first three retries, exactly one request per 5 s tick', async () => {
+		api.getReviewQueue.mockResolvedValue(queue({ items: [], toMaterialize: 3, loop: { phase: 'reviewing' } }));
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(4); // the first fetch and its three retries
+		for (let n = 1; n <= 3; n++) {
+			await tick(5000);
+			expect(api.getReviewQueue).toHaveBeenCalledTimes(4 + n);
+		}
 		dispose();
 	});
 });
