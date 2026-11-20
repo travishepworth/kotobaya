@@ -20,7 +20,7 @@ vi.mock('../../src/lib/review/api', () => ({
 	settingsApi: { listSettings: async () => ({ items: [] }) }
 }));
 
-import { ReviewPage, resetOutboxForTests, keepGoingAvailable } from '../../src/lib/state/review.svelte';
+import { ReviewPage, resetOutboxForTests, keepGoingAvailable, trimAnswerLog } from '../../src/lib/state/review.svelte';
 import { loopView } from '../../src/lib/review/loop';
 import { clearKeepGoing, keepGoingNewTarget } from '../../src/lib/review/keepGoingDay';
 
@@ -111,6 +111,44 @@ describe('no terminal screen while something is pending', () => {
 		expect(page.saving).toBe(true);
 		expect(terminal).not.toContain(page.phase);
 		expect(page.phase).toBe('settling');
+		dispose();
+	});
+
+	it('answer acked (outbox empty) while an unguarded reload is in flight that says goal_reached: settling until the follow-up fetch', async () => {
+		// The presenter-only case: the answer is acknowledged, but it was given after the reload's request was sent
+		// (seq > appliedSeq), so the stale response does not show it and it still counts as pending.
+		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
+		const held: ((q: unknown) => void)[] = [];
+		let first = true;
+		api.getReviewQueue.mockImplementation(() => {
+			if (first) {
+				first = false;
+				return Promise.resolve(queue({ items: reviewCards(1), loop: { phase: 'reviewing', parts: { review: 1 } } }));
+			}
+			return new Promise((res) => held.push(res));
+		});
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		// The unguarded full fetch `reload()` runs, without reload's busy lock (which refuses taps meanwhile): the
+		// only way an answer can be given after the applied response's request was sent.
+		const reload = (page as unknown as { fetchQueue: () => Promise<boolean> }).fetchQueue(); // sent before the tap
+		await tick();
+		expect(held).toHaveLength(1);
+		page.flip();
+		void page.grade(good);
+		await tick();
+		expect(page.saving).toBe(false); // acknowledged: the outbox is empty
+		expect(held.length).toBeGreaterThanOrEqual(2); // the follow-up fetch after the ack is in flight
+		const stale = queue({ items: [], loop: { phase: 'goal_reached', parts: {} } });
+		held[0](stale);
+		await reload;
+		await tick();
+		expect(page.view?.phase).toBe('goal_reached'); // the stale response was applied ...
+		expect(page.phase).toBe('settling'); // ... and the acked answer it does not show keeps the visit open
+		for (const r of held.slice(1)) r(queue({ items: [], loop: { phase: 'goal_reached', parts: {} } }));
+		await tick();
+		expect(page.phase).toBe('goalReached'); // the follow-up fetch shows the answer: now it may end
 		dispose();
 	});
 
@@ -216,5 +254,33 @@ describe('Keep going (ADR-052)', () => {
 		expect(keepGoingAvailable(loopView(queue({ items: [], loop: { phase: 'empty', keepGoingAvailable: false } })))).toBe(false);
 		expect(keepGoingAvailable(loopView(queue({ items: [], loop: { phase: 'waiting', keepGoingAvailable: false } })))).toBe(false);
 		expect(keepGoingAvailable(loopView(queue({ items: [], loop: { phase: 'waiting', keepGoingAvailable: true } })))).toBe(true);
+	});
+});
+
+describe('trimAnswerLog (presenter log bound)', () => {
+	const entries = (n: number, acked: (i: number) => boolean) =>
+		Array.from({ length: n }, (_, i) => ({ seq: i + 1, acked: acked(i + 1) }));
+
+	it('more than 200 unacked entries: nothing is dropped', () => {
+		const log = entries(250, () => false);
+		expect(trimAnswerLog(log, 250)).toHaveLength(250);
+	});
+
+	it('drops only acked entries at or below every live page\'s applied seq, oldest first, down to 200', () => {
+		// 260 entries; odd seqs acked; the slowest live page has applied seq 100.
+		const log = entries(260, (seq) => seq % 2 === 1);
+		const out = trimAnswerLog(log, 100);
+		const dropped = log.filter((l) => !out.includes(l));
+		expect(dropped).toHaveLength(50); // only 50 acked entries are <= 100: still 210 left (above the bound)
+		expect(dropped.every((l) => l.acked && l.seq <= 100)).toBe(true);
+		expect(out.filter((l) => !l.acked)).toHaveLength(130); // every unacked entry is kept
+		expect(out.some((l) => l.seq > 100 && l.acked)).toBe(true); // acked but newer than a live page: kept
+	});
+
+	it('stops at the bound: never trims below 200', () => {
+		const log = entries(230, () => true);
+		const out = trimAnswerLog(log, 230);
+		expect(out).toHaveLength(200);
+		expect(out[0].seq).toBe(31); // the oldest 30 went
 	});
 });
