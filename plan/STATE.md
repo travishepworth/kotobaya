@@ -7,7 +7,8 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 ## RESUME HERE (run 36, 2026-11-20) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
-Design DONE: plan/tickets/LF-DESIGN.md + 17 tickets in BACKLOG. Running: C-31 attempt 2 (architect, worktree .claude/worktrees/agent-a4595e6e4905f3ab4, t/C-31-local-first; may add LF-A8 ticket in scratchpad). Then LOOP-31-CORE-A + LF-A1/A2/A4/A5 (1 Gradle-heavy at a time).
+Design DONE: plan/tickets/LF-DESIGN.md + 18 tickets (LF-A8 added). C-31 APPROVED r2, merged into integration branch t/LF-int (worktree scratchpad/lfint, pushed). Writers branch from origin/t/LF-int; merge each into t/LF-int; t/LF-int -> main when ALL modules green, then ONE release.
+Running (from t/LF-int): LOOP-31-CORE-A (writer-senior), LF-A1 (writer-senior), LF-A2 (writer-senior). Next: LF-A4, LF-A5 (after a slot), LOOP-31-CORE-B after CORE-A.
 Cleanup done: all merged worktrees/branches removed (local + origin t/*); main == origin/main. Kept release/0.1.9 (1 unmerged commit).
 
 ## Previous (2026-11-20) — perf + UX-1, direct session (not a ticket run)
