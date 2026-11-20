@@ -9,12 +9,21 @@ export interface LoopOver {
 	backlog?: { reviews: number; beyondLimit: number };
 	reviews?: { today: number; limit: number | null };
 	newCards?: { today?: number; goal?: number; available?: boolean };
+	/** C-31 / ADR-049: `until_stop_parts` (and `until_stop` = their sum); absent = an older server. */
+	parts?: { learning?: number; later?: number; review?: number; new?: number };
+	keepGoingAvailable?: boolean;
 }
 
 export function loop(o: LoopOver = {}): ReviewLoop {
 	const learning = o.ready?.learning ?? 0;
 	const review = o.ready?.review ?? 0;
+	const p = o.parts;
+	const parts = p
+		? { learning: p.learning ?? 0, later: p.later ?? 0, review: p.review ?? 0, _new: p.new ?? 0 }
+		: undefined;
 	return {
+		...(parts ? { untilStopParts: parts, untilStop: parts.learning + parts.later + parts.review + parts._new } : {}),
+		...(o.keepGoingAvailable !== undefined ? { keepGoingAvailable: o.keepGoingAvailable } : {}),
 		phase: o.phase ?? 'empty',
 		keepGoing: o.keepGoing ?? false,
 		ready: { learning, review, total: learning + review },
