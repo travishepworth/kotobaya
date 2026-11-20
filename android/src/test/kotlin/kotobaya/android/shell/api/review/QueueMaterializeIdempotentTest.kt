@@ -15,6 +15,7 @@ import kotobaya.android.shell.api.review.QueueTestSupport.queue
 import kotobaya.android.shell.api.review.QueueTestSupport.str
 import kotobaya.android.shell.parity.ParityDevice
 import kotobaya.contracts.sync.JsonObject
+import kotobaya.sync.client.store.bookkeeping
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -74,14 +75,15 @@ class QueueMaterializeIdempotentTest {
     @Test
     fun whileMaterializingIsNotAllowedTheEntriesAreCountedAndNothingIsMinted() {
         val d = device("queue-materialize-count")
-        d.failures.failures = 1 // a failed sync cycle since the last complete pull
+        // LF-A1 (C-31): only "no complete pull yet" (or a pending rebuild) stops materialization, never a failed cycle
+        d.store.transaction { it.bookkeeping.lastSyncAt = null }
         val body = d.queue().json()
         assertEquals(0, body.items().size)
         assertEquals(2L, body.long("/counts/new"))
         assertEquals(2L, body.long("/to_materialize"))
         assertEquals(0, d.minted().size)
 
-        d.failures.failures = 0
+        d.store.transaction { it.bookkeeping.lastSyncAt = d.clock.now }
         val allowed = d.queue().json()
         assertEquals(2, allowed.items().size)
         assertEquals(0L, allowed.long("/to_materialize"))

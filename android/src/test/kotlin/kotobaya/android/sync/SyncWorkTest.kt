@@ -110,6 +110,18 @@ class SyncWorkTest {
     }
 
     @Test
+    fun aLocalChangeKeepsOneDelayedBackstopThatSurvivesTheProcessUntilCancelled() {
+        repeat(5) { SyncWork.requestDebounced(wm) }
+        val local = live(SyncWork.LOCAL)
+        assertEquals(1, local.size, "one backstop for any number of changes")
+        assertEquals(SyncWork.DEBOUNCED_DELAY_MS, local.single().initialDelayMillis)
+        assertTrue(local.single().constraints.requiredNetworkType == androidx.work.NetworkType.CONNECTED)
+
+        SyncWork.cancelDebounced(wm)
+        assertEquals(emptyList(), live(SyncWork.LOCAL))
+    }
+
+    @Test
     fun aFailedRunIsRetriedPerPolicyAndASuccessCancelsTheRetry() {
         result = CycleResult.Failed(FailureKind.SERVER_ERROR, SyncStep.PUSH, "503", 503)
         SyncWork.requestNow(wm)

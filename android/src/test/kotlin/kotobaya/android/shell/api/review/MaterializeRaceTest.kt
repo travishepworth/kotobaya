@@ -114,8 +114,11 @@ class MaterializeRaceTest {
             }
         }
 
-        private fun waitingForWriteConnection(t: Thread): Boolean =
-            t.stackTrace.any { it.className == "android.database.sqlite.SQLiteConnectionPool" && it.methodName == "waitForConnection" }
+        // LF-A1: outermost store transactions first queue on the store's fair writer lock (SHELL.md L-9 bounded wait)
+        private fun waitingForWriteConnection(t: Thread): Boolean = t.stackTrace.let { st ->
+            st.any { it.className == "android.database.sqlite.SQLiteConnectionPool" && it.methodName == "waitForConnection" } ||
+                (st.any { it.className.startsWith("java.util.concurrent.locks.") } && st.any { it.className == "kotobaya.android.sync.SqlDelightDeviceStore" })
+        }
 
         companion object {
             const val MAX_WAIT_MS = 3_000L
@@ -139,6 +142,13 @@ class MaterializeRaceTest {
     }
 
     private class Run(val device: ParityDevice, val gate: WindowGate, private val dictDir: File, private val driver: SqlDriver) {
+        /**
+         * LF-A1: a second device store over the same database (its own writer lock): the control needs two writers that
+         * no store serializes, now that one store's outermost transactions take a fair in-process lock.
+         */
+        fun twin(): ParityDevice =
+            ParityDevice(device.deviceId, device.clock.now, LocalRoutes.all, dictDir = ParityTemp.next("race-dict-twin"), driver = driver, noteIds = gate)
+
         fun close() {
             driver.close()
             dictDir.deleteRecursively()
@@ -275,7 +285,8 @@ class MaterializeRaceTest {
             val run = device(transactions = false)
             try {
                 val d = run.device
-                race({ d.queue().status }, { d.queue().status })
+                val twin = run.twin()
+                race({ d.queue().status }, { twin.queue().status })
                 assertTrue(run.gate.met.get() > 0, "iteration $i: both writers were held in the window")
                 assertTrue(drawn.any { d.liveNotesOf(it).size > 1 }, "iteration $i: without the transaction the entry is duplicated")
             } finally {

@@ -58,10 +58,9 @@ val queueFeature = FeatureEntry(
                         val pairing = koin.getOrNull<kotobaya.android.pairing.PairingRepository>() ?: return true
                         val paired = pairing.isPaired
                         if (!paired) return true
-                        val coordinator = koin.getOrNull<kotobaya.android.sync.SyncCoordinator>() ?: return false
                         val store = koin.getOrNull<kotobaya.android.sync.SqlDelightDeviceStore>() ?: return false
                         val (lastSyncAt, rebuild) = store.read { it.bookkeeping.lastSyncAt to it.bookkeeping.rebuildPending }
-                        return materializeAllowed(paired, coordinator.running.value, coordinator.consecutiveFailures, lastSyncAt, rebuild)
+                        return materializeAllowed(paired, lastSyncAt, rebuild)
                     }
                 },
             )
