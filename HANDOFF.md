@@ -2,9 +2,10 @@
 
 STATUS: DONE
 BRANCH: t/LF-A2
-CHECK: `make check MODULE=android` → red. 635 tests ran and 5 failed. 4 of those failed before this change. 1 is new and is caused by this change:
-- `WordAudioPrefetchTest.migrationFromVersion1AddsTheTable` expects `Schema.version == 2`. It is 3 now because `2.sqm` adds `response_cache`. The fix is one line (`2L` → `3L`), in a file outside my owned paths.
-- Failing before this change: `RouteTableTest.everyLocalOperationIsRegisteredOrPending` (LF-A3, LF-A4, LF-A6, LF-A8), `ParityExpectTest`, and the 2 `LocalParityTest` tests (LF-A4, LF-A8, LOOP-31-AND).
+CHECK: `make check MODULE=android` → red. 635 tests ran and 4 failed, the same 4 that failed before this change:
+- `RouteTableTest.everyLocalOperationIsRegisteredOrPending` (LF-A3, LF-A4, LF-A6, LF-A8)
+- `ParityExpectTest.everyScenarioMeetsItsOwnExpectations`, plus the 2 `LocalParityTest` tests (LF-A4, LF-A8, LOOP-31-AND)
+- The orchestrator approved one edit outside my paths: `WordAudioPrefetchTest` now expects schema version `3L`, because `2.sqm` raised it.
 
 ## Changed (≤ 6 lines)
 - `ApiOperations`: classes regenerated from `ops.json`; new `OpClass.CACHED`.

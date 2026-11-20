@@ -161,7 +161,7 @@ class WordAudioPrefetchTest {
         val d = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         AppDatabase.Schema.create(d)
         d.execute(null, "DROP TABLE tts_audio", 0)
-        assertEquals(2L, AppDatabase.Schema.version)
+        assertEquals(3L, AppDatabase.Schema.version)
         AppDatabase.Schema.migrate(d, 1, 2)
         TtsAudioTable(d).upsert("3", "たべる", hash('c'), 1, 2)
         val n = d.executeQuery(null, "SELECT count(*) FROM tts_audio", { c -> QueryResult.Value(if (c.next().value) c.getLong(0) else null) }, 0).value
