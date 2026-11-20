@@ -3,6 +3,7 @@ package kotobaya.android.shell.api
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.cache.ResponseCache
+import kotobaya.android.sync.StoreBusyException
 import kotobaya.android.shell.api.actions.routes as actionsRoutes
 import kotobaya.android.shell.api.browse.routes as browseRoutes
 import kotobaya.android.shell.api.cards.routes as cardsRoutes
@@ -139,6 +140,8 @@ class LocalApi(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
+            // LF-A1b: the write connection stayed busy past its bound (StoreBusyException); nothing was written, so 503 shell_rebuilding + Retry-After like L-8 and the SPA retries
+            if (generateSequence(e) { it.cause }.take(8).any { it is StoreBusyException }) return problem(Problems.shellRebuilding())
             logError("${op.operationId} failed (request $requestId)", e)
             return problem(Problems.internal())
         }

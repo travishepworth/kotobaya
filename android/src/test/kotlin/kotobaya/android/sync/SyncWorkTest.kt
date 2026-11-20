@@ -42,11 +42,15 @@ class SyncWorkTest {
     private var result: CycleResult = CycleResult.Completed(0, 0, 0)
     private var cycles = 0
 
+    /** While set, a cycle blocks on it (a worker that stays RUNNING). */
+    @Volatile private var hold: java.util.concurrent.CountDownLatch? = null
+
     private val coordinator by lazy {
         SyncCoordinator(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             runCycle = {
                 cycles++
+                hold?.await(10, java.util.concurrent.TimeUnit.SECONDS)
                 result
             },
             isPaired = { true },
@@ -117,6 +121,39 @@ class SyncWorkTest {
         assertEquals(SyncWork.DEBOUNCED_DELAY_MS, local.single().initialDelayMillis)
         assertTrue(local.single().constraints.requiredNetworkType == androidx.work.NetworkType.CONNECTED)
 
+        SyncWork.cancelDebounced(wm)
+        assertEquals(emptyList(), live(SyncWork.LOCAL))
+    }
+
+    /**
+     * LF-A1b item 3: a change made while the LOCAL backstop is RUNNING (it may have pushed already) gets a new backstop
+     * behind it; KEEP would have dropped it. One not-yet-started backstop still covers any number of changes.
+     */
+    @Test
+    fun aChangeWhileTheBackstopRunsAppendsAnotherBackstopBehindIt() {
+        SyncWork.requestDebounced(wm)
+        val first = live(SyncWork.LOCAL).single()
+        val latch = java.util.concurrent.CountDownLatch(1)
+        hold = latch
+        val driver = WorkManagerTestInitHelper.getTestDriver(ctx)!!
+        driver.setInitialDelayMet(first.id)
+        driver.setAllConstraintsMet(first.id)
+        val deadline = System.currentTimeMillis() + 5_000
+        while (wm.getWorkInfoById(first.id).get()?.state != WorkInfo.State.RUNNING) {
+            check(System.currentTimeMillis() < deadline) { "backstop did not start" }
+            Thread.sleep(10)
+        }
+
+        repeat(3) { SyncWork.requestDebounced(wm) }
+        val during = live(SyncWork.LOCAL)
+        assertEquals(2, during.size, "the running backstop plus one appended: ${during.map { it.state }}")
+        val next = during.single { it.id != first.id }
+        assertEquals(SyncWork.DEBOUNCED_DELAY_MS, next.initialDelayMillis)
+
+        hold = null
+        latch.countDown()
+        runToEnd(first.id)
+        assertEquals(listOf(next.id), live(SyncWork.LOCAL).map { it.id }, "the appended backstop is still to run")
         SyncWork.cancelDebounced(wm)
         assertEquals(emptyList(), live(SyncWork.LOCAL))
     }

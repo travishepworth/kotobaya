@@ -115,8 +115,9 @@ class StoreFailureCounter(private val store: SqlDelightDeviceStore) : FailureCou
  * [quietMs] (2 s) after the last local change and at most [maxWaitMs] (10 s) after the first change no cycle has
  * started for. If a cycle is running when the timer fires, the debounced cycle starts after it (never joins it), so a
  * change made during a cycle is pushed by the next one. Process death: every change also keeps one delayed
- * WorkManager request ([SyncWork.requestDebounced]); a debounced cycle that completed with no change after it
- * cancels it.
+ * WorkManager request ([SyncWork.requestDebounced], via [LocalChangeBackstop]); a debounced cycle that completed with
+ * no change after it cancels it. The cycle uses [SyncTrigger.REVIEW_SESSION]: a `LOCAL_CHANGE` value belongs in
+ * SyncCoordinator.kt.
  */
 class SyncTriggers(
     private val coordinator: SyncCoordinator,
@@ -128,6 +129,8 @@ class SyncTriggers(
     private val maxWaitMs: Long = LOCAL_CHANGE_MAX_WAIT_MS,
     /** Whether the outbox still holds `pending` rows (a cycle that ended before seeing a change: run once more). */
     private val hasPending: () -> Boolean = { false },
+    /** The process-death backstop of a local change (production: [SyncWork.LOCAL] through [workManager]). */
+    private val backstop: LocalChangeBackstop = WorkManagerBackstop(workManager, scope),
 ) {
     private val lock = Any()
 
@@ -141,7 +144,6 @@ class SyncTriggers(
 
     /** After any local change: schedules a debounced cycle (see the class comment). Never blocks. */
     fun localChange() {
-        runCatching { workManager()?.let(SyncWork::requestDebounced) }
         synchronized(lock) {
             val now = nowMs()
             changes++
@@ -151,6 +153,9 @@ class SyncTriggers(
             // lazy: [timer] is set before the coroutine can look at it
             timer = scope.launch(start = CoroutineStart.LAZY) { delay(wait); fire() }.also { it.start() }
         }
+        // LF-A1b: after the change is counted. A finishing cycle decides and cancels the backstop under [lock], so either
+        // it saw this change (and keeps the backstop) or its cancel was issued before this request (which re-enqueues).
+        runCatching { backstop.request() }
     }
 
     private suspend fun fire() {
@@ -166,8 +171,9 @@ class SyncTriggers(
         coordinator.running.first { !it }
         var outcome = coordinator.sync(SyncTrigger.REVIEW_SESSION)
         if (outcome.completed() && runCatching(hasPending).getOrDefault(false)) outcome = coordinator.sync(SyncTrigger.REVIEW_SESSION)
-        if (outcome.completed() && synchronized(lock) { changes == seen }) {
-            runCatching { workManager()?.let(SyncWork::cancelDebounced) }
+        if (outcome.completed()) {
+            // decided and issued under [lock] (LF-A1b): a change counted after this check requests its backstop after it
+            synchronized(lock) { if (changes == seen) runCatching { backstop.cancel() } }
         }
     }
 
@@ -187,6 +193,31 @@ class SyncTriggers(
 
         /** SYNC.md 6.1 "Local-change trigger, debounced": maximum wait after the first uncovered change. */
         const val LOCAL_CHANGE_MAX_WAIT_MS: Long = 10_000
+    }
+}
+
+/** The process-death backstop of [SyncTriggers.localChange] (SYNC.md 6.1): one delayed sync request. */
+interface LocalChangeBackstop {
+    /** Makes sure a not-yet-started backstop covers the change just committed. Never blocks. */
+    fun request()
+
+    /** A cycle covered every change: drops the backstop. */
+    fun cancel()
+}
+
+/**
+ * [SyncWork.requestDebounced] (on [scope]: it reads WorkManager's state) / [SyncWork.cancelDebounced] (enqueues only);
+ * nothing when there is no WorkManager. Both go through WorkManager's serial task executor, so a cancel issued before
+ * a request is applied before it.
+ */
+class WorkManagerBackstop(private val workManager: () -> WorkManager?, private val scope: CoroutineScope) : LocalChangeBackstop {
+    override fun request() {
+        val wm = workManager() ?: return
+        scope.launch { runCatching { SyncWork.requestDebounced(wm) } }
+    }
+
+    override fun cancel() {
+        workManager()?.let(SyncWork::cancelDebounced)
     }
 }
 
