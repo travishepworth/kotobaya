@@ -1,7 +1,7 @@
 # LF-X1 — Acceptance: black-hole network run of the shell API
 
 - Phase: P10 local-first · Model: sonnet · Risk: med
-- Deps: LF-A1, LF-A2, LF-A3, LF-A4, LF-A5, LF-A6, LOOP-31-AND
+- Deps: LF-A1, LF-A2, LF-A3, LF-A4, LF-A5, LF-A6, LF-A8, LOOP-31-AND
 - Branch: t/LF-X1-blackhole
 - Owned paths (only edit these): acceptance/
 - Module(s) for CI: android (acceptance target)
