@@ -4,11 +4,11 @@ Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
 Updated: run 34 (2026-11-19)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
-## RESUME HERE (run 36, 2026-11-20) — LOCAL-FIRST round (ADR-050, ADR-051)
+## RESUME HERE (run 37, 2026-11-20) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
 Design DONE: plan/tickets/LF-DESIGN.md + 18 tickets (LF-A8 added). C-31 APPROVED r2, merged into integration branch t/LF-int (worktree scratchpad/lfint, pushed). Writers branch from origin/t/LF-int; merge each into t/LF-int; t/LF-int -> main when ALL modules green, then ONE release.
-Running (from t/LF-int): LOOP-31-WEB, LF-A1b (+app-open sync trigger), LF-A2b (writer-senior). LF-A8 part 1 IN REVIEW; LF-A8b (rest) after it. Then LF-W1 (after WEB), LF-W2, LF-W3, LF-GOLD, LF-X1. Merged into LF-int (12): C-31, CORE-A, CORE-B, LF-A1..A7 (except A8), LOOP-31-API, LOOP-31-AND.
+Running (from t/LF-int, run 37 re-dispatch, opus only — user: NO fable agents): LOOP-31-WEB, LF-A1b, LF-A2b (resumed in their old worktrees), LF-A8b. LF-A8 part 1 MERGED into LF-int. Then LF-W1 (after WEB), LF-W2, LF-W3, LF-GOLD (after A8b), LF-X1. Merged into LF-int (13): C-31, CORE-A, CORE-B, LF-A1..A8, LOOP-31-API, LOOP-31-AND.
 Cleanup done: all merged worktrees/branches removed (local + origin t/*); main == origin/main. Kept release/0.1.9 (1 unmerged commit).
 
 ## Previous (2026-11-20) — perf + UX-1, direct session (not a ticket run)

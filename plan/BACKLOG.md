@@ -915,4 +915,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LF-A2b — Shell response cache: LF-A2 review minors (race, stale mark, wiring test, trigger) · model: opus · risk: med · deps: LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A2b.md)
 - LF-A1b — Shell: StoreBusy -> retry/503 not 500; debounce races (LF-A1 review minors) · model: opus · risk: med · deps: LF-A1, LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A1b.md)
 - LF-GOLD — Record shell parity goldens for local-first scenarios · model: haiku · risk: low · deps: LF-A3, LF-A6, LF-A8, LF-A8b, LOOP-31-AND · status: TODO (ticket: plan/tickets/LF-GOLD.md)
-- LF-A8b — Shell: confusables, grammar, media writes local (rest of LF-A8) · model: opus · risk: high · deps: LF-A8 · status: TODO (ticket: plan/tickets/LF-A8b.md)
+- LF-A8b — Shell: confusables, grammar, media writes local (rest of LF-A8) · model: opus · risk: high · deps: LF-A8 · status: RUNNING (ticket: plan/tickets/LF-A8b.md)
