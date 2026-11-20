@@ -8,6 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import kotobaya.android.dict.InstalledDictionary
+import kotobaya.android.search.ReplicaCardQuery
 import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.LocalRoutes
 import kotobaya.android.shell.api.ShellGate
@@ -62,7 +63,7 @@ class BulkQueryWiringTest {
             allowOverride(true)
             modules(checkNotNull(shellFeature.module), base)
         }.also { app = it }.koin
-        assertTrue(koin.get<CardQuery>() is LocalCardQuery)
+        assertTrue(koin.get<CardQuery>() is ReplicaCardQuery)
 
         val forwarded = ArrayList<String>()
         val api = LocalApi(
