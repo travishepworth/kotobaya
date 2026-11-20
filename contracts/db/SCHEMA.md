@@ -363,6 +363,7 @@ optional `reading` and `class` besides `surface`, `lemma`, `seq`.
 | `jpdb_vocab`, `jpdb_vocab_media` | S | `media-publish` runner (rows, links), API (`putJpdbVocabResolution`, `clearJpdbVocabResolution`: resolution, holding `pg_advisory_xact_lock(7033001)` then `(7033011)`, in that order: MEDIA_PIPELINE.md 3.4) | jpdb mapping corrections: server-only import configuration, no op, not synced, not exported (`V2__jpdb_vocab.sql`, `MEDIA_PIPELINE.md` 5; C-11). |
 | `server_state` | S | server only (startup / maintenance code) | Server-only key/value bookkeeping; no op, not synced, not in the API, never cleaned up. Keys: `core_scheduler_version` (`contracts/sync/SYNC.md` 10.5, C-1); `log_epoch`, `durable_seq`, `restore_pending` (the backup/restore handshake, SYNC.md 6.2–6.3, C-2: the backup job writes `durable_seq`, and so does the server while backups are disabled (C-8, never lowering it); the restore script writes `restore_pending`, the server does the rest); `hlc_last` (the server's HLC `last`: full HLC string with the server device id, written in the transaction of every op the server mints or observes and raised by restore finalization; SYNC.md 3.2, 6.2 step 3, 6.3; C-6). Added by C-1. The `V1__init.sql` column comment predates `hlc_last` and is left unchanged so the applied migration's checksum stays valid; this list is authoritative. |
 | `pending_op`, `sync_state`, `blob_cache` | D | device only | Section 5.3. |
+| `response_cache` (C-31) | D | the shell's response cache only (background fetches of `cached` API operations) | Device-local, **not learning data**: no op, not synced, rebuildable from nothing. Section 5.3; `contracts/api/shell/SHELL.md` 4.4. |
 
 **Server-internal job kinds (C-9).** A `job` row whose `kind` is not a value of the API's
 `JobKind` is internal: a worker→server hand-off inside one public *parent* job. The API never
@@ -588,6 +589,19 @@ Where this section and `contracts/sync/SYNC.md` overlap, **SYNC.md wins** (C-2).
 - `tts_audio` (C-29) — the `(voice, text) → blob_hash` pairs this device learned from
   `resolveSpeech`. Not learning data: no `pending_op` row is ever written for it, a rebuild
   (SYNC.md 10.3) may keep or drop it, and deleting every row is always safe. Rules: 6.6 "Device".
+- `response_cache` (C-31, ADR-050) — the stored answers of the API operations the Android shell
+  classifies as `cached` (server data the replica does not hold: coverage, forecasts, media and
+  sentence lists, confusables, grammar points, the vocabulary-list catalogue). **Not learning
+  data and not in section 4.1:** no op writes it, no `pending_op` row is ever written for it, it
+  is never synced, and it takes no part in convergence (SYNC.md 11). One row per cache key
+  (`key` = operationId, path and canonical query joined by U+000A); only `2xx` JSON answers of
+  at most 4 MiB are stored; the bodies sum to at most 16 MiB (least recently used rows are
+  deleted first). `fetched_at` and `last_used_at` are device-clock instants and are compared
+  only with the device clock. `stale = 1` marks a row whose source tables changed since the
+  fetch; it is still served. Deleting every row is always safe; `unpairShell` does, a rebuild
+  (SYNC.md 10.3) only marks the rows stale. Rules: `contracts/api/shell/SHELL.md` 4.4 (K-1 … K-4).
+  Example row: `key` = `getStatsForecast⏎/api/v1/stats/forecast⏎days=30`, `status` 200,
+  `size_bytes` 1840, `fetched_at` 1795168805300, `stale` 0.
 
 ### 5.4 The dictionary file
 

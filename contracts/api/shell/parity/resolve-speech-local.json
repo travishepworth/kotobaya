@@ -1,0 +1,300 @@
+{
+  "id": "resolve-speech-local",
+  "title": "resolveSpeech answers on the device from tts_audio; with nothing generated every pair is pending (C-31)",
+  "covers": [
+    "speech.resolve_local"
+  ],
+  "narrative": [
+    "One kana-only word (うっかり) without audio of its own. Setup of SHELL.md 8.2: the server runs no worker, the phone's tts_audio table is empty and no speech resolver runs, so nothing is ever ready on either side.",
+    "Step 0: a text item is pending with source tts and the text echoed. retry_after_ms is ignored: the phone's value depends on connectivity (SHELL.md 4.3 resolveSpeech), the server's on its backlog.",
+    "Step 1: a note_id resolves to the note's speech pair (pending); an unknown note is none. urgent is accepted.",
+    "Step 2: duplicate pairs are answered alike; an explicit voice equal to the default is the same pair.",
+    "Steps 3-4: text together with note_id, and voice together with note_id, are 422 at the item.",
+    "Step 5: more than 20 urgent items are 422 at /urgent. Step 6: an empty items list is 422.",
+    "On the phone the pairs go to the native resolver queue instead of a server job; that queue is not observable through the API and not part of parity."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1001010
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f900-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1001010
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f900-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      }
+    ]
+  },
+  "operations": [
+    "resolveSpeech"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "text": "うっかり"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        },
+        "body": {
+          "/items/0/status": "pending",
+          "/items/0/source": "tts",
+          "/items/0/text": "うっかり",
+          "/items/0/blob_hash": null
+        }
+      },
+      "ignore": [
+        "/items/*/retry_after_ms"
+      ]
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "note_id": "0193a1b2-0001-7000-8000-000000000001"
+            },
+            {
+              "note_id": "0193a1b2-0001-7000-8000-00000000dead"
+            }
+          ],
+          "urgent": true
+        }
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 2
+        },
+        "body": {
+          "/items/0/status": "pending",
+          "/items/0/source": "tts",
+          "/items/1/status": "none",
+          "/items/1/blob_hash": null
+        }
+      },
+      "ignore": [
+        "/items/*/retry_after_ms"
+      ]
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "text": "うっかり"
+            },
+            {
+              "text": "うっかり",
+              "voice": "3"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 2
+        },
+        "body": {
+          "/items/0/status": "pending",
+          "/items/1/status": "pending"
+        }
+      },
+      "ignore": [
+        "/items/*/retry_after_ms"
+      ]
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "text": "うっかり",
+              "note_id": "0193a1b2-0001-7000-8000-000000000001"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/items/0"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "note_id": "0193a1b2-0001-7000-8000-000000000001",
+              "voice": "3"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/items/0"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": [
+            {
+              "text": "あ0"
+            },
+            {
+              "text": "あ1"
+            },
+            {
+              "text": "あ2"
+            },
+            {
+              "text": "あ3"
+            },
+            {
+              "text": "あ4"
+            },
+            {
+              "text": "あ5"
+            },
+            {
+              "text": "あ6"
+            },
+            {
+              "text": "あ7"
+            },
+            {
+              "text": "あ8"
+            },
+            {
+              "text": "あ9"
+            },
+            {
+              "text": "あ10"
+            },
+            {
+              "text": "あ11"
+            },
+            {
+              "text": "あ12"
+            },
+            {
+              "text": "あ13"
+            },
+            {
+              "text": "あ14"
+            },
+            {
+              "text": "あ15"
+            },
+            {
+              "text": "あ16"
+            },
+            {
+              "text": "あ17"
+            },
+            {
+              "text": "あ18"
+            },
+            {
+              "text": "あ19"
+            },
+            {
+              "text": "あ20"
+            }
+          ],
+          "urgent": true
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/urgent"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/tts/resolve",
+        "query": "",
+        "body": {
+          "items": []
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    }
+  ]
+}

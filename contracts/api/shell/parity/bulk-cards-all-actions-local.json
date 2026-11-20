@@ -1,0 +1,547 @@
+{
+  "id": "bulk-cards-all-actions-local",
+  "title": "bulkCards add_tags, remove_tags, set_preset, move and delete are answered on the device (C-31)",
+  "covers": [
+    "cards.bulk_all_actions_local"
+  ],
+  "narrative": [
+    "Three kana-only words (cards 1-3), two user decks (Inbox holds note 1), one extra preset. Before C-31 the shell forwarded every action used here.",
+    "Steps 0-1: dry_run reports what would happen and changes nothing.",
+    "Steps 2-4: add_tags tags both notes (one note.updated each); repeating it changes nothing and counts both in skipped (no op).",
+    "Steps 5-7: remove_tags on card 1 only.",
+    "Steps 8-9: set_preset (one card.preset_set per card).",
+    "Steps 10-12: move puts both notes into Later (deck.item_put each) and removes note 1 from Inbox (one deck.item_removed; note 2 was not in it). ops_emitted is left to the golden.",
+    "Steps 13-14: delete by query (tag:later matches card 2 only) emits one card.deleted; the card answers 410.",
+    "Step 15: delete of an already deleted card is skipped; card 3 is deleted.",
+    "Step 16: only card 1 is left in the card list.",
+    "The shell mints every op as the device, in one transaction per call; op-level tests (schema validity, idempotency, out-of-order convergence) are LF-A5's, not parity's."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000360,
+    1000470,
+    1000510
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f901-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f901-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f902-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000470
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f902-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000005",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f903-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000003",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000510
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000006",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000030",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f903-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000030",
+          "note_id": "0193a1b2-0001-7000-8000-000000000003",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000007",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195500-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000001",
+          "name": "Inbox",
+          "type": "user",
+          "priority": 10
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000008",
+        "op_type": "deck.created",
+        "op_version": 1,
+        "entity_type": "deck",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195501-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0004-7000-8000-000000000002",
+          "name": "Later",
+          "type": "user",
+          "priority": 20
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000009",
+        "op_type": "deck.item_put",
+        "op_version": 1,
+        "entity_type": "deck_item",
+        "entity_id": "0193a1b2-0004-7000-8000-000000000001|e:1000360",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195502-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "deck_id": "0193a1b2-0004-7000-8000-000000000001",
+          "item_key": "e:1000360",
+          "position": 1024
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000010",
+        "op_type": "fsrs_params.created",
+        "op_version": 1,
+        "entity_type": "fsrs_params",
+        "entity_id": "0193a1b2-0006-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195503-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0006-7000-8000-000000000001",
+          "name": "Slow",
+          "desired_retention": 0.85,
+          "learning_steps_s": [
+            60,
+            600
+          ]
+        }
+      }
+    ]
+  },
+  "operations": [
+    "bulkCards",
+    "getCard",
+    "getNote",
+    "listCards",
+    "listDeckItems"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "add_tags",
+            "tags": [
+              "later"
+            ]
+          },
+          "dry_run": true
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/dry_run": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/notes/0193a1b2-0001-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/tags": []
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "add_tags",
+            "tags": [
+              "later"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 2,
+          "/skipped": 0,
+          "/ops_emitted": 2,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/notes/0193a1b2-0001-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/tags": [
+            "later"
+          ]
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "add_tags",
+            "tags": [
+              "later"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 0,
+          "/skipped": 2,
+          "/ops_emitted": 0,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "remove_tags",
+            "tags": [
+              "later"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/notes/0193a1b2-0001-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/tags": []
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/notes/0193a1b2-0001-7000-8000-000000000002",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/tags": [
+            "later"
+          ]
+        }
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "set_preset",
+            "preset_id": "0193a1b2-0006-7000-8000-000000000001"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 2,
+          "/skipped": 0,
+          "/ops_emitted": 2,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000020",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/preset_id": "0193a1b2-0006-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "move",
+            "to_deck_id": "0193a1b2-0004-7000-8000-000000000002",
+            "from_deck_id": "0193a1b2-0004-7000-8000-000000000001"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/decks/0193a1b2-0004-7000-8000-000000000002/items",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/decks/0193a1b2-0004-7000-8000-000000000001/items",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 0
+        }
+      }
+    },
+    {
+      "at_ms": 1795168813000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "query": "tag:later",
+          "action": {
+            "type": "delete"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168814000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000020",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168815000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000020",
+            "0193a1b2-0002-7000-8000-000000000030"
+          ],
+          "action": {
+            "type": "delete"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/changed": 1,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168816000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        },
+        "body": {
+          "/items/0/id": "0193a1b2-0002-7000-8000-000000000010"
+        }
+      }
+    }
+  ]
+}

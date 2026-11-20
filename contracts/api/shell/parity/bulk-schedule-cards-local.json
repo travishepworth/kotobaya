@@ -1,0 +1,308 @@
+{
+  "id": "bulk-schedule-cards-local",
+  "title": "bulkScheduleCards reschedule and reset mint manual review rows on the device (C-31)",
+  "covers": [
+    "cards.bulk_schedule_local"
+  ],
+  "narrative": [
+    "Two kana-only words: card 1 graduated four days ago (Easy), card 2 is new. Before C-31 the shell forwarded this operation.",
+    "Steps 0-1: dry_run changes nothing (still one review row).",
+    "Steps 2-3: reschedule mints one manual review.logged (set_due); the card's due_at is the requested instant and it stays in review.",
+    "Steps 4-5: reschedule with a new card among the matches is 422 for the whole call; no row is added for card 1.",
+    "Steps 6-8: reset: card 1 gets a manual reset row and is new again (due_at null); card 2 is new already and is skipped.",
+    "Step 9: reschedule without due_at is 422.",
+    "The ids of the manual rows are minted (server device on the server, the device under test on the phone) and normalise to <idN>; the card state comes from the replay path on both sides."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000360,
+    1000470
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1dea64101-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1dea64101-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1dea64102-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000470
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1dea64102-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000005",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e3cc9d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1794823200000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      }
+    ]
+  },
+  "operations": [
+    "bulkScheduleCards",
+    "getCard",
+    "listCardReviews"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk/schedule",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "reschedule",
+            "due_at": "2026-11-25T19:00:00.000Z"
+          },
+          "dry_run": true
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/dry_run": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010/reviews",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk/schedule",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "reschedule",
+            "due_at": "2026-11-25T19:00:00.000Z"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 1,
+          "/changed": 1,
+          "/skipped": 0,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/due_at": "2026-11-25T19:00:00.000Z",
+          "/state": "review"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk/schedule",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "reschedule",
+            "due_at": "2026-11-25T19:00:00.000Z"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010/reviews",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk/schedule",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010",
+            "0193a1b2-0002-7000-8000-000000000020"
+          ],
+          "action": {
+            "type": "reset"
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/matched": 2,
+          "/changed": 1,
+          "/skipped": 1,
+          "/ops_emitted": 1,
+          "/dry_run": false
+        }
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/state": "new",
+          "/due_at": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010/reviews",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 3
+        }
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards/bulk/schedule",
+        "query": "",
+        "body": {
+          "card_ids": [
+            "0193a1b2-0002-7000-8000-000000000010"
+          ],
+          "action": {
+            "type": "reschedule"
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    }
+  ]
+}

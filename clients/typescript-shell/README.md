@@ -79,6 +79,7 @@ All URIs are relative to */shell/v1*
 - [ShellDisplay](docs/ShellDisplay.md)
 - [ShellDisplayPatch](docs/ShellDisplayPatch.md)
 - [ShellEvent](docs/ShellEvent.md)
+- [ShellEventCacheUpdated](docs/ShellEventCacheUpdated.md)
 - [ShellEventConnectivity](docs/ShellEventConnectivity.md)
 - [ShellEventHello](docs/ShellEventHello.md)
 - [ShellEventNoteCreated](docs/ShellEventNoteCreated.md)
@@ -92,6 +93,7 @@ All URIs are relative to */shell/v1*
 - [ShellStorage](docs/ShellStorage.md)
 - [ShellStoragePatch](docs/ShellStoragePatch.md)
 - [ShellSyncStatus](docs/ShellSyncStatus.md)
+- [ShellSyncStatusFirstSync](docs/ShellSyncStatusFirstSync.md)
 - [ShellSyncStatusProgress](docs/ShellSyncStatusProgress.md)
 - [ShellUnpairRequest](docs/ShellUnpairRequest.md)
 

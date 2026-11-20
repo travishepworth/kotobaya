@@ -135,7 +135,7 @@
         "min_local_api": {
           "type": "integer",
           "minimum": 1,
-          "description": "Lowest LOCAL_API_VERSION the bundle works with (shell-manifest.json `min_local_api`).",
+          "description": "Lowest LOCAL_API_VERSION the bundle works with (shell-manifest.json `min_local_api`; 3 for a bundle built from the C-31 SPA).",
           "examples": [1]
         }
       }

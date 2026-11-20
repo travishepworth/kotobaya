@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "t": "event",
+  "event": {
+    "type": "cache.updated",
+    "at": "2026-11-20T10:00:05.300Z",
+    "data": {
+      "operation_id": "getDeckCoverage",
+      "path": "/api/v1/decks/01931f40-2000-7000-8000-000000000d01/coverage",
+      "query": "",
+      "status": 200
+    }
+  }
+}
