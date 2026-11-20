@@ -178,7 +178,7 @@ class LocalApi(
 
     companion object {
         /** `LOCAL_API_VERSION` (SHELL.md 7.2). */
-        const val LOCAL_API_VERSION: Int = 2
+        const val LOCAL_API_VERSION: Int = 3
 
         const val MAX_BODY_BYTES: Long = 4L * 1024 * 1024
         const val READY_TIMEOUT_MS: Long = 20_000
