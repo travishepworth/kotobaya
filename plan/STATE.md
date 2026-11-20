@@ -4,6 +4,7 @@ Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
 Updated: run 34 (2026-11-19)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
+## PAUSED by user (run 38, 2026-11-20): finish/merge in-flight LF-A8b + LF-W1 only; dispatch nothing new until the user says resume.
 ## RESUME HERE (run 38, 2026-11-20; was run 37) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
