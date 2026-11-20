@@ -7,9 +7,12 @@ import kotobaya.android.sync.StoreBusyException
 import kotobaya.android.shell.api.actions.routes as actionsRoutes
 import kotobaya.android.shell.api.browse.routes as browseRoutes
 import kotobaya.android.shell.api.cards.routes as cardsRoutes
+import kotobaya.android.shell.api.confusables.routes as confusablesRoutes
 import kotobaya.android.shell.api.decks.routes as decksRoutes
 import kotobaya.android.shell.api.device.routes as deviceRoutes
+import kotobaya.android.shell.api.grammar.routes as grammarRoutes
 import kotobaya.android.shell.api.identity.routes as identityRoutes
+import kotobaya.android.shell.api.media.routes as mediaRoutes
 import kotobaya.android.shell.api.mining.routes as miningRoutes
 import kotobaya.android.shell.api.notetypes.routes as noteTypesRoutes
 import kotobaya.android.shell.api.presets.routes as presetsRoutes
@@ -48,7 +51,7 @@ object OfflineUpstream : Upstream {
 object LocalRoutes {
     val all: List<LocalRoute>
         get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes + statsRoutes +
-            cardsRoutes + presetsRoutes + noteTypesRoutes
+            cardsRoutes + presetsRoutes + noteTypesRoutes + confusablesRoutes + grammarRoutes + mediaRoutes
 }
 
 /**
