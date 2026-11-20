@@ -290,15 +290,19 @@ internal class QueueLoader(private val dsl: DSLContext) {
         }
         val itemSql = "select di.deck_id::text, di.position, di.item_key, n.id::text from app.deck_item di " +
             "join app.deck d on d.id = di.deck_id and d.deleted_at is null and d.type <> 'smart' "
+        // Every live membership, filtered to [noteIds] here: the candidates are nearly every live note (all started
+        // vocab/kanji cards are passed), and the unfiltered hash join is ~2.5x faster than probing per note id.
         val rows = dsl.fetch(
             itemSql + "join app.note n on n.entry_seq = di.entry_seq and n.deleted_at is null " +
-                "where di.deleted_at is null and di.entry_seq is not null and n.id = any(array(select unnest(?::uuid[]))) " +
+                "where di.deleted_at is null and di.entry_seq is not null " +
                 "union all " +
                 itemSql + "join app.note src on src.id = di.note_id join app.note n on n.id = coalesce(src.merged_into_id, src.id) " +
-                "where di.deleted_at is null and di.note_id is not null and n.deleted_at is null and n.id = any(array(select unnest(?::uuid[])))",
-            ids, ids,
+                "where di.deleted_at is null and di.note_id is not null and n.deleted_at is null",
         )
-        for (r in rows) add(r.get(3, String::class.java), DeckMembership(r.get(0, String::class.java), (r.get(1) as Number).toLong(), r.get(2, String::class.java)))
+        for (r in rows) {
+            val noteId = r.get(3, String::class.java)
+            if (noteId in noteIds) add(noteId, DeckMembership(r.get(0, String::class.java), (r.get(1) as Number).toLong(), r.get(2, String::class.java)))
+        }
 
         val smart = dsl.fetch("select id::text from app.deck where type = 'smart' and deleted_at is null").map { it.get(0, String::class.java) }
         if (smart.isNotEmpty()) {
