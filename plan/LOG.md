@@ -1455,3 +1455,4 @@
 2026-11-20T12:42:03Z LF-A8 part 1 merged + pushed t/LF-int (android 714 tests, 3 known fails)
 2026-11-20T14:22:35Z - RESUME run 37: LF-A1b, LF-A2b, LOOP-31-WEB writers dead (uncommitted work) -> re-dispatched in same worktrees (opus); no fable agents per user
 2026-11-20T14:22:35Z LF-A8b DISPATCH writer-senior (opus) from origin/t/LF-int
+2026-11-20T14:30:16Z - RESUME run 38: run 37 writers dead again (uncommitted); lfint worktree recreated; LF-A1b, LF-A2b, LF-A8b, LOOP-31-WEB re-dispatched in place
