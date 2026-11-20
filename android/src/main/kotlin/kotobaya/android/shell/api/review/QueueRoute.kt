@@ -43,10 +43,11 @@ import kotobaya.sync.client.store.bookkeeping
 /** The three queue sections of `kinds` (openapi `getReviewQueue`). */
 internal val ALL_KINDS: Set<String> = setOf("new", "learning", "review")
 
+private val DIGITS = Regex("^[0-9]+$")
 private val LOWER_UUID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 /** The validated parameters of one `getReviewQueue` request. */
-internal data class QueueRequest(val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean)
+internal data class QueueRequest(val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean, val keepGoingNewTarget: Int? = null)
 
 /**
  * Parameters exactly as the server reads them: `limit` 1..200 (default 20, else `out_of_range`), `deck_id` a lowercase
@@ -54,7 +55,7 @@ internal data class QueueRequest(val limit: Int, val deckId: String?, val kinds:
  * `keep_going` the literal `true` / `false` (`invalid_value`); every error in one `422`, unknown names first.
  */
 internal fun queueRequest(call: LocalCall): QueueRequest {
-    val q = call.query("limit", "deck_id", "kinds", "keep_going")
+    val q = call.query("limit", "deck_id", "kinds", "keep_going", "keep_going_new_target")
     val e = FieldErrors()
     val limit = q.int("limit", 1..200, 20, e)
     val deckId = q.first("deck_id")?.let { v ->
@@ -65,8 +66,18 @@ internal fun queueRequest(call: LocalCall): QueueRequest {
         parts.toSet()
     } ?: ALL_KINDS
     val keepGoing = q.bool("keep_going", false, e)
+    // C-31: a decimal integer 0..2147483647 (no sign, no fraction); validated even when keep_going is false, then ignored
+    val target = q.first("keep_going_new_target")?.let { v ->
+        if (!DIGITS.matches(v)) {
+            e.add("/keep_going_new_target", "invalid_value", "Must be a non-negative integer.")
+            null
+        } else {
+            v.toBigInteger().takeIf { it <= Int.MAX_VALUE.toBigInteger() }?.toInt()
+                ?: null.also { e.add("/keep_going_new_target", "out_of_range", "Must be 0 to 2147483647.") }
+        }
+    }
     e.throwIfAny()
-    return QueueRequest(limit, deckId, kinds, keepGoing)
+    return QueueRequest(limit, deckId, kinds, keepGoing, if (keepGoing) target else null)
 }
 
 /**
@@ -110,7 +121,7 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
         materializer = materializer,
         kanji = kanji,
     )
-    val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
+    val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit, keepGoingNewTarget = r.keepGoingNewTarget)
     // ADR-047 / SCHEMA.md 6.6 "Device": 30 s after a build that may have materialized, one prefetch pass (never a call here)
     if ("new" in r.kinds) runCatching { services.get<AudioPrefetchTrigger>().afterQueueLoad() }
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
