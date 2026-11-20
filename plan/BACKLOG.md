@@ -895,7 +895,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - AND-30 — android loop fields + goldens · model: sonnet · risk: med · deps: SRV-30 · status: MERGED (ticket: plan/tickets/AND-30.md)
 - CLI-30 — cli loop counts · model: haiku · risk: low · deps: SRV-30 · status: MERGED (ticket: plan/tickets/CLI-30.md)
 - C-31 — Contracts: local-first shell classes, non-blocking upstream, keep-going target, loop presenter · model: fable · risk: high · deps: none · status: MERGED (t/LF-int) (ticket: plan/tickets/C-31.md)
-- LF-A1 — Shell: materialize without waiting for sync; debounced push; short pull slices · model: opus · risk: high · deps: C-31 · status: IN_REVIEW (ticket: plan/tickets/LF-A1.md)
+- LF-A1 — Shell: materialize without waiting for sync; debounced push; short pull slices · model: opus · risk: high · deps: C-31 · status: APPROVED (await merge check) (ticket: plan/tickets/LF-A1.md)
 - LF-A2 — Shell: non-blocking upstream, `cached` class with response cache, no-network invariant test · model: opus · risk: high · deps: C-31 · status: APPROVED (await check) (ticket: plan/tickets/LF-A2.md)
 - LF-A3 — Shell: local stats for Home (summary, heatmap, retention) · model: opus · risk: med · deps: C-31, LF-A2 · status: TODO (ticket: plan/tickets/LF-A3.md)
 - LF-A4 — Shell: all bulkCards actions and bulkScheduleCards local · model: sonnet · risk: med · deps: C-31 · status: RUNNING (ticket: plan/tickets/LF-A4.md)
@@ -913,3 +913,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LOOP-31-WEB — Web review: one presenter, Keep going on every non-final screen, no pending screen · model: opus · risk: high · deps: LOOP-31-CORE-B, LOOP-31-API · status: TODO (ticket: plan/tickets/LOOP-31-WEB.md)
 - LF-A8 — Shell: every device-mintable write is local (cards, presets, note types, confusables, grammar, media) · model: opus · risk: high · deps: C-31, LF-A1 (non-blocking triggers), LF-A4 (card op minting helpers in `shell/api/actions/`) · status: TODO (ticket: plan/tickets/LF-A8.md)
 - LF-A2b — Shell response cache: LF-A2 review minors (race, stale mark, wiring test, trigger) · model: opus · risk: med · deps: LF-A2 · status: TODO (ticket: plan/tickets/LF-A2b.md)
+- LF-A1b — Shell: StoreBusy -> retry/503 not 500; debounce races (LF-A1 review minors) · model: opus · risk: med · deps: LF-A1, LF-A2 · status: TODO (ticket: plan/tickets/LF-A1b.md)

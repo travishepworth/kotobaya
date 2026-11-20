@@ -1435,3 +1435,4 @@
 2026-11-20T11:18:15Z LF-A2 HANDOFF (4 known drift fails + 1 schema-version test outside paths -> authorized fix); DISPATCH LOOP-31-CORE-B (must add pending-answer fuzz step)
 2026-11-20T11:27:53Z LF-A2 REVIEW_APPROVE (7 minors: 4 -> LF-A2b ticket, rest FOLLOWUPS/LF-X1); awaiting android re-check
 2026-11-20T11:29:04Z LF-A1 HANDOFF -> reviewer; DISPATCH LOOP-31-API
+2026-11-20T11:31:08Z LF-A1 REVIEW_APPROVE (minors -> LF-A1b: StoreBusy 500 -> retry/503; debounce races)
