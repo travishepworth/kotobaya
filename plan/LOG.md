@@ -1465,3 +1465,4 @@
 2026-11-20T14:40:02Z LF-A2b HANDOFF r2 (ShellModule fallback added; 3 known fails) -> merged locally into t/LF-int 61fad693, android re-check running
 2026-11-20T14:41:13Z LOOP-31-WEB HANDOFF attempt 2; web green 321/321 -> reviewer re-review
 2026-11-20T14:41:53Z LOOP-31-WEB REVIEW_APPROVE r2 (2 test minors -> LF-W1 ticket) -> merged locally into t/LF-int; DISPATCH LF-W1
+2026-11-20T14:43:07Z t/LF-int pushed a17988c0: + LF-A2b, LOOP-31-WEB (android 738 tests, 3 known fails; web green)
