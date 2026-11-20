@@ -10,14 +10,12 @@ import kotobaya.android.shell.api.FieldErrors
 import kotobaya.android.shell.api.LocalCall
 import kotobaya.android.shell.api.ProblemException
 import kotobaya.android.shell.api.ShellResponse
-import kotobaya.android.shell.api.actions.CardQuery
-import kotobaya.android.shell.api.actions.CardQueryResult
 import kotobaya.android.shell.api.actions.enumValue
 import kotobaya.android.shell.api.actions.long
 import kotobaya.android.shell.api.actions.string
 import kotobaya.android.shell.api.actions.unknownKeys
 import kotobaya.android.shell.api.actions.uuidValue
-import kotobaya.android.shell.api.browse.invalidQuery
+import kotobaya.android.shell.api.browse.cardsMatching
 import kotobaya.android.shell.api.get
 import kotobaya.android.shell.api.identity.ShellIdentity
 import kotobaya.android.shell.api.identity.obj
@@ -84,14 +82,9 @@ internal fun createDrillSession(call: LocalCall): ShellResponse {
     val sessionId = sessionIds.newOpId(now)
     val seed = sessionId.fold(0L) { h, ch -> h * 31 + ch.code }
 
-    // the query source is the card search language of the replica; a query the device cannot select exactly is forwarded
+    // the query source is the card search language evaluated on the device (C-31: never forwarded)
     val queryIds: List<String>? = if (source == "query") {
-        val selector = runCatching { services.get<CardQuery>() }.getOrNull() ?: return Fallthrough
-        when (val r = selector.select(checkNotNull(query), now)) {
-            is CardQueryResult.Invalid -> throw ProblemException(invalidQuery(r.errors))
-            is CardQueryResult.Forward -> return Fallthrough
-            is CardQueryResult.Ids -> r.ids
-        }
+        services.cardsMatching(checkNotNull(query), now) ?: return Fallthrough
     } else {
         null
     }

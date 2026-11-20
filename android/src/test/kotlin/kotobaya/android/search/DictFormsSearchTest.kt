@@ -66,13 +66,13 @@ class DictFormsSearchTest {
     }
 
     @Test
-    fun aPatternMatchingMoreEntriesThanTheCapDropsTheDictionaryBranch() {
+    fun aPatternMatchingEveryLinkedEntryKeepsTheDictionaryBranch() {
+        // LF-A5: there is no size guard any more; a broad pattern is looked up in full
         linkedNote(1, 1)
         linkedNote(2, 2)
-        val dict = dictionary()
-        // cap 1: "る" matches one entry (kept), "む" too; a pattern hitting both entries (ま is in neither) -- use cap 0
-        assertEquals(listOf(uuid(2, 1)), ids(LocalCardSearch(driver, db, { NOW }, dict, dictFormsMaxSeqs = 1), "食べる"))
-        assertTrue(ids(LocalCardSearch(driver, db, { NOW }, dict, dictFormsMaxSeqs = 0), "食べる").isEmpty())
+        val search = LocalCardSearch(driver, db, { NOW }, dictionary())
+        assertEquals(listOf(uuid(2, 1), uuid(2, 2)).sorted(), ids(search, "べる or の*").sorted())
+        assertEquals(listOf(uuid(2, 2)), ids(search, "-る"))
     }
 
     @Test

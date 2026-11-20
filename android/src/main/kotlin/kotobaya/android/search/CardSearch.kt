@@ -4,18 +4,10 @@ import app.cash.sqldelight.db.SqlDriver
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.net.ApiClient
 import kotobaya.android.net.ApiError
-import kotobaya.android.queue.QueueSettings
-import kotobaya.android.queue.rolloverMs
-import kotobaya.android.queue.studyDayOf
+import kotobaya.android.shell.api.actions.CardQueryResult
 import kotobaya.contracts.search.SearchError
 import kotobaya.db.app.AppDatabase
 import kotobaya.search.DefaultSearchQueryParser
-import kotobaya.search.sql.Dialect
-import kotobaya.search.sql.DictFormRow
-import kotobaya.search.sql.SqlFragment
-import kotobaya.search.sql.ResidualRow
-import kotobaya.search.sql.SearchContext
-import kotobaya.search.sql.SearchSqlCompiler
 import org.json.JSONException
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
@@ -73,69 +65,27 @@ internal fun CardHit.withLabels(labels: Map<Long, EntryLabel>): CardHit {
 }
 
 /**
- * "My cards" over the local replica: core's [DefaultSearchQueryParser] and [SearchSqlCompiler] (SQLite dialect,
- * residual predicate applied). Nothing here interprets the query language.
- * Not covered: `is:hot` (no hot set is passed) and live smart-deck terms (`deck:` matches stored membership only).
+ * "My cards" over the local replica: the selection of [ReplicaCardQuery] (core parser and compiler, every term
+ * evaluated on the device, the same selection `listCards` and `bulkCards` use), newest first. Nothing here
+ * interprets the query language.
  */
 class LocalCardSearch(
     private val driver: SqlDriver,
-    private val db: AppDatabase,
+    db: AppDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
-    /** The offline dictionary for the C-24 dictionary-form lookup; null (or not installed): bare terms match note text only. */
-    private val dictionary: InstalledDictionary? = null,
-    /** Cap of distinct entries one pattern may match before the dictionary branch is dropped (overridable in tests). */
-    private val dictFormsMaxSeqs: Int = DICT_FORMS_MAX_SEQS,
+    /** L-7 steps 1-2 for the C-24 dictionary-form lookup; null (or nothing installed or cached): bare terms match note text only. */
+    dictionary: InstalledDictionary? = null,
 ) {
+    private val selection = ReplicaCardQuery(driver, db, dictionary)
+
     fun search(query: String): CardSearchOutcome {
         val parsed = DefaultSearchQueryParser.parse(query)
-        val node = parsed.query ?: return CardSearchOutcome.ParseError(parsed.errors)
-        val now = clock()
-        val st = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
-        val today = studyDayOf(now, st.timezone, st.dayRolloverHour)
-        val ctx = SearchContext(
-            studyDay = today.day,
-            nowMs = now,
-            leechThreshold = st.leechThreshold,
-            dayStart = { off -> rolloverMs(st.timezone, st.dayRolloverHour, today.date.plusDays(off.toLong())) },
-            dictForms = dictForms(),
-        )
-        val compiled = SearchSqlCompiler.compile(node, Dialect.SQLITE, ctx)
-        val f = compiled.select()
-        val ids = driver.rows(f.sql, f.params) { c ->
-            val id = c.getString(0)!!
-            if (!compiled.residual) {
-                id
-            } else {
-                val probes = compiled.probes.indices.map { (c.getLong(7 + it) ?: 0L) != 0L }
-                val row = ResidualRow(
-                    c.getString(1)!!, c.getString(2)!!, c.getString(3)!!, c.getString(4)!!, c.getString(5)!!, c.getString(6)!!, probes,
-                )
-                if (compiled.accepts(row)) id else null
-            }
-        }.filterNotNull()
-        return CardSearchOutcome.Results(details(ids))
-    }
-
-    /**
-     * C-24 callback over the installed dictionary (a separate SQLite file, read off the main thread by the caller), or null
-     * when none is installed. Perf: rows are intersected with the distinct entry seqs of the collection's notes while the
-     * cursor is read, and a pattern that still matches more than [DICT_FORMS_MAX_SEQS] entries (a one-character kana such
-     * as る) is treated as too broad to be a dictionary-form lookup: the dictionary branch is dropped for it (the note's own
-     * text still matches), which keeps the bound seq list the compiler builds small.
-     */
-    private fun dictForms(): ((SqlFragment) -> List<DictFormRow>)? {
-        val dict = dictionary?.takeIf { it.isAvailable() } ?: return null
-        val collection: Set<Long> by lazy {
-            driver.rows("SELECT DISTINCT entry_seq FROM note WHERE entry_seq IS NOT NULL AND deleted_at IS NULL") { it.getLong(0) ?: 0L }.toHashSet()
+        if (parsed.query == null || parsed.errors.isNotEmpty()) return CardSearchOutcome.ParseError(parsed.errors)
+        return when (val r = selection.select(query, clock())) {
+            is CardQueryResult.Ids -> CardSearchOutcome.Results(details(r.ids))
+            // unreachable: the parse above already failed for these, and ReplicaCardQuery never forwards
+            is CardQueryResult.Invalid, is CardQueryResult.Forward -> CardSearchOutcome.ParseError(parsed.errors)
         }
-        return { f ->
-            val rows = dict.formRows(f.sql, f.params.map { it.toString() }) { it in collection }.orEmpty()
-            if (rows.mapTo(HashSet()) { it.seq }.size > dictFormsMaxSeqs) emptyList() else rows
-        }
-    }
-
-    private companion object {
-        const val DICT_FORMS_MAX_SEQS = 3000
     }
 
     private fun details(ids: List<String>): List<CardHit> {
