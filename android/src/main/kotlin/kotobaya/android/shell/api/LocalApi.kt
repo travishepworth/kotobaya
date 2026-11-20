@@ -5,10 +5,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.cache.ResponseCache
 import kotobaya.android.shell.api.actions.routes as actionsRoutes
 import kotobaya.android.shell.api.browse.routes as browseRoutes
+import kotobaya.android.shell.api.cards.routes as cardsRoutes
 import kotobaya.android.shell.api.decks.routes as decksRoutes
 import kotobaya.android.shell.api.device.routes as deviceRoutes
 import kotobaya.android.shell.api.identity.routes as identityRoutes
 import kotobaya.android.shell.api.mining.routes as miningRoutes
+import kotobaya.android.shell.api.notetypes.routes as noteTypesRoutes
+import kotobaya.android.shell.api.presets.routes as presetsRoutes
 import kotobaya.android.shell.api.review.routes as reviewRoutes
 import kotobaya.android.shell.api.stats.routes as statsRoutes
 import kotobaya.android.shell.api.struggle.routes as struggleRoutes
@@ -43,7 +46,8 @@ object OfflineUpstream : Upstream {
 /** Every group's routes. Each L ticket fills only its own group's `Routes.kt`. */
 object LocalRoutes {
     val all: List<LocalRoute>
-        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes + statsRoutes
+        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes + statsRoutes +
+            cardsRoutes + presetsRoutes + noteTypesRoutes
 }
 
 /**
