@@ -11,11 +11,16 @@ import kotobaya.contracts.fsrs.Rating
 import kotobaya.contracts.fsrs.ReviewType
 import kotobaya.contracts.fsrs.SchedulerParams
 import kotobaya.contracts.queue.LoopPhase
+import kotobaya.contracts.queue.LoopPresentation
+import kotobaya.contracts.queue.LoopPresenter
 import kotobaya.contracts.queue.LoopResult
+import kotobaya.contracts.queue.LoopScreen
 import kotobaya.contracts.queue.LoopState
+import kotobaya.contracts.queue.PendingAnswer
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueCandidate
 import kotobaya.contracts.queue.QueueInput
+import kotobaya.contracts.queue.QueueItem
 import kotobaya.contracts.queue.QueueItemKind
 import kotobaya.contracts.queue.QueueLimits
 import kotobaya.contracts.queue.ReviewQueue
@@ -26,11 +31,13 @@ import kotobaya.fsrs.FsrsScheduler
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
  * C-31 (ADR-051): invariants I1 … I5, I7 and I8 of the `ReviewLoop` KDoc after every step of a
- * seeded random session ("Fuzz test shape"). I6 (the presenter) belongs to LOOP-31-CORE-B.
+ * seeded random session ("Fuzz test shape"), and I6: the presenter fed what a client holds
+ * (LOOP-31-CORE-B).
  *
  * A run: a random [QueueInput] (cards in all four states with dues before/after `now` and around
  * `day.endMs`; suspended, buried, retired and overridden cards; siblings; kanji notes, words that
@@ -39,7 +46,11 @@ import kotlin.test.fail
  * [MAX_STEPS] steps, each one of: answer the served head through the real [FsrsScheduler] (after
  * materializing, as callers do), advance the clock by seconds, jump to the next learning due,
  * roll the study day over, press Keep going, end the visit, a pulled change (a review came due,
- * another device introduced a card, a card suspended). `kotlin.random.Random(seed)` is a common-code
+ * another device introduced a card, a card suspended), and for I6 "hold the answer back": the
+ * client answers the next card it holds and keeps the answer as a [PendingAnswer] instead of
+ * applying a new state (the truth, `input`, does change: the answer is in the outbox), or applies
+ * a state that reflects only the oldest pending answers (a fetch sent before the rest were
+ * acknowledged). Every other step first and last applies a fresh state (pending cleared). `kotlin.random.Random(seed)` is a common-code
  * XorWow, so a seed gives the same run on jvm and js. On failure the seed and the step prefix up to
  * the first violation are printed.
  */
@@ -60,9 +71,28 @@ class ReviewLoopInvariantFuzzTest {
     private class Violation(val invariant: String, message: String) : Exception(message)
 
     /** One session: the input, the scheduler's view of every card and the step log. */
-    private inner class World(val seed: Int) {
+    private inner class World(val seed: Int, val presenter: LoopPresenter = DefaultLoopPresenter) {
         val r = Random(seed)
         lateinit var input: QueueInput
+
+        /** Plain inputs (no kanji, no per-deck limits, no pending entries): the presenter's exact consistency check. */
+        var plain = false
+
+        // The client (I6): the state it applied, where that came from, the cards it holds and its pending answers.
+        lateinit var shown: LoopState
+        lateinit var shownInput: QueueInput
+        val held = mutableListOf<QueueItem>()
+        val pending = mutableListOf<PendingAnswer>()
+        val pendingCards = mutableListOf<Uuid>()
+
+        /** `input` after each pending answer (the state a fetch sent then would have returned). */
+        val pendingSnaps = mutableListOf<QueueInput>()
+
+        /**
+         * True iff every pending answer's outcome is known to the client (the consistency bound applies).
+         * Only held-back answers ever happen between [shownInput] and `input`: every other step applies a fresh state.
+         */
+        var allKnown = true
         val schedules = HashMap<Uuid, CardSchedule>()
         val log = mutableListOf<String>()
         val trace = mutableListOf<String>()
@@ -73,18 +103,19 @@ class ReviewLoopInvariantFuzzTest {
 
         fun generate() {
             val day = TOKYO_DAY
+            plain = r.nextInt(4) == 0
             val now = if (r.nextInt(4) == 0) day.endMs - r.nextLong(1, 20) * 60_000L else day.startMs + r.nextLong(60, 1400) * 60_000L
             val decks = (1..r.nextInt(0, 4)).map {
                 deck(
                     it,
                     priority = r.nextInt(0, 2),
                     enabled = r.nextInt(5) != 0,
-                    newPerDay = if (r.nextInt(3) == 0) r.nextInt(0, 5) else null,
-                    reviewsPerDay = if (r.nextInt(3) == 0) r.nextInt(0, 5) else null,
+                    newPerDay = if (!plain && r.nextInt(3) == 0) r.nextInt(0, 5) else null,
+                    reviewsPerDay = if (!plain && r.nextInt(3) == 0) r.nextInt(0, 5) else null,
                 )
             }
             fun members() = decks.filter { r.nextInt(3) == 0 }.map { member(it.id.takeLast(12).toInt(), r.nextLong(0, 10)) }
-            val withNote = lits.filter { r.nextBoolean() }.toSet()
+            val withNote = if (plain) emptySet() else lits.filter { r.nextBoolean() }.toSet()
             val cands = mutableListOf<QueueCandidate>()
             // Kanji notes of the built-in type: one card each (I8's documented overshoot needs several).
             for ((i, l) in withNote.withIndex()) {
@@ -100,7 +131,7 @@ class ReviewLoopInvariantFuzzTest {
                     // A sibling: same note, next kind.
                     p.copy(cardId = cardId(n), kind = "k${p.kindOrder + 1}", kindOrder = p.kindOrder + 1, state = st, dueAt = dueFor(st, now, day))
                 } else {
-                    val ks = if (r.nextBoolean()) emptyList() else lits.shuffled(r).take(r.nextInt(1, 3))
+                    val ks = if (plain || r.nextBoolean()) emptyList() else lits.shuffled(r).take(r.nextInt(1, 3))
                     card(n, created = r.nextLong(0, 10), state = st, due = dueFor(st, now, day), members = members(),
                         exprKanji = ks, missing = ks.filter { it !in withNote }.map { mk(it) })
                 }
@@ -114,7 +145,7 @@ class ReviewLoopInvariantFuzzTest {
                 cands += decorated
                 prev = decorated
             }
-            val pending = if (decks.isEmpty()) emptyList() else (1..r.nextInt(0, 4)).map {
+            val pending = if (plain || decks.isEmpty()) emptyList() else (1..r.nextInt(0, 4)).map {
                 val d = decks[r.nextInt(decks.size)].id.takeLast(12).toInt()
                 val ks = lits.shuffled(r).take(r.nextInt(0, 3))
                 entry(d, nextEntry++, r.nextLong(0, 10), exprKanji = ks, missing = ks.filter { it !in withNote }.map { mk(it) })
@@ -135,7 +166,8 @@ class ReviewLoopInvariantFuzzTest {
             for (c in cands) schedules[c.cardId] = scheduleOf(c, now)
             log += "gen: now=${now - day.startMs}ms into day, goal=$goal reviews=${limits.reviewsPerDay} unlimited=${limits.reviewsUnlimited} " +
                 "bury=${limits.burySiblings} batch=${limits.keepGoingNewBatch} keepGoing=$keepGoing target=$target newToday=$newToday " +
-                "cards=${cands.size} pending=${pending.size} decks=${decks.size}"
+                "cards=${cands.size} pending=${pending.size} decks=${decks.size} plain=$plain"
+            applyFresh()
         }
 
         private fun randomTarget(newToday: Int, goal: Int): Int? = when (r.nextInt(4)) {
@@ -187,11 +219,34 @@ class ReviewLoopInvariantFuzzTest {
 
         fun eval(i: QueueInput = input): LoopResult = DefaultReviewLoop.evaluate(i)
 
+        /** The client applies a state evaluated from the current truth: nothing is pending any more. */
+        fun applyFresh() {
+            val res = eval()
+            shown = res.state
+            shownInput = input
+            held.clear()
+            held += res.queue.items
+            pending.clear()
+            pendingCards.clear()
+            pendingSnaps.clear()
+            allKnown = true
+        }
+
+        /** What [presenter] makes of the client's view. */
+        fun present(): LoopPresentation =
+            presenter.present(shown, pending.toList(), held.isNotEmpty(), held.firstOrNull()?.kind, shownInput.day.endMs)
+
         /** One random step [k] (I7 is checked inside an answer, at the same `now`). */
         fun step(k: Int) {
+            val x = r.nextInt(100)
+            if (x < 20) {
+                holdBack(k)
+                return
+            }
+            if (pending.isNotEmpty()) applyFresh()
             val before = eval()
-            when (val x = r.nextInt(100)) {
-                in 0 until 50 -> answerOrMaterialize(k, before)
+            when (x) {
+                in 20 until 50 -> answerOrMaterialize(k, before)
                 in 50 until 60 -> tick(r.nextLong(1, 400) * 1000L, "tick")
                 in 60 until 72 -> {
                     val next = before.state.nextDueAt
@@ -219,6 +274,56 @@ class ReviewLoopInvariantFuzzTest {
                 }
                 else -> pull(k, x)
             }
+            applyFresh()
+        }
+
+        /** I6 steps: answer the next held card and keep the answer pending, or apply a stale state. */
+        private fun holdBack(k: Int) {
+            if (pending.isNotEmpty() && r.nextInt(4) == 0) {
+                // A fetch sent after the first j answers were acknowledged, before the rest.
+                val j = r.nextInt(1, pending.size + 1)
+                val snap = pendingSnaps[j - 1]
+                val res = eval(snap)
+                val rest = pendingCards.drop(j)
+                shown = res.state
+                shownInput = snap
+                held.clear()
+                held += res.queue.items.filter { it.cardId !in rest }
+                repeat(j) {
+                    pending.removeAt(0)
+                    pendingCards.removeAt(0)
+                    pendingSnaps.removeAt(0)
+                }
+                allKnown = pending.all { it.resultingState != null }
+                log += "#$k apply the state after $j of ${j + rest.size} pending answers (${res.state.phase}, ${held.size} held)"
+                return
+            }
+            val head = held.firstOrNull()
+            if (head == null) {
+                // Nothing held: the client fetches (and, with nothing pending, answers from the fresh queue).
+                if (pending.isNotEmpty()) {
+                    applyFresh()
+                    log += "#$k nothing held: fetch"
+                } else {
+                    answerOrMaterialize(k, eval())
+                    applyFresh()
+                }
+                return
+            }
+            held.removeAt(0)
+            val c = input.candidates.first { it.cardId == head.cardId }
+            val rating = Rating.entries[r.nextInt(4)]
+            val now = input.now
+            val after = applyAnswer(c, rating)
+            input = input.copy(now = now + 1000L)
+            // Sometimes the browser is offline and has no preview: the outcome is unknown to the client.
+            val unknown = r.nextInt(5) == 0
+            pending += PendingAnswer(head.kind, rating.value, if (unknown) null else after.state, if (unknown) null else after.dueAt)
+            pendingCards += c.cardId
+            pendingSnaps += input
+            if (unknown) allKnown = false
+            log += "#$k hold back ${head.kind} ${c.cardId.takeLast(4)} $rating -> ${after.state} due ${after.dueAt?.let { it - now }}ms" +
+                "${if (unknown) " (unknown to the client)" else ""}, ${pending.size} pending, ${held.size} held"
         }
 
         private fun pull(k: Int, x: Int) {
@@ -283,6 +388,24 @@ class ReviewLoopInvariantFuzzTest {
             }
             val rating = Rating.entries[r.nextInt(4)]
             val c = input.candidates.first { it.cardId == head.cardId }
+            val now = input.now
+            val after = applyAnswer(c, rating)
+            log += "#$k answer ${head.kind} ${c.cardId.takeLast(4)} $rating -> ${after.state} due ${after.dueAt?.let { it - now }}ms"
+            // I7: same `now`, same limits; not for keep going without a target.
+            val lim = input.limits
+            if (!lim.keepGoing || lim.keepGoingNewTarget != null) {
+                val res = eval()
+                trace += summary(res)
+                checkAll(input, res)
+                if (res.state.untilStop > before.state.untilStop + 1) {
+                    throw Violation("I7", "untilStop ${before.state.untilStop} -> ${res.state.untilStop} after answering the head")
+                }
+            }
+            input = input.copy(now = now + 1000L)
+        }
+
+        /** Answers [c] with [rating] at `now` through the real scheduler and records it in the truth. */
+        private fun applyAnswer(c: QueueCandidate, rating: Rating): CardSchedule {
             val sched = schedules.getValue(c.cardId)
             val now = input.now
             val after = FsrsScheduler.review(sched, RatedReview("fuzz-$seed-${answers++}", now, rating, 0), params)
@@ -296,18 +419,7 @@ class ReviewLoopInvariantFuzzTest {
                 candidates = input.candidates.map { if (it.cardId == c.cardId) it.copy(state = after.state, dueAt = after.dueAt) else it },
                 today = input.today + row,
             )
-            log += "#$k answer ${head.kind} ${c.cardId.takeLast(4)} $rating -> ${after.state} due ${after.dueAt?.let { it - now }}ms"
-            // I7: same `now`, same limits; not for keep going without a target.
-            val lim = input.limits
-            if (!lim.keepGoing || lim.keepGoingNewTarget != null) {
-                val res = eval()
-                trace += summary(res)
-                checkAll(input, res)
-                if (res.state.untilStop > before.state.untilStop + 1) {
-                    throw Violation("I7", "untilStop ${before.state.untilStop} -> ${res.state.untilStop} after answering the head")
-                }
-            }
-            input = input.copy(now = now + 1000L)
+            return after
         }
 
         /** C-27 materialization as QueueSim does: deckless kanji notes, then entry notes in their deck. */
@@ -449,17 +561,84 @@ class ReviewLoopInvariantFuzzTest {
         }
     }
 
+    private val terminalScreens = setOf(LoopScreen.GOAL_REACHED, LoopScreen.DONE_FOR_TODAY, LoopScreen.EMPTY)
+
+    private fun screenOf(phase: LoopPhase): LoopScreen = when (phase) {
+        LoopPhase.REVIEWING -> LoopScreen.SETTLING
+        LoopPhase.WAITING -> LoopScreen.WAITING
+        LoopPhase.GOAL_REACHED -> LoopScreen.GOAL_REACHED
+        LoopPhase.DONE_FOR_TODAY -> LoopScreen.DONE_FOR_TODAY
+        LoopPhase.EMPTY -> LoopScreen.EMPTY
+    }
+
+    /** I6: the presenter's P-I1 … P-I4 and its consistency with the loop, for the client's view in [w]. */
+    private fun checkPresenter(w: World) {
+        val pres = w.present()
+        val p = pres.parts
+        val s = w.shown
+        val hasLocal = w.held.isNotEmpty()
+        val head = w.held.firstOrNull()?.kind
+        val ctx = {
+            "screen ${pres.screen} parts $p untilStop ${pres.untilStop}; shown ${s.phase} ${s.untilStopParts}; " +
+                "${w.pending.size} pending ${w.pending.map { "${it.kind}/${it.rating}/${it.resultingState}" }}; ${w.held.size} held (head $head)"
+        }
+        // P-I1
+        if (pres.screen in terminalScreens) {
+            must("I6", w.pending.isEmpty() && !hasLocal && p == UntilStopParts()) { "P-I1 terminal screen: ${ctx()}" }
+        }
+        // P-I2
+        if (p.learning + p.review + p.new > 0) {
+            must("I6", pres.screen == LoopScreen.CARD || pres.screen == LoopScreen.SETTLING) { "P-I2 cards left on a ${pres.screen} screen: ${ctx()}" }
+        }
+        // P-I3
+        must("I6", p.learning >= 0 && p.later >= 0 && p.review >= 0 && p.new >= 0) { "P-I3 negative part: ${ctx()}" }
+        must("I6", p.learning + p.later + p.review + p.new == pres.untilStop) { "P-I3 untilStop is not the sum: ${ctx()}" }
+        if (pres.screen == LoopScreen.CARD) must("I6", pres.untilStop >= 1) { "P-I3 CARD with untilStop 0: ${ctx()}" }
+        if (hasLocal) {
+            val part = when (head) {
+                QueueItemKind.NEW -> p.new
+                QueueItemKind.LEARNING -> p.learning
+                else -> p.review
+            }
+            must("I6", pres.screen == LoopScreen.CARD && part >= 1) { "held card not shown or not counted: ${ctx()}" }
+        }
+        // P-I4
+        if (w.pending.isEmpty() && !hasLocal) {
+            must("I6", p == s.untilStopParts && pres.screen == screenOf(s.phase)) { "P-I4 presenter added something: ${ctx()}" }
+        }
+        // Consistency with the loop: state' = the truth (every pending answer applied, same limits).
+        val lim = w.input.limits
+        if (w.pending.isNotEmpty() && w.allKnown && (!lim.keepGoing || lim.keepGoingNewTarget != null)) {
+            val truth = w.eval().state
+            val tp = truth.untilStopParts
+            must("I6", kotlin.math.abs(pres.untilStop - truth.untilStop) <= w.pending.size) {
+                "consistency: untilStop ${pres.untilStop} vs re-evaluated ${truth.untilStop} ($tp) with ${w.pending.size} pending: ${ctx()}"
+            }
+            // Exact only without sibling burying: the first answer today on a LEARNING card buries its note's
+            // REVIEW/NEW sibling that the state counted, which no PendingAnswer can tell (CONTRACT_CHANGE_REQUEST,
+            // LOOP-31-CORE-B HANDOFF; seed 171 of the first run). The bound above covers it.
+            if (w.plain && !w.input.limits.burySiblings) {
+                must("I6", pres.untilStop == truth.untilStop && p.review == tp.review && p.new == tp.new &&
+                    p.learning + p.later == tp.learning + tp.later) {
+                    "plain consistency: $p vs re-evaluated $tp: ${ctx()}"
+                }
+            }
+        }
+    }
+
     /** Runs [seed]; returns null when green, else the violated invariant and a report. */
-    private fun runSeed(seed: Int, steps: Int = MAX_STEPS): Pair<String, String>? {
-        val w = World(seed)
+    private fun runSeed(seed: Int, steps: Int = MAX_STEPS, presenter: LoopPresenter = DefaultLoopPresenter): Pair<String, String>? {
+        val w = World(seed, presenter)
         w.generate()
         try {
             checkAll(w.input, w.eval().also { w.trace += summary(it) })
+            checkPresenter(w)
             for (k in 0 until steps) {
                 w.step(k)
                 val res = w.eval()
                 w.trace += summary(res)
                 checkAll(w.input, res)
+                checkPresenter(w)
             }
         } catch (v: Violation) {
             val report = "seed=$seed ${v.invariant}: ${v.message}\n  minimal failing prefix (${w.log.size} steps):\n    " +
@@ -482,6 +661,46 @@ class ReviewLoopInvariantFuzzTest {
         }
     }
 
+    /**
+     * The pre-C-31 client: screen from `state.phase` (a held card wins), header = `state.untilStopParts`
+     * frozen until the next state. I6 must catch it (the reviewer's "header shows reviews left, then
+     * the done screen appears").
+     */
+    private object NaivePresenter : LoopPresenter {
+        override fun present(
+            state: LoopState,
+            pending: List<PendingAnswer>,
+            hasLocalCard: Boolean,
+            localHeadKind: QueueItemKind?,
+            dayEndsAt: Long,
+        ): LoopPresentation {
+            val screen = if (hasLocalCard) {
+                LoopScreen.CARD
+            } else {
+                when (state.phase) {
+                    LoopPhase.REVIEWING -> LoopScreen.SETTLING
+                    LoopPhase.WAITING -> LoopScreen.WAITING
+                    LoopPhase.GOAL_REACHED -> LoopScreen.GOAL_REACHED
+                    LoopPhase.DONE_FOR_TODAY -> LoopScreen.DONE_FOR_TODAY
+                    LoopPhase.EMPTY -> LoopScreen.EMPTY
+                }
+            }
+            val p = state.untilStopParts
+            return LoopPresentation(screen, p, p.learning + p.later + p.review + p.new)
+        }
+    }
+
+    @Test
+    fun i6CatchesANaivePresenter() {
+        val failures = (1..NAIVE_RUNS).mapNotNull { runSeed(it, presenter = NaivePresenter) }
+        val i6 = failures.filter { it.first == "I6" }
+        val byCheck = i6.groupingBy { it.second.substringAfter("I6: ").substringBefore(":") }.eachCount()
+        println("ReviewLoopInvariantFuzzTest: the naive presenter violates I6 in ${i6.size}/$NAIVE_RUNS runs $byCheck" +
+            (i6.firstOrNull()?.let { "; first:\n${it.second}" } ?: ""))
+        assertTrue(i6.isNotEmpty(), "I6 does not catch a presenter that ignores pending answers")
+        assertEquals(failures.size, i6.size, "only I6 may fail: ${failures.filter { it.first != "I6" }.map { it.second }}")
+    }
+
     @Test
     fun aSeedAlwaysPlaysTheSameSession() {
         for (seed in listOf(1, 7, 42, 1234)) {
@@ -497,5 +716,8 @@ class ReviewLoopInvariantFuzzTest {
 
         /** `Double.toString` drops ".0" only on js: 2 000 runs on jvm, 200 on js (slow Longs). */
         val RUNS: Int = if (1.0.toString() == "1") 200 else 2000
+
+        /** Runs of [i6CatchesANaivePresenter]. */
+        const val NAIVE_RUNS: Int = 200
     }
 }
