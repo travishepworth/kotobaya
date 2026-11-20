@@ -19,11 +19,11 @@ import kotobaya.android.shell.web.BridgeMessage
 import kotobaya.android.sync.SyncOutcome
 import kotobaya.android.sync.SyncStatusView
 import kotobaya.contracts.sync.JsonBool
-import kotobaya.db.app.AppDatabase
 import kotobaya.contracts.sync.JsonNumber
 import kotobaya.contracts.sync.JsonObject
 import kotobaya.contracts.sync.JsonString
 import kotobaya.contracts.sync.JsonValue
+import kotobaya.db.app.AppDatabase
 import kotobaya.sync.DefaultCanonicalJson
 import kotobaya.sync.client.protocol.CycleResult
 import org.koin.core.context.GlobalContext
