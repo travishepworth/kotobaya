@@ -163,9 +163,12 @@ public data class LoopPresentation(
  *
  * **Why no sibling column.** [QueueBuilder] rule 1 puts at most one NEW or REVIEW card per note
  * in a build, so `state.untilStopParts` never counted a sibling of a held card; answering a card
- * therefore moves exactly its own part and burying its siblings moves none (P5). Where the
- * state is older than a change made elsewhere (another device, a pull), the next applied state
- * corrects the numbers; the presenter never guesses.
+ * therefore moves exactly its own part and burying its siblings moves none (P5). One exception
+ * with `burySiblings`: the day's first answer to a `LEARNING` card buries that note's NEW or
+ * REVIEW sibling, which the state did count; no [PendingAnswer] tells the presenter, so its
+ * parts lag by that sibling until the next state (within the `<= pending.size` bound below).
+ * Where the state is older than a change made elsewhere (another device, a pull), the next
+ * applied state corrects the numbers; the presenter never guesses.
  *
  * **Invariants (normative; fuzz-tested as I6 of [ReviewLoop]).** "Terminal" = `screen` in
  * {`GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`}.
@@ -178,8 +181,9 @@ public data class LoopPresentation(
  *   pending answers were applied at the same `now`, with the same limits, and every pending
  *   answer's `resultingState` / `dueAt` known. **Asserted for every input without keep going
  *   or with a keep-going target:** `|present(…).untilStop − state'.untilStop| <= pending.size`
- *   (the projection is never off by more than the answers it projects). **Asserted for plain
- *   inputs** (additionally no pending entries, no kanji units, no per-deck limits):
+ *   (the projection is never off by more than the answers it projects); with `burySiblings`
+ *   this bound is the whole rule. **Asserted for plain inputs** (additionally `burySiblings =
+ *   false`, no pending entries, no kanji units, no per-deck limits):
  *   `present(…).untilStop == state'.untilStop`, and part by part with `learning + later`
  *   taken together (the presenter has no clock to tell them apart).
  *
@@ -217,7 +221,9 @@ public data class LoopPresentation(
  *   reading card R (REVIEW, due today); the state counted only M (`review 30`: one per note). M
  *   is graded Good → `REVIEW`: `pending = [(REVIEW, 3, REVIEW, …)]` → `(0, 5, 29, 30)`. R is now
  *   sibling-buried, and nothing more is subtracted for it: it was never counted. A fresh
- *   evaluation gives the same `review 29`.
+ *   evaluation gives the same `review 29`. (This equality holds because M was a REVIEW card;
+ *   had M been `LEARNING` and R counted, the fresh evaluation is lower by R: see "Why no
+ *   sibling column".)
  * - **P6** (day end): 23:58 local, D = midnight's instant; state `REVIEWING` `(1, 0, 0, 0)`; the
  *   last learning card is graded Again → `LEARNING`, due in 10 minutes = D + 480 000 (after D):
  *   `pending = [(LEARNING, 1, LEARNING, D + 480 000)]`, no card held → **leaves today** →
