@@ -30,3 +30,10 @@
 Persisted outbox and retry policy (LF-W1), prefetch depth (LF-W2), Android.
 
 ## Notes from previous attempts
+
+## Orchestrator notes (from LOOP-31-CORE-B review — REQUIRED)
+- Render ONLY from core `presentLoop` output. Never pick an end screen from `loop.phase` directly. This is the remaining way to show "done" with reviews left.
+- Drop a pending answer only when a state is applied that was REQUESTED AFTER that answer's acknowledgement. Never drop it on the ack itself, or the header double-counts or freezes.
+- JS DTOs are Kotlin classes: build inputs with `new JsLoopInput(...)` etc. (like previewIntervals). TS object literals type-check but fail at runtime.
+- Keep going button: shown iff `loop.keep_going_available`. Per core (CORE-A I4) that is true on every stop/waiting screen whose K∞ is non-empty, i.e. every end screen except the final EMPTY ("nothing left"). This matches the user's rule. Add a web test: every non-EMPTY end screen with new cards remaining shows Keep going.
+- With burySiblings on, the settling header may briefly show a buried sibling until the next fetch (accepted, contract CCR).

@@ -535,3 +535,4 @@
 - CLI-30: backend wire→UntilStopParts mapping untested; waybar text now labelled segments.
 - LOOP-31-CORE-A minors (run 36): fuzz jvm/js run-count switch via `1.0.toString()` -> expect/actual in jvmTest/jsTest; fuzz failing prefix not shrunk; Target bound assumes single-card kanji parts (assert it in the generator).
 - LF-A2 minors (run 36): moved PROXY->LOCAL ops without handlers sit behind 20 s readiness gate until LF-A3..A8 land (transitional); UiPathNeverTouchesNetworkTest exempts STILL_FORWARDS -> LF-X1 strict pass. Others -> LF-A2b.
+- LOOP-31-CORE-B minors (run 36): fuzz never applies a state that already includes a pending answer (double subtraction); presentLoop is a top-level export, not CoreJs (README C-31 says CoreJs).
