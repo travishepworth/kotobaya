@@ -48,19 +48,16 @@ describe('route gating table', () => {
 		for (const route of gatedRoutes()) for (const id of ROUTE_OPS[route] ?? []) expect(CLASSES[id]).toBe('proxy');
 	});
 
-	it('stats, media and the import mapping are gated; note-types, home and review are not', () => {
-		expect(gatedRoutes()).toEqual(expect.arrayContaining(['/stats', '/media', '/import/mapping']));
-		expect(isGatedPath('/stats')).toBe(true);
-		expect(isGatedPath('/media/abc/def')).toBe(true);
-		expect(isGatedPath('/import/mapping')).toBe(true);
-		expect(isGatedPath('/note-types')).toBe(false);
-		expect(isGatedPath('/')).toBe(false);
-		expect(isGatedPath('/review')).toBe(false);
+	it('C-31: stats, media and the import mapping are no longer gated (local or cached operations); nothing is proxy-only', () => {
+		expect(gatedRoutes()).toEqual([]);
+		for (const p of ['/stats', '/media/abc/def', '/import/mapping', '/note-types', '/', '/review']) expect(isGatedPath(p), p).toBe(false);
 		expect(isProxyOnly([])).toBe(false);
+		expect(isProxyOnly(['listJpdbVocab'])).toBe(true);
+		expect(isProxyOnly(['listJpdbVocab', 'listMediaSentences'])).toBe(false);
 	});
 
-	it('needs-connection only while offline', () => {
-		expect(needsConnection('/stats', false)).toBe(true);
+	it('needs-connection never shows for a C-31 route, online or offline', () => {
+		expect(needsConnection('/stats', false)).toBe(false);
 		expect(needsConnection('/stats', true)).toBe(false);
 		expect(needsConnection('/cards', false)).toBe(false);
 	});
