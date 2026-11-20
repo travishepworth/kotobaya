@@ -534,3 +534,4 @@
 - WEB-30: Home waiting hero title wraps tight at desktop ('Waiting for / learning cards / Next card in / 1:00'); no day_ends_at refetch (C6 SHOULD); phone header hides parts below 34rem.
 - CLI-30: backend wire→UntilStopParts mapping untested; waybar text now labelled segments.
 - LOOP-31-CORE-A minors (run 36): fuzz jvm/js run-count switch via `1.0.toString()` -> expect/actual in jvmTest/jsTest; fuzz failing prefix not shrunk; Target bound assumes single-card kanji parts (assert it in the generator).
+- LF-A2 minors (run 36): moved PROXY->LOCAL ops without handlers sit behind 20 s readiness gate until LF-A3..A8 land (transitional); UiPathNeverTouchesNetworkTest exempts STILL_FORWARDS -> LF-X1 strict pass. Others -> LF-A2b.

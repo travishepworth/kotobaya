@@ -912,3 +912,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LOOP-31-CORE-B — Core: LoopPresenter + answer projection, exported to JS · model: opus · risk: med · deps: C-31, LOOP-31-CORE-A · status: RUNNING (ticket: plan/tickets/LOOP-31-CORE-B.md)
 - LOOP-31-WEB — Web review: one presenter, Keep going on every non-final screen, no pending screen · model: opus · risk: high · deps: LOOP-31-CORE-B, LOOP-31-API · status: TODO (ticket: plan/tickets/LOOP-31-WEB.md)
 - LF-A8 — Shell: every device-mintable write is local (cards, presets, note types, confusables, grammar, media) · model: opus · risk: high · deps: C-31, LF-A1 (non-blocking triggers), LF-A4 (card op minting helpers in `shell/api/actions/`) · status: TODO (ticket: plan/tickets/LF-A8.md)
+- LF-A2b — Shell response cache: LF-A2 review minors (race, stale mark, wiring test, trigger) · model: opus · risk: med · deps: LF-A2 · status: TODO (ticket: plan/tickets/LF-A2b.md)
