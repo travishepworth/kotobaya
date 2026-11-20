@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // WEB-REVIEW-FAST: rapid clicks and keys. A card is graded once, the next card shows at the tap, answers are
-// sent in tap order, and a failed send restores the card without losing or reordering later answers.
+// sent in tap order, and a failed send stays in the outbox (C8, LF-W1) without losing or reordering later answers.
 import { flushSync } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QueueItem } from '../../src/lib/api/generated';
@@ -86,7 +86,7 @@ describe('rapid review input', () => {
 		dispose();
 	});
 
-	it('a failed submit restores the card; later taps are withdrawn in order, none lost', async () => {
+	it('a failed submit is not restored; later taps wait behind it and go in tap order, none lost', async () => {
 		const { page, sent, dispose } = setup(['a', 'b', 'c']);
 		let rejectFirst!: () => void;
 		api.answerReview.mockImplementationOnce(
@@ -98,15 +98,17 @@ describe('rapid review input', () => {
 		page.flip();
 		void page.grade(good); // b queued behind it
 		expect(page.current?.card.id).toBe('c');
+		const aId = page.history[0].reviewId;
 		rejectFirst();
 		await settle();
 		expect(sent).toEqual([]); // b was never sent ahead of a
-		expect(page.items.map((i) => i.card.id)).toEqual(['a', 'b', 'c']);
-		expect(page.history).toEqual([]);
-		expect(page.flipped).toBe(true);
-		const retryId = page.answerId;
-		await page.retryAnswer(); // retry reuses the id (a regrade is locked)
-		expect(sent).toEqual([{ cardId: 'a', id: retryId }]);
+		expect(page.items.map((i) => i.card.id)).toEqual(['c']); // nothing put back
+		expect(page.history.map((h) => h.item.card.id)).toEqual(['a', 'b']);
+		expect(page.flipped).toBe(false);
+		await page.retryAnswer(); // sends what is waiting now (no backoff wait)
+		await settle();
+		expect(sent.map((s) => s.cardId)).toEqual(['a', 'b']);
+		expect(sent[0].id).toBe(aId); // the same id: a request that did land cannot double-log
 		dispose();
 	});
 
@@ -136,7 +138,7 @@ describe('rapid review input', () => {
 		dispose();
 	});
 
-	it('undo right after a tap withdraws the unsent answer; undo of an in-flight one waits for it', async () => {
+	it('undo right after a tap withdraws the unsent answer; undo of an in-flight one is queued behind it', async () => {
 		const { page, sent, dispose } = setup(['a', 'b']);
 		let release!: () => void;
 		let sentId = '';
@@ -161,11 +163,12 @@ describe('rapid review input', () => {
 			sent.length = 0; // the server forgets the undone answer
 			return {};
 		});
-		const u = page.undo(); // a is in flight: waits
+		await page.undo(); // a is in flight: the undo is queued behind it, the card is back at once
+		expect(page.items.map((i) => i.card.id)).toEqual(['a', 'b']);
 		await settle();
 		expect(api.undoReview).not.toHaveBeenCalled();
 		release();
-		await u;
+		await settle();
 		expect(api.undoReview).toHaveBeenCalledTimes(1);
 		expect(api.undoReview.mock.calls[0][0].reviewUndoRequest.reviewId).toBe(sentId);
 		expect(page.items.map((i) => i.card.id)).toEqual(['a', 'b']);

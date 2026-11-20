@@ -200,7 +200,7 @@ describe('review session end (RC-WEB)', () => {
 		dispose();
 	});
 
-	it('a failed answer comes back on its back with a notice; retry resends it with the same id', async () => {
+	it('C8: a failed answer is not put back; it stays in the outbox and is resent with the same id', async () => {
 		const ids: string[] = [];
 		api.answerReview
 			.mockImplementationOnce(async (r: { reviewAnswerRequest: { id: string } }) => {
@@ -217,27 +217,28 @@ describe('review session end (RC-WEB)', () => {
 		page.start(null);
 		await tick();
 		page.flip();
-		await page.grade(good);
+		void page.grade(good);
 		await tick();
-		expect(page.current?.card.id).toBe('a');
-		expect(page.flipped).toBe(true);
-		expect(page.notice).toBe('answerFailed');
-		// Locked: a regrade would reuse the same answer id (the server ignores the new rating); only Retry sends.
-		await page.grade({ rating: 1, label: 'again' } as never);
-		expect(page.key('1', false)).toBe(false);
+		expect(page.current?.card.id).toBe('b'); // never put back
+		expect(page.gradeLocked).toBe(false);
+		expect(page.notice).toBeNull();
 		expect(ids).toHaveLength(1);
-		await page.retryAnswer();
-		await tick();
+		await tick(1000); // backoff 1 s
 		expect(ids).toHaveLength(2);
 		expect(ids[1]).toBe(ids[0]);
-		expect(page.notice).toBeNull();
+		expect(page.saving).toBe(false);
 		expect(page.current?.card.id).toBe('b');
 		dispose();
 	});
 
-	it('an answer that hangs times out and the card comes back (never silently dropped)', async () => {
+	it('an answer that hangs times out and is sent again (never silently dropped); the card is not put back', async () => {
+		let recorded = false;
+		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => {
+			recorded = true;
+			return { review: { id: r.reviewAnswerRequest.id } };
+		});
 		api.answerReview.mockImplementationOnce(() => new Promise(() => {}));
-		api.getReviewQueue.mockResolvedValue(queue({ items: [card('a')] }));
+		api.getReviewQueue.mockImplementation(async () => queue({ items: [card(recorded ? 'b' : 'a')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
@@ -246,13 +247,20 @@ describe('review session end (RC-WEB)', () => {
 		await tick();
 		expect(page.phase).toBe('settling'); // the answer is on its way; the card stays on screen
 		await tick(QUEUE_TIMEOUT_MS);
-		expect(page.phase).toBe('card');
-		expect(page.current?.card.id).toBe('a');
-		expect(page.notice).toBe('answerFailed');
+		expect(page.phase).toBe('settling'); // still saving, the held card stays; nothing came back
+		expect(page.current).toBeUndefined();
+		expect(page.notice).toBeNull();
+		await tick(1000);
+		expect(api.answerReview).toHaveBeenCalledTimes(2);
+		const [a1, a2] = api.answerReview.mock.calls.map((c) => c[0].reviewAnswerRequest.id);
+		expect(a2).toBe(a1);
+		await tick();
+		expect(page.saving).toBe(false);
+		expect(page.current?.card.id).toBe('b');
 		dispose();
 	});
 
-	it('a failed undo is surfaced and can be retried', async () => {
+	it('C8: an undo whose request fails brings the card back at once and is retried by itself', async () => {
 		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		let undone = false;
 		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
@@ -265,16 +273,20 @@ describe('review session end (RC-WEB)', () => {
 		page.flip();
 		await page.grade(good);
 		await tick();
-		api.undoReview.mockRejectedValueOnce(new Error('500'));
-		await page.undo();
-		expect(page.notice).toBe('undoFailed');
-		expect(page.current?.card.id).toBe('b');
 		api.undoReview.mockImplementation(async () => {
 			undone = true;
 			return {};
 		});
+		api.undoReview.mockRejectedValueOnce(new Error('500'));
 		await page.undo();
+		expect(page.current?.card.id).toBe('a');
+		expect(page.flipped).toBe(true);
+		await tick();
 		expect(page.notice).toBeNull();
+		expect(undone).toBe(false);
+		await tick(1000);
+		expect(api.undoReview).toHaveBeenCalledTimes(2);
+		expect(undone).toBe(true);
 		expect(page.current?.card.id).toBe('a');
 		dispose();
 	});
@@ -307,18 +319,22 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
-	it('a 5xx keeps the card pinned for Retry', async () => {
+	it('C8: a 5xx does not pin the card: the next one shows, the answer is retried in the background', async () => {
 		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 503 })));
 		api.getReviewQueue.mockResolvedValueOnce(queue({ items: [card('a'), card('b')] }));
 		api.getReviewQueue.mockResolvedValue(queue({ items: [card('b')] }));
 		const { page, dispose } = mount();
 		page.start(null);
 		await tick();
+		api.answerReview.mockImplementation(async (r: { reviewAnswerRequest: { id: string } }) => ({ review: { id: r.reviewAnswerRequest.id } }));
 		page.flip();
-		await page.grade(good);
-		await tick(10_000);
-		expect(page.current?.card.id).toBe('a');
-		expect(page.notice).toBe('answerFailed');
+		void page.grade(good);
+		await tick();
+		expect(page.current?.card.id).toBe('b');
+		expect(page.notice).toBeNull();
+		await tick(1000);
+		expect(api.answerReview).toHaveBeenCalledTimes(2);
+		expect(page.saving).toBe(false);
 		dispose();
 	});
 
@@ -468,7 +484,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		dispose();
 	});
 
-	it('a 422 reviewed_at in_future (fast clock) keeps the card with a clock notice; retry uses server time', async () => {
+	it('C8: a 422 reviewed_at in_future (fast clock) is resent at once without reviewed_at; no notice, card not back', async () => {
 		const reqs: { id: string; reviewedAt?: Date }[] = [];
 		const problem = {
 			type: 'urn:kotobaya:problem:validation_failed',
@@ -494,10 +510,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		page.flip();
 		await page.grade(good);
 		await tick();
-		expect(page.current?.card.id).toBe('a');
-		expect(page.notice).toBe('clockSkew');
-		await page.retryAnswer();
-		await tick();
+		expect(page.notice).toBeNull();
 		expect(reqs).toHaveLength(2);
 		expect(reqs[1].id).toBe(reqs[0].id);
 		expect(reqs[0].reviewedAt).toBeInstanceOf(Date);
@@ -533,9 +546,7 @@ describe('review flow hardening (RC-WEB attempt 2)', () => {
 		page.flip();
 		await page.grade(good);
 		await tick();
-		expect(page.notice).toBe('clockSkew');
-		await page.retryAnswer();
-		await tick();
+		expect(page.notice).toBeNull();
 		expect(page.current?.card.id).toBe('b');
 		page.flip();
 		await page.grade(good);
