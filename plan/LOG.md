@@ -1434,3 +1434,4 @@
 2026-11-20T11:15:49Z LOOP-31-CORE-A REVIEW_APPROVE + merged into t/LF-int; minors -> FOLLOWUPS
 2026-11-20T11:18:15Z LF-A2 HANDOFF (4 known drift fails + 1 schema-version test outside paths -> authorized fix); DISPATCH LOOP-31-CORE-B (must add pending-answer fuzz step)
 2026-11-20T11:27:53Z LF-A2 REVIEW_APPROVE (7 minors: 4 -> LF-A2b ticket, rest FOLLOWUPS/LF-X1); awaiting android re-check
+2026-11-20T11:29:04Z LF-A1 HANDOFF -> reviewer; DISPATCH LOOP-31-API
