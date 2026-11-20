@@ -10,6 +10,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.api.ApiOperation
+import kotobaya.android.shell.api.OpClass
 import kotobaya.android.shell.api.Problem
 import kotobaya.android.shell.api.Problems
 import kotobaya.android.shell.api.ShellHeaders
@@ -30,23 +31,23 @@ import okhttp3.Response
 import okio.Buffer
 
 /**
- * The real [Upstream] (SHELL-A5): forwards a `proxy` operation (or a handler's fallthrough) to the
- * server with the device token, by SHELL.md rules P-1 … P-3.
+ * The real [Upstream] (SHELL-A5, LF-A2): forwards a `proxy` operation, the one forwarded request of rule L-9
+ * (`createDeck` `type: list`) and the response cache's background fetches (rules K-2, K-3) to the server with the
+ * device token, by SHELL.md rules P-1 … P-3 as amended by C-31.
  *
- * - P-1: [isOnline] false, no server URL, a connect/TLS failure or no complete answer within
- *   [callBudgetMs] → `503 shell_offline`; offline means no network attempt at all. No retry.
- * - P-2: one [ProxySync.push] bounded to [pushBudgetMs], failure ignored; then the request with
- *   `method`, `body`, `content-type`, `accept`, `x-request-id` and `Authorization: Bearer <token>`
- *   (the SPA's `authorization`, `cookie`, `x-kotobaya-csrf` and every other header are not sent).
- *   Redirects are followed here, without `Authorization`.
- * - P-3: a `2xx` with `Kotobaya-Seq: n` is held until the pull cursor ≥ n, at most [pullBudgetMs];
- *   on timeout it carries `kotobaya-shell-stale: 1`.
+ * - P-1: [isOnline] false, no server URL, a connect/TLS failure or no complete answer within [callBudgetMs] →
+ *   `503 shell_offline`; offline means no network attempt at all. No retry.
+ * - P-2: forwarded at once: no push first, no cycle started or joined. `method`, `body`, `content-type`, `accept`,
+ *   `x-request-id` and `Authorization: Bearer <token>` (the SPA's `authorization`, `cookie`, `x-kotobaya-csrf` and
+ *   every other header are not sent). Redirects are followed here, without `Authorization`.
+ * - P-3: answered as soon as the server's answer is complete. A `2xx` with `Kotobaya-Seq: n` above the pull cursor
+ *   carries `kotobaya-shell-stale: 1` and [ProxySync.requestPull] schedules a pull (not awaited).
  *
- * The server's status and body pass through unchanged (401 and 403 included), with only the headers
- * of SHELL.md 3.3: `content-type`, `x-request-id`, `retry-after`, `content-location`,
- * `kotobaya-seq`. A body over 8 MiB or not JSON / problem JSON / text → `415 shell_unsupported`.
- * Nothing here logs, and the token is only ever put on the first hop's request header; the stored
- * pairing and the outbox are never touched.
+ * The server's status and body pass through unchanged (401 and 403 included), with only the headers of SHELL.md 3.3:
+ * `content-type`, `x-request-id`, `retry-after`, `content-location`, `kotobaya-seq`. For a `cached` operation (the
+ * cache's own fetches) `If-None-Match` is sent and `etag` returned, for the response cache only. A body over 8 MiB or
+ * not JSON / problem JSON / text → `415 shell_unsupported`. Nothing here logs, and the token is only ever put on the
+ * first hop's request header; the stored pairing and the outbox are never touched.
  */
 class ServerUpstream(
     /** `ShellInfo.server_url`: the server's API base, ending in `/api/v1`. */
@@ -55,10 +56,7 @@ class ServerUpstream(
     private val isOnline: () -> Boolean,
     private val sync: ProxySync,
     private val http: OkHttpClient = defaultHttp(),
-    private val pushBudgetMs: Long = PUSH_BUDGET_MS,
     private val callBudgetMs: Long = CALL_BUDGET_MS,
-    private val pullBudgetMs: Long = PULL_BUDGET_MS,
-    private val pullRetryDelayMs: Long = PULL_RETRY_DELAY_MS,
 ) : Upstream {
     override suspend fun forward(request: ShellRequest, operation: ApiOperation, requestId: String): ShellResponse {
         fun problem(p: Problem) = p.toResponse(request.path, requestId)
@@ -67,11 +65,10 @@ class ServerUpstream(
         if (!isOnline()) return problem(Problems.shellOffline())
         val target = baseUrl()?.let { buildUrl(it, request) } ?: return problem(Problems.shellOffline())
         val bearer = token() ?: return problem(Problems.unauthenticated())
-
-        withTimeoutOrNull(pushBudgetMs) { runCatchingNonCancel { sync.push() } }
+        val cached = operation.opClass == OpClass.CACHED
 
         val upstream = try {
-            withTimeoutOrNull(callBudgetMs) { withContext(Dispatchers.IO) { exchange(target, request, requestId, bearer) } }
+            withTimeoutOrNull(callBudgetMs) { withContext(Dispatchers.IO) { exchange(target, request, requestId, bearer, cached) } }
         } catch (e: IOException) {
             null
         } ?: return problem(Problems.shellOffline())
@@ -82,8 +79,8 @@ class ServerUpstream(
         }
         val seq = response.headers[SEQ]?.trim()?.toLongOrNull()
         if (response.status !in 200..299 || seq == null || sync.pullCursor() >= seq) return response
-        val caughtUp = withTimeoutOrNull(pullBudgetMs) { sync.pullUntil(seq, pullRetryDelayMs) } != null
-        return if (caughtUp) response else response.copy(headers = response.headers + (STALE to "1"))
+        sync.requestPull(seq)
+        return response.copy(headers = response.headers + (STALE to "1"))
     }
 
     private sealed interface Exchange {
@@ -93,7 +90,7 @@ class ServerUpstream(
     }
 
     /** The request (and its redirects) within one budget; throws [IOException] for P-1 failures. */
-    private suspend fun exchange(first: HttpUrl, request: ShellRequest, requestId: String, bearer: String): Exchange {
+    private suspend fun exchange(first: HttpUrl, request: ShellRequest, requestId: String, bearer: String, cached: Boolean): Exchange {
         var url = first
         var method = request.method
         var body: String? = request.body
@@ -102,6 +99,7 @@ class ServerUpstream(
             val builder = Request.Builder().url(url)
             if (withAuth) builder.header("Authorization", "Bearer $bearer")
             request.header("accept")?.let { builder.header("Accept", it) }
+            if (cached) request.header(IF_NONE_MATCH)?.let { builder.header("If-None-Match", it) }
             builder.header("X-Request-Id", requestId)
             val contentType = request.header(ShellHeaders.CONTENT_TYPE)
             val requestBody = when {
@@ -123,13 +121,13 @@ class ServerUpstream(
                     withAuth = false // P-2: redirects are followed without the Authorization header
                     return@repeat
                 }
-                return read(resp, requestId)
+                return read(resp, requestId, cached)
             }
         }
         throw IOException("too many redirects")
     }
 
-    private fun read(resp: Response, requestId: String): Exchange {
+    private fun read(resp: Response, requestId: String, cached: Boolean): Exchange {
         val source = resp.body?.source()
         val buffer = Buffer()
         if (source != null) {
@@ -151,6 +149,7 @@ class ServerUpstream(
         resp.header("Retry-After")?.let { headers[ShellHeaders.RETRY_AFTER] = it }
         resp.header("Content-Location")?.let { headers[ShellHeaders.CONTENT_LOCATION] = it }
         resp.header("Kotobaya-Seq")?.let { headers[SEQ] = it }
+        if (cached) resp.header("ETag")?.let { headers[ETAG] = it }
         return Exchange.Answer(ShellResponse(resp.code, headers, text))
     }
 
@@ -181,14 +180,17 @@ class ServerUpstream(
     }
 
     companion object {
-        const val PUSH_BUDGET_MS: Long = 5_000
         const val CALL_BUDGET_MS: Long = 12_000
-        const val PULL_BUDGET_MS: Long = 10_000
-        const val PULL_RETRY_DELAY_MS: Long = 250
         const val MAX_RESPONSE_BYTES: Long = 8L * 1024 * 1024
         const val MAX_REDIRECTS: Int = 5
         const val SEQ: String = "kotobaya-seq"
         const val STALE: String = "kotobaya-shell-stale"
+
+        /** Request header of a response-cache revalidation (`cached` operations only). */
+        const val IF_NONE_MATCH: String = "if-none-match"
+
+        /** Response header returned for `cached` operations only (stored by the response cache, never sent to the SPA). */
+        const val ETAG: String = "etag"
         private const val API_PREFIX = "/api/v1"
         private const val CHUNK = 64L * 1024
 

@@ -81,8 +81,10 @@ class RouteTableTest {
 
     @Test
     fun aRouteForAProxyOperationIsRejectedAtConstruction() {
-        val r = runCatching { LocalApi(listOf(LocalRoute("getStatsSummary", "GET", "/api/v1/stats/summary") { Fallthrough }), AlwaysOpenGate(), newRequestId = { "r" }) }
+        val r = runCatching { LocalApi(listOf(LocalRoute("listJobs", "GET", "/api/v1/jobs") { Fallthrough }), AlwaysOpenGate(), newRequestId = { "r" }) }
         assertTrue(r.isFailure)
+        val cached = runCatching { LocalApi(listOf(LocalRoute("getStatsForecast", "GET", "/api/v1/stats/forecast") { Fallthrough }), AlwaysOpenGate(), newRequestId = { "r" }) }
+        assertTrue(cached.isFailure, "a cached operation is answered by the response cache, never by a route")
         val wrongPath = runCatching { LocalApi(listOf(LocalRoute("getMeta", "GET", "/api/v1/metadata") { Fallthrough }), AlwaysOpenGate(), newRequestId = { "r" }) }
         assertTrue(wrongPath.isFailure)
     }

@@ -10,6 +10,8 @@ import kotobaya.android.ankiapi.provider.AnkiStore
 import kotobaya.android.ankiapi.provider.NewNote
 import kotobaya.android.ankiapi.store.AddOutcome
 import kotobaya.android.ankiapi.store.TakobotoAnkiStore
+import kotobaya.android.shell.cache.CacheHooks
+import kotobaya.android.shell.cache.CacheUpdate
 import kotobaya.android.shell.web.BridgeCore
 import kotobaya.android.shell.web.BridgeMessage
 import kotobaya.android.sync.SyncOutcome
@@ -47,18 +49,60 @@ class ShellEvents(
     private val lock = Any()
     private var lastStatus: String? = null
     private var lastOnline: Boolean? = null
+    private val cacheUpdates = HashMap<String, Coalescer>()
+    private val cachePayloads = HashMap<String, CacheUpdate>()
 
-    /** After a sync cycle: `sync.changed` when it applied ops (a pull page, a rebuild), else nothing. */
+    /** The response cache (LF-A2, SHELL.md K-4): invalidated where `sync.changed` is due, warmed after a good cycle. */
+    @Volatile
+    var cacheHooks: CacheHooks? = null
+
+    /**
+     * After a sync cycle: `sync.changed` when it applied ops (a pull page, a rebuild), else nothing. The response cache
+     * marks entries stale on the same occasions (all of them after a rebuild or log reset) and warms after a completed cycle.
+     */
     fun onSyncOutcome(outcome: SyncOutcome) {
-        val result = (outcome as? SyncOutcome.Ran)?.result as? CycleResult.Completed ?: return
-        if (result.pulledOps > 0 || result.pullAdvanced) changed.request()
+        val ran = (outcome as? SyncOutcome.Ran)?.result
+        if (ran is CycleResult.RebuildPending || ran is CycleResult.LogChanged) runCatching { cacheHooks?.onAllStale() }
+        val result = ran as? CycleResult.Completed ?: return
+        if (result.pulledOps > 0 || result.pullAdvanced) {
+            changed.request()
+            runCatching { cacheHooks?.onReplicaChanged() }
+        }
         status.request()
+        runCatching { cacheHooks?.onCycleSucceeded() }
     }
 
     /** After a committed local write (`LocalWrites` after-commit hook). */
     fun onLocalWrite() {
         changed.request()
         status.request()
+        runCatching { cacheHooks?.onReplicaChanged() }
+    }
+
+    /**
+     * `cache.updated` (C-31, SHELL.md 2.6): at most one per cache key per [intervalMs]; the last payload of a key is
+     * always delivered.
+     */
+    fun onCacheUpdated(update: CacheUpdate) {
+        val key = update.operationId + "\n" + update.path + "\n" + update.query
+        val coalescer = synchronized(lock) {
+            cachePayloads[key] = update
+            cacheUpdates.getOrPut(key) { Coalescer { emitCacheUpdated(key) } }
+        }
+        coalescer.request()
+    }
+
+    private fun emitCacheUpdated(key: String) {
+        val u = synchronized(lock) { cachePayloads[key] } ?: return
+        emit(
+            "cache.updated",
+            obj(
+                "operation_id" to JsonString(u.operationId),
+                "path" to JsonString(u.path),
+                "query" to JsonString(u.query),
+                "status" to JsonNumber(u.status.toDouble()),
+            ),
+        )
     }
 
     /** A `note.created` the SPA did not cause. [seq] is 0 for a note minted on this device. */
