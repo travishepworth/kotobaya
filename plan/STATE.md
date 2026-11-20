@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RESUME HERE (run 36, 2026-11-20) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
-Running: architect design -> scratchpad local-first-design.md + local-first-tickets/ (C-31, LF-*, LOOP-31-*). Next: copy tickets to plan/tickets, add to BACKLOG, dispatch per deps.
+Design DONE: plan/tickets/LF-DESIGN.md + 17 tickets in BACKLOG. Running: C-31 (architect, worktree, t/C-31-local-first). Then LOOP-31-CORE-A + LF-A1/A2/A4/A5 (1 Gradle-heavy at a time).
 Cleanup done: all merged worktrees/branches removed (local + origin t/*); main == origin/main. Kept release/0.1.9 (1 unmerged commit).
 
 ## Previous (2026-11-20) — perf + UX-1, direct session (not a ticket run)
