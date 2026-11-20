@@ -86,7 +86,7 @@ CREATE TABLE tts_audio (
 -- Contract: contracts/db/SCHEMA.md 5.3.
 CREATE TABLE response_cache (
   -- operationId || char(10) || path || char(10) || canonical query (SHELL.md rule K-1), e.g.
-  -- 'listMedia' || char(10) || '/api/v1/media' || char(10) || 'cursor=&limit=20'
+  -- 'listSentences' || char(10) || '/api/v1/sentences' || char(10) || 'cursor=&limit=20'
   key TEXT NOT NULL PRIMARY KEY,
   op TEXT NOT NULL,                   -- operationId, e.g. 'getDeckCoverage' (invalidation is per operation)
   path TEXT NOT NULL,                 -- req.path as received, e.g. '/api/v1/decks/<id>/coverage'

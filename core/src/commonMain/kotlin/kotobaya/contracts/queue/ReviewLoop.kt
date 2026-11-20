@@ -405,8 +405,11 @@ public data class LoopResult(
  *   `readyLearning > 0`, `queue.items[0]` is a LEARNING item and it is the eligible learning
  *   card with the smallest `(dueAt, cardId)`, **with and without keep going and whatever the
  *   target** (ADR-052 a: a card that came due is the head, with no lag); in a keep-going build
- *   no NEW item precedes a REVIEW item, except NEW items of the open group (rule 5 "Open group
- *   first").
+ *   no NEW item precedes a REVIEW item, except by the **open-unit exception to ADR-052 (a)**
+ *   ([QueueBuilder] rule 6 "Target"): the remaining NEW cards of a half-answered kanji unit
+ *   (rule 5 "Open group first") stay ahead of the reviews. The fuzz test asserts exactly this:
+ *   every NEW item that precedes a REVIEW item belongs to the open group, and no NEW item ever
+ *   precedes a LEARNING item.
  * - **I6** the presenter ([LoopPresenter], its own invariants P-I1 … P-I4).
  * - **I7** without keep going, and with keep going and a target: answering `queue.items[0]`
  *   with any rating, at the same `now`, and re-evaluating with the same limits gives
@@ -414,10 +417,17 @@ public data class LoopResult(
  *   jumps; the expected value is `<= untilStop(before)`, the `+ 1` is the asserted bound). Not
  *   asserted for keep going **without** a target (its batch-bounded new part is refilled
  *   after every answer and a kanji unit may overshoot the batch) and not across a day rollover.
- * - **I8** (ADR-052 b) `!keepGoing` ⇒ the NEW items of `queue.items` plus `toMaterialize`
- *   number at most `max(0, newGoal − newToday)` and `parts.new <= max(0, newGoal − newToday)`,
+ * - **I8** (ADR-052 b) `!keepGoing` ⇒ `|NEW items of queue.items| + |queue.toMaterialize| +
+ *   |queue.kanjiToMaterialize| <= max(0, newGoal − newToday)` and `parts.new <= max(0, newGoal −
+ *   newToday)`. **`kanjiToMaterialize` is included:** every literal in it is a kanji note the
+ *   build will mint and introduce today (for a drawn deck entry or for a withheld word), so it
+ *   is a new card that is "served or counted" exactly like a NEW item; a build that listed
+ *   literals beyond the bound would mint notes past the goal. (`parts.new` is rule 4's
+ *   `availableToday`, which already counts drawn, withheld and to-be-minted kanji cards alike.)
+ *   Both hold
  *   whatever `keepGoingNewTarget` holds and whatever was introduced by keeping going earlier
- *   today; in particular both are 0 once `newToday >= newGoal`. (`parts.new` equals that bound
+ *   today; in particular both are 0 (and all three lists hold nothing new) once
+ *   `newToday >= newGoal`. (`parts.new` equals that bound
  *   whenever the enabled decks can supply that many under their own limits; the fuzz test
  *   asserts the bound.) (One documented overshoot, excluded from the fuzz generator by using the
  *   built-in kanji type: the first-of-the-day kanji part of rule 4, ADR-044.) So after a
@@ -581,6 +591,9 @@ public data class LoopResult(
  *   evaluation one second **before** c's due: S = `[r, n8, …]`, `laterToday 1`. With n8's word
  *   unit half-answered (its kanji was the last answer, `s == 0`): S = `[c, n8, r, n9, …]` — the
  *   open group's remaining card stays ahead of the review, never ahead of the learning card.
+ *   This is the **open-unit exception to ADR-052 (a)** ([QueueBuilder] rule 6 "Target"): the
+ *   one case in which a due review is not served before a new card; it costs the review at
+ *   most the remaining cards of that one unit.
  * - **X1** (C-31, ADR-052 b: exit mid-batch; A; goal 20, 20 introduced, plenty of new cards):
  *   1. Press Keep going: `T = 40`; `REVIEWING`, `(0, 0, 0, 20)`.
  *   2. The user answers 7 new cards (`newToday 27`; 2 of them in a step due in 5 minutes, 5

@@ -948,13 +948,24 @@ Three choices most worth a second look:
 
 What was decided:
 - **On the phone nothing on a normal screen waits for the network.** Every operation the app's
-  screens call is now one of: `local` (answered from the phone's own data: 43 operations, 5 more
-  than before — the three Home stats, word audio lookup, reschedule/reset — and every bulk card
-  action), `local_or_proxy` (dictionary reads: the name is kept, but they never go to the server
-  on a request any more), or the new class `cached` (14 read operations whose data only the
-  server has: shown at once from a copy kept on the phone and refreshed in the background).
-  35 operations stay `proxy`; the app only calls those from explicit actions that say "needs
-  connection".
+  screens call is now one of: `local` (answered from the phone's own data: 66 operations, 28
+  more than before), `local_or_proxy` (dictionary reads: the name is kept, but they never go to
+  the server on a request any more), or the new class `cached` (11 read operations whose data
+  only the server has: shown at once from a copy kept on the phone and refreshed in the
+  background). 15 operations stay `proxy`; the app only calls those from explicit actions that
+  say "needs connection".
+- **Every change you can make is saved on the phone first** (new rule L-10). Besides reviews,
+  notes and decks this now covers single cards (suspend, flag, bury, preset, add, delete),
+  presets, note types, confusable pairs, grammar points and their highlighted spans, and media
+  titles / deletion: 17 operations that used to need the server. They work offline, return at
+  once and are pushed in the background like a review. The screens that list those things read
+  from the phone too, so a change shows immediately. The rule is mechanical — "if a phone is
+  allowed to create this kind of change record and applies it itself, the operation is local" —
+  and `check_shell.py` enforces it (`ops_map_local_writes`), so a future write cannot be left
+  behind the network by oversight. What stays online-only, with the reason next to each:
+  parse overrides (the phone keeps no copy of them and the server must re-parse), creating a
+  deck from a vocabulary list (server-built), text parsing, rule testing, audio generation,
+  jobs, exports.
 - **`cached` in one paragraph** (SHELL.md 4.4, rules K-1 … K-4): the copy is keyed by operation,
   path and sorted query; a hit answers at once with `kotobaya-cached-at`; when online and the copy
   is older than 60 s (or marked stale because related data changed) it is fetched again in the
@@ -975,11 +986,15 @@ What was decided:
 - **Keep going** (ADR-052): new query `keep_going_new_target` on `getReviewQueue`; the stop screens
   can now also follow a keep-going request; `loop.keep_going_available` redefined as "pressing it
   would serve a card now" (core summary, C-31).
-- **Client rules**: C2 amended (the target), C5 amended (no "pending" screen), new C7 (render the
+- **Client rules**: C2 amended (the target; it is computed after the answers still on their way
+  are counted, so a batch is never short), C5 amended (no "pending" screen), new C7 (render the
   core presenter's output only), new C8 (browser: answers go to a persisted outbox, grading never
-  locks).
-- `LOCAL_API_VERSION` 3 and `min_local_api` 3; 6 new parity scenarios (stats, bulk, reschedule,
-  speech, keep-going target), hand-written, goldens to be recorded; `check_shell.py` accepts
+  locks). In C8 a refusal because of the browser's clock (`422` at `/reviewed_at`) does **not**
+  drop the answer: it is sent again without its timestamp and the server uses its own time.
+  Only other refusals are final.
+- `LOCAL_API_VERSION` 3 and `min_local_api` 3; 11 new parity scenarios (stats, bulk, reschedule,
+  speech, keep-going target, and one each for the card, preset, note-type, confusable and
+  grammar writes), hand-written, goldens to be recorded; `check_shell.py` accepts
   `cached`, checks the class counts in SHELL.md against `ops.json`, and enforces that no `local` /
   `cached` operation needs a scope a device token lacks and that `cached` operations are GETs.
 - No op, no learning-data table, no `SCHEDULER_VERSION` change. The cross-check tables keep every
@@ -1023,6 +1038,13 @@ Also changed, smaller:
   fetches the entry in the background, instead of fetching it within the request.
 - `listDictHeadwords` answers what it has and flags the rest with `kotobaya-shell-partial: 1`.
 - `resolveSpeech` on the phone answers `pending` offline instead of `503`.
+- Two accepted differences of the new local writes: a grammar detection rule with a syntax error
+  is stored by the phone (only the server can parse rules; "test rule" stays an online action),
+  and a media deleted on the phone has its server-side jobs ended by the server when the change
+  arrives, not at the tap.
+- A local change the server would have refused because of something the phone had not pulled
+  yet is either reconciled by the normal merge rules or shown under Settings → Sync as a
+  rejected change; it is never lost silently (SHELL.md 10.21).
 - One file outside this ticket's listed paths was touched: one line in `contracts/db/check.sh`
   (the allow-list of device-only tables gained `response_cache`); without it the new table
   fails the device-versus-server schema comparison.

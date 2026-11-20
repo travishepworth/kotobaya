@@ -15,6 +15,9 @@ Named checks (each prints one line; the run fails if any fails):
                                no security or a bearer alternative whose scopes are ALL held by a device token
                                (read, write, review), so no such operation needs a scope a device token lacks;
                                a `cached` operation is a GET (a cached write would be a lost write)
+  ops_map_local_writes         C-31 (SHELL.md rule L-10): an operation whose x-emits-ops are all client-emittable and
+                               applied by devices (contracts/sync/ops/index.json) is `local` (or `hidden`), so
+                               no write a device can make is left behind the network
   ops_map_counts               C-31: the Count column of the class table in SHELL.md 3.2 equals the number of
                                operations of each class in ops.json, and every operation is named in the bold
                                list of its own class there
@@ -44,7 +47,8 @@ Named checks (each prints one line; the run fails if any fails):
                                invented one, a bad class, a broken seed op, a seed the server would reject
                                and a missing mandatory scenario; C-31: on a `cached` / `local` operation that
                                needs a scope a device token lacks, on a `cached` operation that is not a GET,
-                               and on a class count in SHELL.md that is off by one
+                               on a class count in SHELL.md that is off by one, and on a device-mintable write
+                               classified `proxy`
 """
 from __future__ import annotations
 
@@ -102,6 +106,9 @@ MANDATORY = [
     # C-31 (ADR-050..052): the newly local operations and the keep-going target
     "stats.summary_local", "stats.heatmap_local", "stats.retention_local", "cards.bulk_all_actions_local",
     "cards.bulk_schedule_local", "speech.resolve_local", "queue.keep_going_target", "queue.keep_going_batch_not_owed",
+    # C-31 (rule L-10): every write a device can mint and apply is local
+    "cards.single_writes_local", "presets.writes_local", "note_types.writes_local", "confusables.writes_local",
+    "grammar.writes_local",
 ]
 RETIRED = ["queue.session_cap_more_available"]  # ADR-037: no session cap
 # contracts/db/SCHEMA.md 4.1 learning-data tables (+ media, parse_override), as contracts/api/check_contract.py.
@@ -164,6 +171,23 @@ def check_ops_scopes(ops_map: dict, api_ops: dict[str, dict]) -> list[str]:
                             f"({[sorted(a) for a in info['bearer_alts']]}; a device token holds {sorted(DEVICE_SCOPES)})")
         if cls == "cached" and info["method"] != "GET":
             errs.append(f"ops.json: {oid} is cached but is a {info['method']}; only GET operations may be cached")
+    return errs
+
+
+def check_ops_local_writes(ops_map: dict, api_ops: dict[str, dict], op_index: dict[str, dict]) -> list[str]:
+    """SHELL.md rule L-10: a write whose ops a device may mint and apply must not need the network."""
+    errs = []
+    for oid, info in api_ops.items():
+        emits = info["op"].get("x-emits-ops") or []
+        if not emits or ops_map.get(oid) in ("local", "hidden", None):
+            continue
+        unknown = [e for e in emits if e not in op_index]
+        if unknown:
+            errs.append(f"openapi.yaml: {oid} x-emits-ops names unknown op(s) {unknown}")
+            continue
+        if all(op_index[e]["emitter"] == "client" and op_index[e]["device_applies"] for e in emits):
+            errs.append(f"ops.json: {oid} is {ops_map[oid]} but every op it emits ({emits}) can be minted and applied "
+                        f"by a device; rule L-10 requires local")
     return errs
 
 
@@ -570,6 +594,8 @@ def main() -> int:
     results["ops_map_scopes"] = check_ops_scopes(ops_map, api_ops)
     shell_md = (HERE / "SHELL.md").read_text(encoding="utf-8")
     results["ops_map_counts"] = check_ops_counts(shell_md, ops_map)
+    op_index = {o["op_type"]: o for o in load(SYNC / "ops" / "index.json")["ops"]}
+    results["ops_map_local_writes"] = check_ops_local_writes(ops_map, api_ops, op_index)
 
     raw_yaml = (HERE / "shell.yaml").read_text(encoding="utf-8")
     results["shell_operations"] = check_shell_operations(shell_spec, raw_yaml)
@@ -601,6 +627,8 @@ def main() -> int:
                    "setConfusable is cached but is a PUT")
     moved = next(o for o, c in ops_map.items() if c == "cached")
     expect_failure("selftest_ops_counts", check_ops_counts(shell_md, {**ops_map, moved: "proxy"}), "count is")
+    expect_failure("selftest_ops_local_writes", check_ops_local_writes({**ops_map, "deleteCard": "proxy"}, api_ops, op_index),
+                   "deleteCard is proxy but every op it emits")
     with_seed = next((n for n, s in scenarios.items() if s["seed"]["log"]), None)
     if with_seed is None:
         results["selftest_parity_bad_seed_op"] = ["no scenario with a seed op to break"]

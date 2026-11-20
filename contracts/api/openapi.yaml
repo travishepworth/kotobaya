@@ -2250,7 +2250,13 @@ paths:
           the study day".)
           **One goal-sized batch per press (C-31, ADR-052; replaces ADR-039's "within one visit
           it stays an endless stream").** When the user presses Keep going the client computes
-          `T = loop.new.today + max(1, loop.new.goal)` from the response on screen and sends
+          `T = loop.new.today + pendingNew + max(1, loop.new.goal)` from the response on screen,
+          with `pendingNew` = the pending answers of rule C7 whose item kind was `new` (answers
+          that response does not count yet, e.g. still in the outbox of rule C8), so that the
+          batch is a full goal and not short by them. The button is only shown on the
+          presenter's `waiting` and stop screens, which require an empty pending list, so
+          `pendingNew` is 0 there; the term is what keeps `T` right for a client that offers
+          the button elsewhere. It sends
           `keep_going=true&keep_going_new_target=T` on every fetch of the visit until the next
           press. The server then introduces new cards only up to `T`; when `T` is reached and
           nothing is due, the response is `goal_reached` / `done_for_today` again with
@@ -2353,10 +2359,23 @@ paths:
           idempotency makes a repeat safe (`200` with the stored review). Retryable failures —
           no response, `429`, `5xx` — leave the entry in place and retry with backoff (1 s,
           doubling, at most 30 s; at once when the browser reports online); the card is **not**
-          put back in front of the user and grading is never locked. Final refusals — `404`,
-          `409 card_not_reviewable`, `410 gone`, `422` — remove the entry and show one toast;
+          put back in front of the user and grading is never locked. **A `422` whose `errors[]`
+          has an element with `pointer` `/reviewed_at`** (`in_future`: this browser's clock is
+          more than 5 minutes ahead; `before_floor` / `before_card`: it is far behind) is
+          **not** final: the entry stays, its `reviewed_at` is removed (in the store too) and
+          it is sent again at once with the same `id`; the server then uses its own clock.
+          From then until the page is reloaded the client sends every entry without
+          `reviewed_at` (one wrong clock would otherwise cost one extra round trip per
+          answer). The review is logged at the time it reaches the server instead of the time
+          of the tap: for an answer that waited offline that is later than the truth, which is
+          the accepted price of never dropping it. An entry already sent without `reviewed_at`
+          that is refused `422` again falls under the next sentence. Final refusals — `404`,
+          `409 card_not_reviewable`, `410 gone`, and a `422` with **no** error at
+          `/reviewed_at` — remove the entry and show one toast;
           `401` stops sending and keeps the outbox until the user has logged in again. An
-          entry is removed only on a `2xx` or a final refusal. The client keeps at least 10
+          entry is removed only on a `2xx` or a final refusal. Example: clock 20 minutes
+          ahead, 30 answers: the first answer is `422 in_future` at `/reviewed_at`, is resent
+          without the property and accepted; the other 29 are sent without it; none is lost. The client keeps at least 10
           cards ahead (it fetches with `limit=30` when fewer than 10 unanswered cards are
           held), merges a fetched page into what it holds instead of discarding either, and
           drops from a fetched page every card that has an entry in the outbox (the server has

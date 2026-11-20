@@ -1,0 +1,262 @@
+{
+  "id": "grammar-writes-local",
+  "title": "Grammar points and manual spans are written and read on the device (C-31, rule L-10)",
+  "covers": [
+    "grammar.writes_local"
+  ],
+  "narrative": [
+    "An empty replica. Before C-31 the shell forwarded every operation used here. No detection_rules are used: their syntax is checked only by the server (SHELL.md 4.3), which parity cannot show.",
+    "Steps 0-1: createGrammarPoint with a client id; the same id again is 200 with the stored point.",
+    "Steps 2-4: updateGrammarPoint (a register set to null included); getGrammarPoint and listGrammarPoints show it at once.",
+    "Steps 5-7: a manual span on a sentence neither side has is stored as given (the server's own rule); putting it again is fine. example_count after it is the golden's.",
+    "Step 8: removeGrammarSpan. Step 9: a point without title is 422.",
+    "Steps 10-13: deleteGrammarPoint is 204, twice; the point answers 410 and a span on it is 410.",
+    "Step 14: the list is empty again."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": []
+  },
+  "operations": [
+    "createGrammarPoint",
+    "deleteGrammarPoint",
+    "getGrammarPoint",
+    "listGrammarPoints",
+    "putGrammarSpan",
+    "removeGrammarSpan",
+    "updateGrammarPoint"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/grammar",
+        "query": "",
+        "body": {
+          "id": "0193b000-0008-7000-8000-000000000001",
+          "title": "ざるを得ない",
+          "pattern": "〜ざるを得ない",
+          "jlpt": 2
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0008-7000-8000-000000000001",
+          "/title": "ざるを得ない",
+          "/pattern": "〜ざるを得ない",
+          "/jlpt": 2,
+          "/is_stub": false,
+          "/meaning": "",
+          "/detection_rules": [],
+          "/note_id": null
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/grammar",
+        "query": "",
+        "body": {
+          "id": "0193b000-0008-7000-8000-000000000001",
+          "title": "something else"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193b000-0008-7000-8000-000000000001",
+          "/title": "ざるを得ない"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": {
+          "meaning": "cannot help but",
+          "jlpt": null
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/meaning": "cannot help but",
+          "/jlpt": null,
+          "/title": "ざるを得ない"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/meaning": "cannot help but"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/grammar",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        },
+        "body": {
+          "/items/0/id": "0193b000-0008-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001/spans/0193b000-0009-7000-8000-000000000001/0/5",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001/spans/0193b000-0009-7000-8000-000000000001/0/5",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001/spans/0193b000-0009-7000-8000-000000000001/0/5",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/grammar",
+        "query": "",
+        "body": {
+          "pattern": "no title"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168813000,
+      "request": {
+        "method": "PUT",
+        "path": "/api/v1/grammar/0193b000-0008-7000-8000-000000000001/spans/0193b000-0009-7000-8000-000000000001/0/5",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168814000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/grammar",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/items": []
+        }
+      }
+    }
+  ]
+}

@@ -305,8 +305,11 @@ public data class QueueLimits(
      * normal build draws against `dayRemaining`; reviews and learning are not affected by it.
      *
      * Where it comes from: the client. When the user presses Keep going the client computes
-     * `T = newToday + max(1, newGoal)` from the [LoopState] on screen ("one goal-sized batch per
-     * press") and passes it on every build of that review visit until the next press. It is held
+     * `T = newToday + pendingNew + max(1, newGoal)` from the [LoopState] on screen ("one
+     * goal-sized batch per press"; `pendingNew` = the [PendingAnswer]s of kind NEW that state
+     * does not count yet, 0 on every [LoopPresenter] screen that shows the button, so the batch
+     * is never short by answers still on their way) and passes it on every build of that review
+     * visit until the next press. It is held
      * in the client's memory only: never persisted, never an op, never a setting, dropped when
      * the visit ends (leaving Review, app or tab restart, study-day change, 10 minutes idle;
      * rule 6 "Scope"). API: `getReviewQueue?keep_going=true&keep_going_new_target=T`.
@@ -1101,8 +1104,13 @@ public data class ReviewQueue(
  *      build are **not** changed by the target: every due review is taken, and the order stays
  *      due learning, the open group, all reviews, then new cards — so (ADR-052 a) a learning
  *      card whose step has elapsed is the head of the next build, and a review that has become
- *      due precedes every new card except the remaining cards of a half-answered kanji unit
- *      (rule 5 "Open group first": at most the few cards of one word's unit).
+ *      due precedes every new card, with one named exception. **Open-unit exception to
+ *      ADR-052 (a):** while a kanji unit is half-answered (rule 5 "Open group first": the last
+ *      answer of today introduced a card of the unit, `s == 0`), the unit's remaining cards
+ *      are served before a review that has become due — never before a due learning card. It
+ *      delays that review by at most the cards left in one word's unit (its other kanji and
+ *      the word), and exists so that a kanji is not separated from its word (ADR-040). It
+ *      applies with and without a target; [ReviewLoop] example W4 and invariant I5 state it.
  *      Example (`newPerDay` 2 with two `introducedNew` today, batch 10, new N1 … N5, no reviews):
  *      `T = 4` → `N1 N2`, `availableToday = 2`; after N1 is answered (`iToday = 3`) → `N2`; after
  *      N2 (`iToday = 4`) → empty, although N3 … N5 exist. `T = 4` with `iToday = 5` → empty.

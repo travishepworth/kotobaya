@@ -702,6 +702,13 @@ Implementation ticket CORE-31 (`kotobaya.queue.DefaultQueueBuilder` rule 6 "Targ
   the target.
 - Existing tests: none changes its expectation (every existing caller passes no target).
 
+Named exception (attempt 2): the **open-unit exception to ADR-052 (a)** — the remaining cards of
+a half-answered kanji unit are served before a review that has become due, never before a due
+learning card (`QueueBuilder` rule 6 "Target", `ReviewLoop` W4, I5). I8 **includes**
+`kanjiToMaterialize`: `|NEW items| + |toMaterialize| + |kanjiToMaterialize| <= max(0, newGoal −
+newToday)` without keep going. The client's target is `newToday + pendingNew + max(1, newGoal)`
+(`pendingNew` = pending answers of kind NEW; 0 on every presenter screen that shows the button).
+
 Edge cases the KDoc fixes and the tests above cover: target already exceeded; `new_per_day = 0`;
 pool smaller than the batch; a card coming due mid-batch; the visit ending mid-batch; a keep-going
 `WAITING` that offers the button; day rollover (the client drops flag and target, C2); duplicate or

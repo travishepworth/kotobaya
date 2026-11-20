@@ -5,8 +5,9 @@ API operation is answered on the phone, the shell-only operations, navigation an
 and versioning, and the server-versus-shell parity scenarios. Design rationale: `docs/ANDROID-SHELL.md`.
 
 C-31 (ADR-050, local-first): no operation of the SPA's UI path waits for the network. Section 3.2
-gained the class `cached`, rules L-7, P-2 and P-3 were rewritten, rules L-9 and K-1 … K-4 are new,
-and `LOCAL_API_VERSION` is 3 (7.2). Text marked "C-31" replaces what stood there before.
+gained the class `cached`, rules L-7, P-2 and P-3 were rewritten, rules L-9, L-10 and K-1 … K-4
+are new, **every write whose ops a device may mint and apply is `local`** (L-10), and
+`LOCAL_API_VERSION` is 3 (7.2). Text marked "C-31" replaces what stood there before.
 
 This contract is **additive**. It changes nothing in `contracts/api/openapi.yaml`, `contracts/sync`,
 `contracts/db` or `contracts/core`; where this file and one of those disagree, that file wins and this
@@ -244,10 +245,10 @@ premise: check `ops_map_scopes`).
 
 | Class | Count | Answered |
 |---|---|---|
-| `local` | 43 | By the shell from the replica, online or not, never through the network (rules L-1 … L-9). |
+| `local` | 66 | By the shell from the replica, online or not, never through the network (rules L-1 … L-10). Every write of learning data the device can mint and apply is here (L-10). |
 | `local_or_proxy` | 7 | Dictionary reads: from the installed package or the sidecar cache, else answered as a miss at once (`404 not_found` / `503 shell_dict_missing`) while gap fill fetches the reference in the background (rule L-7). C-31: **never forwarded on a request**; the class keeps its name so that an SPA reading `ops.json` needs no change. |
-| `cached` | 14 | C-31. Server data the replica does not hold, answered at once from the device's response cache and revalidated in the background; a miss is an immediate `503 shell_uncached` (rules K-1 … K-4, L-9). Reads only. |
-| `proxy` | 35 | By the server, through the shell, with the device token (rules P-1 … P-3). The only class whose answer waits for the network; the SPA reaches it only from explicit "needs connection" surfaces (9.4). |
+| `cached` | 11 | C-31. Server data the replica does not hold, answered at once from the device's response cache and revalidated in the background; a miss is an immediate `503 shell_uncached` (rules K-1 … K-4, L-9). Reads only. |
+| `proxy` | 15 | By the server, through the shell, with the device token (rules P-1 … P-3). The only class whose answer waits for the network: server-side computation (`parseText`, `testGrammarRules`, `synthesizeSpeech`), server-only state (jobs, own device, blobs, exports, jpdb vocabulary) and the two parse-override writes (L-10 says why). The SPA reaches it only from explicit "needs connection" surfaces (9.4). |
 | `hidden` | 25 | Never: `403 insufficient_scope` without touching the network (rule P-4). |
 
 **`local`:** `getPrincipal`, `getMeta`, `reportClientErrors`, `listSettings`, `updateSettings`,
@@ -257,22 +258,23 @@ premise: check `ops_map_scopes`).
 `deleteNote`, `getWordStatus`, `setWordStatus`, `clearWordStatus`, `listDecks`, `createDeck`,
 `getDeck`, `updateDeck`, `deleteDeck`, `listDeckItems`, `addDeckItems`, `putDeckItem`,
 `removeDeckItem`, `listHotWords`, `listHotKanji`, `listLeeches`; C-31: `getStatsSummary`,
-`getStatsHeatmap`, `getStatsRetention`, `resolveSpeech`, `bulkScheduleCards` (4.3).
+`getStatsHeatmap`, `getStatsRetention`, `resolveSpeech`, `bulkScheduleCards` (4.3); C-31, rule
+L-10 — writes: `createCard`, `updateCard`, `deleteCard`, `createPreset`, `updatePreset`,
+`deletePreset`, `createNoteType`, `updateNoteType`, `deleteNoteType`, `setConfusable`,
+`createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`, `putGrammarSpan`,
+`removeGrammarSpan`, `updateMedia`, `deleteMedia`; and the reads of the tables they write, so
+that a write is visible at once: `listConfusables`, `listWordConfusables`, `listGrammarPoints`,
+`getGrammarPoint`, `listMedia`, `getMedia`.
 
 **`cached`** (C-31): `listDeckLists`, `getDeckCoverage`, `getStatsForecast`, `getStatsKnownWords`,
-`getStatsCalibration`, `listConfusables`, `listWordConfusables`, `listSentences`, `listMedia`,
-`getMedia`, `getMediaCoverage`, `listMediaSentences`, `listParseOverrides`, `listGrammarPoints`.
+`getStatsCalibration`, `listSentences`, `getSentence`, `getMediaCoverage`, `listMediaSentences`,
+`listParseOverrides`, `listGrammarExamples`.
 
 **`local_or_proxy`:** `searchDictionary`, `getDictEntry`, `listEntryExamples`, `listDictHeadwords`,
 `getDictRelease`, `getKanji`, `listKanjiWords`.
 
-**`proxy`:** `getHealth`, `getOwnDevice`, `updateOwnDevice`, `createPreset`, `updatePreset`,
-`deletePreset`, `createNoteType`, `updateNoteType`, `deleteNoteType`, `createCard`, `updateCard`,
-`deleteCard`, `updateMedia`, `deleteMedia`, `listJpdbVocab`,
-`getSentence`, `setConfusable`,
-`createGrammarPoint`, `getGrammarPoint`, `updateGrammarPoint`,
-`deleteGrammarPoint`, `testGrammarRules`, `listGrammarExamples`, `putGrammarSpan`,
-`removeGrammarSpan`, `parseText`, `putParseOverride`,
+**`proxy`:** `getHealth`, `getOwnDevice`, `updateOwnDevice`, `listJpdbVocab`,
+`testGrammarRules`, `parseText`, `putParseOverride`,
 `deleteParseOverride`, `listJobs`, `getJob`, `synthesizeSpeech`, `queryBlobs`, `putBlob`
 (unreachable: 2.4 rule 2), `exportAll`, `exportAnki` (unreachable in practice: 2.4 rule 3).
 
@@ -287,8 +289,10 @@ premise: check `ops_map_scopes`).
 `check.sh` fails when `ops.json` misses an operationId of `openapi.yaml`, names one that does not
 exist, uses another class, gives a class other than `hidden` to an operation a device token
 cannot call, gives `local` / `local_or_proxy` / `cached` to an operation that needs a scope a
-device token lacks, or gives `cached` to an operation that is not a `GET` (a cached write would
-be a lost write). A new operation in `openapi.yaml` therefore cannot be merged without classifying it.
+device token lacks, gives `cached` to an operation that is not a `GET` (a cached write would
+be a lost write), or (rule L-10, check `ops_map_local_writes`) gives `proxy` or `cached` to an
+operation whose `x-emits-ops` are all client-emittable with `device_applies = true` in
+`contracts/sync/ops/index.json`. A new operation in `openapi.yaml` therefore cannot be merged without classifying it.
 
 ### 3.3 Headers
 
@@ -310,7 +314,7 @@ Request headers native MUST ignore locally and MUST NOT forward: `authorization`
 
 ## 4. Semantics
 
-### 4.1 Local operations — rules L-1 … L-9
+### 4.1 Local operations — rules L-1 … L-10
 
 **L-1 Always local.** A `local` operation is answered from the replica whether the device is
 online or not. There is one source of truth on the phone: a write is visible to the next read at
@@ -487,6 +491,33 @@ answers as with no network at all, every `cached` operation answers its hit or `
 shell_uncached` (the background fetch is started on a scheduler the test does not run), and the
 answers equal the ones given with the device online.
 
+**L-10 Every write the device can make is local (C-31, ADR-050: "local-first for everything").**
+An operation is `local` whenever every op in its `x-emits-ops` is client-emittable
+(`emitter: client`) **and** applied by devices (`device_applies: true`) in
+`contracts/sync/ops/index.json`: the handler mints as the device, applies and enqueues in one
+transaction (L-2), answers at once, and the op is pushed in the background. `check_shell.py`
+(`ops_map_local_writes`) enforces it, so a later write operation cannot be left behind the
+network by oversight. It follows that the single-row operations are local exactly like the bulk
+ones that emit the same ops (`updateCard` / `deleteCard` like `bulkCards`), and so are presets
+(`fsrs_params.*`), note types (`note_type.*`), confusables (`confusable.confirmed` /
+`rejected`), grammar points and manual spans (`grammar.*`) and media rows (`media.updated`,
+`media.deleted`). Their reads are local too wherever the replica holds the table, so that
+read-your-writes (L-1) holds on the screens that edit them.
+
+What stays behind the network, and why (the complete list of writes that are not `local`):
+
+| Operation | Class | Why it cannot be local |
+|---|---|---|
+| `putParseOverride`, `deleteParseOverride` | `proxy` | `parse_override.put` / `.deleted` have `device_applies: false`: the table is not on the device, so there is nothing to write locally first and nothing a local read could show; the request is validated against the server's parser state, and its effect is a server re-parse. |
+| `createDeck` with `type: list` | forwarded request of a `local` operation | `deck.created` for a list deck is server-only (OPS.md). |
+| `updateOwnDevice`, `synthesizeSpeech`, `putBlob` | `proxy` | No sync op at all: server-only tables and jobs. |
+| every `hidden` write | `hidden` | Needs `admin` / `import`, or is replaced natively. |
+
+Server-side consequences of an op (a `grammar-detect` job after a winning `detection_rules`
+write, OPS.md `grammar.updated`; hard-deleting a media's analysis rows) happen when the server
+**applies the pushed op**, exactly as for an op any other replica pushes; the local handler
+does not wait for them and reports nothing about them.
+
 ### 4.2 Proxied and hidden operations — rules P-1 … P-4
 
 **P-1 Offline.** `NetworkMonitor` says offline → `503 shell_offline`, **no network attempt**.
@@ -514,12 +545,12 @@ are forwarded; `cookie`, `authorization` and `x-kotobaya-csrf` from the SPA are 
 `kotobaya-shell-stale: 1` and the shell **schedules** a pull (`SyncTriggers.remoteChange()`, not
 debounced, not awaited); the SPA then knows that local reads do not show the change yet, keeps
 what it shows, and re-reads on the `sync.changed` event that follows when the pull has applied
-it. `n` ≤ the pull cursor, or no `Kotobaya-Seq`: no header, no pull. This is how tables that are
-only written through the proxy (section 11) reach the replica. Budget: the 12 s of P-1 and
+it. `n` ≤ the pull cursor, or no `Kotobaya-Seq`: no header, no pull. Since rule L-10 the only
+forwarded request that changes a replicated table is `createDeck` with `type: list`. Budget: the 12 s of P-1 and
 nothing else. (Before C-31 the answer was held up to 10 s for the pull.)
-Example: `updatePreset` answers `200` with `Kotobaya-Seq: 48214` while the pull cursor is 48213 →
-`res` at once with `kotobaya-seq: 48214`, `kotobaya-shell-stale: 1`; ~300 ms later `sync.changed
-{high_water_seq: 48214}`; the SPA's `listPresets` (local) now shows the change.
+Example: `createDeck {type: "list", …}` answers `201` with `Kotobaya-Seq: 48214` while the pull
+cursor is 48213 → `res` at once with `kotobaya-seq: 48214`, `kotobaya-shell-stale: 1`; ~300 ms
+later `sync.changed {high_water_seq: 48214}`; the SPA's `listDecks` (local) now shows the deck.
 
 **P-4 Hidden.** `403 insufficient_scope`, generated by the shell, no network. `required_scope`
 is `admin` or `import` when the operation needs that scope; it is omitted for the operations that
@@ -551,12 +582,19 @@ Only what `openapi.yaml` cannot say because it describes the server:
 | `getStatsHeatmap`, `getStatsRetention` (C-31) | **`local`.** From `review_log` joined to `card`, `note` and `note_type` in the replica, by the definitions of the operations in `openapi.yaml` (undone and `manual` rows excluded; a review's study day from `reviewed_at`, the row's `utc_offset_min` (else `scheduler.timezone`) and `scheduler.day_rollover_hour`; `from` > `to` and a range over 3660 days → `422` as the server; the defaults of `from` / `to` by the device clock). Reviews minted on this device and not yet pushed are included: the phone may show more than the server until the next cycle. |
 | `bulkScheduleCards` (C-31) | **`local`** (was `proxy`). A manual `review.logged` (`review_type: manual`, `manual_action` `set_due` / `reset`) is client-emittable (OPS.md `review.logged`: only `import_source` and `replay_hlc` are server-only) and a device token holds `review`. Same selector, limits, order, transaction and `dry_run` rules as local `bulkCards`; one `review.logged` per processed card with a device-minted UUIDv7 `id` and `reviewed_at` = device now; `reset` of a `new` card skipped; `reschedule` with a `new` card among the matches → `422`, nothing minted; card state recomputed by the replay path. Repeating the call adds rows, as on the server. |
 | `listCards`, `listNotes`, `createDrillSession`, `bulkCards` / `bulkScheduleCards` with `query` (C-31) | Every search string core `SearchParser` accepts is evaluated **on the device**; no query is forwarded (before C-31 the handler forwarded queries with dictionary terms it did not trust the device to evaluate). Terms that need dictionary data (reading, gloss, JLPT, frequency of the note's entry) are evaluated over the L-7 lookup, steps 1–2: a note whose entry the device lacks does not match such a term (documented difference from the server until gap fill has cached the entry; parity runs with a full package). A selector matching more than 5000 cards is `422 bulk_too_large` as on the server. |
+| `createCard`, `updateCard`, `deleteCard` (C-31, L-10) | **`local`** (were `proxy`). `createCard`: `kind` checked against the note type's `templates` in the replica; an existing live card of `(note, kind)` → `200` with it, nothing minted (L-4, also for a repeated `id`); a retired kind without a live card → `422` at `/kind`; else one `card.created` with a device UUIDv7 `id` (or the request's). `updateCard`: one op per property present, in the server's order (`suspended` → `card.suspended` / `card.unsuspended`; `buried_until` → `card.buried` / `card.unburied`; `flags` → `card.flag_set`; `preset_id` → `card.preset_set`, checked against live `fsrs_params` rows of the replica); empty body `422`. `deleteCard`: one `card.deleted`; already deleted → `204`, nothing minted. Merge losers act on the survivor, tombstones answer `410` (L-6). A card of the same `(note, kind)` created on another replica meanwhile is the card collision of SYNC.md 8.1: the server merges. |
+| `createPreset`, `updatePreset`, `deletePreset` (C-31, L-10) | **`local`** (were `proxy`). One `fsrs_params.created` / `.updated` (registers of the properties present) / `.deleted`; validation and defaults exactly as `PresetCreate` / `PresetPatch`; the Default preset cannot be deleted (`409 builtin_immutable`); already deleted → `204`. Applying `fsrs_params.updated` runs the same code as the pull path (cards of the preset are rescheduled lazily by the replay rule of SYNC.md 9.3); weights are never set here (`fsrs_params.published` stays the server's). A preset deleted on one replica and assigned on another converges by SYNC.md 7.3 (cards of a deleted preset use the Default). |
+| `createNoteType`, `updateNoteType`, `deleteNoteType` (C-31, L-10) | **`local`** (were `proxy`). One `note_type.created` / `.updated` / `.deleted`. The device applies the server's request checks before minting, so that it never mints an op the server rejects: unique field keys; a `vocab` type has `expression`, `reading`, `meaning` (`422` `invalid_value` at `/fields`); `base_type` immutable; a built-in type cannot be deleted and cannot lose a seeded field or template (`409 builtin_immutable`); `deleteNoteType` while a live note **in the replica** uses it → `409 in_use`. A note of that type created on another replica before the delete arrives is the case SYNC.md 7.3 already covers (the note stays usable). The size rule of SYNC.md 4 applies (`413` when the op would exceed `max_op_bytes`). |
+| `setConfusable`, `listConfusables`, `listWordConfusables` (C-31, L-10) | **`local`** (the write was `proxy`, the reads `cached`). `setConfusable`: both notes must exist in the replica (`404`), merge losers resolve to survivors, the same note twice → `422`; one `confusable.confirmed` or `confusable.rejected`, its pair ordered exactly as the server's handler orders it (the table requires `note_a_id < note_b_id`); repeating it mints again (a register write, 10.11). The reads list the replica's `confusable` rows (suggestions arrive by pull as `confusable.suggested`) with `note_a` / `note_b` built as `getNote` builds a summary, same filters and keyset as the server. |
+| `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`, `listGrammarPoints`, `getGrammarPoint` (C-31, L-10) | **`local`** (writes and `getGrammarPoint` were `proxy`, the list `cached`). One `grammar.created` / `.updated` / `.deleted`; create with an existing `id` → `200`, nothing minted (L-4). Reads come from the replica's `grammar_point` rows; `note_id` from the replica's notes; `example_count` counts the `sentence_grammar_span` rows **on the device** (manual spans, plus detected spans of media whose snapshot is installed) and may be lower than the server's (documented difference). **`detection_rules` (documented difference):** the token-pattern language is parsed only by the server, so the device checks a rule's shape (`DetectionRule` schema) but not its syntax; a rule that does not parse is stored and synced, the server's detection ignores it and `testGrammarRules` (`proxy`, the editor's explicit "test" action) is where the user sees the error. The re-detection job a rule change causes is enqueued by the server when it applies the pushed op. |
+| `putGrammarSpan`, `removeGrammarSpan` (C-31, L-10) | **`local`** (were `proxy`). One `grammar.span_put` / `grammar.span_removed` for the manual span. The grammar point must be live in the replica (`404` / `410`). If the sentence is on the device (its media's snapshot is installed), `end_offset` beyond the text is `422` and `media_id` is taken from it; if not, the span is stored as given with the body's `media_id` — the server's own rule for a sentence it does not have. The span is visible at once in `getGrammarPoint.example_count`; in the `cached` reads that embed spans (`listMediaSentences`, `listSentences`, `getSentence`, `listGrammarExamples`) it appears after the next push and revalidation, so the SPA keeps showing the span it just put or removed until the matching `cache.updated` (rule K-4 "Local writes"). |
+| `updateMedia`, `deleteMedia`, `listMedia`, `getMedia` (C-31, L-10) | **`local`** (writes were `proxy`, reads `cached`). `updateMedia`: one `media.updated` with the registers present. `deleteMedia`: `media.deleted` and, in the same transaction, `deck.deleted` for its media deck when the replica has one live; local apply removes the media's installed segments, sentences, occurrences and detected spans as the pull path does; already deleted → `204`. Reads come from the replica's `media` rows (they arrive by `media.created` / `media.content_published`); `segments` are the installed snapshot's and are `[]` while it is not installed (documented difference; `parse_status` and `content_version` are the row's, so the SPA can say "not downloaded"). The server cancels queued jobs of a deleted media in its handler; for a delete that arrives as a pushed op that is the server's concern (a job for a tombstoned media ends without effect) and nothing the device waits for. Not parity-tested: `media.created` is server-only, so a parity seed cannot hold a media. |
 | `getBlob` | Section 2.7. |
 
 ### 4.4 Cached operations — rules K-1 … K-4 (C-31)
 
-The 14 `cached` operations are reads of server data the replica does not hold (analysis over
-media, vocabulary-list catalogue, forecasts, confusables, grammar points). The shell answers them
+The 11 `cached` operations are reads of server data the replica does not hold (analysis over
+media and its sentences, the vocabulary-list catalogue, forecasts, parse overrides). The shell answers them
 from the device table `response_cache` (`contracts/db/sqldelight/app/…/Local.sq`, SCHEMA.md 5.3;
 device-local, **not learning data**, no op, never synced, safe to delete entirely) and keeps it
 fresh in the background. All four rules are under rule L-9: the request never waits.
@@ -573,9 +611,9 @@ key = operationId + "\n" + path + "\n" + canonical(query)
   sort the pairs by name, then value, comparing Unicode code points; encode each name and value
   with RFC 3986 unreserved characters literal and every other byte as upper-case `%XX`; join as
   `name=value` with `&`. A repeated name keeps all its pairs. `""` for no query.
-- Example: `GET /api/v1/media?limit=20&cursor=&q=%E7%8C%AB` → key
-  `listMedia\n/api/v1/media\ncursor=&limit=20&q=%E7%8C%AB`; `?q=%e7%8c%ab&limit=20&cursor=` is the
-  same key; `?limit=50` is another.
+- Example: `GET /api/v1/sentences?limit=20&cursor=&q=%E7%8C%AB` → key
+  `listSentences\n/api/v1/sentences\ncursor=&limit=20&q=%E7%8C%AB`; `?q=%e7%8c%ab&limit=20&cursor=`
+  is the same key; `?limit=50` is another.
 
 An entry holds: `status` (always `200`…`299`), `body` (the exact text the server sent),
 `content_type`, `etag` (the server's `ETag`, or null), `fetched_at` (device clock, ms), `stale`
@@ -626,8 +664,8 @@ the SPA renders the body as it would the server's and re-requests on a matching 
 
 - **Warm pass.** After every sync cycle that ended successfully (and so after the first sync),
   while online, in the background, at most 4 fetches at a time and at most 64 per pass:
-  (1) the **seed requests**, each with the empty query — `listDeckLists`, `listMedia`,
-  `listGrammarPoints`, `listConfusables`, `listParseOverrides`, `getStatsForecast`,
+  (1) the **seed requests**, each with the empty query — `listDeckLists`,
+  `listParseOverrides`, `getStatsForecast`,
   `getStatsKnownWords`, `getStatsCalibration`, and `getDeckCoverage` for every live deck of type
   `media` or `list` in the replica (most recently updated first) — when they have no entry or
   their entry is `stale` or older than 60 s; (2) every other entry that is `stale`, most recently
@@ -649,14 +687,19 @@ the SPA renders the body as it would the server's and re-requests on a matching 
   | `getStatsForecast` | `card`, `review_log`, `fsrs_params`, `settings` |
   | `getStatsKnownWords` | `word_status`, `note`, `card`, `review_log`, `settings` |
   | `getStatsCalibration` | `review_log`, `card`, `fsrs_params` |
-  | `listConfusables`, `listWordConfusables` | `confusable`, `note`, `word_status` |
-  | `listSentences`, `listMediaSentences` | `media`, `parse_override`, `note`, `word_status`, `sentence_grammar_span` |
-  | `listMedia`, `getMedia` | `media`, `deck` |
+  | `listSentences`, `listMediaSentences`, `getSentence`, `listGrammarExamples` | `media`, `note`, `word_status`, `sentence_grammar_span`, `grammar_point` |
   | `getMediaCoverage` | `media`, `note`, `card`, `review_log`, `word_status`, `settings` |
-  | `listParseOverrides` | `parse_override` |
-  | `listGrammarPoints` | `grammar_point`, `sentence_grammar_span`, `note` |
+  | `listParseOverrides` | (never by a replica change: `parse_override` is not on the device) a successful `putParseOverride` / `deleteParseOverride` through the proxy marks every `listParseOverrides`, `listSentences`, `listMediaSentences` and `getSentence` entry stale |
 
   A table missing from a row only delays freshness to the 60 s rule; it never loses data.
+- **Local writes and cached reads.** A `cached` answer is the server's, so a change made on this
+  device shows in it only after the op was pushed and the entry revalidated: the entry is
+  marked stale at the write, stays stale while `pending_op` holds unpushed ops (K-2), and the
+  warm pass after the next cycle refetches it and sends `cache.updated`. Read-your-writes is
+  therefore guaranteed for `local` reads only. The SPA covers the gap for the two writes that
+  show inside a cached answer — a grammar span put or removed (4.3) and a word status changed
+  while a sentence list is open — by keeping its own just-made change on screen until the
+  matching `cache.updated`; it never blocks on it.
 - **Size.** The sum of the stored bodies' UTF-8 sizes is at most **16 MiB** (`16777216` bytes).
   After an insert or replacement that exceeds it, entries are deleted in ascending
   `last_used_at` (least recently used first; ties by key) until it fits; the entry just written is
@@ -680,7 +723,7 @@ keep their meaning. The shell adds:
 
 | Status | `code` | `title` | When | Client action |
 |---|---|---|---|---|
-| 503 | `shell_offline` | Offline | A `proxy` operation (or `createDeck` with `type: list`, `pairShell`, `syncNow`, `startDictInstall`) while offline or unreachable (rule P-1). Never a `local`, `local_or_proxy` or `cached` operation (C-31). | One calm message; retry when `shell.connectivity` says online. Not reported to `reportClientErrors`. |
+| 503 | `shell_offline` | Offline | A `proxy` operation (or `createDeck` with `type: list`, `pairShell`, `syncNow`, `startDictInstall`) while offline or unreachable (rule P-1). Never a `local`, `local_or_proxy` or `cached` operation (C-31), so never a write of cards, notes, decks, presets, note types, confusables, grammar or media (L-10). | One calm message; retry when `shell.connectivity` says online. Not reported to `reportClientErrors`. |
 | 503 | `shell_uncached` (C-31) | Not downloaded yet | Rule K-3: a `cached` operation whose key has no entry in the response cache. Answered at once, online or not, **without** `Retry-After`. Example body: `{"type":"urn:kotobaya:problem:shell_uncached","title":"Not downloaded yet","status":503,"code":"shell_uncached","instance":"/api/v1/stats/forecast","request_id":"0193a1b2-7000-7000-8000-00000000e021"}`. | Show the surface's placeholder; request again on the matching `cache.updated` (and when `shell.connectivity` turns online). No timer. Not reported to `reportClientErrors`. |
 | 503 | `shell_dict_missing` | Dictionary data not on this device | The L-7 lookup ended in a miss that is not a known miss: a keyed dictionary read, or `createNote` / `updateNote` with an `entry_seq`, for an entry that is in neither the installed package nor the sidecar cache (C-31: **online or not**; the reference is enqueued for gap fill and never fetched on the request); a search with nothing to search (no package, empty sidecar cache); `getDictRelease` with no package. Never for `getReviewQueue` or any other rendering (a miss is `null` there), never for `listDictHeadwords`. No `Retry-After`. | Request again on the next `shell.dict` event; offer `startDictInstall` when no package is installed; offline: "connect to look this word up". |
 | 503 | `shell_rebuilding` | Rebuilding local data | Rule L-8, and the 20 s readiness limit (2.5). Always with `Retry-After: 2`. | Retry once after `Retry-After`; then show the rebuilding state. |
@@ -800,7 +843,7 @@ An integer constant of the shell, **`3`** for this contract, reported as
 |---|---|---|
 | `1` | SHELL-C1 (ADR-036) | First version. |
 | `2` | LOOP-C (ADR-037) | `getReviewQueue` answers with `ReviewQueue.loop`, which the ADR-037 SPA cannot render without; that SPA's bundle has `min_local_api: 2`. Capability `display` appears with it. |
-| `3` | C-31 (ADR-050, ADR-051, ADR-052) | A rule changed incompatibly for an older shell: the C-31 SPA sends `getReviewQueue?keep_going_new_target=…`, which a version-2 shell refuses as an unknown query parameter (`422`, rule L-3); it relies on `getStatsSummary`, `getStatsHeatmap`, `getStatsRetention`, `resolveSpeech`, `bulkScheduleCards` and every `bulkCards` action being local, on the class `cached` with `503 shell_uncached` / `cache.updated`, on `ShellSyncStatus.first_sync`, and on P-2 / P-3 without pre-push and hold. Capability `response_cache` appears with it. An SPA with `min_local_api: 2` keeps working on a version-3 shell: it sends no target (endless keep going as before), treats `503 shell_uncached` like any `503` of a proxied read, and ignores `cache.updated`. |
+| `3` | C-31 (ADR-050, ADR-051, ADR-052) | A rule changed incompatibly for an older shell: the C-31 SPA sends `getReviewQueue?keep_going_new_target=…`, which a version-2 shell refuses as an unknown query parameter (`422`, rule L-3); it relies on `getStatsSummary`, `getStatsHeatmap`, `getStatsRetention`, `resolveSpeech`, `bulkScheduleCards`, every `bulkCards` action and the 17 writes and 6 reads of rule L-10 being local, on the class `cached` with `503 shell_uncached` / `cache.updated`, on `ShellSyncStatus.first_sync`, and on P-2 / P-3 without pre-push and hold. Capability `response_cache` appears with it. An SPA with `min_local_api: 2` keeps working on a version-3 shell: it sends no target (endless keep going as before), treats `503 shell_uncached` like any `503` of a proxied read, and ignores `cache.updated`. |
 
 - **Bump it** only when a change could break an SPA built against the previous value: an
   operation leaves class `local` or `local_or_proxy` (it would stop working offline); a bridge
@@ -960,6 +1003,11 @@ difference is a finding.
 | `cards.bulk_schedule_local` | `bulk-schedule-cards-local` | C-31: `bulkScheduleCards` `reschedule` (new `due_at` on a review card; `422` when a matched card is `new`) and `reset` (card back to `new`; a `new` card skipped), `dry_run` changes nothing; `listCardReviews` shows the manual rows. |
 | `speech.resolve_local` | `resolve-speech-local` | C-31: `resolveSpeech` with nothing generated: a `text` item and a vocab `note_id` → `pending`; an unknown `note_id` → `none`; `text` together with `note_id` → `422` at `/items/0`; more than 20 urgent items → `422` at `/urgent`. |
 | `queue.keep_going_target`, `queue.keep_going_batch_not_owed` | `queue-keep-going-target` | ADR-052 (C-31): goal 2 reached, 5 new cards left → `goal_reached`; `keep_going=true&keep_going_new_target=4` serves exactly 2 new cards (`until_stop_parts.new` 2, not bounded by `limit`); after one answer, a request **without** `keep_going` at that instant is `goal_reached` with `until_stop_parts.new` 0 and no item (the unfinished batch is not owed); a fresh press (`keep_going_new_target=5` = 3 + 2) serves a full batch of 2 again; with the target reached the same request is `goal_reached` with `keep_going` true and `keep_going_available` true (never a further card); a target below `new.today` serves no new card; the parameter without `keep_going=true` is ignored; `keep_going=true` without it is the endless stream; a malformed or negative target is `422` at `/keep_going_new_target`; with no new card left anywhere the phase is `empty` without Keep going, in both modes. |
+| `cards.single_writes_local` | `card-writes-local` | C-31 (L-10): `updateCard` suspend, flag, bury and `preset_id` (one op per property; an empty body is `422`), `createCard` for a second kind (`201`), again (`200`, the same card), an unknown and a retired kind (`422` at `/kind`), `deleteCard` (`204`, then `410`, a second delete `204`). |
+| `presets.writes_local` | `preset-writes-local` | C-31 (L-10): `createPreset` (defaults filled, same `id` again is `200`), `updatePreset`, `listPresets` shows it, `deletePreset` (`204`, twice), the Default preset is `409 builtin_immutable`, an out-of-range `desired_retention` is `422`. |
+| `note_types.writes_local` | `note-type-writes-local` | C-31 (L-10): `createNoteType`, a `vocab` type without `meaning` is `422` at `/fields`, `updateNoteType` css, deleting a built-in type is `409 builtin_immutable`, deleting a type a live note uses is `409 in_use`, deleting an unused one is `204`. |
+| `confusables.writes_local` | `confusable-writes-local` | C-31 (L-10): `setConfusable` creates a confirmed pair, `listConfusables` and `listWordConfusables` show it, rejecting it changes `status`, the same note twice is `422`, an unknown note is `404`. |
+| `grammar.writes_local` | `grammar-writes-local` | C-31 (L-10): `createGrammarPoint` (same `id` again is `200`), `updateGrammarPoint`, `getGrammarPoint` and `listGrammarPoints` show it, `putGrammarSpan` for a sentence neither side has (stored as given), `removeGrammarSpan`, `deleteGrammarPoint` (`204`, then `410`), a span on the deleted point is `410`. |
 
 C-28 (ADR-040): the scenarios written before it that fetch the queue with new or already studied vocab cards now
 use kana-only entries (うっかり, えっと, …) where they used 明白, あの人, …, so that they keep showing
@@ -983,9 +1031,11 @@ LOOP-SRV (the body gains `loop`; the order follows the proportional mix).
 Further scenarios (one per remaining `local` operation) are added by the L tickets through a
 `CONTRACT_CHANGE_REQUEST`; they need no schema change.
 
-C-31: the six scenarios of the last six rows are new and hand-written; their goldens are
-recorded by the server ticket of the local-first round (`RECORD=1`), and the shell tickets LF-A3
-(stats), LF-A5 (bulk, search) and LF-A4 (speech) make the shell reproduce them. Their `expect`s
+C-31: the eleven scenarios of the last eleven rows are new and hand-written; their goldens are
+recorded by the server ticket of the local-first round (`RECORD=1`), and the shell tickets of
+the local-first round (LF-A3 … LF-A8; LF-A8 for the writes of rule L-10) make the shell
+reproduce them. `updateMedia` / `deleteMedia` / `listMedia` / `getMedia` have no
+scenario (a seed cannot create a media); LF-A8 tests them against the op examples instead. Their `expect`s
 pin only what the contract text fixes (statuses, counts, phases); everything else is the golden's.
 
 Parity does not replace the op-level tests CLAUDE.md requires. Every ticket that implements a
@@ -1047,9 +1097,10 @@ Three independent rules:
   `online` is false, instead of failing request by request. C-31: no `proxy` operation is called
   while rendering Home, Review, Decks, a deck page, Search, Cards, Notes, the note editor,
   Dictionary, Struggle, Stats or Settings; on those routes a `proxy` operation is only ever the
-  result of an explicit user action (a write such as `setConfusable`, `updatePreset`,
-  `createDeck` with `type: list`), which shows its own inline "needs connection" message on
-  `503 shell_offline`. A surface backed by a `cached` operation follows rule K-3 instead.
+  result of an explicit user action (`createDeck` with `type: list`, "test this rule",
+  "generate audio", a parse override), which shows its own inline "needs connection" message on
+  `503 shell_offline`. Editing cards, presets, note types, confusables, grammar points, spans
+  and media rows is local (L-10) and never shows it. A surface backed by a `cached` operation follows rule K-3 instead.
 - **Unsupported** — exports and blob uploads (2.4) are not offered in shell mode.
 
 ## 10. Edge cases
@@ -1071,7 +1122,8 @@ Each is normative; the number is referenced from the rules above.
 | 10.11 | **Response lost, request retried** | A new bridge `id` with the same API-level id: L-4 makes it safe for creates, `answerReview` and `undoReview`; register writes (`updateNote`, `updateSettings`, suspend, …) are safe to repeat (a second op with a later HLC and the same value). |
 | 10.12 | **Out-of-order answers** | The SPA sends answer 1 then answer 2; their `res` may arrive 2 then 1. Each request is one transaction, so the replica is consistent; the SPA awaits a write before the read that depends on it. |
 | 10.13 | **Concurrent native writers** | AnkiProvider, on-device AnkiConnect, widgets and the sync engine write the same replica while the SPA runs. All go through the same op path and store transactions; the SPA learns of them by `sync.changed` / `note.created`. |
-| 10.14 | **Proxied write while local ops are pending** | C-31: the proxied write is forwarded at once (P-2: no push first), so the server applies it on data that lacks the phone's pending ops; those are pushed by the next cycle and merge by the normal rules (registers: last writer by HLC, SYNC.md 7.1; a delete beats an edit, 7.3; reviews append and replay, 9). Nothing is lost on either side; the only visible effect is order, e.g. a preset edited through the proxy and a card moved to that preset locally converge whichever arrives first. |
+| 10.14 | **Proxied write while local ops are pending** | C-31: the proxied write is forwarded at once (P-2: no push first), so the server applies it on data that lacks the phone's pending ops; those are pushed by the next cycle and merge by the normal rules (registers: last writer by HLC, SYNC.md 7.1; a delete beats an edit, 7.3; reviews append and replay, 9). Nothing is lost on either side. Since L-10 the only such writes are `createDeck` with `type: list` and the parse overrides. |
+| 10.21 | **A local write the server would have refused** (C-31, L-10) | The local handlers apply the server's request checks against the replica, so a refusal the server bases on data the device has is the same refusal (`409 in_use`, `409 builtin_immutable`, `422`). A refusal that depends on data the device has **not** pulled yet cannot be given: the op is minted, pushed and either accepted and reconciled by the op rules (a note type deleted here while another replica added a note of it: SYNC.md 7.3; a preset deleted here and assigned there: the Default applies; the same `(note, kind)` card or the same confusable pair made twice: merged / last writer wins) or, for a reference the server never had, rejected as `unknown_reference` and shown under Settings → Sync as a rejected op (SYNC.md 10) with its local effect rolled back by Discard. No local write is silently lost and none blocks the outbox. |
 | 10.15 | **Empty response cache** (C-31) | Fresh pairing, after `unpairShell`, or after the user cleared app storage for the cache: every `cached` operation answers `503 shell_uncached` (K-3) and, when online, fetches in the background; the warm pass after the first successful cycle fills the seed requests. Offline with an empty cache the surfaces show their "needs connection" placeholder and every `local` surface works. Nothing is lost: the cache holds no learning data. |
 | 10.16 | **Duplicate, late or unmatched `cache.updated`** (C-31) | The same event twice, an event for a key the SPA no longer shows, or one that arrives after the SPA already re-requested: harmless. The SPA's only reaction is to request a shown operation again, which is a hit and idempotent. An event lost in a reload is covered by `hello` (refetch what is shown). The shell coalesces to one per key per second. |
 | 10.17 | **Clock skew and `kotobaya-cached-at`** (C-31) | `fetched_at` is the **device** clock at the fetch; the server's `Date` is not used. Device clock set **back** after a fetch: `now − fetched_at` is negative → treated as old enough to revalidate (K-2), the header still reports the stored instant (a future time; the SPA shows "just now"). Device clock set **forward**: entries look older and are revalidated sooner; harmless. Nothing is ever evicted or refused because of its age, and no ordering decision uses `fetched_at` (LRU uses `last_used_at`, which follows the same clock and only affects which entry is evicted first). |
@@ -1085,32 +1137,30 @@ Every learning-data table of `contracts/db/SCHEMA.md` 4.1 (plus `media`, `parse_
 ops that write it, and how the SPA reads and writes it on the phone. "Local" operations mint as
 the device (L-2); "proxied" ones are minted by the server and reach the replica by pull (P-3);
 "cached" ones (C-31) are reads answered from the response cache (4.4) and never write. C-31 moved
-operations between the last two columns and into the local one; no row, op or table was added or
-removed.
+operations between the last two columns and into the local one (rule L-10: every write the device
+can mint and apply is in the local column); no row, op or table was added or removed.
 
 | Table | Sync ops | Local operations | Proxied (`proxy`) and cached (`cached`) operations |
 |---|---|---|---|
-| `note_type` | `note_type.created`, `note_type.updated`, `note_type.deleted` | read: `listNoteTypes`, `getNoteType` | write: `createNoteType`, `updateNoteType`, `deleteNoteType` |
+| `note_type` | `note_type.created`, `note_type.updated`, `note_type.deleted` | `createNoteType`, `updateNoteType`, `deleteNoteType`; read: `listNoteTypes`, `getNoteType` | — |
 | `note` | `note.created`, `note.updated`, `note.deleted`, `note.merged` (server) | `createNote`, `updateNote`, `deleteNote`, `getReviewQueue` (C-27 materialization), `bulkCards` actions `add_tags`, `remove_tags`; read: `listNotes`, `getNote` | — |
-| `card` | `card.created`, `card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`, `card.preset_set`, `card.deleted`, `card.merged` (server) | `createNote`, `getReviewQueue` (C-27), `bulkCards` (suspend, unsuspend, bury, unbury, flag, `set_preset`, `delete`); read: `listCards`, `getCard`, `getStatsSummary` | proxied: `createCard`, `updateCard`, `deleteCard`; cached read: `getStatsForecast` |
+| `card` | `card.created`, `card.suspended`, `card.unsuspended`, `card.buried`, `card.unburied`, `card.flag_set`, `card.preset_set`, `card.deleted`, `card.merged` (server) | `createNote`, `createCard`, `updateCard`, `deleteCard`, `getReviewQueue` (C-27), `bulkCards` (suspend, unsuspend, bury, unbury, flag, `set_preset`, `delete`); read: `listCards`, `getCard`, `getStatsSummary` | cached read: `getStatsForecast` |
 | `review_log` | `review.logged`, `review.undone` | `answerReview`, `undoReview`, `bulkScheduleCards` (manual rows); read: `listCardReviews`, `listHotWords`, `listHotKanji`, `listLeeches`, `createDrillSession`, `getStatsSummary`, `getStatsHeatmap`, `getStatsRetention` | cached read: `getStatsCalibration`, `getStatsForecast` |
 | `word_status` | `word.status_set`, `word.status_cleared` | `setWordStatus`, `clearWordStatus`; read: `getWordStatus` | cached read: `getStatsKnownWords` |
-| `deck` | `deck.created`, `deck.updated`, `deck.deleted`, `deck.content_published` (server) | `createDeck` (`type` `user`, `smart`), `updateDeck`, `deleteDeck`; read: `listDecks`, `getDeck` | proxied: `createDeck` with `type: list` (forwarded: server-only op and `deck-build` job), `deleteMedia` (its media deck); cached read: `listDeckLists`, `getDeckCoverage` |
+| `deck` | `deck.created`, `deck.updated`, `deck.deleted`, `deck.content_published` (server) | `createDeck` (`type` `user`, `smart`), `updateDeck`, `deleteDeck`, `deleteMedia` (its media deck); read: `listDecks`, `getDeck` | proxied: `createDeck` with `type: list` (forwarded: server-only op and `deck-build` job); cached read: `listDeckLists`, `getDeckCoverage` |
 | `deck_item` | `deck.item_put`, `deck.item_removed` | `addDeckItems`, `putDeckItem`, `removeDeckItem`, `createNote` (with `deck_id`), `bulkCards` action `move`; read: `listDeckItems` | — |
-| `confusable` | `confusable.suggested` (server), `confusable.confirmed`, `confusable.rejected` | — | proxied: `setConfusable`; cached read: `listWordConfusables`, `listConfusables` |
-| `grammar_point` | `grammar.created`, `grammar.updated`, `grammar.deleted` | — | proxied: `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`, read `getGrammarPoint`; cached read: `listGrammarPoints` |
-| `sentence_grammar_span` | `grammar.span_put`, `grammar.span_removed` | — | `putGrammarSpan`, `removeGrammarSpan`; read: `listGrammarExamples` |
+| `confusable` | `confusable.suggested` (server), `confusable.confirmed`, `confusable.rejected` | `setConfusable`; read: `listWordConfusables`, `listConfusables` | — |
+| `grammar_point` | `grammar.created`, `grammar.updated`, `grammar.deleted` | `createGrammarPoint`, `updateGrammarPoint`, `deleteGrammarPoint`; read: `listGrammarPoints`, `getGrammarPoint` | — |
+| `sentence_grammar_span` | `grammar.span_put`, `grammar.span_removed` | `putGrammarSpan`, `removeGrammarSpan`; read: `getGrammarPoint` (`example_count`) | cached read: `listGrammarExamples`, `listMediaSentences`, `getSentence` |
 | `settings` | `settings.set` | `updateSettings`; read: `listSettings` | — |
-| `fsrs_params` | `fsrs_params.created`, `fsrs_params.updated`, `fsrs_params.deleted`, `fsrs_params.published` (server) | read: `listPresets`, `getPreset` | `createPreset`, `updatePreset`, `deletePreset` (`optimizePreset` is hidden) |
-| `media` | `media.created` (server), `media.updated`, `media.deleted`, `media.content_published` (server) | — | proxied: `updateMedia`, `deleteMedia`, read `getSentence`; cached read: `listMedia`, `getMedia`, `getMediaCoverage`, `listMediaSentences`, `listSentences` |
+| `fsrs_params` | `fsrs_params.created`, `fsrs_params.updated`, `fsrs_params.deleted`, `fsrs_params.published` (server) | `createPreset`, `updatePreset`, `deletePreset`; read: `listPresets`, `getPreset` | — (`optimizePreset` is hidden) |
+| `media` | `media.created` (server), `media.updated`, `media.deleted`, `media.content_published` (server) | `updateMedia`, `deleteMedia`; read: `listMedia`, `getMedia` | cached read: `getMediaCoverage`, `listMediaSentences`, `listSentences`, `getSentence` |
 | `parse_override` | `parse_override.put`, `parse_override.deleted` | — | proxied: `putParseOverride`, `deleteParseOverride`; cached read: `listParseOverrides` |
 
-Tables with no local write (`note_type`, `confusable`, `grammar_point`, `sentence_grammar_span`,
-`fsrs_params`, `media`, `parse_override`) are written through the proxy while online and are
-unavailable for writing offline; this is the price of not re-implementing their handlers and is
-visible to the user as the "needs connection" message of the action (9.4). Their list reads are
-`cached` (or `local` for `note_type` and `fsrs_params`), so the screens that show them open
-offline.
+Since rule L-10 every table above except `parse_override` has its writes in the local column:
+they work offline and never wait. `parse_override` is the one table written only through the
+proxy (its ops are not applied by devices); its screen shows the "needs connection" message of
+the action (9.4) and its list read is `cached`.
 
 Not learning data, listed for completeness — `proxy`: `getHealth`, `getOwnDevice`,
 `updateOwnDevice`, `parseText`, `testGrammarRules`, `listJobs`,

@@ -590,8 +590,8 @@ Where this section and `contracts/sync/SYNC.md` overlap, **SYNC.md wins** (C-2).
   `resolveSpeech`. Not learning data: no `pending_op` row is ever written for it, a rebuild
   (SYNC.md 10.3) may keep or drop it, and deleting every row is always safe. Rules: 6.6 "Device".
 - `response_cache` (C-31, ADR-050) — the stored answers of the API operations the Android shell
-  classifies as `cached` (server data the replica does not hold: coverage, forecasts, media and
-  sentence lists, confusables, grammar points, the vocabulary-list catalogue). **Not learning
+  classifies as `cached` (server data the replica does not hold: coverage, forecasts, sentence
+  lists and grammar examples, parse overrides, the vocabulary-list catalogue). **Not learning
   data and not in section 4.1:** no op writes it, no `pending_op` row is ever written for it, it
   is never synced, and it takes no part in convergence (SYNC.md 11). One row per cache key
   (`key` = operationId, path and canonical query joined by U+000A); only `2xx` JSON answers of
