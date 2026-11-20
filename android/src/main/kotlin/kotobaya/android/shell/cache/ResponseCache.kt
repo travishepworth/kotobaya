@@ -68,9 +68,14 @@ class ResponseCache(
     private val lastFinished = HashMap<String, Long>()
     private var warming = false
 
-    /** Bumped by [clear]: a fetch that started before belongs to the old pairing and stores nothing. */
-    @Volatile
+    /** Bumped by [clear] under [lock]: a fetch that started before belongs to the old pairing and stores nothing. */
     private var generation = 0L
+
+    /** Stale marks so far, per operation and for all (under [lock]): a mark after a fetch started keeps its `stale` (K-4). */
+    private val marksByOp = HashMap<String, Long>()
+    private var marksAll = 0L
+
+    private fun marksOf(operationId: String): Long = marksAll + (marksByOp[operationId] ?: 0L)
 
     /** K-2 / K-3 for one request of a `cached` operation. Never waits for the network. */
     fun answer(request: ShellRequest, operation: ApiOperation, requestId: String): ShellResponse {
@@ -94,16 +99,25 @@ class ResponseCache(
 
     override fun onReplicaChanged(tables: Set<String>?) {
         val ops = if (tables == null) REPLICA_DEPENDENT else STALE_WHEN.filterValues { t -> t.any { it in tables } }.keys
+        markStale(ops)
+    }
+
+    override fun onAllStale() = synchronized(lock) {
+        marksAll++
+        guarded("mark all stale") { store.markAllStale() }
+    }
+
+    /** K-4: a successful `putParseOverride` / `deleteParseOverride` through the proxy. */
+    fun onParseOverrideWritten() = markStale(PARSE_OVERRIDE_DEPENDENT)
+
+    /** Counted and written under [lock], so that a [settle] either sees the mark or is followed by it. */
+    private fun markStale(ops: Collection<String>) = synchronized(lock) {
+        ops.forEach { marksByOp[it] = (marksByOp[it] ?: 0L) + 1 }
         guarded("mark stale") { store.markStale(ops) }
     }
 
-    override fun onAllStale() = guarded("mark all stale") { store.markAllStale() }
-
-    /** K-4: a successful `putParseOverride` / `deleteParseOverride` through the proxy. */
-    fun onParseOverrideWritten() = guarded("mark stale") { store.markStale(PARSE_OVERRIDE_DEPENDENT) }
-
-    /** `unpairShell`, `pairShell`: the entries belong to the old pairing. */
-    fun clear() {
+    /** `unpairShell`, `pairShell`: the entries belong to the old pairing. Under [lock]: no fetch of it stores after this. */
+    fun clear() = synchronized(lock) {
         generation++
         guarded("clear") { store.deleteAll() }
     }
@@ -157,7 +171,7 @@ class ResponseCache(
     private suspend fun fetchClaimed(target: CacheTarget) {
         val key = target.key
         try {
-            val gen = generation
+            val (gen, marksAtStart) = synchronized(lock) { generation to marksOf(target.operationId) }
             val operation = ApiOperations.byId[target.operationId] ?: return
             val pendingAtStart = runCatchingLogged("pending check") { hasPendingOps() } ?: true
             val before = store.get(key)
@@ -173,8 +187,7 @@ class ResponseCache(
                 logError("cache fetch ${target.operationId} failed", e)
                 return
             }
-            if (gen != generation) return
-            settle(target, response, pendingAtStart)
+            settle(target, response, gen, marksAtStart, pendingAtStart)?.let(onUpdated)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -187,21 +200,32 @@ class ResponseCache(
         }
     }
 
-    private fun settle(target: CacheTarget, response: ShellResponse, stale: Boolean) {
+    /**
+     * The outcome of one fetch, under [lock] (the generation check and the write are one step against [clear] and the
+     * stale marks). `stale` stays 1 when `pending_op` held a row at the start or the entry was marked since. Returns
+     * the `cache.updated` to send (outside the lock), or null.
+     */
+    private fun settle(target: CacheTarget, response: ShellResponse, gen: Long, marksAtStart: Long, pendingAtStart: Boolean): CacheUpdate? =
+        synchronized(lock) {
+            if (gen != generation) return null
+            settleLocked(target, response, pendingAtStart || marksOf(target.operationId) != marksAtStart)
+        }
+
+    private fun settleLocked(target: CacheTarget, response: ShellResponse, stale: Boolean): CacheUpdate? {
         val key = target.key
         val now = nowMs()
         val existing = store.get(key)
         val status = response.status
-        when {
+        return when {
             status in 200..299 -> {
-                val body = response.body ?: return
-                val type = response.headers[ShellHeaders.CONTENT_TYPE] ?: return
-                if (!isJson(type)) return
+                val body = response.body ?: return null
+                val type = response.headers[ShellHeaders.CONTENT_TYPE] ?: return null
+                if (!isJson(type)) return null
                 val size = LocalApi.utf8Length(body)
-                if (size > MAX_ENTRY_BYTES) return
+                if (size > MAX_ENTRY_BYTES) return null
                 if (existing != null && existing.body == body) {
                     store.confirm(key, now, stale)
-                    return
+                    return null
                 }
                 store.put(
                     CacheEntry(
@@ -210,15 +234,18 @@ class ResponseCache(
                     ),
                 )
                 evict(key)
-                onUpdated(CacheUpdate(target.operationId, target.path, target.query, status))
+                CacheUpdate(target.operationId, target.path, target.query, status)
             }
-            status == 304 -> if (existing != null) store.confirm(key, now, stale)
+            status == 304 -> {
+                if (existing != null) store.confirm(key, now, stale)
+                null
+            }
             status == 404 || status == 410 -> {
                 existing?.let { store.delete(key) }
-                onUpdated(CacheUpdate(target.operationId, target.path, target.query, status))
+                CacheUpdate(target.operationId, target.path, target.query, status)
             }
-            existing == null && status in FINAL_REFUSALS -> onUpdated(CacheUpdate(target.operationId, target.path, target.query, status))
-            else -> Unit // 401 (9.2), 5xx, 429, 503 shell_offline: the stored answer keeps being served
+            existing == null && status in FINAL_REFUSALS -> CacheUpdate(target.operationId, target.path, target.query, status)
+            else -> null // 401 (9.2), 5xx, 429, 503 shell_offline: the stored answer keeps being served
         }
     }
 
