@@ -78,6 +78,7 @@ fun SyncStatusData.toJson(forceSyncing: Boolean = false): JsonObject {
     var phase = phaseName(s.phase, online)
     if (forceSyncing && phase in SUPERSEDED_BY_SYNCING) phase = "syncing"
     val progress = view.progress
+    val firstSync = kotobaya.android.sync.FirstSync.of(s.lastSyncAt, pullSeq, view.knownHead)
     return obj(
         "phase" to JsonString(phase),
         "paired" to JsonBool(view.paired),
@@ -92,6 +93,9 @@ fun SyncStatusData.toJson(forceSyncing: Boolean = false): JsonObject {
         "progress" to if (progress == null) JsonNull else obj("done" to n(progress.done), "total" to n(maxOf(progress.total, progress.done))),
         "last_error" to nullable(s.lastError?.take(MAX_LAST_ERROR)),
         "consecutive_failures" to n(view.consecutiveFailures.toLong()),
+        "first_sync" to firstSync.let {
+            obj("done" to JsonBool(it.done), "applied" to n(it.applied), "total" to (it.total?.let(::n) ?: JsonNull))
+        },
     )
 }
 
