@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotobaya.android.shell.api.ApiOperations
 import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.Problems
 import kotobaya.android.shell.api.ShellRequest
@@ -43,6 +44,8 @@ class BridgeCore(
     private val warn: (String) -> Unit = {},
     /** A new page life began (reset of per-page native state such as back enablement and theme). */
     private val onPageReset: () -> Unit = {},
+    /** A handler took longer than [SLOW_HANDLER_MS]: the operationId and the duration (LF-A7); never a body. */
+    private val onSlow: (operationId: String, ms: Long) -> Unit = ::logSlow,
 ) {
     /** Incremented by every page load; a `res` of an older page life is dropped (2.5 "Reload"). */
     private var pageLife = 0L
@@ -93,6 +96,7 @@ class BridgeCore(
         if (!seenIds.add(req.id)) return // duplicate id: not executed again, no second res (2.5)
         val life = pageLife
         scope.launch(io) {
+            val startedAt = nowMs()
             val response = try {
                 handle(ShellRequest.fromRaw(req.method, req.path, req.query, req.headers, req.body))
             } catch (e: CancellationException) {
@@ -100,6 +104,11 @@ class BridgeCore(
             } catch (e: Throwable) {
                 warn("bridge: ${req.method} ${req.path} failed: ${e.javaClass.simpleName}")
                 Problems.internal().toResponse(req.path, req.header("x-request-id") ?: req.id)
+            }
+            val took = nowMs() - startedAt
+            if (took > SLOW_HANDLER_MS) {
+                val id = ApiOperations.match(req.method, req.path)?.first?.operationId ?: "unmatched"
+                runCatching { onSlow(id, took) }
             }
             val text = BridgeCodec.encode(BridgeMessage.Res(req.id, response.status, response.headers, response.body))
             withContext(main) {
@@ -159,6 +168,16 @@ class BridgeCore(
     private fun BridgeMessage.Req.header(name: String): String? = headers[name]
 
     companion object {
+        /** A request whose handler takes longer than this is logged (LF-A7). */
+        const val SLOW_HANDLER_MS: Long = 250
+
+        /** The slow-handler log line: operationId and duration only. */
+        fun slowLine(operationId: String, ms: Long): String = "slow handler: $operationId took $ms ms"
+
+        private fun logSlow(operationId: String, ms: Long) {
+            runCatching { android.util.Log.w("KotobayaLoad", slowLine(operationId, ms)) }
+        }
+
         private val AT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
         /** RFC 3339 UTC with milliseconds (`event.at`). */

@@ -9,6 +9,7 @@ import kotobaya.sync.client.protocol.CycleResult
 import kotobaya.sync.client.protocol.SyncSnapshot
 import kotobaya.sync.client.protocol.SyncStatus
 import kotobaya.sync.client.protocol.UpgradeRequiredState
+import kotobaya.sync.client.store.bookkeeping
 
 /**
  * What the sync status chip (T303e) and the stale-sync notification (T308) read.
@@ -30,6 +31,11 @@ data class SyncStatusView(
     val unreachable: Boolean = false,
     /** While a cycle pulls: how far (BUG-8, "Syncing N of M"); null otherwise. */
     val progress: PullProgress? = null,
+    /**
+     * The server head (absolute `seq`) seen in the latest pull progress of this process, or null before any
+     * (LF-A7; `ShellSyncStatus.first_sync.total`). Not persisted: null again after a restart until the first sub-page.
+     */
+    val knownHead: Long? = null,
 )
 
 /**
@@ -57,6 +63,9 @@ class SyncStatusRepository(
     @Volatile
     private var progress: PullProgress? = null
 
+    @Volatile
+    private var knownHead: Long? = null
+
     /** The status; null until the first [refresh] (the bootstrap runs one after the startup replay). */
     val status: StateFlow<SyncStatusView?> = state.asStateFlow()
 
@@ -80,8 +89,11 @@ class SyncStatusRepository(
     /** Records pull progress (after each committed chunk). Updates the published view without a database read. */
     fun onProgress(p: PullProgress) {
         progress = p
+        // head = the cursor now + what is left of this pull; the cursor is committed before the callback
+        val head = runCatching { store.read { it.bookkeeping.pullSeq } }.getOrNull()?.let { it + maxOf(p.total - p.done, 0L) }
+        if (head != null) knownHead = head
         // atomic: a refresh() publishing from another thread at the same moment cannot drop this progress
-        state.update { it?.copy(progress = p) }
+        state.update { it?.copy(progress = p, knownHead = knownHead) }
     }
 
     /** Recomputes from the store. Never throws (a failed read keeps the previous value). */
@@ -94,7 +106,7 @@ class SyncStatusRepository(
      * (any thread) both go through [MutableStateFlow.update], so neither overwrites the other's newer progress.
      */
     private fun publish(computed: SyncStatusView) {
-        state.update { computed.copy(progress = if (running) progress else null) }
+        state.update { computed.copy(progress = if (running) progress else null, knownHead = knownHead) }
     }
 
     private fun compute(): SyncStatusView {
@@ -108,6 +120,7 @@ class SyncStatusRepository(
             consecutiveFailures = failures(),
             unreachable = lastUnreachable,
             progress = if (running) progress else null,
+            knownHead = knownHead,
         )
     }
 
@@ -117,5 +130,20 @@ class SyncStatusRepository(
 
         /** True when [lastSyncAt] is more than 48 h before [now]. Never synced reads as not stale (no reference point). */
         fun isStale(lastSyncAt: Long?, now: Long): Boolean = lastSyncAt != null && now - lastSyncAt > STALE_AFTER_MS
+    }
+}
+
+/** `ShellSyncStatus.first_sync` (ADR-050, SHELL.md 10.18). */
+data class FirstSync(val done: Boolean, val applied: Long, val total: Long?) {
+    companion object {
+        /**
+         * [done] is `last_sync_at != null` (set only when a pull ended with `has_more` false; never cleared), so it
+         * cannot go back to false. [applied] is the stored pull cursor; [total] the known head, never below [applied],
+         * and equal to it once done.
+         */
+        fun of(lastSyncAt: Long?, pullSeq: Long, knownHead: Long?): FirstSync {
+            if (lastSyncAt != null) return FirstSync(true, pullSeq, pullSeq)
+            return FirstSync(false, pullSeq, knownHead?.let { maxOf(it, pullSeq) })
+        }
     }
 }
